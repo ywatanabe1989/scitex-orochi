@@ -1,0 +1,135 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: "Consolas", "Monaco", monospace;
+  background: #0a0a0a;
+  color: #e0e0e0;
+}
+header {
+  background: #111;
+  padding: 12px 24px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+header h1 {
+  font-size: 18px;
+  color: #4ecdc4;
+}
+header .status {
+  font-size: 12px;
+  color: #666;
+}
+header .status.connected {
+  color: #4ecdc4;
+}
+.container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: calc(100vh - 49px);
+}
+.sidebar {
+  background: #111;
+  border-right: 1px solid #333;
+  overflow-y: auto;
+  padding: 16px;
+}
+.sidebar h2 {
+  font-size: 13px;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.agent-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.agent-card .name {
+  color: #4ecdc4;
+  font-weight: bold;
+  font-size: 13px;
+}
+.agent-card .meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+.agent-card .task {
+  font-size: 11px;
+  color: #ffd93d;
+  margin-top: 4px;
+}
+.agent-card .status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.agent-card .status-dot.online {
+  background: #4ecdc4;
+}
+.agent-card .status-dot.busy {
+  background: #ffd93d;
+}
+.agent-card .status-dot.offline {
+  background: #666;
+}
+.main {
+  display: flex;
+  flex-direction: column;
+}
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+.msg {
+  margin-bottom: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.msg .ts {
+  color: #555;
+  font-size: 11px;
+}
+.msg .sender {
+  color: #4ecdc4;
+  font-weight: bold;
+}
+.msg .channel {
+  color: #ff6b6b;
+  font-size: 11px;
+}
+.msg .content {
+  color: #ccc;
+}
+.stats-bar {
+  background: #111;
+  border-top: 1px solid #333;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #666;
+  display: flex;
+  gap: 24px;
+}
+#no-agents {
+  color: #555;
+  font-style: italic;
+  font-size: 12px;
+}
+.channels-heading {
+  margin-top: 20px;
+}
+.channel-item {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 4px;
+}

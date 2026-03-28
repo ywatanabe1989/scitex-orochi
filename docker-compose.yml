@@ -1,0 +1,22 @@
+services:
+  orochi:
+    build: .
+    container_name: scitex-orochi
+    ports:
+      - "9559:9559"
+      - "8559:8559"
+    volumes:
+      - orochi-data:/data
+    environment:
+      - OROCHI_TOKEN=${OROCHI_TOKEN:-}
+      - OROCHI_HOST=0.0.0.0
+    restart: unless-stopped
+    networks:
+      - scitex-cloud-prod_scitex-network
+
+networks:
+  scitex-cloud-prod_scitex-network:
+    external: true
+
+volumes:
+  orochi-data:

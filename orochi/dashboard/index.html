@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Orochi Dashboard</title>
+        <link rel="stylesheet" href="/static/style.css">
+    </head>
+    <body>
+        <header>
+            <h1>Orochi</h1>
+            <span id="conn-status" class="status">disconnected</span>
+        </header>
+        <div class="container">
+            <div class="sidebar">
+                <h2>Agents</h2>
+                <div id="agents">
+                    <p id="no-agents">No agents connected</p>
+                </div>
+                <h2 class="channels-heading">Channels</h2>
+                <div id="channels"></div>
+            </div>
+            <div class="main">
+                <div id="messages" class="messages"></div>
+                <div class="stats-bar">
+                    <span>Agents: <span id="stat-agents">0</span></span>
+                    <span>Channels: <span id="stat-channels">0</span></span>
+                    <span>Observers: <span id="stat-observers">0</span></span>
+                </div>
+            </div>
+        </div>
+        <script src="/static/app.js"></script>
+    </body>
+</html>

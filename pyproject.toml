@@ -1,0 +1,16 @@
+[project]
+name = "orochi"
+version = "0.1.0"
+description = "Agent Communication Hub for the SciTeX ecosystem"
+requires-python = ">=3.11"
+dependencies = [
+    "websockets>=12.0",
+    "aiosqlite>=0.19.0",
+    "aiohttp>=3.9.0",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
+[tool.scitex-linter]
+library_dirs = ["orochi", "bridges", "tests"]
