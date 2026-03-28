@@ -19,6 +19,11 @@ header {
   align-items: center;
   gap: 16px;
 }
+header .header-icon {
+  height: 32px;
+  vertical-align: middle;
+  margin-right: 8px;
+}
 header h1 {
   font-size: 18px;
   color: #4ecdc4;
