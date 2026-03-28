@@ -87,6 +87,15 @@ async def handle_history(request: web.Request) -> web.Response:
     return web.json_response(rows)
 
 
+async def handle_messages(request: web.Request) -> web.Response:
+    """GET /api/messages?limit=100 -- recent messages across all channels."""
+    server: OrochiServer = request.app["orochi_server"]
+    limit = int(request.query.get("limit", "100"))
+    limit = min(limit, 500)  # cap at 500
+    rows = await server.store.recent(limit=limit)
+    return web.json_response(rows)
+
+
 async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
@@ -171,6 +180,7 @@ def create_web_app(server: OrochiServer) -> web.Application:
     # REST API
     app.router.add_get("/api/agents", handle_agents)
     app.router.add_get("/api/channels", handle_channels)
+    app.router.add_get("/api/messages", handle_messages)
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/stats", handle_stats)
 

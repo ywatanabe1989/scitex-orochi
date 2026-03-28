@@ -71,6 +71,13 @@ class MessageStore:
         )
         await self._db.commit()
 
+        # Keep only last 500 messages
+        await self._db.execute(
+            "DELETE FROM messages WHERE id NOT IN "
+            "(SELECT id FROM messages ORDER BY ts DESC LIMIT 500)"
+        )
+        await self._db.commit()
+
     async def query(
         self,
         channel: str,
@@ -92,15 +99,29 @@ class MessageStore:
                 (channel, limit),
             )
         rows = await cursor.fetchall()
-        return [
-            {
-                "msg_id": r[0],
-                "ts": r[1],
-                "channel": r[2],
-                "sender": r[3],
-                "content": r[4],
-                "mentions": json.loads(r[5]) if r[5] else [],
-                "metadata": json.loads(r[6]) if r[6] else {},
-            }
-            for r in rows
-        ]
+        return [self._row_to_dict(r) for r in rows]
+
+    async def recent(self, limit: int = 100) -> list[dict]:
+        """Return the most recent messages across all channels."""
+        if not self._db:
+            raise RuntimeError("Store not open")
+        cursor = await self._db.execute(
+            "SELECT msg_id, ts, channel, sender, content, mentions, metadata "
+            "FROM messages ORDER BY ts DESC LIMIT ?",
+            (limit,),
+        )
+        rows = await cursor.fetchall()
+        # Return in chronological order (oldest first)
+        return [self._row_to_dict(r) for r in reversed(rows)]
+
+    @staticmethod
+    def _row_to_dict(r: tuple) -> dict:
+        return {
+            "msg_id": r[0],
+            "ts": r[1],
+            "channel": r[2],
+            "sender": r[3],
+            "content": r[4],
+            "mentions": json.loads(r[5]) if r[5] else [],
+            "metadata": json.loads(r[6]) if r[6] else {},
+        }

@@ -42,6 +42,7 @@ function connect() {
     statusEl.classList.add("connected");
     fetchStats();
     fetchAgents();
+    loadHistory();
   };
 
   ws.onclose = function () {
@@ -209,6 +210,26 @@ async function fetchStats() {
         }
         filterMessages();
         fetchStats();
+      });
+    });
+  } catch (e) {
+    /* fetch error */
+  }
+}
+
+async function loadHistory() {
+  try {
+    var res = await fetch("/api/messages?limit=100");
+    var messages = await res.json();
+    messages.forEach(function (row) {
+      appendMessage({
+        type: "message",
+        sender: row.sender,
+        ts: row.ts,
+        payload: {
+          channel: row.channel,
+          content: row.content,
+        },
       });
     });
   } catch (e) {
