@@ -262,26 +262,6 @@ header .status.connected {
   border-radius: 3px;
   padding: 1px 3px;
 }
-.msg-reactions {
-  display: flex;
-  gap: 4px;
-  margin-top: 4px;
-}
-.reaction-btn {
-  background: transparent;
-  border: 1px solid #333;
-  border-radius: 12px;
-  padding: 2px 8px;
-  cursor: pointer;
-  font-size: 12px;
-  color: #888;
-  transition: all 0.2s;
-}
-.reaction-btn:hover {
-  background: #333;
-  border-color: #4ecdc4;
-  color: #e0e0e0;
-}
 @media (max-width: 600px) {
   .container {
     grid-template-columns: 1fr;

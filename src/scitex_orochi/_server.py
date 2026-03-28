@@ -35,6 +35,7 @@ class Agent:
     channels: set[str] = field(default_factory=set)
     machine: str = ""
     role: str = ""
+    model: str = ""
     agent_id: str = ""
     project: str = ""
     status: str = "online"
@@ -165,6 +166,7 @@ class OrochiServer:
         channels = set(msg.payload.get("channels", ["#general"]))
         machine = msg.payload.get("machine", "")
         role = msg.payload.get("role", "")
+        model = msg.payload.get("model", "")
         project = msg.payload.get("project", "")
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
@@ -177,6 +179,7 @@ class OrochiServer:
             channels=channels,
             machine=machine,
             role=role,
+            model=model,
             agent_id=agent_id,
             project=project,
             status="online",
@@ -402,6 +405,7 @@ class OrochiServer:
                 "channels": list(a.channels),
                 "machine": a.machine,
                 "role": a.role,
+                "model": a.model,
                 "agent_id": a.agent_id,
                 "project": a.project,
                 "status": a.status,
@@ -418,8 +422,8 @@ class OrochiServer:
 
 
 def main() -> None:
-    from scitex_orochi._web import create_web_app
     from scitex_orochi._config import DASHBOARD_PORT
+    from scitex_orochi._web import create_web_app
 
     server = OrochiServer()
 

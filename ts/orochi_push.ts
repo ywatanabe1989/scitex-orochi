@@ -15,6 +15,7 @@ const OROCHI_CHANNELS = (process.env.OROCHI_CHANNELS || "#general")
   .split(",")
   .map((s) => s.trim());
 const OROCHI_TOKEN = process.env.OROCHI_TOKEN || "";
+const OROCHI_MODEL = process.env.OROCHI_MODEL || "unknown";
 
 const wsUrl = `ws://${OROCHI_HOST}:${OROCHI_PORT}${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}` : ""}`;
 
@@ -65,6 +66,7 @@ function connect() {
         channels: OROCHI_CHANNELS,
         machine: hostname(),
         role: "claude-code",
+        model: OROCHI_MODEL,
         agent_id: `${OROCHI_AGENT}@${hostname()}`,
         project: "",
       },

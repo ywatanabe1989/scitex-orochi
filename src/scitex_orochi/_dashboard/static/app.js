@@ -115,22 +115,7 @@ function appendMessage(msg) {
     '<div class="content">' +
     highlightedContent +
     "</div>" +
-    '<div class="msg-reactions">' +
-    '<button class="reaction-btn" data-emoji="👍" data-sender="' +
-    escapeHtml(msg.sender) +
-    '" data-preview="' +
-    escapeHtml(contentPreview) +
-    '" data-channel="' +
-    escapeHtml(channel) +
-    '">👍</button>' +
-    '<button class="reaction-btn" data-emoji="👎" data-sender="' +
-    escapeHtml(msg.sender) +
-    '" data-preview="' +
-    escapeHtml(contentPreview) +
-    '" data-channel="' +
-    escapeHtml(channel) +
-    '">👎</button>' +
-    "</div>";
+    "";
   if (currentChannel && channel !== currentChannel) {
     el.style.display = "none";
   }
@@ -179,6 +164,11 @@ async function fetchAgents() {
           color +
           '">' +
           escapeHtml(a.name) +
+          (a.model
+            ? ' <span style="color:#888;font-size:0.8em">(' +
+              escapeHtml(a.model) +
+              ")</span>"
+            : "") +
           "</span>" +
           '<div class="meta">' +
           escapeHtml(a.machine || "unknown") +
@@ -300,28 +290,6 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
     if (dd && dd.classList.contains("visible")) return;
     sendMessage();
   }
-});
-
-/* Reaction button handler */
-document.getElementById("messages").addEventListener("click", function (e) {
-  var btn = e.target.closest(".reaction-btn");
-  if (!btn) return;
-  var emoji = btn.getAttribute("data-emoji");
-  var sender = btn.getAttribute("data-sender");
-  var preview = btn.getAttribute("data-preview");
-  var channel =
-    btn.getAttribute("data-channel") || currentChannel || "#general";
-  if (!ws || ws.readyState !== WebSocket.OPEN || !channel) return;
-  ws.send(
-    JSON.stringify({
-      type: "message",
-      sender: "human",
-      payload: {
-        channel: channel,
-        content: "human reacted " + emoji + ' to "' + preview + '"',
-      },
-    }),
-  );
 });
 
 /* Mention autocomplete with Tab support */

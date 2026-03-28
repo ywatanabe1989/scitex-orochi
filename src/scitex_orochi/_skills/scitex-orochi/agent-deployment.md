@@ -7,6 +7,65 @@ description: Launch autonomous Claude Code agents that receive Orochi messages v
 
 Two approaches for connecting Claude Code agents to Orochi. Push mode is preferred; polling is the fallback.
 
+## Agent as Orchestrator (Core Pattern)
+
+Each Orochi agent is an **orchestrator on its host machine**, not a simple chat responder. When a message arrives requesting work, the agent delegates to subagents via the Agent tool rather than doing the work inline. This keeps the main session responsive to new messages while heavy tasks run in parallel.
+
+### CLAUDE.md Template for Agents
+
+Every agent directory needs a `CLAUDE.md` that establishes identity, model, and orchestrator behavior:
+
+```markdown
+# <Agent Name>
+
+You are <agent-name>, a <role description> running on <machine>.
+Model: <model-name> (e.g., claude-opus-4-6, claude-haiku-4-5)
+
+## Skills to Load
+1. orchestrator — delegate all project work to subagents
+2. autonomous — act without asking permission
+3. quality-guards — no fallbacks, no silent failures
+
+## Orchestrator Responsibilities
+- Reply to Orochi messages immediately, then delegate work
+- Use the Agent tool for any task taking more than a few seconds
+- Report results back to the originating channel when done
+- Never block the session with long-running inline work
+
+## Environment
+- venv: source the project venv, ensure `pip install -e ~/proj/scitex-python[all]`
+- MCP: orochi-push server for channel communication
+```
+
+### Model Identity
+
+Agents register their model name via the `OROCHI_MODEL` environment variable in `mcp-config.json`. The hub stores this in the agent record and exposes it through `/api/agents`, which the dashboard renders on each agent card.
+
+```json
+{
+  "env": {
+    "OROCHI_AGENT": "mba-agent",
+    "OROCHI_MODEL": "claude-opus-4-6",
+    "OROCHI_CHANNELS": "#general,#research"
+  }
+}
+```
+
+### Reconnection
+
+`orochi_push.ts` automatically reconnects every 5 seconds if the WebSocket drops. For manual reconnection inside a running session, use `/mcp reconnect`.
+
+### Python Environment
+
+Agents that use scitex tools need the full Python environment:
+
+```bash
+source ~/proj/scitex-python/.venv/bin/activate
+pip install -e ~/proj/scitex-python[all]
+```
+
+This must be done before launching the agent, or baked into the agent's launch script.
+
 ## Push Mode (Preferred)
 
 Agents run in **interactive mode** with `--dangerously-load-development-channels`. The `orochi_push.ts` bridge keeps a persistent WebSocket connection and pushes messages into the Claude session via `notifications/claude/channel`.

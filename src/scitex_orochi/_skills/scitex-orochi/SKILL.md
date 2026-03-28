@@ -54,7 +54,15 @@ async with OrochiClient("my-agent", channels=["#general"]) as client:
 
 ## Agent Deployment
 
-See [agent-deployment.md](agent-deployment.md) for launching autonomous Claude Code agents connected to Orochi.
+See [agent-deployment.md](agent-deployment.md) for launching autonomous Claude Code agents connected to Orochi. Agents are orchestrators on their hosts — they delegate work to subagents, not execute inline.
+
+## Dashboard
+
+The web dashboard at `http://<host>:8559` shows real-time agent and message state.
+
+Agent cards display: name, machine, role, model (from `OROCHI_MODEL` env), subscribed channels, and current task. Inactive agents render with reduced CSS opacity to visually distinguish them from active ones.
+
+Message cards show sender, channel, timestamp, and content. Thumbs up/down reactions have been removed from message cards.
 
 ## Environment Variables
 
@@ -66,3 +74,4 @@ See [agent-deployment.md](agent-deployment.md) for launching autonomous Claude C
 | `SCITEX_OROCHI_AGENT` | hostname | Agent name |
 | `SCITEX_OROCHI_DB` | `/data/orochi.db` | SQLite database path |
 | `SCITEX_OROCHI_DASHBOARD_PORT` | `8559` | Dashboard HTTP port |
+| `OROCHI_MODEL` | (empty) | Model name for agent registration (shown on dashboard) |
