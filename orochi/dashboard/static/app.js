@@ -1,19 +1,44 @@
 /* Orochi Dashboard -- WebSocket observer client */
 
-const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
-const token = new URLSearchParams(location.search).get("token") || "";
-const wsUrl = `${wsProto}//${location.host}/ws?token=${token}`;
-let ws;
+/* Yamata no Orochi color palette (from mascot icon heads) */
+var OROCHI_COLORS = [
+  "#C4A6E8" /* purple */,
+  "#7EC8E3" /* light blue */,
+  "#FF9B9B" /* pink */,
+  "#A8E6A3" /* green */,
+  "#FFD93D" /* yellow */,
+  "#FFB374" /* orange */,
+  "#B8D4E3" /* ice blue */,
+  "#E8A6C8" /* rose */,
+];
+var currentChannel = null;
+
+function hashString(str) {
+  var hash = 0;
+  for (var i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function getAgentColor(name) {
+  return OROCHI_COLORS[hashString(name || "unknown") % OROCHI_COLORS.length];
+}
+
+var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+var token = new URLSearchParams(location.search).get("token") || "";
+var wsUrl = wsProto + "//" + location.host + "/ws?token=" + token;
+var ws;
 
 function escapeHtml(s) {
-  const d = document.createElement("div");
+  var d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
 }
 
 function connect() {
   ws = new WebSocket(wsUrl);
-  const statusEl = document.getElementById("conn-status");
+  var statusEl = document.getElementById("conn-status");
 
   ws.onopen = function () {
     statusEl.textContent = "connected";
@@ -60,6 +85,10 @@ function appendMessage(msg) {
       content = JSON.stringify(msg.payload);
     }
   }
+  var senderColor = getAgentColor(msg.sender || "unknown");
+  if (channel) {
+    el.setAttribute("data-channel", channel);
+  }
   el.innerHTML =
     '<span class="ts">' +
     ts +
@@ -67,15 +96,32 @@ function appendMessage(msg) {
     '<span class="channel">' +
     escapeHtml(channel) +
     "</span> " +
-    '<span class="sender">' +
+    '<span class="sender" style="color:' +
+    senderColor +
+    '">' +
     escapeHtml(msg.sender) +
     "</span> " +
     '<span class="content">' +
     escapeHtml(content) +
     "</span>";
+  if (currentChannel && channel !== currentChannel) {
+    el.style.display = "none";
+  }
   var container = document.getElementById("messages");
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
+}
+
+function filterMessages() {
+  var msgs = document.querySelectorAll(".msg");
+  msgs.forEach(function (el) {
+    if (!currentChannel) {
+      el.style.display = "";
+    } else {
+      var ch = el.getAttribute("data-channel");
+      el.style.display = ch === currentChannel ? "" : "none";
+    }
+  });
 }
 
 async function fetchAgents() {
@@ -89,15 +135,20 @@ async function fetchAgents() {
     }
     container.innerHTML = agents
       .map(function (a) {
+        var color = getAgentColor(a.name);
         var taskHtml = a.current_task
           ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
           : "";
         return (
-          '<div class="agent-card">' +
+          '<div class="agent-card" style="border-left: 3px solid ' +
+          color +
+          '">' +
           '<span class="status-dot ' +
           (a.status || "online") +
           '"></span>' +
-          '<span class="name">' +
+          '<span class="name" style="color:' +
+          color +
+          '">' +
           escapeHtml(a.name) +
           "</span>" +
           '<div class="meta">' +
@@ -133,13 +184,18 @@ async function fetchStats() {
       stats.observers_connected;
     var chContainer = document.getElementById("channels");
     chContainer.innerHTML = stats.channels
-      .map(function (c) {
+      .map(function (c, i) {
         var active = currentChannel === c ? " active" : "";
+        var chColor = OROCHI_COLORS[i % OROCHI_COLORS.length];
         return (
           '<div class="channel-item' +
           active +
           '" data-channel="' +
           escapeHtml(c) +
+          '" style="color:' +
+          chColor +
+          ";cursor:pointer" +
+          (active ? ";font-weight:bold" : "") +
           '">' +
           escapeHtml(c) +
           "</div>"
@@ -147,7 +203,6 @@ async function fetchStats() {
       })
       .join("");
     chContainer.querySelectorAll(".channel-item").forEach(function (el) {
-      el.style.cursor = "pointer";
       el.addEventListener("click", function () {
         var ch = el.getAttribute("data-channel");
         if (currentChannel === ch) {
