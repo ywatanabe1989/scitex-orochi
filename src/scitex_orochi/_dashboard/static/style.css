@@ -161,7 +161,7 @@ header .status.connected {
   font-family: inherit;
   font-size: 12px;
 }
-.input-bar input {
+.input-bar textarea {
   flex: 1;
   background: #1a1a1a;
   color: #e0e0e0;
@@ -171,8 +171,12 @@ header .status.connected {
   font-family: inherit;
   font-size: 15px;
   outline: none;
+  resize: none;
+  overflow-y: auto;
+  max-height: 120px;
+  line-height: 1.4;
 }
-.input-bar input:focus {
+.input-bar textarea:focus {
   border-color: #4ecdc4;
 }
 .input-bar button {

@@ -90,10 +90,9 @@ function appendMessage(msg) {
     el.setAttribute("data-channel", channel);
   }
   el.style.borderLeftColor = senderColor;
-  var highlightedContent = escapeHtml(content).replace(
-    /@([\w-]+)/g,
-    '<span class="mention-highlight">@$1</span>',
-  );
+  var highlightedContent = escapeHtml(content)
+    .replace(/\n/g, "<br>")
+    .replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
   var contentPreview =
     content.length > 30 ? content.substring(0, 30) + "..." : content;
   el.innerHTML =
@@ -285,13 +284,22 @@ function sendMessage() {
     }),
   );
   input.value = "";
+  input.style.height = "auto";
 }
+
+/* Auto-resize textarea as content grows */
+document.getElementById("msg-input").addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+});
 
 document.getElementById("msg-send").addEventListener("click", sendMessage);
 document.getElementById("msg-input").addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     var dd = document.getElementById("mention-dropdown");
     if (dd && dd.classList.contains("visible")) return;
+    if (e.shiftKey) return; /* Shift+Enter inserts newline naturally */
+    e.preventDefault();
     sendMessage();
   }
 });

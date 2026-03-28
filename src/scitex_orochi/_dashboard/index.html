@@ -34,10 +34,10 @@
                 <div id="messages" class="messages"></div>
                 <div class="input-bar">
                     <div id="mention-dropdown" class="mention-dropdown"></div>
-                    <input type="text"
-                           id="msg-input"
-                           placeholder="Type a message..."
-                           autocomplete="off">
+                    <textarea id="msg-input"
+                              placeholder="Type a message... (Shift+Enter for newline)"
+                              autocomplete="off"
+                              rows="1"></textarea>
                     <button id="msg-send">Send</button>
                 </div>
                 <div class="stats-bar">
@@ -47,6 +47,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=16"></script>
+        <script src="/static/app.js?v=17"></script>
     </body>
 </html>
