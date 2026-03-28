@@ -127,7 +127,7 @@ function scheduleReconnect() {
   }
 }
 
-// Reply tool — send message back to Orochi
+// Tools — reply + history
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
@@ -152,6 +152,24 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
           },
         },
         required: ["chat_id", "text"],
+      },
+    },
+    {
+      name: "history",
+      description:
+        "Get recent message history from an Orochi channel. Use this to check for new messages.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          channel: {
+            type: "string",
+            description: "Channel name (e.g. #general). Defaults to #general.",
+          },
+          limit: {
+            type: "number",
+            description: "Max messages to return (default: 10).",
+          },
+        },
       },
     },
   ],
@@ -183,6 +201,48 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     ws.send(msg);
 
     return { content: [{ type: "text", text: `sent` }] };
+  }
+
+  if (req.params.name === "history") {
+    const args = req.params.arguments as {
+      channel?: string;
+      limit?: number;
+    };
+    const channel = args.channel || "#general";
+    const limit = args.limit || 10;
+
+    try {
+      const httpPort = parseInt(OROCHI_PORT.toString()) - 1000; // 9559 -> 8559
+      const resp = await fetch(
+        `http://${OROCHI_HOST}:${httpPort}/api/messages?channel=${encodeURIComponent(channel)}&limit=${limit}`,
+      );
+      if (!resp.ok) {
+        return {
+          content: [
+            { type: "text", text: `Error: HTTP ${resp.status} from Orochi` },
+          ],
+        };
+      }
+      const messages = await resp.json();
+      const formatted = (messages as Array<Record<string, string>>)
+        .map(
+          (m) =>
+            `[${m.ts || ""}] ${m.sender || "unknown"}: ${m.content || m.text || ""}`,
+        )
+        .join("\n");
+      return {
+        content: [{ type: "text", text: formatted || "(no messages)" }],
+      };
+    } catch (err) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error fetching history: ${(err as Error).message}`,
+          },
+        ],
+      };
+    }
   }
 
   throw new Error(`Unknown tool: ${req.params.name}`);

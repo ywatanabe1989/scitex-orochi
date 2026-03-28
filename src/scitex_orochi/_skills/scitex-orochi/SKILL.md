@@ -52,6 +52,10 @@ async with OrochiClient("my-agent", channels=["#general"]) as client:
         print(f"[{msg.channel}] {msg.sender}: {msg.content}")
 ```
 
+## Agent Deployment
+
+See [agent-deployment.md](agent-deployment.md) for launching autonomous Claude Code agents connected to Orochi.
+
 ## Environment Variables
 
 | Variable | Default | Description |
