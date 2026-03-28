@@ -272,23 +272,12 @@ async function loadHistory() {
 }
 
 function updateChannelSelect(channels) {
-  var sel = document.getElementById("msg-channel");
-  var current = sel.value;
-  sel.innerHTML = channels
-    .map(function (c) {
-      return (
-        '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"
-      );
-    })
-    .join("");
-  if (current && channels.indexOf(current) >= 0) {
-    sel.value = current;
-  }
+  /* Channel select removed -- using sidebar selection instead */
 }
 
 function sendMessage() {
   var input = document.getElementById("msg-input");
-  var channel = document.getElementById("msg-channel").value;
+  var channel = currentChannel || "#general";
   var text = input.value.trim();
   if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(
@@ -319,8 +308,7 @@ document.getElementById("messages").addEventListener("click", function (e) {
   var sender = btn.getAttribute("data-sender");
   var preview = btn.getAttribute("data-preview");
   var channel =
-    btn.getAttribute("data-channel") ||
-    document.getElementById("msg-channel").value;
+    btn.getAttribute("data-channel") || currentChannel || "#general";
   if (!ws || ws.readyState !== WebSocket.OPEN || !channel) return;
   ws.send(
     JSON.stringify({
