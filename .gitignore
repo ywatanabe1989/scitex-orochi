@@ -13,3 +13,8 @@ node_modules/
 ts/node_modules/
 ts/bun.lock
 GITIGNORED/
+
+# Claude Code
+.claude/
+docs/to_claude/
+logs/
