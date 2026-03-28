@@ -116,6 +116,7 @@ class MessageStore:
 
     @staticmethod
     def _row_to_dict(r: tuple) -> dict:
+        metadata = json.loads(r[6]) if r[6] else {}
         return {
             "msg_id": r[0],
             "ts": r[1],
@@ -123,5 +124,6 @@ class MessageStore:
             "sender": r[3],
             "content": r[4],
             "mentions": json.loads(r[5]) if r[5] else [],
-            "metadata": json.loads(r[6]) if r[6] else {},
+            "metadata": metadata,
+            "attachments": metadata.get("attachments", []),
         }

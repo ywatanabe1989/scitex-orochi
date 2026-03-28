@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 from pathlib import Path
@@ -11,6 +12,8 @@ import aiohttp
 import aiohttp.web as web
 
 from scitex_orochi._auth import verify_token
+from scitex_orochi._config import MEDIA_MAX_SIZE, MEDIA_ROOT
+from scitex_orochi._media import MediaStore
 from scitex_orochi._models import Message
 
 if TYPE_CHECKING:
@@ -156,6 +159,58 @@ async def handle_gitea_list_repos(request: web.Request) -> web.Response:
         return web.json_response({"error": str(exc)}, status=502)
 
 
+async def handle_upload(request: web.Request) -> web.Response:
+    """POST /api/upload -- multipart file upload."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    reader = await request.multipart()
+    field = await reader.next()
+    if field is None or field.name != "file":
+        return web.json_response({"error": "No file field"}, status=400)
+
+    data = await field.read(decode=False)
+    filename = field.filename or "upload"
+    mime_type = field.headers.get("Content-Type", "") if field.headers else ""
+
+    media = MediaStore()
+    try:
+        result = media.save(data, filename, mime_type)
+    except ValueError as exc:
+        return web.json_response({"error": str(exc)}, status=413)
+
+    return web.json_response(result, status=201)
+
+
+async def handle_upload_base64(request: web.Request) -> web.Response:
+    """POST /api/upload-base64 -- base64-encoded file upload."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    body = await request.json()
+    b64_data = body.get("data", "")
+    filename = body.get("filename", "upload")
+    mime_type = body.get("mime_type", "")
+
+    if not b64_data:
+        return web.json_response({"error": "No data field"}, status=400)
+
+    try:
+        data = base64.b64decode(b64_data)
+    except Exception:
+        return web.json_response({"error": "Invalid base64"}, status=400)
+
+    media = MediaStore()
+    try:
+        result = media.save(data, filename, mime_type)
+    except ValueError as exc:
+        return web.json_response({"error": str(exc)}, status=413)
+
+    return web.json_response(result, status=201)
+
+
 async def handle_index(request: web.Request) -> web.Response:
     """Serve the dashboard index.html."""
     index_path = DASHBOARD_DIR / "index.html"
@@ -171,7 +226,7 @@ async def handle_index(request: web.Request) -> web.Response:
 def create_web_app(server: OrochiServer) -> web.Application:
     """Create the aiohttp application with routes."""
 
-    app = web.Application()
+    app = web.Application(client_max_size=MEDIA_MAX_SIZE)
     app["orochi_server"] = server
 
     # WebSocket for dashboard
@@ -183,6 +238,16 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/messages", handle_messages)
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/stats", handle_stats)
+
+    # Media upload/serve
+    app.router.add_post("/api/upload", handle_upload)
+    app.router.add_post("/api/upload-base64", handle_upload_base64)
+    media_path = Path(MEDIA_ROOT)
+    try:
+        media_path.mkdir(parents=True, exist_ok=True)
+        app.router.add_static("/media", media_path, show_index=False)
+    except OSError:
+        log.warning("Cannot create MEDIA_ROOT=%s; /media serving disabled", MEDIA_ROOT)
 
     # Static files (dashboard UI)
     if DASHBOARD_DIR.exists():

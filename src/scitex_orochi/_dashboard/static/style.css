@@ -359,6 +359,38 @@ header .status.connected {
   font-style: italic;
   font-size: 12px;
 }
+/* Attachment styles */
+.attachment-img img {
+  max-width: 400px;
+  max-height: 300px;
+  border-radius: 4px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+.attachment-img img:hover {
+  opacity: 0.85;
+}
+.attachment-file a {
+  color: #4ecdc4;
+  text-decoration: none;
+  font-size: 13px;
+}
+.attachment-file a:hover {
+  text-decoration: underline;
+}
+#msg-attach {
+  background: transparent;
+  border: 1px solid #333;
+  color: #999;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+#msg-attach:hover {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
 @media (max-width: 600px) {
   .container {
     grid-template-columns: 1fr;

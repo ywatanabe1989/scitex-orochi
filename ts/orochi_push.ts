@@ -6,6 +6,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import WebSocket from "ws";
 import { hostname } from "os";
+import { readFileSync } from "fs";
+import { basename } from "path";
 
 // Config from env
 const OROCHI_HOST = process.env.OROCHI_HOST || "192.168.0.102";
@@ -91,10 +93,15 @@ function connect() {
         if (!content) return;
 
         // Push into Claude Code session
+        const attachments = payload.attachments || [];
+        const attachmentInfo =
+          attachments.length > 0
+            ? `\n[Attachments: ${(attachments as Array<{ url: string; filename?: string }>).map((a) => a.url).join(", ")}]`
+            : "";
         await mcp.notification({
           method: "notifications/claude/channel",
           params: {
-            content: `${content}`,
+            content: `${content}${attachmentInfo}`,
             meta: {
               chat_id: channel,
               user: sender,
@@ -152,6 +159,12 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
             type: "string",
             description: "Optional: message ID to reply to.",
           },
+          files: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Optional: array of absolute file paths to attach as images/files.",
+          },
         },
         required: ["chat_id", "text"],
       },
@@ -183,6 +196,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
       chat_id: string;
       text: string;
       reply_to?: string;
+      files?: string[];
     };
 
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -191,14 +205,56 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
       };
     }
 
+    // Upload any attached files
+    const attachments: Array<Record<string, unknown>> = [];
+    if (args.files && args.files.length > 0) {
+      const httpPort = parseInt(OROCHI_PORT.toString()) - 1000;
+      for (const filePath of args.files) {
+        try {
+          const fileData = readFileSync(filePath);
+          const b64 = fileData.toString("base64");
+          const filename = basename(filePath);
+          const resp = await fetch(
+            `http://${OROCHI_HOST}:${httpPort}/api/upload-base64${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}` : ""}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                data: b64,
+                filename: filename,
+              }),
+            },
+          );
+          if (resp.ok) {
+            const result = await resp.json();
+            attachments.push(result as Record<string, unknown>);
+          } else {
+            console.error(
+              `[orochi] upload failed for ${filename}: HTTP ${resp.status}`,
+            );
+          }
+        } catch (err) {
+          console.error(
+            `[orochi] error uploading ${filePath}:`,
+            (err as Error).message,
+          );
+        }
+      }
+    }
+
+    const payload: Record<string, unknown> = {
+      channel: args.chat_id,
+      content: args.text,
+      metadata: args.reply_to ? { reply_to: args.reply_to } : {},
+    };
+    if (attachments.length > 0) {
+      payload.attachments = attachments;
+    }
+
     const msg = JSON.stringify({
       type: "message",
       sender: OROCHI_AGENT,
-      payload: {
-        channel: args.chat_id,
-        content: args.text,
-        metadata: args.reply_to ? { reply_to: args.reply_to } : {},
-      },
+      payload: payload,
     });
     ws.send(msg);
 

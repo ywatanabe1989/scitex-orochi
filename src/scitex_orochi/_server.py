@@ -213,7 +213,17 @@ class OrochiServer:
             log.warning("Message from %s has no channel, dropping", msg.sender)
             return
 
-        # Persist
+        # Update heartbeat on message activity
+        if msg.sender in self.agents:
+            self.agents[msg.sender].last_heartbeat = datetime.now(
+                timezone.utc
+            ).isoformat()
+
+        # Persist (include attachments in metadata)
+        metadata = msg.payload.get("metadata") or {}
+        attachments = msg.payload.get("attachments")
+        if attachments:
+            metadata["attachments"] = attachments
         await self.store.save(
             msg_id=msg.id,
             ts=msg.ts,
@@ -221,7 +231,7 @@ class OrochiServer:
             sender=msg.sender,
             content=msg.content,
             mentions=msg.mentions,
-            metadata=msg.payload.get("metadata"),
+            metadata=metadata or None,
         )
 
         # Deliver to channel subscribers

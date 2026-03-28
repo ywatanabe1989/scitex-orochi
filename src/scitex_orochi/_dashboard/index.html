@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=17">
+        <link rel="stylesheet" href="/static/style.css?v=18">
     </head>
     <body>
         <header>
@@ -38,6 +38,8 @@
                               placeholder="Type a message... (Shift+Enter for newline)"
                               autocomplete="off"
                               rows="1"></textarea>
+                    <input type="file" id="file-input" style="display:none" accept="image/*,.pdf,.txt,.csv,.json,.zip">
+                    <button id="msg-attach" title="Attach file">&#128206;</button>
                     <button id="msg-send">Send</button>
                 </div>
                 <div class="stats-bar">
@@ -47,6 +49,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=17"></script>
+        <script src="/static/app.js?v=18"></script>
     </body>
 </html>

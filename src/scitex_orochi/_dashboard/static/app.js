@@ -93,6 +93,22 @@ function appendMessage(msg) {
   var highlightedContent = escapeHtml(content)
     .replace(/\n/g, "<br>")
     .replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
+  var attachmentsHtml = "";
+  var attachments = (msg.payload && msg.payload.attachments) || msg.attachments || [];
+  attachments.forEach(function (att) {
+    if (att.mime_type && att.mime_type.startsWith("image/")) {
+      attachmentsHtml +=
+        '<div class="attachment-img">' +
+        '<a href="' + escapeHtml(att.url) + '" target="_blank">' +
+        '<img src="' + escapeHtml(att.url) + '" alt="' +
+        escapeHtml(att.filename || "image") + '" loading="lazy"></a></div>';
+    } else if (att.url) {
+      attachmentsHtml +=
+        '<div class="attachment-file">' +
+        '<a href="' + escapeHtml(att.url) + '" target="_blank">' +
+        escapeHtml(att.filename || "attachment") + "</a></div>";
+    }
+  });
   var contentPreview =
     content.length > 30 ? content.substring(0, 30) + "..." : content;
   el.innerHTML =
@@ -114,6 +130,7 @@ function appendMessage(msg) {
     '<div class="content">' +
     highlightedContent +
     "</div>" +
+    attachmentsHtml +
     "";
   if (currentChannel && channel !== currentChannel) {
     el.style.display = "none";
@@ -254,6 +271,7 @@ async function loadHistory() {
         payload: {
           channel: row.channel,
           content: row.content,
+          attachments: (row.metadata && row.metadata.attachments) || row.attachments || [],
         },
       });
     });
@@ -533,6 +551,44 @@ async function fetchTaskCards() {
     /* fetch error */
   }
 }
+
+/* File attachment upload */
+document.getElementById("msg-attach").addEventListener("click", function () {
+  document.getElementById("file-input").click();
+});
+
+document.getElementById("file-input").addEventListener("change", async function () {
+  var file = this.files[0];
+  if (!file) return;
+  var formData = new FormData();
+  formData.append("file", file);
+  try {
+    var res = await fetch("/api/upload?token=" + token, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      console.error("Upload failed:", res.status);
+      return;
+    }
+    var result = await res.json();
+    var channel = currentChannel || "#general";
+    ws.send(
+      JSON.stringify({
+        type: "message",
+        sender: "human",
+        payload: {
+          channel: channel,
+          content: file.name,
+          attachments: [result],
+        },
+      })
+    );
+  } catch (e) {
+    console.error("Upload error:", e);
+  }
+  this.value = "";
+});
 
 connect();
 setInterval(fetchStats, 10000);
