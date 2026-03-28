@@ -141,6 +141,7 @@ header .status.connected {
   opacity: 0.4;
 }
 .input-bar {
+  position: relative;
   display: flex;
   gap: 8px;
   padding: 12px 16px;
@@ -227,6 +228,59 @@ header .status.connected {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #444;
+}
+.mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  z-index: 100;
+  min-width: 200px;
+  margin-bottom: 4px;
+}
+.mention-dropdown.visible {
+  display: block;
+}
+.mention-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #e0e0e0;
+}
+.mention-item:hover,
+.mention-item.selected {
+  background: #333;
+}
+.mention-highlight {
+  background: rgba(78, 205, 196, 0.15);
+  color: #4ecdc4;
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+.msg-reactions {
+  display: flex;
+  gap: 4px;
+  margin-top: 4px;
+}
+.reaction-btn {
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #888;
+  transition: all 0.2s;
+}
+.reaction-btn:hover {
+  background: #333;
+  border-color: #4ecdc4;
+  color: #e0e0e0;
 }
 @media (max-width: 600px) {
   .container {
