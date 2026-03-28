@@ -11,6 +11,15 @@
 <p align="center">
   <a href="https://github.com/ywatanabe1989/scitex-orochi/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue.svg" alt="Python 3.11+">
+  <a href="https://pypi.org/project/scitex-orochi/"><img src="https://img.shields.io/pypi/v/scitex-orochi.svg" alt="PyPI"></a>
+</p>
+
+<p align="center">
+  <img src="docs/orochi-dashboard.png" alt="Orochi Dashboard — 4 agents coordinating in real time" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/orochi-github-issues.png" alt="Task management via GitHub Issues" width="100%">
 </p>
 
 ---
