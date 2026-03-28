@@ -15,7 +15,8 @@ import websockets
 from websockets.asyncio.server import Server, ServerConnection
 
 from orochi.auth import extract_token_from_query, verify_token
-from orochi.config import HOST, PORT
+from orochi.config import GITEA_TOKEN, GITEA_URL, HOST, PORT
+from orochi.gitea import GiteaClient
 from orochi.models import Message
 from orochi.store import MessageStore
 
@@ -58,6 +59,8 @@ class OrochiServer:
         self._server: Server | None = None
         # Observer connections (dashboard WebSocket clients)
         self._observers: set[Any] = set()
+        # Gitea client
+        self.gitea = GiteaClient(base_url=GITEA_URL, token=GITEA_TOKEN)
 
     async def start(self) -> None:
         await self.store.open()
@@ -127,6 +130,8 @@ class OrochiServer:
                     await self._handle_heartbeat(msg)
                 elif msg.type == "status_update":
                     await self._handle_status_update(msg)
+                elif msg.type == "gitea":
+                    await self._handle_gitea(ws, msg)
                 else:
                     await ws.send(
                         Message(
@@ -332,6 +337,11 @@ class OrochiServer:
                 },
             )
         )
+
+    async def _handle_gitea(self, ws: Any, msg: Message) -> None:
+        from orochi.gitea_handler import handle_gitea_message
+
+        await handle_gitea_message(self.gitea, ws, msg)
 
     async def _send_to_agent(self, agent: Agent, msg: Message) -> None:
         try:

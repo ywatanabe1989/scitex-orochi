@@ -101,6 +101,52 @@ async def handle_stats(request: web.Request) -> web.Response:
     )
 
 
+async def handle_gitea_list_issues(request: web.Request) -> web.Response:
+    """GET /api/gitea/issues/{owner}/{repo} -- list issues."""
+    server: OrochiServer = request.app["orochi_server"]
+    owner = request.match_info["owner"]
+    repo = request.match_info["repo"]
+    state = request.query.get("state", "open")
+    try:
+        issues = await server.gitea.list_issues(owner, repo, state=state)
+        return web.json_response(issues)
+    except Exception as exc:
+        return web.json_response({"error": str(exc)}, status=502)
+
+
+async def handle_gitea_create_issue(request: web.Request) -> web.Response:
+    """POST /api/gitea/issues/{owner}/{repo} -- create an issue."""
+    server: OrochiServer = request.app["orochi_server"]
+    owner = request.match_info["owner"]
+    repo = request.match_info["repo"]
+    body = await request.json()
+    title = body.get("title", "")
+    if not title:
+        return web.json_response({"error": "title is required"}, status=400)
+    try:
+        issue = await server.gitea.create_issue(
+            owner=owner,
+            repo=repo,
+            title=title,
+            body=body.get("body", ""),
+            labels=body.get("labels"),
+        )
+        return web.json_response(issue, status=201)
+    except Exception as exc:
+        return web.json_response({"error": str(exc)}, status=502)
+
+
+async def handle_gitea_list_repos(request: web.Request) -> web.Response:
+    """GET /api/gitea/repos -- list repositories."""
+    server: OrochiServer = request.app["orochi_server"]
+    org = request.query.get("org", "")
+    try:
+        repos = await server.gitea.list_repos(org=org)
+        return web.json_response(repos)
+    except Exception as exc:
+        return web.json_response({"error": str(exc)}, status=502)
+
+
 async def handle_index(request: web.Request) -> web.Response:
     """Serve the dashboard index.html."""
     index_path = DASHBOARD_DIR / "index.html"
