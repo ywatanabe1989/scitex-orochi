@@ -13,16 +13,13 @@ var OROCHI_COLORS = [
 ];
 var currentChannel = null;
 
-function hashString(str) {
-  var hash = 0;
-  for (var i = 0; i < str.length; i++) {
-    hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
 function getAgentColor(name) {
-  return OROCHI_COLORS[hashString(name || "unknown") % OROCHI_COLORS.length];
+  var s = name || "unknown";
+  var sum = 0;
+  for (var i = 0; i < s.length; i++) {
+    sum += s.charCodeAt(i);
+  }
+  return OROCHI_COLORS[sum % OROCHI_COLORS.length];
 }
 
 var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
