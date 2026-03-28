@@ -137,7 +137,11 @@ header .status.connected {
   font-size: 13px;
   line-height: 1.5;
 }
-.agent-card.offline {
+.agent-card.offline,
+.agent-card.inactive {
+  opacity: 0.4;
+}
+.task-card.inactive {
   opacity: 0.4;
 }
 .input-bar {

@@ -148,20 +148,24 @@ async function fetchAgents() {
     container.innerHTML = agents
       .map(function (a) {
         var color = getAgentColor(a.name);
+        var inactive = isAgentInactive(a);
+        var statusClass = (a.status || "online") + (inactive ? " inactive" : "");
         var taskHtml = a.current_task
           ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
           : "";
         return (
-          '<div class="agent-card" style="border-left: 3px solid ' +
+          '<div class="agent-card' +
+          (inactive ? " inactive" : "") +
+          '" style="border-left: 3px solid ' +
           color +
           '">' +
           '<span class="status-dot ' +
-          (a.status || "online") +
+          statusClass +
           '" style="background:' +
-          color +
+          (inactive ? "#555" : color) +
           '"></span>' +
           '<span class="name" style="color:' +
-          color +
+          (inactive ? "#666" : color) +
           '">' +
           escapeHtml(a.name) +
           (a.model
@@ -413,21 +417,32 @@ document.getElementById("msg-input").addEventListener("blur", function () {
 setInterval(refreshAgentNames, 15000);
 refreshAgentNames();
 
+/* Inactive agent detection -- stale heartbeat (>60s) or explicit offline status */
+function isAgentInactive(agent) {
+  if (agent.status === "offline") return true;
+  if (!agent.last_heartbeat) return false;
+  var hb = new Date(agent.last_heartbeat);
+  if (isNaN(hb.getTime())) return false;
+  return Date.now() - hb.getTime() > 60000;
+}
+
 /* Task progress panel */
 var taskPanelCollapsed = false;
 
-document.getElementById("task-panel-toggle").addEventListener("click", function () {
-  taskPanelCollapsed = !taskPanelCollapsed;
-  var body = document.getElementById("task-panel-body");
-  var arrow = document.getElementById("task-panel-arrow");
-  if (taskPanelCollapsed) {
-    body.classList.add("collapsed");
-    arrow.classList.add("collapsed");
-  } else {
-    body.classList.remove("collapsed");
-    arrow.classList.remove("collapsed");
-  }
-});
+document
+  .getElementById("task-panel-toggle")
+  .addEventListener("click", function () {
+    taskPanelCollapsed = !taskPanelCollapsed;
+    var body = document.getElementById("task-panel-body");
+    var arrow = document.getElementById("task-panel-arrow");
+    if (taskPanelCollapsed) {
+      body.classList.add("collapsed");
+      arrow.classList.add("collapsed");
+    } else {
+      body.classList.remove("collapsed");
+      arrow.classList.remove("collapsed");
+    }
+  });
 
 function timeAgo(isoStr) {
   if (!isoStr) return "";
@@ -456,26 +471,56 @@ async function fetchTaskCards() {
     var agents = await res.json();
     var container = document.getElementById("task-cards");
     if (agents.length === 0) {
-      container.innerHTML = '<div class="task-cards-empty">No agents connected</div>';
+      container.innerHTML =
+        '<div class="task-cards-empty">No agents connected</div>';
       return;
     }
-    container.innerHTML = agents.map(function (a) {
-      var color = getAgentColor(a.name);
-      var statusLabel = a.status || "online";
-      var taskText = a.current_task
-        ? '<div class="tc-task">' + escapeHtml(a.current_task) + "</div>"
-        : '<div class="tc-task idle">idle</div>';
-      return (
-        '<div class="task-card" style="border-left-color:' + color + '">' +
-        '<div class="tc-name" style="color:' + color + '">' + escapeHtml(a.name) + "</div>" +
-        '<div class="tc-status"><span class="dot" style="background:' +
-        (statusLabel === "busy" ? "#ffd93d" : statusLabel === "error" ? "#ff6b6b" : "#4ecdc4") +
-        '"></span>' + escapeHtml(statusLabel) + "</div>" +
-        taskText +
-        '<div class="tc-meta">up ' + uptime(a.registered_at) + " | hb " + timeAgo(a.last_heartbeat) + "</div>" +
-        "</div>"
-      );
-    }).join("");
+    container.innerHTML = agents
+      .map(function (a) {
+        var color = getAgentColor(a.name);
+        var inactive = isAgentInactive(a);
+        var statusLabel = inactive ? "inactive" : (a.status || "online");
+        var displayColor = inactive ? "#555" : color;
+        var taskText = a.current_task
+          ? '<div class="tc-task">' + escapeHtml(a.current_task) + "</div>"
+          : '<div class="tc-task idle">idle</div>';
+        return (
+          '<div class="task-card' +
+          (inactive ? " inactive" : "") +
+          '" style="border-left-color:' +
+          displayColor +
+          '">' +
+          '<div class="tc-name" style="color:' +
+          displayColor +
+          '">' +
+          escapeHtml(a.name) +
+          (a.model
+            ? ' <span style="color:#888;font-size:0.8em">(' +
+              escapeHtml(a.model) +
+              ")</span>"
+            : "") +
+          "</div>" +
+          '<div class="tc-status"><span class="dot" style="background:' +
+          (inactive
+            ? "#555"
+            : statusLabel === "busy"
+              ? "#ffd93d"
+              : statusLabel === "error"
+                ? "#ff6b6b"
+                : "#4ecdc4") +
+          '"></span>' +
+          escapeHtml(statusLabel) +
+          "</div>" +
+          taskText +
+          '<div class="tc-meta">up ' +
+          uptime(a.registered_at) +
+          " | hb " +
+          timeAgo(a.last_heartbeat) +
+          "</div>" +
+          "</div>"
+        );
+      })
+      .join("");
   } catch (e) {
     /* fetch error */
   }
