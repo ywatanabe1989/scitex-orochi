@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import platform
 import signal
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -33,6 +34,8 @@ class Agent:
     channels: set[str] = field(default_factory=set)
     machine: str = ""
     role: str = ""
+    agent_id: str = ""
+    project: str = ""
     status: str = "online"
     current_task: str = ""
     last_heartbeat: str = field(
@@ -157,6 +160,11 @@ class OrochiServer:
         channels = set(msg.payload.get("channels", ["#general"]))
         machine = msg.payload.get("machine", "")
         role = msg.payload.get("role", "")
+        project = msg.payload.get("project", "")
+        agent_id = msg.payload.get("agent_id", "")
+        if not agent_id:
+            machine_name = machine or platform.node()
+            agent_id = f"{name}@{machine_name}"
         now = datetime.now(timezone.utc).isoformat()
         self.agents[name] = Agent(
             name=name,
@@ -164,6 +172,8 @@ class OrochiServer:
             channels=channels,
             machine=machine,
             role=role,
+            agent_id=agent_id,
+            project=project,
             status="online",
             current_task="",
             last_heartbeat=now,
@@ -182,6 +192,8 @@ class OrochiServer:
                     "agent": name,
                     "event": "connected",
                     "channels": list(channels),
+                    "agent_id": agent_id,
+                    "project": project,
                 },
             )
         )
@@ -297,6 +309,10 @@ class OrochiServer:
             agent.machine = msg.payload["machine"]
         if "role" in msg.payload:
             agent.role = msg.payload["role"]
+        if "project" in msg.payload:
+            agent.project = msg.payload["project"]
+        if "agent_id" in msg.payload:
+            agent.agent_id = msg.payload["agent_id"]
         agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
         log.info("Status update from %s: %s", msg.sender, msg.payload)
 
@@ -311,6 +327,8 @@ class OrochiServer:
                     "current_task": agent.current_task,
                     "machine": agent.machine,
                     "role": agent.role,
+                    "agent_id": agent.agent_id,
+                    "project": agent.project,
                 },
             )
         )
@@ -374,6 +392,8 @@ class OrochiServer:
                 "channels": list(a.channels),
                 "machine": a.machine,
                 "role": a.role,
+                "agent_id": a.agent_id,
+                "project": a.project,
                 "status": a.status,
                 "current_task": a.current_task,
                 "last_heartbeat": a.last_heartbeat,

@@ -36,11 +36,20 @@ class OrochiClient:
         token: str | None = None,
         machine: str = "",
         role: str = "",
+        agent_id: str = "",
+        project: str = "",
     ) -> None:
+        import platform as _platform
+
         self.name = name
         self.channels = channels or ["#general"]
         self.machine = machine
         self.role = role
+        self.project = project
+        self.agent_id = agent_id
+        if not self.agent_id:
+            machine_name = machine or _platform.node()
+            self.agent_id = f"{name}@{machine_name}"
         self._token = token or OROCHI_TOKEN
         query = f"?token={self._token}" if self._token else ""
         self.uri = f"ws://{host}:{port}{query}"
@@ -57,6 +66,8 @@ class OrochiClient:
                 "channels": self.channels,
                 "machine": self.machine,
                 "role": self.role,
+                "agent_id": self.agent_id,
+                "project": self.project,
             },
         )
         await self._ws.send(reg.to_json())
