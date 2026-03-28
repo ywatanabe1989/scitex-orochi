@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=7">
+        <link rel="stylesheet" href="/static/style.css?v=8">
     </head>
     <body>
         <header>
@@ -23,6 +23,14 @@
             </div>
             <div class="main">
                 <div id="messages" class="messages"></div>
+                <div class="input-bar">
+                    <select id="msg-channel"></select>
+                    <input type="text"
+                           id="msg-input"
+                           placeholder="Type a message..."
+                           autocomplete="off">
+                    <button id="msg-send">Send</button>
+                </div>
                 <div class="stats-bar">
                     <span>Agents: <span id="stat-agents">0</span></span>
                     <span>Channels: <span id="stat-channels">0</span></span>
@@ -30,6 +38,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=5"></script>
+        <script src="/static/app.js?v=6"></script>
     </body>
 </html>

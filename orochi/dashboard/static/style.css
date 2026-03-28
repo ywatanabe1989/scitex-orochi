@@ -102,24 +102,82 @@ header .status.connected {
   padding: 16px;
 }
 .msg {
-  margin-bottom: 8px;
+  background: #1a1a1a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-left: 3px solid #333;
+}
+.msg .msg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.msg .sender {
+  font-weight: bold;
   font-size: 13px;
-  line-height: 1.5;
+}
+.msg .channel {
+  font-size: 11px;
+  opacity: 0.7;
 }
 .msg .ts {
   color: #555;
   font-size: 11px;
-}
-.msg .sender {
-  color: #4ecdc4;
-  font-weight: bold;
-}
-.msg .channel {
-  color: #ff6b6b;
-  font-size: 11px;
+  margin-left: auto;
 }
 .msg .content {
   color: #ccc;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.agent-card.offline {
+  opacity: 0.4;
+}
+.input-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #111;
+  border-top: 1px solid #333;
+}
+.input-bar select {
+  background: #1a1a1a;
+  color: #4ecdc4;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 12px;
+}
+.input-bar input {
+  flex: 1;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.input-bar input:focus {
+  border-color: #4ecdc4;
+}
+.input-bar button {
+  background: #4ecdc4;
+  color: #0a0a0a;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.input-bar button:hover {
+  background: #45b7b0;
 }
 .stats-bar {
   background: #111;
@@ -141,7 +199,16 @@ header .status.connected {
 .channel-item {
   font-size: 12px;
   color: #aaa;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.channel-item:hover {
+  background: #1a1a1a;
+}
+.channel-item.active {
+  background: #1a1a1a;
+  font-weight: bold;
 }
 @media (max-width: 600px) {
   .container {

@@ -87,21 +87,26 @@ function appendMessage(msg) {
   if (channel) {
     el.setAttribute("data-channel", channel);
   }
+  el.style.borderLeftColor = senderColor;
   el.innerHTML =
-    '<span class="ts">' +
-    ts +
-    "</span> " +
-    '<span class="channel">' +
-    escapeHtml(channel) +
-    "</span> " +
+    '<div class="msg-header">' +
     '<span class="sender" style="color:' +
     senderColor +
     '">' +
     escapeHtml(msg.sender) +
-    "</span> " +
-    '<span class="content">' +
+    "</span>" +
+    '<span class="channel" style="color:' +
+    senderColor +
+    '">' +
+    escapeHtml(channel) +
+    "</span>" +
+    '<span class="ts">' +
+    ts +
+    "</span>" +
+    "</div>" +
+    '<div class="content">' +
     escapeHtml(content) +
-    "</span>";
+    "</div>";
   if (currentChannel && channel !== currentChannel) {
     el.style.display = "none";
   }
@@ -143,6 +148,8 @@ async function fetchAgents() {
           '">' +
           '<span class="status-dot ' +
           (a.status || "online") +
+          '" style="background:' +
+          color +
           '"></span>' +
           '<span class="name" style="color:' +
           color +
@@ -212,6 +219,7 @@ async function fetchStats() {
         fetchStats();
       });
     });
+    updateChannelSelect(stats.channels);
   } catch (e) {
     /* fetch error */
   }
@@ -236,6 +244,42 @@ async function loadHistory() {
     /* fetch error */
   }
 }
+
+function updateChannelSelect(channels) {
+  var sel = document.getElementById("msg-channel");
+  var current = sel.value;
+  sel.innerHTML = channels
+    .map(function (c) {
+      return (
+        '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + "</option>"
+      );
+    })
+    .join("");
+  if (current && channels.indexOf(current) >= 0) {
+    sel.value = current;
+  }
+}
+
+function sendMessage() {
+  var input = document.getElementById("msg-input");
+  var channel = document.getElementById("msg-channel").value;
+  var text = input.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(
+    JSON.stringify({
+      type: "message",
+      channel: channel,
+      content: text,
+      sender: "human",
+    }),
+  );
+  input.value = "";
+}
+
+document.getElementById("msg-send").addEventListener("click", sendMessage);
+document.getElementById("msg-input").addEventListener("keydown", function (e) {
+  if (e.key === "Enter") sendMessage();
+});
 
 connect();
 setInterval(fetchStats, 10000);
