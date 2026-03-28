@@ -242,6 +242,8 @@ async function loadHistory() {
         },
       });
     });
+    var msgs = document.getElementById("messages");
+    msgs.scrollTop = msgs.scrollHeight;
   } catch (e) {
     /* fetch error */
   }
