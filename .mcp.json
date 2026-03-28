@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "orochi-push": {
+      "command": "bun",
+      "args": ["./orochi_push.ts"],
+      "env": {
+        "OROCHI_HOST": "192.168.0.102",
+        "OROCHI_PORT": "9559",
+        "OROCHI_AGENT": "",
+        "OROCHI_CHANNELS": "#general"
+      }
+    }
+  }
+}
