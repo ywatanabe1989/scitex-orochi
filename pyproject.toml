@@ -10,6 +10,10 @@ dependencies = [
     "aiohttp>=3.9.0",
 ]
 
+[project.scripts]
+orochi = "orochi.cli:main"
+orochi-mcp = "orochi.mcp_server:main"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
