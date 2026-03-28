@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=15">
+        <link rel="stylesheet" href="/static/style.css?v=16">
     </head>
     <body>
         <header>
@@ -22,6 +22,15 @@
                 <div id="channels"></div>
             </div>
             <div class="main">
+                <div id="task-panel" class="task-panel">
+                    <div class="task-panel-header" id="task-panel-toggle">
+                        <span>Agent Tasks</span>
+                        <span id="task-panel-arrow" class="task-panel-arrow">&#9660;</span>
+                    </div>
+                    <div id="task-panel-body" class="task-panel-body">
+                        <div id="task-cards" class="task-cards"></div>
+                    </div>
+                </div>
                 <div id="messages" class="messages"></div>
                 <div class="input-bar">
                     <div id="mention-dropdown" class="mention-dropdown"></div>
@@ -38,6 +47,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=13"></script>
+        <script src="/static/app.js?v=14"></script>
     </body>
 </html>

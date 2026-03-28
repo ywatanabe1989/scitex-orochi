@@ -262,6 +262,95 @@ header .status.connected {
   border-radius: 3px;
   padding: 1px 3px;
 }
+/* Task progress panel */
+.task-panel {
+  border-bottom: 1px solid #333;
+}
+.task-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: #111;
+  cursor: pointer;
+  font-size: 13px;
+  color: #888;
+  text-transform: uppercase;
+  user-select: none;
+}
+.task-panel-header:hover {
+  color: #4ecdc4;
+}
+.task-panel-arrow {
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+.task-panel-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+.task-panel-body {
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  max-height: 300px;
+}
+.task-panel-body.collapsed {
+  max-height: 0;
+}
+.task-cards {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 12px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #333 #0a0a0a;
+}
+.task-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 220px;
+  max-width: 280px;
+  flex-shrink: 0;
+  border-left: 3px solid #333;
+}
+.task-card .tc-name {
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.task-card .tc-status {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.task-card .tc-status .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.task-card .tc-task {
+  font-size: 12px;
+  color: #ffd93d;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.task-card .tc-task.idle {
+  color: #555;
+  font-style: italic;
+}
+.task-card .tc-meta {
+  font-size: 10px;
+  color: #555;
+  margin-top: 6px;
+}
+.task-cards-empty {
+  padding: 8px 16px 12px;
+  color: #555;
+  font-style: italic;
+  font-size: 12px;
+}
 @media (max-width: 600px) {
   .container {
     grid-template-columns: 1fr;

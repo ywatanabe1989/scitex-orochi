@@ -413,6 +413,76 @@ document.getElementById("msg-input").addEventListener("blur", function () {
 setInterval(refreshAgentNames, 15000);
 refreshAgentNames();
 
+/* Task progress panel */
+var taskPanelCollapsed = false;
+
+document.getElementById("task-panel-toggle").addEventListener("click", function () {
+  taskPanelCollapsed = !taskPanelCollapsed;
+  var body = document.getElementById("task-panel-body");
+  var arrow = document.getElementById("task-panel-arrow");
+  if (taskPanelCollapsed) {
+    body.classList.add("collapsed");
+    arrow.classList.add("collapsed");
+  } else {
+    body.classList.remove("collapsed");
+    arrow.classList.remove("collapsed");
+  }
+});
+
+function timeAgo(isoStr) {
+  if (!isoStr) return "";
+  var then = new Date(isoStr);
+  if (isNaN(then.getTime())) return "";
+  var diff = Math.floor((Date.now() - then.getTime()) / 1000);
+  if (diff < 60) return diff + "s ago";
+  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+  return Math.floor(diff / 86400) + "d ago";
+}
+
+function uptime(isoStr) {
+  if (!isoStr) return "";
+  var then = new Date(isoStr);
+  if (isNaN(then.getTime())) return "";
+  var diff = Math.floor((Date.now() - then.getTime()) / 1000);
+  var h = Math.floor(diff / 3600);
+  var m = Math.floor((diff % 3600) / 60);
+  return h + "h " + m + "m";
+}
+
+async function fetchTaskCards() {
+  try {
+    var res = await fetch("/api/agents");
+    var agents = await res.json();
+    var container = document.getElementById("task-cards");
+    if (agents.length === 0) {
+      container.innerHTML = '<div class="task-cards-empty">No agents connected</div>';
+      return;
+    }
+    container.innerHTML = agents.map(function (a) {
+      var color = getAgentColor(a.name);
+      var statusLabel = a.status || "online";
+      var taskText = a.current_task
+        ? '<div class="tc-task">' + escapeHtml(a.current_task) + "</div>"
+        : '<div class="tc-task idle">idle</div>';
+      return (
+        '<div class="task-card" style="border-left-color:' + color + '">' +
+        '<div class="tc-name" style="color:' + color + '">' + escapeHtml(a.name) + "</div>" +
+        '<div class="tc-status"><span class="dot" style="background:' +
+        (statusLabel === "busy" ? "#ffd93d" : statusLabel === "error" ? "#ff6b6b" : "#4ecdc4") +
+        '"></span>' + escapeHtml(statusLabel) + "</div>" +
+        taskText +
+        '<div class="tc-meta">up ' + uptime(a.registered_at) + " | hb " + timeAgo(a.last_heartbeat) + "</div>" +
+        "</div>"
+      );
+    }).join("");
+  } catch (e) {
+    /* fetch error */
+  }
+}
+
 connect();
 setInterval(fetchStats, 10000);
 setInterval(fetchAgents, 10000);
+setInterval(fetchTaskCards, 5000);
+fetchTaskCards();
