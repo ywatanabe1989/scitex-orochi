@@ -14,11 +14,11 @@ from typing import Any
 import websockets
 from websockets.asyncio.server import Server, ServerConnection
 
-from orochi.auth import extract_token_from_query, verify_token
-from orochi.config import GITEA_TOKEN, GITEA_URL, HOST, PORT
-from orochi.gitea import GiteaClient
-from orochi.models import Message
-from orochi.store import MessageStore
+from scitex_orochi._auth import extract_token_from_query, verify_token
+from scitex_orochi._config import GITEA_TOKEN, GITEA_URL, HOST, PORT
+from scitex_orochi._gitea import GiteaClient
+from scitex_orochi._models import Message
+from scitex_orochi._store import MessageStore
 
 logging.basicConfig(
     level=logging.INFO,
@@ -339,7 +339,7 @@ class OrochiServer:
         )
 
     async def _handle_gitea(self, ws: Any, msg: Message) -> None:
-        from orochi.gitea_handler import handle_gitea_message
+        from scitex_orochi._gitea_handler import handle_gitea_message
 
         await handle_gitea_message(self.gitea, ws, msg)
 
@@ -418,8 +418,8 @@ class OrochiServer:
 
 
 def main() -> None:
-    from orochi.web import create_web_app
-    from orochi.config import DASHBOARD_PORT
+    from scitex_orochi._web import create_web_app
+    from scitex_orochi._config import DASHBOARD_PORT
 
     server = OrochiServer()
 

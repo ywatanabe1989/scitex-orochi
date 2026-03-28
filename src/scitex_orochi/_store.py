@@ -7,7 +7,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from orochi.config import DB_PATH
+from scitex_orochi._config import DB_PATH
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS messages (

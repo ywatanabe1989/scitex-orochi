@@ -1,3 +1,5 @@
-"""Orochi -- Agent Communication Hub for the SciTeX ecosystem."""
+"""Backward-compatibility shim -- use scitex_orochi instead."""
 
-__version__ = "0.1.0"
+from scitex_orochi import OrochiClient, OrochiServer, Message, __version__
+
+__all__ = ["OrochiClient", "OrochiServer", "Message", "__version__"]

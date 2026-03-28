@@ -1,21 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "scitex-orochi"
 version = "0.1.0"
 description = "Agent Communication Hub for the SciTeX ecosystem"
+readme = "README.md"
 license = "AGPL-3.0-only"
 requires-python = ">=3.11"
+authors = [
+    { name = "Yusuke Watanabe", email = "ywatanabe@scitex.ai" },
+]
+keywords = ["agent", "communication", "websocket", "hub", "scitex"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "websockets>=12.0",
     "aiosqlite>=0.19.0",
     "aiohttp>=3.9.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+mcp = ["fastmcp>=2.0"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio",
 ]
 
 [project.scripts]
-orochi = "orochi.cli:main"
-orochi-mcp = "orochi.mcp_server:main"
+scitex-orochi = "scitex_orochi._cli:main"
+orochi = "scitex_orochi._cli:main"
+orochi-server = "scitex_orochi._server:main"
+orochi-mcp = "scitex_orochi.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/ywatanabe1989/scitex-orochi"
+Repository = "https://github.com/ywatanabe1989/scitex-orochi"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scitex_orochi", "orochi"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.scitex-linter]
-library_dirs = ["orochi", "bridges", "tests"]
+library_dirs = ["src", "orochi", "tests"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]

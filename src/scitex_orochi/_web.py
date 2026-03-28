@@ -10,15 +10,15 @@ from typing import TYPE_CHECKING
 import aiohttp
 import aiohttp.web as web
 
-from orochi.auth import verify_token
-from orochi.models import Message
+from scitex_orochi._auth import verify_token
+from scitex_orochi._models import Message
 
 if TYPE_CHECKING:
-    from orochi.server import OrochiServer
+    from scitex_orochi._server import OrochiServer
 
 log = logging.getLogger("orochi.web")
 
-DASHBOARD_DIR = Path(__file__).parent / "dashboard"
+DASHBOARD_DIR = Path(__file__).parent / "_dashboard"
 
 
 async def handle_ws(request: web.Request) -> web.WebSocketResponse:

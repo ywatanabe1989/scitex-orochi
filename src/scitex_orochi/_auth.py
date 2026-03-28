@@ -1,35 +1,30 @@
-"""Token-based authentication for Orochi connections."""
+"""Orochi authentication -- token validation."""
 
 from __future__ import annotations
 
 import logging
 from urllib.parse import parse_qs, urlparse
 
-from orochi.config import OROCHI_TOKEN
+from scitex_orochi._config import OROCHI_TOKEN
 
 log = logging.getLogger("orochi.auth")
 
 
 def verify_token(token: str | None) -> bool:
-    """Verify a token against the configured OROCHI_TOKEN.
-
-    Returns True if:
-    - No OROCHI_TOKEN is configured (auth disabled)
-    - The provided token matches OROCHI_TOKEN
-    """
+    """Verify a connection token. Auth is disabled if OROCHI_TOKEN is empty."""
     if not OROCHI_TOKEN:
         return True
     if not token:
-        log.warning("Auth failed: no token provided")
+        log.warning("Connection rejected: no token provided")
         return False
     if token != OROCHI_TOKEN:
-        log.warning("Auth failed: invalid token")
+        log.warning("Connection rejected: invalid token")
         return False
     return True
 
 
 def extract_token_from_query(path: str) -> str | None:
-    """Extract token from WebSocket query string: ws://host:port/?token=xxx."""
+    """Extract token from WebSocket query string ?token=xxx."""
     try:
         parsed = urlparse(path)
         params = parse_qs(parsed.query)

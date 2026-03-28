@@ -5,8 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from orochi.gitea import GiteaClient, GiteaError
-from orochi.models import Message
+from scitex_orochi._gitea import GiteaClient, GiteaError
+from scitex_orochi._models import Message
 
 log = logging.getLogger("orochi.gitea_handler")
 

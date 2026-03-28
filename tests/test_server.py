@@ -7,8 +7,8 @@ import asyncio
 import pytest
 import websockets
 
-from orochi.models import Message
-from orochi.server import OrochiServer
+from scitex_orochi._models import Message
+from scitex_orochi._server import OrochiServer
 
 TEST_HOST = "127.0.0.1"
 TEST_PORT = 19559
@@ -179,12 +179,12 @@ async def test_auth_rejection(tmp_path, monkeypatch):
     # Re-import to pick up new env value
     import importlib
 
-    import orochi.config
+    import scitex_orochi._config
 
-    importlib.reload(orochi.config)
-    import orochi.auth
+    importlib.reload(scitex_orochi._config)
+    import scitex_orochi._auth
 
-    importlib.reload(orochi.auth)
+    importlib.reload(scitex_orochi._auth)
 
     try:
         db_path = tmp_path / "test_auth.db"
@@ -221,8 +221,8 @@ async def test_auth_rejection(tmp_path, monkeypatch):
     finally:
         # Restore empty token
         monkeypatch.delenv("OROCHI_TOKEN", raising=False)
-        importlib.reload(orochi.config)
-        importlib.reload(orochi.auth)
+        importlib.reload(scitex_orochi._config)
+        importlib.reload(scitex_orochi._auth)
 
 
 @pytest.mark.asyncio

@@ -1,12 +1,21 @@
-"""Orochi configuration."""
+"""Backward-compatibility shim -- use scitex_orochi._config instead."""
 
-import os
-from pathlib import Path
+from scitex_orochi._config import (
+    DB_PATH,
+    DASHBOARD_PORT,
+    GITEA_TOKEN,
+    GITEA_URL,
+    HOST,
+    OROCHI_TOKEN,
+    PORT,
+)
 
-HOST = os.environ.get("OROCHI_HOST", "127.0.0.1")
-PORT = int(os.environ.get("OROCHI_PORT", "9559"))
-DASHBOARD_PORT = int(os.environ.get("OROCHI_DASHBOARD_PORT", "8559"))
-DB_PATH = Path(os.environ.get("OROCHI_DB", Path(__file__).parent.parent / "orochi.db"))
-OROCHI_TOKEN = os.environ.get("OROCHI_TOKEN", "")
-GITEA_URL = os.environ.get("GITEA_URL", "http://localhost:3000")
-GITEA_TOKEN = os.environ.get("GITEA_TOKEN", "")
+__all__ = [
+    "HOST",
+    "PORT",
+    "DASHBOARD_PORT",
+    "DB_PATH",
+    "OROCHI_TOKEN",
+    "GITEA_URL",
+    "GITEA_TOKEN",
+]

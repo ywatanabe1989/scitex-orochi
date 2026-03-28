@@ -8,9 +8,9 @@ import pytest
 import websockets
 from aiohttp.test_utils import TestClient, TestServer
 
-from orochi.models import Message
-from orochi.server import OrochiServer
-from orochi.web import create_web_app
+from scitex_orochi._models import Message
+from scitex_orochi._server import OrochiServer
+from scitex_orochi._web import create_web_app
 
 TEST_HOST = "127.0.0.1"
 TEST_WS_PORT = 19561

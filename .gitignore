@@ -10,3 +10,6 @@ build/
 .venv/
 venv/
 node_modules/
+ts/node_modules/
+ts/bun.lock
+GITIGNORED/

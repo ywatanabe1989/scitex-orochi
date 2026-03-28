@@ -1,9 +1,0 @@
-{
-  "name": "orochi",
-  "description": "Orochi agent communication hub — push-based messaging between Claude Code sessions",
-  "version": "0.1.0",
-  "author": {
-    "name": "Yusuke Watanabe"
-  },
-  "license": "AGPL-3.0"
-}
