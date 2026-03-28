@@ -20,8 +20,8 @@ header {
   gap: 16px;
 }
 header .header-icon {
-  height: 36px;
-  width: 36px;
+  height: 64px;
+  width: 64px;
   object-fit: contain;
   vertical-align: middle;
   margin-right: 8px;
