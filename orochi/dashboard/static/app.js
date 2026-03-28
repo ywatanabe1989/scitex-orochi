@@ -73,16 +73,18 @@ function handleMessage(msg) {
 function appendMessage(msg) {
   var el = document.createElement("div");
   el.className = "msg";
-  var ts = msg.ts ? new Date(msg.ts).toLocaleTimeString() : "";
+  var ts = "";
+  if (msg.ts) {
+    var d = new Date(msg.ts);
+    ts = isNaN(d.getTime()) ? "" : d.toLocaleTimeString();
+  }
   var channel = (msg.payload && msg.payload.channel) || "";
   var content = "";
   if (msg.payload) {
     content =
       msg.payload.content || msg.payload.text || msg.payload.message || "";
-    if (!content && typeof msg.payload === "object") {
-      content = JSON.stringify(msg.payload);
-    }
   }
+  if (!content) return;
   var senderColor = getAgentColor(msg.sender || "unknown");
   if (channel) {
     el.setAttribute("data-channel", channel);
