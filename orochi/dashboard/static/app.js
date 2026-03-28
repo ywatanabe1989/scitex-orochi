@@ -52,8 +52,14 @@ function appendMessage(msg) {
   el.className = "msg";
   var ts = msg.ts ? new Date(msg.ts).toLocaleTimeString() : "";
   var channel = (msg.payload && msg.payload.channel) || "";
-  var content =
-    (msg.payload && msg.payload.content) || JSON.stringify(msg.payload);
+  var content = "";
+  if (msg.payload) {
+    content =
+      msg.payload.content || msg.payload.text || msg.payload.message || "";
+    if (!content && typeof msg.payload === "object") {
+      content = JSON.stringify(msg.payload);
+    }
+  }
   el.innerHTML =
     '<span class="ts">' +
     ts +
@@ -128,9 +134,31 @@ async function fetchStats() {
     var chContainer = document.getElementById("channels");
     chContainer.innerHTML = stats.channels
       .map(function (c) {
-        return '<div class="channel-item">' + escapeHtml(c) + "</div>";
+        var active = currentChannel === c ? " active" : "";
+        return (
+          '<div class="channel-item' +
+          active +
+          '" data-channel="' +
+          escapeHtml(c) +
+          '">' +
+          escapeHtml(c) +
+          "</div>"
+        );
       })
       .join("");
+    chContainer.querySelectorAll(".channel-item").forEach(function (el) {
+      el.style.cursor = "pointer";
+      el.addEventListener("click", function () {
+        var ch = el.getAttribute("data-channel");
+        if (currentChannel === ch) {
+          currentChannel = null;
+        } else {
+          currentChannel = ch;
+        }
+        filterMessages();
+        fetchStats();
+      });
+    });
   } catch (e) {
     /* fetch error */
   }
