@@ -44,6 +44,17 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function fuzzyMatch(query, text) {
+  if (!query) return true;
+  query = query.toLowerCase();
+  text = text.toLowerCase();
+  var qi = 0;
+  for (var ti = 0; ti < text.length && qi < query.length; ti++) {
+    if (text[ti] === query[qi]) qi++;
+  }
+  return qi === query.length;
+}
+
 function connect() {
   ws = new WebSocket(wsUrl);
   var statusEl = document.getElementById("conn-status");
@@ -1019,6 +1030,68 @@ document.querySelectorAll(".tab-btn").forEach(function(btn) {
     });
   });
 })();
+
+/* Universal filter bar -- fuzzy matching across all panels */
+var filterInput = document.getElementById("filter-input");
+filterInput.addEventListener("input", function() {
+  var q = this.value.trim();
+  applyFilter(q);
+});
+
+function applyFilter(q) {
+  // Filter chat messages
+  document.querySelectorAll(".msg").forEach(function(el) {
+    var sender = el.querySelector(".sender");
+    var channel = el.querySelector(".channel");
+    var content = el.querySelector(".content");
+    var text = (sender ? sender.textContent : "") + " " +
+               (channel ? channel.textContent : "") + " " +
+               (content ? content.textContent : "");
+    var show = fuzzyMatch(q, text);
+    // Respect currentChannel filter too
+    if (show && currentChannel) {
+      var ch = el.getAttribute("data-channel");
+      show = ch === currentChannel;
+    }
+    el.style.display = show ? "" : "none";
+  });
+
+  // Filter TODO cards
+  document.querySelectorAll(".todo-item").forEach(function(el) {
+    var text = el.textContent;
+    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+  });
+
+  // Filter sidebar agent cards
+  document.querySelectorAll("#agents .agent-card").forEach(function(el) {
+    var text = el.textContent;
+    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+  });
+
+  // Filter sidebar channel items
+  document.querySelectorAll("#channels .channel-item").forEach(function(el) {
+    var text = el.textContent;
+    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+  });
+
+  // Filter sidebar resource cards
+  document.querySelectorAll("#resources .res-card").forEach(function(el) {
+    var text = el.textContent;
+    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+  });
+
+  // Filter agents tab cards
+  document.querySelectorAll("#agents-grid .agent-card").forEach(function(el) {
+    var text = el.textContent;
+    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+  });
+
+  // Filter resources tab cards
+  document.querySelectorAll("#resources-grid .res-card").forEach(function(el) {
+    var text = el.textContent;
+    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+  });
+}
 
 connect();
 setInterval(fetchStats, 10000);

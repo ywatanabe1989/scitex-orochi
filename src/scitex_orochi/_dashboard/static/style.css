@@ -37,6 +37,26 @@ body {
 .sidebar-brand .status.connected {
   color: #4ecdc4;
 }
+.filter-bar {
+  margin-bottom: 12px;
+}
+.filter-bar input {
+  width: 100%;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.filter-bar input:focus {
+  border-color: #4ecdc4;
+}
+.filter-bar input::placeholder {
+  color: #555;
+}
 .container {
   display: grid;
   grid-template-columns: 280px 1fr;
