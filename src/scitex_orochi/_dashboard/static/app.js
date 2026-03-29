@@ -84,6 +84,11 @@ function appendMessage(msg) {
     content =
       msg.payload.content || msg.payload.text || msg.payload.message || "";
   }
+  /* Intercept resource reports */
+  var meta = (msg.payload && msg.payload.metadata) || {};
+  if (meta.type === "resource_report" && meta.data) {
+    updateResourcePanel(meta.data);
+  }
   if (!content) return;
   var senderColor = getAgentColor(msg.sender || "unknown");
   if (channel) {
@@ -785,6 +790,66 @@ async function sendSketch() {
 }
 
 document.getElementById("msg-sketch").addEventListener("click", openSketch);
+
+/* Resource Monitor Panel */
+var resourceData = {};
+
+function updateResourcePanel(data) {
+  var key = data.hostname || data.agent || "unknown";
+  resourceData[key] = data;
+  renderResources();
+}
+
+function healthColor(status) {
+  if (status === "critical") return "#ef4444";
+  if (status === "warning") return "#f59e0b";
+  return "#4ecdc4";
+}
+
+function barHtml(label, percent, warn) {
+  var color = percent > 90 ? "#ef4444" : percent > 75 ? "#f59e0b" : "#4ecdc4";
+  return '<div class="res-bar-row"><span class="res-bar-label">' + label +
+    '</span><div class="res-bar-track"><div class="res-bar-fill" style="width:' +
+    Math.min(percent, 100) + "%;background:" + color + '"></div></div>' +
+    '<span class="res-bar-val">' + Math.round(percent) + "%</span></div>";
+}
+
+function renderResources() {
+  var container = document.getElementById("resources");
+  var keys = Object.keys(resourceData);
+  if (keys.length === 0) {
+    container.innerHTML = '<p style="color:#555;font-size:11px;padding:4px 0;">No reports yet</p>';
+    return;
+  }
+  container.innerHTML = keys.map(function(k) {
+    var d = resourceData[k];
+    var health = (d.health && d.health.status) || "healthy";
+    var hColor = healthColor(health);
+    var cpu = (d.cpu && d.cpu.percent) || 0;
+    var mem = (d.memory && d.memory.percent) || 0;
+    var diskPct = 0;
+    if (d.disk) {
+      var dk = Object.keys(d.disk)[0];
+      if (dk) diskPct = d.disk[dk].percent || 0;
+    }
+    var html = '<div class="res-card" style="border-left-color:' + hColor + '">' +
+      '<div class="res-host"><span class="res-dot" style="background:' + hColor + '"></span>' +
+      escapeHtml(k) + '</div>' +
+      barHtml("CPU", cpu) +
+      barHtml("Mem", mem) +
+      barHtml("Disk", diskPct);
+    if (d.gpu && d.gpu.length > 0) {
+      d.gpu.forEach(function(g) {
+        html += barHtml("GPU", g.utilization_percent || 0);
+      });
+    }
+    if (d.slurm && d.slurm.total_jobs > 0) {
+      html += '<div class="res-meta">SLURM: ' + d.slurm.total_jobs + ' jobs</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join("");
+}
 
 connect();
 setInterval(fetchStats, 10000);
