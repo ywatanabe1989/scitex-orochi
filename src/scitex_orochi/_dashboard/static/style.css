@@ -390,6 +390,127 @@ header .status.connected {
   border-color: #4ecdc4;
   color: #4ecdc4;
 }
+/* Sketch Canvas */
+.sketch-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sketch-panel {
+  background: #161b22;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 900px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+.sketch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sketch-tool-btn,
+.sketch-width-btn {
+  padding: 4px 8px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #0d1117;
+  color: #8b949e;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sketch-tool-btn:hover,
+.sketch-width-btn:hover {
+  background: #21262d;
+  color: #e0e0e0;
+}
+.sketch-tool-btn.active,
+.sketch-width-btn.active {
+  background: #4ecdc4;
+  color: #0a0a0a;
+  border-color: #4ecdc4;
+}
+.sketch-sep {
+  width: 1px;
+  height: 20px;
+  background: #333;
+  margin: 0 4px;
+}
+.sketch-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+.sketch-color:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+.sketch-color.active {
+  border-color: #4ecdc4;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.3);
+}
+.sketch-canvas {
+  width: 100%;
+  height: auto;
+  border: 1px solid #333;
+  border-radius: 8px;
+  cursor: crosshair;
+  background: #1a1a2e;
+}
+.sketch-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.sketch-btn {
+  padding: 6px 14px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  background: #0d1117;
+  color: #8b949e;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sketch-btn:hover {
+  background: #21262d;
+  color: #e0e0e0;
+}
+.sketch-btn-primary {
+  background: #4ecdc4;
+  color: #0a0a0a;
+  border-color: #4ecdc4;
+  font-weight: bold;
+}
+.sketch-btn-primary:hover {
+  background: #45b7b0;
+}
+#msg-sketch {
+  background: transparent;
+  border: 1px solid #333;
+  color: #999;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+#msg-sketch:hover {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
 @media (max-width: 600px) {
   .container {
     grid-template-columns: 1fr;
