@@ -2,13 +2,19 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=32">
+        <meta name="theme-color" content="#4ecdc4">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <link rel="manifest" href="/static/manifest.json">
+        <link rel="apple-touch-icon" href="/static/orochi-icon.png">
+        <link rel="stylesheet" href="/static/style.css?v=35">
     </head>
     <body>
         <div class="container">
-            <div class="sidebar">
+            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+            <div class="sidebar" id="sidebar">
                 <div class="sidebar-brand">
                     <img src="/static/orochi-icon.png" alt="Orochi" class="header-icon">
                     <span class="brand-name">Orochi</span>
@@ -48,7 +54,7 @@
                 <div class="input-bar">
                     <div id="mention-dropdown" class="mention-dropdown"></div>
                     <textarea id="msg-input"
-                              placeholder="Type a message... (Shift+Enter for newline, drag &amp; drop files)"
+                              placeholder="Type a message..."
                               autocomplete="off"
                               rows="3"></textarea>
                     <input type="file" id="file-input" style="display:none">
@@ -63,6 +69,13 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=32"></script>
+        <script src="/static/app.js?v=35"></script>
+        <script>
+            if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.register("/sw.js").catch(function(err) {
+                    console.error("SW registration failed:", err);
+                });
+            }
+        </script>
     </body>
 </html>

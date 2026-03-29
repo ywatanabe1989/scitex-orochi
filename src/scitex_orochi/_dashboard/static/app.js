@@ -55,22 +55,94 @@ function fuzzyMatch(query, text) {
   return qi === query.length;
 }
 
+/* REST fallback state -- when WS is down, poll REST APIs for new messages */
+var wsConnected = false;
+var restPollTimer = null;
+var restPollInterval = 5000; /* poll every 5s when WS is down */
+var lastRestPollTs = null; /* track last message timestamp for incremental polling */
+
+function startRestPolling() {
+  if (restPollTimer) return; /* already polling */
+  restPollTimer = setInterval(async function () {
+    if (wsConnected) return; /* WS recovered, stop polling (timer cleared elsewhere) */
+    try {
+      var res = await fetch("/api/messages?limit=50");
+      if (!res.ok) return;
+      var messages = await res.json();
+      var newCount = 0;
+      messages.forEach(function (row) {
+        var key = messageKey(row.sender, row.ts, row.content);
+        if (knownMessageKeys[key]) return;
+        knownMessageKeys[key] = true;
+        newCount++;
+        appendMessage({
+          type: "message",
+          sender: row.sender,
+          ts: row.ts,
+          payload: {
+            channel: row.channel,
+            content: row.content,
+            attachments: (row.metadata && row.metadata.attachments) || row.attachments || [],
+          },
+        });
+      });
+    } catch (e) {
+      console.warn("REST poll failed:", e);
+    }
+    /* Also refresh agents and stats during REST polling */
+    fetchAgents();
+    fetchStats();
+  }, restPollInterval);
+}
+
+function stopRestPolling() {
+  if (restPollTimer) {
+    clearInterval(restPollTimer);
+    restPollTimer = null;
+  }
+}
+
 function connect() {
-  ws = new WebSocket(wsUrl);
   var statusEl = document.getElementById("conn-status");
 
+  try {
+    ws = new WebSocket(wsUrl);
+  } catch (e) {
+    /* WebSocket constructor can throw on some mobile browsers */
+    console.warn("WebSocket constructor failed:", e);
+    statusEl.textContent = "REST mode";
+    statusEl.classList.remove("connected");
+    statusEl.classList.add("rest-mode");
+    startRestPolling();
+    return;
+  }
+
   ws.onopen = function () {
+    wsConnected = true;
     statusEl.textContent = "connected";
     statusEl.classList.add("connected");
+    statusEl.classList.remove("rest-mode");
+    stopRestPolling();
     fetchStats();
     fetchAgents();
     loadHistory();
   };
 
   ws.onclose = function () {
-    statusEl.textContent = "disconnected";
+    wsConnected = false;
+    statusEl.textContent = "REST mode";
     statusEl.classList.remove("connected");
+    statusEl.classList.add("rest-mode");
+    /* Start REST polling as fallback while WS is down */
+    startRestPolling();
     setTimeout(connect, 3000);
+  };
+
+  ws.onerror = function () {
+    /* onerror fires before onclose on some browsers; ensure REST polling starts */
+    if (!wsConnected) {
+      startRestPolling();
+    }
   };
 
   ws.onmessage = function (event) {
@@ -346,17 +418,16 @@ function sendMessage() {
   var input = document.getElementById("msg-input");
   var channel = currentChannel || "#general";
   var text = input.value.trim();
-  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-  ws.send(
-    JSON.stringify({
-      type: "message",
-      sender: userName,
-      payload: {
-        channel: channel,
-        content: text,
-      },
-    }),
-  );
+  if (!text) return;
+
+  sendOrochiMessage({
+    type: "message",
+    sender: userName,
+    payload: {
+      channel: channel,
+      content: text,
+    },
+  });
   input.value = "";
   input.style.height = "auto";
 }
@@ -530,6 +601,23 @@ function uptime(isoStr) {
 }
 
 
+/* Send a message via WebSocket (primary) or REST API (fallback) */
+function sendOrochiMessage(msgData) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msgData));
+  } else {
+    fetch("/api/messages?token=" + token, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(msgData),
+    }).then(function (res) {
+      if (!res.ok) console.error("REST send failed:", res.status);
+    }).catch(function (e) {
+      console.error("REST send error:", e);
+    });
+  }
+}
+
 /* File attachment upload */
 document.getElementById("msg-attach").addEventListener("click", function () {
   document.getElementById("file-input").click();
@@ -551,17 +639,15 @@ document.getElementById("file-input").addEventListener("change", async function 
     }
     var result = await res.json();
     var channel = currentChannel || "#general";
-    ws.send(
-      JSON.stringify({
-        type: "message",
-        sender: userName,
-        payload: {
-          channel: channel,
-          content: file.name,
-          attachments: [result],
-        },
-      })
-    );
+    sendOrochiMessage({
+      type: "message",
+      sender: userName,
+      payload: {
+        channel: channel,
+        content: file.name,
+        attachments: [result],
+      },
+    });
   } catch (e) {
     console.error("Upload error:", e);
   }
@@ -753,11 +839,11 @@ async function sendSketch() {
     if (!res.ok) { console.error("Sketch upload failed:", res.status); return; }
     var result = await res.json();
     var channel = currentChannel || "#general";
-    ws.send(JSON.stringify({
+    sendOrochiMessage({
       type: "message",
       sender: userName,
       payload: { channel: channel, content: "sketch", attachments: [result] },
-    }));
+    });
   } catch (e) { console.error("Sketch upload error:", e); }
 }
 
@@ -777,11 +863,11 @@ async function uploadFile(file) {
     if (!res.ok) { console.error("Upload failed:", res.status); return; }
     var result = await res.json();
     var channel = currentChannel || "#general";
-    ws.send(JSON.stringify({
+    sendOrochiMessage({
       type: "message",
       sender: userName,
       payload: { channel: channel, content: file.name, attachments: [result] },
-    }));
+    });
   } catch (e) { console.error("Upload error:", e); }
 }
 
@@ -1350,11 +1436,68 @@ function matchesAllTags(tags, text) {
   });
 }
 
+/* Mobile sidebar hamburger toggle */
+(function() {
+  var toggle = document.getElementById("sidebar-toggle");
+  var sidebar = document.getElementById("sidebar");
+  if (!toggle || !sidebar) return;
+
+  /* Create backdrop element */
+  var backdrop = document.createElement("div");
+  backdrop.className = "sidebar-backdrop";
+  document.body.appendChild(backdrop);
+
+  function openSidebar() {
+    sidebar.classList.add("open");
+    toggle.classList.add("open");
+    toggle.innerHTML = "&#10005;"; /* X */
+    backdrop.classList.add("visible");
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove("open");
+    toggle.classList.remove("open");
+    toggle.innerHTML = "&#9776;"; /* hamburger */
+    backdrop.classList.remove("visible");
+  }
+
+  toggle.addEventListener("click", function() {
+    if (sidebar.classList.contains("open")) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+
+  backdrop.addEventListener("click", closeSidebar);
+
+  /* Close sidebar when selecting a channel on mobile */
+  var channelsEl = document.getElementById("channels");
+  channelsEl.addEventListener("click", function(e) {
+    if (e.target.closest(".channel-item") && window.innerWidth <= 600) {
+      closeSidebar();
+    }
+  });
+})();
+
 /* Load history immediately via HTTP (before WebSocket connects) so messages
    survive Ctrl+Shift+R hard refresh without waiting for WS handshake. */
 loadHistory();
+fetchStats();
+fetchAgents();
 connect();
+
+/* Periodic refresh via REST (these work regardless of WS state) */
 setInterval(fetchStats, 10000);
 setInterval(fetchAgents, 10000);
 fetchTodoList();
 setInterval(fetchTodoList, 60000);
+
+/* If WS hasn't connected after 3 seconds, start REST polling for messages.
+   This handles mobile Safari / Cloudflare where WS may never connect. */
+setTimeout(function () {
+  if (!wsConnected) {
+    console.warn("WebSocket not connected after 3s, starting REST fallback polling");
+    startRestPolling();
+  }
+}, 3000);

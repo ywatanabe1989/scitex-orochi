@@ -101,6 +101,28 @@ async def handle_messages(request: web.Request) -> web.Response:
     return web.json_response(rows)
 
 
+async def handle_post_message(request: web.Request) -> web.Response:
+    """POST /api/messages -- send a message via REST (fallback when WebSocket is unavailable)."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    server: OrochiServer = request.app["orochi_server"]
+    body = await request.json()
+    sender = body.get("sender", "user")
+    payload = body.get("payload", {})
+    if not payload.get("content") and not payload.get("channel"):
+        return web.json_response({"error": "payload.content and payload.channel are required"}, status=400)
+
+    msg = Message(
+        type="message",
+        sender=sender,
+        payload=payload,
+    )
+    await server._handle_message(msg)
+    return web.json_response({"status": "ok", "id": msg.id}, status=201)
+
+
 async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
@@ -256,6 +278,14 @@ async def handle_index(request: web.Request) -> web.Response:
     )
 
 
+async def handle_service_worker(request: web.Request) -> web.Response:
+    """Serve sw.js from root scope for PWA support."""
+    sw_path = DASHBOARD_DIR / "sw.js"
+    if sw_path.exists():
+        return web.FileResponse(sw_path, headers={"Content-Type": "application/javascript"})
+    return web.Response(status=404, text="Service worker not found")
+
+
 @web.middleware
 async def no_cache_static(request: web.Request, handler):
     """Set Cache-Control headers on static assets to prevent Cloudflare caching."""
@@ -281,6 +311,7 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/agents", handle_agents)
     app.router.add_get("/api/channels", handle_channels)
     app.router.add_get("/api/messages", handle_messages)
+    app.router.add_post("/api/messages", handle_post_message)
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/stats", handle_stats)
 
@@ -296,6 +327,9 @@ def create_web_app(server: OrochiServer) -> web.Application:
         app.router.add_static("/media", media_path, show_index=False)
     except OSError:
         log.warning("Cannot create MEDIA_ROOT=%s; /media serving disabled", MEDIA_ROOT)
+
+    # PWA service worker (must be at root scope)
+    app.router.add_get("/sw.js", handle_service_worker)
 
     # Static files (dashboard UI)
     if DASHBOARD_DIR.exists():
