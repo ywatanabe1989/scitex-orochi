@@ -11,6 +11,8 @@ services:
       - OROCHI_TOKEN=${OROCHI_TOKEN:-}
       - OROCHI_HOST=0.0.0.0
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - OROCHI_GITEA_URL=http://scitex-cloud-prod-gitea-1:3000
+      - OROCHI_GITEA_TOKEN=cd2bee26873c6e8cbe1c815a18cad82fd3b6dff2
     restart: unless-stopped
     networks:
       - scitex-cloud-prod_scitex-network
