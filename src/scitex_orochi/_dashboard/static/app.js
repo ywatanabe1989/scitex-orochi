@@ -885,6 +885,80 @@ function isLightColor(hex) {
   return luminance > 0.5;
 }
 
+/* Agents Tab -- full-width agent cards with resource info */
+async function renderAgentsTab() {
+  var grid = document.getElementById("agents-grid");
+  try {
+    var res = await fetch("/api/agents");
+    var agents = await res.json();
+    if (agents.length === 0) {
+      grid.innerHTML = '<p style="color:#555;font-size:13px;">No agents connected</p>';
+      return;
+    }
+    grid.innerHTML = agents.map(function(a) {
+      var color = getAgentColor(a.name);
+      var inactive = isAgentInactive(a);
+      var statusClass = (a.status || "online") + (inactive ? " inactive" : "");
+      var taskHtml = a.current_task
+        ? '<div style="color:#ffd93d;font-size:12px;margin-top:6px;">Task: ' + escapeHtml(a.current_task) + '</div>'
+        : '';
+      var resHtml = '';
+      var rd = resourceData[a.machine || a.name];
+      if (rd) {
+        var cpu = (rd.cpu && rd.cpu.percent) || 0;
+        var mem = (rd.memory && rd.memory.percent) || 0;
+        var diskPct = 0;
+        if (rd.disk) { var dk = Object.keys(rd.disk)[0]; if (dk) diskPct = rd.disk[dk].percent || 0; }
+        resHtml = '<div style="margin-top:6px">' + barHtml("CPU", cpu) + barHtml("Mem", mem) + barHtml("Disk", diskPct) + '</div>';
+      }
+      return '<div class="agent-card" style="border-left:3px solid ' + color + ';width:calc(33.333% - 8px);min-width:280px">' +
+        '<span class="status-dot ' + statusClass + '" style="background:' + (inactive ? "#555" : color) + '"></span>' +
+        '<span class="name" style="color:' + (inactive ? "#666" : color) + '">' + escapeHtml(a.name) + '</span>' +
+        (a.model ? ' <span style="color:#888;font-size:0.8em">(' + escapeHtml(a.model) + ')</span>' : '') +
+        '<div class="meta">' + escapeHtml(a.machine || "unknown") + ' / ' + escapeHtml(a.role || "agent") + '</div>' +
+        '<div class="meta">channels: ' + a.channels.map(function(c) { return escapeHtml(c); }).join(", ") + '</div>' +
+        taskHtml + resHtml +
+        '</div>';
+    }).join("");
+  } catch(e) { console.error("Agents tab error:", e); }
+}
+
+/* Resources Tab -- per-host resource cards */
+function renderResourcesTab() {
+  var grid = document.getElementById("resources-grid");
+  var keys = Object.keys(resourceData);
+  if (keys.length === 0) {
+    grid.innerHTML = '<p style="color:#555;font-size:13px;">No resource reports yet. Waiting for heartbeats from agents...</p>';
+    return;
+  }
+  grid.innerHTML = keys.map(function(k) {
+    var d = resourceData[k];
+    var health = (d.health && d.health.status) || "healthy";
+    var hColor = healthColor(health);
+    var cpu = (d.cpu && d.cpu.percent) || 0;
+    var mem = (d.memory && d.memory.percent) || 0;
+    var diskPct = 0;
+    if (d.disk) { var dk = Object.keys(d.disk)[0]; if (dk) diskPct = d.disk[dk].percent || 0; }
+    var html = '<div class="res-card" style="border-left-color:' + hColor + ';width:calc(33.333% - 8px);min-width:280px">' +
+      '<div class="res-host"><span class="res-dot" style="background:' + hColor + '"></span>' + escapeHtml(k) + '</div>' +
+      barHtml("CPU", cpu) + barHtml("Mem", mem) + barHtml("Disk", diskPct);
+    if (d.gpu && d.gpu.length > 0) {
+      d.gpu.forEach(function(g) { html += barHtml("GPU", g.utilization_percent || 0); });
+    }
+    if (d.subagents !== undefined) {
+      html += '<div class="res-meta">Subagents: ' + d.subagents + '</div>';
+    }
+    if (d.docker && d.docker.containers !== undefined) {
+      html += '<div class="res-meta">Containers: ' + d.docker.containers + '</div>';
+    }
+    if (d.uptime) {
+      html += '<div class="res-meta">Uptime: ' + escapeHtml(d.uptime) + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join("");
+}
+
 /* Tab switching logic */
 var activeTab = "chat";
 
@@ -899,15 +973,25 @@ document.querySelectorAll(".tab-btn").forEach(function(btn) {
     var messagesEl = document.getElementById("messages");
     var inputBar = document.querySelector(".input-bar");
     var todoView = document.getElementById("todo-view");
+    var resourcesView = document.getElementById("resources-view");
+    var agentsTabView = document.getElementById("agents-tab-view");
+    messagesEl.style.display = "none";
+    inputBar.style.display = "none";
+    todoView.style.display = "none";
+    resourcesView.style.display = "none";
+    agentsTabView.style.display = "none";
     if (tab === "chat") {
       messagesEl.style.display = "";
       inputBar.style.display = "";
-      todoView.style.display = "none";
     } else if (tab === "todo") {
-      messagesEl.style.display = "none";
-      inputBar.style.display = "none";
       todoView.style.display = "";
       fetchTodoList();
+    } else if (tab === "agents-tab") {
+      agentsTabView.style.display = "";
+      renderAgentsTab();
+    } else if (tab === "resources") {
+      resourcesView.style.display = "";
+      renderResourcesTab();
     }
   });
 });
