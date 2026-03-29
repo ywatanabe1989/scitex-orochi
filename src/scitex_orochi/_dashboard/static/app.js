@@ -762,8 +762,8 @@ msgInput.addEventListener("drop", function(e) {
   }
 });
 
-/* Clipboard paste image upload */
-msgInput.addEventListener("paste", function(e) {
+/* Clipboard paste image upload -- attached to document for broader compatibility */
+document.addEventListener("paste", function(e) {
   var items = (e.clipboardData || {}).items;
   if (!items) return;
   for (var i = 0; i < items.length; i++) {
