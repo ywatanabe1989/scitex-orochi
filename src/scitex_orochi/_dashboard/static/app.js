@@ -458,24 +458,6 @@ function isAgentInactive(agent) {
   return Date.now() - hb.getTime() > 60000;
 }
 
-/* Task progress panel -- collapsed by default to avoid sidebar redundancy */
-var taskPanelCollapsed = true;
-
-document
-  .getElementById("task-panel-toggle")
-  .addEventListener("click", function () {
-    taskPanelCollapsed = !taskPanelCollapsed;
-    var body = document.getElementById("task-panel-body");
-    var arrow = document.getElementById("task-panel-arrow");
-    if (taskPanelCollapsed) {
-      body.classList.add("collapsed");
-      arrow.classList.add("collapsed");
-    } else {
-      body.classList.remove("collapsed");
-      arrow.classList.remove("collapsed");
-    }
-  });
-
 function timeAgo(isoStr) {
   if (!isoStr) return "";
   var then = new Date(isoStr);
@@ -497,66 +479,6 @@ function uptime(isoStr) {
   return h + "h " + m + "m";
 }
 
-async function fetchTaskCards() {
-  try {
-    var res = await fetch("/api/agents");
-    var agents = await res.json();
-    var container = document.getElementById("task-cards");
-    if (agents.length === 0) {
-      container.innerHTML =
-        '<div class="task-cards-empty">No agents connected</div>';
-      return;
-    }
-    container.innerHTML = agents
-      .map(function (a) {
-        var color = getAgentColor(a.name);
-        var inactive = isAgentInactive(a);
-        var statusLabel = inactive ? "inactive" : (a.status || "online");
-        var displayColor = inactive ? "#555" : color;
-        var taskText = a.current_task
-          ? '<div class="tc-task">' + escapeHtml(a.current_task) + "</div>"
-          : '<div class="tc-task idle">idle</div>';
-        return (
-          '<div class="task-card' +
-          (inactive ? " inactive" : "") +
-          '" style="border-left-color:' +
-          displayColor +
-          '">' +
-          '<div class="tc-name" style="color:' +
-          displayColor +
-          '">' +
-          escapeHtml(a.name) +
-          (a.model
-            ? ' <span style="color:#888;font-size:0.8em">(' +
-              escapeHtml(a.model) +
-              ")</span>"
-            : "") +
-          "</div>" +
-          '<div class="tc-status"><span class="dot" style="background:' +
-          (inactive
-            ? "#555"
-            : statusLabel === "busy"
-              ? "#ffd93d"
-              : statusLabel === "error"
-                ? "#ff6b6b"
-                : "#4ecdc4") +
-          '"></span>' +
-          escapeHtml(statusLabel) +
-          "</div>" +
-          taskText +
-          '<div class="tc-meta">up ' +
-          uptime(a.registered_at) +
-          " | hb " +
-          timeAgo(a.last_heartbeat) +
-          "</div>" +
-          "</div>"
-        );
-      })
-      .join("");
-  } catch (e) {
-    /* fetch error */
-  }
-}
 
 /* File attachment upload */
 document.getElementById("msg-attach").addEventListener("click", function () {
@@ -791,6 +713,44 @@ async function sendSketch() {
 
 document.getElementById("msg-sketch").addEventListener("click", openSketch);
 
+/* Drag-and-drop file upload */
+var msgInput = document.getElementById("msg-input");
+
+async function uploadFile(file) {
+  var formData = new FormData();
+  formData.append("file", file);
+  try {
+    var res = await fetch("/api/upload?token=" + token, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) { console.error("Upload failed:", res.status); return; }
+    var result = await res.json();
+    var channel = currentChannel || "#general";
+    ws.send(JSON.stringify({
+      type: "message",
+      sender: "human",
+      payload: { channel: channel, content: file.name, attachments: [result] },
+    }));
+  } catch (e) { console.error("Upload error:", e); }
+}
+
+msgInput.addEventListener("dragover", function(e) {
+  e.preventDefault();
+  this.classList.add("drag-over");
+});
+msgInput.addEventListener("dragleave", function() {
+  this.classList.remove("drag-over");
+});
+msgInput.addEventListener("drop", function(e) {
+  e.preventDefault();
+  this.classList.remove("drag-over");
+  var files = e.dataTransfer.files;
+  for (var i = 0; i < files.length; i++) {
+    uploadFile(files[i]);
+  }
+});
+
 /* Resource Monitor Panel */
 var resourceData = {};
 
@@ -854,5 +814,3 @@ function renderResources() {
 connect();
 setInterval(fetchStats, 10000);
 setInterval(fetchAgents, 10000);
-setInterval(fetchTaskCards, 5000);
-fetchTaskCards();

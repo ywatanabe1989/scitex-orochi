@@ -4,16 +4,16 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=21">
+        <link rel="stylesheet" href="/static/style.css?v=22">
     </head>
     <body>
-        <header>
-            <img src="/static/orochi-icon.png" alt="Orochi" class="header-icon">
-            <h1>Orochi</h1>
-            <span id="conn-status" class="status">disconnected</span>
-        </header>
         <div class="container">
             <div class="sidebar">
+                <div class="sidebar-brand">
+                    <img src="/static/orochi-icon.png" alt="Orochi" class="header-icon">
+                    <span class="brand-name">Orochi</span>
+                    <span id="conn-status" class="status">disconnected</span>
+                </div>
                 <h2>Agents</h2>
                 <div id="agents">
                     <p id="no-agents">No agents connected</p>
@@ -24,25 +24,16 @@
                 <div id="resources"></div>
             </div>
             <div class="main">
-                <div id="task-panel" class="task-panel">
-                    <div class="task-panel-header" id="task-panel-toggle">
-                        <span>Agent Tasks</span>
-                        <span id="task-panel-arrow" class="task-panel-arrow collapsed">&#9660;</span>
-                    </div>
-                    <div id="task-panel-body" class="task-panel-body collapsed">
-                        <div id="task-cards" class="task-cards"></div>
-                    </div>
-                </div>
                 <div id="messages" class="messages"></div>
                 <div class="input-bar">
                     <div id="mention-dropdown" class="mention-dropdown"></div>
                     <textarea id="msg-input"
-                              placeholder="Type a message... (Shift+Enter for newline)"
+                              placeholder="Type a message... (Shift+Enter for newline, drag &amp; drop files)"
                               autocomplete="off"
-                              rows="1"></textarea>
+                              rows="3"></textarea>
                     <input type="file" id="file-input" style="display:none">
-                    <button id="msg-attach" title="Attach file">&#128206;</button>
-                    <button id="msg-sketch" title="Draw sketch">&#9998;</button>
+                    <button id="msg-attach" title="Attach file">Attach</button>
+                    <button id="msg-sketch" title="Draw sketch">Sketch</button>
                     <button id="msg-send">Send</button>
                 </div>
                 <div class="stats-bar">
@@ -52,6 +43,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=21"></script>
+        <script src="/static/app.js?v=22"></script>
     </body>
 </html>
