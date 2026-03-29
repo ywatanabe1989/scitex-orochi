@@ -54,7 +54,14 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse:
                         sender=data.get("sender", "user"),
                         payload=data.get("payload", {}),
                     )
-                    await server._handle_message(msg)
+                    try:
+                        await server._handle_message(msg)
+                    except Exception:
+                        log.exception(
+                            "Error routing dashboard message from %s to %s",
+                            msg.sender,
+                            msg.channel,
+                        )
 
             elif ws_msg.type in (
                 aiohttp.WSMsgType.ERROR,
@@ -112,14 +119,22 @@ async def handle_post_message(request: web.Request) -> web.Response:
     sender = body.get("sender", "user")
     payload = body.get("payload", {})
     if not payload.get("content") and not payload.get("channel"):
-        return web.json_response({"error": "payload.content and payload.channel are required"}, status=400)
+        return web.json_response(
+            {"error": "payload.content and payload.channel are required"}, status=400
+        )
 
     msg = Message(
         type="message",
         sender=sender,
         payload=payload,
     )
-    await server._handle_message(msg)
+    try:
+        await server._handle_message(msg)
+    except Exception:
+        log.exception(
+            "Error routing REST message from %s to %s", sender, payload.get("channel")
+        )
+        return web.json_response({"error": "internal routing error"}, status=500)
     return web.json_response({"status": "ok", "id": msg.id}, status=201)
 
 
@@ -186,8 +201,7 @@ async def handle_gitea_list_repos(request: web.Request) -> web.Response:
 async def handle_github_issues(request: web.Request) -> web.Response:
     """GET /api/github/issues -- proxy to GitHub API for ywatanabe1989/todo issues."""
     github_url = (
-        "https://api.github.com/repos/ywatanabe1989/todo/issues"
-        "?state=open&per_page=30"
+        "https://api.github.com/repos/ywatanabe1989/todo/issues?state=open&per_page=30"
     )
     headers = {
         "Accept": "application/vnd.github.v3+json",
@@ -199,7 +213,9 @@ async def handle_github_issues(request: web.Request) -> web.Response:
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(github_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            async with session.get(
+                github_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
+            ) as resp:
                 if resp.status != 200:
                     body = await resp.text()
                     return web.json_response(
@@ -282,7 +298,9 @@ async def handle_service_worker(request: web.Request) -> web.Response:
     """Serve sw.js from root scope for PWA support."""
     sw_path = DASHBOARD_DIR / "sw.js"
     if sw_path.exists():
-        return web.FileResponse(sw_path, headers={"Content-Type": "application/javascript"})
+        return web.FileResponse(
+            sw_path, headers={"Content-Type": "application/javascript"}
+        )
     return web.Response(status=404, text="Service worker not found")
 
 

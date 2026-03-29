@@ -242,9 +242,10 @@ class OrochiServer:
             metadata=metadata or None,
         )
 
-        # Deliver to channel subscribers
+        # Deliver to channel subscribers (copy set to avoid RuntimeError
+        # if _send_to_agent triggers _remove_agent which mutates the set)
         delivered_to: set[str] = set()
-        subscribers = self.channels.get(channel, set())
+        subscribers = set(self.channels.get(channel, set()))
         for agent_name in subscribers:
             if agent_name == msg.sender:
                 continue
@@ -375,6 +376,9 @@ class OrochiServer:
         try:
             await agent.ws.send(msg.to_json())
         except websockets.ConnectionClosed:
+            self._remove_agent(agent.name)
+        except Exception:
+            log.exception("Failed to send to agent %s", agent.name)
             self._remove_agent(agent.name)
 
     def _remove_agent(self, name: str) -> None:
