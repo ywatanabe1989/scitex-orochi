@@ -103,10 +103,11 @@ function appendMessage(msg) {
         '<img src="' + escapeHtml(att.url) + '" alt="' +
         escapeHtml(att.filename || "image") + '" loading="lazy"></a></div>';
     } else if (att.url) {
+      var sizeStr = att.size ? " (" + (att.size > 1024 * 1024 ? (att.size / 1024 / 1024).toFixed(1) + " MB" : (att.size / 1024).toFixed(0) + " KB") + ")" : "";
       attachmentsHtml +=
         '<div class="attachment-file">' +
-        '<a href="' + escapeHtml(att.url) + '" target="_blank">' +
-        escapeHtml(att.filename || "attachment") + "</a></div>";
+        '<a href="' + escapeHtml(att.url) + '" target="_blank" download>' +
+        "\uD83D\uDCCE " + escapeHtml(att.filename || "attachment") + escapeHtml(sizeStr) + "</a></div>";
     }
   });
   var contentPreview =
