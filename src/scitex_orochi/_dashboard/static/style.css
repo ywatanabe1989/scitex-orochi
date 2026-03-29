@@ -483,14 +483,70 @@ body {
   color: #666;
   margin-top: 2px;
 }
+/* Tab Bar */
+.tab-bar {
+  display: flex;
+  background: #111;
+  border-bottom: 1px solid #333;
+  padding: 0 16px;
+}
+.tab-btn {
+  background: transparent;
+  color: #888;
+  border: none;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab-btn:hover {
+  color: #ccc;
+}
+.tab-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+}
+/* TODO View (main content) */
+.todo-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  min-height: 0;
+}
+.todo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-content: flex-start;
+}
+/* Collapsible Sidebar Headings */
+.collapsible-heading {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.collapsible-heading::before {
+  content: "\25BE";
+}
+.collapsible-heading.collapsed::before {
+  content: "\25B8";
+}
+.sidebar-section.collapsed {
+  display: none;
+}
 /* TODO List */
 .todo-item {
-  display: block;
+  width: calc(33.333% - 8px);
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 4px;
   padding: 6px 8px;
-  margin-bottom: 4px;
   text-decoration: none;
   color: inherit;
   cursor: pointer;

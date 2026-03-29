@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=27">
+        <link rel="stylesheet" href="/static/style.css?v=28">
     </head>
     <body>
         <div class="container">
@@ -14,19 +14,24 @@
                     <span class="brand-name">Orochi</span>
                     <span id="conn-status" class="status">disconnected</span>
                 </div>
-                <h2>Agents</h2>
-                <div id="agents">
+                <h2 class="collapsible-heading channels-heading">Agents</h2>
+                <div id="agents" class="sidebar-section">
                     <p id="no-agents">No agents connected</p>
                 </div>
-                <h2 class="channels-heading">Channels</h2>
-                <div id="channels"></div>
-                <h2 class="channels-heading">Resources</h2>
-                <div id="resources"></div>
-                <h2 class="channels-heading">TODO</h2>
-                <div id="todo-list"></div>
+                <h2 class="collapsible-heading channels-heading">Channels</h2>
+                <div id="channels" class="sidebar-section"></div>
+                <h2 class="collapsible-heading channels-heading">Resources</h2>
+                <div id="resources" class="sidebar-section"></div>
             </div>
             <div class="main">
+                <div class="tab-bar">
+                    <button class="tab-btn active" data-tab="chat">Chat</button>
+                    <button class="tab-btn" data-tab="todo">TODO</button>
+                </div>
                 <div id="messages" class="messages"></div>
+                <div id="todo-view" class="todo-view" style="display:none">
+                    <div id="todo-grid" class="todo-grid"></div>
+                </div>
                 <div class="input-bar">
                     <div id="mention-dropdown" class="mention-dropdown"></div>
                     <textarea id="msg-input"
@@ -45,6 +50,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=27"></script>
+        <script src="/static/app.js?v=28"></script>
     </body>
 </html>

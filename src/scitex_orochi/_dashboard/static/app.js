@@ -845,7 +845,7 @@ async function fetchTodoList() {
       return;
     }
     var issues = await res.json();
-    var container = document.getElementById("todo-list");
+    var container = document.getElementById("todo-grid");
     if (!issues || issues.length === 0) {
       container.innerHTML = '<p style="color:#555;font-size:11px;padding:4px 0;">No open issues</p>';
       return;
@@ -884,6 +884,57 @@ function isLightColor(hex) {
   var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.5;
 }
+
+/* Tab switching logic */
+var activeTab = "chat";
+
+document.querySelectorAll(".tab-btn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    var tab = btn.getAttribute("data-tab");
+    if (tab === activeTab) return;
+    activeTab = tab;
+    document.querySelectorAll(".tab-btn").forEach(function(b) {
+      b.classList.toggle("active", b.getAttribute("data-tab") === tab);
+    });
+    var messagesEl = document.getElementById("messages");
+    var inputBar = document.querySelector(".input-bar");
+    var todoView = document.getElementById("todo-view");
+    if (tab === "chat") {
+      messagesEl.style.display = "";
+      inputBar.style.display = "";
+      todoView.style.display = "none";
+    } else if (tab === "todo") {
+      messagesEl.style.display = "none";
+      inputBar.style.display = "none";
+      todoView.style.display = "";
+      fetchTodoList();
+    }
+  });
+});
+
+/* Collapsible sidebar sections */
+(function() {
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}"); } catch(e) {}
+
+  document.querySelectorAll(".collapsible-heading").forEach(function(h2) {
+    var key = h2.textContent.trim();
+    var section = h2.nextElementSibling;
+    if (saved[key]) {
+      h2.classList.add("collapsed");
+      if (section) section.classList.add("collapsed");
+    }
+    h2.addEventListener("click", function() {
+      var isCollapsed = h2.classList.toggle("collapsed");
+      if (section) section.classList.toggle("collapsed", isCollapsed);
+      try {
+        var state = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
+        if (isCollapsed) { state[key] = true; } else { delete state[key]; }
+        localStorage.setItem("orochi_collapsed", JSON.stringify(state));
+      } catch(e) {}
+    });
+  });
+})();
 
 connect();
 setInterval(fetchStats, 10000);
