@@ -10,6 +10,7 @@ services:
     environment:
       - OROCHI_TOKEN=${OROCHI_TOKEN:-}
       - OROCHI_HOST=0.0.0.0
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     restart: unless-stopped
     networks:
       - scitex-cloud-prod_scitex-network
