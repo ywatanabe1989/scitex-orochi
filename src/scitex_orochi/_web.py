@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 import logging
+import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -159,6 +161,37 @@ async def handle_gitea_list_repos(request: web.Request) -> web.Response:
         return web.json_response({"error": str(exc)}, status=502)
 
 
+async def handle_github_issues(request: web.Request) -> web.Response:
+    """GET /api/github/issues -- proxy to GitHub API for ywatanabe1989/todo issues."""
+    github_url = (
+        "https://api.github.com/repos/ywatanabe1989/todo/issues"
+        "?state=open&per_page=30"
+    )
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Orochi-Dashboard",
+    }
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if github_token:
+        headers["Authorization"] = f"token {github_token}"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(github_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+                if resp.status != 200:
+                    body = await resp.text()
+                    return web.json_response(
+                        {"error": f"GitHub API returned {resp.status}", "detail": body},
+                        status=resp.status,
+                    )
+                data = await resp.json()
+                return web.json_response(data)
+    except asyncio.TimeoutError:
+        return web.json_response({"error": "GitHub API request timed out"}, status=504)
+    except Exception as exc:
+        return web.json_response({"error": str(exc)}, status=502)
+
+
 async def handle_upload(request: web.Request) -> web.Response:
     """POST /api/upload -- multipart file upload."""
     token = request.query.get("token")
@@ -250,6 +283,9 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/messages", handle_messages)
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/stats", handle_stats)
+
+    # GitHub issues proxy
+    app.router.add_get("/api/github/issues", handle_github_issues)
 
     # Media upload/serve
     app.router.add_post("/api/upload", handle_upload)

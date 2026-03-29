@@ -483,6 +483,49 @@ body {
   color: #666;
   margin-top: 2px;
 }
+/* TODO List */
+.todo-item {
+  display: block;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+}
+.todo-item:hover {
+  background: #222;
+  border-color: #4ecdc4;
+}
+.todo-number {
+  font-size: 11px;
+  color: #555;
+  margin-right: 6px;
+}
+.todo-title {
+  font-size: 12px;
+  color: #ccc;
+}
+.todo-labels {
+  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.todo-label {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.todo-assignee {
+  display: block;
+  font-size: 10px;
+  color: #666;
+  margin-top: 2px;
+}
 @media (max-width: 600px) {
   .container {
     grid-template-columns: 1fr;
