@@ -92,8 +92,55 @@ claude \
 ### Key Constraints
 
 - **No `-p` flag**: Pipe mode exits before push messages arrive. Interactive mode keeps the session alive.
-- **TUI prompts**: `--dangerously-skip-permissions` and `--dangerously-load-development-channels` each show a confirmation prompt. In screen sessions, use `auto-accept.sh` to send keystrokes.
+- **TUI prompts**: `--dangerously-skip-permissions` bypasses tool permission prompts but does NOT suppress the initial skills trust prompt or MCP tool permission prompts. In screen sessions, use `auto-accept.sh` to handle all TUI prompts.
 - **mcp-config.json** must define the `orochi-push` server pointing to `ts/orochi_push.ts`.
+
+### Auto-Accept Prompt Monitor
+
+The `auto-accept.sh` script handles TUI confirmation prompts that block unattended agents. It runs in the background and uses `strings` on `/proc/<pid>/fd/0` to detect pending prompts, then sends keystrokes via `screen -X stuff` every 5-8 seconds.
+
+```bash
+# /tmp/orochi-monitor.sh pattern:
+while true; do
+    # Detect stuck TUI prompts via strings filter on screen PTY
+    # Send 'y\n' keystroke to unblock
+    sleep 5
+done
+```
+
+This is necessary because three separate prompts can appear: (1) skills trust on startup, (2) `--dangerously-skip-permissions` confirmation, and (3) `--dangerously-load-development-channels` confirmation. None of these are covered by permission flags alone.
+
+### Usage Cap Awareness
+
+Running multiple Opus agents burns through Anthropic API quota rapidly. In testing, 4 Opus agents consumed 72% of monthly quota in 3.5 days. Use `claude-haiku-4-5` for non-critical agents (monitoring, simple relay, status checks) and reserve Opus for agents that need deep reasoning. Set the model per agent in the launch command:
+
+```bash
+# Critical agent (research, debugging)
+claude --model claude-opus-4-6 ...
+
+# Non-critical agent (monitoring, relay)
+claude --model claude-haiku-4-5 ...
+```
+
+### Agent Disconnection
+
+Agents going offline are most commonly caused by hitting Anthropic's usage cap, not WebSocket bugs. When agents disconnect simultaneously, check quota first. The WebSocket reconnect logic in `orochi_push.ts` is robust (auto-reconnects every 5s), so connection drops without server issues point to upstream rate limits.
+
+### Persistent Media
+
+Media files (images, sketches, uploads) must survive Docker container rebuilds. Bind mount a host directory:
+
+```yaml
+volumes:
+  - /data/orochi-media/:/app/media/
+```
+
+### Post-Deploy Checklist
+
+After deploying a new dashboard version:
+1. Purge Cloudflare cache (cached HTML/JS causes stale UI)
+2. Verify agents reconnect (check `/api/agents`)
+3. Confirm media uploads still work (test attach/paste/drag-drop)
 
 ### Agent Directory Structure
 
