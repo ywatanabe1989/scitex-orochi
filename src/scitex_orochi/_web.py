@@ -227,8 +227,11 @@ async def handle_index(request: web.Request) -> web.Response:
 async def no_cache_static(request: web.Request, handler):
     """Set Cache-Control headers on static assets to prevent Cloudflare caching."""
     resp = await handler(request)
-    if request.path.startswith("/static"):
-        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    if request.path.startswith(("/static", "/media")):
+        try:
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+        except (RuntimeError, TypeError):
+            pass  # Skip if headers are frozen (e.g. WebSocketResponse)
     return resp
 
 
