@@ -13,6 +13,17 @@ var OROCHI_COLORS = [
 ];
 var currentChannel = null;
 
+/* User display name -- prompt on first visit, store in localStorage */
+var userName = localStorage.getItem("orochi_username");
+if (!userName) {
+  userName = prompt("Enter your display name for Orochi:", "");
+  if (userName) {
+    localStorage.setItem("orochi_username", userName);
+  } else {
+    userName = "human";
+  }
+}
+
 function getAgentColor(name) {
   var s = name || "unknown";
   var sum = 0;
@@ -300,7 +311,7 @@ function sendMessage() {
   ws.send(
     JSON.stringify({
       type: "message",
-      sender: "human",
+      sender: userName,
       payload: {
         channel: channel,
         content: text,
@@ -504,7 +515,7 @@ document.getElementById("file-input").addEventListener("change", async function 
     ws.send(
       JSON.stringify({
         type: "message",
-        sender: "human",
+        sender: userName,
         payload: {
           channel: channel,
           content: file.name,
@@ -705,7 +716,7 @@ async function sendSketch() {
     var channel = currentChannel || "#general";
     ws.send(JSON.stringify({
       type: "message",
-      sender: "human",
+      sender: userName,
       payload: { channel: channel, content: "sketch", attachments: [result] },
     }));
   } catch (e) { console.error("Sketch upload error:", e); }
@@ -729,7 +740,7 @@ async function uploadFile(file) {
     var channel = currentChannel || "#general";
     ws.send(JSON.stringify({
       type: "message",
-      sender: "human",
+      sender: userName,
       payload: { channel: channel, content: file.name, attachments: [result] },
     }));
   } catch (e) { console.error("Upload error:", e); }
