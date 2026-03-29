@@ -79,14 +79,23 @@ function connect() {
     });
     ws!.send(reg);
 
-    // Start heartbeat ping every 30s
+    // Start application-level heartbeat every 30s
+    // NOTE: ws.ping() sends protocol-level pings that the server's message
+    // loop never sees. The server expects {"type": "heartbeat"} JSON messages
+    // to update last_heartbeat timestamps for the /api/agents endpoint.
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     heartbeatTimer = setInterval(() => {
       if (ws && ws.readyState === WebSocket.OPEN) {
         try {
-          ws.ping();
+          ws.send(
+            JSON.stringify({
+              type: "heartbeat",
+              sender: OROCHI_AGENT,
+              payload: {},
+            }),
+          );
         } catch (_) {
-          // ping failure will trigger close/error
+          // send failure will trigger close/error
         }
       }
     }, 30000);
@@ -135,16 +144,26 @@ function connect() {
   ws.on("close", () => {
     console.error("[orochi] disconnected");
     ws = null;
-    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
     scheduleReconnect();
   });
 
   ws.on("error", (err) => {
     console.error("[orochi] websocket error:", err.message);
     // Also schedule reconnect on error (close may not always fire)
-    if (ws) { try { ws.close(); } catch (_) {} }
+    if (ws) {
+      try {
+        ws.close();
+      } catch (_) {}
+    }
     ws = null;
-    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
     scheduleReconnect();
   });
 }
@@ -152,11 +171,16 @@ function connect() {
 function scheduleReconnect() {
   if (!reconnectTimer) {
     // Exponential backoff with jitter: base 2s, doubles each attempt, capped at 60s
-    const baseDelay = Math.min(2000 * Math.pow(2, reconnectAttempts), MAX_RECONNECT_DELAY);
+    const baseDelay = Math.min(
+      2000 * Math.pow(2, reconnectAttempts),
+      MAX_RECONNECT_DELAY,
+    );
     const jitter = Math.random() * baseDelay * 0.3; // up to 30% jitter
     const delay = Math.round(baseDelay + jitter);
     reconnectAttempts++;
-    console.error(`[orochi] reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`);
+    console.error(
+      `[orochi] reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`,
+    );
     reconnectTimer = setTimeout(() => {
       reconnectTimer = null;
       connect();
