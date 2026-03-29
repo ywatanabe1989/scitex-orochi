@@ -6,7 +6,7 @@ services:
       - "9559:9559"
       - "8559:8559"
     volumes:
-      - orochi-data:/data
+      - /home/ywatanabe/data/orochi:/data
     environment:
       - OROCHI_TOKEN=${OROCHI_TOKEN:-}
       - OROCHI_HOST=0.0.0.0
@@ -17,6 +17,3 @@ services:
 networks:
   scitex-cloud-prod_scitex-network:
     external: true
-
-volumes:
-  orochi-data:
