@@ -751,6 +751,20 @@ msgInput.addEventListener("drop", function(e) {
   }
 });
 
+/* Clipboard paste image upload */
+msgInput.addEventListener("paste", function(e) {
+  var items = (e.clipboardData || {}).items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf("image/") === 0) {
+      e.preventDefault();
+      var file = items[i].getAsFile();
+      if (file) uploadFile(file);
+      return;
+    }
+  }
+});
+
 /* Resource Monitor Panel */
 var resourceData = {};
 
