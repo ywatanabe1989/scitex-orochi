@@ -223,10 +223,19 @@ async def handle_index(request: web.Request) -> web.Response:
     )
 
 
+@web.middleware
+async def no_cache_static(request: web.Request, handler):
+    """Set Cache-Control headers on static assets to prevent Cloudflare caching."""
+    resp = await handler(request)
+    if request.path.startswith("/static"):
+        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return resp
+
+
 def create_web_app(server: OrochiServer) -> web.Application:
     """Create the aiohttp application with routes."""
 
-    app = web.Application(client_max_size=MEDIA_MAX_SIZE)
+    app = web.Application(client_max_size=MEDIA_MAX_SIZE, middlewares=[no_cache_static])
     app["orochi_server"] = server
 
     # WebSocket for dashboard
