@@ -208,9 +208,10 @@ async function fetchAgents() {
         return (
           '<div class="agent-card' +
           (inactive ? " inactive" : "") +
+          '" data-agent-name="' + escapeHtml(a.name) +
           '" style="border-left: 3px solid ' +
           color +
-          '">' +
+          ';cursor:pointer" title="Click to filter by this agent">' +
           '<span class="status-dot ' +
           statusClass +
           '" style="background:' +
@@ -243,6 +244,12 @@ async function fetchAgents() {
         );
       })
       .join("");
+    /* Click agent card → add agent: tag */
+    container.querySelectorAll(".agent-card[data-agent-name]").forEach(function(el) {
+      el.addEventListener("click", function() {
+        addTag("agent", el.getAttribute("data-agent-name"));
+      });
+    });
   } catch (e) {
     /* fetch error */
   }
@@ -943,7 +950,7 @@ async function renderAgentsTab() {
         if (rd.disk) { var dk = Object.keys(rd.disk)[0]; if (dk) diskPct = rd.disk[dk].percent || 0; }
         resHtml = '<div style="margin-top:6px">' + barHtml("CPU", cpu) + barHtml("Mem", mem) + barHtml("Disk", diskPct) + '</div>';
       }
-      return '<div class="agent-card" style="border-left:3px solid ' + color + ';width:calc(33.333% - 8px);min-width:280px">' +
+      return '<div class="agent-card" data-agent-name="' + escapeHtml(a.name) + '" style="border-left:3px solid ' + color + ';width:calc(33.333% - 8px);min-width:280px;cursor:pointer" title="Click to filter by this agent">' +
         '<span class="status-dot ' + statusClass + '" style="background:' + (inactive ? "#555" : color) + '"></span>' +
         '<span class="name" style="color:' + (inactive ? "#666" : color) + '">' + escapeHtml(a.name) + '</span>' +
         (a.model ? ' <span style="color:#888;font-size:0.8em">(' + escapeHtml(a.model) + ')</span>' : '') +
@@ -952,6 +959,12 @@ async function renderAgentsTab() {
         taskHtml + resHtml +
         '</div>';
     }).join("");
+    /* Click agent card → add agent: tag */
+    grid.querySelectorAll(".agent-card[data-agent-name]").forEach(function(el) {
+      el.addEventListener("click", function() {
+        addTag("agent", el.getAttribute("data-agent-name"));
+      });
+    });
   } catch(e) { console.error("Agents tab error:", e); }
 }
 
@@ -971,7 +984,7 @@ function renderResourcesTab() {
     var mem = (d.memory && d.memory.percent) || 0;
     var diskPct = 0;
     if (d.disk) { var dk = Object.keys(d.disk)[0]; if (dk) diskPct = d.disk[dk].percent || 0; }
-    var html = '<div class="res-card" style="border-left-color:' + hColor + ';width:calc(33.333% - 8px);min-width:280px">' +
+    var html = '<div class="res-card" data-host-name="' + escapeHtml(k) + '" style="border-left-color:' + hColor + ';width:calc(33.333% - 8px);min-width:280px;cursor:pointer" title="Click to filter by this host">' +
       '<div class="res-host"><span class="res-dot" style="background:' + hColor + '"></span>' + escapeHtml(k) + '</div>' +
       barHtml("CPU", cpu) + barHtml("Mem", mem) + barHtml("Disk", diskPct);
     if (d.gpu && d.gpu.length > 0) {
@@ -989,6 +1002,12 @@ function renderResourcesTab() {
     html += '</div>';
     return html;
   }).join("");
+  /* Click resource card → add host: tag */
+  grid.querySelectorAll(".res-card[data-host-name]").forEach(function(el) {
+    el.addEventListener("click", function() {
+      addTag("host", el.getAttribute("data-host-name"));
+    });
+  });
 }
 
 /* Tab switching logic */
@@ -1055,15 +1074,197 @@ document.querySelectorAll(".tab-btn").forEach(function(btn) {
   });
 })();
 
-/* Universal filter bar -- fuzzy matching across all panels */
+/* Tag-based unified filter with fuzzy matching */
 var filterInput = document.getElementById("filter-input");
-filterInput.addEventListener("input", function() {
-  var q = this.value.trim();
-  applyFilter(q);
+var filterTagsEl = document.getElementById("filter-tags");
+var filterSuggestEl = document.getElementById("filter-suggest");
+var activeTags = []; /* [{type:"agent", value:"nas-agent"}, ...] */
+var suggestIndex = -1;
+
+/* Parse tag prefixes from input: "agent:nas foo" → {tags:[{type:"agent",value:"nas"}], text:"foo"} */
+function parseFilterInput(raw) {
+  var parts = raw.split(/\s+/);
+  var tags = [];
+  var textParts = [];
+  parts.forEach(function(p) {
+    var m = p.match(/^(agent|host|channel|label|project):(.+)$/i);
+    if (m) {
+      tags.push({ type: m[1].toLowerCase(), value: m[2] });
+    } else if (p) {
+      textParts.push(p);
+    }
+  });
+  return { tags: tags, text: textParts.join(" ") };
+}
+
+function addTag(type, value) {
+  /* No duplicates */
+  var exists = activeTags.some(function(t) { return t.type === type && t.value === value; });
+  if (exists) return;
+  activeTags.push({ type: type, value: value });
+  renderTags();
+  runFilter();
+}
+
+function removeTag(index) {
+  activeTags.splice(index, 1);
+  renderTags();
+  runFilter();
+}
+
+function renderTags() {
+  filterTagsEl.innerHTML = activeTags.map(function(t, i) {
+    return '<span class="filter-tag" data-type="' + t.type + '" onclick="removeTag(' + i + ')">' +
+      t.type + ':' + escapeHtml(t.value) +
+      ' <span class="tag-remove">\u00D7</span></span>';
+  }).join("");
+}
+
+/* Collect known values for autocomplete */
+function getTagSuggestions(prefix) {
+  var results = [];
+  var pLower = prefix.toLowerCase();
+
+  /* Agent names */
+  cachedAgentNames.forEach(function(n) {
+    if (fuzzyMatch(pLower, n.toLowerCase())) {
+      results.push({ type: "agent", value: n });
+    }
+  });
+
+  /* Host names from resource data */
+  Object.keys(resourceData).forEach(function(h) {
+    if (fuzzyMatch(pLower, h.toLowerCase())) {
+      results.push({ type: "host", value: h });
+    }
+  });
+
+  /* Channel names */
+  document.querySelectorAll("#channels .channel-item").forEach(function(el) {
+    var ch = el.getAttribute("data-channel") || el.textContent.trim();
+    if (fuzzyMatch(pLower, ch.toLowerCase())) {
+      results.push({ type: "channel", value: ch });
+    }
+  });
+
+  /* Deduplicate */
+  var seen = {};
+  return results.filter(function(r) {
+    var key = r.type + ":" + r.value;
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  }).slice(0, 8);
+}
+
+function showSuggestions(items) {
+  if (items.length === 0) { hideSuggestions(); return; }
+  suggestIndex = 0;
+  filterSuggestEl.innerHTML = items.map(function(item, i) {
+    return '<div class="filter-suggest-item' + (i === 0 ? " selected" : "") +
+      '" data-type="' + item.type + '" data-value="' + escapeHtml(item.value) + '">' +
+      '<span class="suggest-type">' + item.type + ':</span>' +
+      escapeHtml(item.value) + '</div>';
+  }).join("");
+  filterSuggestEl.classList.add("visible");
+}
+
+function hideSuggestions() {
+  filterSuggestEl.classList.remove("visible");
+  filterSuggestEl.innerHTML = "";
+  suggestIndex = -1;
+}
+
+filterSuggestEl.addEventListener("click", function(e) {
+  var item = e.target.closest(".filter-suggest-item");
+  if (item) {
+    addTag(item.getAttribute("data-type"), item.getAttribute("data-value"));
+    filterInput.value = "";
+    hideSuggestions();
+  }
 });
 
-function applyFilter(q) {
-  // Filter chat messages
+filterInput.addEventListener("input", function() {
+  var raw = this.value.trim();
+  /* Show suggestions if typing */
+  if (raw.length >= 1) {
+    var suggestions = getTagSuggestions(raw);
+    showSuggestions(suggestions);
+  } else {
+    hideSuggestions();
+  }
+  runFilter();
+});
+
+filterInput.addEventListener("keydown", function(e) {
+  var items = filterSuggestEl.querySelectorAll(".filter-suggest-item");
+  if (items.length > 0 && filterSuggestEl.classList.contains("visible")) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      suggestIndex = Math.min(suggestIndex + 1, items.length - 1);
+      items.forEach(function(el, i) { el.classList.toggle("selected", i === suggestIndex); });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      suggestIndex = Math.max(suggestIndex - 1, 0);
+      items.forEach(function(el, i) { el.classList.toggle("selected", i === suggestIndex); });
+    } else if ((e.key === "Tab" || e.key === "Enter") && suggestIndex >= 0) {
+      e.preventDefault();
+      var sel = items[suggestIndex];
+      addTag(sel.getAttribute("data-type"), sel.getAttribute("data-value"));
+      filterInput.value = "";
+      hideSuggestions();
+    } else if (e.key === "Escape") {
+      hideSuggestions();
+    }
+  } else if (e.key === "Backspace" && !this.value && activeTags.length > 0) {
+    /* Remove last tag on backspace in empty input */
+    removeTag(activeTags.length - 1);
+  }
+});
+
+filterInput.addEventListener("blur", function() {
+  setTimeout(hideSuggestions, 150);
+});
+
+/* Check if an element matches all active tags */
+function matchesTags(el, extraData) {
+  if (activeTags.length === 0) return true;
+  var data = extraData || {};
+  return activeTags.every(function(tag) {
+    var val = tag.value.toLowerCase();
+    if (tag.type === "agent") {
+      var sender = data.sender || (el.querySelector(".sender") ? el.querySelector(".sender").textContent : "");
+      return fuzzyMatch(val, sender.toLowerCase());
+    }
+    if (tag.type === "channel") {
+      var ch = data.channel || el.getAttribute("data-channel") || (el.querySelector(".channel") ? el.querySelector(".channel").textContent : "");
+      return fuzzyMatch(val, ch.toLowerCase());
+    }
+    if (tag.type === "host") {
+      var text = data.host || el.textContent;
+      return fuzzyMatch(val, text.toLowerCase());
+    }
+    if (tag.type === "label") {
+      var labels = el.querySelectorAll(".todo-label");
+      if (labels.length === 0) return false;
+      var found = false;
+      labels.forEach(function(l) { if (fuzzyMatch(val, l.textContent.toLowerCase())) found = true; });
+      return found;
+    }
+    if (tag.type === "project") {
+      return fuzzyMatch(val, el.textContent.toLowerCase());
+    }
+    return true;
+  });
+}
+
+function runFilter() {
+  var parsed = parseFilterInput(filterInput.value.trim());
+  /* Combine inline tags with chip tags */
+  var allTags = activeTags.concat(parsed.tags);
+  var q = parsed.text;
+
+  /* Filter chat messages */
   document.querySelectorAll(".msg").forEach(function(el) {
     var sender = el.querySelector(".sender");
     var channel = el.querySelector(".channel");
@@ -1072,7 +1273,16 @@ function applyFilter(q) {
                (channel ? channel.textContent : "") + " " +
                (content ? content.textContent : "");
     var show = fuzzyMatch(q, text);
-    // Respect currentChannel filter too
+    /* Apply tag filters */
+    if (show && allTags.length > 0) {
+      show = allTags.every(function(tag) {
+        var val = tag.value.toLowerCase();
+        if (tag.type === "agent") return fuzzyMatch(val, (sender ? sender.textContent : "").toLowerCase());
+        if (tag.type === "channel") return fuzzyMatch(val, (el.getAttribute("data-channel") || "").toLowerCase());
+        return fuzzyMatch(val, text.toLowerCase());
+      });
+    }
+    /* Respect currentChannel filter too */
     if (show && currentChannel) {
       var ch = el.getAttribute("data-channel");
       show = ch === currentChannel;
@@ -1080,40 +1290,63 @@ function applyFilter(q) {
     el.style.display = show ? "" : "none";
   });
 
-  // Filter TODO cards
+  /* Filter TODO cards */
   document.querySelectorAll(".todo-item").forEach(function(el) {
     var text = el.textContent;
-    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+    var show = fuzzyMatch(q, text);
+    if (show && allTags.length > 0) {
+      show = allTags.every(function(tag) {
+        var val = tag.value.toLowerCase();
+        if (tag.type === "label") {
+          var labels = el.querySelectorAll(".todo-label");
+          if (labels.length === 0) return false;
+          var found = false;
+          labels.forEach(function(l) { if (fuzzyMatch(val, l.textContent.toLowerCase())) found = true; });
+          return found;
+        }
+        return fuzzyMatch(val, text.toLowerCase());
+      });
+    }
+    el.style.display = show ? "" : "none";
   });
 
-  // Filter sidebar agent cards
+  /* Filter sidebar agent cards */
   document.querySelectorAll("#agents .agent-card").forEach(function(el) {
     var text = el.textContent;
-    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+    el.style.display = (fuzzyMatch(q, text) && matchesAllTags(allTags, text)) ? "" : "none";
   });
 
-  // Filter sidebar channel items
+  /* Filter sidebar channel items */
   document.querySelectorAll("#channels .channel-item").forEach(function(el) {
     var text = el.textContent;
-    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+    el.style.display = (fuzzyMatch(q, text) && matchesAllTags(allTags, text)) ? "" : "none";
   });
 
-  // Filter sidebar resource cards
+  /* Filter sidebar resource cards */
   document.querySelectorAll("#resources .res-card").forEach(function(el) {
     var text = el.textContent;
-    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+    el.style.display = (fuzzyMatch(q, text) && matchesAllTags(allTags, text)) ? "" : "none";
   });
 
-  // Filter agents tab cards
+  /* Filter agents tab cards */
   document.querySelectorAll("#agents-grid .agent-card").forEach(function(el) {
     var text = el.textContent;
-    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+    el.style.display = (fuzzyMatch(q, text) && matchesAllTags(allTags, text)) ? "" : "none";
   });
 
-  // Filter resources tab cards
+  /* Filter resources tab cards */
   document.querySelectorAll("#resources-grid .res-card").forEach(function(el) {
     var text = el.textContent;
-    el.style.display = fuzzyMatch(q, text) ? "" : "none";
+    el.style.display = (fuzzyMatch(q, text) && matchesAllTags(allTags, text)) ? "" : "none";
+  });
+}
+
+/* Simple tag matcher for flat text elements */
+function matchesAllTags(tags, text) {
+  if (tags.length === 0) return true;
+  var lower = text.toLowerCase();
+  return tags.every(function(tag) {
+    return fuzzyMatch(tag.value.toLowerCase(), lower);
   });
 }
 

@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Orochi Dashboard</title>
-        <link rel="stylesheet" href="/static/style.css?v=31">
+        <link rel="stylesheet" href="/static/style.css?v=32">
     </head>
     <body>
         <div class="container">
@@ -14,8 +14,10 @@
                     <span class="brand-name">Orochi</span>
                     <span id="conn-status" class="status">disconnected</span>
                 </div>
-                <div class="filter-bar">
-                    <input type="text" id="filter-input" placeholder="Filter... (fuzzy match)" autocomplete="off">
+                <div class="filter-bar" style="position:relative">
+                    <input type="text" id="filter-input" placeholder="Filter... (agent: host: channel: label: or text)" autocomplete="off">
+                    <div id="filter-suggest" class="filter-suggest"></div>
+                    <div id="filter-tags" class="filter-tags"></div>
                 </div>
                 <h2 class="collapsible-heading channels-heading">Agents</h2>
                 <div id="agents" class="sidebar-section">
@@ -61,6 +63,6 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=31"></script>
+        <script src="/static/app.js?v=32"></script>
     </body>
 </html>
