@@ -85,6 +85,14 @@ function connect() {
 
 function handleMessage(msg) {
   if (msg.type === "message") {
+    /* Deduplicate: skip if this message was already loaded from history */
+    var content = "";
+    if (msg.payload) {
+      content = msg.payload.content || msg.payload.text || msg.payload.message || "";
+    }
+    var key = messageKey(msg.sender, msg.ts, content);
+    if (knownMessageKeys[key]) return;
+    knownMessageKeys[key] = true;
     appendMessage(msg);
   } else if (msg.type === "presence_change" || msg.type === "status_update") {
     fetchAgents();
@@ -287,11 +295,24 @@ async function fetchStats() {
   }
 }
 
+var historyLoaded = false;
+var knownMessageKeys = {};
+
+function messageKey(sender, ts, content) {
+  return (sender || "") + "|" + (ts || "") + "|" + (content || "").substring(0, 80);
+}
+
 async function loadHistory() {
   try {
     var res = await fetch("/api/messages?limit=100");
     var messages = await res.json();
+    /* Clear existing messages to avoid duplicates on reconnect */
+    var container = document.getElementById("messages");
+    container.innerHTML = "";
+    knownMessageKeys = {};
     messages.forEach(function (row) {
+      var key = messageKey(row.sender, row.ts, row.content);
+      knownMessageKeys[key] = true;
       appendMessage({
         type: "message",
         sender: row.sender,
@@ -303,8 +324,8 @@ async function loadHistory() {
         },
       });
     });
-    var msgs = document.getElementById("messages");
-    msgs.scrollTop = msgs.scrollHeight;
+    container.scrollTop = container.scrollHeight;
+    historyLoaded = true;
   } catch (e) {
     /* fetch error */
   }
@@ -995,13 +1016,16 @@ document.querySelectorAll(".tab-btn").forEach(function(btn) {
       messagesEl.style.display = "";
       inputBar.style.display = "";
     } else if (tab === "todo") {
-      todoView.style.display = "";
+      todoView.style.display = "block";
+      todoView.style.flex = "1";
       fetchTodoList();
     } else if (tab === "agents-tab") {
-      agentsTabView.style.display = "";
+      agentsTabView.style.display = "block";
+      agentsTabView.style.flex = "1";
       renderAgentsTab();
     } else if (tab === "resources") {
-      resourcesView.style.display = "";
+      resourcesView.style.display = "block";
+      resourcesView.style.flex = "1";
       renderResourcesTab();
     }
   });
@@ -1093,6 +1117,9 @@ function applyFilter(q) {
   });
 }
 
+/* Load history immediately via HTTP (before WebSocket connects) so messages
+   survive Ctrl+Shift+R hard refresh without waiting for WS handshake. */
+loadHistory();
 connect();
 setInterval(fetchStats, 10000);
 setInterval(fetchAgents, 10000);
