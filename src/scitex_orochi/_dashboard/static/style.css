@@ -13,18 +13,17 @@ body {
 }
 header {
   background: #111;
-  padding: 12px 24px;
+  padding: 6px 16px;
   border-bottom: 1px solid #333;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 header .header-icon {
-  height: 64px;
-  width: 64px;
+  height: 32px;
+  width: 32px;
   object-fit: contain;
   vertical-align: middle;
-  margin-right: 8px;
 }
 header h1 {
   font-size: 18px;
@@ -40,7 +39,7 @@ header .status.connected {
 .container {
   display: grid;
   grid-template-columns: 280px 1fr;
-  height: calc(100vh - 49px);
+  height: calc(100vh - 45px);
   overflow: hidden;
 }
 .sidebar {

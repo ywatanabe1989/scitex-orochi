@@ -452,8 +452,8 @@ function isAgentInactive(agent) {
   return Date.now() - hb.getTime() > 60000;
 }
 
-/* Task progress panel */
-var taskPanelCollapsed = false;
+/* Task progress panel -- collapsed by default to avoid sidebar redundancy */
+var taskPanelCollapsed = true;
 
 document
   .getElementById("task-panel-toggle")
