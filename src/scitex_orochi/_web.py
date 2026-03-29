@@ -109,7 +109,12 @@ async def handle_messages(request: web.Request) -> web.Response:
 
 
 async def handle_post_message(request: web.Request) -> web.Response:
-    """POST /api/messages -- send a message via REST (fallback when WebSocket is unavailable)."""
+    """POST /api/messages -- send a message via REST.
+
+    Primary send path for the dashboard UI.  Cloudflare tunnels reliably
+    pass HTTP but may silently drop WebSocket client-to-server frames,
+    so the dashboard always uses this REST endpoint instead of WS.
+    """
     token = request.query.get("token")
     if not verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
@@ -118,10 +123,8 @@ async def handle_post_message(request: web.Request) -> web.Response:
     body = await request.json()
     sender = body.get("sender", "user")
     payload = body.get("payload", {})
-    if not payload.get("content") and not payload.get("channel"):
-        return web.json_response(
-            {"error": "payload.content and payload.channel are required"}, status=400
-        )
+    if not payload.get("channel"):
+        return web.json_response({"error": "payload.channel is required"}, status=400)
 
     msg = Message(
         type="message",
