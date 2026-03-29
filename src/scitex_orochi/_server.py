@@ -15,7 +15,13 @@ import websockets
 from websockets.asyncio.server import Server, ServerConnection
 
 from scitex_orochi._auth import extract_token_from_query, verify_token
-from scitex_orochi._config import GITEA_TOKEN, GITEA_URL, HOST, PORT
+from scitex_orochi._config import (
+    GITEA_TOKEN,
+    GITEA_URL,
+    HOST,
+    PORT,
+    TELEGRAM_BRIDGE_ENABLED,
+)
 from scitex_orochi._gitea import GiteaClient
 from scitex_orochi._models import Message
 from scitex_orochi._store import MessageStore
@@ -60,6 +66,8 @@ class OrochiServer:
         self._server: Server | None = None
         # Observer connections (dashboard WebSocket clients)
         self._observers: set[Any] = set()
+        # Message hooks (callables invoked after each channel message)
+        self._message_hooks: list[Any] = []
         # Gitea client
         self.gitea = GiteaClient(base_url=GITEA_URL, token=GITEA_TOKEN)
 
@@ -265,6 +273,13 @@ class OrochiServer:
         # Broadcast to observers
         await self._broadcast_to_observers(msg)
 
+        # Invoke message hooks (e.g. Telegram bridge)
+        for hook in self._message_hooks:
+            try:
+                await hook(msg)
+            except Exception:
+                log.exception("Message hook error")
+
     async def _handle_subscribe(self, msg: Message) -> None:
         channel = msg.payload.get("channel")
         if not channel:
@@ -446,19 +461,17 @@ def main() -> None:
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, _shutdown_handler)
 
-    async def _run_all() -> None:
-        # Start message store
-        await server.store.open()
+    telegram_bridge = None
 
-        # Start WebSocket server for agents
+    async def _run_all() -> None:
+        nonlocal telegram_bridge
+        await server.store.open()
         ws_server = await websockets.serve(
             server._handle_connection,
             server.host,
             server.port,
         )
         log.info("Orochi WebSocket listening on ws://%s:%d", server.host, server.port)
-
-        # Start HTTP + dashboard WebSocket server
         from aiohttp import web as aio_web
 
         app = create_web_app(server)
@@ -466,12 +479,12 @@ def main() -> None:
         await runner.setup()
         site = aio_web.TCPSite(runner, server.host, DASHBOARD_PORT)
         await site.start()
-        log.info(
-            "Orochi dashboard listening on http://%s:%d",
-            server.host,
-            DASHBOARD_PORT,
-        )
+        log.info("Orochi dashboard on http://%s:%d", server.host, DASHBOARD_PORT)
+        # Telegram bridge (enabled via OROCHI_TELEGRAM_BRIDGE_ENABLED=true)
+        if TELEGRAM_BRIDGE_ENABLED:
+            from scitex_orochi._telegram_bridge import setup_telegram_bridge
 
+            telegram_bridge = await setup_telegram_bridge(server)
         await asyncio.Future()  # run forever
 
     try:
@@ -479,6 +492,8 @@ def main() -> None:
     except asyncio.CancelledError:
         pass
     finally:
+        if telegram_bridge:
+            loop.run_until_complete(telegram_bridge.stop())
         loop.run_until_complete(server.shutdown())
         loop.close()
 
