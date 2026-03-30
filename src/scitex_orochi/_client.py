@@ -128,6 +128,34 @@ class OrochiClient:
         msg = Message(type="heartbeat", sender=self.name, payload=payload)
         await self._ws.send(msg.to_json())
 
+    async def start_heartbeat(self, interval: int = 30) -> asyncio.Task:
+        """Start a background task that sends heartbeats with resource metrics.
+
+        Args:
+            interval: Seconds between heartbeats (default: 30).
+
+        Returns:
+            The asyncio.Task — cancel it to stop heartbeats.
+        """
+
+        async def _loop() -> None:
+            while True:
+                try:
+                    await self.heartbeat()
+                except Exception:
+                    log.warning("Heartbeat failed", exc_info=True)
+                await asyncio.sleep(interval)
+
+        task = asyncio.create_task(_loop())
+        self._heartbeat_task = task
+        return task
+
+    def stop_heartbeat(self) -> None:
+        """Cancel the background heartbeat task if running."""
+        task = getattr(self, "_heartbeat_task", None)
+        if task and not task.done():
+            task.cancel()
+
     async def update_status(
         self,
         status: str | None = None,
