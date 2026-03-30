@@ -73,6 +73,8 @@ class OrochiServer:
         self.gitea = GiteaClient(base_url=GITEA_URL, token=GITEA_TOKEN)
         # Telegram bridge reference (set by main after setup)
         self.telegram_bridge: Any = None
+        # Workspace store (initialized after store.open)
+        self.workspaces: Any = None
 
     async def start(self) -> None:
         await self.store.open()
@@ -498,6 +500,11 @@ def main() -> None:
     async def _run_all() -> None:
         nonlocal telegram_bridge
         await server.store.open()
+        # Initialize workspace model
+        from scitex_orochi._workspaces import WorkspaceStore
+
+        server.workspaces = WorkspaceStore(server.store._db)
+        await server.workspaces.init_schema()
         ws_server = await websockets.serve(
             server._handle_connection,
             server.host,

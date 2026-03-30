@@ -333,6 +333,100 @@ async def no_cache_static(request: web.Request, handler):
     return resp
 
 
+async def handle_workspaces(request: web.Request) -> web.Response:
+    """GET /api/workspaces -- list all workspaces."""
+    server: OrochiServer = request.app["orochi_server"]
+    if not server.workspaces:
+        return web.json_response([])
+    workspaces = await server.workspaces.list_workspaces()
+    return web.json_response([ws.to_dict() for ws in workspaces])
+
+
+async def handle_workspace(request: web.Request) -> web.Response:
+    """GET /api/workspaces/{id} -- get a workspace."""
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    ws = await server.workspaces.get_workspace(ws_id)
+    if not ws:
+        return web.json_response({"error": "Not found"}, status=404)
+    return web.json_response(ws.to_dict())
+
+
+async def handle_create_workspace(request: web.Request) -> web.Response:
+    """POST /api/workspaces -- create a workspace."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    body = await request.json()
+    name = body.get("name", "").strip()
+    if not name:
+        return web.json_response({"error": "name is required"}, status=400)
+    try:
+        ws = await server.workspaces.create_workspace(
+            name=name,
+            description=body.get("description", ""),
+            channels=body.get("channels"),
+        )
+        return web.json_response(ws.to_dict(), status=201)
+    except Exception as exc:
+        return web.json_response({"error": str(exc)}, status=400)
+
+
+async def handle_delete_workspace(request: web.Request) -> web.Response:
+    """DELETE /api/workspaces/{id} -- delete a workspace."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    deleted = await server.workspaces.delete_workspace(ws_id)
+    if not deleted:
+        return web.json_response({"error": "Cannot delete (not found or default)"}, status=400)
+    return web.json_response({"ok": True})
+
+
+async def handle_workspace_channels(request: web.Request) -> web.Response:
+    """POST /api/workspaces/{id}/channels -- add a channel to workspace."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    body = await request.json()
+    channel = body.get("channel", "").strip()
+    if not channel:
+        return web.json_response({"error": "channel is required"}, status=400)
+    await server.workspaces.add_channel(ws_id, channel)
+    return web.json_response({"ok": True})
+
+
+async def handle_workspace_members(request: web.Request) -> web.Response:
+    """POST /api/workspaces/{id}/members -- add a member to workspace."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    body = await request.json()
+    agent_name = body.get("agent_name", "").strip()
+    if not agent_name:
+        return web.json_response({"error": "agent_name is required"}, status=400)
+    role = body.get("role", "member")
+    await server.workspaces.add_member(ws_id, agent_name, role)
+    return web.json_response({"ok": True})
+
+
 def create_web_app(server: OrochiServer) -> web.Application:
     """Create the aiohttp application with routes."""
 
@@ -350,6 +444,14 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_post("/api/messages", handle_post_message)
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/stats", handle_stats)
+
+    # Workspaces
+    app.router.add_get("/api/workspaces", handle_workspaces)
+    app.router.add_post("/api/workspaces", handle_create_workspace)
+    app.router.add_get("/api/workspaces/{id}", handle_workspace)
+    app.router.add_delete("/api/workspaces/{id}", handle_delete_workspace)
+    app.router.add_post("/api/workspaces/{id}/channels", handle_workspace_channels)
+    app.router.add_post("/api/workspaces/{id}/members", handle_workspace_members)
 
     # GitHub issues proxy
     app.router.add_get("/api/github/issues", handle_github_issues)
