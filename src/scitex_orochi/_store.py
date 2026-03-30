@@ -27,12 +27,17 @@ CREATE INDEX IF NOT EXISTS idx_messages_ts      ON messages(ts);
 """
 
 
+MAX_MESSAGES = 5000
+PRUNE_INTERVAL = 100  # prune every N inserts
+
+
 class MessageStore:
     """Async SQLite store for message persistence."""
 
     def __init__(self, db_path: Path | str | None = None):
         self.db_path = str(db_path or DB_PATH)
         self._db: aiosqlite.Connection | None = None
+        self._insert_count = 0
 
     async def open(self) -> None:
         self._db = await aiosqlite.connect(self.db_path)
@@ -71,12 +76,15 @@ class MessageStore:
         )
         await self._db.commit()
 
-        # Keep only last 500 messages
-        await self._db.execute(
-            "DELETE FROM messages WHERE id NOT IN "
-            "(SELECT id FROM messages ORDER BY ts DESC LIMIT 500)"
-        )
-        await self._db.commit()
+        # Periodic pruning to keep DB size bounded
+        self._insert_count += 1
+        if self._insert_count % PRUNE_INTERVAL == 0:
+            await self._db.execute(
+                "DELETE FROM messages WHERE id NOT IN "
+                "(SELECT id FROM messages ORDER BY ts DESC LIMIT ?)",
+                (MAX_MESSAGES,),
+            )
+            await self._db.commit()
 
     async def query(
         self,
