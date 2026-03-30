@@ -997,7 +997,7 @@ function healthColor(status) {
 }
 
 function barHtml(label, percent, warn) {
-  var color = percent > 90 ? "#ef4444" : percent > 75 ? "#f59e0b" : "#4ecdc4";
+  var color = percent > 80 ? "#ef4444" : percent > 60 ? "#f59e0b" : "#4ecdc4";
   return (
     '<div class="res-bar-row"><span class="res-bar-label">' +
     label +
@@ -1049,6 +1049,13 @@ function renderResources() {
           html += barHtml("GPU", g.utilization_percent || 0);
         });
       }
+      if (d._loadAvg) {
+        html += '<div class="res-meta">Load: ' + d._loadAvg.map(function(v) { return v.toFixed(1); }).join(" / ") + '</div>';
+      }
+      if (d._status) {
+        var statusColor = d._status === "online" ? "#4ecdc4" : "#ef4444";
+        html += '<div class="res-meta" style="color:' + statusColor + '">' + escapeHtml(d._status) + '</div>';
+      }
       if (d.slurm && d.slurm.total_jobs > 0) {
         html +=
           '<div class="res-meta">SLURM: ' + d.slurm.total_jobs + " jobs</div>";
@@ -1057,6 +1064,46 @@ function renderResources() {
       return html;
     })
     .join("");
+}
+
+/* Fetch resources from REST API */
+async function fetchResources() {
+  try {
+    var res = await fetch("/api/resources");
+    if (!res.ok) return;
+    var data = await res.json();
+    var keys = Object.keys(data);
+    keys.forEach(function (agentName) {
+      var entry = data[agentName];
+      var r = entry.resources || {};
+      /* Transform API format to match existing resourceData structure */
+      var transformed = {
+        hostname: entry.machine || agentName,
+        agent: agentName,
+        cpu: { percent: Math.round((r.load_avg_1m || 0) / Math.max(r.cpu_count || 1, 1) * 100) },
+        memory: { percent: r.mem_used_percent || 0 },
+        disk: { "/": { percent: r.disk_used_percent || 0 } },
+        health: { status: (r.mem_used_percent > 80 || r.disk_used_percent > 80) ? "critical" : (r.mem_used_percent > 60 || r.disk_used_percent > 60) ? "warning" : "healthy" },
+        /* Extra fields for enriched display */
+        _api: true,
+        _status: entry.status || "unknown",
+        _machine: entry.machine || "",
+        _lastHeartbeat: entry.last_heartbeat || "",
+        _cpuModel: r.cpu_model || "",
+        _cpuCount: r.cpu_count || 0,
+        _loadAvg: [r.load_avg_1m || 0, r.load_avg_5m || 0, r.load_avg_15m || 0],
+        _memFreeMb: r.mem_free_mb || 0,
+        _memTotalMb: r.mem_total_mb || 0,
+      };
+      resourceData[agentName] = transformed;
+    });
+    renderResources();
+    if (activeTab === "resources") {
+      renderResourcesTab();
+    }
+  } catch (e) {
+    console.warn("fetchResources failed:", e);
+  }
 }
 
 /* TODO List -- GitHub Issues from ywatanabe1989/todo */
@@ -1245,6 +1292,32 @@ function renderResourcesTab() {
         var dk = Object.keys(d.disk)[0];
         if (dk) diskPct = d.disk[dk].percent || 0;
       }
+      /* Build subtitle line: machine + status */
+      var subtitleParts = [];
+      if (d._machine) subtitleParts.push(escapeHtml(d._machine));
+      if (d._status) {
+        var stColor = d._status === "online" ? "#4ecdc4" : "#ef4444";
+        subtitleParts.push('<span style="color:' + stColor + '">' + escapeHtml(d._status) + '</span>');
+      }
+      var subtitleHtml = subtitleParts.length > 0
+        ? '<div class="res-meta" style="margin-bottom:4px">' + subtitleParts.join(' &middot; ') + '</div>'
+        : '';
+      /* Load averages line */
+      var loadHtml = '';
+      if (d._loadAvg) {
+        loadHtml = '<div class="res-meta">Load avg: ' + d._loadAvg.map(function(v) { return v.toFixed(2); }).join(" / ") + '</div>';
+      }
+      /* Memory detail */
+      var memDetail = '';
+      if (d._memTotalMb) {
+        var usedMb = Math.round(d._memTotalMb - (d._memFreeMb || 0));
+        memDetail = '<div class="res-meta">' + usedMb + ' / ' + d._memTotalMb + ' MB</div>';
+      }
+      /* CPU info */
+      var cpuInfo = '';
+      if (d._cpuCount) {
+        cpuInfo = '<div class="res-meta">' + d._cpuCount + ' cores' + (d._cpuModel ? ' &middot; ' + escapeHtml(d._cpuModel) : '') + '</div>';
+      }
       var html =
         '<div class="res-card" data-host-name="' +
         escapeHtml(k) +
@@ -1256,6 +1329,7 @@ function renderResourcesTab() {
         '"></span>' +
         escapeHtml(k) +
         "</div>" +
+        subtitleHtml +
         barHtml("CPU", cpu) +
         barHtml("Mem", mem) +
         barHtml("Disk", diskPct);
@@ -1264,6 +1338,7 @@ function renderResourcesTab() {
           html += barHtml("GPU", g.utilization_percent || 0);
         });
       }
+      html += loadHtml + cpuInfo + memDetail;
       if (d.subagents !== undefined) {
         html += '<div class="res-meta">Subagents: ' + d.subagents + "</div>";
       }
@@ -1274,6 +1349,11 @@ function renderResourcesTab() {
       if (d.uptime) {
         html +=
           '<div class="res-meta">Uptime: ' + escapeHtml(d.uptime) + "</div>";
+      }
+      if (d._lastHeartbeat) {
+        var hbDate = new Date(d._lastHeartbeat);
+        var hbStr = isNaN(hbDate.getTime()) ? d._lastHeartbeat : hbDate.toLocaleString();
+        html += '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + '</div>';
       }
       html += "</div>";
       return html;
@@ -1753,6 +1833,8 @@ setInterval(fetchStats, 10000);
 setInterval(fetchAgents, 10000);
 fetchTodoList();
 setInterval(fetchTodoList, 60000);
+fetchResources();
+setInterval(fetchResources, 30000);
 
 /* If WS hasn't connected after 3 seconds, start REST polling for messages.
    This handles mobile Safari / Cloudflare where WS may never connect. */
