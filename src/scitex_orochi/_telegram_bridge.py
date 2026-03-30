@@ -76,8 +76,10 @@ class TelegramBridge:
 
     async def relay_to_telegram(self, msg: Message) -> None:
         """Send an Orochi channel message to the Telegram chat."""
-        if msg.sender == self._sender_name:
-            return  # avoid echo loop
+        # Avoid echo: skip messages that originated from Telegram
+        metadata = msg.payload.get("metadata") or {}
+        if metadata.get("source") == "telegram":
+            return
 
         text = f"[{msg.sender}] {msg.content}"
         if not text.strip("[] "):
@@ -172,11 +174,11 @@ class TelegramBridge:
         }
         if attachments:
             payload["attachments"] = attachments
-            payload["metadata"] = {"source": "telegram"}
+        payload["metadata"] = {"source": "telegram", "telegram_user": sender}
 
         msg = Message(
             type="message",
-            sender=self._sender_name,
+            sender=sender,
             payload=payload,
         )
 
