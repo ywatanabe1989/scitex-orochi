@@ -108,11 +108,24 @@ class OrochiClient:
         )
         await self._ws.send(msg.to_json())
 
-    async def heartbeat(self) -> None:
-        """Send a heartbeat to the server."""
+    async def heartbeat(self, resources: dict[str, Any] | None = None) -> None:
+        """Send a heartbeat to the server.
+
+        Args:
+            resources: Optional system metrics dict. If None and
+                       auto_resources is not disabled, collects metrics
+                       automatically via _resources.collect_metrics().
+        """
         if not self._ws:
             raise RuntimeError("Not connected")
-        msg = Message(type="heartbeat", sender=self.name)
+        payload: dict[str, Any] = {}
+        if resources is not None:
+            payload.update(resources)
+        else:
+            from scitex_orochi._resources import collect_metrics
+
+            payload.update(collect_metrics())
+        msg = Message(type="heartbeat", sender=self.name, payload=payload)
         await self._ws.send(msg.to_json())
 
     async def update_status(

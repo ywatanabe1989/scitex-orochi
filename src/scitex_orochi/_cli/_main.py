@@ -273,6 +273,40 @@ def history(ctx: click.Context, channel: str, limit: int, as_json: bool) -> None
 
 
 @orochi.command()
+@click.option(
+    "--interval",
+    type=int,
+    default=0,
+    help="Send heartbeat every N seconds (0 = once and exit)",
+)
+@click.option("--json", "as_json", is_flag=True, help="Print collected metrics as JSON")
+@click.pass_context
+def heartbeat(ctx: click.Context, interval: int, as_json: bool) -> None:
+    """Send a heartbeat with system resource metrics."""
+    from scitex_orochi._resources import collect_metrics
+
+    async def _run() -> None:
+        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
+            while True:
+                metrics = collect_metrics()
+                await client.heartbeat(resources=metrics)
+                if as_json:
+                    click.echo(json.dumps(metrics, indent=2))
+                else:
+                    click.echo(
+                        f"Heartbeat sent: "
+                        f"load={metrics.get('load_avg_1m', '?')} "
+                        f"mem={metrics.get('mem_used_percent', '?')}% "
+                        f"disk={metrics.get('disk_used_percent', '?')}%"
+                    )
+                if interval <= 0:
+                    break
+                await asyncio.sleep(interval)
+
+    asyncio.run(_run())
+
+
+@orochi.command()
 @click.pass_context
 def serve(ctx: click.Context) -> None:
     """Start the Orochi hub server."""
