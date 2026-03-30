@@ -71,6 +71,8 @@ class OrochiServer:
         self._message_hooks: list[Any] = []
         # Gitea client
         self.gitea = GiteaClient(base_url=GITEA_URL, token=GITEA_TOKEN)
+        # Telegram bridge reference (set by main after setup)
+        self.telegram_bridge: Any = None
 
     async def start(self) -> None:
         await self.store.open()
@@ -515,6 +517,7 @@ def main() -> None:
             from scitex_orochi._telegram_bridge import setup_telegram_bridge
 
             telegram_bridge = await setup_telegram_bridge(server)
+            server.telegram_bridge = telegram_bridge
         await asyncio.Future()  # run forever
 
     try:

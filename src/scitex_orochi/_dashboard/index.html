@@ -9,7 +9,7 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <link rel="manifest" href="/static/manifest.json">
         <link rel="apple-touch-icon" href="/static/orochi-icon.png">
-        <link rel="stylesheet" href="/static/style.css?v=36">
+        <link rel="stylesheet" href="/static/style.css?v=37">
     </head>
     <body>
         <div class="container">
@@ -66,10 +66,11 @@
                     <span>Agents: <span id="stat-agents">0</span></span>
                     <span>Channels: <span id="stat-channels">0</span></span>
                     <span>Observers: <span id="stat-observers">0</span></span>
+                    <span id="stat-telegram" style="display:none">Telegram: <span id="stat-telegram-status">-</span></span>
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=36"></script>
+        <script src="/static/app.js?v=37"></script>
         <script>
             if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.register("/sw.js").catch(function(err) {

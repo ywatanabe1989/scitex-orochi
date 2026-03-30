@@ -150,6 +150,7 @@ async def handle_post_message(request: web.Request) -> web.Response:
 async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
+    tg = server.telegram_bridge
     return web.json_response(
         {
             "agents_online": len(server.agents),
@@ -157,6 +158,10 @@ async def handle_stats(request: web.Request) -> web.Response:
             "observers_connected": len(server._observers),
             "agents": [a.name for a in server.agents.values()],
             "channels": list(server.channels.keys()),
+            "telegram_bridge": {
+                "enabled": tg is not None,
+                "running": tg._running if tg else False,
+            },
         }
     )
 

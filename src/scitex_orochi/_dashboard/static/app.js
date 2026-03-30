@@ -396,6 +396,21 @@ async function fetchStats() {
       });
     });
     updateChannelSelect(stats.channels);
+    /* Telegram bridge status */
+    var tgEl = document.getElementById("stat-telegram");
+    var tgStatus = document.getElementById("stat-telegram-status");
+    if (stats.telegram_bridge && tgEl && tgStatus) {
+      tgEl.style.display = "";
+      if (stats.telegram_bridge.running) {
+        tgStatus.textContent = "✓";
+        tgStatus.style.color = "#4ecdc4";
+      } else if (stats.telegram_bridge.enabled) {
+        tgStatus.textContent = "stopped";
+        tgStatus.style.color = "#ef4444";
+      } else {
+        tgEl.style.display = "none";
+      }
+    }
   } catch (e) {
     /* fetch error */
   }
