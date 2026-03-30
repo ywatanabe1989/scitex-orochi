@@ -427,6 +427,67 @@ async def handle_workspace_members(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+async def handle_create_invite(request: web.Request) -> web.Response:
+    """POST /api/workspaces/{id}/invites -- create an invitation token."""
+    token = request.query.get("token")
+    if not verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    body = await request.json()
+    invite = await server.workspaces.create_invite(
+        workspace_id=ws_id,
+        created_by=body.get("created_by", "unknown"),
+        role=body.get("role", "member"),
+        max_uses=body.get("max_uses", 0),
+        expires_hours=body.get("expires_hours", 0),
+    )
+    return web.json_response(invite, status=201)
+
+
+async def handle_list_invites(request: web.Request) -> web.Response:
+    """GET /api/workspaces/{id}/invites -- list workspace invitations."""
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response([], status=200)
+    invites = await server.workspaces.list_invites(ws_id)
+    return web.json_response(invites)
+
+
+async def handle_redeem_invite(request: web.Request) -> web.Response:
+    """POST /api/invites/redeem -- redeem an invitation token."""
+    body = await request.json()
+    invite_token = body.get("token", "").strip()
+    agent_name = body.get("agent_name", "").strip()
+    if not invite_token or not agent_name:
+        return web.json_response({"error": "token and agent_name required"}, status=400)
+    server: OrochiServer = request.app["orochi_server"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    result = await server.workspaces.redeem_invite(invite_token, agent_name)
+    if not result:
+        return web.json_response({"error": "Invalid, expired, or exhausted invite"}, status=400)
+    return web.json_response(result)
+
+
+async def handle_revoke_invite(request: web.Request) -> web.Response:
+    """DELETE /api/workspaces/{id}/invites/{token} -- revoke an invitation."""
+    auth_token = request.query.get("token")
+    if not verify_token(auth_token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    invite_token = request.match_info["invite_token"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    revoked = await server.workspaces.revoke_invite(invite_token)
+    if not revoked:
+        return web.json_response({"error": "Invite not found"}, status=404)
+    return web.json_response({"ok": True})
+
+
 def create_web_app(server: OrochiServer) -> web.Application:
     """Create the aiohttp application with routes."""
 
@@ -452,6 +513,10 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_delete("/api/workspaces/{id}", handle_delete_workspace)
     app.router.add_post("/api/workspaces/{id}/channels", handle_workspace_channels)
     app.router.add_post("/api/workspaces/{id}/members", handle_workspace_members)
+    app.router.add_get("/api/workspaces/{id}/invites", handle_list_invites)
+    app.router.add_post("/api/workspaces/{id}/invites", handle_create_invite)
+    app.router.add_delete("/api/workspaces/{id}/invites/{invite_token}", handle_revoke_invite)
+    app.router.add_post("/api/invites/redeem", handle_redeem_invite)
 
     # GitHub issues proxy
     app.router.add_get("/api/github/issues", handle_github_issues)

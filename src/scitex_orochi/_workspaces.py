@@ -36,6 +36,18 @@ CREATE TABLE IF NOT EXISTS workspace_members (
     PRIMARY KEY (workspace_id, agent_name),
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS workspace_invites (
+    token        TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    role         TEXT NOT NULL DEFAULT 'member',
+    created_by   TEXT NOT NULL,
+    created_at   TEXT NOT NULL,
+    expires_at   TEXT,
+    max_uses     INTEGER DEFAULT 0,
+    use_count    INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+);
 """
 
 DEFAULT_WORKSPACE_NAME = "default"
@@ -219,3 +231,112 @@ class WorkspaceStore:
             (workspace_id,),
         )
         return {r[0]: r[1] for r in await cursor.fetchall()}
+
+    # -- Invitations -------------------------------------------------------
+
+    async def create_invite(
+        self,
+        workspace_id: str,
+        created_by: str,
+        role: str = "member",
+        max_uses: int = 0,
+        expires_hours: int = 0,
+    ) -> dict[str, Any]:
+        """Create an invitation token for a workspace.
+
+        Args:
+            max_uses: 0 means unlimited.
+            expires_hours: 0 means never expires.
+        """
+        from datetime import datetime, timezone, timedelta
+
+        token = uuid.uuid4().hex[:16]
+        now = datetime.now(timezone.utc)
+        expires_at = (
+            (now + timedelta(hours=expires_hours)).isoformat()
+            if expires_hours > 0
+            else None
+        )
+        await self._db.execute(
+            "INSERT INTO workspace_invites "
+            "(token, workspace_id, role, created_by, created_at, expires_at, max_uses) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (token, workspace_id, role, created_by, now.isoformat(), expires_at, max_uses),
+        )
+        await self._db.commit()
+        log.info("Created invite %s for workspace %s by %s", token, workspace_id, created_by)
+        return {
+            "token": token,
+            "workspace_id": workspace_id,
+            "role": role,
+            "expires_at": expires_at,
+            "max_uses": max_uses,
+        }
+
+    async def redeem_invite(
+        self, token: str, agent_name: str
+    ) -> dict[str, Any] | None:
+        """Redeem an invitation token. Returns workspace info or None if invalid."""
+        from datetime import datetime, timezone
+
+        cursor = await self._db.execute(
+            "SELECT workspace_id, role, expires_at, max_uses, use_count "
+            "FROM workspace_invites WHERE token = ?",
+            (token,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            return None
+
+        workspace_id, role, expires_at, max_uses, use_count = row
+
+        # Check expiry
+        if expires_at:
+            exp = datetime.fromisoformat(expires_at)
+            if datetime.now(timezone.utc) > exp:
+                return None
+
+        # Check max uses
+        if max_uses > 0 and use_count >= max_uses:
+            return None
+
+        # Add member and increment use count
+        await self.add_member(workspace_id, agent_name, role)
+        await self._db.execute(
+            "UPDATE workspace_invites SET use_count = use_count + 1 WHERE token = ?",
+            (token,),
+        )
+        await self._db.commit()
+
+        ws = await self.get_workspace(workspace_id)
+        log.info("Agent %s joined workspace %s via invite %s", agent_name, workspace_id, token)
+        return ws.to_dict() if ws else None
+
+    async def list_invites(self, workspace_id: str) -> list[dict[str, Any]]:
+        """List active invitations for a workspace."""
+        cursor = await self._db.execute(
+            "SELECT token, role, created_by, created_at, expires_at, max_uses, use_count "
+            "FROM workspace_invites WHERE workspace_id = ? ORDER BY created_at DESC",
+            (workspace_id,),
+        )
+        rows = await cursor.fetchall()
+        return [
+            {
+                "token": r[0],
+                "role": r[1],
+                "created_by": r[2],
+                "created_at": r[3],
+                "expires_at": r[4],
+                "max_uses": r[5],
+                "use_count": r[6],
+            }
+            for r in rows
+        ]
+
+    async def revoke_invite(self, token: str) -> bool:
+        """Revoke an invitation token."""
+        cursor = await self._db.execute(
+            "DELETE FROM workspace_invites WHERE token = ?", (token,)
+        )
+        await self._db.commit()
+        return cursor.rowcount > 0
