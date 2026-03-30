@@ -80,6 +80,12 @@ async def handle_agents(request: web.Request) -> web.Response:
     return web.json_response(server.get_agents_info())
 
 
+async def handle_resources(request: web.Request) -> web.Response:
+    """GET /api/resources -- latest system resource metrics for all agents."""
+    server: OrochiServer = request.app["orochi_server"]
+    return web.json_response(server.get_resources_info())
+
+
 async def handle_channels(request: web.Request) -> web.Response:
     """GET /api/channels -- list channels and members."""
     server: OrochiServer = request.app["orochi_server"]
@@ -330,6 +336,7 @@ def create_web_app(server: OrochiServer) -> web.Application:
 
     # REST API
     app.router.add_get("/api/agents", handle_agents)
+    app.router.add_get("/api/resources", handle_resources)
     app.router.add_get("/api/channels", handle_channels)
     app.router.add_get("/api/messages", handle_messages)
     app.router.add_post("/api/messages", handle_post_message)

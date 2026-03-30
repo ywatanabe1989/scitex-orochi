@@ -46,6 +46,7 @@ class Agent:
     project: str = ""
     status: str = "online"
     current_task: str = ""
+    resources: dict[str, Any] = field(default_factory=dict)
     last_heartbeat: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -329,6 +330,18 @@ class OrochiServer:
         agent = self.agents.get(msg.sender)
         if agent:
             agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
+            # Store system resource metrics if present in payload
+            _RESOURCE_KEYS = {
+                "cpu_count", "cpu_model",
+                "load_avg_1m", "load_avg_5m", "load_avg_15m",
+                "mem_free_mb", "mem_total_mb", "mem_used_percent",
+                "disk_used_percent",
+            }
+            resource_data = {
+                k: v for k, v in msg.payload.items() if k in _RESOURCE_KEYS
+            }
+            if resource_data:
+                agent.resources = resource_data
             log.debug("Heartbeat from %s", msg.sender)
 
     async def _handle_status_update(self, msg: Message) -> None:
@@ -439,11 +452,24 @@ class OrochiServer:
                 "project": a.project,
                 "status": a.status,
                 "current_task": a.current_task,
+                "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,
                 "registered_at": a.registered_at,
             }
             for a in self.agents.values()
         ]
+
+    def get_resources_info(self) -> dict[str, dict]:
+        """Return latest resource metrics for all agents."""
+        return {
+            a.name: {
+                "resources": a.resources,
+                "last_heartbeat": a.last_heartbeat,
+                "machine": a.machine,
+                "status": a.status,
+            }
+            for a in self.agents.values()
+        }
 
     def get_channels_info(self) -> dict[str, list[str]]:
         """Return channel membership for REST API."""
