@@ -9,7 +9,7 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <link rel="manifest" href="/static/manifest.json">
         <link rel="apple-touch-icon" href="/static/orochi-icon.png">
-        <link rel="stylesheet" href="/static/style.css?v=37">
+        <link rel="stylesheet" href="/static/style.css?v=38">
     </head>
     <body>
         <div class="container">
@@ -40,6 +40,7 @@
                     <button class="tab-btn" data-tab="todo">TODO</button>
                     <button class="tab-btn" data-tab="agents-tab">Agents</button>
                     <button class="tab-btn" data-tab="resources">Resources</button>
+                    <button class="tab-btn" data-tab="workspaces">Workspaces</button>
                 </div>
                 <div id="messages" class="messages"></div>
                 <div id="todo-view" class="todo-view" style="display:none">
@@ -50,6 +51,9 @@
                 </div>
                 <div id="resources-view" class="todo-view" style="display:none">
                     <div id="resources-grid" class="todo-grid"></div>
+                </div>
+                <div id="workspaces-view" class="todo-view" style="display:none">
+                    <div id="workspaces-grid" class="todo-grid"></div>
                 </div>
                 <div class="input-bar">
                     <div id="mention-dropdown" class="mention-dropdown"></div>
@@ -70,7 +74,7 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=37"></script>
+        <script src="/static/app.js?v=38"></script>
         <script>
             if ("serviceWorker" in navigator) {
                 navigator.serviceWorker.register("/sw.js").catch(function(err) {
