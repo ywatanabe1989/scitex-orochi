@@ -156,6 +156,9 @@ class TelegramBridge:
                     },
                 )
                 if not updates:
+                    # API returned None (error/409) or empty list — backoff briefly
+                    # to avoid tight retry loops on persistent errors
+                    await asyncio.sleep(3)
                     continue
                 for update in updates:
                     self._offset = update["update_id"] + 1
