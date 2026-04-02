@@ -7,7 +7,7 @@
 # Break freely -- this instance is for development and testing.
 
 services:
-  orochi:
+  orochi-dev:
     build: .
     container_name: orochi-server-dev
     ports:

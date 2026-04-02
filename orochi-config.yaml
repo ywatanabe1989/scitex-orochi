@@ -56,8 +56,11 @@ orochi:
       channels: ["#general", "#research"]
       workdir: ~/proj
 
-  # Telegram bridge (optional, for migration period)
+  # Telegram bridge: orochi-server owns the bot token as a singleton.
+  # User messages arrive via Telegram -> orochi-server -> #telegram channel.
+  # Master agent replies by posting to #telegram -> orochi-server -> Telegram.
   telegram:
-    enabled: false
-    bot_token_env: SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN
-    chat_id_env: SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID
+    enabled: true
+    bot_token_env: SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN  # read from env var
+    chat_id_env: SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID      # read from env var
+    channel: "#telegram"  # Orochi channel for bidirectional Telegram relay

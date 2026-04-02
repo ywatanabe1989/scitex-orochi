@@ -32,3 +32,7 @@ TELEGRAM_CHAT_ID = _env("SCITEX_OROCHI_TELEGRAM_CHAT_ID", "OROCHI_TELEGRAM_CHAT_
 TELEGRAM_BRIDGE_ENABLED = _env(
     "SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED", "OROCHI_TELEGRAM_BRIDGE_ENABLED", "false"
 ).lower() in ("true", "1", "yes")
+# Orochi channel that Telegram messages are posted to / read from
+TELEGRAM_CHANNEL = _env(
+    "SCITEX_OROCHI_TELEGRAM_CHANNEL", "OROCHI_TELEGRAM_CHANNEL", "#telegram"
+)

@@ -13,9 +13,14 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - OROCHI_GITEA_URL=http://scitex-cloud-prod-gitea-1:3000
       - OROCHI_GITEA_TOKEN=cd2bee26873c6e8cbe1c815a18cad82fd3b6dff2
-      # GUARDRAIL: Telegram bridge MUST be false. Only orochi-agent:master owns the bot token.
-      # Enabling this will steal Telegram messages from the master agent. See issue #103.
-      - OROCHI_TELEGRAM_BRIDGE_ENABLED=false
+      # Telegram bridge: orochi-server owns the Telegram bot token exclusively.
+      # Messages from Telegram are posted to the #telegram Orochi channel.
+      # The master agent subscribes to #telegram via Orochi WebSocket (not a Claude plugin).
+      # Architecture: User (Telegram) -> orochi-server -> #telegram -> master agent -> #telegram -> orochi-server -> Telegram
+      - OROCHI_TELEGRAM_BRIDGE_ENABLED=true
+      - OROCHI_TELEGRAM_BOT_TOKEN=${SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN:-}
+      - OROCHI_TELEGRAM_CHAT_ID=${SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID:-}
+      - OROCHI_TELEGRAM_CHANNEL=#telegram
     restart: unless-stopped
     networks:
       - scitex-cloud-prod_scitex-network

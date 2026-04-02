@@ -1,4 +1,20 @@
-"""Telegram Bridge -- relay messages between Orochi and Telegram Bot API."""
+"""Telegram Bridge -- relay messages between Orochi and Telegram Bot API.
+
+Architecture:
+  User (iPhone Telegram)
+    -> Telegram Bot API
+    -> orochi-server (polls via TelegramBridge, singleton)
+    -> Orochi channel #telegram
+    -> orochi-agent:master (receives via orochi-push channel subscription)
+    -> replies via Orochi #telegram channel
+    -> orochi-server (message hook intercepts)
+    -> Telegram Bot API
+    -> User
+
+The orochi-server OWNS the Telegram bot token exclusively.  No other
+process should poll the same bot.  The master agent communicates with
+the user solely through the Orochi #telegram channel.
+"""
 
 from __future__ import annotations
 
@@ -19,7 +35,17 @@ TELEGRAM_API = "https://api.telegram.org/bot{token}/{method}"
 
 
 class TelegramBridge:
-    """Bi-directional relay between a Telegram chat and Orochi channels."""
+    """Bi-directional relay between a Telegram chat and an Orochi channel.
+
+    Incoming (Telegram -> Orochi):
+      Telegram getUpdates -> post Message to self._channel with metadata
+      containing chat_id, message_id, and telegram display name as sender.
+
+    Outgoing (Orochi -> Telegram):
+      Message hook fires on every channel message.  If the message is on
+      self._channel and did NOT originate from Telegram (no echo), forward
+      it to the Telegram chat via sendMessage.
+    """
 
     def __init__(
         self,
@@ -27,21 +53,20 @@ class TelegramBridge:
         chat_id: str,
         server: OrochiServer,
         *,
-        channel: str = "#general",
-        sender_name: str = "telegram-user",
+        channel: str = "#telegram",
         poll_timeout: int = 30,
     ) -> None:
         self._token = bot_token
         self._chat_id = chat_id
         self._server = server
         self._channel = channel
-        self._sender_name = sender_name
         self._poll_timeout = poll_timeout
 
         self._offset: int = 0
         self._session: aiohttp.ClientSession | None = None
         self._poll_task: asyncio.Task[None] | None = None
         self._running = False
+        self._bot_name: str = "unknown"
 
     # -- lifecycle --------------------------------------------------------
 
@@ -50,11 +75,12 @@ class TelegramBridge:
         self._session = aiohttp.ClientSession()
         self._running = True
         self._poll_task = asyncio.create_task(self._poll_loop())
+
         me = await self._api("getMe")
-        bot_name = me.get("username", "unknown") if me else "unknown"
+        self._bot_name = me.get("username", "unknown") if me else "unknown"
         log.info(
-            "Telegram bridge started (bot=@%s, chat=%s, channel=%s)",
-            bot_name,
+            "Telegram bridge active: @%s polling chat_id %s -> Orochi %s",
+            self._bot_name,
             self._chat_id,
             self._channel,
         )
@@ -75,7 +101,16 @@ class TelegramBridge:
     # -- outgoing: Orochi -> Telegram ------------------------------------
 
     async def relay_to_telegram(self, msg: Message) -> None:
-        """Send an Orochi channel message to the Telegram chat."""
+        """Send an Orochi channel message to the Telegram chat.
+
+        Only messages on self._channel are forwarded.  Messages that
+        originated from Telegram (metadata.source == "telegram") are
+        skipped to prevent echo loops.
+        """
+        # Only relay messages posted to the telegram channel
+        if msg.channel != self._channel:
+            return
+
         # Avoid echo: skip messages that originated from Telegram
         metadata = msg.payload.get("metadata") or {}
         if metadata.get("source") == "telegram":
@@ -87,20 +122,24 @@ class TelegramBridge:
 
         # Handle file attachments
         attachments = msg.payload.get("attachments") or []
-        if attachments:
-            for att in attachments:
-                url = att.get("url", "")
-                if url:
-                    text += f"\n📎 {url}"
+        for att in attachments:
+            url = att.get("url", "")
+            if url:
+                text += f"\n{url}"
 
-        await self._api(
-            "sendMessage",
-            {
-                "chat_id": self._chat_id,
-                "text": text,
-                "parse_mode": "HTML",
-            },
-        )
+        # If the Orochi message references a specific Telegram message_id,
+        # reply to it in the Telegram chat.
+        params: dict[str, Any] = {
+            "chat_id": self._chat_id,
+            "text": text,
+        }
+        reply_to = metadata.get("reply_to_telegram_message_id")
+        if reply_to:
+            params["reply_to_message_id"] = reply_to
+
+        result = await self._api("sendMessage", params)
+        if result is None:
+            log.error("Failed to relay message to Telegram from %s", msg.sender)
 
     # -- incoming: Telegram -> Orochi ------------------------------------
 
@@ -128,9 +167,19 @@ class TelegramBridge:
                 await asyncio.sleep(5)
 
     async def _process_update(self, update: dict[str, Any]) -> None:
-        """Convert a Telegram update into an Orochi message."""
+        """Convert a Telegram update into an Orochi message on #telegram."""
         tg_msg = update.get("message")
         if not tg_msg:
+            return
+
+        # Only process messages from the configured chat
+        msg_chat_id = str(tg_msg.get("chat", {}).get("id", ""))
+        if msg_chat_id != str(self._chat_id):
+            log.warning(
+                "Ignoring Telegram message from unexpected chat_id=%s (expected %s)",
+                msg_chat_id,
+                self._chat_id,
+            )
             return
 
         # Build sender display name
@@ -139,7 +188,7 @@ class TelegramBridge:
         username = user.get("username", "")
         if username:
             display = f"{display}(@{username})" if display else f"@{username}"
-        sender = display or self._sender_name
+        sender = display or "telegram-user"
 
         # Extract text content
         content = tg_msg.get("text") or tg_msg.get("caption") or ""
@@ -165,16 +214,38 @@ class TelegramBridge:
                 }
             )
 
+        # Handle voice messages
+        voice = tg_msg.get("voice")
+        if voice:
+            attachments.append(
+                {
+                    "type": "voice",
+                    "file_id": voice.get("file_id", ""),
+                    "duration": voice.get("duration", 0),
+                }
+            )
+
         if not content and not attachments:
             return
+
+        # Build metadata with Telegram-specific fields so the master agent
+        # can reference original chat_id and message_id when replying.
+        telegram_message_id = tg_msg.get("message_id")
+        metadata: dict[str, Any] = {
+            "source": "telegram",
+            "telegram_user": sender,
+            "telegram_chat_id": msg_chat_id,
+            "telegram_message_id": telegram_message_id,
+            "telegram_username": username,
+        }
 
         payload: dict[str, Any] = {
             "channel": self._channel,
             "content": content,
+            "metadata": metadata,
         }
         if attachments:
             payload["attachments"] = attachments
-        payload["metadata"] = {"source": "telegram", "telegram_user": sender}
 
         msg = Message(
             type="message",
@@ -182,7 +253,12 @@ class TelegramBridge:
             payload=payload,
         )
 
-        log.info("[telegram->orochi] %s: %s", sender, content[:80])
+        log.info(
+            "[telegram->orochi] %s (msg_id=%s): %s",
+            sender,
+            telegram_message_id,
+            content[:80],
+        )
         await self._server._handle_message(msg)
 
     # -- Telegram Bot API helpers ----------------------------------------
@@ -217,22 +293,52 @@ class TelegramBridge:
 
 
 async def setup_telegram_bridge(server: OrochiServer) -> TelegramBridge | None:
-    """Create and start the Telegram bridge if configured. Returns bridge or None."""
+    """Create and start the Telegram bridge if configured.
+
+    The bridge is a singleton: only ONE process should poll a given bot token.
+    orochi-server owns this exclusively.
+
+    Returns the bridge instance or None if not configured / missing credentials.
+    """
     from scitex_orochi._config import (
         TELEGRAM_BOT_TOKEN,
         TELEGRAM_BRIDGE_ENABLED,
+        TELEGRAM_CHANNEL,
         TELEGRAM_CHAT_ID,
     )
 
-    if not TELEGRAM_BRIDGE_ENABLED or not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        if TELEGRAM_BRIDGE_ENABLED:
-            log.warning("Telegram bridge enabled but BOT_TOKEN or CHAT_ID not set")
+    if not TELEGRAM_BRIDGE_ENABLED:
+        log.info("Telegram bridge disabled (OROCHI_TELEGRAM_BRIDGE_ENABLED != true)")
         return None
+
+    if not TELEGRAM_BOT_TOKEN:
+        log.error(
+            "Telegram bridge enabled but TELEGRAM_BOT_TOKEN is not set -- "
+            "bridge will NOT start.  Set SCITEX_OROCHI_TELEGRAM_BOT_TOKEN or "
+            "OROCHI_TELEGRAM_BOT_TOKEN env var."
+        )
+        return None
+
+    if not TELEGRAM_CHAT_ID:
+        log.error(
+            "Telegram bridge enabled but TELEGRAM_CHAT_ID is not set -- "
+            "bridge will NOT start.  Set SCITEX_OROCHI_TELEGRAM_CHAT_ID or "
+            "OROCHI_TELEGRAM_CHAT_ID env var."
+        )
+        return None
+
     bridge = TelegramBridge(
         bot_token=TELEGRAM_BOT_TOKEN,
         chat_id=TELEGRAM_CHAT_ID,
         server=server,
+        channel=TELEGRAM_CHANNEL,
     )
+
+    # Ensure the #telegram channel exists in the server's channel registry
+    server.channels.setdefault(TELEGRAM_CHANNEL, set())
+
+    # Register the outgoing hook: Orochi #telegram -> Telegram chat
     server._message_hooks.append(bridge.relay_to_telegram)
+
     await bridge.start()
     return bridge
