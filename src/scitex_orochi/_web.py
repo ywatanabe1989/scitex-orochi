@@ -91,7 +91,13 @@ async def handle_resources(request: web.Request) -> web.Response:
 async def handle_channels(request: web.Request) -> web.Response:
     """GET /api/channels -- list channels and members."""
     server: OrochiServer = request.app["orochi_server"]
-    return web.json_response(server.get_channels_info())
+    info = server.get_channels_info()
+    # Include channels from store that have history but no current subscribers
+    stored_channels = await server.store.distinct_channels()
+    for ch in stored_channels:
+        if ch not in info:
+            info[ch] = []
+    return web.json_response(info)
 
 
 async def handle_history(request: web.Request) -> web.Response:
@@ -157,13 +163,14 @@ async def handle_stats(request: web.Request) -> web.Response:
     push_subscriptions = 0
     if push_store:
         push_subscriptions = await push_store.subscription_count()
+    all_channels = await server.get_all_channel_names()
     return web.json_response(
         {
             "agents_online": len(server.agents),
             "channels_active": len(server.channels),
             "observers_connected": len(server._observers),
             "agents": [a.name for a in server.agents.values()],
-            "channels": list(server.channels.keys()),
+            "channels": all_channels,
             "telegram_bridge": {
                 "enabled": tg is not None,
                 "running": tg._running if tg else False,

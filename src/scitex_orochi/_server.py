@@ -484,6 +484,12 @@ class OrochiServer:
         """Return channel membership for REST API."""
         return {ch: list(members) for ch, members in self.channels.items()}
 
+    async def get_all_channel_names(self) -> list[str]:
+        """Return all known channel names (live subscriptions + stored history)."""
+        live = set(self.channels.keys())
+        stored = set(await self.store.distinct_channels())
+        return sorted(live | stored)
+
 
 # Backward compatibility: import main from _main module
 def main() -> None:

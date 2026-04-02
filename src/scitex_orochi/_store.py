@@ -122,6 +122,16 @@ class MessageStore:
         # Return in chronological order (oldest first)
         return [self._row_to_dict(r) for r in reversed(rows)]
 
+    async def distinct_channels(self) -> list[str]:
+        """Return all distinct channel names that have stored messages."""
+        if not self._db:
+            raise RuntimeError("Store not open")
+        cursor = await self._db.execute(
+            "SELECT DISTINCT channel FROM messages ORDER BY channel"
+        )
+        rows = await cursor.fetchall()
+        return [r[0] for r in rows]
+
     @staticmethod
     def _row_to_dict(r: tuple) -> dict:
         metadata = json.loads(r[6]) if r[6] else {}

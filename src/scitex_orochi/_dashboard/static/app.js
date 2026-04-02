@@ -388,10 +388,11 @@ async function fetchStats() {
         var ch = el.getAttribute("data-channel");
         if (currentChannel === ch) {
           currentChannel = null;
+          loadHistory();
         } else {
           currentChannel = ch;
+          loadChannelHistory(ch);
         }
-        filterMessages();
         fetchStats();
       });
     });
@@ -452,6 +453,35 @@ async function loadHistory() {
     historyLoaded = true;
   } catch (e) {
     /* fetch error */
+  }
+}
+
+async function loadChannelHistory(channel) {
+  try {
+    var encodedChannel = encodeURIComponent(channel);
+    var res = await fetch("/api/history/" + encodedChannel + "?limit=100");
+    var messages = await res.json();
+    var container = document.getElementById("messages");
+    container.innerHTML = "";
+    knownMessageKeys = {};
+    messages.forEach(function (row) {
+      var key = messageKey(row.sender, row.ts, row.content);
+      knownMessageKeys[key] = true;
+      appendMessage({
+        type: "message",
+        sender: row.sender,
+        ts: row.ts,
+        payload: {
+          channel: row.channel,
+          content: row.content,
+          attachments:
+            (row.metadata && row.metadata.attachments) || row.attachments || [],
+        },
+      });
+    });
+    container.scrollTop = container.scrollHeight;
+  } catch (e) {
+    console.error("Failed to load channel history:", e);
   }
 }
 
