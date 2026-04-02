@@ -2,18 +2,23 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <meta name="viewport"
+              content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         <title>Orochi Dashboard</title>
         <meta name="theme-color" content="#4ecdc4">
         <meta name="apple-mobile-web-app-capable" content="yes">
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-status-bar-style"
+              content="black-translucent">
         <link rel="manifest" href="/static/manifest.json">
         <link rel="apple-touch-icon" href="/static/orochi-icon.png">
         <link rel="stylesheet" href="/static/style.css?v=38">
+        <link rel="stylesheet" href="/static/push.css?v=1">
     </head>
     <body>
         <div class="container">
-            <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+            <button id="sidebar-toggle"
+                    class="sidebar-toggle"
+                    aria-label="Toggle sidebar">&#9776;</button>
             <div class="sidebar" id="sidebar">
                 <div class="sidebar-brand">
                     <img src="/static/orochi-icon.png" alt="Orochi" class="header-icon">
@@ -21,7 +26,10 @@
                     <span id="conn-status" class="status">disconnected</span>
                 </div>
                 <div class="filter-bar" style="position:relative">
-                    <input type="text" id="filter-input" placeholder="Filter... (agent: host: channel: label: or text)" autocomplete="off">
+                    <input type="text"
+                           id="filter-input"
+                           placeholder="Filter... (agent: host: channel: label: or text)"
+                           autocomplete="off">
                     <div id="filter-suggest" class="filter-suggest"></div>
                     <div id="filter-tags" class="filter-tags"></div>
                 </div>
@@ -74,13 +82,8 @@
                 </div>
             </div>
         </div>
-        <script src="/static/app.js?v=38"></script>
-        <script>
-            if ("serviceWorker" in navigator) {
-                navigator.serviceWorker.register("/sw.js").catch(function(err) {
-                    console.error("SW registration failed:", err);
-                });
-            }
-        </script>
+        <script src="/static/app.js?v=39"></script>
+        <script src="/static/sw-register.js?v=1"></script>
+        <script src="/static/push.js?v=1"></script>
     </body>
 </html>

@@ -1,0 +1,35 @@
+# Orochi Dev Instance
+# Deploy: scitex-orochi deploy dev
+# Ports: WS=9560, Dashboard=8560
+# Volume: /data/orochi-dev/
+#
+# This runs alongside docker-compose.stable.yml without conflicts.
+# Break freely -- this instance is for development and testing.
+
+services:
+  orochi:
+    build: .
+    container_name: orochi-server-dev
+    ports:
+      - "9560:9559"
+      - "8560:8559"
+    volumes:
+      - /data/orochi-dev:/data
+    environment:
+      - OROCHI_TOKEN=${OROCHI_TOKEN_DEV:-${OROCHI_TOKEN:-}}
+      - OROCHI_HOST=0.0.0.0
+      - SCITEX_OROCHI_PORT=9559
+      - SCITEX_OROCHI_DASHBOARD_PORT=8559
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - OROCHI_GITEA_URL=${OROCHI_GITEA_URL:-http://scitex-cloud-prod-gitea-1:3000}
+      - OROCHI_GITEA_TOKEN=${OROCHI_GITEA_TOKEN:-}
+      - OROCHI_TELEGRAM_BRIDGE_ENABLED=false
+      - OROCHI_TELEGRAM_BOT_TOKEN=
+      - OROCHI_TELEGRAM_CHAT_ID=
+    restart: unless-stopped
+    networks:
+      - scitex-cloud-prod_scitex-network
+
+networks:
+  scitex-cloud-prod_scitex-network:
+    external: true

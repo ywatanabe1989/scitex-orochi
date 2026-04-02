@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
 import logging
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,6 +15,10 @@ from scitex_orochi._auth import verify_token
 from scitex_orochi._config import MEDIA_MAX_SIZE, MEDIA_ROOT
 from scitex_orochi._media import MediaStore
 from scitex_orochi._models import Message
+from scitex_orochi._push import PushStore
+from scitex_orochi._web_gitea import register_gitea_routes
+from scitex_orochi._web_push import register_push_routes
+from scitex_orochi._web_workspaces import register_workspace_routes
 
 if TYPE_CHECKING:
     from scitex_orochi._server import OrochiServer
@@ -26,7 +28,7 @@ log = logging.getLogger("orochi.web")
 DASHBOARD_DIR = Path(__file__).parent / "_dashboard"
 
 
-async def handle_ws(request: web.Request) -> web.WebSocketResponse:
+async def handle_ws(request: web.Request) -> web.WebSocketResponse | web.Response:
     """WebSocket endpoint for dashboard observer connections."""
     server: OrochiServer = request.app["orochi_server"]
 
@@ -151,6 +153,10 @@ async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
     tg = server.telegram_bridge
+    push_store: PushStore | None = request.app.get("push_store")
+    push_subscriptions = 0
+    if push_store:
+        push_subscriptions = await push_store.subscription_count()
     return web.json_response(
         {
             "agents_online": len(server.agents),
@@ -162,89 +168,9 @@ async def handle_stats(request: web.Request) -> web.Response:
                 "enabled": tg is not None,
                 "running": tg._running if tg else False,
             },
+            "push_subscriptions": push_subscriptions,
         }
     )
-
-
-async def handle_gitea_list_issues(request: web.Request) -> web.Response:
-    """GET /api/gitea/issues/{owner}/{repo} -- list issues."""
-    server: OrochiServer = request.app["orochi_server"]
-    owner = request.match_info["owner"]
-    repo = request.match_info["repo"]
-    state = request.query.get("state", "open")
-    try:
-        issues = await server.gitea.list_issues(owner, repo, state=state)
-        return web.json_response(issues)
-    except Exception as exc:
-        return web.json_response({"error": str(exc)}, status=502)
-
-
-async def handle_gitea_create_issue(request: web.Request) -> web.Response:
-    """POST /api/gitea/issues/{owner}/{repo} -- create an issue."""
-    token = request.query.get("token")
-    if not verify_token(token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    owner = request.match_info["owner"]
-    repo = request.match_info["repo"]
-    body = await request.json()
-    title = body.get("title", "")
-    if not title:
-        return web.json_response({"error": "title is required"}, status=400)
-    try:
-        issue = await server.gitea.create_issue(
-            owner=owner,
-            repo=repo,
-            title=title,
-            body=body.get("body", ""),
-            labels=body.get("labels"),
-        )
-        return web.json_response(issue, status=201)
-    except Exception as exc:
-        return web.json_response({"error": str(exc)}, status=502)
-
-
-async def handle_gitea_list_repos(request: web.Request) -> web.Response:
-    """GET /api/gitea/repos -- list repositories."""
-    server: OrochiServer = request.app["orochi_server"]
-    org = request.query.get("org", "")
-    try:
-        repos = await server.gitea.list_repos(org=org)
-        return web.json_response(repos)
-    except Exception as exc:
-        return web.json_response({"error": str(exc)}, status=502)
-
-
-async def handle_github_issues(request: web.Request) -> web.Response:
-    """GET /api/github/issues -- proxy to GitHub API for ywatanabe1989/todo issues."""
-    github_url = (
-        "https://api.github.com/repos/ywatanabe1989/todo/issues?state=open&per_page=30"
-    )
-    headers = {
-        "Accept": "application/vnd.github.v3+json",
-        "User-Agent": "Orochi-Dashboard",
-    }
-    github_token = os.environ.get("GITHUB_TOKEN")
-    if github_token:
-        headers["Authorization"] = f"token {github_token}"
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                github_url, headers=headers, timeout=aiohttp.ClientTimeout(total=10)
-            ) as resp:
-                if resp.status != 200:
-                    body = await resp.text()
-                    return web.json_response(
-                        {"error": f"GitHub API returned {resp.status}", "detail": body},
-                        status=resp.status,
-                    )
-                data = await resp.json()
-                return web.json_response(data)
-    except asyncio.TimeoutError:
-        return web.json_response({"error": "GitHub API request timed out"}, status=504)
-    except Exception as exc:
-        return web.json_response({"error": str(exc)}, status=502)
 
 
 async def handle_upload(request: web.Request) -> web.Response:
@@ -255,7 +181,11 @@ async def handle_upload(request: web.Request) -> web.Response:
 
     reader = await request.multipart()
     field = await reader.next()
-    if field is None or field.name != "file":
+    if field is None:
+        return web.json_response({"error": "No file field"}, status=400)
+    if not isinstance(field, aiohttp.BodyPartReader):
+        return web.json_response({"error": "No file field"}, status=400)
+    if field.name != "file":
         return web.json_response({"error": "No file field"}, status=400)
 
     data = await field.read(decode=False)
@@ -299,7 +229,7 @@ async def handle_upload_base64(request: web.Request) -> web.Response:
     return web.json_response(result, status=201)
 
 
-async def handle_index(request: web.Request) -> web.Response:
+async def handle_index(request: web.Request) -> web.Response | web.FileResponse:
     """Serve the dashboard index.html."""
     index_path = DASHBOARD_DIR / "index.html"
     if index_path.exists():
@@ -311,7 +241,9 @@ async def handle_index(request: web.Request) -> web.Response:
     )
 
 
-async def handle_service_worker(request: web.Request) -> web.Response:
+async def handle_service_worker(
+    request: web.Request,
+) -> web.Response | web.FileResponse:
     """Serve sw.js from root scope for PWA support."""
     sw_path = DASHBOARD_DIR / "sw.js"
     if sw_path.exists():
@@ -333,159 +265,28 @@ async def no_cache_static(request: web.Request, handler):
     return resp
 
 
-async def handle_workspaces(request: web.Request) -> web.Response:
-    """GET /api/workspaces -- list all workspaces."""
-    server: OrochiServer = request.app["orochi_server"]
-    if not server.workspaces:
-        return web.json_response([])
-    workspaces = await server.workspaces.list_workspaces()
-    return web.json_response([ws.to_dict() for ws in workspaces])
+async def _init_push_store(app: web.Application) -> None:
+    """Initialize PushStore on app startup and register push message hook."""
+    server: OrochiServer = app["orochi_server"]
+    # Use the same DB path as the message store for co-location
+    db_path = server.store.db_path
+    push_store = PushStore(db_path)
+    await push_store.open()
+    app["push_store"] = push_store
+
+    # Register push notification hook on the server
+    from scitex_orochi._push_hook import create_push_hook
+
+    hook = create_push_hook(push_store)
+    server._message_hooks.append(hook)
+    log.info("Push notification store initialized with message hook")
 
 
-async def handle_workspace(request: web.Request) -> web.Response:
-    """GET /api/workspaces/{id} -- get a workspace."""
-    server: OrochiServer = request.app["orochi_server"]
-    ws_id = request.match_info["id"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    ws = await server.workspaces.get_workspace(ws_id)
-    if not ws:
-        return web.json_response({"error": "Not found"}, status=404)
-    return web.json_response(ws.to_dict())
-
-
-async def handle_create_workspace(request: web.Request) -> web.Response:
-    """POST /api/workspaces -- create a workspace."""
-    token = request.query.get("token")
-    if not verify_token(token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    body = await request.json()
-    name = body.get("name", "").strip()
-    if not name:
-        return web.json_response({"error": "name is required"}, status=400)
-    try:
-        ws = await server.workspaces.create_workspace(
-            name=name,
-            description=body.get("description", ""),
-            channels=body.get("channels"),
-        )
-        return web.json_response(ws.to_dict(), status=201)
-    except Exception as exc:
-        return web.json_response({"error": str(exc)}, status=400)
-
-
-async def handle_delete_workspace(request: web.Request) -> web.Response:
-    """DELETE /api/workspaces/{id} -- delete a workspace."""
-    token = request.query.get("token")
-    if not verify_token(token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    ws_id = request.match_info["id"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    deleted = await server.workspaces.delete_workspace(ws_id)
-    if not deleted:
-        return web.json_response({"error": "Cannot delete (not found or default)"}, status=400)
-    return web.json_response({"ok": True})
-
-
-async def handle_workspace_channels(request: web.Request) -> web.Response:
-    """POST /api/workspaces/{id}/channels -- add a channel to workspace."""
-    token = request.query.get("token")
-    if not verify_token(token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    ws_id = request.match_info["id"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    body = await request.json()
-    channel = body.get("channel", "").strip()
-    if not channel:
-        return web.json_response({"error": "channel is required"}, status=400)
-    await server.workspaces.add_channel(ws_id, channel)
-    return web.json_response({"ok": True})
-
-
-async def handle_workspace_members(request: web.Request) -> web.Response:
-    """POST /api/workspaces/{id}/members -- add a member to workspace."""
-    token = request.query.get("token")
-    if not verify_token(token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    ws_id = request.match_info["id"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    body = await request.json()
-    agent_name = body.get("agent_name", "").strip()
-    if not agent_name:
-        return web.json_response({"error": "agent_name is required"}, status=400)
-    role = body.get("role", "member")
-    await server.workspaces.add_member(ws_id, agent_name, role)
-    return web.json_response({"ok": True})
-
-
-async def handle_create_invite(request: web.Request) -> web.Response:
-    """POST /api/workspaces/{id}/invites -- create an invitation token."""
-    token = request.query.get("token")
-    if not verify_token(token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    ws_id = request.match_info["id"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    body = await request.json()
-    invite = await server.workspaces.create_invite(
-        workspace_id=ws_id,
-        created_by=body.get("created_by", "unknown"),
-        role=body.get("role", "member"),
-        max_uses=body.get("max_uses", 0),
-        expires_hours=body.get("expires_hours", 0),
-    )
-    return web.json_response(invite, status=201)
-
-
-async def handle_list_invites(request: web.Request) -> web.Response:
-    """GET /api/workspaces/{id}/invites -- list workspace invitations."""
-    server: OrochiServer = request.app["orochi_server"]
-    ws_id = request.match_info["id"]
-    if not server.workspaces:
-        return web.json_response([], status=200)
-    invites = await server.workspaces.list_invites(ws_id)
-    return web.json_response(invites)
-
-
-async def handle_redeem_invite(request: web.Request) -> web.Response:
-    """POST /api/invites/redeem -- redeem an invitation token."""
-    body = await request.json()
-    invite_token = body.get("token", "").strip()
-    agent_name = body.get("agent_name", "").strip()
-    if not invite_token or not agent_name:
-        return web.json_response({"error": "token and agent_name required"}, status=400)
-    server: OrochiServer = request.app["orochi_server"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    result = await server.workspaces.redeem_invite(invite_token, agent_name)
-    if not result:
-        return web.json_response({"error": "Invalid, expired, or exhausted invite"}, status=400)
-    return web.json_response(result)
-
-
-async def handle_revoke_invite(request: web.Request) -> web.Response:
-    """DELETE /api/workspaces/{id}/invites/{token} -- revoke an invitation."""
-    auth_token = request.query.get("token")
-    if not verify_token(auth_token):
-        return web.json_response({"error": "Unauthorized"}, status=401)
-    server: OrochiServer = request.app["orochi_server"]
-    invite_token = request.match_info["invite_token"]
-    if not server.workspaces:
-        return web.json_response({"error": "Workspaces not initialized"}, status=503)
-    revoked = await server.workspaces.revoke_invite(invite_token)
-    if not revoked:
-        return web.json_response({"error": "Invite not found"}, status=404)
-    return web.json_response({"ok": True})
+async def _cleanup_push_store(app: web.Application) -> None:
+    """Close PushStore on app shutdown."""
+    push_store: PushStore | None = app.get("push_store")
+    if push_store:
+        await push_store.close()
 
 
 def create_web_app(server: OrochiServer) -> web.Application:
@@ -493,6 +294,10 @@ def create_web_app(server: OrochiServer) -> web.Application:
 
     app = web.Application(client_max_size=MEDIA_MAX_SIZE, middlewares=[no_cache_static])
     app["orochi_server"] = server
+
+    # Lifecycle hooks for push store
+    app.on_startup.append(_init_push_store)
+    app.on_cleanup.append(_cleanup_push_store)
 
     # WebSocket for dashboard
     app.router.add_get("/ws", handle_ws)
@@ -506,20 +311,10 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/stats", handle_stats)
 
-    # Workspaces
-    app.router.add_get("/api/workspaces", handle_workspaces)
-    app.router.add_post("/api/workspaces", handle_create_workspace)
-    app.router.add_get("/api/workspaces/{id}", handle_workspace)
-    app.router.add_delete("/api/workspaces/{id}", handle_delete_workspace)
-    app.router.add_post("/api/workspaces/{id}/channels", handle_workspace_channels)
-    app.router.add_post("/api/workspaces/{id}/members", handle_workspace_members)
-    app.router.add_get("/api/workspaces/{id}/invites", handle_list_invites)
-    app.router.add_post("/api/workspaces/{id}/invites", handle_create_invite)
-    app.router.add_delete("/api/workspaces/{id}/invites/{invite_token}", handle_revoke_invite)
-    app.router.add_post("/api/invites/redeem", handle_redeem_invite)
-
-    # GitHub issues proxy
-    app.router.add_get("/api/github/issues", handle_github_issues)
+    # Modular route groups
+    register_workspace_routes(app)
+    register_gitea_routes(app)
+    register_push_routes(app)
 
     # Media upload/serve
     app.router.add_post("/api/upload", handle_upload)

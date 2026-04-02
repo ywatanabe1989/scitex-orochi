@@ -315,6 +315,49 @@ def serve(ctx: click.Context) -> None:
     server_main()
 
 
+@orochi.command("vapid-generate")
+@click.option(
+    "--output",
+    default=None,
+    help="Output path for keys (default: /data/vapid-keys.json)",
+)
+@click.option("--force", is_flag=True, help="Overwrite existing keys")
+def vapid_generate(output: str | None, force: bool) -> None:
+    """Generate VAPID key pair for web push notifications."""
+    from scitex_orochi._push import (
+        generate_vapid_keys,
+        get_vapid_keys_path,
+        load_vapid_keys,
+        save_vapid_keys,
+    )
+
+    path = output or str(get_vapid_keys_path())
+    existing = load_vapid_keys(path)
+    if existing and not force:
+        click.echo(f"VAPID keys already exist at {path}")
+        click.echo(f"Public key: {existing['public_key']}")
+        click.echo("Use --force to regenerate.")
+        return
+
+    keys = generate_vapid_keys()
+    save_vapid_keys(keys, path)
+    click.echo(f"VAPID keys generated and saved to {path}")
+    click.echo(f"Public key: {keys['public_key']}")
+
+
+# ── Config-driven commands (Phase 1) ─────────────────────────
+# ── Phase 2: Stable/Dev deployment ───────────────────────────
+from scitex_orochi._cli.commands.deploy_cmd import deploy
+from scitex_orochi._cli.commands.health_cmd import health_cmd
+from scitex_orochi._cli.commands.init_cmd import init_cmd
+from scitex_orochi._cli.commands.launch_cmd import launch
+
+orochi.add_command(init_cmd)
+orochi.add_command(launch)
+orochi.add_command(health_cmd)
+orochi.add_command(deploy)
+
+
 def main() -> None:
     try:
         orochi(standalone_mode=True)

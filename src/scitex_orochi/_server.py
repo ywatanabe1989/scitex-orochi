@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 import platform
-import signal
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -20,7 +19,6 @@ from scitex_orochi._config import (
     GITEA_URL,
     HOST,
     PORT,
-    TELEGRAM_BRIDGE_ENABLED,
 )
 from scitex_orochi._gitea import GiteaClient
 from scitex_orochi._models import Message
@@ -82,6 +80,9 @@ class OrochiServer:
             self._handle_connection,
             self.host,
             self.port,
+            # Protocol-level ping/pong to detect dead connections
+            ping_interval=30,
+            ping_timeout=10,
         )
         log.info("Orochi listening on ws://%s:%d", self.host, self.port)
         await asyncio.Future()  # run forever
@@ -334,11 +335,15 @@ class OrochiServer:
         agent = self.agents.get(msg.sender)
         if agent:
             agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
-            # Store system resource metrics if present in payload
             _RESOURCE_KEYS = {
-                "cpu_count", "cpu_model",
-                "load_avg_1m", "load_avg_5m", "load_avg_15m",
-                "mem_free_mb", "mem_total_mb", "mem_used_percent",
+                "cpu_count",
+                "cpu_model",
+                "load_avg_1m",
+                "load_avg_5m",
+                "load_avg_15m",
+                "mem_free_mb",
+                "mem_total_mb",
+                "mem_used_percent",
                 "disk_used_percent",
             }
             resource_data = {
@@ -480,62 +485,11 @@ class OrochiServer:
         return {ch: list(members) for ch, members in self.channels.items()}
 
 
+# Backward compatibility: import main from _main module
 def main() -> None:
-    from scitex_orochi._config import DASHBOARD_PORT
-    from scitex_orochi._web import create_web_app
+    from scitex_orochi._main import main as _main
 
-    server = OrochiServer()
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    def _shutdown_handler() -> None:
-        loop.create_task(server.shutdown())
-
-    for sig in (signal.SIGTERM, signal.SIGINT):
-        loop.add_signal_handler(sig, _shutdown_handler)
-
-    telegram_bridge = None
-
-    async def _run_all() -> None:
-        nonlocal telegram_bridge
-        await server.store.open()
-        # Initialize workspace model
-        from scitex_orochi._workspaces import WorkspaceStore
-
-        server.workspaces = WorkspaceStore(server.store._db)
-        await server.workspaces.init_schema()
-        ws_server = await websockets.serve(
-            server._handle_connection,
-            server.host,
-            server.port,
-        )
-        log.info("Orochi WebSocket listening on ws://%s:%d", server.host, server.port)
-        from aiohttp import web as aio_web
-
-        app = create_web_app(server)
-        runner = aio_web.AppRunner(app)
-        await runner.setup()
-        site = aio_web.TCPSite(runner, server.host, DASHBOARD_PORT)
-        await site.start()
-        log.info("Orochi dashboard on http://%s:%d", server.host, DASHBOARD_PORT)
-        # Telegram bridge (enabled via OROCHI_TELEGRAM_BRIDGE_ENABLED=true)
-        if TELEGRAM_BRIDGE_ENABLED:
-            from scitex_orochi._telegram_bridge import setup_telegram_bridge
-
-            telegram_bridge = await setup_telegram_bridge(server)
-            server.telegram_bridge = telegram_bridge
-        await asyncio.Future()  # run forever
-
-    try:
-        loop.run_until_complete(_run_all())
-    except asyncio.CancelledError:
-        pass
-    finally:
-        if telegram_bridge:
-            loop.run_until_complete(telegram_bridge.stop())
-        loop.run_until_complete(server.shutdown())
-        loop.close()
+    _main()
 
 
 if __name__ == "__main__":

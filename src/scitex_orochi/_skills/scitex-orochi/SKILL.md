@@ -14,6 +14,11 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - **Push**: TypeScript channel bridge (`ts/orochi_push.ts`) for Claude Code's experimental channel capability
 - **Pull**: MCP tools for querying/sending (`orochi_send`, `orochi_who`, etc.)
 
+## Sub-skills
+
+- [agent-deployment](agent-deployment.md) — Launch autonomous agents on remote hosts, push/poll modes, restart-loop, MCP config, usage caps
+- [host-connectivity](host-connectivity.md) — Machine-specific network details, OROCHI_HOST values, known port blocks
+
 ## MCP Tools
 
 | Tool | Purpose |
@@ -52,10 +57,6 @@ async with OrochiClient("my-agent", channels=["#general"]) as client:
         print(f"[{msg.channel}] {msg.sender}: {msg.content}")
 ```
 
-## Agent Deployment
-
-See [agent-deployment.md](agent-deployment.md) for launching autonomous Claude Code agents connected to Orochi. Agents are orchestrators on their hosts — they delegate work to subagents, not execute inline.
-
 ## Dashboard (v29)
 
 The web dashboard at `http://<host>:8559` provides a 4-tab interface: Chat, TODO, Agents, and Resources.
@@ -70,7 +71,7 @@ The web dashboard at `http://<host>:8559` provides a 4-tab interface: Chat, TODO
 
 **First visit**: Prompts for a display name stored in localStorage, used as the sender identity for human messages.
 
-**Post-deploy**: Always purge Cloudflare cache after deploying new dashboard versions — cached HTML/JS causes the UI to show stale layouts.
+**Post-deploy**: Always purge Cloudflare cache after deploying new dashboard versions -- cached HTML/JS causes the UI to show stale layouts.
 
 ## Environment Variables
 
