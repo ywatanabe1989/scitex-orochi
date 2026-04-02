@@ -282,9 +282,16 @@ class TelegramBridge:
             ) as resp:
                 data = await resp.json()
                 if not data.get("ok"):
-                    log.error(
-                        "Telegram API %s failed: %s", method, data.get("description")
-                    )
+                    desc = data.get("description", "")
+                    log.error("Telegram API %s failed: %s", method, desc)
+                    # On 409 Conflict, wait for the poll_timeout to let the
+                    # previous long-poll expire at Telegram's server side.
+                    if data.get("error_code") == 409 and method == "getUpdates":
+                        log.info(
+                            "409 Conflict: waiting %ds for previous poll to expire",
+                            self._poll_timeout,
+                        )
+                        await asyncio.sleep(self._poll_timeout)
                     return None
                 return data.get("result")
         except asyncio.TimeoutError:
