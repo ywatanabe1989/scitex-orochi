@@ -74,6 +74,15 @@ class TelegramBridge:
         """Begin polling Telegram for updates."""
         self._session = aiohttp.ClientSession()
         self._running = True
+
+        # Force-clear any stale connections at Telegram's side before polling.
+        # deleteWebhook releases server-side long-poll slots.
+        await self._api("deleteWebhook", {"drop_pending_updates": False})
+
+        # Flush stale getUpdates by doing a short non-blocking poll first.
+        # This claims the poll slot and ensures we own it.
+        await self._api("getUpdates", {"timeout": 0, "limit": 1})
+
         self._poll_task = asyncio.create_task(self._poll_loop())
 
         me = await self._api("getMe")
