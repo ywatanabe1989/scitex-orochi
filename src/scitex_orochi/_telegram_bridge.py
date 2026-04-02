@@ -19,7 +19,10 @@ the user solely through the Orochi #telegram channel.
 from __future__ import annotations
 
 import asyncio
+import getpass
 import logging
+import os
+import socket
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -67,6 +70,9 @@ class TelegramBridge:
         self._poll_task: asyncio.Task[None] | None = None
         self._running = False
         self._bot_name: str = "unknown"
+        self._signature = (
+            f"{getpass.getuser()}@{socket.gethostname()} (PID={os.getpid()})"
+        )
 
     # -- lifecycle --------------------------------------------------------
 
@@ -79,9 +85,12 @@ class TelegramBridge:
         # deleteWebhook releases server-side long-poll slots.
         await self._api("deleteWebhook", {"drop_pending_updates": False})
 
-        # Flush stale getUpdates by doing a short non-blocking poll first.
-        # This claims the poll slot and ensures we own it.
-        await self._api("getUpdates", {"timeout": 0, "limit": 1})
+        # Flush stale getUpdates by skipping all pending updates.
+        # offset=-1 tells Telegram to mark everything as read.
+        await self._api("getUpdates", {"timeout": 0, "offset": -1})
+
+        # Wait for Telegram server to release any previous poll slot
+        await asyncio.sleep(2)
 
         self._poll_task = asyncio.create_task(self._poll_loop())
 
@@ -135,6 +144,9 @@ class TelegramBridge:
             url = att.get("url", "")
             if url:
                 text += f"\n{url}"
+
+        # Append process signature so user can identify the sender
+        text += f"\n---\n{self._signature}"
 
         # If the Orochi message references a specific Telegram message_id,
         # reply to it in the Telegram chat.
