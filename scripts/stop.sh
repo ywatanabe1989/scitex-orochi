@@ -2,7 +2,7 @@
 # Stop the Orochi server gracefully
 set -euo pipefail
 
-PID=$(pgrep -f "python -m orochi.server" || true)
+PID=$(pgrep -f "python.*-m scitex_orochi" || true)
 if [ -n "$PID" ]; then
     echo "Stopping Orochi (PID $PID)..."
     kill -TERM "$PID"

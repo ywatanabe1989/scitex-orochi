@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src/ src/
-COPY orochi/ orochi/
 
 RUN pip install --no-cache-dir .
 

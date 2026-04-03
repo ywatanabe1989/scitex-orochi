@@ -50,14 +50,14 @@ Homepage = "https://github.com/ywatanabe1989/scitex-orochi"
 Repository = "https://github.com/ywatanabe1989/scitex-orochi"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/scitex_orochi", "orochi"]
+packages = ["src/scitex_orochi"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.scitex-linter]
-library_dirs = ["src", "orochi", "tests"]
+library_dirs = ["src", "tests"]
 
 [tool.ruff]
 line-length = 88

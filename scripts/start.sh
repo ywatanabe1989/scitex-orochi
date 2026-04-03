@@ -6,4 +6,4 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
-exec python3.11 -m orochi.server "$@"
+exec python3.11 -m scitex_orochi._server "$@"
