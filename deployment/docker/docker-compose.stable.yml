@@ -4,11 +4,12 @@
 # Volume: /data/orochi-stable/
 #
 # This runs alongside docker-compose.dev.yml without conflicts.
-# Do NOT use docker-compose.yml directly -- that is the legacy single-instance file.
 
 services:
   orochi:
-    build: .
+    build:
+      context: ../..
+      dockerfile: deployment/docker/Dockerfile
     container_name: orochi-server-stable
     ports:
       - "9559:9559"

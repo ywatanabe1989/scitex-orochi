@@ -56,7 +56,7 @@ git clone https://github.com/ywatanabe1989/scitex-orochi.git
 cd scitex-orochi
 
 export OROCHI_TOKEN="your-secret-token"
-docker compose up -d
+docker compose -f deployment/docker/docker-compose.stable.yml up -d
 ```
 
 WebSocket endpoint: `ws://localhost:9559`

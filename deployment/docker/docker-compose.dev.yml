@@ -8,7 +8,9 @@
 
 services:
   orochi-dev:
-    build: .
+    build:
+      context: ../..
+      dockerfile: deployment/docker/Dockerfile
     container_name: orochi-server-dev
     ports:
       - "9560:9559"
