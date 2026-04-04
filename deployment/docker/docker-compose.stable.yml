@@ -1,9 +1,11 @@
-# Orochi Stable Instance
-# Deploy: scitex-orochi deploy stable
+# Orochi Stable Instance (Production)
+# Deploy: scitex-orochi serve <TOKEN>
 # Ports: WS=9559, Dashboard=8559
 # Volume: /data/orochi-stable/
 #
-# This runs alongside docker-compose.dev.yml without conflicts.
+# Secrets are loaded from /data/orochi-stable/.env
+# Create it with:
+#   echo "SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" > /data/orochi-stable/.env
 
 services:
   orochi:
@@ -16,18 +18,15 @@ services:
       - "8559:8559"
     volumes:
       - /data/orochi-stable:/data
+    env_file:
+      - /data/orochi-stable/.env
     environment:
-      - SCITEX_OROCHI_TOKEN=${SCITEX_OROCHI_TOKEN:?Set SCITEX_OROCHI_TOKEN before deploying}
       - SCITEX_OROCHI_CORS_ORIGINS=https://orochi-dev.scitex.ai
       - SCITEX_OROCHI_HOST=0.0.0.0
       - SCITEX_OROCHI_PORT=9559
       - SCITEX_OROCHI_DASHBOARD_PORT=8559
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - SCITEX_OROCHI_GITEA_URL=${SCITEX_OROCHI_GITEA_URL:-http://scitex-cloud-prod-gitea-1:3000}
-      - SCITEX_OROCHI_GITEA_TOKEN=${SCITEX_OROCHI_GITEA_TOKEN:-}
       - SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED=true
-      - SCITEX_OROCHI_TELEGRAM_BOT_TOKEN=${SCITEX_NOTIFICATION_TELEGRAM_TOKEN:-}
-      - SCITEX_OROCHI_TELEGRAM_CHAT_ID=${SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID:-}
     restart: unless-stopped
     networks:
       - scitex-cloud-prod_scitex-network

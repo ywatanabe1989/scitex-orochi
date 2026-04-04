@@ -12,12 +12,21 @@ from scitex_orochi._cli._helpers import EXAMPLES_HEADER
 # ── serve ───────────────────────────────────────────────────────
 @click.command(
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi serve\n"
-    + "  SCITEX_OROCHI_PORT=9999 scitex-orochi serve\n",
+    + "  scitex-orochi serve MY_SECRET_TOKEN\n"
+    + "  scitex-orochi serve $(cat /etc/orochi/token)\n",
 )
+@click.argument("token", envvar="SCITEX_OROCHI_TOKEN")
 @click.pass_context
-def serve(ctx: click.Context) -> None:
-    """Start the Orochi hub server."""
+def serve(ctx: click.Context, token: str) -> None:
+    """Start the Orochi hub server.
+
+    TOKEN is the shared secret for agent authentication.
+    Can also be set via $SCITEX_OROCHI_TOKEN.
+    """
+    import os
+
+    os.environ["SCITEX_OROCHI_TOKEN"] = token
+
     from scitex_orochi._server import main as server_main
 
     server_main()

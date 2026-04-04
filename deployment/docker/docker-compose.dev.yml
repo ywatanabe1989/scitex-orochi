@@ -5,6 +5,7 @@
 #
 # This runs alongside docker-compose.stable.yml without conflicts.
 # Break freely -- this instance is for development and testing.
+# Secrets are loaded from /data/orochi-stable/.env (shared with stable).
 
 services:
   orochi-dev:
@@ -17,18 +18,15 @@ services:
       - "8560:8559"
     volumes:
       - /data/orochi-stable:/data  # shared with stable for message history sync
+    env_file:
+      - /data/orochi-stable/.env
     environment:
-      - SCITEX_OROCHI_TOKEN=${SCITEX_OROCHI_TOKEN_DEV:-${SCITEX_OROCHI_TOKEN:?Set SCITEX_OROCHI_TOKEN before deploying}}
       - SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM=https://orochi.scitex.ai
       - SCITEX_OROCHI_HOST=0.0.0.0
       - SCITEX_OROCHI_PORT=9559
       - SCITEX_OROCHI_DASHBOARD_PORT=8559
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       - SCITEX_OROCHI_GITEA_URL=${SCITEX_OROCHI_GITEA_URL:-http://scitex-cloud-prod-gitea-1:3000}
-      - SCITEX_OROCHI_GITEA_TOKEN=${SCITEX_OROCHI_GITEA_TOKEN:-}
       - SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED=false
-      - SCITEX_OROCHI_TELEGRAM_BOT_TOKEN=
-      - SCITEX_OROCHI_TELEGRAM_CHAT_ID=
     restart: unless-stopped
     networks:
       - scitex-cloud-prod_scitex-network

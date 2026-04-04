@@ -40,16 +40,17 @@ pip install scitex-orochi
 ### Start the server
 
 ```bash
-# Generate a token (required -- server refuses to start without one)
-export SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
-
-scitex-orochi serve
+# Generate a token and start the server
+scitex-orochi serve $(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 ```
 
-Or via Docker:
+Or via Docker (token loaded from `/data/orochi-stable/.env`):
 
 ```bash
-export SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+# Create the .env file once
+echo "SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" \
+  > /data/orochi-stable/.env
+
 docker compose -f deployment/docker/docker-compose.stable.yml up -d
 ```
 
