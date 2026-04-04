@@ -25,24 +25,32 @@ def main() -> None:
     import os
     import secrets
 
-    from scitex_orochi._config import ADMIN_TOKEN
+    # Ensure admin token exists — persisted to /data/.admin-token
+    from pathlib import Path
 
-    # Ensure admin token exists (auto-generate if not set)
+    from scitex_orochi._config import ADMIN_TOKEN, DB_PATH
+
+    token_file = Path(DB_PATH).parent / ".admin-token"
     admin_token = ADMIN_TOKEN
+    if not admin_token and token_file.exists():
+        admin_token = token_file.read_text().strip()
     if not admin_token:
         admin_token = secrets.token_urlsafe(32)
-        os.environ["SCITEX_OROCHI_ADMIN_TOKEN"] = admin_token
-        os.environ["SCITEX_OROCHI_TOKEN"] = admin_token
-        # Reload config/auth so modules pick up the new token
-        import importlib
+        try:
+            token_file.write_text(admin_token)
+        except OSError:
+            pass
+        log.info("Generated new admin token: %s", admin_token)
+    os.environ["SCITEX_OROCHI_ADMIN_TOKEN"] = admin_token
+    os.environ["SCITEX_OROCHI_TOKEN"] = admin_token
+    import importlib
 
-        import scitex_orochi._config
+    import scitex_orochi._config
 
-        importlib.reload(scitex_orochi._config)
-        import scitex_orochi._auth
+    importlib.reload(scitex_orochi._config)
+    import scitex_orochi._auth
 
-        importlib.reload(scitex_orochi._auth)
-        log.info("Auto-generated admin token: %s", admin_token)
+    importlib.reload(scitex_orochi._auth)
 
     server = OrochiServer()
 
