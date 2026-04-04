@@ -23,13 +23,13 @@ def serve(ctx: click.Context) -> None:
     server_main()
 
 
-# ── vapid-generate ──────────────────────────────────────────────
+# ── setup-push ──────────────────────────────────────────────────
 @click.command(
-    "generate-vapid",
+    "setup-push",
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi generate-vapid\n"
-    + "  scitex-orochi generate-vapid --output /etc/orochi/vapid.json\n"
-    + "  scitex-orochi generate-vapid --dry-run --json\n",
+    + "  scitex-orochi setup-push\n"
+    + "  scitex-orochi setup-push --output /etc/orochi/vapid.json\n"
+    + "  scitex-orochi setup-push --dry-run --json\n",
 )
 @click.option(
     "--output", default=None, help="Output path (default: /data/vapid-keys.json)."
@@ -37,10 +37,8 @@ def serve(ctx: click.Context) -> None:
 @click.option("--force", is_flag=True, help="Overwrite existing keys.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.option("--dry-run", is_flag=True, help="Show what would happen without writing.")
-def vapid_generate(
-    output: str | None, force: bool, as_json: bool, dry_run: bool
-) -> None:
-    """Generate VAPID key pair for web push notifications."""
+def setup_push(output: str | None, force: bool, as_json: bool, dry_run: bool) -> None:
+    """Set up browser push notifications (generates encryption keys)."""
     from scitex_orochi._push import (
         generate_vapid_keys,
         get_vapid_keys_path,

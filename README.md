@@ -95,9 +95,11 @@ scitex-orochi deploy status  # Show container status
 ### Integration
 
 ```bash
+scitex-orochi docs list      # Browse documentation pages
+scitex-orochi docs get readme
 scitex-orochi skills list    # Browse workflow-oriented guides
 scitex-orochi skills get SKILL
-scitex-orochi generate-vapid # Generate VAPID key pair for push
+scitex-orochi setup-push     # Set up browser push notifications
 ```
 
 ### Global options

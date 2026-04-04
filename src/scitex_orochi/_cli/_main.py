@@ -43,6 +43,7 @@ def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
 
 # ── Register subcommands ────────────────────────────────────────
 from scitex_orochi._cli.commands.deploy_cmd import deploy
+from scitex_orochi._cli.commands.docs_cmd import docs
 from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
 from scitex_orochi._cli.commands.init_cmd import init_cmd
 from scitex_orochi._cli.commands.launch_cmd import launch
@@ -54,7 +55,7 @@ from scitex_orochi._cli.commands.query_cmd import (
     show_history,
     show_status,
 )
-from scitex_orochi._cli.commands.server_cmd import serve, vapid_generate
+from scitex_orochi._cli.commands.server_cmd import serve, setup_push
 from scitex_orochi._cli.commands.skills_cmd import skills
 
 # Messaging
@@ -72,7 +73,7 @@ orochi.add_command(show_history)
 # Server
 orochi.add_command(serve)
 orochi.add_command(doctor_cmd)
-orochi.add_command(vapid_generate)
+orochi.add_command(setup_push)
 
 # Deployment
 orochi.add_command(init_cmd)
@@ -80,6 +81,7 @@ orochi.add_command(launch)
 orochi.add_command(deploy)
 
 # Integration
+orochi.add_command(docs)
 orochi.add_command(skills)
 
 
