@@ -1,31 +1,10 @@
-"""Orochi CLI -- Click-based command-line interface for agent communication."""
+"""Orochi CLI -- thin orchestrator that registers all subcommands."""
 
 from __future__ import annotations
 
-import asyncio
-import json
-import os
-import platform
 import sys
 
 import click
-
-
-def _get_agent_name() -> str:
-    return os.environ.get("SCITEX_OROCHI_AGENT", platform.node())
-
-
-def _make_client(
-    host: str, port: int, channels: list[str] | None = None
-) -> "OrochiClient":
-    from scitex_orochi._client import OrochiClient
-
-    return OrochiClient(
-        name=_get_agent_name(),
-        host=host,
-        port=port,
-        channels=channels or ["#general"],
-    )
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -33,18 +12,18 @@ def _make_client(
     "--host",
     default=None,
     envvar="SCITEX_OROCHI_HOST",
-    help="Orochi server host [$SCITEX_OROCHI_HOST]",
+    help="Server host [$SCITEX_OROCHI_HOST].",
 )
 @click.option(
     "--port",
     default=None,
     type=int,
     envvar="SCITEX_OROCHI_PORT",
-    help="Orochi server port [$SCITEX_OROCHI_PORT]",
+    help="Server port [$SCITEX_OROCHI_PORT].",
 )
 @click.pass_context
 def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
-    """Orochi -- Agent Communication Hub CLI."""
+    """scitex-orochi -- Agent Communication Hub CLI."""
     from scitex_orochi._config import HOST, PORT
 
     ctx.ensure_object(dict)
@@ -52,304 +31,41 @@ def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
     ctx.obj["port"] = port or PORT
 
 
-@orochi.command()
-@click.argument("channel")
-@click.argument("message")
-@click.pass_context
-def send(ctx: click.Context, channel: str, message: str) -> None:
-    """Send a message to a channel."""
-
-    async def _run() -> None:
-        async with _make_client(
-            ctx.obj["host"], ctx.obj["port"], channels=[channel]
-        ) as client:
-            await client.send(channel, message)
-            click.echo(f"Sent to {channel}: {message}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.option(
-    "--channel", default=None, help="Channel to listen on (default: #general)"
-)
-@click.pass_context
-def listen(ctx: click.Context, channel: str | None) -> None:
-    """Listen for messages (stream to stdout)."""
-    ch = channel or "#general"
-
-    async def _run() -> None:
-        async with _make_client(
-            ctx.obj["host"], ctx.obj["port"], channels=[ch]
-        ) as client:
-            click.echo(f"Listening on {ch} (Ctrl+C to stop)...", err=True)
-            async for msg in client.listen():
-                ch_name = msg.channel or "?"
-                click.echo(f"[{msg.ts}] [{ch_name}] {msg.sender}: {msg.content}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-@click.pass_context
-def who(ctx: click.Context, as_json: bool) -> None:
-    """List connected agents."""
-
-    async def _run() -> None:
-        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            agents = await client.who()
-            if not agents:
-                click.echo("No agents connected.")
-                return
-            if as_json:
-                click.echo(json.dumps(agents, indent=2))
-                return
-            for agent_id, info in agents.items():
-                if isinstance(info, dict):
-                    status = info.get("status", "unknown")
-                    channels = ", ".join(info.get("channels", []))
-                    click.echo(f"  {agent_id}  status={status}  channels=[{channels}]")
-                else:
-                    click.echo(f"  {agent_id}: {info}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-@click.pass_context
-def status(ctx: click.Context, as_json: bool) -> None:
-    """Show server stats."""
-
-    async def _run() -> None:
-        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            agents = await client.who()
-            if as_json:
-                click.echo(json.dumps({"agents": agents}, indent=2))
-                return
-            click.echo(f"Connected agents: {len(agents)}")
-            for agent_id, info in agents.items():
-                if isinstance(info, dict):
-                    s = info.get("status", "unknown")
-                    task = info.get("current_task", "")
-                    line = f"  {agent_id}  [{s}]"
-                    if task:
-                        line += f"  task: {task}"
-                    click.echo(line)
-                else:
-                    click.echo(f"  {agent_id}: {info}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.option(
-    "--name",
-    default=None,
-    help="Agent name (default: $SCITEX_OROCHI_AGENT or hostname)",
-)
-@click.option(
-    "--channels", default=None, help="Comma-separated channels (default: #general)"
-)
-@click.pass_context
-def login(ctx: click.Context, name: str | None, channels: str | None) -> None:
-    """Connect and stay online, streaming incoming messages."""
-    ch_list = channels.split(",") if channels else ["#general"]
-
-    async def _run() -> None:
-        async with _make_client(
-            ctx.obj["host"], ctx.obj["port"], channels=ch_list
-        ) as client:
-            click.echo(f"Logged in as {name or _get_agent_name()}")
-            click.echo(f"Channels: {', '.join(ch_list)}")
-            click.echo("Listening for messages... (Ctrl+C to quit)")
-            async for msg in client.listen():
-                ch = msg.channel or "?"
-                click.echo(f"[{ch}] {msg.sender}: {msg.content}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.argument("channel")
-@click.pass_context
-def join(ctx: click.Context, channel: str) -> None:
-    """Join/subscribe to a channel."""
-
-    async def _run() -> None:
-        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            await client.subscribe(channel)
-            click.echo(f"Joined {channel}")
-
-    asyncio.run(_run())
-
-
-@orochi.command("channels")
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-@click.pass_context
-def channels_cmd(ctx: click.Context, as_json: bool) -> None:
-    """List all active channels."""
-
-    async def _run() -> None:
-        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            agents = await client.who()
-            ch_set: set[str] = set()
-            for info in agents.values():
-                if isinstance(info, dict):
-                    ch_set.update(info.get("channels", []))
-                elif isinstance(info, list):
-                    ch_set.update(info)
-            if not ch_set:
-                click.echo("No active channels.")
-                return
-            if as_json:
-                click.echo(json.dumps(sorted(ch_set), indent=2))
-                return
-            for ch in sorted(ch_set):
-                click.echo(ch)
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.option("--channel", default=None, help="Filter by channel")
-@click.pass_context
-def members(ctx: click.Context, channel: str | None) -> None:
-    """List members of a channel (or all agents with their channels)."""
-
-    async def _run() -> None:
-        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            agents = await client.who()
-            if channel:
-                for name, info in agents.items():
-                    chs = (
-                        info.get("channels", [])
-                        if isinstance(info, dict)
-                        else (info if isinstance(info, list) else [])
-                    )
-                    if channel in chs:
-                        click.echo(name)
-            else:
-                for name, info in agents.items():
-                    chs = (
-                        info.get("channels", [])
-                        if isinstance(info, dict)
-                        else (info if isinstance(info, list) else [])
-                    )
-                    click.echo(f"{name}: {', '.join(chs)}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.argument("channel")
-@click.option("--limit", type=int, default=50, help="Max messages (default: 50)")
-@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
-@click.pass_context
-def history(ctx: click.Context, channel: str, limit: int, as_json: bool) -> None:
-    """Show message history for a channel."""
-
-    async def _run() -> None:
-        async with _make_client(
-            ctx.obj["host"], ctx.obj["port"], channels=[channel]
-        ) as client:
-            hist = await client.query_history(channel, limit=limit)
-            if not hist:
-                click.echo(f"No history for {channel}.")
-                return
-            if as_json:
-                click.echo(json.dumps(hist, indent=2))
-                return
-            for entry in hist:
-                ts = entry.get("ts", "?")
-                sender = entry.get("sender", "?")
-                content = entry.get("content", "")
-                click.echo(f"[{ts}] {sender}: {content}")
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.option(
-    "--interval",
-    type=int,
-    default=0,
-    help="Send heartbeat every N seconds (0 = once and exit)",
-)
-@click.option("--json", "as_json", is_flag=True, help="Print collected metrics as JSON")
-@click.pass_context
-def heartbeat(ctx: click.Context, interval: int, as_json: bool) -> None:
-    """Send a heartbeat with system resource metrics."""
-    from scitex_orochi._resources import collect_metrics
-
-    async def _run() -> None:
-        async with _make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            while True:
-                metrics = collect_metrics()
-                await client.heartbeat(resources=metrics)
-                if as_json:
-                    click.echo(json.dumps(metrics, indent=2))
-                else:
-                    click.echo(
-                        f"Heartbeat sent: "
-                        f"load={metrics.get('load_avg_1m', '?')} "
-                        f"mem={metrics.get('mem_used_percent', '?')}% "
-                        f"disk={metrics.get('disk_used_percent', '?')}%"
-                    )
-                if interval <= 0:
-                    break
-                await asyncio.sleep(interval)
-
-    asyncio.run(_run())
-
-
-@orochi.command()
-@click.pass_context
-def serve(ctx: click.Context) -> None:
-    """Start the Orochi hub server."""
-    from scitex_orochi._server import main as server_main
-
-    server_main()
-
-
-@orochi.command("vapid-generate")
-@click.option(
-    "--output",
-    default=None,
-    help="Output path for keys (default: /data/vapid-keys.json)",
-)
-@click.option("--force", is_flag=True, help="Overwrite existing keys")
-def vapid_generate(output: str | None, force: bool) -> None:
-    """Generate VAPID key pair for web push notifications."""
-    from scitex_orochi._push import (
-        generate_vapid_keys,
-        get_vapid_keys_path,
-        load_vapid_keys,
-        save_vapid_keys,
-    )
-
-    path = output or str(get_vapid_keys_path())
-    existing = load_vapid_keys(path)
-    if existing and not force:
-        click.echo(f"VAPID keys already exist at {path}")
-        click.echo(f"Public key: {existing['public_key']}")
-        click.echo("Use --force to regenerate.")
-        return
-
-    keys = generate_vapid_keys()
-    save_vapid_keys(keys, path)
-    click.echo(f"VAPID keys generated and saved to {path}")
-    click.echo(f"Public key: {keys['public_key']}")
-
-
-# ── Config-driven commands (Phase 1) ─────────────────────────
-# ── Phase 2: Stable/Dev deployment ───────────────────────────
+# ── Register subcommands ────────────────────────────────────────
 from scitex_orochi._cli.commands.deploy_cmd import deploy
 from scitex_orochi._cli.commands.health_cmd import health_cmd
 from scitex_orochi._cli.commands.init_cmd import init_cmd
 from scitex_orochi._cli.commands.launch_cmd import launch
+from scitex_orochi._cli.commands.messaging_cmd import join, listen, login, send
+from scitex_orochi._cli.commands.query_cmd import (
+    channels_cmd,
+    heartbeat,
+    history,
+    members,
+    status,
+    who,
+)
+from scitex_orochi._cli.commands.server_cmd import serve, vapid_generate
 
+# Messaging
+orochi.add_command(send)
+orochi.add_command(listen)
+orochi.add_command(login)
+orochi.add_command(join)
+
+# Queries
+orochi.add_command(who)
+orochi.add_command(status)
+orochi.add_command(channels_cmd)
+orochi.add_command(members)
+orochi.add_command(history)
+orochi.add_command(heartbeat)
+
+# Server
+orochi.add_command(serve)
+orochi.add_command(vapid_generate)
+
+# Deployment
 orochi.add_command(init_cmd)
 orochi.add_command(launch)
 orochi.add_command(health_cmd)
@@ -365,7 +81,23 @@ def main() -> None:
         from scitex_orochi._config import HOST, PORT
 
         click.echo(
-            f"Error: Cannot connect to Orochi server at {HOST}:{PORT}",
+            f"Error: Connection refused at {HOST}:{PORT}\n"
+            f"\n"
+            f"  Start the server:  scitex-orochi serve\n"
+            f"  Or connect elsewhere:"
+            f"  scitex-orochi --host <IP> --port <PORT> <command>",
+            err=True,
+        )
+        sys.exit(1)
+    except OSError as exc:
+        from scitex_orochi._config import HOST, PORT
+
+        click.echo(
+            f"Error: Cannot reach {HOST}:{PORT} -- {exc}\n"
+            f"\n"
+            f"  Check the host:"
+            f"  scitex-orochi --host <IP> --port <PORT> <command>\n"
+            f"  Or set env var:  export SCITEX_OROCHI_HOST=<IP>",
             err=True,
         )
         sys.exit(1)

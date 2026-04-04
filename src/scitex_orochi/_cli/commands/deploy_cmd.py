@@ -2,20 +2,21 @@
 
 from __future__ import annotations
 
+import json
 import subprocess
 from pathlib import Path
 
 import click
 
+from scitex_orochi._cli._helpers import EXAMPLES_HEADER
+
 VALID_ENVS = ("stable", "dev")
 
-# Container names per environment
 CONTAINER_NAMES = {
     "stable": "orochi-server-stable",
     "dev": "orochi-server-dev",
 }
 
-# Compose files per environment
 COMPOSE_FILES = {
     "stable": "docker-compose.stable.yml",
     "dev": "docker-compose.dev.yml",
@@ -23,7 +24,7 @@ COMPOSE_FILES = {
 
 
 def _find_project_root() -> Path:
-    """Find the scitex-orochi project root (contains docker-compose.*.yml)."""
+    """Find the scitex-orochi project root."""
     candidates = [
         Path(__file__).resolve().parent.parent.parent.parent.parent,
         Path.home() / "proj" / "scitex-orochi",
@@ -33,43 +34,78 @@ def _find_project_root() -> Path:
         if (candidate / "docker-compose.stable.yml").exists():
             return candidate
     raise click.ClickException(
-        "Cannot find project root with docker-compose.stable.yml. "
-        "Run from the scitex-orochi directory or install the package."
+        "Cannot find project root with docker-compose.stable.yml.\n"
+        "  Run from the scitex-orochi directory or install the package."
     )
 
 
-@click.group("deploy")
+@click.group(
+    "deploy",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi deploy stable\n"
+    + "  scitex-orochi deploy dev --build\n"
+    + "  scitex-orochi deploy status --json\n",
+)
 def deploy() -> None:
     """Deploy Orochi instances (stable or dev)."""
 
 
-@deploy.command("stable")
-@click.option(
-    "--build", "do_build", is_flag=True, help="Rebuild the image before deploying"
+@deploy.command(
+    "stable",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi deploy stable\n"
+    + "  scitex-orochi deploy stable --build --down-first\n"
+    + "  scitex-orochi deploy stable --dry-run --json\n",
 )
-@click.option(
-    "--down-first", is_flag=True, help="Bring down the container before redeploying"
-)
-def deploy_stable(do_build: bool, down_first: bool) -> None:
+@click.option("--build", "do_build", is_flag=True, help="Rebuild image first.")
+@click.option("--down-first", is_flag=True, help="Bring down before redeploying.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option("--dry-run", is_flag=True, help="Show commands without executing.")
+def deploy_stable(
+    do_build: bool, down_first: bool, as_json: bool, dry_run: bool
+) -> None:
     """Deploy the stable Orochi instance (ports 9559/8559)."""
-    _deploy_env("stable", do_build=do_build, down_first=down_first)
+    _deploy_env(
+        "stable",
+        do_build=do_build,
+        down_first=down_first,
+        as_json=as_json,
+        dry_run=dry_run,
+    )
 
 
-@deploy.command("dev")
-@click.option(
-    "--build", "do_build", is_flag=True, help="Rebuild the image before deploying"
+@deploy.command(
+    "dev",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi deploy dev\n"
+    + "  scitex-orochi deploy dev --build\n"
+    + "  scitex-orochi deploy dev --dry-run\n",
 )
-@click.option(
-    "--down-first", is_flag=True, help="Bring down the container before redeploying"
-)
-def deploy_dev(do_build: bool, down_first: bool) -> None:
+@click.option("--build", "do_build", is_flag=True, help="Rebuild image first.")
+@click.option("--down-first", is_flag=True, help="Bring down before redeploying.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option("--dry-run", is_flag=True, help="Show commands without executing.")
+def deploy_dev(do_build: bool, down_first: bool, as_json: bool, dry_run: bool) -> None:
     """Deploy the dev Orochi instance (ports 9560/8560)."""
-    _deploy_env("dev", do_build=do_build, down_first=down_first)
+    _deploy_env(
+        "dev",
+        do_build=do_build,
+        down_first=down_first,
+        as_json=as_json,
+        dry_run=dry_run,
+    )
 
 
-@deploy.command("status")
-def deploy_status() -> None:
+@deploy.command(
+    "status",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi deploy status\n"
+    + "  scitex-orochi deploy status --json\n",
+)
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+def deploy_status(as_json: bool) -> None:
     """Show status of stable and dev containers."""
+    results = {}
     for env in VALID_ENVS:
         container = CONTAINER_NAMES[env]
         result = subprocess.run(
@@ -85,16 +121,30 @@ def deploy_status() -> None:
             text=True,
         )
         if result.returncode != 0:
-            click.echo(f"  {env}: error querying docker (is docker running?)", err=True)
-            continue
-        output = result.stdout.strip()
-        if output:
-            click.echo(f"  {env}: {output}")
+            results[env] = {"status": "error", "message": "docker not reachable"}
+        elif result.stdout.strip():
+            results[env] = {"status": "running", "detail": result.stdout.strip()}
         else:
-            click.echo(f"  {env}: not running")
+            results[env] = {"status": "not running"}
+
+    if as_json:
+        click.echo(json.dumps(results, indent=2))
+        return
+    for env, info in results.items():
+        if info["status"] == "running":
+            click.echo(f"  {env}: {info['detail']}")
+        else:
+            click.echo(f"  {env}: {info['status']}")
 
 
-def _deploy_env(env: str, *, do_build: bool, down_first: bool) -> None:
+def _deploy_env(
+    env: str,
+    *,
+    do_build: bool,
+    down_first: bool,
+    as_json: bool,
+    dry_run: bool,
+) -> None:
     """Deploy a specific environment."""
     root = _find_project_root()
     compose_file = root / COMPOSE_FILES[env]
@@ -103,28 +153,65 @@ def _deploy_env(env: str, *, do_build: bool, down_first: bool) -> None:
     if not compose_file.exists():
         raise click.ClickException(f"Compose file not found: {compose_file}")
 
-    click.echo(f"Deploying {env} instance (container: {container})")
-    click.echo(f"  Compose file: {compose_file}")
+    base_cmd = [
+        "docker",
+        "compose",
+        "-f",
+        str(compose_file),
+        "-p",
+        f"orochi-{env}",
+    ]
 
-    base_cmd = ["docker", "compose", "-f", str(compose_file), "-p", f"orochi-{env}"]
-
-    if down_first:
-        click.echo("  Bringing down existing container...")
-        result = subprocess.run(base_cmd + ["down"], cwd=str(root))
-        if result.returncode != 0:
-            raise click.ClickException(
-                f"'docker compose down' failed with exit code {result.returncode}"
-            )
-
+    down_cmd = base_cmd + ["down"] if down_first else None
     up_cmd = base_cmd + ["up", "-d"]
     if do_build:
         up_cmd.append("--build")
 
-    click.echo("  Starting container...")
-    result = subprocess.run(up_cmd, cwd=str(root))
-    if result.returncode != 0:
+    if dry_run:
+        result = {
+            "action": "deploy",
+            "env": env,
+            "container": container,
+            "compose_file": str(compose_file),
+            "down_first": down_first,
+            "build": do_build,
+            "down_cmd": " ".join(down_cmd) if down_cmd else None,
+            "up_cmd": " ".join(up_cmd),
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo(f"[dry-run] Deploy {env} (container: {container})")
+            click.echo(f"          Compose: {compose_file}")
+            if down_cmd:
+                click.echo(f"          Down:    {' '.join(down_cmd)}")
+            click.echo(f"          Up:      {' '.join(up_cmd)}")
+        return
+
+    if not as_json:
+        click.echo(f"Deploying {env} instance (container: {container})")
+        click.echo(f"  Compose file: {compose_file}")
+
+    if down_first:
+        if not as_json:
+            click.echo("  Bringing down existing container...")
+        result_proc = subprocess.run(base_cmd + ["down"], cwd=str(root))
+        if result_proc.returncode != 0:
+            raise click.ClickException(
+                f"'docker compose down' failed (exit {result_proc.returncode})"
+            )
+
+    if not as_json:
+        click.echo("  Starting container...")
+    result_proc = subprocess.run(up_cmd, cwd=str(root))
+    if result_proc.returncode != 0:
         raise click.ClickException(
-            f"'docker compose up' failed with exit code {result.returncode}"
+            f"'docker compose up' failed (exit {result_proc.returncode})"
         )
 
-    click.echo(f"  {env} instance deployed successfully.")
+    if as_json:
+        click.echo(
+            json.dumps({"status": "deployed", "env": env, "container": container})
+        )
+    else:
+        click.echo(f"  {env} instance deployed successfully.")

@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import importlib.resources
+import json
 import subprocess
 import sys
 from pathlib import Path
 
 import click
 
+from scitex_orochi._cli._helpers import EXAMPLES_HEADER
 from scitex_orochi._config_loader import (
     ConfigError,
     _find_head,
@@ -47,22 +49,34 @@ def _screen_exists(name: str, ssh_prefix: str | None = None) -> bool:
     return name in result.stdout
 
 
-@click.group()
+@click.group(
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi launch master\n"
+    + "  scitex-orochi launch head spartan\n"
+    + "  scitex-orochi launch all --dry-run\n",
+)
 def launch() -> None:
     """Launch orochi agents (master, head, or all)."""
 
 
-@launch.command("master")
+@launch.command(
+    "master",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi launch master\n"
+    + "  scitex-orochi launch master --dry-run\n"
+    + "  scitex-orochi launch master --json\n",
+)
 @click.option(
     "--config",
     "-c",
     "config_path",
     default=None,
-    help="Path to orochi-config.yaml",
+    help="Path to orochi-config.yaml.",
 )
-@click.option("--dry-run", is_flag=True, help="Print commands without executing")
-def launch_master(config_path: str | None, dry_run: bool) -> None:
-    """Launch orochi-agent:master:<user>@<host> in a screen session."""
+@click.option("--dry-run", is_flag=True, help="Print commands without executing.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+def launch_master(config_path: str | None, dry_run: bool, as_json: bool) -> None:
+    """Launch orochi-agent:master in a screen session."""
     cfg = _load_cfg(config_path)
     master = cfg["master"]
     screen_name = master["name"]
@@ -70,7 +84,6 @@ def launch_master(config_path: str | None, dry_run: bool) -> None:
     channels = master.get("channels", ["#general"])
     server = cfg["server"]
 
-    # Render CLAUDE.md
     tvars = build_template_vars(cfg, role="master")
     rendered = render_template(_read_template("master-claude.md"), tvars)
 
@@ -90,37 +103,68 @@ def launch_master(config_path: str | None, dry_run: bool) -> None:
     )
 
     if dry_run:
-        click.echo("Would execute:")
-        click.echo(launch_cmd)
-        click.echo(f"\nRendered CLAUDE.md at: {claude_md}")
+        result = {
+            "action": "launch-master",
+            "screen": screen_name,
+            "model": model,
+            "channels": channels,
+            "command": launch_cmd,
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo("Would execute:")
+            click.echo(launch_cmd)
+            click.echo(f"\nRendered CLAUDE.md at: {claude_md}")
         return
 
     if _screen_exists(screen_name):
         click.echo(
-            f"Error: Screen '{screen_name}' already exists. "
-            f"Kill it first: screen -S {screen_name} -X quit",
+            f"Error: Screen '{screen_name}' already exists.\n"
+            f"  Kill it first: screen -S {screen_name} -X quit",
             err=True,
         )
         sys.exit(1)
 
     click.echo(f"Launching {screen_name}...")
     subprocess.run(launch_cmd, shell=True, check=True)
-    click.echo(f"Started screen session: {screen_name}")
-    click.echo(f"Attach with: screen -r {screen_name}")
+
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "status": "launched",
+                    "screen": screen_name,
+                    "model": model,
+                }
+            )
+        )
+    else:
+        click.echo(f"Started screen session: {screen_name}")
+        click.echo(f"Attach with: screen -r {screen_name}")
 
 
-@launch.command("head")
+@launch.command(
+    "head",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi launch head spartan\n"
+    + "  scitex-orochi launch head nas --dry-run\n"
+    + "  scitex-orochi launch head spartan --json\n",
+)
 @click.argument("name")
 @click.option(
     "--config",
     "-c",
     "config_path",
     default=None,
-    help="Path to orochi-config.yaml",
+    help="Path to orochi-config.yaml.",
 )
-@click.option("--dry-run", is_flag=True, help="Print commands without executing")
-def launch_head(name: str, config_path: str | None, dry_run: bool) -> None:
-    """Launch an orochi-agent:head:<user>@<host> on a remote host via SSH + screen."""
+@click.option("--dry-run", is_flag=True, help="Print commands without executing.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+def launch_head(
+    name: str, config_path: str | None, dry_run: bool, as_json: bool
+) -> None:
+    """Launch an orochi-agent:head on a remote host via SSH + screen."""
     cfg = _load_cfg(config_path)
 
     try:
@@ -136,7 +180,6 @@ def launch_head(name: str, config_path: str | None, dry_run: bool) -> None:
     workdir = head.get("workdir", "~/proj")
     server = cfg["server"]
 
-    # Render CLAUDE.md
     tvars = build_template_vars(cfg, role="head", head_name=name)
     rendered = render_template(_read_template("head-claude.md"), tvars)
 
@@ -158,55 +201,107 @@ def launch_head(name: str, config_path: str | None, dry_run: bool) -> None:
     full_cmd = f"{ssh_cmd} bash -s << 'SSH_EOF'\n{remote_script}\nSSH_EOF"
 
     if dry_run:
-        click.echo("Would execute via SSH:")
-        click.echo(full_cmd)
+        result = {
+            "action": "launch-head",
+            "name": name,
+            "screen": screen_name,
+            "ssh": ssh_cmd,
+            "model": model,
+            "channels": channels,
+            "command": full_cmd,
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo("Would execute via SSH:")
+            click.echo(full_cmd)
         return
 
     if _screen_exists(screen_name, ssh_cmd):
         click.echo(
-            f"Error: Screen '{screen_name}' already exists on remote. "
-            f"Kill it first: {ssh_cmd} screen -S {screen_name} -X quit",
+            f"Error: Screen '{screen_name}' already exists on remote.\n"
+            f"  Kill it first: {ssh_cmd} screen -S {screen_name} -X quit",
             err=True,
         )
         sys.exit(1)
 
     click.echo(f"Launching {screen_name} via {ssh_cmd}...")
-    result = subprocess.run(full_cmd, shell=True, capture_output=True, text=True)
-    if result.returncode != 0:
-        click.echo(f"Error: SSH command failed (exit {result.returncode})", err=True)
-        if result.stderr:
-            click.echo(result.stderr, err=True)
+    result_proc = subprocess.run(
+        full_cmd,
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    if result_proc.returncode != 0:
+        click.echo(
+            f"Error: SSH command failed (exit {result_proc.returncode})",
+            err=True,
+        )
+        if result_proc.stderr:
+            click.echo(result_proc.stderr, err=True)
         sys.exit(1)
 
-    click.echo(f"Started remote screen session: {screen_name}")
-    click.echo(f"Attach with: {ssh_cmd} -t screen -r {screen_name}")
+    if as_json:
+        click.echo(
+            json.dumps(
+                {
+                    "status": "launched",
+                    "screen": screen_name,
+                    "ssh": ssh_cmd,
+                }
+            )
+        )
+    else:
+        click.echo(f"Started remote screen session: {screen_name}")
+        click.echo(f"Attach with: {ssh_cmd} -t screen -r {screen_name}")
 
 
-@launch.command("all")
+@launch.command(
+    "all",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi launch all\n"
+    + "  scitex-orochi launch all --dry-run\n"
+    + "  scitex-orochi launch all --json\n",
+)
 @click.option(
     "--config",
     "-c",
     "config_path",
     default=None,
-    help="Path to orochi-config.yaml",
+    help="Path to orochi-config.yaml.",
 )
-@click.option("--dry-run", is_flag=True, help="Print commands without executing")
+@click.option("--dry-run", is_flag=True, help="Print commands without executing.")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
-def launch_all(ctx: click.Context, config_path: str | None, dry_run: bool) -> None:
+def launch_all(
+    ctx: click.Context,
+    config_path: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
     """Launch master and all configured heads."""
     cfg = _load_cfg(config_path)
 
-    click.echo("=== Launching master ===")
-    ctx.invoke(launch_master, config_path=config_path, dry_run=dry_run)
+    if not as_json:
+        click.echo("=== Launching master ===")
+    ctx.invoke(
+        launch_master,
+        config_path=config_path,
+        dry_run=dry_run,
+        as_json=as_json,
+    )
 
     for head in cfg.get("heads", []):
         short = head.get("host", head["name"])
-        click.echo(f"\n=== Launching head: {short} ===")
+        if not as_json:
+            click.echo(f"\n=== Launching head: {short} ===")
         ctx.invoke(
             launch_head,
             name=short,
             config_path=config_path,
             dry_run=dry_run,
+            as_json=as_json,
         )
 
-    click.echo("\nAll agents launched.")
+    if not as_json:
+        click.echo("\nAll agents launched.")
