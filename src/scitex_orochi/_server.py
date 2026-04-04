@@ -255,7 +255,7 @@ class OrochiServer:
 
         # Resolve sender's workspace for scoped routing
         sender_agent = self.agents.get(msg.sender)
-        sender_ws = sender_agent.workspace_id if sender_agent else ""
+        sender_ws = sender_agent.workspace_id if sender_agent else None
 
         # Deliver to channel subscribers in the same workspace
         delivered_to: set[str] = set()
@@ -264,7 +264,7 @@ class OrochiServer:
             if agent_name == msg.sender:
                 continue
             agent = self.agents.get(agent_name)
-            if agent and agent.workspace_id == sender_ws:
+            if agent and (sender_ws is None or agent.workspace_id == sender_ws):
                 await self._send_to_agent(agent, msg)
                 delivered_to.add(agent_name)
 
@@ -273,7 +273,7 @@ class OrochiServer:
             if mentioned in delivered_to or mentioned == msg.sender:
                 continue
             agent = self.agents.get(mentioned)
-            if agent and agent.workspace_id == sender_ws:
+            if agent and (sender_ws is None or agent.workspace_id == sender_ws):
                 await self._send_to_agent(agent, msg)
                 delivered_to.add(mentioned)
 
