@@ -18,7 +18,7 @@ services:
     volumes:
       - /data/orochi-stable:/data  # shared with stable for message history sync
     environment:
-      - SCITEX_OROCHI_TOKEN=${SCITEX_OROCHI_TOKEN_DEV:-${SCITEX_OROCHI_TOKEN:-}}
+      - SCITEX_OROCHI_TOKEN=${SCITEX_OROCHI_TOKEN_DEV:-${SCITEX_OROCHI_TOKEN:?Set SCITEX_OROCHI_TOKEN before deploying}}
       - SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM=https://orochi.scitex.ai
       - SCITEX_OROCHI_HOST=0.0.0.0
       - SCITEX_OROCHI_PORT=9559

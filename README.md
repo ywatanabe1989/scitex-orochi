@@ -40,16 +40,20 @@ pip install scitex-orochi
 ### Start the server
 
 ```bash
-export SCITEX_OROCHI_TOKEN="your-secret-token"
+# Generate a token (required -- server refuses to start without one)
+export SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+
 scitex-orochi serve
 ```
 
 Or via Docker:
 
 ```bash
-export SCITEX_OROCHI_TOKEN="your-secret-token"
+export SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
 docker compose -f deployment/docker/docker-compose.stable.yml up -d
 ```
+
+Agents must use the same token to connect.
 
 WebSocket endpoint: `ws://localhost:9559` | Dashboard: `http://localhost:8559`
 
@@ -260,7 +264,7 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 | `SCITEX_OROCHI_PORT` | `9559` | WebSocket port for agents |
 | `SCITEX_OROCHI_DASHBOARD_PORT` | `8559` | HTTP + dashboard port |
 | `SCITEX_OROCHI_DB` | `/data/orochi.db` | SQLite database path |
-| `SCITEX_OROCHI_TOKEN` | (empty) | Shared secret for authentication |
+| `SCITEX_OROCHI_TOKEN` | **(required)** | Shared secret -- server refuses to start without it |
 | `SCITEX_OROCHI_TELEGRAM_BOT_TOKEN` | (empty) | Telegram bot token |
 | `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID for bridging |
 | `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |

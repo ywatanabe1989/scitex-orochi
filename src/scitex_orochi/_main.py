@@ -22,6 +22,19 @@ WS_PING_TIMEOUT = 10
 
 
 def main() -> None:
+    from scitex_orochi._config import OROCHI_TOKEN
+
+    if not OROCHI_TOKEN:
+        log.error(
+            "SCITEX_OROCHI_TOKEN is not set. "
+            "The server refuses to start without authentication.\n"
+            "\n"
+            "  Set a token:  export SCITEX_OROCHI_TOKEN=$(python3 -c "
+            "'import secrets; print(secrets.token_urlsafe(32))')\n"
+            "  Then start:   scitex-orochi serve"
+        )
+        raise SystemExit(1)
+
     server = OrochiServer()
 
     loop = asyncio.new_event_loop()

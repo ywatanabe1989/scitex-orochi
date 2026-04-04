@@ -14,6 +14,21 @@ from scitex_orochi._web import create_web_app
 
 TEST_HOST = "127.0.0.1"
 TEST_WS_PORT = 19561
+TEST_TOKEN = "test-token-for-web"
+
+
+@pytest.fixture(autouse=True)
+def _set_test_token(monkeypatch):
+    """All tests run with a known token."""
+    monkeypatch.setenv("SCITEX_OROCHI_TOKEN", TEST_TOKEN)
+    import importlib
+
+    import scitex_orochi._config
+
+    importlib.reload(scitex_orochi._config)
+    import scitex_orochi._auth
+
+    importlib.reload(scitex_orochi._auth)
 
 
 @pytest.fixture()
@@ -42,7 +57,7 @@ async def orochi_web(tmp_path):
 
 async def _register_agent(host, port, name, channels, **kwargs):
     """Helper to register an agent via WebSocket."""
-    uri = f"ws://{host}:{port}"
+    uri = f"ws://{host}:{port}?token={TEST_TOKEN}"
     ws = await websockets.connect(uri)
     payload = {"channels": channels}
     payload.update(kwargs)
@@ -152,7 +167,7 @@ async def test_dashboard_ws_observer(orochi_web):
     srv, client = orochi_web
 
     # Connect dashboard observer via aiohttp test client
-    ws_dashboard = await client.ws_connect("/ws")
+    ws_dashboard = await client.ws_connect(f"/ws?token={TEST_TOKEN}")
 
     # Register an agent and send a message
     ws_agent = await _register_agent(TEST_HOST, TEST_WS_PORT, "obs-agent", ["#general"])

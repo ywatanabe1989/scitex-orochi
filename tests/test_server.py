@@ -12,11 +12,26 @@ from scitex_orochi._server import OrochiServer
 
 TEST_HOST = "127.0.0.1"
 TEST_PORT = 19559
+TEST_TOKEN = "test-token-for-integration"
 
 
 @pytest.fixture()
 def server_port():
     return TEST_PORT
+
+
+@pytest.fixture(autouse=True)
+def _set_test_token(monkeypatch):
+    """All tests run with a known token."""
+    monkeypatch.setenv("SCITEX_OROCHI_TOKEN", TEST_TOKEN)
+    import importlib
+
+    import scitex_orochi._config
+
+    importlib.reload(scitex_orochi._config)
+    import scitex_orochi._auth
+
+    importlib.reload(scitex_orochi._auth)
 
 
 @pytest.fixture()
@@ -43,7 +58,7 @@ async def _register(ws, name: str, channels: list[str]) -> Message:
 @pytest.mark.asyncio
 async def test_register_and_message(orochi_server):
     """Two agents register, one sends a message, the other receives it."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a, websockets.connect(uri) as ws_b:
         await _register(ws_a, "agent-a", ["#general"])
@@ -73,7 +88,7 @@ async def test_register_and_message(orochi_server):
 @pytest.mark.asyncio
 async def test_mention_routing(orochi_server):
     """An @mention delivers to an agent not subscribed to the channel."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a, websockets.connect(uri) as ws_b:
         # Agent A subscribes to #project-x only
@@ -103,7 +118,7 @@ async def test_mention_routing(orochi_server):
 @pytest.mark.asyncio
 async def test_presence(orochi_server):
     """Presence query returns online agents."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
         await _register(ws_a, "agent-a", ["#general"])
@@ -125,7 +140,7 @@ async def test_presence(orochi_server):
 @pytest.mark.asyncio
 async def test_heartbeat(orochi_server):
     """Heartbeat updates last_heartbeat on the agent."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
         await _register(ws_a, "agent-a", ["#general"])
@@ -149,7 +164,7 @@ async def test_heartbeat(orochi_server):
 @pytest.mark.asyncio
 async def test_status_update(orochi_server):
     """Status update changes agent status and current_task."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
         await _register(ws_a, "agent-a", ["#general"])
@@ -228,7 +243,7 @@ async def test_auth_rejection(tmp_path, monkeypatch):
 @pytest.mark.asyncio
 async def test_extended_agent_fields(orochi_server):
     """Register with machine and role fields, verify they are stored."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
         reg = Message(
@@ -255,7 +270,7 @@ async def test_extended_agent_fields(orochi_server):
 @pytest.mark.asyncio
 async def test_get_agents_info(orochi_server):
     """get_agents_info returns correct REST-compatible dicts."""
-    uri = f"ws://{TEST_HOST}:{TEST_PORT}"
+    uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
         reg = Message(

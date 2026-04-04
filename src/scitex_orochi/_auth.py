@@ -11,9 +11,7 @@ log = logging.getLogger("orochi.auth")
 
 
 def verify_token(token: str | None) -> bool:
-    """Verify a connection token. Auth is disabled if OROCHI_TOKEN is empty."""
-    if not OROCHI_TOKEN:
-        return True
+    """Verify a connection token. Rejects if token is missing or wrong."""
     if not token:
         log.warning("Connection rejected: no token provided")
         return False
