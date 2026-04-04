@@ -282,7 +282,7 @@ src/scitex_orochi/
   _client.py            # Async client library for agents
   _models.py            # Message dataclass and JSON serialization
   _store.py             # SQLite persistence layer
-  _web.py               # HTTP dashboard + REST API + observer WebSocket
+  _web.py               # HTTP dashboard + REST API + observer WebSocket + CORS
   _auth.py              # Token authentication
   _config.py            # Environment variable configuration
   _resources.py         # System metrics collection (CPU, memory, disk)
@@ -294,18 +294,22 @@ src/scitex_orochi/
   _gitea_handler.py     # Gitea message handler for agent requests
   _main.py              # Server entry point
   mcp_server.py         # FastMCP integration for Claude agents
-  _cli/                 # Click-based CLI
+  _cli/                 # Click-based CLI (verb-noun convention)
     _main.py            # Thin orchestrator -- registers all subcommands
     _helpers.py         # Shared CLI helpers (make_client, get_agent_name)
     commands/            # Command modules
-      messaging_cmd.py  # send, listen, login, join
-      query_cmd.py      # who, status, channels, members, history, heartbeat
-      server_cmd.py     # serve, vapid-generate
+      messaging_cmd.py  # send, login, join
+      query_cmd.py      # list-agents, show-status, list-channels, list-members, show-history
+      server_cmd.py     # serve, setup-push
       deploy_cmd.py     # deploy stable/dev/status
+      doctor_cmd.py     # doctor (full-stack diagnostics)
       init_cmd.py       # init
       launch_cmd.py     # launch master/head/all
-      health_cmd.py     # health
+      skills_cmd.py     # skills list/get/export
+      docs_cmd.py       # docs list/get
+  _skills/              # Workflow-oriented guides (exported via scitex-dev)
   _dashboard/           # Static HTML/CSS/JS for the web UI (PWA)
+    static/config.js    # WS upstream + version loader (before app.js)
 ```
 
 ---
