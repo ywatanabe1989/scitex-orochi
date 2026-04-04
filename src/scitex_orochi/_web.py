@@ -170,10 +170,13 @@ async def handle_config(request: web.Request) -> web.Response:
         ver = version("scitex-orochi")
     except Exception:
         ver = "dev"
+    from scitex_orochi._config import ADMIN_TOKEN
+
     return web.json_response(
         {
             "version": ver,
             "ws_upstream": DASHBOARD_WS_UPSTREAM or "",
+            "dashboard_token": ADMIN_TOKEN,
         }
     )
 
