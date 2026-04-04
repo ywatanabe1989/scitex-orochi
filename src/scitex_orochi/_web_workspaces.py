@@ -54,7 +54,11 @@ async def handle_create_workspace(request: web.Request) -> web.Response:
             description=body.get("description", ""),
             channels=body.get("channels"),
         )
-        return web.json_response(ws.to_dict(), status=201)
+        # Auto-generate a workspace token
+        wt = await server.workspaces.create_workspace_token(ws.id, label="default")
+        result = ws.to_dict()
+        result["token"] = wt["token"]
+        return web.json_response(result, status=201)
     except Exception as exc:
         return web.json_response({"error": str(exc)}, status=400)
 
@@ -174,6 +178,46 @@ async def handle_revoke_invite(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+async def handle_list_tokens(request: web.Request) -> web.Response:
+    """GET /api/workspaces/{id}/tokens -- list workspace tokens."""
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response([], status=200)
+    tokens = await server.workspaces.list_workspace_tokens(ws_id)
+    return web.json_response(tokens)
+
+
+async def handle_create_token(request: web.Request) -> web.Response:
+    """POST /api/workspaces/{id}/tokens -- create a workspace token."""
+    token = request.query.get("token")
+    if not await verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    ws_id = request.match_info["id"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    body = await request.json()
+    label = body.get("label", "")
+    result = await server.workspaces.create_workspace_token(ws_id, label=label)
+    return web.json_response(result, status=201)
+
+
+async def handle_revoke_token(request: web.Request) -> web.Response:
+    """DELETE /api/workspaces/{id}/tokens/{token} -- revoke a workspace token."""
+    auth_token = request.query.get("token")
+    if not await verify_token(auth_token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+    server: OrochiServer = request.app["orochi_server"]
+    ws_token = request.match_info["ws_token"]
+    if not server.workspaces:
+        return web.json_response({"error": "Workspaces not initialized"}, status=503)
+    revoked = await server.workspaces.revoke_workspace_token(ws_token)
+    if not revoked:
+        return web.json_response({"error": "Token not found"}, status=404)
+    return web.json_response({"ok": True})
+
+
 def register_workspace_routes(app: web.Application) -> None:
     """Register workspace routes on the app."""
     app.router.add_get("/api/workspaces", handle_workspaces)
@@ -188,3 +232,7 @@ def register_workspace_routes(app: web.Application) -> None:
         "/api/workspaces/{id}/invites/{invite_token}", handle_revoke_invite
     )
     app.router.add_post("/api/invites/redeem", handle_redeem_invite)
+    # Workspace tokens
+    app.router.add_get("/api/workspaces/{id}/tokens", handle_list_tokens)
+    app.router.add_post("/api/workspaces/{id}/tokens", handle_create_token)
+    app.router.add_delete("/api/workspaces/{id}/tokens/{ws_token}", handle_revoke_token)
