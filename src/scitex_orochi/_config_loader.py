@@ -64,7 +64,7 @@ def parse_agent_name(name: str) -> dict[str, str]:
 
 def find_config_path() -> Path | None:
     """Find orochi-config.yaml in search paths."""
-    env_path = os.environ.get("OROCHI_CONFIG")
+    env_path = os.environ.get("SCITEX_OROCHI_CONFIG")
     if env_path:
         p = Path(env_path)
         if p.exists():
@@ -87,7 +87,7 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
         raise ConfigError(
             "orochi-config.yaml not found. "
             "Run 'scitex-orochi init' to create one, "
-            "or set OROCHI_CONFIG env var."
+            "or set SCITEX_OROCHI_CONFIG env var."
         )
     if not path.exists():
         raise ConfigError(f"Config file not found: {path}")

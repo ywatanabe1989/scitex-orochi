@@ -15,9 +15,7 @@ except ImportError:
 
 
 def _get_agent_name() -> str:
-    return os.environ.get("SCITEX_OROCHI_AGENT") or os.environ.get(
-        "OROCHI_AGENT", f"mcp-{platform.node()}"
-    )
+    return os.environ.get("SCITEX_OROCHI_AGENT", f"mcp-{platform.node()}")
 
 
 def _make_client(channels: list[str] | None = None) -> "OrochiClient":

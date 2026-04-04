@@ -173,9 +173,9 @@ async def test_status_update(orochi_server):
 
 @pytest.mark.asyncio
 async def test_auth_rejection(tmp_path, monkeypatch):
-    """Connection with wrong token is rejected when OROCHI_TOKEN is set."""
+    """Connection with wrong token is rejected when SCITEX_OROCHI_TOKEN is set."""
     # Set a token on the server side
-    monkeypatch.setenv("OROCHI_TOKEN", "secret-test-token")
+    monkeypatch.setenv("SCITEX_OROCHI_TOKEN", "secret-test-token")
     # Re-import to pick up new env value
     import importlib
 
@@ -220,7 +220,7 @@ async def test_auth_rejection(tmp_path, monkeypatch):
             await srv.store.close()
     finally:
         # Restore empty token
-        monkeypatch.delenv("OROCHI_TOKEN", raising=False)
+        monkeypatch.delenv("SCITEX_OROCHI_TOKEN", raising=False)
         importlib.reload(scitex_orochi._config)
         importlib.reload(scitex_orochi._auth)
 

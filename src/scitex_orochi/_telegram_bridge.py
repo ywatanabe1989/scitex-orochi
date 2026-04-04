@@ -339,22 +339,22 @@ async def setup_telegram_bridge(server: OrochiServer) -> TelegramBridge | None:
     )
 
     if not TELEGRAM_BRIDGE_ENABLED:
-        log.info("Telegram bridge disabled (OROCHI_TELEGRAM_BRIDGE_ENABLED != true)")
+        log.info(
+            "Telegram bridge disabled (SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED != true)"
+        )
         return None
 
     if not TELEGRAM_BOT_TOKEN:
         log.error(
             "Telegram bridge enabled but TELEGRAM_BOT_TOKEN is not set -- "
-            "bridge will NOT start.  Set SCITEX_OROCHI_TELEGRAM_BOT_TOKEN or "
-            "OROCHI_TELEGRAM_BOT_TOKEN env var."
+            "bridge will NOT start.  Set SCITEX_OROCHI_TELEGRAM_BOT_TOKEN env var."
         )
         return None
 
     if not TELEGRAM_CHAT_ID:
         log.error(
             "Telegram bridge enabled but TELEGRAM_CHAT_ID is not set -- "
-            "bridge will NOT start.  Set SCITEX_OROCHI_TELEGRAM_CHAT_ID or "
-            "OROCHI_TELEGRAM_CHAT_ID env var."
+            "bridge will NOT start.  Set SCITEX_OROCHI_TELEGRAM_CHAT_ID env var."
         )
         return None
 

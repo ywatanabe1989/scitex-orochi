@@ -12,9 +12,7 @@ import click
 
 
 def _get_agent_name() -> str:
-    return os.environ.get("SCITEX_OROCHI_AGENT") or os.environ.get(
-        "OROCHI_AGENT", platform.node()
-    )
+    return os.environ.get("SCITEX_OROCHI_AGENT", platform.node())
 
 
 def _make_client(
