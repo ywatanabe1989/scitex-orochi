@@ -35,7 +35,8 @@ function getAgentColor(name) {
 
 var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
 var token = new URLSearchParams(location.search).get("token") || "";
-var wsUrl = wsProto + "//" + location.host + "/ws?token=" + token;
+var wsHost = window.__orochiWsUpstream ? window.__orochiWsUpstream.replace(/^https?:\/\//, "") : location.host;
+var wsUrl = wsProto + "//" + wsHost + "/ws?token=" + token;
 var ws;
 
 function escapeHtml(s) {

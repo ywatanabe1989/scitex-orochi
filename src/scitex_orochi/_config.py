@@ -20,6 +20,11 @@ GITEA_TOKEN = _env("SCITEX_OROCHI_GITEA_TOKEN", "")
 MEDIA_ROOT = _env("SCITEX_OROCHI_MEDIA_ROOT", "/data/orochi-media")
 MEDIA_MAX_SIZE = int(_env("SCITEX_OROCHI_MEDIA_MAX_SIZE", str(20 * 1024 * 1024)))
 
+# Dashboard WebSocket upstream (for dev -> stable sync)
+# When set, the dashboard JS connects to this URL instead of its own host.
+# Example: "wss://orochi.scitex.ai" makes dev dashboard observe stable's feed.
+DASHBOARD_WS_UPSTREAM = _env("SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM", "")
+
 # Telegram bridge
 TELEGRAM_BOT_TOKEN = _env("SCITEX_OROCHI_TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = _env("SCITEX_OROCHI_TELEGRAM_CHAT_ID", "")

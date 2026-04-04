@@ -155,6 +155,11 @@ async def handle_post_message(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "id": msg.id}, status=201)
 
 
+async def handle_config(request: web.Request) -> web.Response:
+    """GET /api/config -- dashboard configuration."""
+    return web.json_response({"ws_upstream": DASHBOARD_WS_UPSTREAM or ""})
+
+
 async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
@@ -316,6 +321,7 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/messages", handle_messages)
     app.router.add_post("/api/messages", handle_post_message)
     app.router.add_get("/api/history/{channel}", handle_history)
+    app.router.add_get("/api/config", handle_config)
     app.router.add_get("/api/stats", handle_stats)
 
     # Modular route groups

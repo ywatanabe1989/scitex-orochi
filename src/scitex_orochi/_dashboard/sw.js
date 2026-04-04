@@ -1,9 +1,10 @@
-const CACHE_NAME = "orochi-v3";
+const CACHE_NAME = "orochi-v4";
 const SHELL_ASSETS = [
   "/",
   "/static/style.css",
   "/static/components.css",
   "/static/responsive.css",
+  "/static/config.js",
   "/static/app.js",
 ];
 
