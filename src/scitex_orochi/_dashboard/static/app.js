@@ -680,7 +680,7 @@ function uptime(isoStr) {
  * Always uses REST POST instead of WebSocket because Cloudflare tunnels
  * may complete the WS handshake but silently drop client-to-server frames. */
 function sendOrochiMessage(msgData) {
-  fetch("/api/messages?token=" + token, {
+  fetch((window.__orochiApiUpstream || "") + "/api/messages?token=" + token, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(msgData),

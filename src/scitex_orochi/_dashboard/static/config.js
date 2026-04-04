@@ -14,6 +14,8 @@
       var cfg = JSON.parse(xhr.responseText);
       if (cfg.ws_upstream) {
         window.__orochiWsUpstream = cfg.ws_upstream;
+        /* Also set API upstream so REST sends go to stable */
+        window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
       }
     }
   } catch (e) {

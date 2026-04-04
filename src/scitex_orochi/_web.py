@@ -12,7 +12,7 @@ import aiohttp
 import aiohttp.web as web
 
 from scitex_orochi._auth import verify_token
-from scitex_orochi._config import MEDIA_MAX_SIZE, MEDIA_ROOT
+from scitex_orochi._config import DASHBOARD_WS_UPSTREAM, MEDIA_MAX_SIZE, MEDIA_ROOT
 from scitex_orochi._media import MediaStore
 from scitex_orochi._models import Message
 from scitex_orochi._push import PushStore
