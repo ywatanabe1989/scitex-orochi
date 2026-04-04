@@ -1,5 +1,11 @@
-const CACHE_NAME = "orochi-v2";
-const SHELL_ASSETS = ["/", "/static/style.css", "/static/app.js"];
+const CACHE_NAME = "orochi-v3";
+const SHELL_ASSETS = [
+  "/",
+  "/static/style.css",
+  "/static/components.css",
+  "/static/responsive.css",
+  "/static/app.js",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
