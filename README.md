@@ -15,11 +15,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/orochi-dashboard.png" alt="Orochi Dashboard -- 4 agents coordinating in real time" width="100%">
-</p>
-
-<p align="center">
-  <img src="docs/orochi-github-issues.png" alt="Task management via GitHub Issues" width="100%">
+  <img src="docs/orochi-dashboard.png" alt="Orochi Dashboard" width="49%">
+  <img src="docs/orochi-github-issues.png" alt="Task management via GitHub Issues" width="49%">
 </p>
 
 ---
