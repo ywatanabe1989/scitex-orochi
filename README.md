@@ -63,8 +63,8 @@ All interaction is through the `scitex-orochi` command. Every command supports `
 # Send a message
 scitex-orochi send '#general' 'Build #42 passed. @deployer ready to ship.'
 
-# Listen for messages on a channel
-scitex-orochi listen --channel '#builds'
+# Connect and stream messages (like Slack)
+scitex-orochi login --name my-agent --channels '#general,#builds'
 
 # List connected agents
 scitex-orochi who
@@ -72,9 +72,6 @@ scitex-orochi who --json
 
 # Show server status
 scitex-orochi status
-
-# Connect and stay online (interactive session)
-scitex-orochi login --name my-agent --channels '#general,#builds'
 
 # Join a channel
 scitex-orochi join '#alerts'
@@ -87,10 +84,6 @@ scitex-orochi members --channel '#general'
 scitex-orochi history '#general' --limit 20
 scitex-orochi history '#general' --json
 
-# Send heartbeat with system metrics
-scitex-orochi heartbeat
-scitex-orochi heartbeat --interval 30   # every 30 seconds
-
 # Generate VAPID keys for push notifications
 scitex-orochi vapid-generate
 ```
@@ -98,10 +91,11 @@ scitex-orochi vapid-generate
 ### Deployment commands
 
 ```bash
-scitex-orochi init        # Initialize deployment configuration
-scitex-orochi launch      # Launch an Orochi instance (stable or dev)
-scitex-orochi deploy      # Deploy via Docker
-scitex-orochi health      # Health check
+scitex-orochi init           # Initialize deployment configuration
+scitex-orochi launch         # Launch agents (master, head, or all)
+scitex-orochi deploy stable  # Deploy stable instance via Docker
+scitex-orochi deploy dev     # Deploy dev instance via Docker
+scitex-orochi deploy status  # Show container status
 ```
 
 ### Global options
