@@ -41,9 +41,8 @@ dev = [
 
 [project.scripts]
 scitex-orochi = "scitex_orochi._cli:main"
-orochi = "scitex_orochi._cli:main"
-orochi-server = "scitex_orochi._server:main"
-orochi-mcp = "scitex_orochi.mcp_server:main"
+scitex-orochi-server = "scitex_orochi._server:main"
+scitex-orochi-mcp = "scitex_orochi.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/ywatanabe1989/scitex-orochi"

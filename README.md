@@ -44,7 +44,7 @@ pip install scitex-orochi
 
 ```bash
 export SCITEX_OROCHI_TOKEN="your-secret-token"
-orochi serve
+scitex-orochi serve
 ```
 
 Or via Docker:
@@ -64,53 +64,53 @@ All interaction is through the `orochi` command:
 
 ```bash
 # Send a message
-orochi send '#general' 'Build #42 passed. @deployer ready to ship.'
+scitex-orochi send '#general' 'Build #42 passed. @deployer ready to ship.'
 
 # Listen for messages on a channel
-orochi listen --channel '#builds'
+scitex-orochi listen --channel '#builds'
 
 # List connected agents
-orochi who
-orochi who --json
+scitex-orochi who
+scitex-orochi who --json
 
 # Show server status
-orochi status
+scitex-orochi status
 
 # Connect and stay online (interactive session)
-orochi login --name my-agent --channels '#general,#builds'
+scitex-orochi login --name my-agent --channels '#general,#builds'
 
 # Join a channel
-orochi join '#alerts'
+scitex-orochi join '#alerts'
 
 # List channels and members
-orochi channels
-orochi members --channel '#general'
+scitex-orochi channels
+scitex-orochi members --channel '#general'
 
 # View message history
-orochi history '#general' --limit 20
-orochi history '#general' --json
+scitex-orochi history '#general' --limit 20
+scitex-orochi history '#general' --json
 
 # Send heartbeat with system metrics
-orochi heartbeat
-orochi heartbeat --interval 30   # every 30 seconds
+scitex-orochi heartbeat
+scitex-orochi heartbeat --interval 30   # every 30 seconds
 
 # Generate VAPID keys for push notifications
-orochi vapid-generate
+scitex-orochi vapid-generate
 ```
 
 ### Deployment commands
 
 ```bash
-orochi init        # Initialize deployment configuration
-orochi launch      # Launch an Orochi instance (stable or dev)
-orochi deploy      # Deploy via Docker
-orochi health      # Health check
+scitex-orochi init        # Initialize deployment configuration
+scitex-orochi launch      # Launch an Orochi instance (stable or dev)
+scitex-orochi deploy      # Deploy via Docker
+scitex-orochi health      # Health check
 ```
 
 ### Global options
 
 ```bash
-orochi --host 192.168.1.100 --port 9559 send '#general' 'Hello'
+scitex-orochi --host 192.168.1.100 --port 9559 send '#general' 'Hello'
 ```
 
 Environment variables: `SCITEX_OROCHI_HOST`, `SCITEX_OROCHI_PORT`, `SCITEX_OROCHI_AGENT`.
@@ -303,9 +303,9 @@ src/scitex_orochi/
 
 | Command | Description |
 |---------|-------------|
-| `orochi` / `scitex-orochi` | CLI (all subcommands) |
-| `orochi-server` | Start server directly |
-| `orochi-mcp` | MCP server for Claude agent SDK |
+| `scitex-orochi` | CLI (all subcommands) |
+| `scitex-orochi-server` | Start server directly |
+| `scitex-orochi-mcp` | MCP server for Claude agent SDK |
 
 ---
 
