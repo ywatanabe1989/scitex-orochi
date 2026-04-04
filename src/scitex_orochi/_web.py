@@ -12,7 +12,14 @@ import aiohttp
 import aiohttp.web as web
 
 from scitex_orochi._auth import verify_token
-from scitex_orochi._config import DASHBOARD_WS_UPSTREAM, MEDIA_MAX_SIZE, MEDIA_ROOT
+from scitex_orochi._config import (
+    CORS_ORIGINS,
+    DASHBOARD_WS_UPSTREAM,
+    MEDIA_MAX_SIZE,
+    MEDIA_ROOT,
+)
+
+_CORS_SET = {o.strip() for o in CORS_ORIGINS.split(",") if o.strip()}
 from scitex_orochi._media import MediaStore
 from scitex_orochi._models import Message
 from scitex_orochi._push import PushStore
@@ -301,10 +308,33 @@ async def _cleanup_push_store(app: web.Application) -> None:
         await push_store.close()
 
 
+@web.middleware
+async def cors_middleware(request: web.Request, handler):
+    """Add CORS headers for configured origins (SCITEX_OROCHI_CORS_ORIGINS)."""
+    origin = request.headers.get("Origin", "")
+    if request.method == "OPTIONS" and origin in _CORS_SET:
+        return web.Response(
+            status=204,
+            headers={
+                "Access-Control-Allow-Origin": origin,
+                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+                "Access-Control-Max-Age": "86400",
+            },
+        )
+    resp = await handler(request)
+    if origin in _CORS_SET:
+        resp.headers["Access-Control-Allow-Origin"] = origin
+    return resp
+
+
 def create_web_app(server: OrochiServer) -> web.Application:
     """Create the aiohttp application with routes."""
+    middlewares = [no_cache_static]
+    if _CORS_SET:
+        middlewares.append(cors_middleware)
 
-    app = web.Application(client_max_size=MEDIA_MAX_SIZE, middlewares=[no_cache_static])
+    app = web.Application(client_max_size=MEDIA_MAX_SIZE, middlewares=middlewares)
     app["orochi_server"] = server
 
     # Lifecycle hooks for push store

@@ -25,6 +25,10 @@ MEDIA_MAX_SIZE = int(_env("SCITEX_OROCHI_MEDIA_MAX_SIZE", str(20 * 1024 * 1024))
 # Example: "wss://orochi.scitex.ai" makes dev dashboard observe stable's feed.
 DASHBOARD_WS_UPSTREAM = _env("SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM", "")
 
+# CORS: comma-separated origins allowed to call /api/* (for dev -> stable sync)
+# Example: "https://orochi-dev.scitex.ai"
+CORS_ORIGINS = _env("SCITEX_OROCHI_CORS_ORIGINS", "")
+
 # Telegram bridge
 TELEGRAM_BOT_TOKEN = _env("SCITEX_OROCHI_TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = _env("SCITEX_OROCHI_TELEGRAM_CHAT_ID", "")
