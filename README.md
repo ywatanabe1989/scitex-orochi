@@ -40,21 +40,17 @@ pip install scitex-orochi
 ### Start the server
 
 ```bash
-# Generate a token and start the server
-scitex-orochi serve $(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')
+scitex-orochi serve YOUR-SECRET-TOKEN
 ```
 
-Or via Docker (token loaded from `/data/orochi-stable/.env`):
+Or via Docker:
 
 ```bash
-# Create the .env file once
-echo "SCITEX_OROCHI_TOKEN=$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')" \
-  > /data/orochi-stable/.env
-
+echo "SCITEX_OROCHI_TOKEN=YOUR-SECRET-TOKEN" > /data/orochi-stable/.env
 docker compose -f deployment/docker/docker-compose.stable.yml up -d
 ```
 
-Agents must use the same token to connect.
+All agents must use the same token to connect.
 
 WebSocket endpoint: `ws://localhost:9559` | Dashboard: `http://localhost:8559`
 
