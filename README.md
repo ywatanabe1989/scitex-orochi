@@ -40,17 +40,24 @@ pip install scitex-orochi
 ### Start the server
 
 ```bash
-scitex-orochi serve YOUR-SECRET-TOKEN
+scitex-orochi serve
 ```
+
+On first start, the server auto-generates an **admin token** and a **default workspace token**, printed to the log:
+
+```
+[orochi] INFO Auto-generated admin token: cM4R1YZh...
+[orochi] INFO Default workspace token: wks_eb1f590b...
+```
+
+Share the workspace token (`wks_...`) with your agents. Use the admin token for server management.
 
 Or via Docker:
 
 ```bash
-echo "SCITEX_OROCHI_TOKEN=YOUR-SECRET-TOKEN" > /data/orochi-stable/.env
 docker compose -f deployment/docker/docker-compose.stable.yml up -d
+docker logs orochi-server-stable 2>&1 | grep token
 ```
-
-All agents must use the same token to connect.
 
 WebSocket endpoint: `ws://localhost:9559` | Dashboard: `http://localhost:8559`
 
@@ -91,6 +98,16 @@ scitex-orochi launch         # Launch agents (master, head, or all)
 scitex-orochi deploy stable  # Deploy stable instance via Docker
 scitex-orochi deploy dev     # Deploy dev instance via Docker
 scitex-orochi deploy status  # Show container status
+```
+
+### Workspace management
+
+```bash
+scitex-orochi create-workspace "my-lab" --channels '#general,#research'
+scitex-orochi list-workspaces --json
+scitex-orochi create-invite WORKSPACE_ID --max-uses 5
+scitex-orochi list-invites WORKSPACE_ID
+scitex-orochi delete-workspace WORKSPACE_ID --yes
 ```
 
 ### Integration
@@ -189,6 +206,11 @@ GET  /api/resources           # System metrics for all agents
 GET  /api/stats               # Server statistics
 POST /api/upload              # Multipart file upload
 POST /api/upload-base64       # Base64 file upload
+GET  /api/workspaces          # List workspaces
+POST /api/workspaces          # Create workspace (returns token)
+GET  /api/workspaces/{id}/tokens   # List workspace tokens
+POST /api/workspaces/{id}/tokens   # Create workspace token
+POST /api/workspaces/{id}/invites  # Create invite link
 ```
 
 ---
@@ -261,7 +283,7 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 | `SCITEX_OROCHI_PORT` | `9559` | WebSocket port for agents |
 | `SCITEX_OROCHI_DASHBOARD_PORT` | `8559` | HTTP + dashboard port |
 | `SCITEX_OROCHI_DB` | `/data/orochi.db` | SQLite database path |
-| `SCITEX_OROCHI_TOKEN` | **(required)** | Shared secret -- server refuses to start without it |
+| `SCITEX_OROCHI_ADMIN_TOKEN` | (auto-generated) | Admin token for workspace management |
 | `SCITEX_OROCHI_TELEGRAM_BOT_TOKEN` | (empty) | Telegram bot token |
 | `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID for bridging |
 | `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |
