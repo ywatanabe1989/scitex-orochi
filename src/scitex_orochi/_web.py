@@ -164,7 +164,18 @@ async def handle_post_message(request: web.Request) -> web.Response:
 
 async def handle_config(request: web.Request) -> web.Response:
     """GET /api/config -- dashboard configuration."""
-    return web.json_response({"ws_upstream": DASHBOARD_WS_UPSTREAM or ""})
+    from importlib.metadata import version
+
+    try:
+        ver = version("scitex-orochi")
+    except Exception:
+        ver = "dev"
+    return web.json_response(
+        {
+            "version": ver,
+            "ws_upstream": DASHBOARD_WS_UPSTREAM or "",
+        }
+    )
 
 
 async def handle_stats(request: web.Request) -> web.Response:

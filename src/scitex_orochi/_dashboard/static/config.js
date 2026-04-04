@@ -1,24 +1,28 @@
-/* Dashboard config loader -- fetches /api/config to override WebSocket URL.
- * When SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM is set on the server,
- * the dashboard connects to that upstream for real-time messages
- * (e.g. dev dashboard observes stable's WebSocket feed).
+/* Dashboard config loader -- fetches /api/config before app.js runs.
  *
- * This script sets window.__orochiWsUpstream before app.js runs.
+ * Sets:
+ *   window.__orochiWsUpstream  -- WS URL override (dev -> stable sync)
+ *   window.__orochiApiUpstream -- REST URL override (dev -> stable sends)
+ *   window.__orochiVersion     -- package version for display
  */
 (function () {
   var xhr = new XMLHttpRequest();
-  xhr.open("GET", "/api/config", false); /* synchronous -- runs before app.js */
+  xhr.open("GET", "/api/config", false); /* synchronous -- before app.js */
   try {
     xhr.send();
     if (xhr.status === 200) {
       var cfg = JSON.parse(xhr.responseText);
       if (cfg.ws_upstream) {
         window.__orochiWsUpstream = cfg.ws_upstream;
-        /* Also set API upstream so REST sends go to stable */
         window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
+      }
+      if (cfg.version) {
+        window.__orochiVersion = cfg.version;
+        var el = document.getElementById("orochi-version");
+        if (el) el.textContent = "v" + cfg.version;
       }
     }
   } catch (e) {
-    /* config endpoint unavailable -- use default */
+    /* config endpoint unavailable -- use defaults */
   }
 })();

@@ -29,6 +29,11 @@ body {
   font-weight: bold;
   color: #4ecdc4;
 }
+.brand-version {
+  font-size: 10px;
+  color: #666;
+  font-weight: normal;
+}
 .sidebar-brand .status {
   font-size: 11px;
   color: #666;

@@ -57,7 +57,7 @@ WebSocket endpoint: `ws://localhost:9559` | Dashboard: `http://localhost:8559`
 
 ## CLI
 
-All interaction is through the `orochi` command:
+All interaction is through the `scitex-orochi` command. Every command supports `-h` for help with examples. Data commands support `--json`; mutating commands support `--dry-run`.
 
 ```bash
 # Send a message
@@ -130,6 +130,7 @@ Environment variables: `SCITEX_OROCHI_HOST`, `SCITEX_OROCHI_PORT`, `SCITEX_OROCH
 - **Gitea integration** -- create issues, list repos, close tickets from agent messages
 - **MCP server** -- FastMCP integration for Claude agent SDK
 - **System resource heartbeats** -- agents report CPU, memory, disk metrics
+- **Stable/dev dual deployment** -- dev dashboard syncs real-time with stable via WS upstream and CORS
 - **Token authentication** on all connections
 - **Single Docker container**, ~175MB image, zero external dependencies
 
@@ -179,6 +180,7 @@ The dashboard server exposes HTTP endpoints on port 8559:
 ```
 GET  /api/agents              # List connected agents with metadata
 GET  /api/channels            # List channels and members
+GET  /api/config              # Dashboard config (WS upstream URL)
 GET  /api/history/{channel}   # Message history (?since=ISO&limit=50)
 GET  /api/messages            # Recent messages across all channels
 POST /api/messages            # Send message via REST
@@ -263,8 +265,12 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 | `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID for bridging |
 | `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |
 | `SCITEX_OROCHI_TELEGRAM_CHANNEL` | `#telegram` | Orochi channel for Telegram messages |
+| `SCITEX_OROCHI_MEDIA_ROOT` | `/data/orochi-media` | File upload storage path |
+| `SCITEX_OROCHI_MEDIA_MAX_SIZE` | `20971520` | Max upload size (bytes, default 20MB) |
 | `SCITEX_OROCHI_GITEA_URL` | `https://git.scitex.ai` | Gitea server URL |
 | `SCITEX_OROCHI_GITEA_TOKEN` | (empty) | Gitea API token |
+| `SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM` | (empty) | WS upstream for dev dashboard sync |
+| `SCITEX_OROCHI_CORS_ORIGINS` | (empty) | Comma-separated CORS origins for API |
 
 ---
 
@@ -289,8 +295,16 @@ src/scitex_orochi/
   _main.py              # Server entry point
   mcp_server.py         # FastMCP integration for Claude agents
   _cli/                 # Click-based CLI
-    _main.py            # CLI commands (send, listen, who, status, ...)
-    commands/            # Deployment commands (init, launch, deploy, health)
+    _main.py            # Thin orchestrator -- registers all subcommands
+    _helpers.py         # Shared CLI helpers (make_client, get_agent_name)
+    commands/            # Command modules
+      messaging_cmd.py  # send, listen, login, join
+      query_cmd.py      # who, status, channels, members, history, heartbeat
+      server_cmd.py     # serve, vapid-generate
+      deploy_cmd.py     # deploy stable/dev/status
+      init_cmd.py       # init
+      launch_cmd.py     # launch master/head/all
+      health_cmd.py     # health
   _dashboard/           # Static HTML/CSS/JS for the web UI (PWA)
 ```
 

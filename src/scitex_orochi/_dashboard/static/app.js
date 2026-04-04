@@ -116,7 +116,7 @@ function connect() {
   } catch (e) {
     /* WebSocket constructor can throw on some mobile browsers */
     console.warn("WebSocket constructor failed:", e);
-    statusEl.textContent = "REST mode";
+    statusEl.textContent = "ws: polling";
     statusEl.classList.remove("connected");
     statusEl.classList.add("rest-mode");
     startRestPolling();
@@ -125,7 +125,7 @@ function connect() {
 
   ws.onopen = function () {
     wsConnected = true;
-    statusEl.textContent = "connected";
+    statusEl.textContent = "ws: live";
     statusEl.classList.add("connected");
     statusEl.classList.remove("rest-mode");
     stopRestPolling();
@@ -136,7 +136,7 @@ function connect() {
 
   ws.onclose = function () {
     wsConnected = false;
-    statusEl.textContent = "REST mode";
+    statusEl.textContent = "ws: polling";
     statusEl.classList.remove("connected");
     statusEl.classList.add("rest-mode");
     /* Start REST polling as fallback while WS is down */
