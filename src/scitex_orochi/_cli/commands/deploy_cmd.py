@@ -17,9 +17,11 @@ CONTAINER_NAMES = {
     "dev": "orochi-server-dev",
 }
 
+COMPOSE_DIR = Path("deployment") / "docker"
+
 COMPOSE_FILES = {
-    "stable": "docker-compose.stable.yml",
-    "dev": "docker-compose.dev.yml",
+    "stable": COMPOSE_DIR / "docker-compose.stable.yml",
+    "dev": COMPOSE_DIR / "docker-compose.dev.yml",
 }
 
 
@@ -31,10 +33,10 @@ def _find_project_root() -> Path:
         Path.cwd(),
     ]
     for candidate in candidates:
-        if (candidate / "docker-compose.stable.yml").exists():
+        if (candidate / COMPOSE_FILES["stable"]).exists():
             return candidate
     raise click.ClickException(
-        "Cannot find project root with docker-compose.stable.yml.\n"
+        "Cannot find project root with deployment/docker/docker-compose.stable.yml.\n"
         "  Run from the scitex-orochi directory or install the package."
     )
 
