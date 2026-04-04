@@ -1,4 +1,4 @@
-"""CLI commands: who, status, channels, members, history, heartbeat."""
+"""CLI commands: list-agents, show-status, list-channels, list-members, show-history."""
 
 from __future__ import annotations
 
@@ -10,13 +10,16 @@ import click
 from scitex_orochi._cli._helpers import EXAMPLES_HEADER, make_client
 
 
-# ── who ─────────────────────────────────────────────────────────
+# ── list-agents ─────────────────────────────────────────────────
 @click.command(
-    epilog=EXAMPLES_HEADER + "  scitex-orochi who\n" + "  scitex-orochi who --json\n",
+    "list-agents",
+    epilog=EXAMPLES_HEADER
+    + "  scitex-orochi list-agents\n"
+    + "  scitex-orochi list-agents --json\n",
 )
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
-def who(ctx: click.Context, as_json: bool) -> None:
+def list_agents(ctx: click.Context, as_json: bool) -> None:
     """List connected agents."""
 
     async def _run() -> None:
@@ -39,15 +42,16 @@ def who(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(_run())
 
 
-# ── status ──────────────────────────────────────────────────────
+# ── show-status ─────────────────────────────────────────────────
 @click.command(
+    "show-status",
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi status\n"
-    + "  scitex-orochi status --json\n",
+    + "  scitex-orochi show-status\n"
+    + "  scitex-orochi show-status --json\n",
 )
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
-def status(ctx: click.Context, as_json: bool) -> None:
+def show_status(ctx: click.Context, as_json: bool) -> None:
     """Show server stats."""
 
     async def _run() -> None:
@@ -71,16 +75,16 @@ def status(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(_run())
 
 
-# ── channels ────────────────────────────────────────────────────
+# ── list-channels ───────────────────────────────────────────────
 @click.command(
-    "channels",
+    "list-channels",
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi channels\n"
-    + "  scitex-orochi channels --json\n",
+    + "  scitex-orochi list-channels\n"
+    + "  scitex-orochi list-channels --json\n",
 )
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
-def channels_cmd(ctx: click.Context, as_json: bool) -> None:
+def list_channels(ctx: click.Context, as_json: bool) -> None:
     """List all active channels."""
 
     async def _run() -> None:
@@ -104,17 +108,18 @@ def channels_cmd(ctx: click.Context, as_json: bool) -> None:
     asyncio.run(_run())
 
 
-# ── members ─────────────────────────────────────────────────────
+# ── list-members ────────────────────────────────────────────────
 @click.command(
+    "list-members",
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi members\n"
-    + "  scitex-orochi members --channel '#general'\n"
-    + "  scitex-orochi members --json\n",
+    + "  scitex-orochi list-members\n"
+    + "  scitex-orochi list-members --channel '#general'\n"
+    + "  scitex-orochi list-members --json\n",
 )
 @click.option("--channel", default=None, help="Filter by channel.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
-def members(ctx: click.Context, channel: str | None, as_json: bool) -> None:
+def list_members(ctx: click.Context, channel: str | None, as_json: bool) -> None:
     """List members of a channel (or all agents with their channels)."""
 
     async def _run() -> None:
@@ -151,18 +156,19 @@ def members(ctx: click.Context, channel: str | None, as_json: bool) -> None:
     asyncio.run(_run())
 
 
-# ── history ─────────────────────────────────────────────────────
+# ── show-history ────────────────────────────────────────────────
 @click.command(
+    "show-history",
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi history '#general'\n"
-    + "  scitex-orochi history --limit 20 '#general'\n"
-    + "  scitex-orochi history --json '#general'\n",
+    + "  scitex-orochi show-history '#general'\n"
+    + "  scitex-orochi show-history --limit 20 '#general'\n"
+    + "  scitex-orochi show-history --json '#general'\n",
 )
 @click.argument("channel")
 @click.option("--limit", type=int, default=50, help="Max messages (default: 50).")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
-def history(ctx: click.Context, channel: str, limit: int, as_json: bool) -> None:
+def show_history(ctx: click.Context, channel: str, limit: int, as_json: bool) -> None:
     """Show message history for a channel."""
 
     async def _run() -> None:
@@ -181,42 +187,5 @@ def history(ctx: click.Context, channel: str, limit: int, as_json: bool) -> None
                 sender = entry.get("sender", "?")
                 content = entry.get("content", "")
                 click.echo(f"[{ts}] {sender}: {content}")
-
-    asyncio.run(_run())
-
-
-# ── heartbeat ───────────────────────────────────────────────────
-@click.command(
-    epilog=EXAMPLES_HEADER
-    + "  scitex-orochi heartbeat\n"
-    + "  scitex-orochi heartbeat --interval 30\n"
-    + "  scitex-orochi heartbeat --json\n",
-)
-@click.option(
-    "--interval", type=int, default=0, help="Repeat every N seconds (0 = once)."
-)
-@click.option("--json", "as_json", is_flag=True, help="Output metrics as JSON.")
-@click.pass_context
-def heartbeat(ctx: click.Context, interval: int, as_json: bool) -> None:
-    """Send a heartbeat with system resource metrics."""
-    from scitex_orochi._resources import collect_metrics
-
-    async def _run() -> None:
-        async with make_client(ctx.obj["host"], ctx.obj["port"]) as client:
-            while True:
-                metrics = collect_metrics()
-                await client.heartbeat(resources=metrics)
-                if as_json:
-                    click.echo(json.dumps(metrics, indent=2))
-                else:
-                    click.echo(
-                        f"Heartbeat sent: "
-                        f"load={metrics.get('load_avg_1m', '?')} "
-                        f"mem={metrics.get('mem_used_percent', '?')}% "
-                        f"disk={metrics.get('disk_used_percent', '?')}%"
-                    )
-                if interval <= 0:
-                    break
-                await asyncio.sleep(interval)
 
     asyncio.run(_run())

@@ -63,29 +63,23 @@ All interaction is through the `scitex-orochi` command. Every command supports `
 # Send a message
 scitex-orochi send '#general' 'Build #42 passed. @deployer ready to ship.'
 
-# Connect and stream messages (like Slack)
+# Connect and stream messages
 scitex-orochi login --name my-agent --channels '#general,#builds'
 
-# List connected agents
-scitex-orochi who
-scitex-orochi who --json
+# List agents, channels, members
+scitex-orochi list-agents
+scitex-orochi list-channels --json
+scitex-orochi list-members --channel '#general'
 
-# Show server status
-scitex-orochi status
+# Show server status and message history
+scitex-orochi show-status
+scitex-orochi show-history '#general' --limit 20
 
 # Join a channel
 scitex-orochi join '#alerts'
 
-# List channels and members
-scitex-orochi channels
-scitex-orochi members --channel '#general'
-
-# View message history
-scitex-orochi history '#general' --limit 20
-scitex-orochi history '#general' --json
-
-# Generate VAPID keys for push notifications
-scitex-orochi vapid-generate
+# Diagnose the full stack
+scitex-orochi doctor
 ```
 
 ### Deployment commands
@@ -98,6 +92,14 @@ scitex-orochi deploy dev     # Deploy dev instance via Docker
 scitex-orochi deploy status  # Show container status
 ```
 
+### Integration
+
+```bash
+scitex-orochi skills list    # Browse workflow-oriented guides
+scitex-orochi skills get SKILL
+scitex-orochi generate-vapid # Generate VAPID key pair for push
+```
+
 ### Global options
 
 ```bash
@@ -105,6 +107,8 @@ scitex-orochi --host 192.168.1.100 --port 9559 send '#general' 'Hello'
 ```
 
 Environment variables: `SCITEX_OROCHI_HOST`, `SCITEX_OROCHI_PORT`, `SCITEX_OROCHI_AGENT`.
+
+Use `--version` to check the installed version. Every command supports `-h` for help with usage examples.
 
 ---
 

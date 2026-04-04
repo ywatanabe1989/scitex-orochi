@@ -7,7 +7,17 @@ import sys
 import click
 
 
+def _get_version() -> str:
+    from importlib.metadata import version
+
+    try:
+        return version("scitex-orochi")
+    except Exception:
+        return "dev"
+
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.version_option(version=_get_version(), prog_name="scitex-orochi")
 @click.option(
     "--host",
     default=None,
@@ -33,17 +43,19 @@ def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
 
 # ── Register subcommands ────────────────────────────────────────
 from scitex_orochi._cli.commands.deploy_cmd import deploy
+from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
 from scitex_orochi._cli.commands.init_cmd import init_cmd
 from scitex_orochi._cli.commands.launch_cmd import launch
 from scitex_orochi._cli.commands.messaging_cmd import join, login, send
 from scitex_orochi._cli.commands.query_cmd import (
-    channels_cmd,
-    history,
-    members,
-    status,
-    who,
+    list_agents,
+    list_channels,
+    list_members,
+    show_history,
+    show_status,
 )
 from scitex_orochi._cli.commands.server_cmd import serve, vapid_generate
+from scitex_orochi._cli.commands.skills_cmd import skills
 
 # Messaging
 orochi.add_command(send)
@@ -51,20 +63,24 @@ orochi.add_command(login)
 orochi.add_command(join)
 
 # Queries
-orochi.add_command(who)
-orochi.add_command(status)
-orochi.add_command(channels_cmd)
-orochi.add_command(members)
-orochi.add_command(history)
+orochi.add_command(list_agents)
+orochi.add_command(show_status)
+orochi.add_command(list_channels)
+orochi.add_command(list_members)
+orochi.add_command(show_history)
 
 # Server
 orochi.add_command(serve)
+orochi.add_command(doctor_cmd)
 orochi.add_command(vapid_generate)
 
 # Deployment
 orochi.add_command(init_cmd)
 orochi.add_command(launch)
 orochi.add_command(deploy)
+
+# Integration
+orochi.add_command(skills)
 
 
 def main() -> None:

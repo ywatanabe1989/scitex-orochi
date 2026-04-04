@@ -25,11 +25,11 @@ def serve(ctx: click.Context) -> None:
 
 # ── vapid-generate ──────────────────────────────────────────────
 @click.command(
-    "vapid-generate",
+    "generate-vapid",
     epilog=EXAMPLES_HEADER
-    + "  scitex-orochi vapid-generate\n"
-    + "  scitex-orochi vapid-generate --output /etc/orochi/vapid.json\n"
-    + "  scitex-orochi vapid-generate --dry-run --json\n",
+    + "  scitex-orochi generate-vapid\n"
+    + "  scitex-orochi generate-vapid --output /etc/orochi/vapid.json\n"
+    + "  scitex-orochi generate-vapid --dry-run --json\n",
 )
 @click.option(
     "--output", default=None, help="Output path (default: /data/vapid-keys.json)."
