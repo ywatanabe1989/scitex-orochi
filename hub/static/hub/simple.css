@@ -1,0 +1,29 @@
+/* Shared minimal styles for simple pages (no-workspace, no-access) */
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1a1d21;
+  color: #d1d2d3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  margin: 0;
+}
+.card {
+  background: #222529;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  max-width: 400px;
+}
+.card h1 {
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+.card p {
+  color: #888;
+}
+a {
+  color: #4a9eff;
+}

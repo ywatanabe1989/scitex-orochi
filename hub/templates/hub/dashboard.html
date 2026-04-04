@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{ workspace.name }} - Orochi</title>
+        <link rel="stylesheet" href="{% static 'hub/style.css' %}">
+    </head>
+    <body data-workspace="{{ workspace.name }}"
+          data-ws-url="{{ ws_url }}"
+          data-csrf-token="{{ csrf_token }}">
+        <div id="app">
+            <nav id="sidebar">
+                <div class="sidebar-header">
+                    <h2>Orochi</h2>
+                    <span class="workspace-name">{{ workspace.name }}</span>
+                </div>
+                <div class="sidebar-section">
+                    <h3>Channels</h3>
+                    <ul id="channel-list">
+                        {% for ch in channels %}<li data-channel="{{ ch.name }}">{{ ch.name }}</li>{% endfor %}
+                    </ul>
+                </div>
+                <div class="sidebar-footer">
+                    <span>{{ request.user.username }}</span>
+                    <a href="{% url 'logout' %}">Logout</a>
+                </div>
+            </nav>
+            <main id="chat-area">
+                <div id="chat-header">
+                    <h3 id="current-channel">#general</h3>
+                </div>
+                <div id="messages"></div>
+                <form id="message-form">
+                    <input type="text"
+                           id="message-input"
+                           placeholder="Type a message..."
+                           autocomplete="off">
+                    <button type="submit">Send</button>
+                </form>
+            </main>
+        </div>
+        <script src="{% static 'hub/config.js' %}"></script>
+        <script src="{% static 'hub/app.js' %}"></script>
+    </body>
+</html>

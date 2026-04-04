@@ -1,0 +1,18 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Orochi - No Workspace</title>
+        <link rel="stylesheet" href="{% static 'hub/simple.css' %}">
+    </head>
+    <body>
+        <div class="card">
+            <h1>No Workspace</h1>
+            <p>You don't have access to any workspace yet. Contact an admin to get invited.</p>
+            <p>
+                <a href="{% url 'logout' %}">Logout</a>
+            </p>
+        </div>
+    </body>
+</html>

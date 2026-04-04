@@ -1,11 +1,6 @@
-# Orochi Stable Instance (Production)
-# Ports: WS=9559, Dashboard=8559
+# Orochi Stable Instance (Production) — Django + Daphne
+# Port: 8559 (HTTP + WebSocket via ASGI)
 # Volume: /data/orochi-stable/
-#
-# Admin token: auto-generated at startup if not set.
-# To persist it, set SCITEX_OROCHI_ADMIN_TOKEN in the environment
-# or create /data/orochi-stable/.env with:
-#   SCITEX_OROCHI_ADMIN_TOKEN=your-token-here
 
 services:
   orochi:
@@ -14,20 +9,17 @@ services:
       dockerfile: deployment/docker/Dockerfile
     container_name: orochi-server-stable
     ports:
-      - "9559:9559"
       - "8559:8559"
     volumes:
       - /data/orochi-stable:/data
     environment:
-      - SCITEX_OROCHI_ADMIN_TOKEN=${SCITEX_OROCHI_ADMIN_TOKEN:-}
-      - SCITEX_OROCHI_CORS_ORIGINS=https://orochi-dev.scitex.ai
-      - SCITEX_OROCHI_HOST=0.0.0.0
-      - SCITEX_OROCHI_PORT=9559
-      - SCITEX_OROCHI_DASHBOARD_PORT=8559
-      - SCITEX_OROCHI_GITEA_URL=${SCITEX_OROCHI_GITEA_URL:-http://scitex-cloud-prod-gitea-1:3000}
-      - SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED=true
-      - SCITEX_OROCHI_TELEGRAM_BOT_TOKEN=${SCITEX_NOTIFICATION_TELEGRAM_TOKEN:-}
-      - SCITEX_OROCHI_TELEGRAM_CHAT_ID=${SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID:-}
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
+      - DJANGO_DEBUG=false
+      - DJANGO_ALLOWED_HOSTS=orochi.scitex.ai,localhost
+      - OROCHI_DB_PATH=/data/db.sqlite3
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@orochi.local}
     restart: unless-stopped
     networks:
       - scitex-cloud-prod_scitex-network

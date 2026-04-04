@@ -4,15 +4,21 @@ WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY src/ src/
+COPY hub/ hub/
+COPY orochi/ orochi/
+COPY manage.py ./
 
 RUN pip install --no-cache-dir .
 
-EXPOSE 9559 8559
+EXPOSE 8559
 
-ENV SCITEX_OROCHI_HOST=0.0.0.0
-ENV SCITEX_OROCHI_DASHBOARD_PORT=8559
-ENV SCITEX_OROCHI_DB=/data/orochi.db
+ENV DJANGO_SETTINGS_MODULE=orochi.settings
+ENV DJANGO_ALLOWED_HOSTS=*
+ENV OROCHI_DB_PATH=/data/db.sqlite3
+
+COPY deployment/docker/entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 VOLUME /data
 
-CMD ["scitex-orochi", "serve"]
+ENTRYPOINT ["/app/entrypoint.sh"]
