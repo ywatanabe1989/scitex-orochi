@@ -41,7 +41,7 @@ async def handle_ws(request: web.Request) -> web.WebSocketResponse | web.Respons
 
     # Auth check from query string
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.Response(status=401, text="Unauthorized")
 
     ws = web.WebSocketResponse()
@@ -137,7 +137,7 @@ async def handle_post_message(request: web.Request) -> web.Response:
     so the dashboard always uses this REST endpoint instead of WS.
     """
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     server: OrochiServer = request.app["orochi_server"]
@@ -206,7 +206,7 @@ async def handle_stats(request: web.Request) -> web.Response:
 async def handle_upload(request: web.Request) -> web.Response:
     """POST /api/upload -- multipart file upload."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     reader = await request.multipart()
@@ -234,7 +234,7 @@ async def handle_upload(request: web.Request) -> web.Response:
 async def handle_upload_base64(request: web.Request) -> web.Response:
     """POST /api/upload-base64 -- base64-encoded file upload."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     body = await request.json()

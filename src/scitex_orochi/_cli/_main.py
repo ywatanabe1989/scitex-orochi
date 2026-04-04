@@ -80,6 +80,21 @@ orochi.add_command(init_cmd)
 orochi.add_command(launch)
 orochi.add_command(deploy)
 
+# Workspace
+from scitex_orochi._cli.commands.workspace_cmd import (
+    create_invite,
+    create_workspace,
+    delete_workspace,
+    list_invites,
+    list_workspaces,
+)
+
+orochi.add_command(create_workspace)
+orochi.add_command(delete_workspace)
+orochi.add_command(list_workspaces)
+orochi.add_command(create_invite)
+orochi.add_command(list_invites)
+
 # Integration
 orochi.add_command(docs)
 orochi.add_command(skills)

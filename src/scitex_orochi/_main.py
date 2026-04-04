@@ -22,6 +22,19 @@ WS_PING_TIMEOUT = 10
 
 
 def main() -> None:
+    import os
+    import secrets
+
+    from scitex_orochi._config import ADMIN_TOKEN
+
+    # Ensure admin token exists (auto-generate if not set)
+    admin_token = ADMIN_TOKEN
+    if not admin_token:
+        admin_token = secrets.token_urlsafe(32)
+        os.environ["SCITEX_OROCHI_ADMIN_TOKEN"] = admin_token
+        os.environ["SCITEX_OROCHI_TOKEN"] = admin_token
+        log.info("Auto-generated admin token: %s", admin_token)
+
     server = OrochiServer()
 
     loop = asyncio.new_event_loop()
@@ -46,6 +59,8 @@ def main() -> None:
         )
         server.workspaces = WorkspaceStore(server.store._db)
         await server.workspaces.init_schema()
+        ws_token = await server.workspaces.ensure_default_token()
+        log.info("Default workspace token: %s", ws_token)
         ws_server = await websockets.serve(
             server._handle_connection,
             server.host,

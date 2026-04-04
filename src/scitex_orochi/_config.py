@@ -14,7 +14,11 @@ HOST = _env("SCITEX_OROCHI_HOST", "127.0.0.1")
 PORT = int(_env("SCITEX_OROCHI_PORT", "9559"))
 DASHBOARD_PORT = int(_env("SCITEX_OROCHI_DASHBOARD_PORT", "8559"))
 DB_PATH = _env("SCITEX_OROCHI_DB", "/data/orochi.db")
-OROCHI_TOKEN = _env("SCITEX_OROCHI_TOKEN", "")
+ADMIN_TOKEN = _env("SCITEX_OROCHI_ADMIN_TOKEN", "")
+# Backward compat: SCITEX_OROCHI_TOKEN acts as admin token if ADMIN_TOKEN not set
+if not ADMIN_TOKEN:
+    ADMIN_TOKEN = _env("SCITEX_OROCHI_TOKEN", "")
+OROCHI_TOKEN = ADMIN_TOKEN  # alias used by existing code
 GITEA_URL = _env("SCITEX_OROCHI_GITEA_URL", "https://git.scitex.ai")
 GITEA_TOKEN = _env("SCITEX_OROCHI_GITEA_TOKEN", "")
 MEDIA_ROOT = _env("SCITEX_OROCHI_MEDIA_ROOT", "/data/orochi-media")

@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS workspace_invites (
     use_count    INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS workspace_tokens (
+    token        TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    label        TEXT NOT NULL DEFAULT '',
+    created_at   TEXT NOT NULL,
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+);
 """
 
 DEFAULT_WORKSPACE_NAME = "default"
@@ -248,7 +256,7 @@ class WorkspaceStore:
             max_uses: 0 means unlimited.
             expires_hours: 0 means never expires.
         """
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         token = uuid.uuid4().hex[:16]
         now = datetime.now(timezone.utc)
@@ -261,10 +269,20 @@ class WorkspaceStore:
             "INSERT INTO workspace_invites "
             "(token, workspace_id, role, created_by, created_at, expires_at, max_uses) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (token, workspace_id, role, created_by, now.isoformat(), expires_at, max_uses),
+            (
+                token,
+                workspace_id,
+                role,
+                created_by,
+                now.isoformat(),
+                expires_at,
+                max_uses,
+            ),
         )
         await self._db.commit()
-        log.info("Created invite %s for workspace %s by %s", token, workspace_id, created_by)
+        log.info(
+            "Created invite %s for workspace %s by %s", token, workspace_id, created_by
+        )
         return {
             "token": token,
             "workspace_id": workspace_id,
@@ -273,9 +291,7 @@ class WorkspaceStore:
             "max_uses": max_uses,
         }
 
-    async def redeem_invite(
-        self, token: str, agent_name: str
-    ) -> dict[str, Any] | None:
+    async def redeem_invite(self, token: str, agent_name: str) -> dict[str, Any] | None:
         """Redeem an invitation token. Returns workspace info or None if invalid."""
         from datetime import datetime, timezone
 
@@ -309,7 +325,12 @@ class WorkspaceStore:
         await self._db.commit()
 
         ws = await self.get_workspace(workspace_id)
-        log.info("Agent %s joined workspace %s via invite %s", agent_name, workspace_id, token)
+        log.info(
+            "Agent %s joined workspace %s via invite %s",
+            agent_name,
+            workspace_id,
+            token,
+        )
         return ws.to_dict() if ws else None
 
     async def list_invites(self, workspace_id: str) -> list[dict[str, Any]]:
@@ -340,3 +361,69 @@ class WorkspaceStore:
         )
         await self._db.commit()
         return cursor.rowcount > 0
+
+    # ── Workspace tokens (agent auth) ───────────────────────────
+
+    async def create_workspace_token(self, workspace_id: str, label: str = "") -> dict:
+        """Generate a token that grants access to a workspace."""
+        from datetime import datetime, timezone
+
+        token = "wks_" + uuid.uuid4().hex
+        now = datetime.now(timezone.utc).isoformat()
+        await self._db.execute(
+            "INSERT INTO workspace_tokens (token, workspace_id, label, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (token, workspace_id, label, now),
+        )
+        await self._db.commit()
+        log.info("Created workspace token for %s (label=%s)", workspace_id, label)
+        return {
+            "token": token,
+            "workspace_id": workspace_id,
+            "label": label,
+            "created_at": now,
+        }
+
+    async def resolve_token(self, token: str) -> str | None:
+        """Resolve a workspace token to its workspace_id. Returns None if invalid."""
+        cursor = await self._db.execute(
+            "SELECT workspace_id FROM workspace_tokens WHERE token = ?",
+            (token,),
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else None
+
+    async def list_workspace_tokens(self, workspace_id: str) -> list[dict]:
+        """List all tokens for a workspace."""
+        cursor = await self._db.execute(
+            "SELECT token, label, created_at "
+            "FROM workspace_tokens WHERE workspace_id = ? ORDER BY created_at DESC",
+            (workspace_id,),
+        )
+        rows = await cursor.fetchall()
+        return [{"token": r[0], "label": r[1], "created_at": r[2]} for r in rows]
+
+    async def revoke_workspace_token(self, token: str) -> bool:
+        """Revoke a workspace token."""
+        cursor = await self._db.execute(
+            "DELETE FROM workspace_tokens WHERE token = ?", (token,)
+        )
+        await self._db.commit()
+        return cursor.rowcount > 0
+
+    async def ensure_default_token(self) -> str:
+        """Ensure the default workspace has at least one token. Returns it."""
+        cursor = await self._db.execute(
+            "SELECT w.id FROM workspaces w WHERE w.name = ?",
+            (DEFAULT_WORKSPACE_NAME,),
+        )
+        row = await cursor.fetchone()
+        if not row:
+            await self._ensure_default()
+            return await self.ensure_default_token()
+        ws_id = row[0]
+        tokens = await self.list_workspace_tokens(ws_id)
+        if tokens:
+            return tokens[0]["token"]
+        result = await self.create_workspace_token(ws_id, label="default")
+        return result["token"]

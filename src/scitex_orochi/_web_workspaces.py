@@ -39,7 +39,7 @@ async def handle_workspace(request: web.Request) -> web.Response:
 async def handle_create_workspace(request: web.Request) -> web.Response:
     """POST /api/workspaces -- create a workspace."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     if not server.workspaces:
@@ -62,7 +62,7 @@ async def handle_create_workspace(request: web.Request) -> web.Response:
 async def handle_delete_workspace(request: web.Request) -> web.Response:
     """DELETE /api/workspaces/{id} -- delete a workspace."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     ws_id = request.match_info["id"]
@@ -79,7 +79,7 @@ async def handle_delete_workspace(request: web.Request) -> web.Response:
 async def handle_workspace_channels(request: web.Request) -> web.Response:
     """POST /api/workspaces/{id}/channels -- add a channel to workspace."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     ws_id = request.match_info["id"]
@@ -96,7 +96,7 @@ async def handle_workspace_channels(request: web.Request) -> web.Response:
 async def handle_workspace_members(request: web.Request) -> web.Response:
     """POST /api/workspaces/{id}/members -- add a member to workspace."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     ws_id = request.match_info["id"]
@@ -114,7 +114,7 @@ async def handle_workspace_members(request: web.Request) -> web.Response:
 async def handle_create_invite(request: web.Request) -> web.Response:
     """POST /api/workspaces/{id}/invites -- create an invitation token."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     ws_id = request.match_info["id"]
@@ -162,7 +162,7 @@ async def handle_redeem_invite(request: web.Request) -> web.Response:
 async def handle_revoke_invite(request: web.Request) -> web.Response:
     """DELETE /api/workspaces/{id}/invites/{token} -- revoke an invitation."""
     auth_token = request.query.get("token")
-    if not verify_token(auth_token):
+    if not await verify_token(auth_token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     invite_token = request.match_info["invite_token"]

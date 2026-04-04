@@ -42,6 +42,7 @@ class Agent:
     model: str = ""
     agent_id: str = ""
     project: str = ""
+    workspace_id: str = ""
     status: str = "online"
     current_task: str = ""
     resources: dict[str, Any] = field(default_factory=dict)
@@ -96,9 +97,9 @@ class OrochiServer:
         log.info("Shutdown complete")
 
     async def _handle_connection(self, ws: ServerConnection) -> None:
-        # Auth check: extract token from query string
         token = extract_token_from_query(ws.request.path if ws.request else "")
-        if not verify_token(token):
+        auth = await verify_token(token, self.workspaces)
+        if not auth:
             await ws.send(
                 Message(
                     type="error",
@@ -112,6 +113,7 @@ class OrochiServer:
             await ws.close(4001, "Authentication failed")
             return
 
+        workspace_id = auth.workspace_id or ""
         agent_name: str | None = None
         try:
             async for raw in ws:
@@ -130,7 +132,7 @@ class OrochiServer:
                     continue
 
                 if msg.type == "register":
-                    agent_name = await self._handle_register(ws, msg)
+                    agent_name = await self._handle_register(ws, msg, workspace_id)
                 elif msg.type == "message":
                     await self._handle_message(msg)
                 elif msg.type == "subscribe":
@@ -175,7 +177,9 @@ class OrochiServer:
             if agent_name and agent_name in self.agents:
                 self._remove_agent(agent_name)
 
-    async def _handle_register(self, ws: Any, msg: Message) -> str:
+    async def _handle_register(
+        self, ws: Any, msg: Message, workspace_id: str = ""
+    ) -> str:
         name = msg.sender
         channels = set(msg.payload.get("channels", ["#general"]))
         machine = msg.payload.get("machine", "")
@@ -196,6 +200,7 @@ class OrochiServer:
             model=model,
             agent_id=agent_id,
             project=project,
+            workspace_id=workspace_id,
             status="online",
             current_task="",
             last_heartbeat=now,
@@ -248,24 +253,27 @@ class OrochiServer:
             metadata=metadata or None,
         )
 
-        # Deliver to channel subscribers (copy set to avoid RuntimeError
-        # if _send_to_agent triggers _remove_agent which mutates the set)
+        # Resolve sender's workspace for scoped routing
+        sender_agent = self.agents.get(msg.sender)
+        sender_ws = sender_agent.workspace_id if sender_agent else ""
+
+        # Deliver to channel subscribers in the same workspace
         delivered_to: set[str] = set()
         subscribers = set(self.channels.get(channel, set()))
         for agent_name in subscribers:
             if agent_name == msg.sender:
                 continue
             agent = self.agents.get(agent_name)
-            if agent:
+            if agent and agent.workspace_id == sender_ws:
                 await self._send_to_agent(agent, msg)
                 delivered_to.add(agent_name)
 
-        # @mention routing -- deliver to mentioned agents even if not subscribed
+        # @mention routing -- same workspace only
         for mentioned in msg.mentions:
             if mentioned in delivered_to or mentioned == msg.sender:
                 continue
             agent = self.agents.get(mentioned)
-            if agent:
+            if agent and agent.workspace_id == sender_ws:
                 await self._send_to_agent(agent, msg)
                 delivered_to.add(mentioned)
 
@@ -463,6 +471,7 @@ class OrochiServer:
                 "current_task": a.current_task,
                 "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,
+                "workspace_id": a.workspace_id,
                 "registered_at": a.registered_at,
             }
             for a in self.agents.values()
