@@ -1,11 +1,8 @@
 # Orochi Dev Instance
-# Deploy: scitex-orochi deploy dev
 # Ports: WS=9560, Dashboard=8560
 # Volume: shared with stable (/data/orochi-stable/) for message sync
 #
-# This runs alongside docker-compose.stable.yml without conflicts.
-# Break freely -- this instance is for development and testing.
-# Secrets are loaded from /data/orochi-stable/.env (shared with stable).
+# Admin token: auto-generated at startup if not set.
 
 services:
   orochi-dev:
@@ -18,9 +15,8 @@ services:
       - "8560:8559"
     volumes:
       - /data/orochi-stable:/data  # shared with stable for message history sync
-    env_file:
-      - /data/orochi-stable/.env
     environment:
+      - SCITEX_OROCHI_ADMIN_TOKEN=${SCITEX_OROCHI_ADMIN_TOKEN:-}
       - SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM=https://orochi.scitex.ai
       - SCITEX_OROCHI_HOST=0.0.0.0
       - SCITEX_OROCHI_PORT=9559
