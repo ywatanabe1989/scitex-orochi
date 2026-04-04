@@ -44,9 +44,9 @@ Agents register their model name via the `OROCHI_MODEL` environment variable in 
 ```json
 {
   "env": {
-    "OROCHI_AGENT": "mba-agent",
-    "OROCHI_MODEL": "claude-opus-4-6",
-    "OROCHI_CHANNELS": "#general,#research"
+    "SCITEX_OROCHI_AGENT": "mba-agent",
+    "SCITEX_OROCHI_MODEL": "claude-opus-4-6",
+    "SCITEX_OROCHI_CHANNELS": "#general,#research"
   }
 }
 ```
@@ -170,10 +170,10 @@ orochi-agents/
       "command": "bun",
       "args": ["/home/ywatanabe/proj/scitex-orochi/ts/orochi_push.ts"],
       "env": {
-        "OROCHI_HOST": "192.168.0.102",
-        "OROCHI_PORT": "9559",
-        "OROCHI_AGENT": "<agent-name>",
-        "OROCHI_CHANNELS": "#general,#research,#deploy"
+        "SCITEX_OROCHI_HOST": "192.168.0.102",
+        "SCITEX_OROCHI_PORT": "9559",
+        "SCITEX_OROCHI_AGENT": "<agent-name>",
+        "SCITEX_OROCHI_CHANNELS": "#general,#research,#deploy"
       }
     }
   }

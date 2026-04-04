@@ -1,15 +1,15 @@
 ---
 name: orochi-host-connectivity
-description: Machine-specific network configuration for Orochi agents -- OROCHI_HOST values, port accessibility, and known connectivity issues.
+description: Machine-specific network configuration for Orochi agents -- SCITEX_OROCHI_HOST values, port accessibility, and known connectivity issues.
 ---
 
 # Host Connectivity
 
 Each agent machine has different network characteristics that affect how it connects to the Orochi hub running on NAS (192.168.0.102:9559).
 
-## OROCHI_HOST Per Machine
+## SCITEX_OROCHI_HOST Per Machine
 
-| Machine | Agent | OROCHI_HOST | Reason |
+| Machine | Agent | SCITEX_OROCHI_HOST | Reason |
 |---------|-------|-------------|--------|
 | NAS (192.168.0.102) | nas-agent | `127.0.0.1` | Orochi server runs locally on NAS |
 | ywata-note-win (WSL) | master-agent, ywata-note-win-agent | `192.168.0.102` | LAN access to NAS |
@@ -27,7 +27,7 @@ The Orochi hub runs on NAS as a Docker service. It listens on:
 
 ### Spartan HPC: WebSocket Port 9559 Blocked
 
-Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `orochi_push.ts` bridge connects directly to `OROCHI_HOST:OROCHI_PORT`, not through the HTTPS proxy.
+Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `orochi_push.ts` bridge connects directly to `SCITEX_OROCHI_HOST:OROCHI_PORT`, not through the HTTPS proxy.
 
 **Status**: Spartan agent cannot use push mode until `orochi_push.ts` supports WSS proxy connection. Polling mode works as a fallback (uses HTTP on standard ports).
 
