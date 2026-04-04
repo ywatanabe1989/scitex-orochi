@@ -1,7 +1,7 @@
 # Orochi Dev Instance
 # Deploy: scitex-orochi deploy dev
 # Ports: WS=9560, Dashboard=8560
-# Volume: /data/orochi-dev/
+# Volume: shared with stable (/data/orochi-stable/) for message sync
 #
 # This runs alongside docker-compose.stable.yml without conflicts.
 # Break freely -- this instance is for development and testing.
@@ -16,7 +16,7 @@ services:
       - "9560:9559"
       - "8560:8559"
     volumes:
-      - /data/orochi-dev:/data
+      - /data/orochi-stable:/data  # shared with stable for message history sync
     environment:
       - SCITEX_OROCHI_TOKEN=${SCITEX_OROCHI_TOKEN_DEV:-${SCITEX_OROCHI_TOKEN:-}}
       - SCITEX_OROCHI_HOST=0.0.0.0
