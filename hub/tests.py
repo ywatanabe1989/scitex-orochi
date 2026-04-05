@@ -93,8 +93,8 @@ class AuthTest(TestCase):
             {
                 "username": "newuser",
                 "email": "new@example.com",
-                "password": "securepass123",
-                "password2": "securepass123",
+                "password": "SecurePass123!",
+                "password2": "SecurePass123!",
             },
         )
         self.assertEqual(resp.status_code, 302)
@@ -106,7 +106,7 @@ class AuthTest(TestCase):
             {
                 "username": "newuser",
                 "email": "new@example.com",
-                "password": "securepass123",
+                "password": "SecurePass123!",
                 "password2": "different",
             },
         )
@@ -119,8 +119,8 @@ class AuthTest(TestCase):
             {
                 "username": "testuser",
                 "email": "other@example.com",
-                "password": "securepass123",
-                "password2": "securepass123",
+                "password": "SecurePass123!",
+                "password2": "SecurePass123!",
             },
         )
         self.assertEqual(resp.status_code, 200)

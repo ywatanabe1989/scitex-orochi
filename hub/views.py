@@ -59,6 +59,8 @@ def signup_view(request):
         password = request.POST.get("password", "")
         password2 = request.POST.get("password2", "")
 
+        import re
+
         errors = []
         if not username:
             errors.append("Username is required.")
@@ -66,6 +68,14 @@ def signup_view(request):
             errors.append("Email is required.")
         if len(password) < 8:
             errors.append("Password must be at least 8 characters.")
+        if not re.search(r"[a-z]", password):
+            errors.append("Password must contain a lowercase letter.")
+        if not re.search(r"[A-Z]", password):
+            errors.append("Password must contain an uppercase letter.")
+        if not re.search(r"\d", password):
+            errors.append("Password must contain a number.")
+        if not re.search(r"[^a-zA-Z0-9]", password):
+            errors.append("Password must contain a special character.")
         if password != password2:
             errors.append("Passwords do not match.")
         if User.objects.filter(username=username).exists():

@@ -172,6 +172,19 @@ body {
   padding: 0.1rem 0;
 }
 
+.password-rules li.unmet {
+  color: #888;
+}
+
+.password-rules li.unmet::before {
+  content: "\2717 ";
+  color: #f44;
+}
+
 .password-rules li.met {
   color: #4f4;
+}
+
+.password-rules li.met::before {
+  content: "\2713 ";
 }
