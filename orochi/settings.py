@@ -55,6 +55,7 @@ MIDDLEWARE = [
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
+    "hub.backends.SciTexRemoteBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
