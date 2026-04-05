@@ -1,23 +1,26 @@
 /**
  * Orochi push client configuration -- environment-based settings.
+ * All env vars use SCITEX_OROCHI_ prefix.
  */
 import { hostname } from "os";
 
-export const OROCHI_HOST = process.env.OROCHI_HOST || "192.168.0.102";
-export const OROCHI_PORT = parseInt(process.env.OROCHI_PORT || "8559");
-export const OROCHI_AGENT = process.env.OROCHI_AGENT || `${hostname()}-claude`;
-export const OROCHI_CHANNELS = (process.env.OROCHI_CHANNELS || "#general")
+export const OROCHI_HOST = process.env.SCITEX_OROCHI_HOST || "192.168.0.102";
+export const OROCHI_PORT = parseInt(process.env.SCITEX_OROCHI_PORT || "8559");
+export const OROCHI_AGENT =
+  process.env.SCITEX_OROCHI_AGENT || `${hostname()}-claude`;
+export const OROCHI_CHANNELS = (
+  process.env.SCITEX_OROCHI_CHANNELS || "#general"
+)
   .split(",")
   .map((s) => s.trim());
-export const OROCHI_TOKEN = process.env.OROCHI_TOKEN || "";
-export const OROCHI_MODEL = process.env.OROCHI_MODEL || "unknown";
+export const OROCHI_TOKEN = process.env.SCITEX_OROCHI_TOKEN || "";
+export const OROCHI_MODEL = process.env.SCITEX_OROCHI_MODEL || "unknown";
 
-// WSS support: OROCHI_URL overrides host/port with a full URL (ws:// or wss://)
-// This enables connections through Cloudflare tunnels (issue #80).
+// WSS support: SCITEX_OROCHI_URL overrides host/port with a full URL (ws:// or wss://)
 // Examples:
-//   OROCHI_URL=wss://orochi.scitex.ai      (Cloudflare tunnel)
-//   OROCHI_URL=ws://192.168.0.102:9559      (direct LAN)
-export const OROCHI_URL = process.env.OROCHI_URL || "";
+//   SCITEX_OROCHI_URL=wss://orochi.scitex.ai      (Cloudflare tunnel)
+//   SCITEX_OROCHI_URL=ws://192.168.0.102:8559      (direct LAN)
+export const OROCHI_URL = process.env.SCITEX_OROCHI_URL || "";
 
 export function buildWsUrl(): string {
   if (OROCHI_URL) {

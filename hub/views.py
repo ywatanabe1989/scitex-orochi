@@ -21,7 +21,7 @@ def signin_view(request):
     if request.user.is_authenticated:
         return redirect("index")
 
-    sso_url = getattr(settings, "OROCHI_SSO_URL", "")
+    sso_url = getattr(settings, "SCITEX_OROCHI_SSO_URL", "")
 
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
@@ -51,7 +51,7 @@ def signup_view(request):
     if request.user.is_authenticated:
         return redirect("index")
 
-    sso_url = getattr(settings, "OROCHI_SSO_URL", "")
+    sso_url = getattr(settings, "SCITEX_OROCHI_SSO_URL", "")
 
     if request.method == "POST":
         username = request.POST.get("username", "").strip()

@@ -16,7 +16,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
       - DJANGO_DEBUG=false
       - DJANGO_ALLOWED_HOSTS=orochi.scitex.ai,localhost
-      - OROCHI_DB_PATH=/data/db.sqlite3
+      - SCITEX_OROCHI_DB_PATH=/data/db.sqlite3
       - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
       - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@orochi.local}

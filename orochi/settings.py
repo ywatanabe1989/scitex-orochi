@@ -66,7 +66,7 @@ CHANNEL_LAYERS = {
 }
 
 # Database — SQLite for simplicity, PostgreSQL for production
-_db_path = os.environ.get("OROCHI_DB_PATH", str(BASE_DIR / "db.sqlite3"))
+_db_path = os.environ.get("SCITEX_OROCHI_DB_PATH", str(BASE_DIR / "db.sqlite3"))
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -98,7 +98,7 @@ if not DEBUG:
     }
 
 MEDIA_URL = "media/"
-MEDIA_ROOT = os.environ.get("OROCHI_MEDIA_ROOT", str(BASE_DIR / "media"))
+MEDIA_ROOT = os.environ.get("SCITEX_OROCHI_MEDIA_ROOT", str(BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -106,6 +106,6 @@ LOGIN_URL = "/signin/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/signin/"
 
-# Optional SSO — set OROCHI_SSO_URL to enable "Sign in with SciTeX" button
-# e.g. OROCHI_SSO_URL=https://scitex.ai
-OROCHI_SSO_URL = os.environ.get("OROCHI_SSO_URL", "")
+# Optional SSO — set SCITEX_OROCHI_SSO_URL to enable "Sign in with SciTeX" button
+# e.g. SCITEX_OROCHI_SSO_URL=https://scitex.ai
+SCITEX_OROCHI_SSO_URL = os.environ.get("SCITEX_OROCHI_SSO_URL", "")
