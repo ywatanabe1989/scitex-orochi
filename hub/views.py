@@ -112,6 +112,15 @@ def index(request):
         membership = WorkspaceMember.objects.filter(user=request.user).first()
         workspace = membership.workspace if membership else None
 
+    # Auto-add new users to the default workspace (like Slack's default channel)
+    if not workspace:
+        default_ws = Workspace.objects.filter(name="default").first()
+        if default_ws:
+            WorkspaceMember.objects.get_or_create(
+                workspace=default_ws, user=request.user, defaults={"role": "member"}
+            )
+            workspace = default_ws
+
     if workspace:
         return redirect("workspace-dashboard", slug=workspace.name)
 
