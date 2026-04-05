@@ -16,6 +16,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-secret-key}
       - DJANGO_DEBUG=true
       - DJANGO_ALLOWED_HOSTS=orochi-dev.scitex.ai,localhost
+      - DJANGO_CSRF_TRUSTED_ORIGINS=https://orochi-dev.scitex.ai
       - SCITEX_OROCHI_DB_PATH=/data/db.sqlite3
     restart: unless-stopped
     networks:
