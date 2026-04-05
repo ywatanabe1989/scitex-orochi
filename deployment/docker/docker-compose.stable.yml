@@ -17,6 +17,7 @@ services:
       - DJANGO_DEBUG=false
       - DJANGO_ALLOWED_HOSTS=orochi.scitex.ai,localhost
       - DJANGO_CSRF_TRUSTED_ORIGINS=https://orochi.scitex.ai
+      - SCITEX_OROCHI_SSO_URL=https://scitex.ai
       - SCITEX_OROCHI_DB_PATH=/data/db.sqlite3
       - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME:-admin}
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
