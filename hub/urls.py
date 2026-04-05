@@ -1,18 +1,17 @@
 """URL configuration for the hub app."""
 
-from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from hub import views
 
 urlpatterns = [
     # Auth
-    path(
-        "login/",
-        auth_views.LoginView.as_view(template_name="hub/login.html"),
-        name="login",
-    ),
-    path("logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("signin/", views.signin_view, name="signin"),
+    path("signup/", views.signup_view, name="signup"),
+    path("signout/", views.signout_view, name="signout"),
+    # Backward compat
+    path("login/", views.signin_view, name="login"),
+    path("logout/", views.signout_view, name="logout"),
     # Dashboard
     path("", views.index, name="index"),
     path(

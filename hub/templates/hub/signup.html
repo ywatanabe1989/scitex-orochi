@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Sign Up - Orochi</title>
+        <link rel="stylesheet" href="{% static 'hub/auth.css' %}">
+    </head>
+    <body>
+        <div class="auth-card">
+            <h1>Orochi</h1>
+            <p class="subtitle">Create your account</p>
+            {% if messages %}
+                {% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}
+            {% endif %}
+            {% if sso_url %}
+                <a href="{{ sso_url }}/auth/oauth/authorize/?client_id=orochi&redirect_uri={{ request.scheme }}://{{ request.get_host }}/auth/callback/"
+                   class="btn btn-sso">Sign up with SciTeX</a>
+                <div class="divider">
+                    <span>or</span>
+                </div>
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_username">Username</label>
+                    <input type="text"
+                           name="username"
+                           id="id_username"
+                           autofocus
+                           required
+                           value="{{ request.POST.username }}">
+                </div>
+                <div class="form-group">
+                    <label for="id_email">Email</label>
+                    <input type="email"
+                           name="email"
+                           id="id_email"
+                           required
+                           value="{{ request.POST.email }}">
+                </div>
+                <div class="form-group">
+                    <label for="id_password">Password</label>
+                    <input type="password" name="password" id="id_password" required>
+                    <ul class="password-rules">
+                        <li>At least 8 characters</li>
+                    </ul>
+                </div>
+                <div class="form-group">
+                    <label for="id_password2">Confirm password</label>
+                    <input type="password" name="password2" id="id_password2" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+            </form>
+            <div class="auth-footer">
+                Already have an account? <a href="{% url 'signin' %}">Sign in</a>
+            </div>
+        </div>
+    </body>
+</html>

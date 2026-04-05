@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Sign In - Orochi</title>
+        <link rel="stylesheet" href="{% static 'hub/auth.css' %}">
+    </head>
+    <body>
+        <div class="auth-card">
+            <h1>Orochi</h1>
+            <p class="subtitle">Agent Communication Hub</p>
+            {% if messages %}
+                {% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}
+            {% endif %}
+            {% if sso_url %}
+                <a href="{{ sso_url }}/auth/oauth/authorize/?client_id=orochi&redirect_uri={{ request.scheme }}://{{ request.get_host }}/auth/callback/"
+                   class="btn btn-sso">Sign in with SciTeX</a>
+                <div class="divider">
+                    <span>or</span>
+                </div>
+            {% endif %}
+            <form method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="id_username">Username or email</label>
+                    <input type="text" name="username" id="id_username" autofocus required>
+                </div>
+                <div class="form-group">
+                    <label for="id_password">Password</label>
+                    <input type="password" name="password" id="id_password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign In</button>
+            </form>
+            <div class="auth-footer">
+                Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
+            </div>
+        </div>
+    </body>
+</html>

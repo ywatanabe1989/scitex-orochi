@@ -2,12 +2,95 @@
 
 import json
 
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_GET, require_http_methods
 
 from hub.models import Channel, Message, Workspace, WorkspaceMember
+
+# --- Auth views ---
+
+
+def signin_view(request):
+    """Sign in with username/email and password."""
+    if request.user.is_authenticated:
+        return redirect("index")
+
+    sso_url = getattr(settings, "OROCHI_SSO_URL", "")
+
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+
+        # Allow login with email
+        if "@" in username:
+            try:
+                user_obj = User.objects.get(email=username)
+                username = user_obj.username
+            except User.DoesNotExist:
+                pass
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            next_url = request.GET.get("next", "/")
+            return redirect(next_url)
+        else:
+            messages.error(request, "Invalid username or password.")
+
+    return render(request, "hub/signin.html", {"sso_url": sso_url})
+
+
+def signup_view(request):
+    """Create a new account."""
+    if request.user.is_authenticated:
+        return redirect("index")
+
+    sso_url = getattr(settings, "OROCHI_SSO_URL", "")
+
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "")
+        password2 = request.POST.get("password2", "")
+
+        errors = []
+        if not username:
+            errors.append("Username is required.")
+        if not email:
+            errors.append("Email is required.")
+        if len(password) < 8:
+            errors.append("Password must be at least 8 characters.")
+        if password != password2:
+            errors.append("Passwords do not match.")
+        if User.objects.filter(username=username).exists():
+            errors.append("Username is already taken.")
+        if User.objects.filter(email=email).exists():
+            errors.append("Email is already registered.")
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+        else:
+            user = User.objects.create_user(
+                username=username, email=email, password=password
+            )
+            login(request, user)
+            messages.success(request, "Account created successfully.")
+            return redirect("index")
+
+    return render(request, "hub/signup.html", {"sso_url": sso_url})
+
+
+def signout_view(request):
+    """Sign out and redirect to signin."""
+    logout(request)
+    return redirect("signin")
 
 
 @login_required
