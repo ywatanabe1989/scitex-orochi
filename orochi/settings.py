@@ -28,9 +28,17 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.sites",
     "channels",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    "allauth.socialaccount.providers.orcid",
     "hub",
 ]
+
+SITE_ID = 1
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -41,6 +49,12 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
+]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 ROOT_URLCONF = "orochi.urls"
@@ -115,3 +129,33 @@ LOGOUT_REDIRECT_URL = "/signin/"
 # Optional SSO — set SCITEX_OROCHI_SSO_URL to enable "Sign in with SciTeX" button
 # e.g. SCITEX_OROCHI_SSO_URL=https://scitex.ai
 SCITEX_OROCHI_SSO_URL = os.environ.get("SCITEX_OROCHI_SSO_URL", "")
+
+# --- django-allauth (Google, ORCID) ---
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_LOGIN_METHODS = {"email", "username"}
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+
+# Social providers — configure via Django admin or env vars
+# Google: set client ID/secret in Django admin > Social applications
+# ORCID: set client ID/secret in Django admin > Social applications
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {"access_type": "online"},
+        "APP": {
+            "client_id": os.environ.get("SCITEX_OROCHI_GOOGLE_CLIENT_ID", ""),
+            "secret": os.environ.get("SCITEX_OROCHI_GOOGLE_SECRET", ""),
+        },
+    },
+    "orcid": {
+        "BASE_DOMAIN": "orcid.org",
+        "MEMBER_API": False,
+        "APP": {
+            "client_id": os.environ.get("SCITEX_OROCHI_ORCID_CLIENT_ID", ""),
+            "secret": os.environ.get("SCITEX_OROCHI_ORCID_SECRET", ""),
+        },
+    },
+}

@@ -90,7 +90,7 @@ def signup_view(request):
             user = User.objects.create_user(
                 username=username, email=email, password=password
             )
-            login(request, user)
+            login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, "Account created successfully.")
             return redirect("index")
 

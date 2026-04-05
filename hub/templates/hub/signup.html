@@ -1,4 +1,4 @@
-{% load static %}
+{% load static socialaccount %}
 <!DOCTYPE html>
 <html lang="en">
     <head>
@@ -14,13 +14,23 @@
             {% if messages %}
                 {% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}
             {% endif %}
-            {% if sso_url %}
-                <a href="{{ sso_url }}/auth/oauth/authorize/?client_id=orochi&redirect_uri={{ request.scheme }}://{{ request.get_host }}/auth/callback/"
-                   class="btn btn-sso">Sign up with SciTeX</a>
-                <div class="divider">
-                    <span>or</span>
-                </div>
-            {% endif %}
+            <div class="social-buttons">
+                {% if sso_url %}
+                    <a href="{{ sso_url }}/auth/oauth/authorize/?client_id=orochi&redirect_uri={{ request.scheme }}://{{ request.get_host }}/auth/callback/"
+                       class="btn btn-social btn-scitex">Sign up with SciTeX</a>
+                {% endif %}
+                <form method="post" action="{% provider_login_url 'google' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-social btn-google">Sign up with Google</button>
+                </form>
+                <form method="post" action="{% provider_login_url 'orcid' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-social btn-orcid">Sign up with ORCID</button>
+                </form>
+            </div>
+            <div class="divider">
+                <span>or</span>
+            </div>
             <form method="post">
                 {% csrf_token %}
                 <div class="form-group">
