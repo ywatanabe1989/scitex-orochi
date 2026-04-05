@@ -123,6 +123,10 @@ MEDIA_ROOT = os.environ.get("SCITEX_OROCHI_MEDIA_ROOT", str(BASE_DIR / "media"))
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Proxy settings — Cloudflare terminates SSL, Daphne sees HTTP
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = True
+
 LOGIN_URL = "/signin/"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/signin/"
