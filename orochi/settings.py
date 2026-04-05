@@ -137,11 +137,16 @@ SCITEX_OROCHI_SSO_URL = os.environ.get("SCITEX_OROCHI_SSO_URL", "")
 
 # --- django-allauth (Google, ORCID) ---
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_EMAIL_VERIFICATION = "none"  # No SMTP configured yet
 ACCOUNT_LOGIN_METHODS = {"email", "username"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*", "password2*"]
 SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
 SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = "none"
+
+# Use console email backend until SMTP is configured
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 # Social providers — configure via Django admin or env vars
 # Google: set client ID/secret in Django admin > Social applications
