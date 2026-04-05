@@ -16,8 +16,10 @@
             {% endif %}
             <div class="social-buttons">
                 {% if sso_url %}
-                    <a href="{{ sso_url }}/auth/oauth/authorize/?client_id=orochi&redirect_uri={{ request.scheme }}://{{ request.get_host }}/auth/callback/"
-                       class="btn btn-social btn-scitex">Sign in with SciTeX</a>
+                    <form method="post" action="{% provider_login_url 'scitex' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-social btn-scitex">Sign in with SciTeX</button>
+                    </form>
                 {% endif %}
                 <form method="post" action="{% provider_login_url 'google' %}">
                     {% csrf_token %}

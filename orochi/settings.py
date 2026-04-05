@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.orcid",
+    "hub.providers.scitex",
     "hub",
 ]
 
@@ -156,6 +157,17 @@ SOCIALACCOUNT_PROVIDERS = {
         "APP": {
             "client_id": os.environ.get("SCITEX_OROCHI_ORCID_CLIENT_ID", ""),
             "secret": os.environ.get("SCITEX_OROCHI_ORCID_SECRET", ""),
+        },
+    },
+    "scitex": {
+        "APP": {
+            "client_id": os.environ.get("SCITEX_OROCHI_SCITEX_CLIENT_ID", ""),
+            "secret": os.environ.get("SCITEX_OROCHI_SCITEX_SECRET", ""),
+            "settings": {
+                "server_url": os.environ.get(
+                    "SCITEX_OROCHI_SSO_URL", "https://scitex.ai"
+                ),
+            },
         },
     },
 }
