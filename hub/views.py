@@ -92,15 +92,66 @@ def signup_view(request):
             )
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
             messages.success(request, "Account created successfully.")
+
+            # Accept pending invitation if present
+            invite_token = request.POST.get("invite") or request.GET.get("invite")
+            if invite_token:
+                from hub.models import WorkspaceInvitation
+
+                try:
+                    invite = WorkspaceInvitation.objects.get(
+                        token=invite_token, accepted=False
+                    )
+                    WorkspaceMember.objects.get_or_create(
+                        workspace=invite.workspace,
+                        user=user,
+                        defaults={"role": "member"},
+                    )
+                    invite.accepted = True
+                    invite.save()
+                    return redirect("workspace-dashboard", slug=invite.workspace.name)
+                except WorkspaceInvitation.DoesNotExist:
+                    pass
+
             return redirect("index")
 
-    return render(request, "hub/signup.html", {"sso_url": sso_url})
+    invite_token = request.GET.get("invite", "")
+    return render(
+        request, "hub/signup.html", {"sso_url": sso_url, "invite_token": invite_token}
+    )
 
 
 def signout_view(request):
     """Sign out and redirect to signin."""
     logout(request)
     return redirect("signin")
+
+
+def accept_invite_view(request, token):
+    """Accept a workspace invitation — sign up if needed, then join."""
+    from hub.models import WorkspaceInvitation
+
+    try:
+        invite = WorkspaceInvitation.objects.select_related("workspace").get(
+            token=token, accepted=False
+        )
+    except WorkspaceInvitation.DoesNotExist:
+        return render(request, "hub/no_access.html", status=404)
+
+    if request.user.is_authenticated:
+        # Already logged in — just join the workspace
+        WorkspaceMember.objects.get_or_create(
+            workspace=invite.workspace,
+            user=request.user,
+            defaults={"role": "member"},
+        )
+        invite.accepted = True
+        invite.save()
+        messages.success(request, f"Joined workspace '{invite.workspace.name}'!")
+        return redirect("workspace-dashboard", slug=invite.workspace.name)
+
+    # Not logged in — redirect to signup with invite token
+    return redirect(f"/signup/?invite={token}")
 
 
 @login_required
@@ -115,8 +166,149 @@ def index(request):
     if workspace:
         return redirect("workspace-dashboard", slug=workspace.name)
 
-    # No workspace — user must be invited by an admin (like Slack)
-    return render(request, "hub/no_workspace.html")
+    # No workspace — auto-create a personal workspace for onboarding
+    ws_name = f"{request.user.username}-workspace"
+    workspace, created = Workspace.objects.get_or_create(
+        name=ws_name,
+        defaults={"description": f"Personal workspace for {request.user.username}"},
+    )
+    if created:
+        WorkspaceMember.objects.create(
+            workspace=workspace, user=request.user, role="admin"
+        )
+        Channel.objects.create(workspace=workspace, name="#general")
+        from hub.models import WorkspaceToken
+
+        WorkspaceToken.objects.create(workspace=workspace, label="default")
+    else:
+        WorkspaceMember.objects.get_or_create(
+            workspace=workspace, user=request.user, defaults={"role": "admin"}
+        )
+    return redirect("workspace-dashboard", slug=workspace.name)
+
+
+@login_required
+def create_workspace_view(request):
+    """Create a new workspace — like Slack's workspace creation flow."""
+    if request.method == "POST":
+        name = request.POST.get("name", "").strip().lower()
+        description = request.POST.get("description", "").strip()
+
+        import re
+
+        errors = []
+        if not name:
+            errors.append("Workspace name is required.")
+        elif not re.match(r"^[a-z0-9][a-z0-9-]*$", name):
+            errors.append("Name must be lowercase letters, numbers, and hyphens only.")
+        elif len(name) > 50:
+            errors.append("Name must be 50 characters or less.")
+        elif Workspace.objects.filter(name=name).exists():
+            errors.append("A workspace with this name already exists.")
+
+        if errors:
+            for err in errors:
+                messages.error(request, err)
+        else:
+            workspace = Workspace.objects.create(name=name, description=description)
+            # Creator becomes admin
+            WorkspaceMember.objects.create(
+                workspace=workspace, user=request.user, role="admin"
+            )
+            # Create #general channel
+            Channel.objects.create(workspace=workspace, name="#general")
+            # Generate a workspace token for agents
+            from hub.models import WorkspaceToken
+
+            token = WorkspaceToken.objects.create(workspace=workspace, label="default")
+            messages.success(
+                request, f"Workspace '{name}' created. Agent token: {token.token}"
+            )
+            return redirect("workspace-dashboard", slug=workspace.name)
+
+    return render(request, "hub/create_workspace.html")
+
+
+@login_required
+def workspace_settings_view(request, slug):
+    """Workspace settings — manage tokens, members."""
+    workspace = get_object_or_404(Workspace, name=slug)
+
+    # Only workspace admins can access settings
+    membership = WorkspaceMember.objects.filter(
+        user=request.user, workspace=workspace
+    ).first()
+    if not request.user.is_superuser and (not membership or membership.role != "admin"):
+        return render(request, "hub/no_access.html", status=403)
+
+    from hub.models import WorkspaceToken
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create_token":
+            label = request.POST.get("label", "").strip() or "agent"
+            token = WorkspaceToken.objects.create(workspace=workspace, label=label)
+            messages.success(request, f"Token created: {token.token}")
+        elif action == "revoke_token":
+            token_id = request.POST.get("token_id")
+            WorkspaceToken.objects.filter(id=token_id, workspace=workspace).delete()
+            messages.success(request, "Token revoked.")
+        elif action == "add_member":
+            username = request.POST.get("username", "").strip()
+            try:
+                user = User.objects.get(username=username)
+                WorkspaceMember.objects.get_or_create(
+                    workspace=workspace, user=user, defaults={"role": "member"}
+                )
+                messages.success(request, f"Added {username} to workspace.")
+            except User.DoesNotExist:
+                messages.error(request, f"User '{username}' not found.")
+        elif action == "invite_email":
+            from hub.models import WorkspaceInvitation
+
+            email = request.POST.get("email", "").strip()
+            if email:
+                invite, created = WorkspaceInvitation.objects.get_or_create(
+                    workspace=workspace,
+                    email=email,
+                    defaults={"invited_by": request.user},
+                )
+                if created:
+                    invite_url = request.build_absolute_uri(f"/invite/{invite.token}/")
+                    # Send email if SMTP is configured
+                    try:
+                        from django.core.mail import send_mail
+
+                        send_mail(
+                            subject=f"Invitation to {workspace.name} on Orochi",
+                            message=f"You've been invited to join '{workspace.name}' on Orochi.\n\nSign up here: {invite_url}",
+                            from_email=None,
+                            recipient_list=[email],
+                            fail_silently=True,
+                        )
+                    except Exception:
+                        pass
+                    messages.success(request, f"Invited {email}. Link: {invite_url}")
+                else:
+                    messages.error(request, f"{email} is already invited.")
+
+    from hub.models import WorkspaceInvitation
+
+    tokens = WorkspaceToken.objects.filter(workspace=workspace)
+    members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
+    invitations = WorkspaceInvitation.objects.filter(
+        workspace=workspace, accepted=False
+    )
+    return render(
+        request,
+        "hub/workspace_settings.html",
+        {
+            "workspace": workspace,
+            "tokens": tokens,
+            "members": members,
+            "invitations": invitations,
+        },
+    )
 
 
 @login_required
@@ -132,12 +324,19 @@ def workspace_dashboard(request, slug):
             return render(request, "hub/no_access.html", status=403)
 
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
+    is_admin = (
+        request.user.is_superuser
+        or WorkspaceMember.objects.filter(
+            user=request.user, workspace=workspace, role="admin"
+        ).exists()
+    )
     return render(
         request,
         "hub/dashboard.html",
         {
             "workspace": workspace,
             "channels": channels,
+            "is_admin": is_admin,
         },
     )
 

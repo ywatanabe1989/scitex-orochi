@@ -24,7 +24,10 @@
                 </div>
                 <div class="sidebar-footer">
                     <span>{{ request.user.username }}</span>
-                    <a href="{% url 'logout' %}">Logout</a>
+                    {% if is_admin %}
+                        <a href="{% url 'workspace-settings' slug=workspace.name %}">Settings</a>
+                    {% endif %}
+                    <a href="{% url 'signout' %}">Logout</a>
                 </div>
             </nav>
             <main id="chat-area">

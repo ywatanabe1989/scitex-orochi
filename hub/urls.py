@@ -14,8 +14,15 @@ urlpatterns = [
     path("logout/", views.signout_view, name="logout"),
     # Dashboard
     path("", views.index, name="index"),
+    path("invite/<str:token>/", views.accept_invite_view, name="accept-invite"),
+    path("workspace/new/", views.create_workspace_view, name="create-workspace"),
     path(
         "workspace/<slug:slug>/", views.workspace_dashboard, name="workspace-dashboard"
+    ),
+    path(
+        "workspace/<slug:slug>/settings/",
+        views.workspace_settings_view,
+        name="workspace-settings",
     ),
     # REST API
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),

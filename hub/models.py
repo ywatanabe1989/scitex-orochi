@@ -109,3 +109,24 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender} in {self.channel.name}: {self.content[:50]}"
+
+
+class WorkspaceInvitation(models.Model):
+    """Email invitation to join a workspace."""
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="invitations"
+    )
+    email = models.EmailField()
+    token = models.CharField(
+        max_length=64, unique=True, default=_generate_workspace_token
+    )
+    invited_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("workspace", "email")
+
+    def __str__(self):
+        return f"Invite {self.email} to {self.workspace.name}"

@@ -35,6 +35,7 @@
             </div>
             <form method="post">
                 {% csrf_token %}
+                {% if invite_token %}<input type="hidden" name="invite" value="{{ invite_token }}">{% endif %}
                 <div class="form-group">
                     <label for="id_username">Username</label>
                     <input type="text"
