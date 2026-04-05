@@ -20,6 +20,12 @@ class SciTexProvider(OAuth2Provider):
     name = "SciTeX"
     account_class = SciTexAccount
 
+    @property
+    def oauth2_adapter_class(self):
+        from hub.providers.scitex.views import SciTexOAuth2Adapter
+
+        return SciTexOAuth2Adapter
+
     def get_default_scope(self):
         return ["openid", "profile", "email"]
 
