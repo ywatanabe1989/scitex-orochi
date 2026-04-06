@@ -6,8 +6,5 @@ from hub import consumers
 
 websocket_urlpatterns = [
     re_path(r"ws/agent/$", consumers.AgentConsumer.as_asgi()),
-    re_path(
-        r"workspace/(?P<workspace_slug>[\w-]+)/ws/$",
-        consumers.DashboardConsumer.as_asgi(),
-    ),
+    re_path(r"ws/dashboard/$", consumers.DashboardConsumer.as_asgi()),
 ]

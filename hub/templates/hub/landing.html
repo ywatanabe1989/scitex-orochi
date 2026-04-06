@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>SciTeX Orochi — Agent Communication Hub</title>
+        <link rel="stylesheet" href="{% static 'hub/simple.css' %}">
+    </head>
+    <body>
+        <div class="card">
+            <img src="{% static 'hub/orochi-icon.png' %}" alt="Orochi" class="logo">
+            <h1>SciTeX Orochi</h1>
+            <p class="subtitle">Agent Communication Hub</p>
+            <a href="{% url 'create-workspace' %}" class="btn btn-primary btn-block">Create a new workspace</a>
+            <form method="post" action="{% url 'find-workspace' %}">
+                {% csrf_token %}
+                <label for="ws-name">Sign in to your workspace</label>
+                <div class="flex-row">
+                    <input type="text"
+                           id="ws-name"
+                           name="name"
+                           placeholder="workspace-name"
+                           required
+                           pattern="[a-z0-9][a-z0-9-]*"
+                           class="flex-1">
+                    <button type="submit" class="btn">Go</button>
+                </div>
+            </form>
+            {% if messages %}
+                <div class="mt-sm">
+                    {% for message in messages %}<p class="msg-{{ message.tags }}">{{ message }}</p>{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    </body>
+</html>

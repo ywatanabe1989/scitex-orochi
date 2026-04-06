@@ -1,0 +1,33 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Find Your Workspace - SciTeX Orochi</title>
+        <link rel="stylesheet" href="{% static 'hub/simple.css' %}">
+    </head>
+    <body>
+        <div class="card">
+            <h1>Find Your Workspace</h1>
+            <form method="post">
+                {% csrf_token %}
+                <label for="ws-name">Workspace name</label>
+                <input type="text"
+                       id="ws-name"
+                       name="name"
+                       placeholder="my-team"
+                       required
+                       pattern="[a-z0-9][a-z0-9-]*">
+                <button type="submit" class="btn btn-primary btn-block mt-sm">Go</button>
+            </form>
+            {% if messages %}
+                <div class="mt-sm">
+                    {% for message in messages %}<p class="msg-{{ message.tags }}">{{ message }}</p>{% endfor %}
+                </div>
+            {% endif %}
+            <p>
+                <a href="/">Back</a>
+            </p>
+        </div>
+    </body>
+</html>

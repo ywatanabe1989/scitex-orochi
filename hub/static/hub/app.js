@@ -58,7 +58,7 @@
 
   function sendMessage(text) {
     /* Send via REST API (reliable through Cloudflare) */
-    var url = "/api/workspace/" + workspace + "/messages/";
+    var url = "/api/messages/";
     var xhr = new XMLHttpRequest();
     xhr.open("POST", url);
     xhr.setRequestHeader("Content-Type", "application/json");
@@ -80,7 +80,7 @@
 
   function loadHistory(channelName) {
     var ch = channelName.replace(/^#/, "");
-    var url = "/api/workspace/" + workspace + "/history/" + ch + "/?limit=50";
+    var url = "/api/history/" + ch + "/?limit=50";
     var xhr = new XMLHttpRequest();
     xhr.open("GET", url);
     xhr.onload = function () {

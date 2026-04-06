@@ -151,7 +151,10 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             await self.close(code=4001)
             return
 
-        workspace_slug = self.scope["url_route"]["kwargs"]["workspace_slug"]
+        workspace_slug = self._get_subdomain_from_scope()
+        if not workspace_slug:
+            await self.close(code=4004)
+            return
         workspace = await self._get_workspace(workspace_slug)
         if not workspace:
             await self.close(code=4004)
@@ -175,6 +178,19 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         log.info(
             "Dashboard user %s connected to workspace %s", user.username, workspace_slug
         )
+
+    def _get_subdomain_from_scope(self):
+        """Extract workspace slug from Host header in WebSocket scope."""
+        from django.conf import settings as django_settings
+
+        headers = dict(self.scope.get("headers", []))
+        host = headers.get(b"host", b"").decode().split(":")[0]
+        base = django_settings.OROCHI_BASE_DOMAIN.split(":")[0]
+        if host.endswith("." + base):
+            subdomain = host[: -(len(base) + 1)]
+            if "." not in subdomain:
+                return subdomain
+        return None
 
     async def disconnect(self, code):
         if hasattr(self, "workspace_group"):

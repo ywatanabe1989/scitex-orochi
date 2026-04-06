@@ -8,7 +8,7 @@
         <link rel="stylesheet" href="{% static 'hub/style.css' %}">
     </head>
     <body data-workspace="{{ workspace.name }}"
-          data-ws-url="{{ ws_url }}"
+          data-ws-url="wss://{{ request.get_host }}/ws/dashboard/"
           data-csrf-token="{{ csrf_token }}">
         <div id="app">
             <nav id="sidebar">
@@ -25,7 +25,7 @@
                 <div class="sidebar-footer">
                     <span>{{ request.user.username }}</span>
                     {% if is_admin %}
-                        <a href="{% url 'workspace-settings' slug=workspace.name %}">Settings</a>
+                        <a href="{% url 'workspace-settings' %}">Settings</a>
                     {% endif %}
                     <a href="{% url 'signout' %}">Logout</a>
                 </div>

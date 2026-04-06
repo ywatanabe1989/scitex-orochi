@@ -20,6 +20,24 @@ CSRF_TRUSTED_ORIGINS = [
     if o.strip()
 ]
 
+# Subdomain workspace routing (Slack-style)
+OROCHI_BASE_DOMAIN = os.environ.get("OROCHI_BASE_DOMAIN", "lvh.me:8000")
+OROCHI_RESERVED_SUBDOMAINS = {
+    "www",
+    "api",
+    "admin",
+    "mail",
+    "smtp",
+    "ftp",
+    "static",
+    "media",
+    "app",
+    "status",
+}
+
+SESSION_COOKIE_DOMAIN = os.environ.get("SESSION_COOKIE_DOMAIN", None) or None
+CSRF_COOKIE_DOMAIN = os.environ.get("CSRF_COOKIE_DOMAIN", None) or None
+
 INSTALLED_APPS = [
     "daphne",
     "django.contrib.admin",
@@ -45,6 +63,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "hub.middleware.WorkspaceSubdomainMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -72,6 +91,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "hub.context_processors.workspace_context",
             ],
         },
     },
