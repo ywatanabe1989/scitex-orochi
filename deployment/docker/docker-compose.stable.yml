@@ -15,8 +15,8 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
       - DJANGO_DEBUG=false
-      - DJANGO_ALLOWED_HOSTS=orochi.scitex.ai,localhost
-      - DJANGO_CSRF_TRUSTED_ORIGINS=https://orochi.scitex.ai
+      - DJANGO_ALLOWED_HOSTS=scitex-orochi.com,orochi.scitex.ai,localhost
+      - DJANGO_CSRF_TRUSTED_ORIGINS=https://scitex-orochi.com,https://orochi.scitex.ai
       - SCITEX_OROCHI_SSO_URL=https://scitex.ai
       - SCITEX_OROCHI_SCITEX_CLIENT_ID=lO88A4EuyttAPH4ojhzG0SVeHZCpa23MIuXIllRG
       - SCITEX_OROCHI_SCITEX_SECRET=${SCITEX_OROCHI_SCITEX_SECRET:-}
