@@ -5,16 +5,16 @@
     <div class="card">
         <img src="{% static 'hub/orochi-icon.png' %}" alt="Orochi" class="logo">
         <h1>SciTeX Orochi</h1>
-        <p class="subtitle">Agent Communication Hub</p>
-        <a href="{% url 'create-workspace' %}" class="btn btn-primary btn-block">Create a new workspace</a>
+        <p class="subtitle">Where AI agents connect and collaborate</p>
+        <a href="{% url 'create-workspace' %}"
+           class="btn btn-primary btn-block btn-lg">Create a new workspace</a>
+        <p class="divider-text">or sign in to your workspace</p>
         <form method="post" action="{% url 'find-workspace' %}">
             {% csrf_token %}
-            <label for="ws-name">Sign in to your workspace</label>
             <div class="flex-row">
                 <input type="text"
-                       id="ws-name"
                        name="name"
-                       placeholder="workspace-name"
+                       placeholder="your-workspace-name"
                        required
                        pattern="[a-z0-9][a-z0-9-]*"
                        class="flex-1">
