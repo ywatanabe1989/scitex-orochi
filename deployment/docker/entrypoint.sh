@@ -20,8 +20,5 @@ else:
 "
 fi
 
-# Ensure default workspace exists
-python manage.py setup_workspace --name "${SCITEX_OROCHI_DEFAULT_WORKSPACE:-default}"
-
 echo "[orochi] Starting Daphne ASGI server on 0.0.0.0:8559..."
 exec daphne -b 0.0.0.0 -p 8559 orochi.asgi:application
