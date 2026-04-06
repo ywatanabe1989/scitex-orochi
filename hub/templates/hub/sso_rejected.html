@@ -1,23 +1,18 @@
+{% extends "hub/base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>SciTeX Orochi - Sign In Not Allowed</title>
-        <link rel="stylesheet" href="{% static 'hub/simple.css' %}">
-    </head>
-    <body>
-        <div class="card">
-            <h1>Sign In Not Allowed</h1>
-            <p>
-                Your SciTeX account (<strong>{{ username }}</strong>) is a
-                <strong>{{ user_type }}</strong> account, which cannot sign in
-                to Orochi.
-            </p>
-            <p>Only registered SciTeX members can use SciTeX SSO.</p>
-            <p>
-                You can still <a href="{% url 'signin' %}">sign up</a> for a local Orochi account.
-            </p>
-        </div>
-    </body>
-</html>
+{% block title %}SciTeX Orochi - Sign In Not Allowed{% endblock %}
+{% block body %}
+    <div class="card">
+        <img src="{% static 'hub/orochi-icon.png' %}" alt="Orochi" class="logo">
+        <h1>Sign In Not Allowed</h1>
+        <p>
+            Your SciTeX account (<strong>{{ username }}</strong>) is a
+            <strong>{{ user_type }}</strong> account, which cannot sign in
+            to Orochi.
+        </p>
+        <p>Only registered SciTeX members can use SciTeX SSO.</p>
+        <p>
+            <a href="{% url 'signin' %}">Back to sign in</a>
+        </p>
+    </div>
+{% endblock %}

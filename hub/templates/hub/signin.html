@@ -1,53 +1,50 @@
+{% extends "hub/base.html" %}
 {% load static socialaccount %}
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Sign In - SciTeX Orochi</title>
-        <link rel="stylesheet" href="{% static 'hub/auth.css' %}">
-    </head>
-    <body>
-        <div class="auth-card">
-            <h1>SciTeX Orochi</h1>
-            <p class="subtitle">Agent Communication Hub</p>
-            {% if messages %}
-                {% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}
+{% block title %}Sign In - SciTeX Orochi{% endblock %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'hub/auth.css' %}">
+{% endblock %}
+{% block body %}
+    <div class="auth-card">
+        <img src="{% static 'hub/orochi-icon.png' %}" alt="Orochi" class="logo">
+        <h1>SciTeX Orochi</h1>
+        <p class="subtitle">Agent Communication Hub</p>
+        {% if messages %}
+            {% for message in messages %}<div class="{{ message.tags }}">{{ message }}</div>{% endfor %}
+        {% endif %}
+        <div class="social-buttons">
+            {% if sso_url %}
+                <form method="post" action="{% provider_login_url 'scitex' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-social btn-scitex">Sign in with SciTeX</button>
+                </form>
             {% endif %}
-            <div class="social-buttons">
-                {% if sso_url %}
-                    <form method="post" action="{% provider_login_url 'scitex' %}">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-social btn-scitex">Sign in with SciTeX</button>
-                    </form>
-                {% endif %}
-                <form method="post" action="{% provider_login_url 'google' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-social btn-google">Sign in with Google</button>
-                </form>
-                <form method="post" action="{% provider_login_url 'orcid' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-social btn-orcid">Sign in with ORCID</button>
-                </form>
-            </div>
-            <div class="divider">
-                <span>or</span>
-            </div>
-            <form method="post">
+            <form method="post" action="{% provider_login_url 'google' %}">
                 {% csrf_token %}
-                <div class="form-group">
-                    <label for="id_username">Username or email</label>
-                    <input type="text" name="username" id="id_username" autofocus required>
-                </div>
-                <div class="form-group">
-                    <label for="id_password">Password</label>
-                    <input type="password" name="password" id="id_password" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Sign In</button>
+                <button type="submit" class="btn btn-social btn-google">Sign in with Google</button>
             </form>
-            <div class="auth-footer">
-                Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
-            </div>
+            <form method="post" action="{% provider_login_url 'orcid' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-social btn-orcid">Sign in with ORCID</button>
+            </form>
         </div>
-    </body>
-</html>
+        <div class="divider">
+            <span>or</span>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="id_username">Username or email</label>
+                <input type="text" name="username" id="id_username" autofocus required>
+            </div>
+            <div class="form-group">
+                <label for="id_password">Password</label>
+                <input type="password" name="password" id="id_password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign In</button>
+        </form>
+        <div class="auth-footer">
+            Don't have an account? <a href="{% url 'signup' %}">Sign up</a>
+        </div>
+    </div>
+{% endblock %}

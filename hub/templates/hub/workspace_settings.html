@@ -1,145 +1,152 @@
+{% extends "hub/base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{{ workspace.name }} Settings - SciTeX Orochi</title>
-        <link rel="stylesheet" href="{% static 'hub/style.css' %}">
-        <link rel="stylesheet" href="{% static 'hub/settings.css' %}">
-    </head>
-    <body>
-        <div id="app">
-            <nav id="sidebar">
-                <div class="sidebar-header">
-                    <h2>SciTeX Orochi</h2>
-                    <span class="workspace-name">{{ workspace.name }}</span>
-                </div>
-                <div class="sidebar-section">
-                    <h3>Navigation</h3>
-                    <ul id="channel-list">
-                        <li>
-                            <a href="{% url 'workspace-dashboard' slug=workspace.name %}">Dashboard</a>
-                        </li>
-                        <li class="active">Settings</li>
-                    </ul>
-                </div>
-                <div class="sidebar-footer">
-                    <span>{{ request.user.username }}</span>
-                    <a href="{% url 'signout' %}">Logout</a>
-                </div>
-            </nav>
-            <main id="chat-area" class="settings-area">
-                <div id="chat-header">
-                    <h3>Workspace Settings</h3>
-                </div>
-                <div class="settings-content">
-                    {% if messages %}
-                        {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
+{% block title %}{{ workspace.name }} Settings - SciTeX Orochi{% endblock %}
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}">
+    <link rel="stylesheet" href="{% static 'hub/settings.css' %}">
+{% endblock %}
+{% block body_class %}page-app{% endblock %}
+{% block body %}
+    <div id="app">
+        <nav id="sidebar">
+            <div class="sidebar-header">
+                <img src="{% static 'hub/orochi-icon.png' %}"
+                     alt="Orochi"
+                     class="sidebar-logo">
+                <h2>SciTeX Orochi</h2>
+                <span class="workspace-name">{{ workspace.name }}</span>
+            </div>
+            <div class="sidebar-section">
+                <h3>Navigation</h3>
+                <ul id="channel-list">
+                    <li>
+                        <a href="/">Dashboard</a>
+                    </li>
+                    <li class="active">Settings</li>
+                </ul>
+            </div>
+            <div class="sidebar-footer">
+                <span>{{ request.user.username }}</span>
+                <a href="{% url 'signout' %}">Logout</a>
+            </div>
+        </nav>
+        <main id="chat-area" class="settings-area">
+            <div id="chat-header">
+                <h3>Workspace Settings</h3>
+            </div>
+            <div class="settings-content">
+                {% if messages %}
+                    {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
+                {% endif %}
+                <section class="settings-section">
+                    <h4>Agent Tokens</h4>
+                    <p class="settings-desc">Tokens allow AI agents to connect to this workspace via WebSocket.</p>
+                    <table class="settings-table">
+                        <thead>
+                            <tr>
+                                <th>Label</th>
+                                <th>Token</th>
+                                <th>Created</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tokens %}
+                                <tr>
+                                    <td>{{ t.label }}</td>
+                                    <td>
+                                        <code class="token-masked" data-token="{{ t.token }}">{{ t.token|truncatechars:12 }}...</code>
+                                        <button type="button"
+                                                class="btn-eye"
+                                                title="Show/hide token"
+                                                onclick="toggleToken(this)">&#128065;</button>
+                                    </td>
+                                    <td>{{ t.created_at|date:"Y-m-d" }}</td>
+                                    <td>
+                                        <form method="post" class="inline-form">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="revoke_token">
+                                            <input type="hidden" name="token_id" value="{{ t.id }}">
+                                            <button type="submit" class="btn-small btn-danger">Revoke</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4">No tokens yet.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <form method="post" class="settings-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="create_token">
+                        <input type="text" name="label" placeholder="Token label (e.g. my-agent)">
+                        <button type="submit" class="btn-small btn-primary">Create Token</button>
+                    </form>
+                </section>
+                <section class="settings-section">
+                    <h4>Members</h4>
+                    <p class="settings-desc">Invite users to this workspace.</p>
+                    <table class="settings-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for m in members %}
+                                <tr>
+                                    <td>{{ m.user.username }}</td>
+                                    <td>{{ m.role }}</td>
+                                    <td>{{ m.joined_at|date:"Y-m-d" }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <form method="post" class="settings-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_member">
+                        <input type="text" name="username" placeholder="Username to invite" required>
+                        <button type="submit" class="btn-small btn-primary">Invite</button>
+                    </form>
+                </section>
+                <section class="settings-section">
+                    <h4>Email Invitations</h4>
+                    <p class="settings-desc">Invite people by email. They'll get a link to sign up and join this workspace.</p>
+                    {% if invitations %}
+                        <table class="settings-table">
+                            <thead>
+                                <tr>
+                                    <th>Email</th>
+                                    <th>Invited</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for inv in invitations %}
+                                    <tr>
+                                        <td>{{ inv.email }}</td>
+                                        <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+                                        <td>Pending</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     {% endif %}
-                    <section class="settings-section">
-                        <h4>Agent Tokens</h4>
-                        <p class="settings-desc">Tokens allow AI agents to connect to this workspace via WebSocket.</p>
-                        <table class="settings-table">
-                            <thead>
-                                <tr>
-                                    <th>Label</th>
-                                    <th>Token</th>
-                                    <th>Created</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for t in tokens %}
-                                    <tr>
-                                        <td>{{ t.label }}</td>
-                                        <td>
-                                            <code>{{ t.token }}</code>
-                                        </td>
-                                        <td>{{ t.created_at|date:"Y-m-d" }}</td>
-                                        <td>
-                                            <form method="post" class="inline-form">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="action" value="revoke_token">
-                                                <input type="hidden" name="token_id" value="{{ t.id }}">
-                                                <button type="submit" class="btn-small btn-danger">Revoke</button>
-                                            </form>
-                                        </td>
-                                    </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="4">No tokens yet.</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        <form method="post" class="settings-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="create_token">
-                            <input type="text" name="label" placeholder="Token label (e.g. my-agent)">
-                            <button type="submit" class="btn-small btn-primary">Create Token</button>
-                        </form>
-                    </section>
-                    <section class="settings-section">
-                        <h4>Members</h4>
-                        <p class="settings-desc">Invite users to this workspace.</p>
-                        <table class="settings-table">
-                            <thead>
-                                <tr>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>Joined</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for m in members %}
-                                    <tr>
-                                        <td>{{ m.user.username }}</td>
-                                        <td>{{ m.role }}</td>
-                                        <td>{{ m.joined_at|date:"Y-m-d" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        <form method="post" class="settings-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="add_member">
-                            <input type="text" name="username" placeholder="Username to invite" required>
-                            <button type="submit" class="btn-small btn-primary">Invite</button>
-                        </form>
-                    </section>
-                    <section class="settings-section">
-                        <h4>Email Invitations</h4>
-                        <p class="settings-desc">Invite people by email. They'll get a link to sign up and join this workspace.</p>
-                        {% if invitations %}
-                            <table class="settings-table">
-                                <thead>
-                                    <tr>
-                                        <th>Email</th>
-                                        <th>Invited</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for inv in invitations %}
-                                        <tr>
-                                            <td>{{ inv.email }}</td>
-                                            <td>{{ inv.created_at|date:"Y-m-d" }}</td>
-                                            <td>Pending</td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        {% endif %}
-                        <form method="post" class="settings-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="invite_email">
-                            <input type="email" name="email" placeholder="email@example.com" required>
-                            <button type="submit" class="btn-small btn-primary">Send Invite</button>
-                        </form>
-                    </section>
-                </div>
-            </main>
-        </div>
-    </body>
-</html>
+                    <form method="post" class="settings-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="invite_email">
+                        <input type="email" name="email" placeholder="email@example.com" required>
+                        <button type="submit" class="btn-small btn-primary">Send Invite</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+    </div>
+{% endblock %}
+{% block extra_js %}
+    <script src="{% static 'hub/settings.js' %}"></script>
+{% endblock %}
