@@ -10,10 +10,7 @@ from allauth.socialaccount.providers.oauth2.views import (
 
 from hub.providers.scitex.provider import SciTexProvider
 
-# Browser-facing URL (for authorize redirect)
-_PUBLIC_URL = os.environ.get("SCITEX_OROCHI_SSO_URL", "https://scitex.ai")
-# Server-to-server URL (for token exchange + userinfo, inside Docker network)
-_INTERNAL_URL = os.environ.get("SCITEX_OROCHI_SSO_INTERNAL_URL", _PUBLIC_URL)
+_SSO_URL = os.environ.get("SCITEX_OROCHI_SSO_URL", "https://scitex.ai")
 
 
 class SciTexOAuth2Adapter(OAuth2Adapter):
@@ -21,18 +18,15 @@ class SciTexOAuth2Adapter(OAuth2Adapter):
 
     @property
     def authorize_url(self):
-        """Browser redirect — must be the public URL."""
-        return f"{_PUBLIC_URL}/oauth/authorize/"
+        return f"{_SSO_URL}/oauth/authorize/"
 
     @property
     def access_token_url(self):
-        """Server-to-server token exchange — use internal URL."""
-        return f"{_INTERNAL_URL}/oauth/token/"
+        return f"{_SSO_URL}/oauth/token/"
 
     @property
     def profile_url(self):
-        """Server-to-server userinfo — use internal URL."""
-        return f"{_INTERNAL_URL}/oauth/userinfo/"
+        return f"{_SSO_URL}/oauth/userinfo/"
 
     def complete_login(self, request, app, token, **kwargs):
         import requests

@@ -21,16 +21,14 @@ class SciTexRemoteBackend(ModelBackend):
 
     def authenticate(self, request, username=None, password=None, **kwargs):
         sso_url = os.environ.get("SCITEX_OROCHI_SSO_URL", "")
-        internal_url = os.environ.get("SCITEX_OROCHI_SSO_INTERNAL_URL", sso_url)
-        if not internal_url:
+        if not sso_url:
             return None
 
         # Try to authenticate against scitex.ai
         try:
             resp = requests.post(
-                f"{internal_url}/auth/api/login/",
+                f"{sso_url}/auth/api/login/",
                 json={"username": username, "password": password},
-                headers={"Host": "scitex.ai"},
                 timeout=5,
             )
             if resp.status_code != 200:

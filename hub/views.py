@@ -86,14 +86,12 @@ def signup_view(request):
         # Check namespace against scitex.ai if SSO is configured
         sso_url = getattr(settings, "SCITEX_OROCHI_SSO_URL", "")
         if sso_url and not errors:
-            internal_url = getattr(settings, "SCITEX_OROCHI_SSO_INTERNAL_URL", sso_url)
             try:
                 import requests as req_lib
 
                 resp = req_lib.get(
-                    f"{internal_url}/auth/api/check-username/",
+                    f"{sso_url}/auth/api/check-username/",
                     params={"username": username},
-                    headers={"Host": "scitex.ai"},
                     timeout=3,
                 )
                 if resp.status_code == 200:

@@ -18,7 +18,6 @@ services:
       - DJANGO_ALLOWED_HOSTS=orochi.scitex.ai,localhost
       - DJANGO_CSRF_TRUSTED_ORIGINS=https://orochi.scitex.ai
       - SCITEX_OROCHI_SSO_URL=https://scitex.ai
-      - SCITEX_OROCHI_SSO_INTERNAL_URL=http://scitex-cloud-prod-django-1:8000
       - SCITEX_OROCHI_SCITEX_CLIENT_ID=lO88A4EuyttAPH4ojhzG0SVeHZCpa23MIuXIllRG
       - SCITEX_OROCHI_SCITEX_SECRET=${SCITEX_OROCHI_SCITEX_SECRET:-}
       - SCITEX_OROCHI_DB_PATH=/data/db.sqlite3
@@ -26,9 +25,3 @@ services:
       - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD:-}
       - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL:-admin@orochi.local}
     restart: unless-stopped
-    networks:
-      - scitex-cloud-prod_scitex-network
-
-networks:
-  scitex-cloud-prod_scitex-network:
-    external: true
