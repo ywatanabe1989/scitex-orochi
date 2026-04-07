@@ -21,7 +21,7 @@
     ws.onmessage = function (evt) {
       var data = JSON.parse(evt.data);
       if (data.type === "message" && data.channel === currentChannel) {
-        appendMessage(data.sender, data.text, data.ts);
+        appendMessage(data.sender, data.text, data.ts, data.meta);
       }
     };
     ws.onclose = function () {
@@ -30,9 +30,19 @@
     };
   }
 
-  function appendMessage(sender, text, ts) {
+  function isSystemMessage(sender, meta) {
+    if (meta && meta.type === "system") return true;
+    if (typeof sender === "string" && sender.toLowerCase().startsWith("system"))
+      return true;
+    return false;
+  }
+
+  function appendMessage(sender, text, ts, meta) {
     var div = document.createElement("div");
     div.className = "message";
+    if (isSystemMessage(sender, meta)) {
+      div.className += " system";
+    }
 
     var senderSpan = document.createElement("span");
     senderSpan.className = "sender";
@@ -88,11 +98,34 @@
         var msgs = JSON.parse(xhr.responseText);
         msgs.reverse();
         for (var i = 0; i < msgs.length; i++) {
-          appendMessage(msgs[i].sender, msgs[i].content, msgs[i].ts);
+          appendMessage(
+            msgs[i].sender,
+            msgs[i].content,
+            msgs[i].ts,
+            msgs[i].meta,
+          );
         }
       }
     };
     xhr.send();
+  }
+
+  /* Mobile sidebar toggle */
+  var sidebarToggle = document.getElementById("sidebar-toggle");
+  var sidebarOverlay = document.getElementById("sidebar-overlay");
+  var sidebar = document.getElementById("sidebar");
+
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener("click", function () {
+      sidebar.classList.toggle("open");
+      sidebarOverlay.classList.toggle("active");
+    });
+  }
+  if (sidebarOverlay) {
+    sidebarOverlay.addEventListener("click", function () {
+      sidebar.classList.remove("open");
+      sidebarOverlay.classList.remove("active");
+    });
   }
 
   /* Event listeners */

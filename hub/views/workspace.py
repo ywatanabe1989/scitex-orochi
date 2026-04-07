@@ -21,6 +21,7 @@ def workspace_dashboard(request):
             return render(request, "hub/no_access.html", status=403)
 
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
+    members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
     is_admin = (
         request.user.is_superuser
         or WorkspaceMember.objects.filter(
@@ -33,6 +34,7 @@ def workspace_dashboard(request):
         {
             "workspace": workspace,
             "channels": channels,
+            "members": members,
             "is_admin": is_admin,
         },
     )

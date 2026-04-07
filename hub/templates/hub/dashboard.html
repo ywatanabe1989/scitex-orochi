@@ -7,6 +7,8 @@
 {% block body_class %}page-app{% endblock %}
 {% block body %}
     <div id="app">
+        <button id="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
+        <div id="sidebar-overlay"></div>
         <nav id="sidebar">
             <div class="sidebar-header">
                 <img src="{% static 'hub/orochi-icon.png' %}"
@@ -19,6 +21,16 @@
                 <h3>Channels</h3>
                 <ul id="channel-list">
                     {% for ch in channels %}<li data-channel="{{ ch.name }}">{{ ch.name }}</li>{% endfor %}
+                </ul>
+            </div>
+            <div class="sidebar-section">
+                <h3>Members</h3>
+                <ul id="member-list">
+                    {% for member in members %}
+                        <li>
+                            <span class="member-status">●</span> {{ member.user.username }}
+                        </li>
+                    {% endfor %}
                 </ul>
             </div>
             <div class="sidebar-footer">

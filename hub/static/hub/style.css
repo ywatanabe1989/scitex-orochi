@@ -186,3 +186,120 @@ body {
 #message-form button:hover {
   background: #3a8eef;
 }
+
+/* System messages (join/leave/status) — Slack-style centered muted text */
+.message.system {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  font-size: 0.85em;
+  padding: 4px 0;
+  border-left: none;
+}
+.message.system .sender {
+  display: none;
+}
+.message.system .ts {
+  display: none;
+}
+
+/* Member list */
+#member-list {
+  list-style: none;
+}
+
+#member-list li {
+  padding: 0.3rem 1rem;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.member-status {
+  color: #2bac76;
+  font-size: 0.6rem;
+  margin-right: 0.3rem;
+}
+
+/* Sidebar toggle (hidden on desktop) */
+#sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 110;
+  background: #19171d;
+  color: #d1d2d3;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 1.4rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#sidebar-overlay {
+  display: none;
+}
+
+/* Mobile responsive (<768px) */
+@media (max-width: 768px) {
+  #sidebar-toggle {
+    display: block;
+  }
+
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  #sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  #sidebar-overlay.active {
+    display: block;
+  }
+
+  #chat-area {
+    width: 100%;
+  }
+
+  #chat-header {
+    padding-left: 3rem;
+  }
+
+  body {
+    font-size: 1rem;
+  }
+
+  .message .text {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  #message-input {
+    font-size: 1rem;
+    padding: 0.7rem 0.8rem;
+  }
+
+  #message-form button {
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
+  }
+
+  #message-form {
+    padding: 0.6rem;
+  }
+}
