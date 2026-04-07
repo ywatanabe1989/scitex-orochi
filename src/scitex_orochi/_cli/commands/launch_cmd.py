@@ -19,6 +19,14 @@ from scitex_orochi._config_loader import (
     render_template,
 )
 
+# Optional scitex-agent-container integration
+try:
+    from scitex_agent_container import agent_start as _ac_agent_start
+
+    _HAS_AGENT_CONTAINER = True
+except ImportError:
+    _HAS_AGENT_CONTAINER = False
+
 
 def _load_cfg(config_path: str | None) -> dict:
     """Load config or exit with error."""
@@ -37,6 +45,49 @@ def _read_template(name: str) -> str:
         return ref.read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError) as exc:
         click.echo(f"Error: Cannot find template: {exc}", err=True)
+        sys.exit(1)
+
+
+def _launch_via_agent_container(
+    agent_config_path: str, dry_run: bool, as_json: bool
+) -> None:
+    """Delegate launch to scitex-agent-container.
+
+    Requires the 'agent-container' optional dependency.
+    """
+    if not _HAS_AGENT_CONTAINER:
+        click.echo(
+            "Error: scitex-agent-container is not installed.\n"
+            "  Install with: pip install scitex-orochi[agent-container]",
+            err=True,
+        )
+        sys.exit(1)
+
+    config_path = Path(agent_config_path).resolve()
+    if not config_path.exists():
+        click.echo(f"Error: Agent config not found: {config_path}", err=True)
+        sys.exit(1)
+
+    if dry_run:
+        result = {
+            "action": "launch-via-agent-container",
+            "config": str(config_path),
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo(f"Would launch agent via scitex-agent-container:")
+            click.echo(f"  Config: {config_path}")
+        return
+
+    try:
+        _ac_agent_start(str(config_path))
+        if as_json:
+            click.echo(json.dumps({"status": "launched", "config": str(config_path)}))
+        else:
+            click.echo(f"Agent launched via scitex-agent-container: {config_path}")
+    except Exception as exc:
+        click.echo(f"Error: Agent container launch failed: {exc}", err=True)
         sys.exit(1)
 
 
@@ -64,6 +115,7 @@ def launch() -> None:
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch master\n"
     + "  scitex-orochi launch master --dry-run\n"
+    + "  scitex-orochi launch master --agent-config agents/master.yaml\n"
     + "  scitex-orochi launch master --json\n",
 )
 @click.option(
@@ -73,10 +125,25 @@ def launch() -> None:
     default=None,
     help="Path to orochi-config.yaml.",
 )
+@click.option(
+    "--agent-config",
+    "agent_config_path",
+    default=None,
+    help="Path to agent-container YAML file. Uses scitex-agent-container to launch.",
+)
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
-def launch_master(config_path: str | None, dry_run: bool, as_json: bool) -> None:
+def launch_master(
+    config_path: str | None,
+    agent_config_path: str | None,
+    dry_run: bool,
+    as_json: bool,
+) -> None:
     """Launch orochi-agent:master in a screen session."""
+    if agent_config_path:
+        _launch_via_agent_container(agent_config_path, dry_run, as_json)
+        return
+
     cfg = _load_cfg(config_path)
     master = cfg["master"]
     screen_name = master["name"]
@@ -149,6 +216,7 @@ def launch_master(config_path: str | None, dry_run: bool, as_json: bool) -> None
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch head spartan\n"
     + "  scitex-orochi launch head nas --dry-run\n"
+    + "  scitex-orochi launch head spartan --agent-config agents/head.yaml\n"
     + "  scitex-orochi launch head spartan --json\n",
 )
 @click.argument("name")
@@ -159,12 +227,26 @@ def launch_master(config_path: str | None, dry_run: bool, as_json: bool) -> None
     default=None,
     help="Path to orochi-config.yaml.",
 )
+@click.option(
+    "--agent-config",
+    "agent_config_path",
+    default=None,
+    help="Path to agent-container YAML file. Uses scitex-agent-container to launch.",
+)
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 def launch_head(
-    name: str, config_path: str | None, dry_run: bool, as_json: bool
+    name: str,
+    config_path: str | None,
+    agent_config_path: str | None,
+    dry_run: bool,
+    as_json: bool,
 ) -> None:
     """Launch an orochi-agent:head on a remote host via SSH + screen."""
+    if agent_config_path:
+        _launch_via_agent_container(agent_config_path, dry_run, as_json)
+        return
+
     cfg = _load_cfg(config_path)
 
     try:
@@ -261,6 +343,7 @@ def launch_head(
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch all\n"
     + "  scitex-orochi launch all --dry-run\n"
+    + "  scitex-orochi launch all --agent-config-dir agents/\n"
     + "  scitex-orochi launch all --json\n",
 )
 @click.option(
@@ -270,16 +353,47 @@ def launch_head(
     default=None,
     help="Path to orochi-config.yaml.",
 )
+@click.option(
+    "--agent-config-dir",
+    "agent_config_dir",
+    default=None,
+    help="Directory containing agent-container YAML files. Launches all *.yaml files found.",
+)
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
 @click.pass_context
 def launch_all(
     ctx: click.Context,
     config_path: str | None,
+    agent_config_dir: str | None,
     dry_run: bool,
     as_json: bool,
 ) -> None:
     """Launch master and all configured heads."""
+    # Agent-container mode: launch all YAML files in the directory
+    if agent_config_dir:
+        config_dir = Path(agent_config_dir).resolve()
+        if not config_dir.is_dir():
+            click.echo(f"Error: Not a directory: {config_dir}", err=True)
+            sys.exit(1)
+
+        yamls = sorted(config_dir.glob("*.yaml")) + sorted(
+            config_dir.glob("*.yml")
+        )
+        if not yamls:
+            click.echo(f"Error: No YAML files found in {config_dir}", err=True)
+            sys.exit(1)
+
+        for yaml_path in yamls:
+            if not as_json:
+                click.echo(f"\n=== Launching from {yaml_path.name} ===")
+            _launch_via_agent_container(str(yaml_path), dry_run, as_json)
+
+        if not as_json:
+            click.echo(f"\nAll agents launched from {config_dir}")
+        return
+
+    # Legacy mode: use orochi-config.yaml
     cfg = _load_cfg(config_path)
 
     if not as_json:
@@ -287,6 +401,7 @@ def launch_all(
     ctx.invoke(
         launch_master,
         config_path=config_path,
+        agent_config_path=None,
         dry_run=dry_run,
         as_json=as_json,
     )
@@ -299,6 +414,7 @@ def launch_all(
             launch_head,
             name=short,
             config_path=config_path,
+            agent_config_path=None,
             dry_run=dry_run,
             as_json=as_json,
         )
