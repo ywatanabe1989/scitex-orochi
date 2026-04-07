@@ -1,0 +1,13 @@
+{
+  "name": "orochi-channel",
+  "version": "0.1.0",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.14",
+    "bun-types": "latest"
+  }
+}
