@@ -1,0 +1,51 @@
+# Orochi Master Agent -- agent-container definition
+# Usage: scitex-orochi launch master --agent-config agents/master.yaml
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-master
+  labels:
+    role: master
+    team: orochi
+spec:
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj
+
+  claude:
+    channels:
+      - server:orochi-push:#general
+      - server:orochi-push:#orchestrator
+    flags:
+      - --dangerously-skip-permissions
+    session: new
+
+  env:
+    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_PORT: "9559"
+    SCITEX_OROCHI_AGENT: orochi-master
+    CLAUDE_AGENT_ROLE: master
+    CLAUDE_AGENT_ID: orochi-master
+
+  screen:
+    name: orochi-master
+
+  health:
+    enabled: true
+    interval: 30
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 3
+    backoff:
+      initial: 30
+      max: 300
+      multiplier: 2
+
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []
