@@ -1,5 +1,6 @@
 # Orochi Head Agent (General) -- agent-container definition
-# Usage: scitex-orochi launch head general --agent-config agents/head-general.yaml
+# Launched via: scitex-orochi launch head general
+# Auto-discovered from agents/head-general.yaml (no --agent-config needed)
 apiVersion: cld-agent/v1
 kind: Agent
 metadata:
@@ -18,6 +19,10 @@ spec:
     flags:
       - --dangerously-skip-permissions
     session: new
+
+  skills:
+    required:
+      - python-scitex   # General purpose scientific computing
 
   env:
     SCITEX_OROCHI_HOST: "192.168.0.100"

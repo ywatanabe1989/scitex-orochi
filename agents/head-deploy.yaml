@@ -1,43 +1,45 @@
-# Orochi Master Agent -- agent-container definition
-# Launched via: scitex-orochi launch master
-# Auto-discovered from agents/master.yaml (no --agent-config needed)
+# Orochi Head Agent (Deploy/CI) -- agent-container definition
+# Launched via: scitex-orochi launch head deploy
+# Or explicitly: scitex-orochi launch head deploy --agent-config agents/head-deploy.yaml
 apiVersion: cld-agent/v1
 kind: Agent
 metadata:
-  name: orochi-master
+  name: orochi-head-deploy
   labels:
-    role: master
+    role: head
     team: orochi
+    specialty: deploy
 spec:
   runtime: claude-code
-  model: opus[1m]
+  model: sonnet
   workdir: ~/proj
 
   claude:
     channels:
       - server:orochi-push:#general
-      - server:orochi-push:#orchestrator
+      - server:orochi-push:#deploy
     flags:
       - --dangerously-skip-permissions
     session: new
 
-  skills:
-    required:
-      - orchestration  # Task delegation and coordination
-
   env:
     SCITEX_OROCHI_HOST: "192.168.0.100"
     SCITEX_OROCHI_PORT: "9559"
-    SCITEX_OROCHI_AGENT: orochi-master
-    CLAUDE_AGENT_ROLE: master
-    CLAUDE_AGENT_ID: orochi-master
+    SCITEX_OROCHI_AGENT: orochi-head-deploy
+    CLAUDE_AGENT_ROLE: head
+    CLAUDE_AGENT_ID: orochi-head-deploy
+
+  skills:
+    required:
+      - docker          # Container management
+      - ci-cd           # CI/CD pipeline management
 
   screen:
-    name: orochi-master
+    name: orochi-head-deploy
 
   health:
     enabled: true
-    interval: 30
+    interval: 60
     timeout: 5
     method: screen-alive
 

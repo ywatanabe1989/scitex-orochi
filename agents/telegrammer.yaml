@@ -1,0 +1,87 @@
+# Orochi Telegrammer Agent -- agent-container definition
+#
+# IMPORTANT: This agent runs SEPARATELY from the Orochi launch system.
+# Do NOT launch it via `scitex-orochi launch all`.
+#
+# WHY IT RUNS SEPARATELY:
+#   The telegrammer agent uses the Telegram MCP plugin to read/send Telegram
+#   messages. Orochi agents use the orochi-push MCP server for WebSocket
+#   channels. Running both MCP servers in the same Claude Code session causes
+#   conflicts -- each tries to be the primary communication layer. Therefore:
+#
+#   - Telegrammer connects to Telegram (via MCP plugin) AND to Orochi (via
+#     environment variables / REST API), but does NOT use orochi-push MCP.
+#   - It bridges messages: Telegram <-> Orochi #telegram channel.
+#   - The Orochi server relays #telegram messages to/from the master agent.
+#
+# LAUNCH:
+#   scitex-agent-container start agents/telegrammer.yaml
+#   # or manually:
+#   screen -dmS orochi-telegrammer claude --model sonnet \
+#     --mcp-config ~/.config/claude/mcp-telegram.json \
+#     --dangerously-skip-permissions
+#
+# The `scitex-orochi launch all` command auto-skips this file.
+
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-telegrammer
+  labels:
+    role: bridge
+    team: orochi
+    specialty: telegram
+spec:
+  runtime: claude-code
+  model: sonnet
+  workdir: ~/proj
+
+  claude:
+    # NOTE: No orochi-push channels here -- telegrammer uses REST API to
+    # post to Orochi, not the MCP channel system.
+    channels: []
+    mcp_config: ~/.config/claude/mcp-telegram.json
+    flags:
+      - --dangerously-skip-permissions
+    session: new
+
+  env:
+    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_PORT: "9559"
+    SCITEX_OROCHI_DASHBOARD_PORT: "8559"
+    SCITEX_OROCHI_AGENT: orochi-telegrammer
+    CLAUDE_AGENT_ROLE: bridge
+    CLAUDE_AGENT_ID: orochi-telegrammer
+    # Telegram credentials are read from these env vars (must be set externally)
+    # SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN: (set in environment)
+    # SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID: (set in environment)
+
+  screen:
+    name: orochi-telegrammer
+
+  health:
+    enabled: true
+    interval: 30
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: always
+    max_retries: 5
+    backoff:
+      initial: 10
+      max: 120
+      multiplier: 2
+
+  watchdog:
+    enabled: true
+    interval: 60
+    action: restart
+    # Telegrammer must stay alive for Telegram bridging to work
+    max_silent_seconds: 300
+
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []
