@@ -1,45 +1,54 @@
 /**
  * Orochi push client configuration -- environment-based settings.
+ * All env vars use SCITEX_OROCHI_ prefix.
  */
 import { hostname } from "os";
 
-export const OROCHI_HOST = process.env.OROCHI_HOST || "192.168.0.102";
-export const OROCHI_PORT = parseInt(process.env.OROCHI_PORT || "9559");
-export const OROCHI_AGENT = process.env.OROCHI_AGENT || `${hostname()}-claude`;
-export const OROCHI_CHANNELS = (process.env.OROCHI_CHANNELS || "#general")
+export const OROCHI_HOST = process.env.SCITEX_OROCHI_HOST || "192.168.0.102";
+export const OROCHI_PORT = parseInt(process.env.SCITEX_OROCHI_PORT || "8559");
+export const OROCHI_AGENT =
+  process.env.SCITEX_OROCHI_AGENT || `${hostname()}-claude`;
+export const OROCHI_CHANNELS = (
+  process.env.SCITEX_OROCHI_CHANNELS || "#general"
+)
   .split(",")
   .map((s) => s.trim());
-export const OROCHI_TOKEN = process.env.OROCHI_TOKEN || "";
-export const OROCHI_MODEL = process.env.OROCHI_MODEL || "unknown";
+export const OROCHI_TOKEN = process.env.SCITEX_OROCHI_TOKEN || "";
+export const OROCHI_MODEL = process.env.SCITEX_OROCHI_MODEL || "unknown";
 
-// WSS support: OROCHI_URL overrides host/port with a full URL (ws:// or wss://)
-// This enables connections through Cloudflare tunnels (issue #80).
+// WSS support: SCITEX_OROCHI_URL overrides host/port with a full URL (ws:// or wss://)
 // Examples:
-//   OROCHI_URL=wss://orochi.scitex.ai      (Cloudflare tunnel)
-//   OROCHI_URL=ws://192.168.0.102:9559      (direct LAN)
-export const OROCHI_URL = process.env.OROCHI_URL || "";
+//   SCITEX_OROCHI_URL=wss://orochi.scitex.ai      (Cloudflare tunnel)
+//   SCITEX_OROCHI_URL=ws://192.168.0.102:8559      (direct LAN)
+export const OROCHI_URL = process.env.SCITEX_OROCHI_URL || "";
 
 export function buildWsUrl(): string {
   if (OROCHI_URL) {
-    const sep = OROCHI_URL.includes("?") ? "&" : "?";
+    // Full URL override — append /ws/agent/ path and token
+    const base = OROCHI_URL.replace(/\/$/, "");
+    const path = base.includes("/ws/agent") ? "" : "/ws/agent/";
+    const sep = base.includes("?") ? "&" : "?";
     return OROCHI_TOKEN
-      ? `${OROCHI_URL}${sep}token=${OROCHI_TOKEN}`
-      : OROCHI_URL;
+      ? `${base}${path}${sep}token=${OROCHI_TOKEN}&agent=${OROCHI_AGENT}`
+      : `${base}${path}`;
   }
-  return `ws://${OROCHI_HOST}:${OROCHI_PORT}${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}` : ""}`;
+  const tokenParam = OROCHI_TOKEN
+    ? `token=${OROCHI_TOKEN}&agent=${OROCHI_AGENT}`
+    : `agent=${OROCHI_AGENT}`;
+  return `ws://${OROCHI_HOST}:${OROCHI_PORT}/ws/agent/?${tokenParam}`;
 }
 
 export function buildHttpBase(): string {
   if (OROCHI_URL) {
     // Derive HTTP URL from WS URL: wss:// -> https://, ws:// -> http://
-    // For tunnel URLs (wss://orochi.scitex.ai) the HTTP API is on the same origin
+    // Django serves both HTTP and WS on the same port via ASGI
     return OROCHI_URL.replace(/^wss:\/\//, "https://").replace(
       /^ws:\/\//,
       "http://",
     );
   }
-  const httpPort = OROCHI_PORT - 1000; // 9559 -> 8559
-  return `http://${OROCHI_HOST}:${httpPort}`;
+  // Django ASGI: same port for HTTP and WS
+  return `http://${OROCHI_HOST}:${OROCHI_PORT}`;
 }
 
 /** Mask token in URLs for safe logging. */

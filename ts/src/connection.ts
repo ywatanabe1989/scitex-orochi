@@ -77,7 +77,7 @@ export class OrochiConnection {
     const wsOptions: WebSocket.ClientOptions = {};
     if (
       wsUrl.startsWith("wss://") &&
-      process.env.OROCHI_SKIP_TLS_VERIFY === "1"
+      process.env.SCITEX_OROCHI_SKIP_TLS_VERIFY === "1"
     ) {
       wsOptions.rejectUnauthorized = false;
     }

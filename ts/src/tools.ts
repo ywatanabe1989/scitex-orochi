@@ -66,7 +66,7 @@ export async function handleReply(
 
   const payload: Record<string, unknown> = {
     channel: args.chat_id,
-    content: args.text,
+    text: args.text,
     metadata: args.reply_to ? { reply_to: args.reply_to } : {},
   };
   if (attachments.length > 0) payload.attachments = attachments;

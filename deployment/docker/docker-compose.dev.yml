@@ -1,8 +1,6 @@
-# Orochi Dev Instance
-# Ports: WS=9560, Dashboard=8560
-# Volume: shared with stable (/data/orochi-stable/) for message sync
-#
-# Admin token: auto-generated at startup if not set.
+# Orochi Dev Instance — Django + Daphne
+# Port: 8560 (HTTP + WebSocket via ASGI)
+# Volume: /data/orochi-dev/
 
 services:
   orochi-dev:
@@ -11,22 +9,16 @@ services:
       dockerfile: deployment/docker/Dockerfile
     container_name: orochi-server-dev
     ports:
-      - "9560:9559"
       - "8560:8559"
     volumes:
-      - /data/orochi-stable:/data  # shared with stable for message history sync
+      - /data/orochi-dev:/data
     environment:
-      - SCITEX_OROCHI_ADMIN_TOKEN=${SCITEX_OROCHI_ADMIN_TOKEN:-}
-      - SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM=https://orochi.scitex.ai
-      - SCITEX_OROCHI_HOST=0.0.0.0
-      - SCITEX_OROCHI_PORT=9559
-      - SCITEX_OROCHI_DASHBOARD_PORT=8559
-      - SCITEX_OROCHI_GITEA_URL=${SCITEX_OROCHI_GITEA_URL:-http://scitex-cloud-prod-gitea-1:3000}
-      - SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED=false
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-secret-key}
+      - DJANGO_DEBUG=true
+      - DJANGO_ALLOWED_HOSTS=orochi-dev.scitex.ai,localhost
+      - DJANGO_CSRF_TRUSTED_ORIGINS=https://orochi-dev.scitex.ai
+      - SCITEX_OROCHI_SSO_URL=https://scitex.ai
+      - SCITEX_OROCHI_SCITEX_CLIENT_ID=lO88A4EuyttAPH4ojhzG0SVeHZCpa23MIuXIllRG
+      - SCITEX_OROCHI_SCITEX_SECRET=${SCITEX_OROCHI_SCITEX_SECRET:-}
+      - SCITEX_OROCHI_DB_PATH=/data/db.sqlite3
     restart: unless-stopped
-    networks:
-      - scitex-cloud-prod_scitex-network
-
-networks:
-  scitex-cloud-prod_scitex-network:
-    external: true

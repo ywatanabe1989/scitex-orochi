@@ -17,6 +17,11 @@ GITIGNORED/
 .pytest_cache/
 .ruff_cache/
 
+# Django
+db.sqlite3
+staticfiles/
+media/
+
 # Claude Code
 .claude/
 docs/to_claude/
