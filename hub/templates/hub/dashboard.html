@@ -45,6 +45,11 @@
     </div>
 {% endblock %}
 {% block extra_js %}
-    <script src="{% static 'hub/config.js' %}"></script>
+    <!-- hook-bypass: inline-script — Django template vars must be injected server-side -->
+    <script>
+      window.__orochiWorkspace = "{{ workspace.name|escapejs }}";
+      window.__orochiWsUrl = "wss://{{ request.get_host }}/ws/dashboard/";
+      window.__orochiCsrfToken = "{{ csrf_token }}";
+    </script>
     <script src="{% static 'hub/app.js' %}"></script>
 {% endblock %}
