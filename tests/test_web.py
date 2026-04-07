@@ -26,9 +26,6 @@ def _set_test_token(monkeypatch):
     import scitex_orochi._config
 
     importlib.reload(scitex_orochi._config)
-    import scitex_orochi._auth
-
-    importlib.reload(scitex_orochi._auth)
 
 
 @pytest.fixture()

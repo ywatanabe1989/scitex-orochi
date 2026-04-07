@@ -19,6 +19,15 @@ ADMIN_TOKEN = _env("SCITEX_OROCHI_ADMIN_TOKEN", "")
 if not ADMIN_TOKEN:
     ADMIN_TOKEN = _env("SCITEX_OROCHI_TOKEN", "")
 OROCHI_TOKEN = ADMIN_TOKEN  # alias used by existing code
+
+
+def get_admin_token() -> str:
+    """Return the current admin token, reading from env if updated at runtime."""
+    val = os.environ.get("SCITEX_OROCHI_ADMIN_TOKEN", "")
+    if not val:
+        val = os.environ.get("SCITEX_OROCHI_TOKEN", "")
+    return val
+
 GITEA_URL = _env("SCITEX_OROCHI_GITEA_URL", "https://git.scitex.ai")
 GITEA_TOKEN = _env("SCITEX_OROCHI_GITEA_TOKEN", "")
 MEDIA_ROOT = _env("SCITEX_OROCHI_MEDIA_ROOT", "/data/orochi-media")

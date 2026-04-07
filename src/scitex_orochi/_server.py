@@ -32,6 +32,15 @@ logging.basicConfig(
 log = logging.getLogger("orochi")
 
 
+def _log_task_exception(task: asyncio.Task) -> None:  # type: ignore[type-arg]
+    """Log exceptions from fire-and-forget tasks instead of silently dropping them."""
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc is not None:
+        log.error("Background task failed: %s", exc, exc_info=exc)
+
+
 @dataclass
 class Agent:
     name: str
@@ -74,19 +83,6 @@ class OrochiServer:
         self.telegram_bridge: Any = None
         # Workspace store (initialized after store.open)
         self.workspaces: Any = None
-
-    async def start(self) -> None:
-        await self.store.open()
-        self._server = await websockets.serve(
-            self._handle_connection,
-            self.host,
-            self.port,
-            # Protocol-level ping/pong to detect dead connections
-            ping_interval=30,
-            ping_timeout=10,
-        )
-        log.info("Orochi listening on ws://%s:%d", self.host, self.port)
-        await asyncio.Future()  # run forever
 
     async def shutdown(self) -> None:
         log.info("Shutting down...")
@@ -420,7 +416,7 @@ class OrochiServer:
             log.info("Agent disconnected: %s", name)
 
             # Notify observers of presence change (fire-and-forget)
-            asyncio.ensure_future(
+            task = asyncio.create_task(
                 self._broadcast_to_observers(
                     Message(
                         type="presence_change",
@@ -429,6 +425,7 @@ class OrochiServer:
                     )
                 )
             )
+            task.add_done_callback(_log_task_exception)
 
     # -- Observer pattern for dashboard connections --
 

@@ -43,14 +43,6 @@ def main() -> None:
         log.info("Generated new admin token: %s", admin_token)
     os.environ["SCITEX_OROCHI_ADMIN_TOKEN"] = admin_token
     os.environ["SCITEX_OROCHI_TOKEN"] = admin_token
-    import importlib
-
-    import scitex_orochi._config
-
-    importlib.reload(scitex_orochi._config)
-    import scitex_orochi._auth
-
-    importlib.reload(scitex_orochi._auth)
 
     server = OrochiServer()
 
