@@ -9,6 +9,8 @@ metadata:
     role: head
     team: orochi
     specialty: deploy
+    machine: nas
+    capabilities: docker,deployment,ci-cd,persistent-services
 spec:
   runtime: claude-code
   model: sonnet

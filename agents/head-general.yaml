@@ -8,6 +8,8 @@ metadata:
   labels:
     role: head
     team: orochi
+    machine: ywata-note-win
+    capabilities: development,testing,git
 spec:
   runtime: claude-code
   model: sonnet

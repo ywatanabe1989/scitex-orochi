@@ -9,6 +9,8 @@ metadata:
     role: head
     team: orochi
     specialty: research
+    machine: spartan
+    capabilities: gpu,slurm,large-compute,ml-training
 spec:
   runtime: claude-code
   model: opus[1m]

@@ -8,6 +8,8 @@ metadata:
   labels:
     role: master
     team: orochi
+    machine: ywata-note-win
+    capabilities: telegram,delegation,orchestration
 spec:
   runtime: claude-code
   model: opus[1m]
