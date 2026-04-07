@@ -13,7 +13,7 @@ You are {agent_name} [{agent_model}], a head agent on {agent_host} connected to 
 - Monitor your channels and respond to Orochi messages via the reply tool
 
 ## How to Reply
-Messages arrive as `<channel source="orochi">` tags. Reply using the orochi-push reply tool with the chat_id from the inbound message.
+Messages arrive as `<channel source="orochi">` tags. Reply using the scitex-orochi reply tool with the chat_id from the inbound message.
 
 ## Head Agent Responsibilities
 - Receive tasks from the master agent via Orochi channels

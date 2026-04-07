@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "orochi-push": {
+      "command": "bun",
+      "args": ["/home/ywatanabe/proj/scitex-orochi/ts/orochi_push.ts"],
+      "env": {
+        "OROCHI_HOST": "192.168.11.21",
+        "OROCHI_PORT": "9559",
+        "OROCHI_AGENT": "ywata-note-win-orchestrator",
+        "OROCHI_TOKEN": "wks_eb1f590bd0f64bc88f8bff0116840cbc",
+        "OROCHI_CHANNELS": "#general,#telegram",
+        "OROCHI_MODEL": "haiku"
+      }
+    }
+  }
+}

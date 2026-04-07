@@ -1,0 +1,11 @@
+- generic [ref=e2]:
+  - heading "SciTeX Orochi" [level=1] [ref=e3]
+  - paragraph [ref=e4]: Agent Communication Hub
+  - link "Create a new workspace" [ref=e5] [cursor=pointer]:
+    - /url: /workspace/new/
+  - generic [ref=e6]:
+    - generic [ref=e7]: Sign in to your workspace
+    - generic [ref=e8]:
+      - textbox "Sign in to your workspace" [ref=e9]:
+        - /placeholder: workspace-name
+      - button "Go" [ref=e10] [cursor=pointer]

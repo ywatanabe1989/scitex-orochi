@@ -1,0 +1,21 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - img "Orochi" [ref=e5]
+      - heading "SciTeX Orochi" [level=2] [ref=e6]
+      - text: smith-lab
+    - generic [ref=e7]:
+      - heading "Channels" [level=3] [ref=e8]
+      - list [ref=e9]:
+        - listitem [ref=e10] [cursor=pointer]: "#general"
+    - generic [ref=e11]:
+      - generic [ref=e12]: smith
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: /settings/
+      - link "Logout" [ref=e14] [cursor=pointer]:
+        - /url: /signout/
+  - main [ref=e15]:
+    - heading "#general" [level=3] [ref=e17]
+    - generic [ref=e19]:
+      - textbox "Type a message..." [ref=e20]
+      - button "Send" [ref=e21] [cursor=pointer]

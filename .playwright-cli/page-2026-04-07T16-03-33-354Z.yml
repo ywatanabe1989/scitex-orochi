@@ -1,0 +1,7 @@
+- generic [ref=e2]:
+  - img "Orochi" [ref=e3]
+  - heading "Access Denied" [level=1] [ref=e4]
+  - paragraph [ref=e5]: You don't have access to this workspace.
+  - paragraph [ref=e6]:
+    - link "Back to workspaces" [ref=e7] [cursor=pointer]:
+      - /url: /

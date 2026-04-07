@@ -239,7 +239,7 @@ def launch_master(
     claude_md = Path(f"/tmp/{screen_name}-CLAUDE.md")
     claude_md.write_text(rendered, encoding="utf-8")
 
-    channel_args = " ".join(f"--channel server:orochi-push:{ch}" for ch in channels)
+    channel_args = " ".join(f"--channel server:scitex-orochi:{ch}" for ch in channels)
     launch_cmd = (
         f"screen -dmS {screen_name} bash -c '"
         f"export SCITEX_OROCHI_HOST={server['host']}; "
@@ -379,7 +379,7 @@ def launch_head(
     tvars = build_template_vars(cfg, role="head", head_name=name)
     rendered = render_template(_read_template("head-claude.md"), tvars)
 
-    channel_args = " ".join(f"--channel server:orochi-push:{ch}" for ch in channels)
+    channel_args = " ".join(f"--channel server:scitex-orochi:{ch}" for ch in channels)
     remote_script = (
         f"cat > /tmp/{screen_name}-CLAUDE.md << 'CLAUDE_EOF'\n"
         f"{rendered}\n"

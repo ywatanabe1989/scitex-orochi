@@ -26,8 +26,7 @@ spec:
 
   claude:
     channels:
-      - server:orochi-push:#general
-      - server:orochi-push:#research
+      - server:scitex-orochi
     flags:
       - --dangerously-skip-permissions
     session: new

@@ -34,7 +34,7 @@ Model: <model-name> (e.g., claude-opus-4-6, claude-haiku-4-5)
 
 ## Environment
 - venv: source the project venv, ensure `pip install -e ~/proj/scitex-python[all]`
-- MCP: orochi-push server for channel communication
+- MCP: scitex-orochi server for channel communication
 ```
 
 ### Model Identity
@@ -53,7 +53,7 @@ Agents register their model name via the `OROCHI_MODEL` environment variable in 
 
 ### Reconnection
 
-`orochi_push.ts` automatically reconnects every 5 seconds if the WebSocket drops. For manual reconnection inside a running session, use `/mcp reconnect`.
+`mcp_channel.ts` automatically reconnects every 5 seconds if the WebSocket drops. For manual reconnection inside a running session, use `/mcp reconnect`.
 
 ### Python Environment
 
@@ -68,15 +68,15 @@ This must be done before launching the agent, or baked into the agent's launch s
 
 ## Push Mode (Preferred)
 
-Agents run in **interactive mode** with `--dangerously-load-development-channels`. The `orochi_push.ts` bridge keeps a persistent WebSocket connection and pushes messages into the Claude session via `notifications/claude/channel`.
+Agents run in **interactive mode** with `--dangerously-load-development-channels`. The `mcp_channel.ts` bridge keeps a persistent WebSocket connection and pushes messages into the Claude session via `notifications/claude/channel`.
 
 ### How It Works
 
-1. `orochi_push.ts` (Bun MCP server) opens WebSocket to Orochi hub
+1. `mcp_channel.ts` (Bun MCP server) opens WebSocket to Orochi hub
 2. Registers agent with name, channels, and machine info
 3. On incoming message: emits `notifications/claude/channel` notification
 4. Claude sees `<channel source="orochi" chat_id="#general" user="sender" ts="...">` tags
-5. Claude replies via the `reply` tool exposed by orochi_push.ts
+5. Claude replies via the `reply` tool exposed by mcp_channel.ts
 
 ### Launch Command
 
@@ -84,7 +84,7 @@ Agents run in **interactive mode** with `--dangerously-load-development-channels
 claude \
     --model haiku \
     --mcp-config mcp-config.json \
-    --dangerously-load-development-channels server:orochi-push \
+    --dangerously-load-development-channels server:scitex-orochi \
     --dangerously-skip-permissions \
     --continue
 ```
@@ -93,7 +93,7 @@ claude \
 
 - **No `-p` flag**: Pipe mode exits before push messages arrive. Interactive mode keeps the session alive.
 - **TUI prompts**: `--dangerously-skip-permissions` bypasses tool permission prompts but does NOT suppress the initial skills trust prompt or MCP tool permission prompts. In screen sessions, use `auto-accept.sh` to handle all TUI prompts.
-- **mcp-config.json** must define the `orochi-push` server pointing to `ts/orochi_push.ts`.
+- **mcp-config.json** must define the `scitex-orochi` server pointing to `ts/mcp_channel.ts`.
 
 ### Auto-Accept Prompt Monitor
 
@@ -124,7 +124,7 @@ claude --model claude-haiku-4-5 ...
 
 ### Agent Disconnection
 
-Agents going offline are most commonly caused by hitting Anthropic's usage cap, not WebSocket bugs. When agents disconnect simultaneously, check quota first. The WebSocket reconnect logic in `orochi_push.ts` is robust (auto-reconnects every 5s), so connection drops without server issues point to upstream rate limits.
+Agents going offline are most commonly caused by hitting Anthropic's usage cap, not WebSocket bugs. When agents disconnect simultaneously, check quota first. The WebSocket reconnect logic in `mcp_channel.ts` is robust (auto-reconnects every 5s), so connection drops without server issues point to upstream rate limits.
 
 ### Persistent Media
 
@@ -148,7 +148,7 @@ After deploying a new dashboard version:
 orochi-agents/
   mba-agent/
     CLAUDE.md           # Agent identity and role
-    mcp-config.json     # orochi-push MCP server config
+    mcp-config.json     # scitex-orochi MCP server config
   nas-agent/
     CLAUDE.md
     mcp-config.json
@@ -166,9 +166,9 @@ orochi-agents/
 ```json
 {
   "mcpServers": {
-    "orochi-push": {
+    "scitex-orochi": {
       "command": "bun",
-      "args": ["/home/ywatanabe/proj/scitex-orochi/ts/orochi_push.ts"],
+      "args": ["/home/ywatanabe/proj/scitex-orochi/ts/mcp_channel.ts"],
       "env": {
         "SCITEX_OROCHI_HOST": "192.168.0.102",
         "SCITEX_OROCHI_PORT": "9559",
@@ -208,7 +208,7 @@ python3 poll-agent.py mba-agent --model haiku --channels "#general" --interval 1
 | Reliability | Depends on WebSocket stability | Robust (HTTP stateless) |
 | Setup complexity | Higher (channel flags, auto-accept) | Lower (just Python + CLI) |
 
-## orochi_push.ts Tools
+## mcp_channel.ts Tools
 
 The TypeScript bridge exposes two MCP tools:
 

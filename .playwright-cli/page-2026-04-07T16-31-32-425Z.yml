@@ -1,0 +1,13 @@
+- generic [ref=e2]:
+  - img "Orochi" [ref=e3]
+  - heading "Sign In Not Allowed" [level=1] [ref=e4]
+  - paragraph [ref=e5]:
+    - text: Your SciTeX account (
+    - strong [ref=e6]: visitor-005
+    - text: ) is a
+    - strong [ref=e7]: visitor
+    - text: account, which cannot sign in to Orochi.
+  - paragraph [ref=e8]: Only registered SciTeX members can use SciTeX SSO.
+  - paragraph [ref=e9]:
+    - link "Back to sign in" [ref=e10] [cursor=pointer]:
+      - /url: /signin/

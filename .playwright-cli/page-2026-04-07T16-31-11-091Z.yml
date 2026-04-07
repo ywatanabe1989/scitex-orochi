@@ -1,0 +1,13 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - strong [ref=e3]: "Menu:"
+    - list [ref=e4]:
+      - listitem [ref=e5]:
+        - link "Sign In" [ref=e6] [cursor=pointer]:
+          - /url: /accounts/login/
+      - listitem [ref=e7]:
+        - link "Sign Up" [ref=e8] [cursor=pointer]:
+          - /url: /accounts/signup/
+  - heading "Sign In Via SciTeX" [level=1] [ref=e9]
+  - paragraph [ref=e10]: You are about to sign in using a third-party account from SciTeX.
+  - button "Continue" [ref=e12]

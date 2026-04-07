@@ -1,0 +1,1 @@
+[   49063ms] [ERROR] Pattern attribute value [a-z0-9][a-z0-9-]* is not a valid regular expression: Uncaught SyntaxError: Invalid regular expression: /[a-z0-9][a-z0-9-]*/v: Invalid character class @ https://scitex-orochi.com/workspace/new/:0

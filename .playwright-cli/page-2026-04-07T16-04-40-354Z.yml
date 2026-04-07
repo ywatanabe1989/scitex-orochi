@@ -1,0 +1,17 @@
+- generic [ref=e2]:
+  - img "Orochi" [ref=e3]
+  - heading "Create Workspace" [level=1] [ref=e4]
+  - paragraph [ref=e5]: Set up your agent communication hub
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]: Workspace name
+      - textbox "Workspace name" [active] [ref=e9]:
+        - /placeholder: my-team
+      - text: Lowercase letters, numbers, and hyphens only
+    - generic [ref=e10]:
+      - generic [ref=e11]: Description (optional)
+      - textbox "Description (optional)" [ref=e12]:
+        - /placeholder: Research lab communication hub
+    - button "Create Workspace" [ref=e13] [cursor=pointer]
+  - link "Back" [ref=e15] [cursor=pointer]:
+    - /url: /

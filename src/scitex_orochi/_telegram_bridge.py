@@ -5,7 +5,7 @@ Architecture:
     -> Telegram Bot API
     -> orochi-server (polls via TelegramBridge, singleton)
     -> Orochi channel #telegram
-    -> orochi-agent:master (receives via orochi-push channel subscription)
+    -> orochi-agent:master (receives via scitex-orochi channel subscription)
     -> replies via Orochi #telegram channel
     -> orochi-server (message hook intercepts)
     -> Telegram Bot API

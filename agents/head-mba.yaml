@@ -20,6 +20,8 @@ spec:
     user: ywatanabe
 
   claude:
+    channels:
+      - server:scitex-orochi
     flags:
       - --dangerously-skip-permissions
     session: new

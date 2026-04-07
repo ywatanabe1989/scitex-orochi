@@ -5,12 +5,12 @@
 #
 # WHY IT RUNS SEPARATELY:
 #   The telegrammer agent uses the Telegram MCP plugin to read/send Telegram
-#   messages. Orochi agents use the orochi-push MCP server for WebSocket
+#   messages. Orochi agents use the scitex-orochi MCP server for WebSocket
 #   channels. Running both MCP servers in the same Claude Code session causes
 #   conflicts -- each tries to be the primary communication layer. Therefore:
 #
 #   - Telegrammer connects to Telegram (via MCP plugin) AND to Orochi (via
-#     environment variables / REST API), but does NOT use orochi-push MCP.
+#     environment variables / REST API), but does NOT use scitex-orochi MCP.
 #   - It bridges messages: Telegram <-> Orochi #telegram channel.
 #   - The Orochi server relays #telegram messages to/from the master agent.
 #
@@ -37,7 +37,7 @@ spec:
   workdir: ~/proj
 
   claude:
-    # NOTE: No orochi-push channels here -- telegrammer uses REST API to
+    # NOTE: No scitex-orochi channels here -- telegrammer uses REST API to
     # post to Orochi, not the MCP channel system.
     channels: []
     mcp_config: ~/.config/claude/mcp-telegram.json

@@ -1,0 +1,2 @@
+[   11031ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://scitex-orochi.com/accounts/scitex/login/callback/?code=8tyl8rcVtAIKbXATNUICGO3reyjhBV&state=WT17gwYejLrx4yiM:0
+[   11177ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://scitex-orochi.com/favicon.ico:0

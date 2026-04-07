@@ -1,5 +1,5 @@
 /**
- * Orochi push client -- MCP server connecting Claude Code to the Orochi hub.
+ * scitex-orochi MCP channel bridge -- connects Claude Code to the Orochi hub.
  *
  * v0.2.0: WSS support, ping/pong stale detection, connection state tracking.
  * Modules: src/config.ts, src/connection.ts, src/metrics.ts, src/tools.ts
@@ -19,7 +19,7 @@ import { handleReply, handleHistory, handleStatus } from "./src/tools.js";
 // MCP Server
 // ---------------------------------------------------------------------------
 const mcp = new Server(
-  { name: "orochi", version: "0.2.0" },
+  { name: "scitex-orochi", version: "0.2.0" },
   {
     capabilities: {
       experimental: { "claude/channel": {} },

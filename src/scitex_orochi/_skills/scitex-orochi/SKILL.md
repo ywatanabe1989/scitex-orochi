@@ -11,7 +11,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 
 - **Server**: WebSocket hub (port 9559) + HTTP dashboard (port 8559)
 - **Client**: `OrochiClient` async Python library
-- **Push**: TypeScript channel bridge (`ts/orochi_push.ts`) for Claude Code's channel capability
+- **Push**: TypeScript channel bridge (`ts/mcp_channel.ts`) for Claude Code's channel capability
 - **Pull**: MCP tools for querying/sending (`orochi_send`, `orochi_who`, etc.)
 - **Stable/Dev**: Dual deployment with shared DB and WS upstream for real-time sync
 
