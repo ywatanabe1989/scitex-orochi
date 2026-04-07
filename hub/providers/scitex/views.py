@@ -9,6 +9,7 @@ from allauth.socialaccount.providers.oauth2.views import (
     OAuth2CallbackView,
     OAuth2LoginView,
 )
+from django.conf import settings
 from django.shortcuts import render
 
 from hub.providers.scitex.provider import SciTexProvider
@@ -34,6 +35,12 @@ class SciTexOAuth2Adapter(OAuth2Adapter):
     @property
     def profile_url(self):
         return f"{_SSO_URL}/oauth/userinfo/"
+
+    def get_callback_url(self, request, app):
+        """Pin callback to base domain so scitex.ai only needs one redirect URI."""
+        base = getattr(settings, "OROCHI_BASE_DOMAIN", "scitex-orochi.com")
+        scheme = "https" if request.is_secure() else "http"
+        return f"{scheme}://{base}/accounts/scitex/login/callback/"
 
     def complete_login(self, request, app, token, **kwargs):
         import requests as http_requests
