@@ -1,6 +1,9 @@
 # Orochi Head Agent (Research) -- agent-container definition
 # Launched via: scitex-orochi launch head research
 # Or explicitly: scitex-orochi launch head research --agent-config agents/head-research.yaml
+#
+# Note: Spartan's module loads make preflight slow (~60s).
+# Use: scitex-agent-container start --no-preflight agents/head-research.yaml
 apiVersion: cld-agent/v1
 kind: Agent
 metadata:
