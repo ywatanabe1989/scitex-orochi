@@ -34,7 +34,7 @@ async def handle_gitea_list_issues(request: web.Request) -> web.Response:
 async def handle_gitea_create_issue(request: web.Request) -> web.Response:
     """POST /api/gitea/issues/{owner}/{repo} -- create an issue."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     owner = request.match_info["owner"]
