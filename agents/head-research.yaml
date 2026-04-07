@@ -16,6 +16,10 @@ spec:
   model: opus[1m]
   workdir: ~/proj
 
+  remote:
+    host: spartan
+    user: ywatanabe
+
   claude:
     channels:
       - server:orochi-push:#general

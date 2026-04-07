@@ -15,6 +15,10 @@ spec:
   model: sonnet
   workdir: ~/proj
 
+  remote:
+    host: mba
+    user: ywatanabe
+
   claude:
     flags:
       - --dangerously-skip-permissions

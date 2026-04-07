@@ -16,6 +16,10 @@ spec:
   model: sonnet
   workdir: ~/proj
 
+  remote:
+    host: nas
+    user: ywatanabe
+
   claude:
     channels:
       - server:orochi-push:#general
