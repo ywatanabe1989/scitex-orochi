@@ -11,6 +11,11 @@ from hub.models import Channel, Message, Workspace, WorkspaceToken
 log = logging.getLogger("orochi.consumers")
 
 
+def _sanitize_group(name: str) -> str:
+    """Sanitize a channel/group name for Django Channels (ASCII alnum, -, _, . only)."""
+    return name.replace("#", "").replace("@", "at-").replace(" ", "-")
+
+
 class AgentConsumer(AsyncJsonWebsocketConsumer):
     """WebSocket consumer for AI agents — authenticates with workspace token."""
 
@@ -53,7 +58,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             payload = content.get("payload", {})
             channels = content.get("channels") or payload.get("channels", [])
             for ch_name in channels:
-                group = f"channel_{self.workspace_id}_{ch_name}"
+                group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
                 await self.channel_layer.group_add(group, self.channel_name)
             await self.send_json({"type": "registered", "channels": channels})
 
@@ -70,7 +75,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             )
 
             # Broadcast to channel group
-            group = f"channel_{self.workspace_id}_{ch_name}"
+            group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_send(
                 group,
                 {
@@ -211,7 +216,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 content_text=payload.get("text", ""),
             )
 
-            group = f"channel_{self.workspace_id}_{ch_name}"
+            group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_send(
                 group,
                 {

@@ -27,9 +27,22 @@ spec:
     required:
       - orchestration  # Task delegation and coordination
 
+  orochi:
+    enabled: true
+    hosts:
+      - 192.168.11.22        # MBA LAN (fast)
+      - scitex-orochi.com    # domain (fallback)
+    port: 8559
+    token_env: SCITEX_OROCHI_TOKEN
+    channels:
+      - "#general"
+      - "#deploy"
+      - "#research"
+    heartbeat_interval: 60
+
   env:
     SCITEX_OROCHI_HOST: "192.168.0.100"
-    SCITEX_OROCHI_PORT: "9559"
+    SCITEX_OROCHI_PORT: "8559"
     SCITEX_OROCHI_AGENT: orochi-master
     CLAUDE_AGENT_ROLE: master
     CLAUDE_AGENT_ID: orochi-master

@@ -19,12 +19,18 @@ log = logging.getLogger("orochi.client")
 class OrochiClient:
     """Async WebSocket client for agent communication.
 
+    Supports both standalone Orochi server (port 9559) and
+    Django Channels backend (port 8559, /ws/agent/ endpoint).
+
     Usage:
+        # Standalone server
         async with OrochiClient("my-agent", channels=["#general"]) as client:
             await client.send("#general", "Hello from my-agent")
 
-            async for msg in client.listen():
-                print(f"[{msg.channel}] {msg.sender}: {msg.content}")
+        # Django Channels backend
+        async with OrochiClient("my-agent", port=8559,
+                                ws_path="/ws/agent/") as client:
+            await client.send("#general", "Hello from my-agent")
     """
 
     def __init__(
@@ -38,6 +44,7 @@ class OrochiClient:
         role: str = "",
         agent_id: str = "",
         project: str = "",
+        ws_path: str = "",
     ) -> None:
         import platform as _platform
 
@@ -51,31 +58,53 @@ class OrochiClient:
             machine_name = machine or _platform.node()
             self.agent_id = f"{name}@{machine_name}"
         self._token = token or OROCHI_TOKEN
-        query = f"?token={self._token}" if self._token else ""
-        self.uri = f"ws://{host}:{port}{query}"
+        self._ws_path = ws_path
+        self._django_mode = bool(ws_path)
+
+        # Build URI
+        path = ws_path.rstrip("/") + "/" if ws_path else ""
+        params = []
+        if self._token:
+            params.append(f"token={self._token}")
+        if self._django_mode:
+            params.append(f"agent={name}")
+        query = "?" + "&".join(params) if params else ""
+        self.uri = f"ws://{host}:{port}/{path.lstrip('/')}{query}"
+
         self._ws = None
         self._listen_task: asyncio.Task | None = None
 
     async def connect(self) -> None:
         """Connect and register with the Orochi server."""
         self._ws = await websockets.connect(self.uri)
-        reg = Message(
-            type="register",
-            sender=self.name,
-            payload={
-                "channels": self.channels,
-                "machine": self.machine,
-                "role": self.role,
-                "agent_id": self.agent_id,
-                "project": self.project,
-            },
-        )
-        await self._ws.send(reg.to_json())
-        # Wait for ack
-        raw = await self._ws.recv()
-        ack = Message.from_json(raw)
-        if ack.type == "error":
-            raise ConnectionError(f"Registration failed: {ack.payload}")
+        if self._django_mode:
+            # Django Channels: send register, expect {"type": "registered"}
+            await self._ws.send(json.dumps({
+                "type": "register",
+                "payload": {"channels": self.channels},
+            }))
+            raw = await self._ws.recv()
+            ack = json.loads(raw)
+            if ack.get("type") == "error":
+                raise ConnectionError(f"Registration failed: {ack}")
+        else:
+            # Standalone server: use Message model
+            reg = Message(
+                type="register",
+                sender=self.name,
+                payload={
+                    "channels": self.channels,
+                    "machine": self.machine,
+                    "role": self.role,
+                    "agent_id": self.agent_id,
+                    "project": self.project,
+                },
+            )
+            await self._ws.send(reg.to_json())
+            raw = await self._ws.recv()
+            ack = Message.from_json(raw)
+            if ack.type == "error":
+                raise ConnectionError(f"Registration failed: {ack.payload}")
         log.info("Connected as %s to %s", self.name, self.uri)
 
     async def disconnect(self) -> None:
@@ -97,16 +126,26 @@ class OrochiClient:
         """Send a message to a channel."""
         if not self._ws:
             raise RuntimeError("Not connected")
-        msg = Message(
-            type="message",
-            sender=self.name,
-            payload={
-                "channel": channel,
-                "content": content,
-                "metadata": metadata or {},
-            },
-        )
-        await self._ws.send(msg.to_json())
+        if self._django_mode:
+            await self._ws.send(json.dumps({
+                "type": "message",
+                "payload": {
+                    "channel": channel,
+                    "text": content,
+                    "metadata": metadata or {},
+                },
+            }))
+        else:
+            msg = Message(
+                type="message",
+                sender=self.name,
+                payload={
+                    "channel": channel,
+                    "content": content,
+                    "metadata": metadata or {},
+                },
+            )
+            await self._ws.send(msg.to_json())
 
     async def heartbeat(self, resources: dict[str, Any] | None = None) -> None:
         """Send a heartbeat to the server.
@@ -210,16 +249,28 @@ class OrochiClient:
         return resp.payload.get("agents", {})
 
     async def listen(self) -> AsyncIterator[Message]:
-        """Yield incoming messages. Skips ack/error types."""
+        """Yield incoming messages. Skips ack/error/registered types."""
         if not self._ws:
             raise RuntimeError("Not connected")
         try:
             async for raw in self._ws:
                 try:
-                    msg = Message.from_json(raw)
+                    if self._django_mode:
+                        data = json.loads(raw)
+                        msg = Message(
+                            type=data.get("type", "message"),
+                            sender=data.get("sender", ""),
+                            payload={
+                                "channel": data.get("channel", ""),
+                                "content": data.get("text", ""),
+                                "metadata": data.get("metadata", {}),
+                            },
+                        )
+                    else:
+                        msg = Message.from_json(raw)
                 except (json.JSONDecodeError, KeyError):
                     continue
-                if msg.type in ("ack",):
+                if msg.type in ("ack", "registered"):
                     continue
                 yield msg
         except websockets.ConnectionClosed:
