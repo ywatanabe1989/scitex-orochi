@@ -1,10 +1,27 @@
 """URL configuration for the hub app."""
 
+import os
+
+from django.http import HttpResponse
 from django.urls import path
 
 from hub import views
 
+_sw_js_path = os.path.join(os.path.dirname(__file__), "static", "hub", "sw.js")
+
+
+def _serve_sw(request):
+    """Serve service worker at root scope (required by SW spec)."""
+    try:
+        with open(_sw_js_path) as f:
+            return HttpResponse(f.read(), content_type="application/javascript")
+    except FileNotFoundError:
+        return HttpResponse("", status=404)
+
+
 urlpatterns = [
+    # Service worker must be at root for proper scope
+    path("sw.js", _serve_sw, name="sw"),
     # Auth
     path("signin/", views.signin_view, name="signin"),
     path("signup/", views.signup_view, name="signup"),
