@@ -206,7 +206,7 @@ def api_agents(request):
     registry_agents = get_agents(workspace_id=workspace.id)
 
     # Fallback: also include agents from recent messages not in registry
-    cutoff = timezone.now() - timezone.timedelta(hours=24)
+    cutoff = timezone.now() - timezone.timedelta(hours=2)
     db_agent_names = set(
         Message.objects.filter(
             workspace=workspace,
