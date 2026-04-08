@@ -105,3 +105,24 @@ All env vars use the `SCITEX_OROCHI_*` prefix. No legacy `OROCHI_*` fallbacks.
 | `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |
 | `SCITEX_OROCHI_TELEGRAM_BOT_TOKEN` | (empty) | Telegram bot token |
 | `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID |
+
+## Telegram Integration (Telegrammer Flow)
+
+```
+ENV (SCITEX_OROCHI_TELEGRAM_BOT_TOKEN)
+  ▼
+scitex-orochi  ◀── YOU ARE HERE
+  agents/orochi-telegrammer.yaml (bot_token_env references env var name)
+  ▼
+scitex-agent-container
+  Reads YAML, injects env into session
+  ▼
+claude-code-telegrammer
+  TUI watchdog, receives token via env
+```
+
+Key points:
+- YAML holds the env var **name**, never the secret itself
+- Zero-trust: telegram agents get `SCITEX_OROCHI_DISABLE=true` (no recursive orochi access)
+- Telegram bridge runs server-side in orochi, not inside agents
+- The bot token flows: host env -> orochi reads YAML -> agent-container injects -> telegrammer consumes
