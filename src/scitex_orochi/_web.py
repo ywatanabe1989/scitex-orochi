@@ -89,6 +89,26 @@ async def handle_agents(request: web.Request) -> web.Response:
     return web.json_response(server.get_agents_info())
 
 
+async def handle_agents_registry(request: web.Request) -> web.Response:
+    """GET /api/agents/registry -- all agents with status derived from heartbeat."""
+    server: OrochiServer = request.app["orochi_server"]
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc)
+    agents = server.get_agents_info()
+    for a in agents:
+        # Derive online/offline from heartbeat freshness (>60s = offline)
+        hb = a.get("last_heartbeat")
+        if hb:
+            try:
+                hb_dt = datetime.fromisoformat(hb)
+                delta = (now - hb_dt).total_seconds()
+                a["status"] = "online" if delta <= 60 else "offline"
+            except (ValueError, TypeError):
+                pass
+    return web.json_response(agents)
+
+
 async def handle_resources(request: web.Request) -> web.Response:
     """GET /api/resources -- latest system resource metrics for all agents."""
     server: OrochiServer = request.app["orochi_server"]
@@ -358,6 +378,7 @@ def create_web_app(server: OrochiServer) -> web.Application:
 
     # REST API
     app.router.add_get("/api/agents", handle_agents)
+    app.router.add_get("/api/agents/registry", handle_agents_registry)
     app.router.add_get("/api/resources", handle_resources)
     app.router.add_get("/api/channels", handle_channels)
     app.router.add_get("/api/messages", handle_messages)

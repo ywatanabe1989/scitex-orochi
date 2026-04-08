@@ -34,7 +34,8 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["fastmcp>=2.0"]
-agent-container = ["scitex-agent-container>=0.1.0"]
+agent-container = ["scitex-agent-container>=0.4.3"]
+telegram = ["claude-code-telegrammer>=0.2.0"]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio",

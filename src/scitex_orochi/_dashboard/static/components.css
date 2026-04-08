@@ -310,6 +310,39 @@
   color: #666;
   flex-shrink: 0;
 }
+/* Agents Registry Table */
+.agents-summary {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.agents-registry-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.agents-registry-table th {
+  text-align: left;
+  color: #888;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #333;
+  white-space: nowrap;
+}
+.agents-registry-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1a1a1a;
+  color: #ccc;
+  vertical-align: middle;
+}
+.agents-registry-table tbody tr:hover {
+  background: #1a1a2e;
+}
 /* Hamburger toggle -- hidden on desktop */
 .sidebar-toggle {
   display: none;

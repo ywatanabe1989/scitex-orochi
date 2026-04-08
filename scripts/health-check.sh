@@ -76,16 +76,18 @@ else
     fi
 fi
 
-# 1c. Plugin enabled in settings.json
-SETTINGS_FILE="$HOME/.claude/settings.json"
-if [[ -f "$SETTINGS_FILE" ]]; then
-    if grep -q '"telegram@claude-plugins-official": true' "$SETTINGS_FILE" 2>/dev/null; then
-        ok "Plugin enabled in settings.json"
-    else
-        fail "Plugin NOT enabled in settings.json"
-    fi
+# 1c. Custom telegrammer-hook and MCP server availability
+if command -v telegrammer-hook &>/dev/null; then
+    ok "telegrammer-hook command available"
 else
-    fail "Settings file not found: $SETTINGS_FILE"
+    fail "telegrammer-hook command NOT found (install claude-code-telegrammer)"
+fi
+
+MCP_CONFIG="/tmp/scitex-agent-container/mcp-orochi-telegrammer.json"
+if [[ -f "$MCP_CONFIG" ]]; then
+    ok "Custom MCP config exists: $MCP_CONFIG"
+else
+    warn "Custom MCP config not found: $MCP_CONFIG (created at agent start)"
 fi
 
 # ──────────────────────────────────────────
