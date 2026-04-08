@@ -15,6 +15,14 @@ import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
 import { handleReply, handleHistory, handleStatus } from "./src/tools.js";
 
+// Zero-trust: telegram agents must never run this MCP server
+if (process.env.CLAUDE_AGENT_ROLE === "telegram") {
+  console.error(
+    "[scitex-orochi] BLOCKED: telegram agent must not run Orochi MCP channel",
+  );
+  process.exit(1);
+}
+
 // ---------------------------------------------------------------------------
 // MCP Server
 // ---------------------------------------------------------------------------
@@ -43,7 +51,13 @@ const conn = new OrochiConnection(async (raw: string) => {
     // Hub sends flat messages: {type, sender, channel, text, ts, metadata}
     // Also support legacy nested payload format for backward compatibility
     const payload = msg.payload || {};
-    const content = msg.text || msg.content || payload.content || payload.text || payload.message || "";
+    const content =
+      msg.text ||
+      msg.content ||
+      payload.content ||
+      payload.text ||
+      payload.message ||
+      "";
     const sender = msg.sender || payload.sender || "unknown";
     const channel = msg.channel || payload.channel || "";
 
