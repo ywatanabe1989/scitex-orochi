@@ -10,11 +10,7 @@ function isKnownAgent(name) {
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
-  var isAgent =
-    isKnownAgent(senderName) ||
-    (senderName !== userName &&
-      senderName !== "human" &&
-      senderName !== "orochi-server");
+  var isAgent = isKnownAgent(senderName);
   el.className = "msg" + (isAgent ? "" : " msg-human");
   var ts = "";
   var fullTs = "";

@@ -3,9 +3,15 @@
 
 async function fetchTodoList() {
   try {
-    var res = await fetch(apiUrl("/api/github/issues"));
+    var res = await fetch(
+      "https://api.github.com/repos/ywatanabe1989/todo/issues?state=open&per_page=30",
+    );
     if (!res.ok) {
       console.error("Failed to fetch TODO list:", res.status);
+      document.getElementById("todo-grid").innerHTML =
+        '<p class="empty-notice">Failed to load issues (HTTP ' +
+        res.status +
+        ")</p>";
       return;
     }
     var issues = await res.json();
