@@ -182,7 +182,7 @@ async def handle_post_message(request: web.Request) -> web.Response:
     return web.json_response({"status": "ok", "id": msg.id}, status=201)
 
 
-async def handle_config(request: web.Request) -> web.Response:
+async def handle_config(_request: web.Request) -> web.Response:
     """GET /api/config -- dashboard configuration."""
     from importlib.metadata import version
 
@@ -280,7 +280,7 @@ async def handle_upload_base64(request: web.Request) -> web.Response:
     return web.json_response(result, status=201)
 
 
-async def handle_index(request: web.Request) -> web.Response | web.FileResponse:
+async def handle_index(_request: web.Request) -> web.Response | web.FileResponse:
     """Serve the dashboard index.html."""
     index_path = DASHBOARD_DIR / "index.html"
     if index_path.exists():
@@ -293,7 +293,7 @@ async def handle_index(request: web.Request) -> web.Response | web.FileResponse:
 
 
 async def handle_service_worker(
-    request: web.Request,
+    _request: web.Request,
 ) -> web.Response | web.FileResponse:
     """Serve sw.js from root scope for PWA support."""
     sw_path = DASHBOARD_DIR / "sw.js"
