@@ -9,7 +9,7 @@
   if (brandLogo) {
     brandLogo.innerHTML =
       '<img src="/static/hub/orochi-icon.png" alt="Orochi" ' +
-      'style="width:36px;height:36px;border-radius:6px;">';
+      'style="width:100px;height:100px;border-radius:8px;">';
   }
 })();
 
