@@ -35,6 +35,20 @@ if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
   process.exit(1);
 }
 
+// Safety: block if Telegram bot token env vars are present (indicates a Telegram agent session)
+const _telegramToken =
+  process.env.TELEGRAM_BOT_TOKEN ||
+  process.env.SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN;
+if (_telegramToken) {
+  console.error(
+    "[scitex-orochi] WARNING: Telegram bot token detected in environment",
+  );
+  console.error(
+    "[scitex-orochi] BLOCKED: Orochi MCP channel refuses to run alongside Telegram bot",
+  );
+  process.exit(1);
+}
+
 // ---------------------------------------------------------------------------
 // MCP Server
 // ---------------------------------------------------------------------------
