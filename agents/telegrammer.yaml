@@ -1,0 +1,107 @@
+# Orochi Telegrammer Agent -- agent-container definition
+#
+# IMPORTANT: This agent runs SEPARATELY from the Orochi launch system.
+# Do NOT launch it via `scitex-orochi launch all`.
+#
+# WHY IT RUNS SEPARATELY:
+#   The telegrammer agent uses a custom Telegram MCP server to read/send
+#   Telegram messages. Orochi agents use the scitex-orochi MCP server for
+#   WebSocket channels. Running both MCP servers in the same Claude Code
+#   session causes conflicts -- each tries to be the primary communication
+#   layer. Therefore:
+#
+#   - Telegrammer connects to Telegram (via custom MCP server) AND to
+#     Orochi (via environment variables / REST API), but does NOT use
+#     scitex-orochi MCP.
+#   - It bridges messages: Telegram <-> Orochi #telegram channel.
+#   - The Orochi server relays #telegram messages to/from the master agent.
+#
+# LAUNCH:
+#   scitex-agent-container start agents/telegrammer.yaml
+#
+# The `scitex-orochi launch all` command auto-skips this file.
+
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-telegrammer
+  labels:
+    role: telegram
+    team: orochi
+    specialty: telegram
+spec:
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj
+
+  skills:
+    required:
+      - quality-guards
+      - autonomous
+      - speech
+      - scitex
+    available:
+      - code-review
+      - orchestrator
+
+  claude:
+    channels: []
+    flags:
+      - --dangerously-skip-permissions
+      - --strict-mcp-config
+      - "--mcp-config /tmp/scitex-agent-container/mcp-orochi-telegrammer.json"
+      - "--dangerously-load-development-channels server:telegram"
+    session: new
+
+  env:
+    CLAUDE_AGENT_ROLE: telegram
+    CLAUDE_AGENT_ID: orochi-telegrammer
+    SCITEX_OROCHI_DISABLE: "true"
+    TELEGRAM_STATE_DIR: ~/.scitex/agent-container/telegram/8146978246
+    TELEGRAM_BOT_TOKEN: "${SCITEX_OROCHI_TELEGRAM_BOT_TOKEN}"
+
+  telegram:
+    bot_token_env: SCITEX_OROCHI_TELEGRAM_BOT_TOKEN
+    allowed_users:
+      - "8379369979"
+    auto_connect: true
+    greeting: "SciTeX Orochi Telegrammer connected."
+
+  orochi:
+    hosts:
+      - 192.168.11.22
+      - scitex-orochi.com
+    port: 8559
+    token_env: SCITEX_OROCHI_TOKEN
+    channels:
+      - server:scitex-orochi
+
+  screen:
+    name: cld-orochi-tg
+
+  health:
+    enabled: true
+    interval: 30
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 3
+    backoff:
+      initial: 30
+      max: 300
+      multiplier: 2
+
+  watchdog:
+    enabled: false
+
+  hooks:
+    pre_start:
+      - "telegrammer-hook pre-start"
+    post_start:
+      - "telegrammer-hook post-start"
+    pre_stop:
+      - "telegrammer-hook pre-stop"
+
+  startup_commands: []

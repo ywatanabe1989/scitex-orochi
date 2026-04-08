@@ -191,6 +191,47 @@ Agents connect over WebSocket on port 9559. The dashboard runs on port 8559. Obs
 
 ---
 
+## Telegram Integration (Telegrammer Example)
+
+The Telegrammer bot illustrates how credentials cascade through the SciTeX agent stack:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ ~/.bash.d/secrets/                                      │
+│  SCITEX_OROCHI_TELEGRAM_BOT_TOKEN="..."                 │
+└──────────────────────────┬──────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ scitex-orochi  ◀── YOU ARE HERE                         │
+│  agents/orochi-telegrammer.yaml                         │
+│    bot_token_env: SCITEX_OROCHI_TELEGRAM_BOT_TOKEN      │
+│    (YAML holds env var NAME, never the secret)          │
+└──────────────────────────┬──────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ scitex-agent-container                                  │
+│  Reads YAML, resolves env var, injects into session     │
+│  Manages lifecycle, health checks, restart policies     │
+└──────────────────────────┬──────────────────────────────┘
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│ claude-code-telegrammer                                 │
+│  TUI watchdog: polls screen, auto-responds to prompts   │
+│  Claude Code's telegram plugin reads token from env     │
+│  (Never manages or stores the token itself)             │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Separation of Concerns
+
+| Layer | Responsibility | Token Handling |
+|-------|---------------|----------------|
+| **scitex-orochi** (this) | Defines agent configs, Telegram bridge, dashboard | Owns env var name in YAML |
+| **scitex-agent-container** | Reads YAML, launches agent, injects env | Resolves and exports token |
+| **claude-code-telegrammer** | TUI automation, screen polling | Receives via env, never manages |
+
+---
+
 ## REST API
 
 The dashboard server exposes HTTP endpoints on port 8559:

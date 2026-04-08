@@ -245,7 +245,7 @@ async def test_process_update_with_voice(bridge_and_server):
 @pytest.mark.asyncio
 async def test_setup_telegram_bridge_disabled(tmp_path, monkeypatch):
     """setup_telegram_bridge returns None when disabled."""
-    monkeypatch.setenv("OROCHI_TELEGRAM_BRIDGE_ENABLED", "false")
+    monkeypatch.setenv("SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED", "false")
     import importlib
 
     import scitex_orochi._config
@@ -262,15 +262,15 @@ async def test_setup_telegram_bridge_disabled(tmp_path, monkeypatch):
         assert result is None
         await srv.store.close()
     finally:
-        monkeypatch.delenv("OROCHI_TELEGRAM_BRIDGE_ENABLED", raising=False)
+        monkeypatch.delenv("SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED", raising=False)
         importlib.reload(scitex_orochi._config)
 
 
 @pytest.mark.asyncio
 async def test_setup_telegram_bridge_missing_token(tmp_path, monkeypatch):
     """setup_telegram_bridge returns None and logs ERROR when token missing."""
-    monkeypatch.setenv("OROCHI_TELEGRAM_BRIDGE_ENABLED", "true")
-    monkeypatch.delenv("OROCHI_TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.setenv("SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED", "true")
+    monkeypatch.delenv("SCITEX_OROCHI_TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("SCITEX_OROCHI_TELEGRAM_BOT_TOKEN", raising=False)
     import importlib
 
@@ -288,5 +288,5 @@ async def test_setup_telegram_bridge_missing_token(tmp_path, monkeypatch):
         assert result is None
         await srv.store.close()
     finally:
-        monkeypatch.delenv("OROCHI_TELEGRAM_BRIDGE_ENABLED", raising=False)
+        monkeypatch.delenv("SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED", raising=False)
         importlib.reload(scitex_orochi._config)

@@ -34,8 +34,13 @@ function getAgentColor(name) {
 }
 
 var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
-var token = new URLSearchParams(location.search).get("token") || "";
-var wsHost = window.__orochiWsUpstream ? window.__orochiWsUpstream.replace(/^https?:\/\//, "") : location.host;
+var token =
+  window.__orochiToken ||
+  new URLSearchParams(location.search).get("token") ||
+  "";
+var wsHost = window.__orochiWsUpstream
+  ? window.__orochiWsUpstream.replace(/^https?:\/\//, "")
+  : location.host;
 var wsUrl = wsProto + "//" + wsHost + "/ws?token=" + token;
 var ws;
 
@@ -1096,11 +1101,23 @@ function renderResources() {
         });
       }
       if (d._loadAvg) {
-        html += '<div class="res-meta">Load: ' + d._loadAvg.map(function(v) { return v.toFixed(1); }).join(" / ") + '</div>';
+        html +=
+          '<div class="res-meta">Load: ' +
+          d._loadAvg
+            .map(function (v) {
+              return v.toFixed(1);
+            })
+            .join(" / ") +
+          "</div>";
       }
       if (d._status) {
         var statusColor = d._status === "online" ? "#4ecdc4" : "#ef4444";
-        html += '<div class="res-meta" style="color:' + statusColor + '">' + escapeHtml(d._status) + '</div>';
+        html +=
+          '<div class="res-meta" style="color:' +
+          statusColor +
+          '">' +
+          escapeHtml(d._status) +
+          "</div>";
       }
       if (d.slurm && d.slurm.total_jobs > 0) {
         html +=
@@ -1126,10 +1143,21 @@ async function fetchResources() {
       var transformed = {
         hostname: entry.machine || agentName,
         agent: agentName,
-        cpu: { percent: Math.round((r.load_avg_1m || 0) / Math.max(r.cpu_count || 1, 1) * 100) },
+        cpu: {
+          percent: Math.round(
+            ((r.load_avg_1m || 0) / Math.max(r.cpu_count || 1, 1)) * 100,
+          ),
+        },
         memory: { percent: r.mem_used_percent || 0 },
         disk: { "/": { percent: r.disk_used_percent || 0 } },
-        health: { status: (r.mem_used_percent > 80 || r.disk_used_percent > 80) ? "critical" : (r.mem_used_percent > 60 || r.disk_used_percent > 60) ? "warning" : "healthy" },
+        health: {
+          status:
+            r.mem_used_percent > 80 || r.disk_used_percent > 80
+              ? "critical"
+              : r.mem_used_percent > 60 || r.disk_used_percent > 60
+                ? "warning"
+                : "healthy",
+        },
         /* Extra fields for enriched display */
         _api: true,
         _status: entry.status || "unknown",
@@ -1226,96 +1254,7 @@ function isLightColor(hex) {
   return luminance > 0.5;
 }
 
-/* Agents Tab -- full-width agent cards with resource info */
-async function renderAgentsTab() {
-  var grid = document.getElementById("agents-grid");
-  try {
-    var res = await fetch("/api/agents");
-    var agents = await res.json();
-    if (agents.length === 0) {
-      grid.innerHTML =
-        '<p style="color:#555;font-size:13px;">No agents connected</p>';
-      return;
-    }
-    grid.innerHTML = agents
-      .map(function (a) {
-        var color = getAgentColor(a.name);
-        var inactive = isAgentInactive(a);
-        var statusClass =
-          (a.status || "online") + (inactive ? " inactive" : "");
-        var taskHtml = a.current_task
-          ? '<div style="color:#ffd93d;font-size:12px;margin-top:6px;">Task: ' +
-            escapeHtml(a.current_task) +
-            "</div>"
-          : "";
-        var resHtml = "";
-        var rd = resourceData[a.machine || a.name];
-        if (rd) {
-          var cpu = (rd.cpu && rd.cpu.percent) || 0;
-          var mem = (rd.memory && rd.memory.percent) || 0;
-          var diskPct = 0;
-          if (rd.disk) {
-            var dk = Object.keys(rd.disk)[0];
-            if (dk) diskPct = rd.disk[dk].percent || 0;
-          }
-          resHtml =
-            '<div style="margin-top:6px">' +
-            barHtml("CPU", cpu) +
-            barHtml("Mem", mem) +
-            barHtml("Disk", diskPct) +
-            "</div>";
-        }
-        return (
-          '<div class="agent-card" data-agent-name="' +
-          escapeHtml(a.name) +
-          '" style="border-left:3px solid ' +
-          color +
-          ';width:calc(33.333% - 8px);min-width:280px;cursor:pointer" title="Click to filter by this agent">' +
-          '<span class="status-dot ' +
-          statusClass +
-          '" style="background:' +
-          (inactive ? "#555" : color) +
-          '"></span>' +
-          '<span class="name" style="color:' +
-          (inactive ? "#666" : color) +
-          '">' +
-          escapeHtml(a.name) +
-          "</span>" +
-          (a.model
-            ? ' <span style="color:#888;font-size:0.8em">(' +
-              escapeHtml(a.model) +
-              ")</span>"
-            : "") +
-          '<div class="meta">' +
-          escapeHtml(a.machine || "unknown") +
-          " / " +
-          escapeHtml(a.role || "agent") +
-          "</div>" +
-          '<div class="meta">channels: ' +
-          a.channels
-            .map(function (c) {
-              return escapeHtml(c);
-            })
-            .join(", ") +
-          "</div>" +
-          taskHtml +
-          resHtml +
-          "</div>"
-        );
-      })
-      .join("");
-    /* Click agent card → add agent: tag */
-    grid
-      .querySelectorAll(".agent-card[data-agent-name]")
-      .forEach(function (el) {
-        el.addEventListener("click", function () {
-          addTag("agent", el.getAttribute("data-agent-name"));
-        });
-      });
-  } catch (e) {
-    console.error("Agents tab error:", e);
-  }
-}
+/* Agents Tab -- moved to agents-tab.js */
 
 /* Resources Tab -- per-host resource cards */
 function renderResourcesTab() {
@@ -1343,26 +1282,52 @@ function renderResourcesTab() {
       if (d._machine) subtitleParts.push(escapeHtml(d._machine));
       if (d._status) {
         var stColor = d._status === "online" ? "#4ecdc4" : "#ef4444";
-        subtitleParts.push('<span style="color:' + stColor + '">' + escapeHtml(d._status) + '</span>');
+        subtitleParts.push(
+          '<span style="color:' +
+            stColor +
+            '">' +
+            escapeHtml(d._status) +
+            "</span>",
+        );
       }
-      var subtitleHtml = subtitleParts.length > 0
-        ? '<div class="res-meta" style="margin-bottom:4px">' + subtitleParts.join(' &middot; ') + '</div>'
-        : '';
+      var subtitleHtml =
+        subtitleParts.length > 0
+          ? '<div class="res-meta" style="margin-bottom:4px">' +
+            subtitleParts.join(" &middot; ") +
+            "</div>"
+          : "";
       /* Load averages line */
-      var loadHtml = '';
+      var loadHtml = "";
       if (d._loadAvg) {
-        loadHtml = '<div class="res-meta">Load avg: ' + d._loadAvg.map(function(v) { return v.toFixed(2); }).join(" / ") + '</div>';
+        loadHtml =
+          '<div class="res-meta">Load avg: ' +
+          d._loadAvg
+            .map(function (v) {
+              return v.toFixed(2);
+            })
+            .join(" / ") +
+          "</div>";
       }
       /* Memory detail */
-      var memDetail = '';
+      var memDetail = "";
       if (d._memTotalMb) {
         var usedMb = Math.round(d._memTotalMb - (d._memFreeMb || 0));
-        memDetail = '<div class="res-meta">' + usedMb + ' / ' + d._memTotalMb + ' MB</div>';
+        memDetail =
+          '<div class="res-meta">' +
+          usedMb +
+          " / " +
+          d._memTotalMb +
+          " MB</div>";
       }
       /* CPU info */
-      var cpuInfo = '';
+      var cpuInfo = "";
       if (d._cpuCount) {
-        cpuInfo = '<div class="res-meta">' + d._cpuCount + ' cores' + (d._cpuModel ? ' &middot; ' + escapeHtml(d._cpuModel) : '') + '</div>';
+        cpuInfo =
+          '<div class="res-meta">' +
+          d._cpuCount +
+          " cores" +
+          (d._cpuModel ? " &middot; " + escapeHtml(d._cpuModel) : "") +
+          "</div>";
       }
       var html =
         '<div class="res-card" data-host-name="' +
@@ -1398,8 +1363,11 @@ function renderResourcesTab() {
       }
       if (d._lastHeartbeat) {
         var hbDate = new Date(d._lastHeartbeat);
-        var hbStr = isNaN(hbDate.getTime()) ? d._lastHeartbeat : hbDate.toLocaleString();
-        html += '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + '</div>';
+        var hbStr = isNaN(hbDate.getTime())
+          ? d._lastHeartbeat
+          : hbDate.toLocaleString();
+        html +=
+          '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + "</div>";
       }
       html += "</div>";
       return html;

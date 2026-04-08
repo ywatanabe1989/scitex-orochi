@@ -73,8 +73,6 @@ def doctor_cmd(ctx: click.Context, as_json: bool) -> None:
             if not as_json
             else {"check": "Server", "ok": True, "detail": f"{host}:{port}"}
         )
-        if not as_json:
-            _check("Server", True, f"{host}:{port}")
     except Exception as exc:
         results.append({"check": "Server", "ok": False, "detail": str(exc)})
         if not as_json:

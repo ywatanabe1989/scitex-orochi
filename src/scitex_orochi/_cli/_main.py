@@ -47,7 +47,7 @@ from scitex_orochi._cli.commands.docs_cmd import docs
 from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
 from scitex_orochi._cli.commands.init_cmd import init_cmd
 from scitex_orochi._cli.commands.launch_cmd import launch
-from scitex_orochi._cli.commands.messaging_cmd import join, login, send
+from scitex_orochi._cli.commands.messaging_cmd import join, listen, login, send
 from scitex_orochi._cli.commands.query_cmd import (
     list_agents,
     list_channels,
@@ -60,6 +60,7 @@ from scitex_orochi._cli.commands.skills_cmd import skills
 
 # Messaging
 orochi.add_command(send)
+orochi.add_command(listen)
 orochi.add_command(login)
 orochi.add_command(join)
 

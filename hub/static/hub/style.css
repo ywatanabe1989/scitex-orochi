@@ -1,0 +1,369 @@
+/* Orochi Dashboard Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #1a1d21;
+  color: #d1d2d3;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+/* Sidebar */
+#sidebar {
+  width: 260px;
+  background: #19171d;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #333;
+}
+
+.sidebar-header {
+  padding: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.sidebar-header h2 {
+  color: #fff;
+  font-size: 1.2rem;
+}
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.btn-eye {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 4px;
+  vertical-align: middle;
+}
+
+.workspace-name {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.sidebar-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+}
+
+.sidebar-section h3 {
+  padding: 0.3rem 1rem;
+  color: #888;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#channel-list {
+  list-style: none;
+}
+
+#channel-list li {
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+#channel-list li:hover {
+  background: #27242c;
+  color: #fff;
+}
+
+#channel-list li.active {
+  background: #1264a3;
+  color: #fff;
+}
+
+.sidebar-footer {
+  padding: 0.8rem 1rem;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.sidebar-footer a {
+  color: #4a9eff;
+  text-decoration: none;
+}
+
+/* Chat area */
+#chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+#chat-header {
+  padding: 0.8rem 1rem;
+  border-bottom: 1px solid #333;
+  background: #222529;
+}
+
+#chat-header h3 {
+  color: #fff;
+  font-size: 1rem;
+}
+
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.message {
+  margin-bottom: 0.8rem;
+}
+
+.message .sender {
+  font-weight: bold;
+  color: #fff;
+  margin-right: 0.5rem;
+}
+
+.message .ts {
+  color: #666;
+  font-size: 0.75rem;
+}
+
+.message .text {
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+#message-form {
+  display: flex;
+  padding: 0.8rem 1rem;
+  border-top: 1px solid #333;
+  background: #222529;
+}
+
+#message-input {
+  flex: 1;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1d21;
+  color: #fff;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+#message-input:focus {
+  border-color: #4a9eff;
+}
+
+#message-form button {
+  margin-left: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  background: #4a9eff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+#message-form button:hover {
+  background: #3a8eef;
+}
+
+/* System messages (join/leave/status) — Slack-style centered muted text */
+.message.system {
+  text-align: center;
+  color: #888;
+  font-style: italic;
+  font-size: 0.85em;
+  padding: 4px 0;
+  border-left: none;
+}
+.message.system .sender {
+  display: none;
+}
+.message.system .ts {
+  display: none;
+}
+
+/* Member list */
+#member-list {
+  list-style: none;
+}
+
+#member-list li {
+  padding: 0.3rem 1rem;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.member-status {
+  color: #2bac76;
+  font-size: 0.6rem;
+  margin-right: 0.3rem;
+}
+
+/* Agent list */
+#agent-list {
+  list-style: none;
+}
+
+#agent-list li {
+  padding: 0.3rem 1rem;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.agent-status {
+  color: #7b68ee;
+  font-size: 0.6rem;
+  margin-right: 0.3rem;
+}
+
+.agent-status.connected {
+  color: #7b68ee;
+}
+
+.agent-status.disconnected {
+  color: #555;
+}
+
+#agent-list li {
+  cursor: pointer;
+}
+
+#agent-list li:hover {
+  background: #27242c;
+  color: #fff;
+}
+
+/* Agent info panel */
+#agent-info-panel {
+  position: absolute;
+  left: 270px;
+  top: 200px;
+  z-index: 50;
+  background: #2b2d31;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  min-width: 220px;
+  max-width: 320px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+#agent-info-panel h4 {
+  color: #fff;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 0.4rem;
+}
+
+#agent-info-details {
+  color: #b5bac1;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+/* Sidebar toggle (hidden on desktop) */
+#sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 110;
+  background: #19171d;
+  color: #d1d2d3;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 1.4rem;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+#sidebar-overlay {
+  display: none;
+}
+
+/* Mobile responsive (<768px) */
+@media (max-width: 768px) {
+  #sidebar-toggle {
+    display: block;
+  }
+
+  #sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  #sidebar.open {
+    transform: translateX(0);
+  }
+
+  #sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  #sidebar-overlay.active {
+    display: block;
+  }
+
+  #chat-area {
+    width: 100%;
+  }
+
+  #chat-header {
+    padding-left: 3rem;
+  }
+
+  body {
+    font-size: 1rem;
+  }
+
+  .message .text {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  #message-input {
+    font-size: 1rem;
+    padding: 0.7rem 0.8rem;
+  }
+
+  #message-form button {
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
+  }
+
+  #message-form {
+    padding: 0.6rem;
+  }
+}

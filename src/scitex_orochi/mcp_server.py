@@ -5,6 +5,45 @@ from __future__ import annotations
 import json
 import os
 import platform
+import sys
+
+# ---------------------------------------------------------------------------
+# Safety guards -- must run before any MCP setup
+# ---------------------------------------------------------------------------
+
+_TRUTHY = frozenset({"true", "1", "yes", "enable", "enabled"})
+
+
+def _is_truthy(val: str | None) -> bool:
+    return (val or "").lower() in _TRUTHY
+
+
+def _guard_msg(msg: str) -> None:
+    print(f"[scitex-orochi] {msg}", file=sys.stderr)
+
+
+# 1. Generic disable switch
+if _is_truthy(os.environ.get("SCITEX_OROCHI_DISABLE")):
+    _guard_msg("Disabled via SCITEX_OROCHI_DISABLE")
+    sys.exit(0)
+
+# 2. Block telegram agent role
+if (os.environ.get("CLAUDE_AGENT_ROLE") or "").lower() == "telegram":
+    _guard_msg("BLOCKED: telegram agent must not run Orochi MCP server")
+    sys.exit(1)
+
+# 3. Block if Telegram bot token env vars are present
+_telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get(
+    "SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN"
+)
+if _telegram_token:
+    _guard_msg(
+        "Telegram bot token detected -- Orochi MCP server refuses to run "
+        "alongside Telegram bot"
+    )
+    sys.exit(1)
+
+# ---------------------------------------------------------------------------
 
 try:
     from fastmcp import FastMCP

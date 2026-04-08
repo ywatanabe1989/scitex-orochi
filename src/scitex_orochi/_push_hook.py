@@ -26,13 +26,18 @@ def create_push_hook(push_store: PushStore) -> Any:
     """Create a message hook that sends push notifications.
 
     Returns an async callable suitable for OrochiServer._message_hooks.
+    VAPID keys are loaded once on first use and cached in memory.
     """
+    _cached_keys: dict[str, Any] = {}
 
     async def push_message_hook(msg: Message) -> None:
         """Send push notification for a channel message."""
-        keys = load_vapid_keys(get_vapid_keys_path())
-        if keys is None:
-            return  # VAPID keys not configured, skip silently
+        if "keys" not in _cached_keys:
+            loaded = load_vapid_keys(get_vapid_keys_path())
+            if loaded is None:
+                return  # VAPID keys not configured, skip silently
+            _cached_keys["keys"] = loaded
+        keys = _cached_keys["keys"]
 
         content = msg.content or ""
         if not content:

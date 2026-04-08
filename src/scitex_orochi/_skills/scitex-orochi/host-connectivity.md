@@ -27,9 +27,9 @@ The Orochi hub runs on NAS as a Docker service. It listens on:
 
 ### Spartan HPC: WebSocket Port 9559 Blocked
 
-Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `orochi_push.ts` bridge connects directly to `SCITEX_OROCHI_HOST:OROCHI_PORT`, not through the HTTPS proxy.
+Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `mcp_channel.ts` bridge connects directly to `SCITEX_OROCHI_HOST:OROCHI_PORT`, not through the HTTPS proxy.
 
-**Status**: Spartan agent cannot use push mode until `orochi_push.ts` supports WSS proxy connection. Polling mode works as a fallback (uses HTTP on standard ports).
+**Status**: Spartan agent cannot use push mode until `mcp_channel.ts` supports WSS proxy connection. Polling mode works as a fallback (uses HTTP on standard ports).
 
 **Workaround**: Use polling mode for spartan-agent:
 ```bash

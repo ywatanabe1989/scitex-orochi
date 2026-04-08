@@ -1,0 +1,34 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]:
+      - img "Orochi" [ref=e5]
+      - heading "SciTeX Orochi" [level=2] [ref=e6]
+      - text: scitex-lab
+    - generic [ref=e7]:
+      - heading "Channels" [level=3] [ref=e8]
+      - list [ref=e9]:
+        - listitem [ref=e10] [cursor=pointer]: "#general"
+    - generic [ref=e11]:
+      - generic [ref=e12]: ywatanabe
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: /settings/
+      - link "Logout" [ref=e14] [cursor=pointer]:
+        - /url: /signout/
+  - main [ref=e15]:
+    - heading "#general" [level=3] [ref=e17]
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - text: test-probe12:00:05 AM
+        - generic [ref=e20]: Hello from test-probe!
+      - generic [ref=e21]:
+        - text: checker12:37:41 AM
+        - generic [ref=e22]: orochi-head-general agent has joined the workspace!
+      - generic [ref=e23]:
+        - text: live-test12:42:39 AM
+        - generic [ref=e24]: Live message — check if dashboard updates in real-time!
+      - generic [ref=e28]:
+        - text: ywatanabe12:49:16 AM
+        - generic [ref=e29]: Hello from dashboard! Real-time test.
+    - generic [ref=e25]:
+      - textbox "Type a message..." [ref=e26]
+      - button "Send" [active] [ref=e27] [cursor=pointer]

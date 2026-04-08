@@ -1,5 +1,5 @@
 /**
- * Orochi push client -- MCP server connecting Claude Code to the Orochi hub.
+ * scitex-orochi MCP channel bridge -- connects Claude Code to the Orochi hub.
  *
  * v0.2.0: WSS support, ping/pong stale detection, connection state tracking.
  * Modules: src/config.ts, src/connection.ts, src/metrics.ts, src/tools.ts
@@ -15,11 +15,45 @@ import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
 import { handleReply, handleHistory, handleStatus } from "./src/tools.js";
 
+// Unified truthy check for env var guards
+const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
+function isTruthy(val?: string): boolean {
+  return TRUTHY.has((val || "").toLowerCase());
+}
+
+// Generic disable switch
+if (isTruthy(process.env.SCITEX_OROCHI_DISABLE)) {
+  console.error("[scitex-orochi] Disabled via SCITEX_OROCHI_DISABLE");
+  process.exit(0);
+}
+
+// Zero-trust: telegram agents must never run this MCP server
+if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
+  console.error(
+    "[scitex-orochi] BLOCKED: telegram agent must not run Orochi MCP channel",
+  );
+  process.exit(1);
+}
+
+// Safety: block if Telegram bot token env vars are present (indicates a Telegram agent session)
+const _telegramToken =
+  process.env.TELEGRAM_BOT_TOKEN ||
+  process.env.SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN;
+if (_telegramToken) {
+  console.error(
+    "[scitex-orochi] WARNING: Telegram bot token detected in environment",
+  );
+  console.error(
+    "[scitex-orochi] BLOCKED: Orochi MCP channel refuses to run alongside Telegram bot",
+  );
+  process.exit(1);
+}
+
 // ---------------------------------------------------------------------------
 // MCP Server
 // ---------------------------------------------------------------------------
 const mcp = new Server(
-  { name: "orochi", version: "0.2.0" },
+  { name: "scitex-orochi", version: "0.2.0" },
   {
     capabilities: {
       experimental: { "claude/channel": {} },
@@ -40,10 +74,18 @@ const conn = new OrochiConnection(async (raw: string) => {
     const msg = JSON.parse(raw);
     if (msg.type !== "message") return;
 
+    // Hub sends flat messages: {type, sender, channel, text, ts, metadata}
+    // Also support legacy nested payload format for backward compatibility
     const payload = msg.payload || {};
-    const content = payload.content || payload.text || payload.message || "";
-    const sender = payload.sender || msg.sender || "unknown";
-    const channel = payload.channel || "";
+    const content =
+      msg.text ||
+      msg.content ||
+      payload.content ||
+      payload.text ||
+      payload.message ||
+      "";
+    const sender = msg.sender || payload.sender || "unknown";
+    const channel = msg.channel || payload.channel || "";
 
     if (sender === OROCHI_AGENT || !content) return;
 

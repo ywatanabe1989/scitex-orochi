@@ -1,0 +1,79 @@
+# Orochi Head Agent (Research) -- agent-container definition
+# Launched via: scitex-orochi launch head research
+# Or explicitly: scitex-orochi launch head research --agent-config agents/head-research.yaml
+#
+# Note: Spartan's module loads make preflight slow (~60s).
+# Use: scitex-agent-container start --no-preflight agents/head-research.yaml
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-head-research
+  labels:
+    role: head
+    team: orochi
+    specialty: research
+    machine: spartan
+    capabilities: gpu,slurm,large-compute,ml-training
+spec:
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj
+
+  remote:
+    host: spartan
+    user: ywatanabe
+    timeout: 120
+
+  claude:
+    channels:
+      - server:scitex-orochi
+    flags:
+      - --dangerously-skip-permissions
+    session: new
+
+  orochi:
+    enabled: true
+    hosts:
+      - 192.168.11.22        # MBA LAN (fast)
+      - scitex-orochi.com    # domain (fallback)
+    port: 8559
+    token_env: SCITEX_OROCHI_TOKEN
+    channels:
+      - "#general"
+      - "#research"
+    heartbeat_interval: 60
+
+  env:
+    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_PORT: "8559"
+    SCITEX_OROCHI_AGENT: orochi-head-research
+    CLAUDE_AGENT_ROLE: head
+    CLAUDE_AGENT_ID: orochi-head-research
+
+  skills:
+    required:
+      - python-scitex   # Scientific computing skill
+      - data-analysis   # Data analysis and visualization
+
+  screen:
+    name: orochi-head-research
+
+  health:
+    enabled: true
+    interval: 60
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 2
+    backoff:
+      initial: 60
+      max: 600
+      multiplier: 2
+
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []

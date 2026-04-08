@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
-from scitex_orochi._config import ADMIN_TOKEN
+from scitex_orochi._config import get_admin_token
 
 if TYPE_CHECKING:
     from scitex_orochi._workspaces import WorkspaceStore
@@ -36,7 +36,8 @@ async def verify_token(
         log.warning("Connection rejected: no token provided")
         return None
 
-    if ADMIN_TOKEN and token == ADMIN_TOKEN:
+    admin_token = get_admin_token()
+    if admin_token and token == admin_token:
         return AuthResult(workspace_id=None, is_admin=True)
 
     if workspace_store:

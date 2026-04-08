@@ -37,7 +37,7 @@ async def handle_vapid_key(request: web.Request) -> web.Response:
 async def handle_push_subscribe(request: web.Request) -> web.Response:
     """POST /api/push/subscribe -- store a push subscription."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     push_store: PushStore | None = request.app.get("push_store")
@@ -76,7 +76,7 @@ async def handle_push_subscribe(request: web.Request) -> web.Response:
 async def handle_push_unsubscribe(request: web.Request) -> web.Response:
     """POST /api/push/unsubscribe -- remove a push subscription."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     push_store: PushStore | None = request.app.get("push_store")

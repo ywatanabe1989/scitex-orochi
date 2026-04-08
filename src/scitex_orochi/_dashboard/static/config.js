@@ -4,6 +4,7 @@
  *   window.__orochiWsUpstream  -- WS URL override (dev -> stable sync)
  *   window.__orochiApiUpstream -- REST URL override (dev -> stable sends)
  *   window.__orochiVersion     -- package version for display
+ *   window.__orochiToken       -- dashboard token for WS + REST auth
  */
 (function () {
   var xhr = new XMLHttpRequest();
@@ -20,6 +21,9 @@
         window.__orochiVersion = cfg.version;
         var el = document.getElementById("orochi-version");
         if (el) el.textContent = "v" + cfg.version;
+      }
+      if (cfg.dashboard_token) {
+        window.__orochiToken = cfg.dashboard_token;
       }
     }
   } catch (e) {

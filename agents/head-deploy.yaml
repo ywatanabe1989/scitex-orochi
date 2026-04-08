@@ -1,0 +1,75 @@
+# Orochi Head Agent (Deploy/CI) -- agent-container definition
+# Launched via: scitex-orochi launch head deploy
+# Or explicitly: scitex-orochi launch head deploy --agent-config agents/head-deploy.yaml
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-head-deploy
+  labels:
+    role: head
+    team: orochi
+    specialty: deploy
+    machine: nas
+    capabilities: docker,deployment,ci-cd,persistent-services
+spec:
+  runtime: claude-code
+  model: sonnet
+  workdir: ~/proj
+
+  remote:
+    host: nas
+    user: ywatanabe
+
+  claude:
+    channels:
+      - server:scitex-orochi
+    flags:
+      - --dangerously-skip-permissions
+    session: new
+
+  orochi:
+    enabled: true
+    hosts:
+      - 192.168.11.22        # MBA LAN (fast)
+      - scitex-orochi.com    # domain (fallback)
+    port: 8559
+    token_env: SCITEX_OROCHI_TOKEN
+    channels:
+      - "#general"
+      - "#deploy"
+    heartbeat_interval: 60
+
+  env:
+    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_PORT: "8559"
+    SCITEX_OROCHI_AGENT: orochi-head-deploy
+    CLAUDE_AGENT_ROLE: head
+    CLAUDE_AGENT_ID: orochi-head-deploy
+
+  skills:
+    required:
+      - docker          # Container management
+      - ci-cd           # CI/CD pipeline management
+
+  screen:
+    name: orochi-head-deploy
+
+  health:
+    enabled: true
+    interval: 60
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 3
+    backoff:
+      initial: 30
+      max: 300
+      multiplier: 2
+
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []

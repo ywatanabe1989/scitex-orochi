@@ -56,6 +56,25 @@ orochi:
       channels: ["#general", "#research"]
       workdir: ~/proj
 
+  # Agent Container Integration (recommended)
+  # Agent YAML definitions in the agents/ directory are auto-discovered.
+  # No --agent-config flag needed -- just run:
+  #   scitex-orochi launch master        # discovers agents/master.yaml
+  #   scitex-orochi launch head general  # discovers agents/head-general.yaml
+  #   scitex-orochi launch all           # discovers all YAMLs in agents/
+  #
+  # Install: pip install scitex-orochi[agent-container]
+  #
+  # Falls back to the master/heads sections above if agent-container is
+  # not installed or no YAML files are found.
+  agents:
+    directory: ./agents        # Default directory for agent YAML definitions
+    master: master.yaml        # Master agent config
+    heads:
+      - head-general.yaml
+      - head-research.yaml
+      - head-deploy.yaml
+
   # Telegram bridge: orochi-server owns the bot token as a singleton.
   # User messages arrive via Telegram -> orochi-server -> #telegram channel.
   # Master agent replies by posting to #telegram -> orochi-server -> Telegram.

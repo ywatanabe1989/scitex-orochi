@@ -23,9 +23,6 @@ def _set_admin_token(monkeypatch):
     import scitex_orochi._config
 
     importlib.reload(scitex_orochi._config)
-    import scitex_orochi._auth
-
-    importlib.reload(scitex_orochi._auth)
 
 
 @pytest.fixture()

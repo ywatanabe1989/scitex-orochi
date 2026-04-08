@@ -1,0 +1,70 @@
+# Orochi Master Agent -- agent-container definition
+# Launched via: scitex-orochi launch master
+# Auto-discovered from agents/master.yaml (no --agent-config needed)
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-master
+  labels:
+    role: master
+    team: orochi
+    machine: ywata-note-win
+    capabilities: telegram,delegation,orchestration
+spec:
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj
+
+  claude:
+    channels:
+      - server:scitex-orochi
+    flags:
+      - --dangerously-skip-permissions
+    session: new
+
+  skills:
+    required:
+      - orchestration  # Task delegation and coordination
+
+  orochi:
+    enabled: true
+    hosts:
+      - 192.168.11.22        # MBA LAN (fast)
+      - scitex-orochi.com    # domain (fallback)
+    port: 8559
+    token_env: SCITEX_OROCHI_TOKEN
+    channels:
+      - "#general"
+      - "#deploy"
+      - "#research"
+    heartbeat_interval: 60
+
+  env:
+    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_PORT: "8559"
+    SCITEX_OROCHI_AGENT: orochi-master
+    CLAUDE_AGENT_ROLE: master
+    CLAUDE_AGENT_ID: orochi-master
+
+  screen:
+    name: orochi-master
+
+  health:
+    enabled: true
+    interval: 30
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 3
+    backoff:
+      initial: 30
+      max: 300
+      multiplier: 2
+
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []

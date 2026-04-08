@@ -1,0 +1,64 @@
+# Orochi Head Agent (General) -- agent-container definition
+# Launched via: scitex-orochi launch head general
+# Auto-discovered from agents/head-general.yaml (no --agent-config needed)
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: orochi-head-general
+  labels:
+    role: head
+    team: orochi
+    machine: ywata-note-win
+    capabilities: development,testing,git
+spec:
+  runtime: claude-code
+  model: sonnet
+  workdir: ~/proj
+
+  claude:
+    channels:
+      - server:scitex-orochi
+    flags:
+      - --dangerously-skip-permissions
+    session: new
+
+  skills:
+    required:
+      - python-scitex   # General purpose scientific computing
+
+  orochi:
+    enabled: true
+    hosts:
+      - 192.168.11.22        # MBA LAN (fast)
+      - scitex-orochi.com    # domain (fallback)
+    port: 8559
+    token_env: SCITEX_OROCHI_TOKEN
+    channels:
+      - "#general"
+    heartbeat_interval: 60
+
+  env:
+    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_PORT: "8559"
+    SCITEX_OROCHI_AGENT: orochi-head-general
+    CLAUDE_AGENT_ROLE: head
+    CLAUDE_AGENT_ID: orochi-head-general
+
+  screen:
+    name: orochi-head-general
+
+  health:
+    enabled: true
+    interval: 60
+    timeout: 5
+    method: screen-alive
+
+  restart:
+    policy: never
+    max_retries: 0
+
+  hooks:
+    pre_start: []
+    post_start: []
+    pre_stop: []
+    post_stop: []

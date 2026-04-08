@@ -34,7 +34,7 @@ async def handle_gitea_list_issues(request: web.Request) -> web.Response:
 async def handle_gitea_create_issue(request: web.Request) -> web.Response:
     """POST /api/gitea/issues/{owner}/{repo} -- create an issue."""
     token = request.query.get("token")
-    if not verify_token(token):
+    if not await verify_token(token):
         return web.json_response({"error": "Unauthorized"}, status=401)
     server: OrochiServer = request.app["orochi_server"]
     owner = request.match_info["owner"]
@@ -68,9 +68,12 @@ async def handle_gitea_list_repos(request: web.Request) -> web.Response:
 
 
 async def handle_github_issues(request: web.Request) -> web.Response:
-    """GET /api/github/issues -- proxy to GitHub API for ywatanabe1989/todo issues."""
+    """GET /api/github/issues -- proxy to GitHub API for configured repo issues."""
+    github_repo = os.environ.get(
+        "SCITEX_OROCHI_GITHUB_ISSUES_REPO", "ywatanabe1989/todo"
+    )
     github_url = (
-        "https://api.github.com/repos/ywatanabe1989/todo/issues?state=open&per_page=30"
+        f"https://api.github.com/repos/{github_repo}/issues?state=open&per_page=30"
     )
     headers = {
         "Accept": "application/vnd.github.v3+json",
