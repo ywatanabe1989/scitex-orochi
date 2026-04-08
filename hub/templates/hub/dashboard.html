@@ -8,8 +8,8 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=40">
-    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=41">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=3">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=2">
@@ -26,7 +26,10 @@
                 <img src="{% static 'hub/orochi-icon.png' %}"
                      alt="Orochi"
                      class="header-icon">
-                <span class="brand-name">Orochi <span class="brand-version" id="orochi-version"></span></span>
+                <div class="brand-info">
+                    <h2 class="workspace-title">{{ workspace.name }}</h2>
+                    <span class="workspace-subtitle">Orochi <span class="brand-version" id="orochi-version"></span></span>
+                </div>
                 <span id="conn-status" class="status">disconnected</span>
             </div>
             <div class="filter-bar" style="position:relative">
@@ -110,7 +113,7 @@
     <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/chat.js' %}?v=3"></script>
-    <script src="{% static 'hub/mention.js' %}?v=2"></script>
+    <script src="{% static 'hub/mention.js' %}?v=3"></script>
     <script src="{% static 'hub/filter.js' %}?v=2"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/upload.js' %}?v=3"></script>

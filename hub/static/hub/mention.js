@@ -1,8 +1,15 @@
 /* Mention autocomplete module */
-/* globals: escapeHtml, getAgentColor, cachedAgentNames, apiUrl */
+/* globals: escapeHtml, getAgentColor, cachedAgentNames, apiUrl, isAgentInactive */
 
 var mentionDropdown = document.getElementById("mention-dropdown");
 var mentionSelectedIndex = -1;
+var cachedAgentObjects = [];
+
+var SPECIAL_MENTIONS = [
+  { name: "all", desc: "notify everyone" },
+  { name: "channel", desc: "notify this channel" },
+  { name: "agents", desc: "notify all agents" },
+];
 
 async function refreshAgentNames() {
   try {
@@ -11,6 +18,7 @@ async function refreshAgentNames() {
     cachedAgentNames = agents.map(function (a) {
       return a.name;
     });
+    cachedAgentObjects = agents;
   } catch (e) {
     /* ignore */
   }
@@ -25,23 +33,58 @@ function getMentionQuery(input) {
   return null;
 }
 
-function showMentionDropdown(items) {
+function isAgentOnline(name) {
+  for (var i = 0; i < cachedAgentObjects.length; i++) {
+    if (cachedAgentObjects[i].name === name) {
+      return !isAgentInactive(cachedAgentObjects[i]);
+    }
+  }
+  return false;
+}
+
+function showMentionDropdown(specialItems, agentItems) {
   mentionSelectedIndex = 0;
-  mentionDropdown.innerHTML = items
-    .map(function (name, i) {
-      var color = getAgentColor(name);
-      return (
-        '<div class="mention-item' +
-        (i === 0 ? " selected" : "") +
-        '" data-name="' +
-        escapeHtml(name) +
-        '">' +
-        '<span class="mention-dot"></span>' +
-        escapeHtml(name) +
-        "</div>"
-      );
-    })
-    .join("");
+  var html = "";
+
+  specialItems.forEach(function (item, i) {
+    html +=
+      '<div class="mention-item mention-special' +
+      (i === 0 ? " selected" : "") +
+      '" data-name="' +
+      escapeHtml(item.name) +
+      '">' +
+      '<span class="mention-dot mention-dot-special"></span>' +
+      "<strong>@" +
+      escapeHtml(item.name) +
+      "</strong>" +
+      '<span class="mention-desc">' +
+      escapeHtml(item.desc) +
+      "</span>" +
+      "</div>";
+  });
+
+  if (specialItems.length > 0 && agentItems.length > 0) {
+    html += '<div class="mention-divider"></div>';
+  }
+
+  var offset = specialItems.length;
+  agentItems.forEach(function (name, i) {
+    var online = isAgentOnline(name);
+    var dotClass = online ? "mention-dot-online" : "mention-dot-offline";
+    html +=
+      '<div class="mention-item' +
+      (offset + i === 0 ? " selected" : "") +
+      '" data-name="' +
+      escapeHtml(name) +
+      '">' +
+      '<span class="mention-dot ' +
+      dotClass +
+      '"></span>' +
+      escapeHtml(name) +
+      "</div>";
+  });
+
+  mentionDropdown.innerHTML = html;
   mentionDropdown.classList.add("visible");
 }
 
@@ -70,14 +113,19 @@ document.getElementById("msg-input").addEventListener("input", function () {
     hideMentionDropdown();
     return;
   }
-  var filtered = cachedAgentNames.filter(function (n) {
+
+  var matchedSpecial = SPECIAL_MENTIONS.filter(function (s) {
+    return s.name.indexOf(info.query) === 0;
+  });
+  var matchedAgents = cachedAgentNames.filter(function (n) {
     return n.toLowerCase().indexOf(info.query) === 0;
   });
-  if (filtered.length === 0) {
+
+  if (matchedSpecial.length === 0 && matchedAgents.length === 0) {
     hideMentionDropdown();
     return;
   }
-  showMentionDropdown(filtered);
+  showMentionDropdown(matchedSpecial, matchedAgents);
 });
 
 document.getElementById("msg-input").addEventListener("keydown", function (e) {
