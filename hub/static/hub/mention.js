@@ -28,8 +28,12 @@ function getMentionQuery(input) {
   var val = input.value;
   var pos = input.selectionStart;
   var before = val.substring(0, pos);
-  var match = before.match(/@([\w-]*)$/);
-  if (match) return { query: match[1].toLowerCase(), start: match.index };
+  var match = before.match(/(^|[\s])@([\w-]*)$/);
+  if (match)
+    return {
+      query: match[2].toLowerCase(),
+      start: match.index + match[1].length,
+    };
   return null;
 }
 

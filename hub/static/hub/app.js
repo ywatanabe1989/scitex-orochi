@@ -39,6 +39,58 @@ function getAgentColor(name) {
   return OROCHI_COLORS[sum % OROCHI_COLORS.length];
 }
 
+/* Inline SVG icon generators for branding */
+function getSnakeIcon(size, color) {
+  size = size || 20;
+  color = color || "#4ecdc4";
+  return (
+    '<svg class="orochi-icon" width="' +
+    size +
+    '" height="' +
+    size +
+    '" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M12 2C8 2 6 4 6 6c0 2 1 3 2 3.5C7 10 5 11 5 13c0 2.5 2 4 4 4.5-.5.5-1 1.5-1 3 0 1 .5 1.5 1.5 1.5s2-.5 2.5-1.5c.5 1 1.5 1.5 2.5 1.5s1.5-.5 1.5-1.5c0-1.5-.5-2.5-1-3 2-.5 4-2 4-4.5 0-2-2-3-3-3.5 1-.5 2-1.5 2-3.5 0-2-2-4-6-4z" ' +
+    'fill="' +
+    color +
+    '" opacity="0.9"/>' +
+    '<circle cx="10" cy="6" r="1" fill="#0a0a0a"/>' +
+    '<circle cx="14" cy="6" r="1" fill="#0a0a0a"/>' +
+    '<path d="M10 9c0 0 1 1.5 2 1.5s2-1.5 2-1.5" stroke="#0a0a0a" stroke-width="0.7" fill="none" stroke-linecap="round"/>' +
+    "</svg>"
+  );
+}
+
+function getPersonIcon(size, color) {
+  size = size || 20;
+  color = color || "#c4a6e8";
+  return (
+    '<svg class="orochi-icon" width="' +
+    size +
+    '" height="' +
+    size +
+    '" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="12" cy="8" r="4" fill="' +
+    color +
+    '" opacity="0.9"/>' +
+    '<path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="' +
+    color +
+    '" opacity="0.7"/>' +
+    "</svg>"
+  );
+}
+
+function getSenderIcon(senderName, isAgent) {
+  if (isAgent) {
+    return getSnakeIcon(18, getAgentColor(senderName));
+  }
+  return getPersonIcon(18, "#c4a6e8");
+}
+
+/* Large snake logo for header branding */
+function getSnakeLogo() {
+  return getSnakeIcon(32, "#4ecdc4");
+}
+
 function escapeHtml(s) {
   var d = document.createElement("div");
   d.textContent = s;
@@ -135,9 +187,13 @@ function startRestPolling() {
   restPollTimer = setInterval(async function () {
     if (wsConnected) return;
     try {
-      var res = await fetch(apiUrl("/api/messages/?limit=50"));
+      var res = await fetch(apiUrl("/api/messages/?limit=50"), {
+        credentials: "same-origin",
+      });
       if (!res.ok) return;
       var messages = await res.json();
+      /* API returns newest-first; reverse so new messages append chronologically */
+      messages.reverse();
       messages.forEach(function (row) {
         var key = messageKey(row.sender, row.ts, row.content);
         if (knownMessageKeys[key]) return;
@@ -145,6 +201,7 @@ function startRestPolling() {
         appendMessage({
           type: "message",
           sender: row.sender,
+          sender_type: row.sender_type,
           ts: row.ts,
           payload: {
             channel: row.channel,
@@ -275,12 +332,16 @@ async function fetchAgents() {
         var taskHtml = a.current_task
           ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
           : "";
+        var agentIcon = getSnakeIcon(16, color);
         return (
           '<div class="agent-card' +
           (inactive ? " inactive" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
           '">' +
+          '<span class="agent-card-icon">' +
+          agentIcon +
+          "</span>" +
           '<span class="status-dot ' +
           statusClass +
           '"></span>' +

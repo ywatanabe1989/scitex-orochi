@@ -19,14 +19,33 @@ async function renderAgentsTab() {
       if (!machineMap[m]) machineMap[m] = [];
       machineMap[m].push(a);
     });
+    /* Sort: online first, then offline */
+    agents.sort(function (a, b) {
+      var aOff = isAgentInactive(a) ? 1 : 0;
+      var bOff = isAgentInactive(b) ? 1 : 0;
+      return aOff - bOff || a.name.localeCompare(b.name);
+    });
+    var onlineCount = agents.filter(function (a) {
+      return !isAgentInactive(a);
+    }).length;
+    var offlineCount = agents.length - onlineCount;
+    var purgeBtn =
+      offlineCount > 0
+        ? ' <button class="purge-btn" onclick="purgeStaleAgents()" title="Remove all offline agents from registry">Purge offline (' +
+          offlineCount +
+          ")</button>"
+        : "";
     var summaryHtml =
       '<div class="agents-summary">' +
       '<span class="agents-count">' +
-      agents.length +
-      " agent(s) across " +
+      onlineCount +
+      " online, " +
+      offlineCount +
+      " offline across " +
       Object.keys(machineMap).length +
       " machine(s)" +
       "</span>" +
+      purgeBtn +
       Object.keys(machineMap)
         .map(function (m) {
           var online = machineMap[m].filter(function (a) {
@@ -86,7 +105,11 @@ function buildAgentRow(a) {
   var color = getAgentColor(a.name);
   var statusColor = inactive ? "#ef4444" : "#4ecdc4";
   var statusLabel = inactive ? "offline" : "online";
+  var agentIcon = getSnakeIcon(16, color);
   var dotHtml =
+    '<span class="agent-tab-icon">' +
+    agentIcon +
+    "</span>" +
     '<span class="status-dot-inline"></span>' +
     '<span class="status-label">' +
     statusLabel +
@@ -150,6 +173,27 @@ function stopAgentsTabRefresh() {
   if (_agentsTabInterval) {
     clearInterval(_agentsTabInterval);
     _agentsTabInterval = null;
+  }
+}
+
+/* Purge all offline/stale agents via API */
+async function purgeStaleAgents() {
+  try {
+    var token = window.__orochiCsrfToken || "";
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["X-CSRFToken"] = token;
+    var res = await fetch(apiUrl("/api/agents/purge/"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+    });
+    if (res.ok) {
+      renderAgentsTab();
+    } else {
+      console.error("Purge failed:", res.status);
+    }
+  } catch (e) {
+    console.error("Purge error:", e);
   }
 }
 

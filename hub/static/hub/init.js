@@ -1,6 +1,15 @@
 /* Orochi Dashboard -- bootstrap (loaded last) */
 /* globals: loadHistory, fetchStats, fetchAgents, connect, fetchTodoList,
-   fetchResources, fetchWorkspaces, wsConnected, startRestPolling */
+   fetchResources, fetchWorkspaces, wsConnected, startRestPolling,
+   getSnakeLogo */
+
+/* Inject snake logo into sidebar brand */
+(function () {
+  var brandLogo = document.getElementById("brand-logo");
+  if (brandLogo) {
+    brandLogo.innerHTML = getSnakeLogo();
+  }
+})();
 
 loadHistory();
 fetchStats();

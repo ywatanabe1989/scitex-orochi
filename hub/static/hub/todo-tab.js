@@ -6,10 +6,19 @@ async function fetchTodoList() {
     var res = await fetch("/api/github/issues");
     if (!res.ok) {
       console.error("Failed to fetch TODO list:", res.status);
+      var errBody = {};
+      try {
+        errBody = await res.json();
+      } catch (_) {}
+      var msg = "Failed to load issues (HTTP " + res.status + ")";
+      if (errBody.code === "missing_token") {
+        msg =
+          "Configure GITHUB_TOKEN in Docker environment to enable TODO list";
+      } else if (errBody.error) {
+        msg = errBody.error;
+      }
       document.getElementById("todo-grid").innerHTML =
-        '<p class="empty-notice">Failed to load issues (HTTP ' +
-        res.status +
-        ")</p>";
+        '<p class="empty-notice">' + msg + "</p>";
       return;
     }
     var issues = await res.json();

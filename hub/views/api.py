@@ -261,6 +261,35 @@ def api_agents_registry(request):
 
 
 @login_required
+@require_http_methods(["POST"])
+def api_agents_purge(request):
+    """POST /api/agents/purge — remove stale/offline agents from registry.
+
+    Accepts optional JSON body:
+        {"agent": "agent-name"}  — purge a specific agent
+    Without body, purges all offline agents.
+    """
+    from hub.registry import purge_agent, purge_all_offline
+
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    agent_name = body.get("agent")
+    if agent_name:
+        found = purge_agent(agent_name)
+        if found:
+            return JsonResponse({"status": "ok", "purged": [agent_name]})
+        return JsonResponse({"status": "not_found", "purged": []}, status=404)
+
+    count = purge_all_offline()
+    return JsonResponse({"status": "ok", "purged_count": count})
+
+
+@login_required
 @require_GET
 def api_resources(request):
     """GET /api/resources — resource usage from agents (empty until agents report)."""

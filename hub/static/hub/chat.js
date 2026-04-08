@@ -40,7 +40,10 @@ function appendMessage(msg) {
   }
   var highlightedContent = escapeHtml(content)
     .replace(/\n/g, "<br>")
-    .replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
+    .replace(
+      /(^|[\s])@([\w-]+)/g,
+      '$1<span class="mention-highlight">@$2</span>',
+    );
   var attachmentsHtml = "";
   var attachments =
     (msg.payload && msg.payload.attachments) || msg.attachments || [];
@@ -80,8 +83,12 @@ function appendMessage(msg) {
     : '<span class="role-badge badge-human">human</span>';
   var youTag =
     senderName === userName ? ' <span class="you-tag">(You)</span>' : "";
+  var senderIcon = getSenderIcon(senderName, isAgent);
   el.innerHTML =
     '<div class="msg-header">' +
+    '<span class="msg-icon">' +
+    senderIcon +
+    "</span>" +
     '<span class="sender" style="color:' +
     senderColor +
     '">' +
@@ -124,8 +131,16 @@ function filterMessages() {
 
 async function loadHistory() {
   try {
-    var res = await fetch(apiUrl("/api/messages/?limit=100"));
+    var res = await fetch(apiUrl("/api/messages/?limit=100"), {
+      credentials: "same-origin",
+    });
+    if (!res.ok) {
+      console.error("loadHistory: API returned", res.status, res.statusText);
+      return;
+    }
     var messages = await res.json();
+    /* API returns newest-first (-ts); reverse for chronological display */
+    messages.reverse();
     var container = document.getElementById("messages");
     container.innerHTML = "";
     knownMessageKeys = {};
@@ -148,7 +163,7 @@ async function loadHistory() {
     container.scrollTop = container.scrollHeight;
     historyLoaded = true;
   } catch (e) {
-    /* fetch error */
+    console.error("loadHistory failed:", e);
   }
 }
 
@@ -157,8 +172,19 @@ async function loadChannelHistory(channel) {
     var encodedChannel = encodeURIComponent(channel);
     var res = await fetch(
       apiUrl("/api/history/" + encodedChannel + "?limit=100"),
+      { credentials: "same-origin" },
     );
+    if (!res.ok) {
+      console.error(
+        "loadChannelHistory: API returned",
+        res.status,
+        res.statusText,
+      );
+      return;
+    }
     var messages = await res.json();
+    /* API returns newest-first (-ts); reverse for chronological display */
+    messages.reverse();
     var container = document.getElementById("messages");
     container.innerHTML = "";
     knownMessageKeys = {};
@@ -171,7 +197,7 @@ async function loadChannelHistory(channel) {
         sender_type: row.sender_type,
         ts: row.ts,
         payload: {
-          channel: row.channel,
+          channel: channel,
           content: row.content,
           attachments:
             (row.metadata && row.metadata.attachments) || row.attachments || [],

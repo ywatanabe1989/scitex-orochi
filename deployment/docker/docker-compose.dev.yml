@@ -21,4 +21,5 @@ services:
       - SCITEX_OROCHI_SCITEX_CLIENT_ID=lO88A4EuyttAPH4ojhzG0SVeHZCpa23MIuXIllRG
       - SCITEX_OROCHI_SCITEX_SECRET=${SCITEX_OROCHI_SCITEX_SECRET:-}
       - SCITEX_OROCHI_DB_PATH=/data/db.sqlite3
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
     restart: unless-stopped
