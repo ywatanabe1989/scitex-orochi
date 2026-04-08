@@ -15,8 +15,20 @@ import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
 import { handleReply, handleHistory, handleStatus } from "./src/tools.js";
 
+// Unified truthy check for env var guards
+const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
+function isTruthy(val?: string): boolean {
+  return TRUTHY.has((val || "").toLowerCase());
+}
+
+// Generic disable switch
+if (isTruthy(process.env.SCITEX_OROCHI_DISABLE)) {
+  console.error("[scitex-orochi] Disabled via SCITEX_OROCHI_DISABLE");
+  process.exit(0);
+}
+
 // Zero-trust: telegram agents must never run this MCP server
-if (process.env.CLAUDE_AGENT_ROLE === "telegram") {
+if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
   console.error(
     "[scitex-orochi] BLOCKED: telegram agent must not run Orochi MCP channel",
   );

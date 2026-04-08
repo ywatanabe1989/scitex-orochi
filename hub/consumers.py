@@ -79,7 +79,48 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             for ch_name in channels:
                 group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
                 await self.channel_layer.group_add(group, self.channel_name)
+
+            # Store agent metadata for info display
+            self.agent_meta = {
+                "machine": payload.get("machine", ""),
+                "role": payload.get("role", ""),
+                "model": payload.get("model", ""),
+                "channels": channels,
+            }
+
+            # Broadcast agent info to dashboard observers
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "agent.info",
+                    "agent": self.agent_name,
+                    "info": self.agent_meta,
+                },
+            )
+
             await self.send_json({"type": "registered", "channels": channels})
+
+        elif msg_type == "heartbeat":
+            # Store resource metrics from agent heartbeat
+            payload = content.get("payload", {})
+            self.agent_metrics = {
+                "cpu_count": payload.get("cpu_count"),
+                "load_avg_1m": payload.get("load_avg_1m"),
+                "mem_used_percent": payload.get("mem_used_percent"),
+                "mem_total_mb": payload.get("mem_total_mb"),
+                "disk_used_percent": payload.get("disk_used_percent"),
+            }
+
+            # Broadcast metrics update to dashboard observers
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "agent.info",
+                    "agent": self.agent_name,
+                    "info": getattr(self, "agent_meta", {}),
+                    "metrics": self.agent_metrics,
+                },
+            )
 
         elif msg_type == "message":
             payload = content.get("payload", {})
@@ -135,6 +176,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def agent_presence(self, event):
         """Handle agent.presence from channel layer — ignore for agent sockets."""
+        pass
+
+    async def agent_info(self, event):
+        """Handle agent.info from channel layer — ignore for agent sockets."""
         pass
 
     @database_sync_to_async
@@ -282,6 +327,17 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "type": "agent_presence",
                 "agent": event["agent"],
                 "status": event["status"],
+            }
+        )
+
+    async def agent_info(self, event):
+        """Forward agent info/metrics updates to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "agent_info",
+                "agent": event["agent"],
+                "info": event.get("info", {}),
+                "metrics": event.get("metrics", {}),
             }
         )
 
