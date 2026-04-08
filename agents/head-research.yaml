@@ -25,11 +25,11 @@ spec:
     timeout: 120
 
   claude:
-    channels:
-      - server:scitex-orochi
+    channels: []
     flags:
       - --dangerously-skip-permissions
-    session: new
+      - "--dangerously-load-development-channels server:scitex-orochi"
+    session: continue
 
   orochi:
     enabled: true

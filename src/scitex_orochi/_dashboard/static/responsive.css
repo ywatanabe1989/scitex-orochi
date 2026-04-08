@@ -12,9 +12,9 @@
     top: 8px;
     left: 8px;
     z-index: 1001;
-    background: #1a1a1a;
-    color: #4ecdc4;
-    border: 1px solid #333;
+    background: #16213e;
+    color: #7ec8e3;
+    border: 1px solid #2a2a4a;
     border-radius: 6px;
     padding: 6px 10px;
     font-size: 20px;
@@ -22,10 +22,10 @@
     cursor: pointer;
   }
   .sidebar-toggle:hover {
-    background: #2a2a2a;
+    background: #1a2744;
   }
   .sidebar-toggle.open {
-    color: #ff6b6b;
+    color: #ef4444;
   }
   /* Sidebar: hidden by default, slide-in overlay */
   .sidebar {
@@ -38,7 +38,7 @@
     z-index: 1000;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
-    border-right: 1px solid #333;
+    border-right: 1px solid #2a2a4a;
     border-bottom: none;
     padding: 48px 12px 12px;
     overflow-y: auto;
