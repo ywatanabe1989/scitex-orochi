@@ -38,12 +38,11 @@ def workspace_dashboard(request):
     since = timezone.now() - timedelta(hours=24)
     agent_senders = (
         Message.objects.filter(workspace=workspace, ts__gte=since)
+        .order_by("sender")
         .values_list("sender", flat=True)
         .distinct()
     )
-    agents = sorted(
-        name for name in agent_senders if name not in member_usernames
-    )
+    agents = sorted(name for name in agent_senders if name not in member_usernames)
 
     return render(
         request,
