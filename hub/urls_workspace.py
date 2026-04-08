@@ -24,4 +24,5 @@ urlpatterns = [
     path("api/history/<str:channel_name>/", views.api_history, name="api-history"),
     path("api/stats/", views.api_stats, name="api-stats"),
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),
+    path("api/github/issues/", views.github_issues, name="api-github-issues"),
 ]

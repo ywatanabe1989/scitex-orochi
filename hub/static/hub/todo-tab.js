@@ -3,9 +3,7 @@
 
 async function fetchTodoList() {
   try {
-    var res = await fetch(
-      "https://api.github.com/repos/ywatanabe1989/todo/issues?state=open&per_page=30",
-    );
+    var res = await fetch("/api/github/issues");
     if (!res.ok) {
       console.error("Failed to fetch TODO list:", res.status);
       document.getElementById("todo-grid").innerHTML =

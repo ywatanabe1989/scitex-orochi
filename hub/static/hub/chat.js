@@ -77,11 +77,16 @@ function appendMessage(msg) {
   var roleBadge = isAgent
     ? '<span class="role-badge badge-agent">agent</span>'
     : '<span class="role-badge badge-human">human</span>';
+  var youTag =
+    senderName === userName ? ' <span class="you-tag">(You)</span>' : "";
   el.innerHTML =
     '<div class="msg-header">' +
-    '<span class="sender">' +
+    '<span class="sender" style="color:' +
+    senderColor +
+    '">' +
     escapeHtml(senderName) +
     "</span>" +
+    youTag +
     roleBadge +
     '<span class="channel">' +
     escapeHtml(channel) +

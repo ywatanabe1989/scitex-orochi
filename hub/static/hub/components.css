@@ -1,5 +1,35 @@
 /* Orochi Dashboard -- component styles (old design 007eb89 + new features) */
 
+/* Role badges */
+.role-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
+.badge-agent {
+  background: #4ecdc4;
+  color: #0a0a0a;
+}
+.badge-human {
+  background: #c4a6e8;
+  color: #0a0a0a;
+}
+.you-tag {
+  font-size: 10px;
+  color: #7ec8e3;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+/* Sender name color */
+.msg .sender {
+  font-weight: bold;
+}
+
 /* Filter bar tags & suggestions */
 .filter-bar input {
   width: 100%;

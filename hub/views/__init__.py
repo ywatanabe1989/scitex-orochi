@@ -15,6 +15,7 @@ from hub.views.auth import (  # noqa: F401
     signout_view,
     signup_view,
 )
+from hub.views.github import github_issues  # noqa: F401
 from hub.views.landing import (  # noqa: F401
     find_workspace_view,
     landing_page,
