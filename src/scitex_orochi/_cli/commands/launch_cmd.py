@@ -29,19 +29,31 @@ except ImportError:
 
 # Default agents directory (relative to project root / cwd)
 _DEFAULT_AGENTS_DIR = Path("agents")
+_USER_AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
 
 
 def _find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     """Resolve an agent YAML file by convention.
 
     Search order for a given name (e.g. "master", "head-general", "research"):
-      1. agents/<name>.yaml
-      2. agents/<name>.yml
-      3. agents/head-<name>.yaml   (convenience for head agents)
-      4. agents/head-<name>.yml
+      1. ~/.scitex/orochi/agents/<name>.yaml  (user config, checked first)
+      2. ~/.scitex/orochi/agents/head-<name>.yaml
+      3. agents/<name>.yaml   (repo fallback)
+      4. agents/<name>.yml
+      5. agents/head-<name>.yaml   (convenience for head agents)
+      6. agents/head-<name>.yml
 
     Returns the resolved Path or None if not found.
     """
+    # Check user config dir first
+    if _USER_AGENTS_DIR.is_dir():
+        for ext in (".yaml", ".yml"):
+            for prefix in ("", "head-"):
+                candidate = _USER_AGENTS_DIR / f"{prefix}{name}{ext}"
+                if candidate.exists():
+                    return candidate
+
+    # Fall back to repo agents/ dir
     d = (agents_dir or _DEFAULT_AGENTS_DIR).resolve()
     if not d.is_dir():
         return None

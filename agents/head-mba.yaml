@@ -1,3 +1,4 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize
 # Orochi Head Agent (MBA) -- agent-container definition
 # Runs on MacBook Air for iOS/mobile development tasks
 # Launched via: scitex-orochi launch head mba
@@ -8,7 +9,7 @@ metadata:
   labels:
     role: head
     team: orochi
-    machine: mba
+    machine: CHANGEME
     capabilities: ios-simulator,xcode,swift,mobile-testing
 spec:
   runtime: claude-code
@@ -16,8 +17,8 @@ spec:
   workdir: ~/proj
 
   remote:
-    host: mba
-    user: ywatanabe
+    host: CHANGEME_HOST
+    user: CHANGEME_USER
 
   claude:
     channels: []
@@ -29,9 +30,8 @@ spec:
   orochi:
     enabled: true
     hosts:
-      - 127.0.0.1            # MBA localhost (fastest, Orochi runs here)
-      - 192.168.11.22        # MBA LAN
-      - scitex-orochi.com    # domain (fallback)
+      - CHANGEME_LAN_IP      # LAN IP (fast)
+      - CHANGEME_DOMAIN      # domain (fallback)
     port: 8559
     token_env: SCITEX_OROCHI_TOKEN
     channels:
@@ -41,7 +41,7 @@ spec:
   env:
     CLAUDE_AGENT_ROLE: head
     CLAUDE_AGENT_ID: orochi-head-mba
-    SCITEX_OROCHI_HOST: "192.168.0.102"
+    SCITEX_OROCHI_HOST: "CHANGEME_HUB_IP"
     SCITEX_OROCHI_PORT: "8559"
 
   screen:

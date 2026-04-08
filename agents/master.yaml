@@ -1,3 +1,4 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize
 # Orochi Master Agent -- agent-container definition
 # Launched via: scitex-orochi launch master
 # Auto-discovered from agents/master.yaml (no --agent-config needed)
@@ -8,7 +9,7 @@ metadata:
   labels:
     role: master
     team: orochi
-    machine: ywata-note-win
+    machine: CHANGEME
     capabilities: telegram,delegation,orchestration
 spec:
   runtime: claude-code
@@ -29,8 +30,8 @@ spec:
   orochi:
     enabled: true
     hosts:
-      - 192.168.11.22        # MBA LAN (fast)
-      - scitex-orochi.com    # domain (fallback)
+      - CHANGEME_LAN_IP      # LAN IP (fast)
+      - CHANGEME_DOMAIN      # domain (fallback)
     port: 8559
     token_env: SCITEX_OROCHI_TOKEN
     channels:
@@ -40,9 +41,9 @@ spec:
     heartbeat_interval: 60
 
   env:
-    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_HOST: "CHANGEME_HUB_IP"
     SCITEX_OROCHI_PORT: "8559"
-    SCITEX_OROCHI_AGENT: orochi-master
+    SCITEX_OROCHI_AGENT: orochi-master  # matches metadata.name
     CLAUDE_AGENT_ROLE: master
     CLAUDE_AGENT_ID: orochi-master
 
