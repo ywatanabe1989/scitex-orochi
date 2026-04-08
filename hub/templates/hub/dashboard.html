@@ -8,7 +8,7 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=42">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=43">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=2">
@@ -31,14 +31,7 @@
                         SciTeX Orochi <span class="brand-version" id="orochi-version"></span>
                     </h2>
                     <div class="workspace-selector" id="workspace-selector">
-                        <span class="ws-icon">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                                <rect x="3" y="3" width="8" height="8" rx="2" fill="#888" />
-                                <rect x="13" y="3" width="8" height="8" rx="2" fill="#888" />
-                                <rect x="3" y="13" width="8" height="8" rx="2" fill="#888" />
-                                <rect x="13" y="13" width="8" height="8" rx="2" fill="#888" />
-                            </svg>
-                        </span>
+                        <span class="ws-icon" id="ws-icon-slot"></span>
                         <span class="ws-name">{{ workspace.name }}</span>
                         <span class="ws-caret">&#9662;</span>
                     </div>
@@ -121,7 +114,7 @@
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
     </script>
     <script src="{% static 'hub/config.js' %}?v=2"></script>
-    <script src="{% static 'hub/app.js' %}?v=41"></script>
+    <script src="{% static 'hub/app.js' %}?v=42"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>
@@ -132,7 +125,7 @@
     <script src="{% static 'hub/upload.js' %}?v=3"></script>
     <script src="{% static 'hub/sketch.js' %}?v=2"></script>
     <script src="{% static 'hub/tabs.js' %}?v=2"></script>
-    <script src="{% static 'hub/init.js' %}?v=3"></script>
+    <script src="{% static 'hub/init.js' %}?v=4"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=2"></script>
     <script src="{% static 'hub/push.js' %}?v=2"></script>
 {% endblock %}

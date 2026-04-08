@@ -3,11 +3,22 @@
    fetchResources, fetchWorkspaces, wsConnected, startRestPolling,
    getSnakeLogo */
 
-/* Inject snake logo into sidebar brand */
+/* Inject Orochi logo into sidebar brand */
 (function () {
   var brandLogo = document.getElementById("brand-logo");
   if (brandLogo) {
-    brandLogo.innerHTML = getSnakeLogo();
+    brandLogo.innerHTML =
+      '<img src="/static/hub/orochi-icon.png" alt="Orochi" ' +
+      'style="width:36px;height:36px;border-radius:6px;">';
+  }
+})();
+
+/* Inject workspace icon into sidebar selector */
+(function () {
+  var wsIconSlot = document.getElementById("ws-icon-slot");
+  var wsName = window.__orochiWorkspaceName || "workspace";
+  if (wsIconSlot) {
+    wsIconSlot.innerHTML = getWorkspaceIcon(wsName, 16);
   }
 })();
 
