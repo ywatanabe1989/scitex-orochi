@@ -174,7 +174,16 @@ function stopRestPolling() {
 function handleMessage(msg) {
   if (msg.type === "message") {
     var content = "";
-    if (msg.payload) {
+    /* Hub sends flat messages: {type, sender, channel, text, ts} */
+    if (msg.text || msg.channel) {
+      content = msg.text || "";
+      if (!msg.payload) {
+        msg.payload = {
+          channel: msg.channel || "",
+          content: content,
+        };
+      }
+    } else if (msg.payload) {
       content =
         msg.payload.content || msg.payload.text || msg.payload.message || "";
     }
@@ -182,7 +191,12 @@ function handleMessage(msg) {
     if (knownMessageKeys[key]) return;
     knownMessageKeys[key] = true;
     appendMessage(msg);
-  } else if (msg.type === "presence_change" || msg.type === "status_update") {
+  } else if (
+    msg.type === "presence_change" ||
+    msg.type === "status_update" ||
+    msg.type === "agent_presence" ||
+    msg.type === "agent_info"
+  ) {
     fetchAgents();
     fetchStats();
   }
@@ -283,7 +297,7 @@ async function fetchAgents() {
           "</div>" +
           taskHtml +
           '<div class="meta">channels: ' +
-          a.channels.map(escapeHtml).join(", ") +
+          [...new Set(a.channels)].map(escapeHtml).join(", ") +
           "</div></div>"
         );
       })

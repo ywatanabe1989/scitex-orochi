@@ -55,19 +55,25 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, code):
         if hasattr(self, "workspace_group"):
+            # Mark agent offline in registry
+            from hub.registry import unregister_agent
+
+            agent_name = getattr(self, "agent_name", "?")
+            unregister_agent(agent_name)
+
             # Broadcast departure before leaving group
             await self.channel_layer.group_send(
                 self.workspace_group,
                 {
                     "type": "agent.presence",
-                    "agent": getattr(self, "agent_name", "?"),
+                    "agent": agent_name,
                     "status": "disconnected",
                 },
             )
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
-            log.info("Agent %s disconnected", getattr(self, "agent_name", "?"))
+            log.info("Agent %s disconnected", agent_name)
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
@@ -82,11 +88,17 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
             # Store agent metadata for info display
             self.agent_meta = {
+                "agent_id": payload.get("agent_id", self.agent_name),
                 "machine": payload.get("machine", ""),
                 "role": payload.get("role", ""),
                 "model": payload.get("model", ""),
                 "channels": channels,
             }
+
+            # Persist in in-memory registry for REST API access
+            from hub.registry import register_agent
+
+            register_agent(self.agent_name, self.workspace_id, self.agent_meta)
 
             # Broadcast agent info to dashboard observers
             await self.channel_layer.group_send(
@@ -110,6 +122,11 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "mem_total_mb": payload.get("mem_total_mb"),
                 "disk_used_percent": payload.get("disk_used_percent"),
             }
+
+            # Update in-memory registry
+            from hub.registry import update_heartbeat
+
+            update_heartbeat(self.agent_name, self.agent_metrics)
 
             # Broadcast metrics update to dashboard observers
             await self.channel_layer.group_send(

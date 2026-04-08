@@ -91,7 +91,8 @@ function buildAgentRow(a) {
     '<span class="status-label">' +
     statusLabel +
     "</span>";
-  var channelsHtml = (a.channels || [])
+  var uniqueChannels = [...new Set(a.channels || [])];
+  var channelsHtml = uniqueChannels
     .map(function (c) {
       return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
     })

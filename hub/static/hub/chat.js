@@ -193,11 +193,22 @@ function sendMessage() {
   var channel = currentChannel || "#general";
   var text = input.value.trim();
   if (!text) return;
-  sendOrochiMessage({
-    type: "message",
-    sender: userName,
-    payload: { channel: channel, content: text },
-  });
+
+  /* Prefer WebSocket send when connected (instant echo), fall back to REST */
+  if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "message",
+        payload: { channel: channel, content: text },
+      }),
+    );
+  } else {
+    sendOrochiMessage({
+      type: "message",
+      sender: userName,
+      payload: { channel: channel, content: text },
+    });
+  }
   input.value = "";
   input.style.height = "auto";
 }

@@ -155,24 +155,24 @@ def api_stats(request):
     msg_count = Message.objects.filter(workspace=workspace).count()
     member_count = WorkspaceMember.objects.filter(workspace=workspace).count()
 
-    # Count recently active agents (sent a message in last 24h)
-    cutoff = timezone.now() - timezone.timedelta(hours=24)
-    agents_online = (
-        Message.objects.filter(workspace=workspace, sender_type="agent", ts__gte=cutoff)
-        .values("sender")
-        .distinct()
-        .count()
-    )
+    # Count online agents from in-memory registry
+    from hub.registry import get_online_count
+
+    agents_online = get_online_count(workspace_id=workspace.id)
+
+    # Deduplicate channel names (safety measure)
+    unique_channels = list(dict.fromkeys(ch.name for ch in channels))
 
     return JsonResponse(
         {
             "workspace": workspace.name,
-            "channels": [ch.name for ch in channels],
-            "channel_count": channels.count(),
-            "channels_active": channels.count(),
+            "channels": unique_channels,
+            "channel_count": len(unique_channels),
+            "channels_active": len(unique_channels),
             "message_count": msg_count,
             "member_count": member_count,
             "agents_online": agents_online,
+            "observers_connected": member_count,
         }
     )
 
@@ -197,20 +197,27 @@ def api_config(request):
 @login_required
 @require_GET
 def api_agents(request):
-    """GET /api/agents — list known agents from recent messages."""
+    """GET /api/agents — list agents from in-memory registry + DB fallback."""
     workspace = get_workspace(request)
+
+    # Primary: in-memory registry (has live metadata from WS connections)
+    from hub.registry import get_agents
+
+    registry_agents = get_agents(workspace_id=workspace.id)
+
+    # Fallback: also include agents from recent messages not in registry
     cutoff = timezone.now() - timezone.timedelta(hours=24)
-    agent_names = list(
-        set(
-            Message.objects.filter(
-                workspace=workspace,
-                sender_type="agent",
-                ts__gte=cutoff,
-            ).values_list("sender", flat=True)
-        )
+    db_agent_names = set(
+        Message.objects.filter(
+            workspace=workspace,
+            sender_type="agent",
+            ts__gte=cutoff,
+        ).values_list("sender", flat=True)
     )
-    agents = []
-    for name in agent_names:
+    registry_names = {a["name"] for a in registry_agents}
+
+    # Add DB-only agents (not currently in registry)
+    for name in db_agent_names - registry_names:
         last_msg = (
             Message.objects.filter(
                 workspace=workspace, sender=name, sender_type="agent"
@@ -220,17 +227,19 @@ def api_agents(request):
         )
         last_ts = last_msg.ts.isoformat() if last_msg else None
         channels = list(
-            Message.objects.filter(
-                workspace=workspace, sender=name, sender_type="agent"
+            set(
+                Message.objects.filter(
+                    workspace=workspace, sender=name, sender_type="agent"
+                )
+                .values_list("channel__name", flat=True)
+                .distinct()
             )
-            .values_list("channel__name", flat=True)
-            .distinct()
         )
-        agents.append(
+        registry_agents.append(
             {
                 "name": name,
                 "agent_id": name,
-                "status": "online",
+                "status": "offline",
                 "role": "agent",
                 "machine": "",
                 "model": "",
@@ -238,9 +247,10 @@ def api_agents(request):
                 "current_task": "",
                 "registered_at": last_ts,
                 "last_heartbeat": last_ts,
+                "metrics": {},
             }
         )
-    return JsonResponse(agents, safe=False)
+    return JsonResponse(registry_agents, safe=False)
 
 
 @login_required
