@@ -281,11 +281,13 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         if msg_type == "message":
             payload = content.get("payload", {})
             ch_name = payload.get("channel", "#general")
+            # Support both "text" and "content" keys from frontend
+            text = payload.get("content") or payload.get("text") or ""
 
             msg = await self._save_message(
                 channel_name=ch_name,
                 sender=self.user.username,
-                content_text=payload.get("text", ""),
+                content_text=text,
             )
 
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
@@ -296,7 +298,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                     "sender": self.user.username,
                     "sender_type": "human",
                     "channel": ch_name,
-                    "text": payload.get("text", ""),
+                    "text": text,
                     "ts": msg["ts"] if msg else None,
                 },
             )
@@ -308,7 +310,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                     "sender": self.user.username,
                     "sender_type": "human",
                     "channel": ch_name,
-                    "text": payload.get("text", ""),
+                    "text": text,
                     "ts": msg["ts"] if msg else None,
                 },
             )

@@ -111,7 +111,7 @@ function apiUrl(path) {
 }
 
 function sendOrochiMessage(msgData) {
-  fetch(apiUrl("/api/messages"), {
+  fetch(apiUrl("/api/messages/"), {
     method: "POST",
     headers: orochiHeaders(),
     body: JSON.stringify(msgData),
@@ -135,7 +135,7 @@ function startRestPolling() {
   restPollTimer = setInterval(async function () {
     if (wsConnected) return;
     try {
-      var res = await fetch(apiUrl("/api/messages?limit=50"));
+      var res = await fetch(apiUrl("/api/messages/?limit=50"));
       if (!res.ok) return;
       var messages = await res.json();
       messages.forEach(function (row) {

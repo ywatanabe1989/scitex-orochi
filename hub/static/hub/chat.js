@@ -34,6 +34,7 @@ function appendMessage(msg) {
   }
   if (!content) return;
   var senderColor = getAgentColor(senderName);
+  el.style.borderLeft = "3px solid " + senderColor;
   if (channel) {
     el.setAttribute("data-channel", channel);
   }
@@ -123,7 +124,7 @@ function filterMessages() {
 
 async function loadHistory() {
   try {
-    var res = await fetch(apiUrl("/api/messages?limit=100"));
+    var res = await fetch(apiUrl("/api/messages/?limit=100"));
     var messages = await res.json();
     var container = document.getElementById("messages");
     container.innerHTML = "";

@@ -13,8 +13,11 @@ document
     var formData = new FormData();
     formData.append("file", file);
     try {
+      var headers = {};
+      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
       var res = await fetch(apiUrl("/api/upload"), {
         method: "POST",
+        headers: headers,
         body: formData,
       });
       if (!res.ok) {
@@ -42,8 +45,11 @@ async function uploadFile(file) {
   var formData = new FormData();
   formData.append("file", file);
   try {
+    var headers = {};
+    if (csrfToken) headers["X-CSRFToken"] = csrfToken;
     var res = await fetch(apiUrl("/api/upload"), {
       method: "POST",
+      headers: headers,
       body: formData,
     });
     if (!res.ok) {

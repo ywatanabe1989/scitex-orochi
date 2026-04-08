@@ -102,17 +102,18 @@
       window.__orochiCsrfToken = "{{ csrf_token }}";
       /* Django auth -- user is already authenticated, use username as display name */
       window.__orochiUserName = "{{ request.user.username|escapejs }}";
+      window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
     </script>
     <script src="{% static 'hub/config.js' %}?v=2"></script>
     <script src="{% static 'hub/app.js' %}?v=40"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>
-    <script src="{% static 'hub/chat.js' %}?v=2"></script>
+    <script src="{% static 'hub/chat.js' %}?v=3"></script>
     <script src="{% static 'hub/mention.js' %}?v=2"></script>
     <script src="{% static 'hub/filter.js' %}?v=2"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=2"></script>
-    <script src="{% static 'hub/upload.js' %}?v=2"></script>
+    <script src="{% static 'hub/upload.js' %}?v=3"></script>
     <script src="{% static 'hub/sketch.js' %}?v=2"></script>
     <script src="{% static 'hub/tabs.js' %}?v=2"></script>
     <script src="{% static 'hub/init.js' %}?v=2"></script>

@@ -74,8 +74,10 @@ def api_messages(request):
 
     # POST — send a message
     body = json.loads(request.body)
-    ch_name = body.get("channel", "#general")
-    text = body.get("text", "")
+    # Support both flat format {text, channel} and nested {payload: {content, channel}}
+    payload = body.get("payload", {})
+    ch_name = body.get("channel") or payload.get("channel") or "#general"
+    text = body.get("text") or payload.get("content") or payload.get("text") or ""
     if not text:
         return JsonResponse({"error": "text is required"}, status=400)
 
