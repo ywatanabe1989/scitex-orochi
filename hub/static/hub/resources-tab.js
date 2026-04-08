@@ -16,13 +16,18 @@ function healthColor(status) {
 }
 
 function barHtml(label, percent) {
-  var color = percent > 80 ? "#ef4444" : percent > 60 ? "#f59e0b" : "#4ecdc4";
+  var p = Math.min(100, Math.max(0, Math.round(percent)));
+  var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   return (
     '<div class="res-bar-row"><span class="res-bar-label">' +
     label +
-    '</span><div class="res-bar-track"><div class="res-bar-fill"></div></div>' +
+    '</span><div class="res-bar-track"><div class="res-bar-fill" style="width:' +
+    p +
+    "%;background:" +
+    color +
+    '"></div></div>' +
     '<span class="res-bar-val">' +
-    Math.round(percent) +
+    p +
     "%</span></div>"
   );
 }

@@ -92,7 +92,7 @@ function appendMessage(msg) {
     '<span class="sender" style="color:' +
     senderColor +
     '">' +
-    escapeHtml(senderName) +
+    escapeHtml(cleanAgentName(senderName)) +
     "</span>" +
     youTag +
     roleBadge +

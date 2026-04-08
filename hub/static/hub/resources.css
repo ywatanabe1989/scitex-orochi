@@ -1,0 +1,85 @@
+/* Resource monitor cards & bars */
+
+.res-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.res-card:hover {
+  background: #222;
+  border-color: #4ecdc4;
+}
+.res-host {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #e0e0e0;
+  margin-bottom: 8px;
+}
+.res-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ecdc4;
+  flex-shrink: 0;
+}
+.res-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+.res-bar-label {
+  width: 36px;
+  font-size: 11px;
+  color: #888;
+  text-align: right;
+  flex-shrink: 0;
+}
+.res-bar-track {
+  flex: 1;
+  height: 8px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.res-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.res-bar-val {
+  width: 36px;
+  font-size: 11px;
+  color: #aaa;
+  text-align: right;
+  flex-shrink: 0;
+}
+.res-meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+.resources-empty {
+  text-align: center;
+  padding: 40px 20px;
+}
+.resources-empty h3 {
+  color: #888;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+.resources-empty p {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.6;
+}

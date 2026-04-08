@@ -97,6 +97,19 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+/* Strip hostname suffix from agent names for clean display.
+   "head@mba@Yusukes-MacBook-Air.local" → "head@mba"
+   "head@nas@DXP480TPLUS-994" → "head@nas"
+   "head@ywata-note-win" → "head@ywata-note-win" (unchanged) */
+function cleanAgentName(name) {
+  if (!name) return name;
+  var parts = name.split("@");
+  if (parts.length >= 3) {
+    return parts[0] + "@" + parts[1];
+  }
+  return name;
+}
+
 function fuzzyMatch(query, text) {
   if (!query) return true;
   query = query.toLowerCase();
@@ -346,7 +359,7 @@ async function fetchAgents() {
           statusClass +
           '"></span>' +
           '<span class="name">' +
-          escapeHtml(a.name) +
+          escapeHtml(cleanAgentName(a.name)) +
           (a.model
             ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
             : "") +

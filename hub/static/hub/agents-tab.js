@@ -131,7 +131,7 @@ function buildAgentRow(a) {
     dotHtml +
     "</td>" +
     '<td class="agent-id-cell">' +
-    escapeHtml(a.agent_id || a.name) +
+    escapeHtml(cleanAgentName(a.agent_id || a.name)) +
     "</td>" +
     "<td>" +
     escapeHtml(a.role || "agent") +
