@@ -5,6 +5,13 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+try:
+    from importlib.metadata import version as _pkg_version
+
+    OROCHI_VERSION = _pkg_version("scitex-orochi")
+except Exception:
+    OROCHI_VERSION = "0.5.1"
+
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
     "django-insecure-change-me-in-production",
