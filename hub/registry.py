@@ -29,6 +29,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "machine": info.get("machine", ""),
             "role": info.get("role", ""),
             "model": info.get("model", ""),
+            "workdir": info.get("workdir", ""),
             "channels": info.get("channels", []),
             "status": "online",
             "registered_at": time.time(),
@@ -104,6 +105,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "machine": a.get("machine", ""),
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
+                "workdir": a.get("workdir", ""),
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
                 "registered_at": (

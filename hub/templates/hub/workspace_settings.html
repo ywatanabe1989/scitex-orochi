@@ -39,6 +39,36 @@
                     {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
                 {% endif %}
                 <section class="settings-section">
+                    <h4>Workspace Info</h4>
+                    <p class="settings-desc">Basic information about this workspace.</p>
+                    <table class="settings-table">
+                        <tbody>
+                            <tr>
+                                <td class="info-label">Name</td>
+                                <td>
+                                    <code>{{ workspace.name }}</code>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Description</td>
+                                <td>{{ workspace.description|default:"No description set." }}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Created</td>
+                                <td>{{ workspace.created_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+                <section class="settings-section">
+                    <h4>Workspace Icon</h4>
+                    <p class="settings-desc">Custom avatar for this workspace.</p>
+                    <div class="ws-icon-placeholder">
+                        <span class="ws-icon-letter">{{ workspace.name|first|upper }}</span>
+                    </div>
+                    <p class="settings-desc settings-note">Custom icon upload is coming in a future release.</p>
+                </section>
+                <section class="settings-section">
                     <h4>Agent Tokens</h4>
                     <p class="settings-desc">Tokens allow AI agents to connect to this workspace via WebSocket.</p>
                     <table class="settings-table">
@@ -142,6 +172,15 @@
                         <input type="email" name="email" placeholder="email@example.com" required>
                         <button type="submit" class="btn-small btn-primary">Send Invite</button>
                     </form>
+                </section>
+                <section class="settings-section">
+                    <h4>GitHub Integration</h4>
+                    <p class="settings-desc">GitHub access for issue tracking and repository integration.</p>
+                    <div class="settings-info-box">
+                        <code>GITHUB_TOKEN</code> is configured per-server, not per-user or per-workspace.
+                        It is set as an environment variable on the Orochi server process.
+                        Contact your server administrator to configure or rotate the token.
+                    </div>
                 </section>
             </div>
         </main>

@@ -92,6 +92,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "machine": payload.get("machine", ""),
                 "role": payload.get("role", ""),
                 "model": payload.get("model", ""),
+                "workdir": payload.get("workdir", ""),
                 "channels": channels,
             }
 
