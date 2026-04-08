@@ -141,6 +141,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "chat.message",
                     "sender": self.agent_name,
+                    "sender_type": "agent",
                     "channel": ch_name,
                     "text": payload.get("text", ""),
                     "ts": msg["ts"] if msg else None,
@@ -154,6 +155,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "chat.message",
                     "sender": self.agent_name,
+                    "sender_type": "agent",
                     "channel": ch_name,
                     "text": payload.get("text", ""),
                     "ts": msg["ts"] if msg else None,
@@ -167,6 +169,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             {
                 "type": "message",
                 "sender": event["sender"],
+                "sender_type": event.get("sender_type", "human"),
                 "channel": event["channel"],
                 "text": event["text"],
                 "ts": event.get("ts"),
@@ -206,6 +209,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 workspace=workspace,
                 channel=channel,
                 sender=sender,
+                sender_type="agent",
                 content=content_text,
                 metadata=metadata or {},
             )
@@ -290,6 +294,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "chat.message",
                     "sender": self.user.username,
+                    "sender_type": "human",
                     "channel": ch_name,
                     "text": payload.get("text", ""),
                     "ts": msg["ts"] if msg else None,
@@ -301,6 +306,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 {
                     "type": "chat.message",
                     "sender": self.user.username,
+                    "sender_type": "human",
                     "channel": ch_name,
                     "text": payload.get("text", ""),
                     "ts": msg["ts"] if msg else None,
@@ -313,6 +319,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             {
                 "type": "message",
                 "sender": event["sender"],
+                "sender_type": event.get("sender_type", "human"),
                 "channel": event["channel"],
                 "text": event["text"],
                 "ts": event.get("ts"),
@@ -375,6 +382,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 workspace=workspace,
                 channel=channel,
                 sender=sender,
+                sender_type="human",
                 content=content_text,
             )
             return {"id": msg.id, "ts": msg.ts.isoformat()}

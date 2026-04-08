@@ -250,6 +250,8 @@ class OrochiServer:
         attachments = msg.payload.get("attachments")
         if attachments:
             metadata["attachments"] = attachments
+        # Determine sender_type: connected agents are "agent", others are "human"
+        sender_type = "agent" if msg.sender in self.agents else "human"
         await self.store.save(
             msg_id=msg.id,
             ts=msg.ts,
@@ -258,6 +260,7 @@ class OrochiServer:
             content=msg.content,
             mentions=msg.mentions,
             metadata=metadata or None,
+            sender_type=sender_type,
         )
 
         # Resolve sender's workspace for scoped routing

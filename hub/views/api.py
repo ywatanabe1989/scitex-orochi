@@ -63,6 +63,7 @@ def api_messages(request):
                 "id": m.id,
                 "channel": m.channel.name,
                 "sender": m.sender,
+                "sender_type": m.sender_type,
                 "content": m.content,
                 "ts": m.ts.isoformat(),
                 "metadata": m.metadata,
@@ -83,6 +84,7 @@ def api_messages(request):
         workspace=workspace,
         channel=channel,
         sender=request.user.username,
+        sender_type="human",
         content=text,
     )
 
@@ -96,6 +98,7 @@ def api_messages(request):
         {
             "type": "chat.message",
             "sender": request.user.username,
+            "sender_type": "human",
             "channel": ch_name,
             "text": text,
             "ts": msg.ts.isoformat(),
@@ -128,6 +131,7 @@ def api_history(request, channel_name):
         {
             "id": m.id,
             "sender": m.sender,
+            "sender_type": m.sender_type,
             "content": m.content,
             "ts": m.ts.isoformat(),
             "metadata": m.metadata,

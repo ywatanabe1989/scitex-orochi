@@ -89,6 +89,11 @@ class Channel(models.Model):
 class Message(models.Model):
     """A message in a channel."""
 
+    SENDER_TYPE_CHOICES = [
+        ("agent", "Agent"),
+        ("human", "Human"),
+    ]
+
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="messages"
     )
@@ -96,6 +101,9 @@ class Message(models.Model):
         Channel, on_delete=models.CASCADE, related_name="messages"
     )
     sender = models.CharField(max_length=100)
+    sender_type = models.CharField(
+        max_length=10, choices=SENDER_TYPE_CHOICES, default="human"
+    )
     content = models.TextField()
     ts = models.DateTimeField(auto_now_add=True)
     metadata = models.JSONField(default=dict, blank=True)

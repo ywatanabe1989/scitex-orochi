@@ -10,7 +10,7 @@ function isKnownAgent(name) {
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
-  var isAgent = isKnownAgent(senderName);
+  var isAgent = msg.sender_type === "agent" || isKnownAgent(senderName);
   el.className = "msg" + (isAgent ? "" : " msg-human");
   var ts = "";
   var fullTs = "";
@@ -134,6 +134,7 @@ async function loadHistory() {
       appendMessage({
         type: "message",
         sender: row.sender,
+        sender_type: row.sender_type,
         ts: row.ts,
         payload: {
           channel: row.channel,
@@ -166,6 +167,7 @@ async function loadChannelHistory(channel) {
       appendMessage({
         type: "message",
         sender: row.sender,
+        sender_type: row.sender_type,
         ts: row.ts,
         payload: {
           channel: row.channel,
