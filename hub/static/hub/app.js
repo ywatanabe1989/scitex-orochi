@@ -39,6 +39,62 @@ function getAgentColor(name) {
   return OROCHI_COLORS[sum % OROCHI_COLORS.length];
 }
 
+/* Workspace icon — Slack-style colored rounded square with first letter */
+var WORKSPACE_ICON_COLORS = [
+  "#4A154B",
+  "#1264A3",
+  "#2BAC76",
+  "#E01E5A",
+  "#36C5F0",
+  "#ECB22E",
+  "#611f69",
+  "#0b4f6c",
+];
+
+function getWorkspaceColor(name) {
+  var s = name || "workspace";
+  var sum = 0;
+  for (var i = 0; i < s.length; i++) {
+    sum += s.charCodeAt(i) * (i + 1);
+  }
+  return WORKSPACE_ICON_COLORS[sum % WORKSPACE_ICON_COLORS.length];
+}
+
+function getWorkspaceIcon(name, size) {
+  size = size || 20;
+  var color = getWorkspaceColor(name);
+  var letter = (name || "W").charAt(0).toUpperCase();
+  var fontSize = Math.round(size * 0.55);
+  var radius = Math.round(size * 0.22);
+  return (
+    '<svg class="ws-icon-svg" width="' +
+    size +
+    '" height="' +
+    size +
+    '" viewBox="0 0 ' +
+    size +
+    " " +
+    size +
+    '" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="' +
+    size +
+    '" height="' +
+    size +
+    '" rx="' +
+    radius +
+    '" fill="' +
+    color +
+    '"/>' +
+    '<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" ' +
+    'fill="#fff" font-family="-apple-system,BlinkMacSystemFont,sans-serif" ' +
+    'font-weight="700" font-size="' +
+    fontSize +
+    '">' +
+    letter +
+    "</text></svg>"
+  );
+}
+
 /* Inline SVG icon generators for branding — official SciTeX snake */
 function getSnakeIcon(size, color) {
   size = size || 20;
