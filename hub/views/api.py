@@ -1,7 +1,10 @@
 """REST API views for workspace data."""
 
 import json
+import logging
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -9,6 +12,8 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from hub.models import Channel, Message, Workspace, WorkspaceMember
 from hub.views._helpers import get_workspace
+
+log = logging.getLogger("orochi.api")
 
 
 @login_required
@@ -90,9 +95,6 @@ def api_messages(request):
         content=text,
     )
 
-    from asgiref.sync import async_to_sync
-    from channels.layers import get_channel_layer
-
     layer = get_channel_layer()
     group = f"workspace_{workspace.id}"
     async_to_sync(layer.group_send)(
@@ -161,3 +163,84 @@ def api_stats(request):
             "member_count": member_count,
         }
     )
+
+
+@login_required
+@require_GET
+def api_config(request):
+    """GET /api/config — dashboard configuration."""
+    workspace = get_workspace(request)
+    version = getattr(settings, "OROCHI_VERSION", "0.0.0")
+    data = {
+        "workspace": workspace.name,
+        "version": version,
+    }
+    # Expose dashboard token if set on workspace
+    token = request.GET.get("token", "")
+    if token:
+        data["dashboard_token"] = token
+    return JsonResponse(data)
+
+
+@login_required
+@require_GET
+def api_agents(request):
+    """GET /api/agents — list known agents from recent messages."""
+    workspace = get_workspace(request)
+    cutoff = timezone.now() - timezone.timedelta(hours=24)
+    agent_rows = (
+        Message.objects.filter(
+            workspace=workspace,
+            sender_type="agent",
+            ts__gte=cutoff,
+        )
+        .values("sender")
+        .distinct()
+    )
+    agents = []
+    for row in agent_rows:
+        name = row["sender"]
+        last_msg = (
+            Message.objects.filter(
+                workspace=workspace, sender=name, sender_type="agent"
+            )
+            .order_by("-ts")
+            .first()
+        )
+        last_ts = last_msg.ts.isoformat() if last_msg else None
+        channels = list(
+            Message.objects.filter(
+                workspace=workspace, sender=name, sender_type="agent"
+            )
+            .values_list("channel__name", flat=True)
+            .distinct()
+        )
+        agents.append(
+            {
+                "name": name,
+                "agent_id": name,
+                "status": "online",
+                "role": "agent",
+                "machine": "",
+                "model": "",
+                "channels": channels,
+                "current_task": "",
+                "registered_at": last_ts,
+                "last_heartbeat": last_ts,
+            }
+        )
+    return JsonResponse(agents, safe=False)
+
+
+@login_required
+@require_GET
+def api_agents_registry(request):
+    """GET /api/agents/registry — detailed agent registry (same data as api_agents)."""
+    return api_agents(request)
+
+
+@login_required
+@require_GET
+def api_resources(request):
+    """GET /api/resources — resource usage from agents (empty until agents report)."""
+    return JsonResponse({}, safe=True)
