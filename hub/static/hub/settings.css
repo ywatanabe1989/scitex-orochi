@@ -130,22 +130,14 @@
   width: 120px;
 }
 
-/* Workspace icon placeholder */
-.ws-icon-placeholder {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  background: #1a1d21;
-  border: 1px solid #333;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* Workspace icon preview (settings page) */
+.ws-icon-preview {
+  display: inline-block;
+  line-height: 0;
 }
 
-.ws-icon-letter {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #4ecdc4;
+.ws-icon-preview .ws-icon-svg {
+  border-radius: 12px;
 }
 
 .settings-note {

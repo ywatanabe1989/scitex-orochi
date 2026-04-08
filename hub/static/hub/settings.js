@@ -12,3 +12,12 @@ function toggleToken(btn) {
     btn.textContent = "\u{1F441}";
   }
 }
+
+/* Render workspace icon preview on settings page */
+(function () {
+  var preview = document.getElementById("ws-icon-preview");
+  if (!preview || typeof getWorkspaceIcon !== "function") return;
+  var nameEl = document.querySelector(".workspace-name");
+  var wsName = nameEl ? nameEl.textContent.trim() : "workspace";
+  preview.innerHTML = getWorkspaceIcon(wsName, 64);
+})();

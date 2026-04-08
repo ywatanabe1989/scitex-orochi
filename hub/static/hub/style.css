@@ -75,6 +75,9 @@ body {
   display: flex;
   align-items: center;
 }
+.ws-icon .ws-icon-svg {
+  border-radius: 3px;
+}
 .ws-name {
   font-weight: 600;
   color: #aaa;

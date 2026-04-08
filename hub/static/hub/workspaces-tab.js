@@ -69,9 +69,14 @@ function buildWorkspaceCard(ws) {
     '<div id="ws-invite-' +
     escapeHtml(ws.id) +
     '" class="ws-invite-status"></div>';
+  var wsIcon =
+    typeof getWorkspaceIcon === "function" ? getWorkspaceIcon(ws.name, 28) : "";
   return (
     '<div class="res-card">' +
     '<div class="ws-card-header">' +
+    '<span class="ws-card-icon">' +
+    wsIcon +
+    "</span>" +
     '<span class="ws-card-name">' +
     escapeHtml(ws.name) +
     "</span></div>" +
