@@ -50,7 +50,7 @@ else
 fi
 
 # 1b. Token matches
-PLUGIN_ENV_FILE="$HOME/.claude/channels/telegram/.env"
+PLUGIN_ENV_FILE="${TELEGRAM_STATE_DIR:-$HOME/.scitex/agent-container/telegram}/.env"
 SECRETS_FILE="$HOME/.bash.d/secrets/010_scitex/01_notification.src"
 
 if [[ -f "$PLUGIN_ENV_FILE" ]] && [[ -f "$SECRETS_FILE" ]]; then
