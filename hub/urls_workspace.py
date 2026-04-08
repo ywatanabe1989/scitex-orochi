@@ -1,11 +1,27 @@
 """URL patterns for workspace subdomains (<slug>.scitex-orochi.com)."""
 
+import os
+
 from django.contrib import admin
+from django.http import HttpResponse
 from django.urls import include, path
 
 from hub import views
 
+_sw_js_path = os.path.join(os.path.dirname(__file__), "static", "hub", "sw.js")
+
+
+def _serve_sw(request):
+    """Serve service worker at root scope (required by SW spec)."""
+    try:
+        with open(_sw_js_path) as f:
+            return HttpResponse(f.read(), content_type="application/javascript")
+    except FileNotFoundError:
+        return HttpResponse("", status=404)
+
+
 urlpatterns = [
+    path("sw.js", _serve_sw, name="sw"),
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     # Dashboard (root of workspace subdomain)
@@ -27,6 +43,7 @@ urlpatterns = [
     path("api/github/issues/", views.github_issues, name="api-github-issues"),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
+    path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     path("api/resources/", views.api_resources, name="api-resources"),
     path("api/config/", views.api_config, name="api-config"),
