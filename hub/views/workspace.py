@@ -1,11 +1,14 @@
 """Workspace dashboard and settings views (served on subdomain)."""
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.shortcuts import render
+from django.utils import timezone
 
-from hub.models import Channel, WorkspaceMember
+from hub.models import Channel, Message, WorkspaceMember
 from hub.views._helpers import get_workspace, workspace_url
 
 
@@ -28,6 +31,20 @@ def workspace_dashboard(request):
             user=request.user, workspace=workspace, role="admin"
         ).exists()
     )
+
+    # Discover agents: distinct message senders from the last 24 hours
+    # who are not workspace members (human users).
+    member_usernames = set(members.values_list("user__username", flat=True))
+    since = timezone.now() - timedelta(hours=24)
+    agent_senders = (
+        Message.objects.filter(workspace=workspace, ts__gte=since)
+        .values_list("sender", flat=True)
+        .distinct()
+    )
+    agents = sorted(
+        name for name in agent_senders if name not in member_usernames
+    )
+
     return render(
         request,
         "hub/dashboard.html",
@@ -35,6 +52,7 @@ def workspace_dashboard(request):
             "workspace": workspace,
             "channels": channels,
             "members": members,
+            "agents": agents,
             "is_admin": is_admin,
         },
     )

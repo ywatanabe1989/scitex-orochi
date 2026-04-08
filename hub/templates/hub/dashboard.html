@@ -28,7 +28,15 @@
                 <ul id="member-list">
                     {% for member in members %}
                         <li>
-                            <span class="member-status">●</span> {{ member.user.username }}
+                            <span class="member-status">&#9679;</span> {{ member.user.username }}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <h3>Agents</h3>
+                <ul id="agent-list">
+                    {% for agent_name in agents %}
+                        <li data-agent="{{ agent_name }}">
+                            <span class="agent-status">&#9679;</span> {{ agent_name }}
                         </li>
                     {% endfor %}
                 </ul>

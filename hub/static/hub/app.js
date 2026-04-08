@@ -12,6 +12,32 @@
 
   var currentChannel = "#general";
   var ws = null;
+  var agentListEl = document.getElementById("agent-list");
+
+  function handleAgentPresence(agentName, status) {
+    if (!agentListEl) return;
+    var existing = agentListEl.querySelector('li[data-agent="' + agentName + '"]');
+
+    if (status === "connected") {
+      if (!existing) {
+        var li = document.createElement("li");
+        li.setAttribute("data-agent", agentName);
+        li.innerHTML =
+          '<span class="agent-status connected">&#9679;</span> ' + agentName;
+        agentListEl.appendChild(li);
+      } else {
+        var dot = existing.querySelector(".agent-status");
+        if (dot) {
+          dot.className = "agent-status connected";
+        }
+      }
+    } else if (status === "disconnected" && existing) {
+      var dot = existing.querySelector(".agent-status");
+      if (dot) {
+        dot.className = "agent-status disconnected";
+      }
+    }
+  }
 
   function connectWs() {
     ws = new WebSocket(wsUrl);
@@ -22,6 +48,8 @@
       var data = JSON.parse(evt.data);
       if (data.type === "message" && data.channel === currentChannel) {
         appendMessage(data.sender, data.text, data.ts, data.meta);
+      } else if (data.type === "agent_presence") {
+        handleAgentPresence(data.agent, data.status);
       }
     };
     ws.onclose = function () {

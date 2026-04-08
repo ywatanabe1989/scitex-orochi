@@ -43,8 +43,27 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             self.workspace_name,
         )
 
+        # Broadcast presence to dashboard observers
+        await self.channel_layer.group_send(
+            self.workspace_group,
+            {
+                "type": "agent.presence",
+                "agent": self.agent_name,
+                "status": "connected",
+            },
+        )
+
     async def disconnect(self, code):
         if hasattr(self, "workspace_group"):
+            # Broadcast departure before leaving group
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "agent.presence",
+                    "agent": getattr(self, "agent_name", "?"),
+                    "status": "disconnected",
+                },
+            )
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
@@ -113,6 +132,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "metadata": event.get("metadata", {}),
             }
         )
+
+    async def agent_presence(self, event):
+        """Handle agent.presence from channel layer — ignore for agent sockets."""
+        pass
 
     @database_sync_to_async
     def _resolve_token(self, token_str):
@@ -249,6 +272,16 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "text": event["text"],
                 "ts": event.get("ts"),
                 "metadata": event.get("metadata", {}),
+            }
+        )
+
+    async def agent_presence(self, event):
+        """Forward agent presence updates to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "agent_presence",
+                "agent": event["agent"],
+                "status": event["status"],
             }
         )
 

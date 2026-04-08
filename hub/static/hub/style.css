@@ -220,6 +220,31 @@ body {
   margin-right: 0.3rem;
 }
 
+/* Agent list */
+#agent-list {
+  list-style: none;
+}
+
+#agent-list li {
+  padding: 0.3rem 1rem;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.agent-status {
+  color: #7b68ee;
+  font-size: 0.6rem;
+  margin-right: 0.3rem;
+}
+
+.agent-status.connected {
+  color: #7b68ee;
+}
+
+.agent-status.disconnected {
+  color: #555;
+}
+
 /* Sidebar toggle (hidden on desktop) */
 #sidebar-toggle {
   display: none;
