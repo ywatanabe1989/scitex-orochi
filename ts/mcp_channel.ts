@@ -40,10 +40,12 @@ const conn = new OrochiConnection(async (raw: string) => {
     const msg = JSON.parse(raw);
     if (msg.type !== "message") return;
 
+    // Hub sends flat messages: {type, sender, channel, text, ts, metadata}
+    // Also support legacy nested payload format for backward compatibility
     const payload = msg.payload || {};
-    const content = payload.content || payload.text || payload.message || "";
-    const sender = payload.sender || msg.sender || "unknown";
-    const channel = payload.channel || "";
+    const content = msg.text || msg.content || payload.content || payload.text || payload.message || "";
+    const sender = msg.sender || payload.sender || "unknown";
+    const channel = msg.channel || payload.channel || "";
 
     if (sender === OROCHI_AGENT || !content) return;
 
