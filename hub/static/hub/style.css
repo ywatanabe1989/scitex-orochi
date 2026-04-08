@@ -1,369 +1,256 @@
-/* Orochi Dashboard Styles */
+/* Orochi Dashboard -- core layout (old design 007eb89 + new features) */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
-
+html,
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #1a1d21;
-  color: #d1d2d3;
+  font-family: "Consolas", "Monaco", monospace;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+.container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
   height: 100vh;
   overflow: hidden;
 }
-
-#app {
-  display: flex;
-  height: 100vh;
-}
-
 /* Sidebar */
-#sidebar {
-  width: 260px;
-  background: #19171d;
+.sidebar {
+  background: #111;
+  border-right: 1px solid #333;
+  overflow-y: auto;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #333;
 }
-
-.sidebar-header {
-  padding: 1rem;
+.sidebar h2 {
+  font-size: 13px;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
   border-bottom: 1px solid #333;
 }
-
-.sidebar-header h2 {
-  color: #fff;
-  font-size: 1.2rem;
+.sidebar-brand .header-icon {
+  height: 100px;
+  width: 100px;
+  object-fit: contain;
 }
-.sidebar-logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  margin-bottom: 6px;
+.sidebar-brand .brand-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4ecdc4;
 }
-.btn-eye {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  padding: 0 4px;
-  vertical-align: middle;
+.brand-version {
+  font-size: 10px;
+  color: #666;
+  font-weight: normal;
 }
-
-.workspace-name {
-  color: #888;
-  font-size: 0.85rem;
+.sidebar-brand .status {
+  font-size: 11px;
+  color: #666;
+  margin-left: auto;
 }
-
-.sidebar-section {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0.5rem 0;
+.sidebar-brand .status.connected {
+  color: #4ecdc4;
 }
-
-.sidebar-section h3 {
-  padding: 0.3rem 1rem;
-  color: #888;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.sidebar-brand .status.rest-mode {
+  color: #ffd93d;
 }
-
-#channel-list {
-  list-style: none;
-}
-
-#channel-list li {
-  padding: 0.4rem 1rem;
-  cursor: pointer;
-  color: #aaa;
-  font-size: 0.9rem;
-}
-
-#channel-list li:hover {
-  background: #27242c;
-  color: #fff;
-}
-
-#channel-list li.active {
-  background: #1264a3;
-  color: #fff;
-}
-
 .sidebar-footer {
-  padding: 0.8rem 1rem;
+  margin-top: auto;
+  padding-top: 12px;
   border-top: 1px solid #333;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.85rem;
+  font-size: 12px;
+  color: #888;
 }
-
 .sidebar-footer a {
-  color: #4a9eff;
+  color: #4ecdc4;
   text-decoration: none;
+  font-size: 12px;
 }
-
-/* Chat area */
-#chat-area {
-  flex: 1;
+.sidebar-footer a:hover {
+  text-decoration: underline;
+}
+.channels-heading {
+  margin-top: 20px;
+}
+.channel-item {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.channel-item:hover {
+  background: #1a1a1a;
+}
+.channel-item.active {
+  background: #1a1a1a;
+  font-weight: bold;
+}
+#no-agents {
+  color: #555;
+  font-style: italic;
+  font-size: 12px;
+}
+/* Main area */
+.main {
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
-
-#chat-header {
-  padding: 0.8rem 1rem;
-  border-bottom: 1px solid #333;
-  background: #222529;
-}
-
-#chat-header h3 {
-  color: #fff;
-  font-size: 1rem;
-}
-
-#messages {
+.messages {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 16px;
+  min-height: 0;
+  scrollbar-color: #333 #111;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
-
-.message {
-  margin-bottom: 0.8rem;
+/* Input bar */
+.input-bar {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #111;
+  border-top: 1px solid #333;
+  justify-content: center;
 }
-
-.message .sender {
-  font-weight: bold;
-  color: #fff;
-  margin-right: 0.5rem;
+.input-bar select {
+  background: #1a1a1a;
+  color: #4ecdc4;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 12px;
 }
-
-.message .ts {
-  color: #666;
-  font-size: 0.75rem;
-}
-
-.message .text {
-  margin-top: 0.2rem;
+.input-bar textarea {
+  flex: 1;
+  max-width: 800px;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 12px 16px;
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  resize: vertical;
+  overflow-y: auto;
+  min-height: 60px;
+  max-height: 200px;
   line-height: 1.4;
 }
-
-#message-form {
-  display: flex;
-  padding: 0.8rem 1rem;
-  border-top: 1px solid #333;
-  background: #222529;
+.input-bar textarea:focus {
+  border-color: #4ecdc4;
 }
-
-#message-input {
-  flex: 1;
-  padding: 0.6rem 0.8rem;
-  border: 1px solid #444;
-  border-radius: 4px;
-  background: #1a1d21;
-  color: #fff;
-  font-size: 0.95rem;
-  outline: none;
+.input-bar textarea.drag-over {
+  border-color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.08);
 }
-
-#message-input:focus {
-  border-color: #4a9eff;
-}
-
-#message-form button {
-  margin-left: 0.5rem;
-  padding: 0.6rem 1.2rem;
-  background: #4a9eff;
-  color: #fff;
+.input-bar button {
+  background: #4ecdc4;
+  color: #0a0a0a;
   border: none;
   border-radius: 4px;
+  padding: 6px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
   cursor: pointer;
-  font-size: 0.95rem;
 }
-
-#message-form button:hover {
-  background: #3a8eef;
+.input-bar button:hover {
+  background: #45b7b0;
 }
-
-/* System messages (join/leave/status) — Slack-style centered muted text */
-.message.system {
-  text-align: center;
+.stats-bar {
+  background: #111;
+  border-top: 1px solid #333;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #666;
+  display: flex;
+  gap: 24px;
+}
+/* Tab Bar */
+.tab-bar {
+  display: flex;
+  background: #111;
+  border-bottom: 1px solid #333;
+  padding: 0 16px;
+}
+.tab-btn {
+  background: transparent;
   color: #888;
-  font-style: italic;
-  font-size: 0.85em;
-  padding: 4px 0;
-  border-left: none;
-}
-.message.system .sender {
-  display: none;
-}
-.message.system .ts {
-  display: none;
-}
-
-/* Member list */
-#member-list {
-  list-style: none;
-}
-
-#member-list li {
-  padding: 0.3rem 1rem;
-  color: #aaa;
-  font-size: 0.85rem;
-}
-
-.member-status {
-  color: #2bac76;
-  font-size: 0.6rem;
-  margin-right: 0.3rem;
-}
-
-/* Agent list */
-#agent-list {
-  list-style: none;
-}
-
-#agent-list li {
-  padding: 0.3rem 1rem;
-  color: #aaa;
-  font-size: 0.85rem;
-}
-
-.agent-status {
-  color: #7b68ee;
-  font-size: 0.6rem;
-  margin-right: 0.3rem;
-}
-
-.agent-status.connected {
-  color: #7b68ee;
-}
-
-.agent-status.disconnected {
-  color: #555;
-}
-
-#agent-list li {
+  border: none;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-size: 13px;
   cursor: pointer;
+  border-bottom: 2px solid transparent;
 }
-
-#agent-list li:hover {
-  background: #27242c;
-  color: #fff;
+.tab-btn:hover {
+  color: #ccc;
 }
-
-/* Agent info panel */
-#agent-info-panel {
-  position: absolute;
-  left: 270px;
-  top: 200px;
-  z-index: 50;
-  background: #2b2d31;
-  border: 1px solid #444;
-  border-radius: 6px;
-  padding: 0.8rem 1rem;
-  min-width: 220px;
-  max-width: 320px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+.tab-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
 }
-
-#agent-info-panel h4 {
-  color: #fff;
-  font-size: 0.95rem;
-  margin-bottom: 0.5rem;
-  border-bottom: 1px solid #444;
-  padding-bottom: 0.4rem;
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
-
-#agent-info-details {
-  color: #b5bac1;
-  font-size: 0.8rem;
-  line-height: 1.6;
-  white-space: pre-line;
+::-webkit-scrollbar-track {
+  background: #111;
 }
-
-/* Sidebar toggle (hidden on desktop) */
-#sidebar-toggle {
-  display: none;
-  position: fixed;
-  top: 0.6rem;
-  left: 0.6rem;
-  z-index: 110;
-  background: #19171d;
-  color: #d1d2d3;
-  border: 1px solid #444;
+::-webkit-scrollbar-thumb {
+  background: #333;
   border-radius: 4px;
-  font-size: 1.4rem;
-  padding: 0.3rem 0.6rem;
-  cursor: pointer;
-  line-height: 1;
 }
-
-#sidebar-overlay {
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+/* Collapsible Sidebar Headings */
+.collapsible-heading {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.collapsible-heading::before {
+  content: "\25BE";
+}
+.collapsible-heading.collapsed::before {
+  content: "\25B8";
+}
+.sidebar-section.collapsed {
   display: none;
 }
-
-/* Mobile responsive (<768px) */
-@media (max-width: 768px) {
-  #sidebar-toggle {
-    display: block;
-  }
-
-  #sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.25s ease;
-  }
-
-  #sidebar.open {
-    transform: translateX(0);
-  }
-
-  #sidebar-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 99;
-    background: rgba(0, 0, 0, 0.5);
-  }
-
-  #sidebar-overlay.active {
-    display: block;
-  }
-
-  #chat-area {
-    width: 100%;
-  }
-
-  #chat-header {
-    padding-left: 3rem;
-  }
-
-  body {
-    font-size: 1rem;
-  }
-
-  .message .text {
-    font-size: 1rem;
-    line-height: 1.5;
-  }
-
-  #message-input {
-    font-size: 1rem;
-    padding: 0.7rem 0.8rem;
-  }
-
-  #message-form button {
-    font-size: 1rem;
-    padding: 0.7rem 1rem;
-  }
-
-  #message-form {
-    padding: 0.6rem;
-  }
+/* Hamburger toggle -- hidden on desktop */
+.sidebar-toggle {
+  display: none;
+}
+/* Sidebar overlay backdrop -- mobile only */
+.sidebar-backdrop {
+  display: none;
 }

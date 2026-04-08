@@ -1,7 +1,32 @@
-/* Dashboard config — reads data attributes from the HTML body set by Django template */
+/* Dashboard config loader -- fetches /api/config before app.js runs.
+ *
+ * Sets:
+ *   window.__orochiWsUpstream  -- WS URL override (dev -> stable sync)
+ *   window.__orochiApiUpstream -- REST URL override (dev -> stable sends)
+ *   window.__orochiVersion     -- package version for display
+ *   window.__orochiToken       -- dashboard token for WS + REST auth
+ */
 (function () {
-  var body = document.body;
-  window.__orochiWorkspace = body.dataset.workspace || "default";
-  window.__orochiWsUrl = body.dataset.wsUrl || "";
-  window.__orochiCsrfToken = body.dataset.csrfToken || "";
+  var xhr = new XMLHttpRequest();
+  xhr.open("GET", "/api/config", false); /* synchronous -- before app.js */
+  try {
+    xhr.send();
+    if (xhr.status === 200) {
+      var cfg = JSON.parse(xhr.responseText);
+      if (cfg.ws_upstream) {
+        window.__orochiWsUpstream = cfg.ws_upstream;
+        window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
+      }
+      if (cfg.version) {
+        window.__orochiVersion = cfg.version;
+        var el = document.getElementById("orochi-version");
+        if (el) el.textContent = "v" + cfg.version;
+      }
+      if (cfg.dashboard_token) {
+        window.__orochiToken = cfg.dashboard_token;
+      }
+    }
+  } catch (e) {
+    /* config endpoint unavailable -- use defaults */
+  }
 })();

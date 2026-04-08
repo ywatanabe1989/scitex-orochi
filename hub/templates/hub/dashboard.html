@@ -2,45 +2,49 @@
 {% load static %}
 {% block title %}{{ workspace.name }} - SciTeX Orochi{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}">
+    <meta name="theme-color" content="#4ecdc4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent">
+    <link rel="manifest" href="{% static 'hub/manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=40">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=2">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
+<!-- hook-bypass: inline-style -->
 {% block body %}
-    <div id="app">
-        <button id="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
-        <div id="sidebar-overlay"></div>
-        <nav id="sidebar">
-            <div class="sidebar-header">
+    <div class="container">
+        <button id="sidebar-toggle"
+                class="sidebar-toggle"
+                aria-label="Toggle sidebar">&#9776;</button>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
                 <img src="{% static 'hub/orochi-icon.png' %}"
                      alt="Orochi"
-                     class="sidebar-logo">
-                <h2>SciTeX Orochi</h2>
-                <span class="workspace-name">{{ workspace.name }}</span>
+                     class="header-icon">
+                <span class="brand-name">Orochi <span class="brand-version" id="orochi-version"></span></span>
+                <span id="conn-status" class="status">disconnected</span>
             </div>
-            <div class="sidebar-section">
-                <h3>Channels</h3>
-                <ul id="channel-list">
-                    {% for ch in channels %}<li data-channel="{{ ch.name }}">{{ ch.name }}</li>{% endfor %}
-                </ul>
+            <div class="filter-bar" style="position:relative">
+                <input type="text"
+                       id="filter-input"
+                       placeholder="Filter... (agent: host: channel: label: or text)"
+                       autocomplete="off">
+                <div id="filter-suggest" class="filter-suggest"></div>
+                <div id="filter-tags" class="filter-tags"></div>
             </div>
-            <div class="sidebar-section">
-                <h3>Members</h3>
-                <ul id="member-list">
-                    {% for member in members %}
-                        <li>
-                            <span class="member-status">&#9679;</span> {{ member.user.username }}
-                        </li>
-                    {% endfor %}
-                </ul>
-                <h3>Agents</h3>
-                <ul id="agent-list">
-                    {% for agent_name in agents %}
-                        <li data-agent="{{ agent_name }}">
-                            <span class="agent-status">&#9679;</span> {{ agent_name }}
-                        </li>
-                    {% endfor %}
-                </ul>
+            <h2 class="collapsible-heading channels-heading">Agents</h2>
+            <div id="agents" class="sidebar-section">
+                <p id="no-agents">No agents connected</p>
             </div>
+            <h2 class="collapsible-heading channels-heading">Channels</h2>
+            <div id="channels" class="sidebar-section"></div>
+            <h2 class="collapsible-heading channels-heading">Resources</h2>
+            <div id="resources" class="sidebar-section"></div>
             <div class="sidebar-footer">
                 <span>{{ request.user.username }}</span>
                 {% if is_admin %}
@@ -48,24 +52,46 @@
                 {% endif %}
                 <a href="{% url 'signout' %}">Logout</a>
             </div>
-        </nav>
-        <div id="agent-info-panel" style="display:none">
-            <h4 id="agent-info-name"></h4>
-            <div id="agent-info-details"></div>
         </div>
-        <main id="chat-area">
-            <div id="chat-header">
-                <h3 id="current-channel">#general</h3>
+        <div class="main">
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="chat">Chat</button>
+                <button class="tab-btn" data-tab="todo">TODO</button>
+                <button class="tab-btn" data-tab="agents-tab">Agents</button>
+                <button class="tab-btn" data-tab="resources">Resources</button>
+                <button class="tab-btn" data-tab="workspaces">Workspaces</button>
             </div>
-            <div id="messages"></div>
-            <form id="message-form">
-                <input type="text"
-                       id="message-input"
-                       placeholder="Type a message..."
-                       autocomplete="off">
-                <button type="submit">Send</button>
-            </form>
-        </main>
+            <div id="messages" class="messages"></div>
+            <div id="todo-view" class="todo-view" style="display:none">
+                <div id="todo-grid" class="todo-grid"></div>
+            </div>
+            <div id="agents-tab-view" class="todo-view" style="display:none">
+                <div id="agents-grid" class="todo-grid"></div>
+            </div>
+            <div id="resources-view" class="todo-view" style="display:none">
+                <div id="resources-grid" class="todo-grid"></div>
+            </div>
+            <div id="workspaces-view" class="todo-view" style="display:none">
+                <div id="workspaces-grid" class="todo-grid"></div>
+            </div>
+            <div class="input-bar">
+                <div id="mention-dropdown" class="mention-dropdown"></div>
+                <textarea id="msg-input"
+                          placeholder="Type a message..."
+                          autocomplete="off"
+                          rows="3"></textarea>
+                <input type="file" id="file-input" style="display:none">
+                <button id="msg-attach" title="Attach file">Attach</button>
+                <button id="msg-sketch" title="Draw sketch">Sketch</button>
+                <button id="msg-send">Send</button>
+            </div>
+            <div class="stats-bar">
+                <span>Agents: <span id="stat-agents">0</span></span>
+                <span>Channels: <span id="stat-channels">0</span></span>
+                <span>Observers: <span id="stat-observers">0</span></span>
+                <span id="stat-telegram" style="display:none">Telegram: <span id="stat-telegram-status">-</span></span>
+            </div>
+        </div>
     </div>
 {% endblock %}
 {% block extra_js %}
@@ -74,6 +100,22 @@
       window.__orochiWorkspace = "{{ workspace.name|escapejs }}";
       window.__orochiWsUrl = "wss://{{ request.get_host }}/ws/dashboard/";
       window.__orochiCsrfToken = "{{ csrf_token }}";
+      /* Django auth -- user is already authenticated, use username as display name */
+      window.__orochiUserName = "{{ request.user.username|escapejs }}";
     </script>
-    <script src="{% static 'hub/app.js' %}"></script>
+    <script src="{% static 'hub/config.js' %}?v=2"></script>
+    <script src="{% static 'hub/app.js' %}?v=40"></script>
+    <script src="{% static 'hub/resources-tab.js' %}?v=2"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>
+    <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>
+    <script src="{% static 'hub/chat.js' %}?v=2"></script>
+    <script src="{% static 'hub/mention.js' %}?v=2"></script>
+    <script src="{% static 'hub/filter.js' %}?v=2"></script>
+    <script src="{% static 'hub/agents-tab.js' %}?v=2"></script>
+    <script src="{% static 'hub/upload.js' %}?v=2"></script>
+    <script src="{% static 'hub/sketch.js' %}?v=2"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=2"></script>
+    <script src="{% static 'hub/init.js' %}?v=2"></script>
+    <script src="{% static 'hub/sw-register.js' %}?v=2"></script>
+    <script src="{% static 'hub/push.js' %}?v=2"></script>
 {% endblock %}

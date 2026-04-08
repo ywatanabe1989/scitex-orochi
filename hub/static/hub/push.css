@@ -1,0 +1,32 @@
+/* Push notification toggle styles -- old design colors */
+.push-toggle {
+  background: none;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #888;
+  cursor: pointer;
+  font-size: 11px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  transition: all 0.2s ease;
+}
+
+.push-toggle:hover {
+  border-color: #4ecdc4;
+  color: #ccc;
+}
+
+.push-toggle.push-on {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+
+.push-toggle.push-on:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.push-toggle.push-off {
+  border-color: #333;
+  color: #888;
+}
