@@ -8,6 +8,7 @@ from channels.layers import get_channel_layer
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from hub.models import Channel, Message, Workspace, WorkspaceMember
@@ -154,13 +155,24 @@ def api_stats(request):
     msg_count = Message.objects.filter(workspace=workspace).count()
     member_count = WorkspaceMember.objects.filter(workspace=workspace).count()
 
+    # Count recently active agents (sent a message in last 24h)
+    cutoff = timezone.now() - timezone.timedelta(hours=24)
+    agents_online = (
+        Message.objects.filter(workspace=workspace, sender_type="agent", ts__gte=cutoff)
+        .values("sender")
+        .distinct()
+        .count()
+    )
+
     return JsonResponse(
         {
             "workspace": workspace.name,
             "channels": [ch.name for ch in channels],
             "channel_count": channels.count(),
+            "channels_active": channels.count(),
             "message_count": msg_count,
             "member_count": member_count,
+            "agents_online": agents_online,
         }
     )
 
@@ -188,18 +200,17 @@ def api_agents(request):
     """GET /api/agents — list known agents from recent messages."""
     workspace = get_workspace(request)
     cutoff = timezone.now() - timezone.timedelta(hours=24)
-    agent_rows = (
-        Message.objects.filter(
-            workspace=workspace,
-            sender_type="agent",
-            ts__gte=cutoff,
+    agent_names = list(
+        set(
+            Message.objects.filter(
+                workspace=workspace,
+                sender_type="agent",
+                ts__gte=cutoff,
+            ).values_list("sender", flat=True)
         )
-        .values("sender")
-        .distinct()
     )
     agents = []
-    for row in agent_rows:
-        name = row["sender"]
+    for name in agent_names:
         last_msg = (
             Message.objects.filter(
                 workspace=workspace, sender=name, sender_type="agent"

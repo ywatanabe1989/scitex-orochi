@@ -25,4 +25,9 @@ urlpatterns = [
     path("api/stats/", views.api_stats, name="api-stats"),
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),
     path("api/github/issues/", views.github_issues, name="api-github-issues"),
+    # Agent API
+    path("api/agents/", views.api_agents, name="api-agents"),
+    path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    path("api/resources/", views.api_resources, name="api-resources"),
+    path("api/config/", views.api_config, name="api-config"),
 ]
