@@ -114,6 +114,40 @@ export async function handleHistory(args: {
   }
 }
 
+export async function handleReact(args: {
+  message_id: number | string;
+  emoji: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const messageId = String(args.message_id);
+  const emoji = args.emoji;
+  if (!messageId || !emoji) {
+    return {
+      content: [{ type: "text", text: "Error: message_id and emoji required" }],
+    };
+  }
+  try {
+    const url = `${httpBase}/api/reactions/${tokenParam("?")}`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: Number(messageId), emoji }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          { type: "text", text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}` },
+        ],
+      };
+    }
+    return { content: [{ type: "text", text: `reacted ${emoji} to ${messageId}` }] };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
 export function handleStatus(conn: OrochiConnection): {
   content: Array<{ type: string; text: string }>;
 } {
