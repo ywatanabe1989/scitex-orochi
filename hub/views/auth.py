@@ -7,10 +7,54 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_GET
 
-from hub.models import Channel, Workspace, WorkspaceMember
-from hub.views._helpers import bare_url, workspace_url
+from hub.models import Channel, Workspace, WorkspaceMember, WorkspaceToken
+from hub.views._helpers import bare_url, get_workspace, workspace_url
+
+
+@require_GET
+def agent_login_view(request):
+    """GET /agent-login/?token=wks_...&agent=<name>
+
+    Exchange a workspace token for a Django session cookie bound to a
+    synthesized agent user. Used by headless browsers (playwright) so
+    agents can visit the dashboard for screenshots and visual verification.
+    """
+    token_str = request.GET.get("token", "").strip()
+    agent_name = request.GET.get("agent", "").strip() or "anonymous-agent"
+    if not token_str:
+        return JsonResponse({"error": "token required"}, status=400)
+
+    try:
+        wt = WorkspaceToken.objects.select_related("workspace").get(token=token_str)
+    except WorkspaceToken.DoesNotExist:
+        return JsonResponse({"error": "invalid token"}, status=401)
+
+    # Synthesize a Django user for this agent — one user per agent name,
+    # scoped to the workspace via WorkspaceMember.
+    safe_name = re.sub(r"[^a-zA-Z0-9_.\-]", "-", agent_name)
+    username = f"agent-{safe_name}"
+    user, _ = User.objects.get_or_create(
+        username=username,
+        defaults={
+            "email": f"{username}@agents.orochi.local",
+            "is_active": True,
+            "is_staff": False,
+        },
+    )
+    # Ensure the agent is a member of the workspace so permission checks pass
+    WorkspaceMember.objects.get_or_create(
+        user=user,
+        workspace=wt.workspace,
+        defaults={"role": "member"},
+    )
+    # Log the user in without a password — backend must support ModelBackend
+    user.backend = "django.contrib.auth.backends.ModelBackend"
+    login(request, user)
+    return redirect("/")
 
 
 def signin_view(request):

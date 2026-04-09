@@ -7,11 +7,47 @@ function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
 
+/* Cache of GitHub issue titles (number → title) used for hover tooltips */
+var issueTitleCache = {};
+
+function applyIssueTitleHints(scope) {
+  var root = scope || document;
+  root.querySelectorAll(".issue-link").forEach(function (a) {
+    var m = a.textContent.match(/#(\d+)/);
+    if (!m) return;
+    var num = m[1];
+    if (issueTitleCache[num] && !a.dataset.hinted) {
+      a.title = "#" + num + " " + issueTitleCache[num];
+      a.dataset.hinted = "1";
+    }
+  });
+}
+
+async function refreshIssueTitleCache() {
+  try {
+    var res = await fetch(apiUrl("/api/github/issues"), { credentials: "same-origin" });
+    if (!res.ok) return;
+    var issues = await res.json();
+    if (Array.isArray(issues)) {
+      issues.forEach(function (i) {
+        if (i && i.number && i.title) issueTitleCache[String(i.number)] = i.title;
+      });
+      applyIssueTitleHints();
+    }
+  } catch (e) {
+    /* ignore */
+  }
+}
+/* Refresh on load and every 2 minutes */
+refreshIssueTitleCache();
+setInterval(refreshIssueTitleCache, 120000);
+
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
   var isAgent = msg.sender_type === "agent" || isKnownAgent(senderName);
   el.className = "msg" + (isAgent ? "" : " msg-human");
+  if (msg.id) el.setAttribute("data-msg-id", String(msg.id));
   var ts = "";
   var fullTs = "";
   if (msg.ts) {
@@ -27,6 +63,10 @@ function appendMessage(msg) {
     content =
       msg.payload.content || msg.payload.text || msg.payload.message || "";
   }
+  /* Fallback to top-level fields (WebSocket flat format) */
+  if (!content) {
+    content = msg.text || msg.content || "";
+  }
   /* Intercept resource reports */
   var meta = (msg.payload && msg.payload.metadata) || {};
   if (meta.type === "resource_report" && meta.data) {
@@ -40,12 +80,7 @@ function appendMessage(msg) {
   var highlightedContent = escapeHtml(content)
     .replace(/\n/g, "<br>")
     .replace(/(^|[\s])@([\w@.\-]+)/g, function (_match, prefix, name) {
-      var isSpecial = name === "all" || name === "channel" || name === "agents";
-      var isAgent = cachedAgentNames.indexOf(name) !== -1;
-      if (isSpecial || isAgent) {
-        return prefix + '<span class="mention-highlight">@' + name + "</span>";
-      }
-      return prefix + "@" + name;
+      return prefix + '<span class="mention-highlight">@' + name + "</span>";
     })
     .replace(
       /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
@@ -54,6 +89,10 @@ function appendMessage(msg) {
     .replace(
       /(?<![\/\w])#(\d+)\b/g,
       '<a class="issue-link" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
+    )
+    .replace(
+      /(?<![="'>])(https?:\/\/[^\s<>"')\]]+)/g,
+      '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
     );
   /* Fold long posts (>10 lines) */
   var MAX_LINES = 10;
@@ -138,13 +177,17 @@ function appendMessage(msg) {
     '<div class="content">' +
     highlightedContent +
     "</div>" +
-    attachmentsHtml;
+    attachmentsHtml +
+    (msg.id ? '<div class="msg-reactions" data-msg-id="' + msg.id + '"></div>' : "") +
+    (msg.id ? '<button class="msg-react-btn" type="button" title="React" onclick="openReactionPicker(this,' + msg.id + ')">+</button>' : "") +
+    (msg.id ? '<button class="msg-thread-btn" type="button" title="Reply in thread" onclick="openThreadForMessage(' + msg.id + ')">\uD83D\uDCAC</button>' : "");
   if (currentChannel && channel !== currentChannel) {
     el.style.display = "none";
   }
   var container = document.getElementById("messages");
   container.appendChild(el);
   container.scrollTop = container.scrollHeight;
+  applyIssueTitleHints(el);
 }
 
 function filterMessages() {
@@ -192,6 +235,11 @@ async function loadHistory() {
     });
     container.scrollTop = container.scrollHeight;
     historyLoaded = true;
+    /* Fetch reactions for all loaded messages */
+    if (typeof fetchReactionsForMessages === "function") {
+      var ids = messages.map(function (r) { return r.id; }).filter(Boolean);
+      fetchReactionsForMessages(ids);
+    }
   } catch (e) {
     console.error("loadHistory failed:", e);
   }

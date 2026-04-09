@@ -11,6 +11,5 @@ urlpatterns = [
     path("", include("hub.urls")),
 ]
 
-# Serve media files in development
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# Serve media files (always — no external web server in Docker)
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

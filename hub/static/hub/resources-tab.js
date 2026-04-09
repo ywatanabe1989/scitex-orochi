@@ -32,6 +32,30 @@ function barHtml(label, percent) {
   );
 }
 
+/* Donut (pie-chart) for machine resources — inline SVG, no deps */
+function donutHtml(label, percent) {
+  var p = Math.min(100, Math.max(0, Math.round(percent)));
+  var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
+  var radius = 26;
+  var circumference = 2 * Math.PI * radius;
+  var offset = circumference * (1 - p / 100);
+  return (
+    '<div class="res-donut">' +
+    '<svg class="res-donut-svg" viewBox="0 0 64 64" width="64" height="64">' +
+    '<circle class="res-donut-bg" cx="32" cy="32" r="' + radius + '" ' +
+    'fill="none" stroke="#1f1f1f" stroke-width="8"/>' +
+    '<circle class="res-donut-fg" cx="32" cy="32" r="' + radius + '" ' +
+    'fill="none" stroke="' + color + '" stroke-width="8" ' +
+    'stroke-dasharray="' + circumference.toFixed(2) + '" ' +
+    'stroke-dashoffset="' + offset.toFixed(2) + '" ' +
+    'stroke-linecap="round" transform="rotate(-90 32 32)"/>' +
+    '<text x="32" y="36" text-anchor="middle" class="res-donut-text">' + p + '%</text>' +
+    '</svg>' +
+    '<div class="res-donut-label">' + label + '</div>' +
+    '</div>'
+  );
+}
+
 function renderResources() {
   var container = document.getElementById("resources");
   var keys = Object.keys(resourceData);
@@ -149,6 +173,12 @@ function buildResourceCard(k) {
       (d._cpuModel ? " &middot; " + escapeHtml(d._cpuModel) : "") +
       "</div>";
   }
+  var donutRow =
+    '<div class="res-donut-row">' +
+    donutHtml("CPU", cpu) +
+    donutHtml("Mem", mem) +
+    donutHtml("Disk", diskPct) +
+    "</div>";
   var html =
     '<div class="res-card" data-host-name="' +
     escapeHtml(k) +
@@ -157,13 +187,14 @@ function buildResourceCard(k) {
     escapeHtml(k) +
     "</div>" +
     subtitleHtml +
-    barHtml("CPU", cpu) +
-    barHtml("Mem", mem) +
-    barHtml("Disk", diskPct);
+    donutRow;
   if (d.gpu && d.gpu.length > 0) {
-    d.gpu.forEach(function (g) {
-      html += barHtml("GPU", g.utilization_percent || 0);
+    var gpuRow = '<div class="res-donut-row">';
+    d.gpu.forEach(function (g, i) {
+      gpuRow += donutHtml("GPU" + (d.gpu.length > 1 ? (i + 1) : ""), g.utilization_percent || 0);
     });
+    gpuRow += "</div>";
+    html += gpuRow;
   }
   html += loadHtml + cpuInfo + memDetail;
   if (d.subagents !== undefined) {

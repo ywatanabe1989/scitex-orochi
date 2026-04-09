@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import functools
 import json
 import logging
 import mimetypes
@@ -13,11 +14,33 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+
+from hub.models import WorkspaceToken
 
 log = logging.getLogger(__name__)
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
+def _login_or_token_required(view_func):
+    """Allow access via Django session OR workspace token query param."""
+
+    @functools.wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if request.user and request.user.is_authenticated:
+            return view_func(request, *args, **kwargs)
+        token = request.GET.get("token") or request.POST.get("token")
+        if token:
+            try:
+                WorkspaceToken.objects.get(token=token)
+                return view_func(request, *args, **kwargs)
+            except WorkspaceToken.DoesNotExist:
+                pass
+        return JsonResponse({"error": "Authentication required"}, status=401)
+
+    return wrapper
 
 ALLOWED_MIME_PREFIXES = (
     "image/",
@@ -27,6 +50,14 @@ ALLOWED_MIME_PREFIXES = (
     "application/javascript",
     "application/xml",
     "application/x-python",
+    "application/zip",
+    "application/gzip",
+    "application/x-tar",
+    "application/octet-stream",
+    "application/vnd.openxmlformats",
+    "application/vnd.ms-",
+    "audio/",
+    "video/",
 )
 
 
@@ -64,7 +95,8 @@ def _save_to_media(data: bytes, filename: str, mime_type: str) -> dict:
     }
 
 
-@login_required
+@csrf_exempt
+@_login_or_token_required
 @require_POST
 def api_upload(request):
     """POST /api/upload -- multipart file upload."""
@@ -84,7 +116,8 @@ def api_upload(request):
     return JsonResponse(result, status=201)
 
 
-@login_required
+@csrf_exempt
+@_login_or_token_required
 @require_POST
 def api_upload_base64(request):
     """POST /api/upload-base64 -- base64-encoded file upload (sketches)."""
