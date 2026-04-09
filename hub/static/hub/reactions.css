@@ -78,6 +78,8 @@
   display: flex;
   gap: 2px;
   z-index: 1000;
+  white-space: nowrap;
+  max-width: calc(100vw - 16px);
 }
 
 .reaction-picker-btn {

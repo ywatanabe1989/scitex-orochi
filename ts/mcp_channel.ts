@@ -13,7 +13,7 @@ import {
 
 import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
-import { handleReply, handleHistory, handleStatus } from "./src/tools.js";
+import { handleReply, handleHistory, handleReact, handleStatus } from "./src/tools.js";
 
 // Unified truthy check for env var guards
 const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
@@ -164,6 +164,25 @@ const TOOL_DEFS = [
     },
   },
   {
+    name: "react",
+    description:
+      "React to an Orochi message with an emoji (toggle semantics). Pass the integer message_id and the emoji character.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        message_id: {
+          type: ["number", "string"],
+          description: "The integer ID of the message to react to.",
+        },
+        emoji: {
+          type: "string",
+          description: "The emoji character (e.g. 👍, ❌, 👀).",
+        },
+      },
+      required: ["message_id", "emoji"],
+    },
+  },
+  {
     name: "status",
     description: "Get current Orochi connection status and diagnostics.",
     inputSchema: { type: "object" as const, properties: {} },
@@ -178,6 +197,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args } = req.params;
   if (name === "reply") return handleReply(conn, args as any);
   if (name === "history") return handleHistory(args as any);
+  if (name === "react") return handleReact(args as any);
   if (name === "status") return handleStatus(conn);
   throw new Error(`Unknown tool: ${name}`);
 });

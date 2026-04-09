@@ -32,8 +32,13 @@ function openReactionPicker(btn, messageId) {
   var rect = btn.getBoundingClientRect();
   reactionPicker.style.position = "fixed";
   reactionPicker.style.top = (rect.bottom + 4) + "px";
-  reactionPicker.style.left = rect.left + "px";
+  /* Clamp to viewport — the react button sits in the top-right of each
+   * message, so anchoring to rect.left pushes the picker off the right
+   * edge on narrow screens, which clipped all but the first emoji. */
   document.body.appendChild(reactionPicker);
+  var pickerWidth = reactionPicker.offsetWidth || 260;
+  var left = Math.max(8, Math.min(rect.right - pickerWidth, window.innerWidth - pickerWidth - 8));
+  reactionPicker.style.left = left + "px";
   /* Close on outside click */
   setTimeout(function () {
     document.addEventListener("click", closeReactionPicker, { once: true });
