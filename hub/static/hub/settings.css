@@ -182,7 +182,8 @@
 }
 
 /* Eye button */
-.btn-eye {
+.btn-eye,
+.btn-copy {
   background: none;
   border: none;
   cursor: pointer;

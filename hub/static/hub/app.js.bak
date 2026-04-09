@@ -254,16 +254,13 @@ function stopRestPolling() {
 function handleMessage(msg) {
   if (msg.type === "message") {
     var content = "";
-    /* Hub sends flat messages: {type, sender, channel, text, ts, metadata} */
+    /* Hub sends flat messages: {type, sender, channel, text, ts} */
     if (msg.text || msg.channel) {
       content = msg.text || "";
       if (!msg.payload) {
-        var attachments = (msg.metadata && msg.metadata.attachments) || [];
         msg.payload = {
           channel: msg.channel || "",
           content: content,
-          metadata: msg.metadata || {},
-          attachments: attachments,
         };
       }
     } else if (msg.payload) {
@@ -286,11 +283,6 @@ function handleMessage(msg) {
   ) {
     fetchAgents();
     fetchStats();
-    fetchResources();
-  } else if (msg.type === "reaction_update") {
-    if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
-  } else if (msg.type === "thread_reply") {
-    if (typeof handleThreadReply === "function") handleThreadReply(msg);
   }
 }
 
@@ -351,7 +343,7 @@ function connect() {
     try {
       handleMessage(JSON.parse(event.data));
     } catch (e) {
-      console.error("[orochi-ws] message handling error:", e, "raw:", event.data.substring(0, 200));
+      /* ignore parse errors */
     }
   };
 }
@@ -360,9 +352,6 @@ async function fetchAgents() {
   try {
     var res = await fetch(apiUrl("/api/agents"));
     var agents = await res.json();
-    /* Cache for the Activity tab and other consumers */
-    window.__lastAgents = agents;
-    if (typeof renderActivityTab === "function") renderActivityTab();
     var container = document.getElementById("agents");
     if (agents.length === 0) {
       container.innerHTML = '<p id="no-agents">No agents connected</p>';

@@ -4,6 +4,7 @@
 var mentionDropdown = document.getElementById("mention-dropdown");
 var mentionSelectedIndex = -1;
 var cachedAgentObjects = [];
+var cachedMemberNames = [];
 
 var SPECIAL_MENTIONS = [
   { name: "all", desc: "notify everyone" },
@@ -46,6 +47,15 @@ async function refreshAgentNames() {
       return a.name;
     });
     cachedAgentObjects = agents;
+  } catch (e) {
+    /* ignore */
+  }
+  try {
+    var res2 = await fetch(apiUrl("/api/members/"), { credentials: "same-origin" });
+    var members = await res2.json();
+    cachedMemberNames = members.map(function (m) {
+      return m.username;
+    });
   } catch (e) {
     /* ignore */
   }
@@ -151,7 +161,12 @@ document.getElementById("msg-input").addEventListener("input", function () {
   var matchedSpecial = SPECIAL_MENTIONS.filter(function (s) {
     return s.name.indexOf(info.query) === 0;
   });
-  var matchedAgents = cachedAgentNames
+  /* Combine agents and members, deduplicate */
+  var allNames = cachedAgentNames.slice();
+  cachedMemberNames.forEach(function (m) {
+    if (allNames.indexOf(m) === -1) allNames.push(m);
+  });
+  var matchedAgents = allNames
     .map(function (n) {
       var score = fuzzyMatch(info.query, n);
       /* Also match against cleaned display name */

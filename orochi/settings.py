@@ -12,6 +12,29 @@ try:
 except Exception:
     OROCHI_VERSION = "0.5.1"
 
+# Deployment build ID — set at container start or read from env.
+# Used by the dashboard to show a "new/updated" badge and verify deploys.
+OROCHI_BUILD_ID = os.environ.get("OROCHI_BUILD_ID", "")
+OROCHI_DEPLOYED_AT = os.environ.get("OROCHI_DEPLOYED_AT", "")
+if not OROCHI_DEPLOYED_AT:
+    # Fall back to process start time (ISO-8601 UTC)
+    from datetime import datetime as _dt, timezone as _tz
+
+    OROCHI_DEPLOYED_AT = _dt.now(_tz.utc).isoformat()
+
+# If no explicit build ID, derive one from the deploy timestamp so it
+# changes every restart. This guarantees the dashboard version string
+# visibly updates even when the package version is unchanged.
+if not OROCHI_BUILD_ID:
+    try:
+        from datetime import datetime as _dt2
+
+        OROCHI_BUILD_ID = _dt2.fromisoformat(
+            OROCHI_DEPLOYED_AT.replace("Z", "+00:00")
+        ).strftime("%Y%m%d.%H%M")
+    except Exception:
+        OROCHI_BUILD_ID = ""
+
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
     "django-insecure-change-me-in-production",

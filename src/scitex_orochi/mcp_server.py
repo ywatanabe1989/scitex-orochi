@@ -110,6 +110,120 @@ if _FASTMCP_AVAILABLE:
                 ch_set.update(info)
         return json.dumps({"channels": sorted(ch_set)})
 
+    @mcp.tool()
+    async def orochi_machine_status() -> str:
+        """Report the local machine's resource, version, process, and git status.
+
+        Uses scitex_orochi._status.get_machine_status() if available.
+        Safe to call from any agent; returns stdlib-collected data only.
+        """
+        try:
+            from scitex_orochi._status import get_machine_status
+
+            status = get_machine_status()
+            return json.dumps(status)
+        except Exception as e:
+            return json.dumps({"error": f"status unavailable: {e}"})
+
+    @mcp.tool()
+    async def orochi_upload(file_path: str, channel: str = "#general", message: str = "") -> str:
+        """Upload a file to Orochi and optionally share it in a channel.
+
+        Args:
+            file_path: Absolute path to the file to upload.
+            channel: Channel to share the file in (default: #general).
+            message: Optional message to accompany the file.
+        """
+        import base64
+        import mimetypes
+        from pathlib import Path
+
+        from scitex_orochi._config import DASHBOARD_PORT, HOST, OROCHI_TOKEN
+
+        p = Path(file_path)
+        if not p.exists():
+            return json.dumps({"error": f"File not found: {file_path}"})
+        if not p.is_file():
+            return json.dumps({"error": f"Not a file: {file_path}"})
+
+        data = p.read_bytes()
+        mime_type = mimetypes.guess_type(p.name)[0] or "application/octet-stream"
+        b64 = base64.b64encode(data).decode()
+
+        url = f"http://{HOST}:{DASHBOARD_PORT}/api/upload-base64"
+        headers = {"Content-Type": "application/json"}
+        if OROCHI_TOKEN:
+            url += f"?token={OROCHI_TOKEN}"
+
+        import asyncio
+        import urllib.request
+
+        payload = json.dumps({
+            "data": b64,
+            "filename": p.name,
+            "mime_type": mime_type,
+        }).encode()
+        req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+        try:
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, urllib.request.urlopen, req
+            )
+            result = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            return json.dumps({"error": f"Upload failed ({e.code}): {e.read().decode()}"})
+
+        # Share in channel if requested
+        if channel:
+            attach_msg = message or f"Shared file: {p.name}"
+            metadata = {"attachments": [result]}
+            async with _make_client(channels=[channel]) as client:
+                await client.send(channel, attach_msg, metadata=metadata)
+
+        return json.dumps({"status": "uploaded", **result})
+
+    @mcp.tool()
+    async def orochi_download(url: str, save_path: str) -> str:
+        """Download a file from Orochi media.
+
+        Args:
+            url: The file URL (from a message attachment).
+            save_path: Local path to save the downloaded file.
+        """
+        from pathlib import Path
+
+        from scitex_orochi._config import DASHBOARD_PORT, HOST, OROCHI_TOKEN
+
+        # Resolve relative media URLs to full URLs
+        if url.startswith("/media/") or url.startswith("media/"):
+            url = f"http://{HOST}:{DASHBOARD_PORT}/{url.lstrip('/')}"
+
+        import asyncio
+        import urllib.request
+
+        dl_url = url
+        if OROCHI_TOKEN and "?" in dl_url:
+            dl_url += f"&token={OROCHI_TOKEN}"
+        elif OROCHI_TOKEN:
+            dl_url += f"?token={OROCHI_TOKEN}"
+
+        try:
+            resp = await asyncio.get_event_loop().run_in_executor(
+                None, urllib.request.urlopen, dl_url
+            )
+            data = resp.read()
+        except urllib.error.HTTPError as e:
+            return json.dumps({"error": f"Download failed ({e.code})"})
+
+        dest = Path(save_path)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(data)
+
+        return json.dumps({
+            "status": "downloaded",
+            "path": str(dest),
+            "size": len(data),
+        })
+
 
 def main() -> None:
     if not _FASTMCP_AVAILABLE:

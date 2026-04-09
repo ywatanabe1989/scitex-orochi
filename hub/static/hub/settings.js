@@ -13,6 +13,39 @@ function toggleToken(btn) {
   }
 }
 
+/* Copy token to clipboard */
+function copyToken(btn) {
+  /* The <code> is the first child of the <td> -- walk back from the copy button */
+  var td = btn.parentElement;
+  var code = td.querySelector("code[data-token]");
+  if (!code) return;
+  var full = code.dataset.token;
+  var fallback = function () {
+    var ta = document.createElement("textarea");
+    ta.value = full;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } catch (e) {
+      /* ignore */
+    }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(full).catch(fallback);
+  } else {
+    fallback();
+  }
+  var orig = btn.textContent;
+  btn.textContent = "\u2713";
+  setTimeout(function () {
+    btn.textContent = orig;
+  }, 1200);
+}
+
 /* Render workspace icon preview on settings page */
 (function () {
   var preview = document.getElementById("ws-icon-preview");

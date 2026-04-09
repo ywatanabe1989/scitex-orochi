@@ -34,6 +34,7 @@ urlpatterns = [
     path("login/", views.signin_view, name="login"),
     path("logout/", views.signout_view, name="logout"),
     path("invite/<str:token>/", views.accept_invite_view, name="accept-invite"),
+    path("agent-login/", views.agent_login_view, name="agent-login"),
     # REST API — no slug needed, workspace from subdomain
     path("api/channels/", views.api_channels, name="api-channels"),
     path("api/messages/", views.api_messages, name="api-messages"),
@@ -48,6 +49,11 @@ urlpatterns = [
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
+    path("api/media/", views.api_media, name="api-media"),
+    path("api/members/", views.api_members, name="api-members"),
+    path("api/reactions/", views.api_reactions, name="api-reactions"),
+    path("api/releases/", views.api_releases, name="api-releases"),
+    path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
     path("api/config/", views.api_config, name="api-config"),
     # File upload

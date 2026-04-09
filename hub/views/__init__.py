@@ -8,8 +8,13 @@ from hub.views.api import (  # noqa: F401
     api_config,
     api_connectivity,
     api_history,
+    api_media,
+    api_members,
     api_messages,
     api_event_tool_use,
+    api_reactions,
+    api_releases,
+    api_threads,
     api_resources,
     api_stats,
     api_watchdog_alerts,
@@ -17,6 +22,7 @@ from hub.views.api import (  # noqa: F401
 )
 from hub.views.auth import (  # noqa: F401
     accept_invite_view,
+    agent_login_view,
     create_workspace_view,
     index,
     signin_view,
