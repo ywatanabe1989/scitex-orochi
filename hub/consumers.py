@@ -94,6 +94,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "model": payload.get("model", ""),
                 "workdir": payload.get("workdir", ""),
                 "icon": payload.get("icon", ""),
+                "icon_emoji": payload.get("icon_emoji", ""),
+                "icon_text": payload.get("icon_text", ""),
                 "channels": channels,
             }
 

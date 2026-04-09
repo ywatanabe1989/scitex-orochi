@@ -180,6 +180,54 @@
                         Contact your server administrator to configure or rotate the token.
                     </div>
                 </section>
+                {% if is_admin %}
+                    <section class="settings-section">
+                        <h4>Rename Workspace</h4>
+                        <p class="settings-desc">Change the workspace URL. This will change the subdomain used to access this workspace.</p>
+                        <form method="post" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="rename_workspace">
+                            <input type="text"
+                                   name="new_name"
+                                   value="{{ workspace.name }}"
+                                   pattern="[a-z0-9]([a-z0-9\-]*[a-z0-9])?"
+                                   title="Lowercase letters, numbers, and hyphens only"
+                                   required>
+                            <button type="submit" class="btn-small btn-primary">Rename</button>
+                        </form>
+                        <p class="settings-desc settings-note">Note: This will change the workspace URL.</p>
+                    </section>
+                    <section class="settings-section danger-zone">
+                        <h4>Danger Zone</h4>
+                        <div class="danger-box">
+                            <div class="danger-box-header">
+                                <strong>Delete this workspace</strong>
+                                <p class="settings-desc">
+                                    Once you delete a workspace, there is no going back. All channels, messages, tokens, and members will be permanently removed.
+                                </p>
+                            </div>
+                            <form method="post" class="danger-form" id="delete-workspace-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_workspace">
+                                <label class="danger-label" for="confirm-delete-name">
+                                    Type <strong>{{ workspace.name }}</strong> to confirm:
+                                </label>
+                                <div class="danger-form-row">
+                                    <input type="text"
+                                           id="confirm-delete-name"
+                                           name="confirm_name"
+                                           placeholder="{{ workspace.name }}"
+                                           autocomplete="off"
+                                           required>
+                                    <button type="submit"
+                                            id="btn-delete-workspace"
+                                            class="btn-small btn-danger"
+                                            disabled>Delete this workspace</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+                {% endif %}
             </div>
         </main>
     </div>

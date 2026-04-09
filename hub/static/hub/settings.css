@@ -200,3 +200,71 @@
 #channel-list a:hover {
   color: #fff;
 }
+
+/* Danger Zone */
+.danger-zone h4 {
+  color: #d32f2f;
+}
+
+.danger-box {
+  border: 1px solid #d32f2f;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  background: #1a1d21;
+}
+
+.danger-box-header {
+  margin-bottom: 1rem;
+}
+
+.danger-box-header strong {
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.danger-box-header .settings-desc {
+  margin-bottom: 0;
+  margin-top: 0.3rem;
+}
+
+.danger-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.danger-label {
+  color: #bbb;
+  font-size: 0.85rem;
+}
+
+.danger-label strong {
+  color: #fff;
+}
+
+.danger-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.danger-form-row input[type="text"] {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1d21;
+  color: #fff;
+  font-size: 0.9rem;
+  flex: 1;
+  max-width: 300px;
+}
+
+.danger-form-row input[type="text"]:focus {
+  outline: none;
+  border-color: #d32f2f;
+}
+
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

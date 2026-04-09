@@ -1,15 +1,16 @@
 """Workspace dashboard and settings views (served on subdomain)."""
 
+import re
 from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from hub.models import Channel, Message, WorkspaceMember
-from hub.views._helpers import get_workspace, workspace_url
+from hub.models import Channel, Message, Workspace, WorkspaceMember
+from hub.views._helpers import bare_url, get_workspace, workspace_url
 
 
 @login_required
@@ -65,13 +66,16 @@ def workspace_settings_view(request):
     membership = WorkspaceMember.objects.filter(
         user=request.user, workspace=workspace
     ).first()
-    if not request.user.is_superuser and (not membership or membership.role != "admin"):
+    is_admin = request.user.is_superuser or (membership and membership.role == "admin")
+    if not is_admin:
         return render(request, "hub/no_access.html", status=403)
 
     from hub.models import WorkspaceInvitation, WorkspaceToken
 
     if request.method == "POST":
-        _handle_settings_post(request, workspace)
+        response = _handle_settings_post(request, workspace)
+        if response is not None:
+            return response
 
     tokens = WorkspaceToken.objects.filter(workspace=workspace)
     members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
@@ -86,12 +90,17 @@ def workspace_settings_view(request):
             "tokens": tokens,
             "members": members,
             "invitations": invitations,
+            "is_admin": is_admin,
         },
     )
 
 
 def _handle_settings_post(request, workspace):
-    """Process POST actions on workspace settings page."""
+    """Process POST actions on workspace settings page.
+
+    Returns an HttpResponse for redirects, or None to fall through to
+    the normal render path.
+    """
     from hub.models import WorkspaceInvitation, WorkspaceToken
 
     action = request.POST.get("action")
@@ -141,3 +150,32 @@ def _handle_settings_post(request, workspace):
                 messages.success(request, f"Invited {email}. Link: {invite_link}")
             else:
                 messages.error(request, f"{email} is already invited.")
+    elif action == "rename_workspace":
+        new_name = request.POST.get("new_name", "").strip().lower()
+        if not new_name:
+            messages.error(request, "Workspace name cannot be empty.")
+        elif not re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", new_name):
+            messages.error(
+                request,
+                "Invalid name. Use lowercase letters, numbers, and hyphens only.",
+            )
+        elif new_name == workspace.name:
+            messages.info(request, "Name unchanged.")
+        elif Workspace.objects.filter(name=new_name).exists():
+            messages.error(request, f"Workspace '{new_name}' already exists.")
+        else:
+            workspace.name = new_name
+            workspace.save(update_fields=["name"])
+            messages.success(request, f"Workspace renamed to '{new_name}'.")
+            return redirect(workspace_url(new_name, "/settings/"))
+    elif action == "delete_workspace":
+        confirm_name = request.POST.get("confirm_name", "").strip()
+        if confirm_name != workspace.name:
+            messages.error(
+                request,
+                "Workspace name does not match. Deletion cancelled.",
+            )
+        else:
+            workspace.delete()
+            return redirect(bare_url("/"))
+    return None

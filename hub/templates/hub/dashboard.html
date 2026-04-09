@@ -46,13 +46,19 @@
                 <div id="filter-suggest" class="filter-suggest"></div>
                 <div id="filter-tags" class="filter-tags"></div>
             </div>
-            <h2 class="collapsible-heading channels-heading">Agents <span class="sidebar-count" id="sidebar-count-agents"></span></h2>
+            <h2 class="collapsible-heading channels-heading">
+                Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
+            </h2>
             <div id="agents" class="sidebar-section">
                 <p id="no-agents">No agents connected</p>
             </div>
-            <h2 class="collapsible-heading channels-heading">Channels <span class="sidebar-count" id="sidebar-count-channels"></span></h2>
+            <h2 class="collapsible-heading channels-heading">
+                Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
+            </h2>
             <div id="channels" class="sidebar-section"></div>
-            <h2 class="collapsible-heading channels-heading">Machines <span class="sidebar-count" id="sidebar-count-machines"></span></h2>
+            <h2 class="collapsible-heading channels-heading">
+                Machines <span class="sidebar-count" id="sidebar-count-machines"></span>
+            </h2>
             <div id="resources" class="sidebar-section"></div>
             <div class="sidebar-footer">
                 <span>{{ request.user.username }}</span>
@@ -108,7 +114,8 @@
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
     </script>
     <script src="{% static 'hub/config.js' %}?v=2"></script>
-    <script src="{% static 'hub/app.js' %}?v=42"></script>
+    <script src="{% static 'hub/agent-icons.js' %}?v=1"></script>
+    <script src="{% static 'hub/app.js' %}?v=43"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=1"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>

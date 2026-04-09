@@ -167,6 +167,8 @@ export class OrochiConnection {
           model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${hostname()}`,
           icon: process.env.SCITEX_OROCHI_ICON || "",
+          icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
+          icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
           project: "",
         },
       }),
