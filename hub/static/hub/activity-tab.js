@@ -36,8 +36,17 @@ function _livenessOrder(liveness) {
   }
 }
 
-function _renderTaskField(task) {
-  if (!task) return '<span class="activity-task-empty">no task reported</span>';
+function _renderTaskField(task, fallback) {
+  if (!task) {
+    if (fallback) {
+      return (
+        '<span class="activity-task-fallback" title="last activity (no structured task set)">' +
+        escapeHtml(fallback) +
+        "</span>"
+      );
+    }
+    return '<span class="activity-task-empty">no task reported</span>';
+  }
   /* Linkify #NNN issue refs */
   var safe = escapeHtml(task);
   return safe.replace(
@@ -126,9 +135,8 @@ function renderActivityTab() {
       '<span class="activity-liveness">' + _livenessLabel(liveness) + (idleStr ? ' · ' + idleStr : '') + '</span>' +
       '</div>' +
       '<div class="activity-meta">' + machine + ' · ' + role + '</div>' +
-      '<div class="activity-task">' + _renderTaskField(task) + '</div>' +
+      '<div class="activity-task">' + _renderTaskField(task, preview) + '</div>' +
       subagentsHtml +
-      previewHtml +
       '</div>'
     );
   }).join("");
