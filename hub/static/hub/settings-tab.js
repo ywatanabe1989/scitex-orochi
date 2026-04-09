@@ -35,7 +35,27 @@ function fetchSettings() {
     });
 }
 
+function wireSettingsModeTabs(container) {
+  /* User/Workspace mode pane toggle — must run after AJAX load because the
+   * panes do not exist at DOMContentLoaded. */
+  var btns = container.querySelectorAll(".settings-mode-btn");
+  var panes = container.querySelectorAll(".settings-mode-pane");
+  if (!btns.length || !panes.length) return;
+  btns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var mode = btn.getAttribute("data-mode");
+      btns.forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
+      panes.forEach(function (p) {
+        p.style.display = p.getAttribute("data-mode") === mode ? "" : "none";
+      });
+    });
+  });
+}
+
 function wireSettingsForms(container) {
+  wireSettingsModeTabs(container);
   /* Make all forms in the settings tab submit via AJAX */
   container.querySelectorAll("form").forEach(function (form) {
     form.addEventListener("submit", function (e) {
