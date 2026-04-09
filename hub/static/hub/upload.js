@@ -24,8 +24,16 @@ function _ensureAttachmentTray() {
   _attachmentTray = document.createElement("div");
   _attachmentTray.id = "pending-attachments";
   _attachmentTray.className = "pending-attachments";
-  var textarea = document.getElementById("msg-input");
-  inputBar.insertBefore(_attachmentTray, textarea);
+  /* Insert at the very top of .input-bar so the tray floats above whatever
+   * row structure the template is using (flat textarea+buttons, or the
+   * newer .input-bar-row wrapper). Using insertBefore(textarea) broke
+   * because the textarea is no longer a direct child after the layout
+   * refactor. */
+  if (inputBar.firstChild) {
+    inputBar.insertBefore(_attachmentTray, inputBar.firstChild);
+  } else {
+    inputBar.appendChild(_attachmentTray);
+  }
   return _attachmentTray;
 }
 
