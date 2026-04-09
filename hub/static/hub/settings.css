@@ -8,6 +8,36 @@
   max-width: 800px;
 }
 
+/* User vs Workspace mode tabs (#147) */
+.settings-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 0;
+}
+.settings-mode-btn {
+  background: none;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.settings-mode-btn:hover {
+  color: #ddd;
+}
+.settings-mode-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+}
+.settings-mode-pane {
+  /* Toggled via JS */
+}
+
 .settings-section {
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
