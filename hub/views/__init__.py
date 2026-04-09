@@ -3,6 +3,7 @@
 from hub.views.api import (  # noqa: F401
     api_agents,
     api_agents_purge,
+    api_agents_register,
     api_agents_registry,
     api_channels,
     api_config,
