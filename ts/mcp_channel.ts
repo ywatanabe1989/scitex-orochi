@@ -19,6 +19,7 @@ import {
   handleReact,
   handleStatus,
   handleSubagents,
+  handleTask,
 } from "./src/tools.js";
 
 // Unified truthy check for env var guards
@@ -170,6 +171,22 @@ const TOOL_DEFS = [
     },
   },
   {
+    name: "task",
+    description:
+      "Update this agent's current intellectual task so users can see what it is thinking about in real time in the Activity tab. Call this whenever picking up a new piece of work — even for work that has no shell signature (reading, designing, reviewing).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        task: {
+          type: "string",
+          description:
+            "Short description of the current work (<= 200 chars). Include issue refs like #142 when relevant.",
+        },
+      },
+      required: ["task"],
+    },
+  },
+  {
     name: "subagents",
     description:
       "Report this agent's current subagent tree to Orochi so the Activity tab renders them nested under this agent. Pass the full list on every call (full-replace semantics).",
@@ -230,6 +247,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "history") return handleHistory(args as any);
   if (name === "react") return handleReact(args as any);
   if (name === "subagents") return handleSubagents(conn, args as any);
+  if (name === "task") return handleTask(conn, args as any);
   if (name === "status") return handleStatus(conn);
   throw new Error(`Unknown tool: ${name}`);
 });
