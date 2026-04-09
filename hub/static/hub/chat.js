@@ -13,11 +13,24 @@ var issueTitleCache = {};
 function applyIssueTitleHints(scope) {
   var root = scope || document;
   root.querySelectorAll(".issue-link").forEach(function (a) {
-    var m = a.textContent.match(/#(\d+)/);
-    if (!m) return;
-    var num = m[1];
-    if (issueTitleCache[num] && !a.dataset.hinted) {
-      a.title = "#" + num + " " + issueTitleCache[num];
+    /* Parse from the raw number — text may already include an inline title */
+    var num = a.getAttribute("data-issue-num");
+    if (!num) {
+      var m = a.textContent.match(/#(\d+)/);
+      if (!m) return;
+      num = m[1];
+      a.setAttribute("data-issue-num", num);
+    }
+    var title = issueTitleCache[num];
+    if (title && !a.dataset.hinted) {
+      a.title = "#" + num + " " + title;
+      /* Inline the title so readers can see it without hovering. Kept
+       * compact and clipped via CSS so long titles don't wrap the msg. */
+      a.innerHTML =
+        '#' + num +
+        ' <span class="issue-link-title">(' +
+        escapeHtml(title) +
+        ')</span>';
       a.dataset.hinted = "1";
     }
   });
@@ -77,11 +90,14 @@ function appendMessage(msg) {
   if (channel) {
     el.setAttribute("data-channel", channel);
   }
+  /* Mentions must be highlighted BEFORE the newline→<br> conversion,
+   * otherwise a mention sitting right after a line break doesn't match
+   * the `(^|[\s])` anchor (since <br> is not whitespace). */
   var highlightedContent = escapeHtml(content)
-    .replace(/\n/g, "<br>")
-    .replace(/(^|[\s])@([\w@.\-]+)/g, function (_match, prefix, name) {
+    .replace(/(^|[\s\r\n])@([\w@.\-]+)/g, function (_match, prefix, name) {
       return prefix + '<span class="mention-highlight">@' + name + "</span>";
     })
+    .replace(/\n/g, "<br>")
     .replace(
       /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
       '<span class="channel-highlight">$1</span>',
