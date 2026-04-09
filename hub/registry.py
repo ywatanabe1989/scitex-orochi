@@ -35,7 +35,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "registered_at": time.time(),
             "last_heartbeat": time.time(),
             "last_action": time.time(),  # last meaningful activity (msg, tool call)
-            "current_task": "",
+            "last_message_preview": "",  # truncated last chat message text
+            "current_task": "",  # structured task ID/desc; only set explicitly
             "metrics": {},
         }
 
@@ -43,14 +44,18 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
 def mark_activity(name: str, action: str = "") -> None:
     """Record that an agent did something meaningful (sent a message, ran a tool).
 
-    Distinct from heartbeat — this signals the agent is actively making
-    progress, not just keeping its WebSocket alive.
+    The `action` argument is stored as `last_message_preview` (a truncated
+    chat preview shown in the Activity tab). It does NOT overwrite
+    `current_task` — that field is reserved for STRUCTURED task IDs set
+    explicitly via `set_current_task()` (e.g. from a `task_update` WS
+    message or `orochi report activity --task ...`). Conflating the two
+    leaked chat-preview text into the structured task column.
     """
     with _lock:
         if name in _agents:
             _agents[name]["last_action"] = time.time()
             if action:
-                _agents[name]["current_task"] = action[:120]
+                _agents[name]["last_message_preview"] = action[:120]
 
 
 def set_current_task(name: str, task: str) -> None:
@@ -165,6 +170,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 ),
                 "metrics": a.get("metrics", {}),
                 "current_task": a.get("current_task", ""),
+                "last_message_preview": a.get("last_message_preview", ""),
             }
         )
     return result
