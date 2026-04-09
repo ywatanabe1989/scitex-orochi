@@ -8,7 +8,7 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=110">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=112">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=99">
@@ -139,14 +139,18 @@
             {% endif %}
             <div class="input-bar">
                 <div id="mention-dropdown" class="mention-dropdown"></div>
-                <textarea id="msg-input"
-                          placeholder="Type a message..."
-                          autocomplete="off"
-                          rows="3"></textarea>
-                <input type="file" id="file-input" style="display:none">
-                <button id="msg-attach" type="button" title="Attach file" aria-label="Attach file">📎</button>
-                <button id="msg-sketch" type="button" title="Draw sketch" aria-label="Draw sketch">✏️</button>
-                <button id="msg-send" type="button" title="Send message">Send</button>
+                <div class="input-bar-row">
+                    <textarea id="msg-input"
+                              placeholder="Type a message..."
+                              autocomplete="off"
+                              rows="3"></textarea>
+                    <input type="file" id="file-input" style="display:none">
+                    <div class="input-bar-actions">
+                        <button id="msg-attach" type="button" title="Attach file" aria-label="Attach file">📎</button>
+                        <button id="msg-sketch" type="button" title="Draw sketch" aria-label="Draw sketch">✏️</button>
+                        <button id="msg-send" type="button" title="Send message">Send</button>
+                    </div>
+                </div>
             </div>
             <div class="stats-bar"></div>
         </div>
