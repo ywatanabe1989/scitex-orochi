@@ -800,7 +800,7 @@ def api_agents_register(request):
     return JsonResponse({"status": "ok", "name": name})
 
 
-@login_required
+@csrf_exempt
 @require_http_methods(["POST"])
 def api_agents_purge(request):
     """POST /api/agents/purge — remove stale/offline agents from registry.
@@ -808,6 +808,9 @@ def api_agents_purge(request):
     Accepts optional JSON body:
         {"agent": "agent-name"}  — purge a specific agent
     Without body, purges all offline agents.
+
+    Auth: Django session OR workspace token (?token=wks_... or body.token)
+    so caduceus can evict ghost entries without a browser session.
     """
     from hub.registry import purge_agent, purge_all_offline
 
@@ -817,6 +820,17 @@ def api_agents_purge(request):
             body = json.loads(request.body)
         except (json.JSONDecodeError, ValueError):
             pass
+
+    if not (request.user and request.user.is_authenticated):
+        token = request.GET.get("token") or body.get("token")
+        if not token:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        from hub.models import WorkspaceToken
+
+        try:
+            WorkspaceToken.objects.get(token=token)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
 
     agent_name = body.get("agent")
     if agent_name:

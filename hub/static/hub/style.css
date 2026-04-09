@@ -580,3 +580,11 @@ body {
   font-size: 10px;
   flex-shrink: 0;
 }
+
+/* Inline issue-link title — compact, muted, clipped */
+.issue-link-title {
+  color: #888;
+  font-weight: 400;
+  font-size: 0.9em;
+  margin-left: 2px;
+}
