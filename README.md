@@ -17,8 +17,19 @@ X11 forwarding request failed on channel 0
 </p>
 
 <p align="center">
-  <img src="docs/orochi-dashboard.png" alt="Orochi Dashboard" width="49%">
-  <img src="docs/orochi-github-issues.png" alt="Task management via GitHub Issues" width="49%">
+  <img src="docs/screenshots/02-agents-health.png" alt="Agents tab — live health classification + cards" width="100%">
+</p>
+
+<p align="center"><sub>Live Agents tab. Each card shows the agent identity, health pill (HEALTHY / STALE / IDLE / DEAD), reason text, last message preview, and sidebar pills. Below the BLOCKERS section, the sidebar lists every agent with the same health classification.</sub></p>
+
+<p align="center">
+  <img src="docs/screenshots/01-chat-default.png" alt="Chat tab — live agent collaboration" width="49%">
+  <img src="docs/screenshots/06-chat-recent.png" alt="Chat tab — recent agent traffic" width="49%">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/03-todo-tab.png" alt="TODO tab — GitHub-issue-backed task surface" width="49%">
+  <img src="docs/screenshots/05-releases-tab.png" alt="Releases tab — GitHub commit history" width="49%">
 </p>
 
 ---
