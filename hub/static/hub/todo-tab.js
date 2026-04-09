@@ -208,10 +208,24 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 function _todoBackendState() {
-  /* Load "all" from GitHub if "closed" or "all" is in the active set, otherwise just "open". */
-  if (todoActiveGroups.has("all") || todoActiveGroups.has("closed")) return "all";
+  /* Load "all" from GitHub if "closed", "all", or "blocker" is in the active
+   * set (blocker can match either open or closed issues). Otherwise just "open". */
+  if (
+    todoActiveGroups.has("all") ||
+    todoActiveGroups.has("closed") ||
+    todoActiveGroups.has("blocker")
+  ) {
+    return "all";
+  }
   return "open";
 }
+
+/* Module-level cache so pill clicks don't re-hit the GitHub proxy.
+ * Keyed by backend state ("all" vs "open"). A single "all" fetch is a
+ * superset of "open", so once we have "all" we never need "open" again. */
+var _todoCache = { all: null, open: null };
+var _todoCacheTs = { all: 0, open: 0 };
+var _TODO_CACHE_TTL_MS = 60 * 1000; // refetch at most once/min on pill clicks
 
 function _hasBlockerLabel(issue) {
   return (issue.labels || []).some(function (l) {
@@ -234,9 +248,70 @@ function _passesGroupFilter(issue) {
   return false;
 }
 
-async function fetchTodoList() {
+function _renderTodoFromCache(issues) {
+  var container = document.getElementById("todo-grid");
+  if (!issues || issues.length === 0) {
+    container.innerHTML = '<p class="empty-notice">No issues</p>';
+    return;
+  }
+
+  /* Apply group filter */
+  issues = issues.filter(_passesGroupFilter);
+  if (issues.length === 0) {
+    container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+    return;
+  }
+
+  var grouped = {};
+  PRIORITY_GROUPS.forEach(function (g) {
+    grouped[g.key] = [];
+  });
+  var closedGroup = [];
+  issues.forEach(function (issue) {
+    if (issue.state === "closed") {
+      closedGroup.push(issue);
+    } else {
+      var key = classifyIssue(issue);
+      grouped[key].push(issue);
+    }
+  });
+  PRIORITY_GROUPS.forEach(function (g) {
+    grouped[g.key].sort(sortByUpdated);
+  });
+  closedGroup.sort(sortByUpdated);
+
+  var html = PRIORITY_GROUPS.map(function (g) {
+    return buildGroupHtml(g, grouped[g.key]);
+  }).join("");
+  if (closedGroup.length > 0) {
+    html += buildGroupHtml(
+      { key: "closed", label: "Closed", color: "#555" },
+      closedGroup,
+    );
+  }
+  container.innerHTML = html;
+  attachTodoEvents(container);
+}
+
+async function fetchTodoList(forceRefresh) {
+  var state = _todoBackendState();
+  var now = Date.now();
+
+  /* Cache hit — render instantly with zero network. "all" superset also
+   * satisfies any "open" request. */
+  if (!forceRefresh) {
+    if (_todoCache.all && (now - _todoCacheTs.all) < _TODO_CACHE_TTL_MS) {
+      _renderTodoFromCache(_todoCache.all);
+      return;
+    }
+    if (state === "open" && _todoCache.open && (now - _todoCacheTs.open) < _TODO_CACHE_TTL_MS) {
+      _renderTodoFromCache(_todoCache.open);
+      return;
+    }
+  }
+
   try {
-    var res = await fetch("/api/github/issues?state=" + encodeURIComponent(_todoBackendState()));
+    var res = await fetch("/api/github/issues?state=" + encodeURIComponent(state));
     if (!res.ok) {
       console.error("Failed to fetch TODO list:", res.status);
       var errBody = {};
@@ -255,6 +330,8 @@ async function fetchTodoList() {
       return;
     }
     var issues = await res.json();
+    _todoCache[state] = issues;
+    _todoCacheTs[state] = Date.now();
     var container = document.getElementById("todo-grid");
     if (!issues || issues.length === 0) {
       container.innerHTML = '<p class="empty-notice">No issues</p>';
