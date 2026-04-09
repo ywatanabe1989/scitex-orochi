@@ -18,6 +18,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     var resourcesView = document.getElementById("resources-view");
     var agentsTabView = document.getElementById("agents-tab-view");
     var workspacesView = document.getElementById("workspaces-view");
+    var activityView = document.getElementById("activity-view");
     var settingsView = document.getElementById("settings-view");
     messagesEl.style.display = "none";
     inputBar.style.display = "none";
@@ -25,6 +26,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     resourcesView.style.display = "none";
     agentsTabView.style.display = "none";
     workspacesView.style.display = "none";
+    if (activityView) activityView.style.display = "none";
     if (settingsView) settingsView.style.display = "none";
     if (tab === "chat") {
       messagesEl.style.display = "";
@@ -45,6 +47,13 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       workspacesView.style.display = "block";
       workspacesView.style.flex = "1";
       fetchWorkspaces();
+    } else if (tab === "activity") {
+      if (activityView) {
+        activityView.style.display = "block";
+        activityView.style.flex = "1";
+      }
+      if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
+      if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
     } else if (tab === "settings" && settingsView) {
       settingsView.style.display = "block";
       settingsView.style.flex = "1";

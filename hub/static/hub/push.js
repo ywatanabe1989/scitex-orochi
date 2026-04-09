@@ -140,22 +140,7 @@ async function checkPushState() {
   updatePushToggleUI();
 }
 
-/* Create push toggle button in the stats bar */
-function initPushUI() {
-  var statsBar = document.querySelector(".stats-bar");
-  if (!statsBar || !pushSupported) return;
-  var btn = document.createElement("button");
-  btn.id = "push-toggle";
-  btn.className = "push-toggle push-off";
-  btn.textContent = "Notifications: OFF";
-  btn.addEventListener("click", togglePush);
-  statsBar.appendChild(btn);
-  checkPushState();
-}
-
-/* Initialize on DOM ready */
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initPushUI);
-} else {
-  initPushUI();
-}
+/* Push toggle button removed from sidebar per ywatanabe request.
+ * The push subscription state is still tracked silently — re-enable
+ * the UI by uncommenting initPushUI() if needed in the future. */
+function initPushUI() { /* no-op */ }
