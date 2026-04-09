@@ -598,3 +598,53 @@ body {
   white-space: normal;
   max-width: 100%;
 }
+
+/* Pending attachment tray — staged file chips above the textarea */
+.input-bar { flex-direction: column; align-items: stretch; }
+.pending-attachments {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 8px;
+  background: #0f0f0f;
+  border: 1px solid #222;
+  border-radius: 6px 6px 0 0;
+  border-bottom: none;
+}
+.pending-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 4px 6px;
+  max-width: 220px;
+}
+.pending-attachment-thumb {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.pending-attachment-icon {
+  font-size: 18px;
+}
+.pending-attachment-label {
+  color: #ccc;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+.pending-attachment-remove {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.pending-attachment-remove:hover { color: #ef4444; }

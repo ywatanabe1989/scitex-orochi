@@ -1,13 +1,91 @@
-/* File upload -- attach, drag-drop, clipboard paste (multi-file) */
+/* File upload — attach, drag-drop, clipboard paste (multi-file) with
+ * staged preview. Files picked via paste/drag/file-picker are held in a
+ * pending tray next to the textarea and only sent when the user presses
+ * Send (alongside whatever text they typed). This replaces the old
+ * "paste → immediate surprise send" behaviour. */
 /* globals: currentChannel, userName, sendOrochiMessage, token, apiUrl, csrfToken */
 
 (function () {
-  /* Make the file input multi-select */
   var fileInput = document.getElementById("file-input");
   if (fileInput && !fileInput.hasAttribute("multiple")) {
     fileInput.setAttribute("multiple", "multiple");
   }
 })();
+
+/* Pending attachments (uploaded but not yet sent). Each item:
+ *   { file, uploaded: {url, filename, mime_type, size, file_id}, previewEl } */
+var pendingAttachments = [];
+var _attachmentTray = null;
+
+function _ensureAttachmentTray() {
+  if (_attachmentTray) return _attachmentTray;
+  var inputBar = document.querySelector(".input-bar");
+  if (!inputBar) return null;
+  _attachmentTray = document.createElement("div");
+  _attachmentTray.id = "pending-attachments";
+  _attachmentTray.className = "pending-attachments";
+  var textarea = document.getElementById("msg-input");
+  inputBar.insertBefore(_attachmentTray, textarea);
+  return _attachmentTray;
+}
+
+function _renderAttachmentTray() {
+  var tray = _ensureAttachmentTray();
+  if (!tray) return;
+  if (!pendingAttachments.length) {
+    tray.style.display = "none";
+    tray.innerHTML = "";
+    return;
+  }
+  tray.style.display = "flex";
+  tray.innerHTML = "";
+  pendingAttachments.forEach(function (p, idx) {
+    var item = document.createElement("div");
+    item.className = "pending-attachment";
+    var isImage =
+      p.uploaded &&
+      p.uploaded.mime_type &&
+      p.uploaded.mime_type.indexOf("image/") === 0;
+    var thumb;
+    if (isImage) {
+      thumb = document.createElement("img");
+      thumb.src = p.uploaded.url;
+      thumb.className = "pending-attachment-thumb";
+      thumb.alt = p.uploaded.filename || "image";
+    } else {
+      thumb = document.createElement("span");
+      thumb.className = "pending-attachment-icon";
+      thumb.textContent = "📎";
+    }
+    var label = document.createElement("span");
+    label.className = "pending-attachment-label";
+    label.textContent = (p.uploaded && p.uploaded.filename) || p.file.name;
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "pending-attachment-remove";
+    remove.title = "Remove";
+    remove.textContent = "✕";
+    remove.addEventListener("click", function () {
+      pendingAttachments.splice(idx, 1);
+      _renderAttachmentTray();
+    });
+    item.appendChild(thumb);
+    item.appendChild(label);
+    item.appendChild(remove);
+    tray.appendChild(item);
+  });
+}
+
+function clearPendingAttachments() {
+  pendingAttachments = [];
+  _renderAttachmentTray();
+}
+
+function getPendingAttachments() {
+  return pendingAttachments.map(function (p) {
+    return p.uploaded;
+  });
+}
 
 document.getElementById("msg-attach").addEventListener("click", function () {
   document.getElementById("file-input").click();
@@ -18,18 +96,17 @@ document
   .addEventListener("change", async function () {
     if (!this.files || this.files.length === 0) return;
     var arr = Array.prototype.slice.call(this.files);
-    await uploadFiles(arr);
+    await stageFiles(arr);
     this.value = "";
   });
 
 /**
- * Upload one or more files in a single POST and emit ONE message that
- * carries all attachments. Used by the file picker, drag-drop, and
- * clipboard paste — all paths converge here.
+ * Upload one or more files and stage them in the pending tray. Does NOT
+ * send a message — that happens when the user presses Send.
  */
-async function uploadFiles(files) {
+async function stageFiles(files) {
   if (!files || files.length === 0) return;
-  console.log("[orochi-upload] uploadFiles called:", files.length, "files");
+  console.log("[orochi-upload] stageFiles:", files.length);
   var formData = new FormData();
   files.forEach(function (f) {
     formData.append("file", f);
@@ -39,48 +116,35 @@ async function uploadFiles(files) {
     if (typeof csrfToken !== "undefined" && csrfToken) {
       headers["X-CSRFToken"] = csrfToken;
     }
-    var uploadUrl = apiUrl("/api/upload");
-    console.log("[orochi-upload] POST to:", uploadUrl);
-    var res = await fetch(uploadUrl, {
+    var res = await fetch(apiUrl("/api/upload"), {
       method: "POST",
       headers: headers,
       credentials: "same-origin",
       body: formData,
     });
     if (!res.ok) {
-      var errText = await res.text();
-      console.error("[orochi-upload] Upload failed:", res.status, errText);
+      console.error("[orochi-upload] upload failed:", res.status);
       return;
     }
     var result = await res.json();
-    console.log("[orochi-upload] Upload result:", result);
-    /* Backend returns {files: [...], errors: [...], count, ...top-level-mirror} */
-    var attachments = (result && result.files) || (result && result.url ? [result] : []);
-    if (attachments.length === 0) {
-      console.error("[orochi-upload] no successful uploads", result);
-      return;
-    }
-    var channel = currentChannel || "#general";
-    var contentText = attachments.length === 1
-      ? attachments[0].filename
-      : attachments.length + " files: " + attachments.map(function (a) { return a.filename; }).join(", ");
-    sendOrochiMessage({
-      type: "message",
-      sender: userName,
-      payload: {
-        channel: channel,
-        content: contentText,
-        attachments: attachments,
-      },
+    var uploaded =
+      (result && result.files) || (result && result.url ? [result] : []);
+    uploaded.forEach(function (u, i) {
+      pendingAttachments.push({ file: files[i] || files[0], uploaded: u });
     });
+    _renderAttachmentTray();
   } catch (e) {
-    console.error("[orochi-upload] Upload error:", e);
+    console.error("[orochi-upload] stage error:", e);
   }
 }
 
-/* Backward-compat single-file wrapper */
+/* Backward-compat: some older call sites still invoke uploadFile/uploadFiles.
+ * Route them through the staging path so behaviour stays consistent. */
 async function uploadFile(file) {
-  return uploadFiles([file]);
+  return stageFiles([file]);
+}
+async function uploadFiles(files) {
+  return stageFiles(files);
 }
 
 var msgInput = document.getElementById("msg-input");
@@ -97,28 +161,16 @@ msgInput.addEventListener("drop", function (e) {
   this.classList.remove("drag-over");
   var files = e.dataTransfer.files;
   if (files && files.length) {
-    uploadFiles(Array.prototype.slice.call(files));
+    stageFiles(Array.prototype.slice.call(files));
   }
 });
 
-/* Clipboard paste image upload
- *
- * Bound to the message textarea explicitly (not document) so the handler
- * runs in the capture phase for that element and we can preventDefault
- * before the browser inserts anything. Also falls back through files[]
- * and items[] because browsers expose image clipboard data differently.
- */
+/* Clipboard paste — stage image(s) in the tray, don't send. Dedup by
+ * (name|size|type|lastModified) so the same image can't be captured twice
+ * via both cd.files and cd.items on browsers that expose both. */
 function handleClipboardPaste(e) {
   var cd = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;
-  /* Collect image files from the clipboard.
-   *
-   * A single paste event can expose the same image via BOTH cd.files and
-   * cd.items (getAsFile() returns a fresh File object each time, so
-   * reference-equality dedup fails). Prefer cd.files when non-empty and
-   * fall back to cd.items only when files is empty. Then dedup by
-   * (name, size, type, lastModified) to guard against duplicates from
-   * multi-source browsers. */
   var collected = [];
   var seen = new Set();
   function pushUnique(f) {
@@ -141,10 +193,8 @@ function handleClipboardPaste(e) {
   }
   if (collected.length > 0) {
     e.preventDefault();
-    console.log("[orochi-upload] pasting", collected.length, "image(s) from clipboard");
-    uploadFiles(collected);
+    console.log("[orochi-upload] staging", collected.length, "pasted image(s)");
+    stageFiles(collected);
   }
 }
-/* Bind ONCE to the textarea — duplicate-binding (also on document) caused
-   "image.png shown twice" because both handlers fired for the same event. */
 msgInput.addEventListener("paste", handleClipboardPaste);
