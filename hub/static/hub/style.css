@@ -588,3 +588,13 @@ body {
   font-size: 0.9em;
   margin-left: 2px;
 }
+
+/* Chat links — never truncate, break at any character if needed so full URL
+ * is always visible AND clickable. */
+.msg .content a.chat-link,
+.msg .content a.issue-link {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  max-width: 100%;
+}
