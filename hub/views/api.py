@@ -196,6 +196,58 @@ def api_config(request):
 
 @login_required
 @require_GET
+def api_connectivity(request):
+    """GET /api/connectivity/ — SSH reachability matrix between known machines.
+
+    Returns a list of nodes (machines) and a list of directional edges
+    (source → destination) annotated with reachability and method.
+
+    Currently the matrix is hardcoded from the SSH mesh investigation
+    head@ywata-note-win posted earlier in the session. Once basilisk
+    (#145 / #144) lands the live discovery, this endpoint will be
+    backed by real ping results from the bastion's connectivity probe.
+    """
+    nodes = [
+        {"id": "ywata-note-win", "label": "ywata-note-win", "role": "deployer/coordinator"},
+        {"id": "mba", "label": "mba", "role": "orochi-host"},
+        {"id": "nas", "label": "nas", "role": "data/scitex-cloud"},
+        {"id": "spartan", "label": "spartan", "role": "hpc"},
+    ]
+    # Source → list of (destination, status, method)
+    raw = [
+        # ywata-note-win can reach all (deployer)
+        ("ywata-note-win", "nas", "ok", "direct"),
+        ("ywata-note-win", "spartan", "ok", "direct"),
+        ("ywata-note-win", "mba", "ok", "direct"),
+        # NAS reaches MBA + win (LAN + reverse tunnel)
+        ("nas", "ywata-note-win", "ok", "tunnel"),
+        ("nas", "mba", "ok", "lan"),
+        ("nas", "spartan", "fail", "blocked-firewall"),
+        # MBA reaches NAS + win (LAN + ProxyJump)
+        ("mba", "nas", "ok", "lan"),
+        ("mba", "ywata-note-win", "ok", "proxyjump"),
+        ("mba", "spartan", "fail", "blocked-firewall"),
+        # Spartan blocked outbound (HPC firewall)
+        ("spartan", "mba", "fail", "blocked-firewall"),
+        ("spartan", "nas", "fail", "blocked-firewall"),
+        ("spartan", "ywata-note-win", "fail", "blocked-firewall"),
+    ]
+    edges = [
+        {"source": s, "target": t, "status": status, "method": method}
+        for (s, t, status, method) in raw
+    ]
+    return JsonResponse(
+        {
+            "nodes": nodes,
+            "edges": edges,
+            "source": "hardcoded",  # will become "live" once basilisk lands
+            "ts": timezone.now().isoformat(),
+        }
+    )
+
+
+@login_required
+@require_GET
 def api_agents(request):
     """GET /api/agents — list agents from in-memory registry + DB fallback."""
     workspace = get_workspace(request)

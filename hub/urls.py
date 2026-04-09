@@ -59,6 +59,7 @@ urlpatterns = [
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
     path("api/resources/", views.api_resources, name="api-resources"),
     # File upload
     path("api/upload", views.api_upload, name="api-upload"),
