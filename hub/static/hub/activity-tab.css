@@ -170,3 +170,11 @@
 }
 .activity-subagent-done .activity-subagent-name { color: #4ecdc4; }
 .activity-subagent-failed .activity-subagent-name { color: #ef4444; }
+
+/* Fallback task display when no structured current_task — shows the
+ * last_message_preview in the same slot so cards never look empty. */
+.activity-task-fallback {
+  color: #888;
+  font-style: italic;
+  font-size: 11px;
+}
