@@ -1,11 +1,10 @@
-const CACHE_NAME = "orochi-v5";
+/* Bumped aggressively — every version change invalidates all old caches on
+ * activate. The previous v5 served cache-first, which shadowed every JS/CSS
+ * fix we shipped today. Do not drop below the highest previously-deployed
+ * value or old clients will keep serving stale assets. */
+const CACHE_NAME = "orochi-v200";
 const SHELL_ASSETS = [
   "/",
-  "/static/hub/style.css",
-  "/static/hub/components.css",
-  "/static/hub/responsive.css",
-  "/static/hub/config.js",
-  "/static/hub/app.js",
 ];
 
 self.addEventListener("install", (event) => {
@@ -37,23 +36,22 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cache-first for static assets, network-first for HTML
+  // Network-first for JS/CSS/HTML under /static/ so fixes ship without
+  // needing a cache version bump. The previous cache-first strategy caused
+  // the fleet to keep serving stale scripts for hours after deploys.
   if (url.pathname.startsWith("/static/")) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        const fetchPromise = fetch(event.request)
-          .then((response) => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches
-                .open(CACHE_NAME)
-                .then((cache) => cache.put(event.request, clone));
-            }
-            return response;
-          })
-          .catch(() => cached);
-        return cached || fetchPromise;
-      }),
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches
+              .open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request)),
     );
     return;
   }
