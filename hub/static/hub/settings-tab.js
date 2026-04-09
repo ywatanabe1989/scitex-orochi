@@ -54,8 +54,28 @@ function wireSettingsModeTabs(container) {
   });
 }
 
+function _wireSettingsIconPicker(container) {
+  /* Workspace icon emoji picker — clicking the preview opens a simple
+   * native prompt (kept dependency-free) and POSTs the selection via the
+   * hidden form which Django handles with action=set_icon. */
+  var preview = container.querySelector(".ws-icon-clickable, #ws-icon-preview");
+  var iconInput = container.querySelector("#icon-input");
+  var form = container.querySelector(".settings-form-icon");
+  if (!preview || !iconInput || !form) return;
+  preview.addEventListener("click", function () {
+    var emoji = window.prompt(
+      "Enter a single emoji (or leave blank to clear):",
+      "",
+    );
+    if (emoji === null) return;
+    iconInput.value = emoji.trim();
+    form.submit();
+  });
+}
+
 function wireSettingsForms(container) {
   wireSettingsModeTabs(container);
+  _wireSettingsIconPicker(container);
   /* Make all forms in the settings tab submit via AJAX */
   container.querySelectorAll("form").forEach(function (form) {
     form.addEventListener("submit", function (e) {
