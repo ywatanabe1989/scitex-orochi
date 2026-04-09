@@ -697,3 +697,26 @@ body {
   min-width: 60px;
   padding: 10px 16px;
 }
+
+/* Sidebar health pill on agent rows */
+.sidebar-health {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-radius: 8px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #bbb;
+}
+.sidebar-health-healthy { color: #4ecdc4; border-color: #2e665f; }
+.sidebar-health-idle { color: #f59e0b; border-color: #6b4a12; }
+.sidebar-health-stale { color: #ef4444; border-color: #6b1f1f; }
+.sidebar-health-stuck_prompt { color: #ef4444; border-color: #6b1f1f; animation: brand-new-pulse 1.6s ease-in-out infinite; }
+.sidebar-health-dead { color: #ef4444; background: #2a0f0f; }
+.sidebar-health-ghost { color: #c084fc; border-color: #5b21b6; }
+.sidebar-health-degraded { color: #ffd93d; border-color: #6b5a12; }
+.sidebar-health-remediating { color: #4ecdc4; border-color: #2e665f; animation: brand-new-pulse 1.4s ease-in-out infinite; }
