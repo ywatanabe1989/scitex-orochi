@@ -150,6 +150,19 @@ def _handle_settings_post(request, workspace):
                 messages.success(request, f"Invited {email}. Link: {invite_link}")
             else:
                 messages.error(request, f"{email} is already invited.")
+    elif action == "set_icon":
+        icon = request.POST.get("icon", "").strip()
+        if len(icon) > 10:
+            messages.error(request, "Icon too long.")
+        else:
+            workspace.icon = icon
+            workspace.save(update_fields=["icon"])
+            messages.success(
+                request,
+                f"Workspace icon updated to '{icon}'."
+                if icon
+                else "Workspace icon cleared.",
+            )
     elif action == "rename_workspace":
         new_name = request.POST.get("new_name", "").strip().lower()
         if not new_name:

@@ -20,7 +20,8 @@ def github_issues(request):
         )
 
     github_url = (
-        "https://api.github.com/repos/ywatanabe1989/todo/issues?state=open&per_page=30"
+        "https://api.github.com/repos/ywatanabe1989/todo/issues"
+        "?state=open&per_page=100&sort=updated&direction=desc"
     )
     headers = {
         "Accept": "application/vnd.github.v3+json",

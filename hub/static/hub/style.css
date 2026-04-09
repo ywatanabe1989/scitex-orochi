@@ -443,3 +443,17 @@ body {
   color: #4ecdc4;
   border-color: #4ecdc4;
 }
+
+/* Filter toggle active states (click-to-toggle on sidebar items) */
+.agent-card.filter-active {
+  background: rgba(78, 205, 196, 0.15);
+  border-left: 3px solid #4ecdc4;
+}
+.channel-item.filter-active {
+  background: rgba(126, 200, 227, 0.15);
+  border-left: 3px solid #7ec8e3;
+}
+.res-card.filter-active {
+  background: rgba(78, 205, 196, 0.15);
+  border-left: 3px solid #4ecdc4;
+}

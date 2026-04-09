@@ -15,6 +15,7 @@ class Workspace(models.Model):
 
     name = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True, default="")
+    icon = models.CharField(max_length=10, blank=True, default="")  # emoji
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

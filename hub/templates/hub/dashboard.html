@@ -9,12 +9,14 @@
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
     <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=43">
-    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=5">
+    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=2">
     <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=2">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
 <!-- hook-bypass: inline-style -->
@@ -63,7 +65,8 @@
             <div class="sidebar-footer">
                 <span>{{ request.user.username }}</span>
                 {% if is_admin %}
-                    <a href="#" onclick="document.querySelector('[data-tab=settings]').click();return false">Settings</a>
+                    <a href="#"
+                       onclick="document.querySelector('[data-tab=settings]').click();return false">Settings</a>
                 {% endif %}
                 <a href="{% url 'signout' %}">Logout</a>
             </div>
@@ -90,11 +93,11 @@
                 <div id="workspaces-grid" class="todo-grid"></div>
             </div>
             {% if is_admin %}
-            <div id="settings-view" class="todo-view" style="display:none">
-                <div id="settings-content" class="settings-tab-content">
-                    <p class="empty-notice">Loading settings...</p>
+                <div id="settings-view" class="todo-view" style="display:none">
+                    <div id="settings-content" class="settings-tab-content">
+                        <p class="empty-notice">Loading settings...</p>
+                    </div>
                 </div>
-            </div>
             {% endif %}
             <div class="input-bar">
                 <div id="mention-dropdown" class="mention-dropdown"></div>
@@ -120,6 +123,7 @@
       /* Django auth -- user is already authenticated, use username as display name */
       window.__orochiUserName = "{{ request.user.username|escapejs }}";
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
+      window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
     </script>
     <script src="{% static 'hub/config.js' %}?v=2"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=1"></script>
@@ -131,6 +135,7 @@
     <script src="{% static 'hub/chat.js' %}?v=4"></script>
     <script src="{% static 'hub/mention.js' %}?v=3"></script>
     <script src="{% static 'hub/settings-tab.js' %}?v=1"></script>
+    <script src="{% static 'hub/emoji-picker.js' %}?v=1"></script>
     <script src="{% static 'hub/filter.js' %}?v=2"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=3"></script>
     <script src="{% static 'hub/upload.js' %}?v=3"></script>

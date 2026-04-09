@@ -17,8 +17,11 @@
 (function () {
   var wsIconSlot = document.getElementById("ws-icon-slot");
   var wsName = window.__orochiWorkspaceName || "workspace";
+  var wsIcon = window.__orochiWorkspaceIcon || "";
   if (wsIconSlot) {
-    wsIconSlot.innerHTML = getWorkspaceIcon(wsName, 16);
+    wsIconSlot.innerHTML = wsIcon
+      ? '<span class="ws-emoji-icon">' + wsIcon + "</span>"
+      : getWorkspaceIcon(wsName, 16);
   }
 })();
 

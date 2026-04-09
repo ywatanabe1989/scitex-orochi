@@ -35,12 +35,43 @@ function addTag(type, value) {
   }
   renderTags();
   runFilter();
+  syncFilterVisuals();
 }
 
 function removeTag(index) {
   activeTags.splice(index, 1);
   renderTags();
   runFilter();
+  syncFilterVisuals();
+}
+
+function syncFilterVisuals() {
+  var agentValues = {};
+  var channelValues = {};
+  var hostValues = {};
+  activeTags.forEach(function (t) {
+    if (t.type === "agent") agentValues[t.value.toLowerCase()] = true;
+    if (t.type === "channel") channelValues[t.value.toLowerCase()] = true;
+    if (t.type === "host") hostValues[t.value.toLowerCase()] = true;
+  });
+  document.querySelectorAll(".agent-card").forEach(function (el) {
+    var name = (
+      el.getAttribute("data-agent") || el.textContent.trim().split("\n")[0]
+    ).toLowerCase();
+    el.classList.toggle("filter-active", !!agentValues[name]);
+  });
+  document.querySelectorAll(".channel-item").forEach(function (el) {
+    var ch = (
+      el.getAttribute("data-channel") || el.textContent.trim()
+    ).toLowerCase();
+    el.classList.toggle("filter-active", !!channelValues[ch]);
+  });
+  document.querySelectorAll(".res-card").forEach(function (el) {
+    var host = (
+      el.getAttribute("data-host") || el.textContent.trim().split("\n")[0]
+    ).toLowerCase();
+    el.classList.toggle("filter-active", !!hostValues[host]);
+  });
 }
 
 function renderTags() {
@@ -80,14 +111,14 @@ function getTagSuggestions(prefix) {
       results.push({ type: "channel", value: ch });
     }
   });
-  document.querySelectorAll(".todo-label[data-label-name]").forEach(
-    function (el) {
+  document
+    .querySelectorAll(".todo-label[data-label-name]")
+    .forEach(function (el) {
       var name = el.getAttribute("data-label-name");
       if (name && fuzzyMatch(pLower, name.toLowerCase())) {
         results.push({ type: "label", value: name });
       }
-    },
-  );
+    });
   var seen = {};
   return results
     .filter(function (r) {

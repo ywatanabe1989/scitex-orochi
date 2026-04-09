@@ -62,9 +62,15 @@
                 </section>
                 <section class="settings-section">
                     <h4>Workspace Icon</h4>
-                    <p class="settings-desc">Auto-generated avatar based on workspace name.</p>
-                    <div class="ws-icon-preview" id="ws-icon-preview"></div>
-                    <p class="settings-desc settings-note">Custom icon upload is coming in a future release.</p>
+                    <p class="settings-desc">Click the icon to choose an emoji.</p>
+                    <div class="ws-icon-preview ws-icon-clickable"
+                         id="ws-icon-preview"
+                         title="Click to change icon"></div>
+                    <form method="post" class="settings-form settings-form-icon">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_icon">
+                        <input type="hidden" name="icon" value="" id="icon-input">
+                    </form>
                 </section>
                 <section class="settings-section">
                     <h4>Agent Tokens</h4>
@@ -233,6 +239,13 @@
     </div>
 {% endblock %}
 {% block extra_js %}
+    <!-- hook-bypass: inline-script — Django template vars must be injected server-side -->
+    <script>
+      window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
+      window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
+      window.__orochiCsrfToken = "{{ csrf_token }}";
+    </script>
     <script src="{% static 'hub/app.js' %}"></script>
     <script src="{% static 'hub/settings.js' %}"></script>
+    <script src="{% static 'hub/emoji-picker.js' %}?v=1"></script>
 {% endblock %}

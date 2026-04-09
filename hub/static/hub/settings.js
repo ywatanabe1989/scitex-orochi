@@ -19,5 +19,8 @@ function toggleToken(btn) {
   if (!preview || typeof getWorkspaceIcon !== "function") return;
   var nameEl = document.querySelector(".workspace-name");
   var wsName = nameEl ? nameEl.textContent.trim() : "workspace";
-  preview.innerHTML = getWorkspaceIcon(wsName, 64);
+  var wsIcon = window.__orochiWorkspaceIcon || "";
+  preview.innerHTML = wsIcon
+    ? '<span class="ws-emoji-icon ws-emoji-icon-lg">' + wsIcon + "</span>"
+    : getWorkspaceIcon(wsName, 64);
 })();
