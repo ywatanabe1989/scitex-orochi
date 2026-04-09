@@ -8,8 +8,10 @@ from hub.views.api import (  # noqa: F401
     api_config,
     api_history,
     api_messages,
+    api_event_tool_use,
     api_resources,
     api_stats,
+    api_watchdog_alerts,
     api_workspaces,
 )
 from hub.views.auth import (  # noqa: F401

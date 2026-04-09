@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
 from hub.models import Channel, Message, Workspace, WorkspaceMember
@@ -192,6 +193,101 @@ def api_config(request):
     if token:
         data["dashboard_token"] = token
     return JsonResponse(data)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_event_tool_use(request):
+    """POST /api/events/tool-use/ — receive a tool-use event from a Claude Code hook.
+
+    Hooks (PreToolUse/PostToolUse) on each agent's machine POST here to
+    record meaningful activity. Updates the in-memory registry's
+    last_action timestamp and current_task. Authenticates via workspace
+    token query param so hooks don't need Django sessions.
+
+    Body schema:
+        {
+          "agent": "head@mba",
+          "tool": "Edit",
+          "phase": "post",          # "pre" or "post"
+          "task": "implement #143", # optional, becomes current_task
+          "summary": "edited X.py", # optional, short description
+          "ts": "2026-04-09T08:00Z" # optional
+        }
+    """
+    token = request.GET.get("token") or request.POST.get("token")
+    if token:
+        from hub.models import WorkspaceToken
+        try:
+            WorkspaceToken.objects.get(token=token)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "invalid token"}, status=401)
+    elif not (request.user and request.user.is_authenticated):
+        return JsonResponse({"error": "auth required"}, status=401)
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    agent = (body.get("agent") or "").strip()
+    if not agent:
+        return JsonResponse({"error": "agent required"}, status=400)
+
+    from hub.registry import mark_activity, set_current_task
+    summary = (body.get("summary") or body.get("tool") or "").strip()[:120]
+    mark_activity(agent, action=summary)
+    if body.get("task"):
+        set_current_task(agent, body.get("task")[:120])
+    return JsonResponse({"status": "ok"})
+
+
+@login_required
+@require_GET
+def api_watchdog_alerts(request):
+    """GET /api/watchdog/alerts/ — current agent staleness alerts.
+
+    Returns agents that need attention: those classified as "stale"
+    (>10min silent) or "idle" (>2min silent) AND have an active
+    current_task. Designed to be polled by mamba (or any monitoring
+    client) to drive automated nudges and escalation.
+    """
+    workspace = get_workspace(request)
+    from hub.registry import get_agents
+
+    agents = get_agents(workspace_id=workspace.id)
+    alerts = []
+    for a in agents:
+        liveness = a.get("liveness") or a.get("status") or "online"
+        idle = a.get("idle_seconds")
+        task = (a.get("current_task") or "").strip()
+        if liveness in ("idle", "stale") and task:
+            severity = "stale" if liveness == "stale" else "idle"
+            alerts.append(
+                {
+                    "agent": a["name"],
+                    "severity": severity,
+                    "liveness": liveness,
+                    "idle_seconds": idle,
+                    "current_task": task,
+                    "machine": a.get("machine", ""),
+                    "last_action": a.get("last_action"),
+                    "suggested_action": (
+                        "escalate" if liveness == "stale" else "nudge"
+                    ),
+                }
+            )
+    alerts.sort(key=lambda x: -(x.get("idle_seconds") or 0))
+    return JsonResponse(
+        {
+            "alerts": alerts,
+            "count": len(alerts),
+            "thresholds": {
+                "idle_seconds": 120,
+                "stale_seconds": 600,
+            },
+            "ts": timezone.now().isoformat(),
+        }
+    )
 
 
 @login_required
