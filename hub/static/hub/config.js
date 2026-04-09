@@ -66,3 +66,45 @@
     /* config endpoint unavailable -- use defaults */
   }
 })();
+
+/* Auto-reload on new deploy — polls /api/config every 20s and reloads
+ * the page (bypassing the service worker) when the server's build_id
+ * changes. This removes the "please hard-refresh" step from every
+ * deploy: clients pick up new JS/CSS within ~20s of a docker restart. */
+(function () {
+  var bootstrapBuild = null;
+  var poll = function () {
+    try {
+      var req = new XMLHttpRequest();
+      req.open("GET", "/api/config?_=" + Date.now(), true);
+      req.onload = function () {
+        if (req.status !== 200) return;
+        try {
+          var cfg = JSON.parse(req.responseText);
+          var bid = cfg.build_id || cfg.version || "";
+          if (!bid) return;
+          if (bootstrapBuild === null) {
+            bootstrapBuild = bid;
+            return;
+          }
+          if (bid !== bootstrapBuild) {
+            console.log("[orochi] build changed: " + bootstrapBuild + " → " + bid + " — reloading");
+            /* Skip the SW cache on reload */
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                regs.forEach(function (r) { r.update(); });
+                location.reload();
+              });
+            } else {
+              location.reload();
+            }
+          }
+        } catch (_) {}
+      };
+      req.send();
+    } catch (_) {}
+  };
+  /* first run: capture the current build, then poll every 20s */
+  setTimeout(poll, 2000);
+  setInterval(poll, 20000);
+})();
