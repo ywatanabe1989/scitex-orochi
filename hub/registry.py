@@ -37,8 +37,29 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_action": time.time(),  # last meaningful activity (msg, tool call)
             "last_message_preview": "",  # truncated last chat message text
             "current_task": "",  # structured task ID/desc; only set explicitly
+            "subagents": [],  # list[dict]: {name, task, status} reported by parent
             "metrics": {},
         }
+
+
+def set_subagents(name: str, subagents: list) -> None:
+    """Replace the agent's subagent list.
+
+    Each subagent entry is a dict with at least {name, task} and optionally
+    {status}. Caller is expected to send the full current list — this is a
+    full replacement, not an append.
+    """
+    with _lock:
+        if name in _agents:
+            _agents[name]["subagents"] = [
+                {
+                    "name": str(s.get("name", "")) or "subagent",
+                    "task": str(s.get("task", ""))[:200],
+                    "status": str(s.get("status", "running")),
+                }
+                for s in (subagents or [])
+                if isinstance(s, dict)
+            ]
 
 
 def mark_activity(name: str, action: str = "") -> None:
@@ -171,6 +192,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "metrics": a.get("metrics", {}),
                 "current_task": a.get("current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
+                "subagents": list(a.get("subagents", [])),
             }
         )
     return result

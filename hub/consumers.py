@@ -170,6 +170,24 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        elif msg_type == "subagents_update":
+            # Agent reports its current subagent tree.
+            # payload = { "subagents": [ {name, task, status}, ... ] }
+            payload = content.get("payload", {})
+            from hub.registry import set_subagents, mark_activity
+
+            set_subagents(self.agent_name, payload.get("subagents") or [])
+            mark_activity(self.agent_name)
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "agent.info",
+                    "agent": self.agent_name,
+                    "info": getattr(self, "agent_meta", {}),
+                    "metrics": getattr(self, "agent_metrics", {}),
+                },
+            )
+
         elif msg_type == "message":
             payload = content.get("payload", {})
             ch_name = payload.get("channel", "#general")

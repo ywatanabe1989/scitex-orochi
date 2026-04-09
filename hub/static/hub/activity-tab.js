@@ -95,6 +95,27 @@ function renderActivityTab() {
         escapeHtml(preview) +
         '</div>'
       : "";
+    var subagents = Array.isArray(a.subagents) ? a.subagents : [];
+    var subagentsHtml = "";
+    if (subagents.length > 0) {
+      subagentsHtml =
+        '<ul class="activity-subagents">' +
+        subagents
+          .map(function (s) {
+            var sname = escapeHtml(s.name || "subagent");
+            var stask = _renderTaskField(s.task || "");
+            var sstatus = escapeHtml(s.status || "running");
+            return (
+              '<li class="activity-subagent activity-subagent-' + sstatus + '">' +
+              '<span class="activity-subagent-branch">└─</span>' +
+              '<span class="activity-subagent-name">' + sname + '</span>' +
+              '<span class="activity-subagent-task">' + stask + '</span>' +
+              '</li>'
+            );
+          })
+          .join("") +
+        "</ul>";
+    }
     return (
       '<div class="activity-card activity-' + liveness + '">' +
       '<div class="activity-card-header">' +
@@ -104,6 +125,7 @@ function renderActivityTab() {
       '</div>' +
       '<div class="activity-meta">' + machine + ' · ' + role + '</div>' +
       '<div class="activity-task">' + _renderTaskField(task) + '</div>' +
+      subagentsHtml +
       previewHtml +
       '</div>'
     );
