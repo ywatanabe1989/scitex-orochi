@@ -18,6 +18,7 @@ document
       var res = await fetch(apiUrl("/api/upload"), {
         method: "POST",
         headers: headers,
+        credentials: "same-origin",
         body: formData,
       });
       if (!res.ok) {
