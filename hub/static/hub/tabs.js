@@ -4,71 +4,97 @@
 
 var activeTab = "chat";
 
+function _activateTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-tab") === tab);
+  });
+  var messagesEl = document.getElementById("messages");
+  var inputBar = document.querySelector(".input-bar");
+  var todoView = document.getElementById("todo-view");
+  var resourcesView = document.getElementById("resources-view");
+  var agentsTabView = document.getElementById("agents-tab-view");
+  var workspacesView = document.getElementById("workspaces-view");
+  var activityView = document.getElementById("activity-view");
+  var filesView = document.getElementById("files-view");
+  var releasesView = document.getElementById("releases-view");
+  var settingsView = document.getElementById("settings-view");
+  messagesEl.style.display = "none";
+  inputBar.style.display = "none";
+  todoView.style.display = "none";
+  resourcesView.style.display = "none";
+  agentsTabView.style.display = "none";
+  workspacesView.style.display = "none";
+  if (activityView) activityView.style.display = "none";
+  if (filesView) filesView.style.display = "none";
+  if (releasesView) releasesView.style.display = "none";
+  if (settingsView) settingsView.style.display = "none";
+  if (tab === "chat") {
+    messagesEl.style.display = "";
+    inputBar.style.display = "";
+  } else if (tab === "todo") {
+    todoView.style.display = "block";
+    todoView.style.flex = "1";
+    fetchTodoList();
+  } else if (tab === "agents-tab") {
+    agentsTabView.style.display = "block";
+    agentsTabView.style.flex = "1";
+    renderAgentsTab();
+  } else if (tab === "resources") {
+    resourcesView.style.display = "block";
+    resourcesView.style.flex = "1";
+    renderResourcesTab();
+  } else if (tab === "workspaces") {
+    workspacesView.style.display = "block";
+    workspacesView.style.flex = "1";
+    fetchWorkspaces();
+  } else if (tab === "activity") {
+    if (activityView) {
+      activityView.style.display = "block";
+      activityView.style.flex = "1";
+    }
+    if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
+    if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
+  } else if (tab === "files") {
+    if (filesView) {
+      filesView.style.display = "block";
+      filesView.style.flex = "1";
+    }
+    if (typeof fetchFiles === "function") fetchFiles();
+  } else if (tab === "releases") {
+    if (releasesView) {
+      releasesView.style.display = "block";
+      releasesView.style.flex = "1";
+    }
+    if (typeof fetchReleases === "function") fetchReleases();
+  } else if (tab === "settings" && settingsView) {
+    settingsView.style.display = "block";
+    settingsView.style.flex = "1";
+    fetchSettings();
+  }
+  try {
+    localStorage.setItem("orochi_active_tab", tab);
+  } catch (_) {}
+}
+
 document.querySelectorAll(".tab-btn").forEach(function (btn) {
   btn.addEventListener("click", function () {
     var tab = btn.getAttribute("data-tab");
     if (tab === activeTab) return;
-    activeTab = tab;
-    document.querySelectorAll(".tab-btn").forEach(function (b) {
-      b.classList.toggle("active", b.getAttribute("data-tab") === tab);
-    });
-    var messagesEl = document.getElementById("messages");
-    var inputBar = document.querySelector(".input-bar");
-    var todoView = document.getElementById("todo-view");
-    var resourcesView = document.getElementById("resources-view");
-    var agentsTabView = document.getElementById("agents-tab-view");
-    var workspacesView = document.getElementById("workspaces-view");
-    var activityView = document.getElementById("activity-view");
-    var filesView = document.getElementById("files-view");
-    var settingsView = document.getElementById("settings-view");
-    messagesEl.style.display = "none";
-    inputBar.style.display = "none";
-    todoView.style.display = "none";
-    resourcesView.style.display = "none";
-    agentsTabView.style.display = "none";
-    workspacesView.style.display = "none";
-    if (activityView) activityView.style.display = "none";
-    if (filesView) filesView.style.display = "none";
-    if (settingsView) settingsView.style.display = "none";
-    if (tab === "chat") {
-      messagesEl.style.display = "";
-      inputBar.style.display = "";
-    } else if (tab === "todo") {
-      todoView.style.display = "block";
-      todoView.style.flex = "1";
-      fetchTodoList();
-    } else if (tab === "agents-tab") {
-      agentsTabView.style.display = "block";
-      agentsTabView.style.flex = "1";
-      renderAgentsTab();
-    } else if (tab === "resources") {
-      resourcesView.style.display = "block";
-      resourcesView.style.flex = "1";
-      renderResourcesTab();
-    } else if (tab === "workspaces") {
-      workspacesView.style.display = "block";
-      workspacesView.style.flex = "1";
-      fetchWorkspaces();
-    } else if (tab === "activity") {
-      if (activityView) {
-        activityView.style.display = "block";
-        activityView.style.flex = "1";
-      }
-      if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
-      if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
-    } else if (tab === "files") {
-      if (filesView) {
-        filesView.style.display = "block";
-        filesView.style.flex = "1";
-      }
-      if (typeof fetchFiles === "function") fetchFiles();
-    } else if (tab === "settings" && settingsView) {
-      settingsView.style.display = "block";
-      settingsView.style.flex = "1";
-      fetchSettings();
-    }
+    _activateTab(tab);
   });
 });
+
+/* Restore last open tab across reloads */
+(function () {
+  try {
+    var last = localStorage.getItem("orochi_active_tab");
+    if (last && last !== "chat") {
+      var btn = document.querySelector('.tab-btn[data-tab="' + last + '"]');
+      if (btn) _activateTab(last);
+    }
+  } catch (_) {}
+})();
 
 /* Collapsible sidebar sections */
 (function () {
