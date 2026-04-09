@@ -1,7 +1,7 @@
 /* Orochi Dashboard -- bootstrap (loaded last) */
 /* globals: loadHistory, fetchStats, fetchAgents, connect, fetchTodoList,
    fetchResources, fetchWorkspaces, wsConnected, startRestPolling,
-   getSnakeLogo */
+   getSnakeLogo, refreshAgentNames */
 
 /* Inject Orochi logo into sidebar brand */
 (function () {
@@ -22,9 +22,11 @@
   }
 })();
 
-loadHistory();
-fetchStats();
+refreshAgentNames().then(function () {
+  loadHistory();
+});
 fetchAgents();
+fetchStats();
 connect();
 setInterval(fetchStats, 10000);
 setInterval(fetchAgents, 10000);
