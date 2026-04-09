@@ -174,6 +174,10 @@ const conn = new OrochiConnection(async (raw: string) => {
           chat_id: channel,
           user: sender,
           ts: msg.ts || new Date().toISOString(),
+          /* Expose message id so agents can target it via the `react`
+           * tool. Server broadcasts id on chat.message events; legacy
+           * nested payloads use payload.id. */
+          msg_id: msg.id ?? payload.id ?? null,
         },
       },
     });
