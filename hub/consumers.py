@@ -304,11 +304,13 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             ch_name = payload.get("channel", "#general")
             # Support both "text" and "content" keys from frontend
             text = payload.get("content") or payload.get("text") or ""
+            metadata = payload.get("metadata", {})
 
             msg = await self._save_message(
                 channel_name=ch_name,
                 sender=self.user.username,
                 content_text=text,
+                metadata=metadata,
             )
 
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
@@ -321,6 +323,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                     "channel": ch_name,
                     "text": text,
                     "ts": msg["ts"] if msg else None,
+                    "metadata": metadata,
                 },
             )
 
@@ -333,6 +336,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                     "channel": ch_name,
                     "text": text,
                     "ts": msg["ts"] if msg else None,
+                    "metadata": metadata,
                 },
             )
 
@@ -395,7 +399,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         ).exists()
 
     @database_sync_to_async
-    def _save_message(self, channel_name, sender, content_text):
+    def _save_message(self, channel_name, sender, content_text, metadata=None):
         try:
             workspace = Workspace.objects.get(id=self.workspace_id)
             channel, _ = Channel.objects.get_or_create(
@@ -407,6 +411,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 sender=sender,
                 sender_type="human",
                 content=content_text,
+                metadata=metadata or {},
             )
             return {"id": msg.id, "ts": msg.ts.isoformat()}
         except Exception:

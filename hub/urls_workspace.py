@@ -47,4 +47,7 @@ urlpatterns = [
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     path("api/resources/", views.api_resources, name="api-resources"),
     path("api/config/", views.api_config, name="api-config"),
+    # File upload
+    path("api/upload", views.api_upload, name="api-upload"),
+    path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
 ]

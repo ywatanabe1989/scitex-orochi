@@ -26,6 +26,7 @@ from hub.views.landing import (  # noqa: F401
     landing_page,
     redirect_old_workspace_url,
 )
+from hub.views.upload import api_upload, api_upload_base64  # noqa: F401
 from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
     workspace_settings_view,
