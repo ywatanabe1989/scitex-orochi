@@ -46,6 +46,22 @@ function copyToken(btn) {
   }, 1200);
 }
 
+/* User vs Workspace mode tabs (#147) */
+(function () {
+  var btns = document.querySelectorAll(".settings-mode-btn");
+  var panes = document.querySelectorAll(".settings-mode-pane");
+  if (!btns.length) return;
+  btns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var mode = btn.getAttribute("data-mode");
+      btns.forEach(function (b) { b.classList.toggle("active", b === btn); });
+      panes.forEach(function (p) {
+        p.style.display = p.getAttribute("data-mode") === mode ? "" : "none";
+      });
+    });
+  });
+})();
+
 /* Render workspace icon preview on settings page */
 (function () {
   var preview = document.getElementById("ws-icon-preview");

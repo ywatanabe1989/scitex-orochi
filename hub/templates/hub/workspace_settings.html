@@ -38,6 +38,40 @@
                 {% if messages %}
                     {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
                 {% endif %}
+                <div class="settings-mode-tabs">
+                    <button type="button" class="settings-mode-btn active" data-mode="user">User</button>
+                    {% if is_admin %}
+                        <button type="button" class="settings-mode-btn" data-mode="workspace">Workspace</button>
+                    {% endif %}
+                </div>
+                <div class="settings-mode-pane" data-mode="user">
+                    <section class="settings-section">
+                        <h4>You</h4>
+                        <p class="settings-desc">Account-level settings for the signed-in user.</p>
+                        <table class="settings-table">
+                            <tbody>
+                                <tr>
+                                    <td class="info-label">Username</td>
+                                    <td><code>{{ request.user.username }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">Email</td>
+                                    <td>{{ request.user.email|default:"—" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">Joined</td>
+                                    <td>{{ request.user.date_joined|date:"Y-m-d" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">Workspaces</td>
+                                    <td>{{ request.user.workspace_memberships.count }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <a href="{% url 'signout' %}" class="btn-small btn-danger" style="margin-top:8px;display:inline-block">Sign out</a>
+                    </section>
+                </div>
+                <div class="settings-mode-pane" data-mode="workspace" style="display:none">
                 <section class="settings-section">
                     <h4>Workspace Info</h4>
                     <p class="settings-desc">Basic information about this workspace.</p>
@@ -238,6 +272,7 @@
                         </div>
                     </section>
                 {% endif %}
+                </div><!-- /.settings-mode-pane[workspace] -->
             </div>
         </main>
     </div>
