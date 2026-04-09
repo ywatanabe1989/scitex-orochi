@@ -2,9 +2,11 @@
 
 import os
 
+from django.conf import settings as _dj_settings
 from django.contrib import admin
 from django.http import HttpResponse
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve as _serve_media
 
 from hub import views
 
@@ -20,8 +22,17 @@ def _serve_sw(request):
         return HttpResponse("", status=404)
 
 
+_media_url_ws = _dj_settings.MEDIA_URL.strip("/")
+
 urlpatterns = [
     path("sw.js", _serve_sw, name="sw"),
+    # Media must come before the workspace catchall/root routes below so
+    # uploaded files under /media/... are served on workspace subdomains.
+    re_path(
+        rf"^{_media_url_ws}/(?P<path>.*)$",
+        _serve_media,
+        {"document_root": _dj_settings.MEDIA_ROOT},
+    ),
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     # Dashboard (root of workspace subdomain)
