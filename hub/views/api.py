@@ -733,6 +733,59 @@ def api_agents_registry(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def api_subagents_update(request):
+    """POST /api/subagents/update — bulk set subagents for one or more agents.
+
+    Intended for caduceus (and any future process-inspector) that can
+    enumerate parent→child claude process trees across the fleet and
+    push the result here so the Activity tab renders a live subagent
+    tree without requiring every agent to cooperate.
+
+    JSON body (either shape):
+        {"token": "wks_...", "agent": "head@mba",
+         "subagents": [{"name": "...", "task": "...", "status": "running"}]}
+
+    or bulk:
+        {"token": "wks_...", "updates": [
+            {"agent": "head@mba", "subagents": [...]},
+            {"agent": "head@nas", "subagents": [...]}
+        ]}
+    """
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    token = body.get("token") or request.GET.get("token")
+    if not token:
+        return JsonResponse({"error": "token required"}, status=401)
+    from hub.models import WorkspaceToken
+
+    try:
+        WorkspaceToken.objects.get(token=token)
+    except WorkspaceToken.DoesNotExist:
+        return JsonResponse({"error": "invalid token"}, status=401)
+
+    from hub.registry import set_subagents
+
+    updates = body.get("updates")
+    if not updates:
+        single_agent = body.get("agent")
+        if not single_agent:
+            return JsonResponse({"error": "agent or updates required"}, status=400)
+        updates = [{"agent": single_agent, "subagents": body.get("subagents") or []}]
+
+    applied = 0
+    for u in updates:
+        name = (u.get("agent") or "").strip()
+        if not name:
+            continue
+        set_subagents(name, u.get("subagents") or [])
+        applied += 1
+    return JsonResponse({"status": "ok", "applied": applied})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def api_agents_register(request):
     """POST /api/agents/register — REST-level agent registration + heartbeat.
 
