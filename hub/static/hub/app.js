@@ -400,6 +400,22 @@ async function fetchAgents() {
         var taskHtml = a.current_task
           ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
           : "";
+        /* Tiny health pill — mirrors the Agents tab classification. */
+        var healthHtml = "";
+        if (a.health && a.health.status) {
+          var hs = String(a.health.status);
+          var hReason = a.health.reason
+            ? ' title="' + escapeHtml(a.health.reason) + '"'
+            : "";
+          healthHtml =
+            '<span class="sidebar-health sidebar-health-' +
+            escapeHtml(hs) +
+            '"' +
+            hReason +
+            ">\uD83E\uDE7A " +
+            escapeHtml(hs) +
+            "</span>";
+        }
         var agentIcon = a.icon
           ? getSenderIcon(a.name, true)
           : getSnakeIcon(16, color);
@@ -437,6 +453,7 @@ async function fetchAgents() {
           " / " +
           escapeHtml(a.role || "agent") +
           "</div>" +
+          healthHtml +
           taskHtml +
           '<div class="meta">channels: ' +
           [...new Set(a.channels)].map(escapeHtml).join(", ") +
