@@ -63,7 +63,7 @@
             <div class="sidebar-footer">
                 <span>{{ request.user.username }}</span>
                 {% if is_admin %}
-                    <a href="{% url 'workspace-settings' %}">Settings</a>
+                    <a href="#" onclick="document.querySelector('[data-tab=settings]').click();return false">Settings</a>
                 {% endif %}
                 <a href="{% url 'signout' %}">Logout</a>
             </div>
@@ -74,6 +74,7 @@
                 <button class="tab-btn" data-tab="todo">TODO</button>
                 <button class="tab-btn" data-tab="agents-tab">Agents</button>
                 <button class="tab-btn" data-tab="resources">Machines</button>
+                {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">
@@ -88,6 +89,13 @@
             <div id="workspaces-view" class="todo-view" style="display:none">
                 <div id="workspaces-grid" class="todo-grid"></div>
             </div>
+            {% if is_admin %}
+            <div id="settings-view" class="todo-view" style="display:none">
+                <div id="settings-content" class="settings-tab-content">
+                    <p class="empty-notice">Loading settings...</p>
+                </div>
+            </div>
+            {% endif %}
             <div class="input-bar">
                 <div id="mention-dropdown" class="mention-dropdown"></div>
                 <textarea id="msg-input"
@@ -122,6 +130,7 @@
     <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/chat.js' %}?v=4"></script>
     <script src="{% static 'hub/mention.js' %}?v=3"></script>
+    <script src="{% static 'hub/settings-tab.js' %}?v=1"></script>
     <script src="{% static 'hub/filter.js' %}?v=2"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=3"></script>
     <script src="{% static 'hub/upload.js' %}?v=3"></script>

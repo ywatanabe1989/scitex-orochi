@@ -18,12 +18,14 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     var resourcesView = document.getElementById("resources-view");
     var agentsTabView = document.getElementById("agents-tab-view");
     var workspacesView = document.getElementById("workspaces-view");
+    var settingsView = document.getElementById("settings-view");
     messagesEl.style.display = "none";
     inputBar.style.display = "none";
     todoView.style.display = "none";
     resourcesView.style.display = "none";
     agentsTabView.style.display = "none";
     workspacesView.style.display = "none";
+    if (settingsView) settingsView.style.display = "none";
     if (tab === "chat") {
       messagesEl.style.display = "";
       inputBar.style.display = "";
@@ -43,6 +45,10 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       workspacesView.style.display = "block";
       workspacesView.style.flex = "1";
       fetchWorkspaces();
+    } else if (tab === "settings" && settingsView) {
+      settingsView.style.display = "block";
+      settingsView.style.flex = "1";
+      fetchSettings();
     }
   });
 });
