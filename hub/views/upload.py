@@ -104,21 +104,41 @@ def _save_to_media(data: bytes, filename: str, mime_type: str) -> dict:
 @_login_or_token_required
 @require_POST
 def api_upload(request):
-    """POST /api/upload -- multipart file upload."""
-    uploaded = request.FILES.get("file")
-    if not uploaded:
+    """POST /api/upload -- multipart file upload.
+
+    Accepts ONE or MANY files. Multiple files can be sent in a single
+    request as repeated `file` form fields. Returns a JSON object with
+    a `files` array (multiple) AND mirrors the first file's fields at
+    the top level for backward compatibility with single-file callers.
+    """
+    uploads = request.FILES.getlist("file")
+    if not uploads:
         return JsonResponse({"error": "No file field"}, status=400)
 
-    data = uploaded.read()
-    filename = uploaded.name or "upload"
-    mime_type = uploaded.content_type or ""
+    results = []
+    errors = []
+    for uploaded in uploads:
+        try:
+            data = uploaded.read()
+            filename = uploaded.name or "upload"
+            mime_type = uploaded.content_type or ""
+            results.append(_save_to_media(data, filename, mime_type))
+        except ValueError as exc:
+            errors.append({"filename": uploaded.name, "error": str(exc)})
 
-    try:
-        result = _save_to_media(data, filename, mime_type)
-    except ValueError as exc:
-        return JsonResponse({"error": str(exc)}, status=413)
+    if not results and errors:
+        return JsonResponse({"errors": errors}, status=413)
 
-    return JsonResponse(result, status=201)
+    response = {
+        "files": results,
+        "errors": errors,
+        "count": len(results),
+    }
+    if results:
+        # Mirror first file's fields at top level for backward compat
+        # (older clients expect file_id, url, mime_type, filename, size).
+        response.update(results[0])
+    return JsonResponse(response, status=201)
 
 
 @csrf_exempt
