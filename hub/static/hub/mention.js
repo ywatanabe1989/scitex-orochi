@@ -11,6 +11,33 @@ var SPECIAL_MENTIONS = [
   { name: "agents", desc: "notify all agents" },
 ];
 
+/* Fuzzy match: check if all query characters appear in order within text.
+   Returns a score (lower = better) or -1 if no match. */
+function fuzzyMatch(query, text) {
+  var q = query.toLowerCase();
+  var t = text.toLowerCase();
+  /* Exact prefix match gets best score */
+  if (t.indexOf(q) === 0) return 0;
+  /* Substring match gets second-best score */
+  if (t.indexOf(q) !== -1) return 1;
+  /* Fuzzy: all query chars must appear in order */
+  var qi = 0;
+  var gaps = 0;
+  for (var ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) {
+      qi++;
+    } else if (qi > 0) {
+      gaps++;
+    }
+  }
+  if (qi === q.length) return 2 + gaps;
+  return -1;
+}
+
+function cleanDisplayName(name) {
+  return name.replace(/^orochi-/, "");
+}
+
 async function refreshAgentNames() {
   try {
     var res = await fetch(apiUrl("/api/agents"));
@@ -28,7 +55,7 @@ function getMentionQuery(input) {
   var val = input.value;
   var pos = input.selectionStart;
   var before = val.substring(0, pos);
-  var match = before.match(/(^|[\s])@([\w-]*)$/);
+  var match = before.match(/(^|[\s])@([\w@.\-]*)$/);
   if (match)
     return {
       query: match[2].toLowerCase(),
@@ -75,6 +102,8 @@ function showMentionDropdown(specialItems, agentItems) {
   agentItems.forEach(function (name, i) {
     var online = isAgentOnline(name);
     var dotClass = online ? "mention-dot-online" : "mention-dot-offline";
+    var display = cleanDisplayName(name);
+    var showFull = display !== name;
     html +=
       '<div class="mention-item' +
       (offset + i === 0 ? " selected" : "") +
@@ -84,7 +113,8 @@ function showMentionDropdown(specialItems, agentItems) {
       '<span class="mention-dot ' +
       dotClass +
       '"></span>' +
-      escapeHtml(name) +
+      escapeHtml(display) +
+      (showFull ? '<span class="mention-desc">' + escapeHtml(name) + '</span>' : '') +
       "</div>";
   });
 
@@ -121,9 +151,23 @@ document.getElementById("msg-input").addEventListener("input", function () {
   var matchedSpecial = SPECIAL_MENTIONS.filter(function (s) {
     return s.name.indexOf(info.query) === 0;
   });
-  var matchedAgents = cachedAgentNames.filter(function (n) {
-    return n.toLowerCase().indexOf(info.query) === 0;
-  });
+  var matchedAgents = cachedAgentNames
+    .map(function (n) {
+      var score = fuzzyMatch(info.query, n);
+      /* Also match against cleaned display name */
+      var cleanScore = fuzzyMatch(info.query, cleanDisplayName(n));
+      var best = score === -1 ? cleanScore : (cleanScore === -1 ? score : Math.min(score, cleanScore));
+      return { name: n, score: best };
+    })
+    .filter(function (item) {
+      return item.score !== -1;
+    })
+    .sort(function (a, b) {
+      return a.score - b.score;
+    })
+    .map(function (item) {
+      return item.name;
+    });
 
   if (matchedSpecial.length === 0 && matchedAgents.length === 0) {
     hideMentionDropdown();

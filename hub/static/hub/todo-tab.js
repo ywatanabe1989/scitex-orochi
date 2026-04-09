@@ -36,7 +36,11 @@ async function fetchTodoList() {
               var bg = label.color ? "#" + label.color : "#333";
               var fg = isLightColor(label.color || "333333") ? "#000" : "#fff";
               return (
-                '<span class="todo-label">' + escapeHtml(label.name) + "</span>"
+                '<span class="todo-label" data-label-name="' +
+                escapeHtml(label.name) +
+                '">' +
+                escapeHtml(label.name) +
+                "</span>"
               );
             })
             .join("");
@@ -66,6 +70,16 @@ async function fetchTodoList() {
         );
       })
       .join("");
+    container.querySelectorAll(".todo-label[data-label-name]").forEach(
+      function (el) {
+        el.addEventListener("click", function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          addTag("label", el.getAttribute("data-label-name"));
+        });
+        el.style.cursor = "pointer";
+      },
+    );
   } catch (e) {
     console.error("TODO list fetch error:", e);
   }

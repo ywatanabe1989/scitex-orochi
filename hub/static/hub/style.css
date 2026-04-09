@@ -92,7 +92,68 @@ body {
   color: #666;
   margin-left: 2px;
 }
+/* Workspace Dropdown */
+.ws-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  z-index: 200;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.ws-dropdown-loading {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #666;
+}
+.ws-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #aaa;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ws-dropdown-item:hover {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+.ws-dropdown-item.active {
+  background: #1a2a28;
+  color: #4ecdc4;
+}
+.ws-dropdown-item.active .ws-dropdown-name {
+  font-weight: 600;
+}
+.ws-dropdown-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #666;
+}
+.ws-dropdown-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-dropdown-create {
+  border-top: 1px solid #333;
+  color: #4ecdc4;
+}
+.ws-dropdown-create:hover {
+  color: #5eded6;
+}
 .brand-info {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -326,4 +387,37 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Sidebar section counters */
+.sidebar-count {
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
+}
+
+/* Issue links (#XX → GitHub) */
+.issue-link {
+  color: #4ecdc4;
+  text-decoration: none;
+  font-weight: 600;
+}
+.issue-link:hover {
+  text-decoration: underline;
+}
+
+/* Fold/expand long messages */
+.msg-fold-btn {
+  background: none;
+  border: 1px solid #333;
+  color: #888;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 8px;
+  margin-top: 4px;
+  border-radius: 4px;
+}
+.msg-fold-btn:hover {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
 }

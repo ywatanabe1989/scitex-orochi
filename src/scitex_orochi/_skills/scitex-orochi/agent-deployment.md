@@ -73,22 +73,17 @@ Agents run in **interactive mode** with `--dangerously-load-development-channels
 ### How It Works
 
 1. `mcp_channel.ts` (Bun MCP server) opens WebSocket to Orochi hub
-2. WebSocket endpoint: `ws://<host>:8559/ws/agent/` (Django Channels, not standalone 9559)
-3. Registers agent with name, channels, and machine info
-4. On incoming message: emits `notifications/claude/channel` notification
-5. Claude sees `<channel source="orochi" chat_id="#general" user="sender" ts="...">` tags
-6. Claude replies via the `reply` tool exposed by mcp_channel.ts
-
-### Message Format
-
-Django Channels uses flat message format. Access text as `msg.text`, not `msg.payload.text`.
+2. Registers agent with name, channels, and machine info
+3. On incoming message: emits `notifications/claude/channel` notification
+4. Claude sees `<channel source="orochi" chat_id="#general" user="sender" ts="...">` tags
+5. Claude replies via the `reply` tool exposed by mcp_channel.ts
 
 ### Launch Command
 
 ```bash
 claude \
     --model haiku \
-    --mcp-config /tmp/scitex-agent-container/mcp-<agent-name>.json \
+    --mcp-config mcp-config.json \
     --dangerously-load-development-channels server:scitex-orochi \
     --dangerously-skip-permissions \
     --continue
@@ -97,56 +92,24 @@ claude \
 ### Key Constraints
 
 - **No `-p` flag**: Pipe mode exits before push messages arrive. Interactive mode keeps the session alive.
-- **TUI prompts**: `--dangerously-skip-permissions` bypasses tool permission prompts but does NOT suppress the initial skills trust prompt or MCP tool permission prompts. In screen sessions, use the auto-accept watchdog to handle all TUI prompts.
-- **MCP config path**: Written to `/tmp/scitex-agent-container/mcp-<name>.json`, NOT to the workdir. The workdir may be shared with other sessions (e.g., Telegram agent); writing there causes MCP config conflicts.
-- **MCP server name**: `scitex-orochi` (not `orochi-push`). The TS file is `mcp_channel.ts` (not `orochi_push.ts`).
+- **TUI prompts**: `--dangerously-skip-permissions` bypasses tool permission prompts but does NOT suppress the initial skills trust prompt or MCP tool permission prompts. In screen sessions, use `auto-accept.sh` to handle all TUI prompts.
+- **mcp-config.json** must define the `scitex-orochi` server pointing to `ts/mcp_channel.ts`.
 
-### Zero-Trust Guards
+### Auto-Accept (via scitex-agent-container)
 
-Four layers prevent accidental cross-contamination between agent contexts:
-
-1. **`SCITEX_OROCHI_DISABLE=true`** -- env var kill switch, skips all Orochi MCP setup
-2. **`CLAUDE_AGENT_ROLE`** -- role-based blocking (e.g., `telegram` role never loads Orochi)
-3. **`TELEGRAM_BOT_TOKEN` detection** -- context-based blocking to prevent Orochi/Telegram conflicts
-4. **MCP config isolation** -- written to `/tmp/`, never to shared workdir
-
-Truthy values accepted: `true`, `1`, `yes`, `enable`, `enabled` (case-insensitive).
-
-### Auto-Accept Prompt Monitor (Polling-Based)
-
-The watchdog handles TUI confirmation prompts that block unattended agents. It polls the screen PTY for stuck prompts and sends `\r` (Enter/return) to accept the default selection, not `y\n`.
-
-```bash
-# Watchdog pattern (polling-based):
-while true; do
-    # Detect stuck TUI prompts via screen PTY inspection
-    # Send '\r' keystroke to accept default (not 'y\n')
-    sleep <interval>
-done
-```
-
-Three separate prompts can appear: (1) skills trust on startup, (2) `--dangerously-skip-permissions` confirmation, and (3) `--dangerously-load-development-channels` confirmation. None are covered by permission flags alone.
-
-### Multi-Host Fallback
-
-YAML config supports a `hosts:` list. Hosts are tried in order; first reachable wins. Connection results are always logged for every host (no silent fallback).
-
-```yaml
-orochi:
-  enabled: true
-  hosts:
-    - 192.168.0.102    # LAN (primary)
-    - orochi.example.com  # WAN (fallback)
-  port: 8559
-  ws_path: /ws/agent/
-  channels:
-    - "#general"
-    - "#deploy"
-```
+`scitex-agent-container` handles TUI prompts automatically during launch. Three prompts can appear: (1) skills trust, (2) `--dangerously-skip-permissions` confirmation, (3) `--dangerously-load-development-channels` confirmation. The launcher's built-in auto-accept sends keystrokes via `screen -X stuff` after detecting each prompt state.
 
 ### Usage Cap Awareness
 
-Running multiple Opus agents burns through Anthropic API quota rapidly. In testing, 4 Opus agents consumed 72% of monthly quota in 3.5 days. Use `claude-haiku-4-5` for non-critical agents (monitoring, simple relay, status checks) and reserve Opus for agents that need deep reasoning.
+Running multiple Opus agents burns through Anthropic API quota rapidly. In testing, 4 Opus agents consumed 72% of monthly quota in 3.5 days. Use `claude-haiku-4-5` for non-critical agents (monitoring, simple relay, status checks) and reserve Opus for agents that need deep reasoning. Set the model per agent in the launch command:
+
+```bash
+# Critical agent (research, debugging)
+claude --model claude-opus-4-6 ...
+
+# Non-critical agent (monitoring, relay)
+claude --model claude-haiku-4-5 ...
+```
 
 ### Agent Disconnection
 
@@ -168,42 +131,69 @@ After deploying a new dashboard version:
 2. Verify agents reconnect (check `/api/agents`)
 3. Confirm media uploads still work (test attach/paste/drag-drop)
 
-### Agent Directory Structure
+### Agent Directory Structure (YAML-first)
+
+Agents are defined as YAML + CLAUDE.md in `~/.scitex/orochi/agents/`. Two layouts supported:
 
 ```
-orochi-agents/
-  mba-agent/
-    CLAUDE.md           # Agent identity and role
-  nas-agent/
-    CLAUDE.md
-  spartan-agent/
-    CLAUDE.md
-  launch-interactive.sh # Interactive push-mode launcher
-  poll-agent.py         # HTTP polling fallback
-  launch-poll.sh        # Polling mode launcher
+~/.scitex/orochi/agents/
+  master.yaml                    # Flat layout (simple agents)
+  head-general.yaml
+  mamba/                         # Subdirectory layout (agent + CLAUDE.md together)
+    mamba.yaml
+    CLAUDE.md                    # Source of truth
 ```
 
-### mcp-config.json Template
-
-MCP config is auto-generated to `/tmp/scitex-agent-container/mcp-<name>.json` by `orochi_mcp.py`. Manual template for reference:
-
-```json
-{
-  "mcpServers": {
-    "scitex-orochi": {
-      "type": "stdio",
-      "command": "bun",
-      "args": ["/home/ywatanabe/proj/scitex-orochi/ts/mcp_channel.ts"],
-      "env": {
-        "SCITEX_OROCHI_HOST": "192.168.0.102",
-        "SCITEX_OROCHI_PORT": "8559",
-        "SCITEX_OROCHI_AGENT": "<agent-name>",
-        "SCITEX_OROCHI_CHANNELS": "#general,#research,#deploy"
-      }
-    }
-  }
-}
+For subdirectory agents, symlink CLAUDE.md into the workdir:
+```bash
+ln -s ~/.scitex/orochi/agents/mamba/CLAUDE.md ~/proj/todo/.claude/CLAUDE.md
 ```
+
+### MCP Config (Auto-Generated)
+
+MCP config is auto-generated by `scitex-agent-container` when `orochi.enabled: true`. Written to `~/.scitex/agent-container/cache/mcp-configs/mcp-<name>.json` (isolated from workdir). If `mcp_channel.ts` isn't found via package path, set `SCITEX_OROCHI_PUSH_TS` in the YAML env:
+
+```yaml
+env:
+  SCITEX_OROCHI_PUSH_TS: "/home/ywatanabe/proj/scitex-orochi/ts/mcp_channel.ts"
+```
+
+### Zero-Code Agent Pattern
+
+An agent can be pure YAML + CLAUDE.md with no custom code. The intelligence comes from Claude + CLI tools. Example (mamba task manager):
+
+```yaml
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: mamba
+  labels:
+    role: task-manager
+spec:
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj/todo
+  orochi:
+    enabled: true
+    channels: ["#todo", "#general"]
+  skills:
+    required: [autonomous, quality-guards]
+  startup_commands:
+    - delay: 5
+      command: "Check open issues and report to #todo"
+    - delay: 15
+      command: "/loop 30m Scan for stale issues"
+```
+
+Launch: `scitex-orochi launch head mamba` or `scitex-agent-container start ~/.scitex/orochi/agents/mamba/mamba.yaml`
+
+### Resolution Order
+
+`scitex-orochi launch head <name>` resolves YAML by:
+1. `~/.scitex/orochi/agents/<name>.yaml` (flat)
+2. `~/.scitex/orochi/agents/<name>/<name>.yaml` (subdirectory)
+3. `~/.scitex/orochi/agents/head-<name>.yaml`
+4. `./agents/<name>.yaml` (repo fallback)
 
 ## Polling Mode (Fallback)
 

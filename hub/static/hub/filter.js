@@ -24,11 +24,15 @@ function parseFilterInput(raw) {
 }
 
 function addTag(type, value) {
-  var exists = activeTags.some(function (t) {
-    return t.type === type && t.value === value;
+  var idx = -1;
+  activeTags.forEach(function (t, i) {
+    if (t.type === type && t.value === value) idx = i;
   });
-  if (exists) return;
-  activeTags.push({ type: type, value: value });
+  if (idx >= 0) {
+    activeTags.splice(idx, 1);
+  } else {
+    activeTags.push({ type: type, value: value });
+  }
   renderTags();
   runFilter();
 }
@@ -76,6 +80,14 @@ function getTagSuggestions(prefix) {
       results.push({ type: "channel", value: ch });
     }
   });
+  document.querySelectorAll(".todo-label[data-label-name]").forEach(
+    function (el) {
+      var name = el.getAttribute("data-label-name");
+      if (name && fuzzyMatch(pLower, name.toLowerCase())) {
+        results.push({ type: "label", value: name });
+      }
+    },
+  );
   var seen = {};
   return results
     .filter(function (r) {

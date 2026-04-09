@@ -46,13 +46,13 @@
                 <div id="filter-suggest" class="filter-suggest"></div>
                 <div id="filter-tags" class="filter-tags"></div>
             </div>
-            <h2 class="collapsible-heading channels-heading">Agents</h2>
+            <h2 class="collapsible-heading channels-heading">Agents <span class="sidebar-count" id="sidebar-count-agents"></span></h2>
             <div id="agents" class="sidebar-section">
                 <p id="no-agents">No agents connected</p>
             </div>
-            <h2 class="collapsible-heading channels-heading">Channels</h2>
+            <h2 class="collapsible-heading channels-heading">Channels <span class="sidebar-count" id="sidebar-count-channels"></span></h2>
             <div id="channels" class="sidebar-section"></div>
-            <h2 class="collapsible-heading channels-heading">Resources</h2>
+            <h2 class="collapsible-heading channels-heading">Machines <span class="sidebar-count" id="sidebar-count-machines"></span></h2>
             <div id="resources" class="sidebar-section"></div>
             <div class="sidebar-footer">
                 <span>{{ request.user.username }}</span>
@@ -67,7 +67,7 @@
                 <button class="tab-btn active" data-tab="chat">Chat</button>
                 <button class="tab-btn" data-tab="todo">TODO</button>
                 <button class="tab-btn" data-tab="agents-tab">Agents</button>
-                <button class="tab-btn" data-tab="resources">Resources</button>
+                <button class="tab-btn" data-tab="resources">Machines</button>
             </div>
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">
@@ -93,12 +93,7 @@
                 <button id="msg-sketch" title="Draw sketch">Sketch</button>
                 <button id="msg-send">Send</button>
             </div>
-            <div class="stats-bar">
-                <span>Agents: <span id="stat-agents">0</span></span>
-                <span>Channels: <span id="stat-channels">0</span></span>
-                <span>Observers: <span id="stat-observers">0</span></span>
-                <span id="stat-telegram" style="display:none">Telegram: <span id="stat-telegram-status">-</span></span>
-            </div>
+            <div class="stats-bar"></div>
         </div>
     </div>
 {% endblock %}
@@ -114,6 +109,7 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=2"></script>
     <script src="{% static 'hub/app.js' %}?v=42"></script>
+    <script src="{% static 'hub/workspace-dropdown.js' %}?v=1"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>

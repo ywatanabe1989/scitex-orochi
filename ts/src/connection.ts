@@ -166,6 +166,7 @@ export class OrochiConnection {
           role: "claude-code",
           model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${hostname()}`,
+          icon: process.env.SCITEX_OROCHI_ICON || "",
           project: "",
         },
       }),

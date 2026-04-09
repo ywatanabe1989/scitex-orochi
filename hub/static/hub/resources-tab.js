@@ -35,6 +35,8 @@ function barHtml(label, percent) {
 function renderResources() {
   var container = document.getElementById("resources");
   var keys = Object.keys(resourceData);
+  var cEl = document.getElementById("sidebar-count-machines");
+  if (cEl) cEl.textContent = keys.length ? "(" + keys.length + ")" : "";
   if (keys.length === 0) {
     container.innerHTML = '<p class="empty-notice">No reports yet</p>';
     return;

@@ -1,5 +1,4 @@
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
-
 /* Yamata no Orochi color palette (from mascot icon heads) */
 var OROCHI_COLORS = [
   "#C4A6E8",
@@ -13,8 +12,11 @@ var OROCHI_COLORS = [
 ];
 var currentChannel = null;
 var cachedAgentNames = [];
+var cachedAgentIcons = {};
 var historyLoaded = false;
 var knownMessageKeys = {};
+var unreadCount = 0;
+var baseTitle = document.title;
 
 /* User display name -- from Django auth or fallback to localStorage */
 var userName =
@@ -27,9 +29,7 @@ if (!userName) {
     userName = "human";
   }
 }
-
 var csrfToken = window.__orochiCsrfToken || "";
-
 function getAgentColor(name) {
   var s = name || "unknown";
   var sum = 0;
@@ -94,7 +94,6 @@ function getWorkspaceIcon(name, size) {
     "</text></svg>"
   );
 }
-
 /* Inline SVG icon generators for branding — official SciTeX snake */
 function getSnakeIcon(size, color) {
   size = size || 20;
@@ -135,27 +134,25 @@ function getPersonIcon(size, color) {
 }
 
 function getSenderIcon(senderName, isAgent) {
-  if (isAgent) {
-    return getSnakeIcon(18, getAgentColor(senderName));
+  var icon = cachedAgentIcons[senderName];
+  if (icon) {
+    if (icon.startsWith("http") || icon.startsWith("/")) {
+      return '<img class="agent-custom-icon" src="' + escapeHtml(icon) + '" width="18" height="18" alt="">';
+    }
+    return '<span class="agent-custom-icon" style="font-size:16px">' + icon + "</span>";
   }
+  if (isAgent) return getSnakeIcon(18, getAgentColor(senderName));
   return getPersonIcon(18, "#c4a6e8");
 }
 
-/* Large snake logo for header branding */
-function getSnakeLogo() {
-  return getSnakeIcon(32, "#4ecdc4");
-}
-
+function getSnakeLogo() { return getSnakeIcon(32, "#4ecdc4"); }
 function escapeHtml(s) {
   var d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
 }
 
-/* Strip hostname suffix from agent names for clean display.
-   "head@mba@Yusukes-MacBook-Air.local" → "head@mba"
-   "head@nas@DXP480TPLUS-994" → "head@nas"
-   "head@ywata-note-win" → "head@ywata-note-win" (unchanged) */
+/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
 function cleanAgentName(name) {
   if (!name) return name;
   var parts = name.split("@");
@@ -316,6 +313,10 @@ function handleMessage(msg) {
     if (knownMessageKeys[key]) return;
     knownMessageKeys[key] = true;
     appendMessage(msg);
+    if (document.hidden) {
+      unreadCount++;
+      document.title = "(" + unreadCount + ") " + baseTitle;
+    }
   } else if (
     msg.type === "presence_change" ||
     msg.type === "status_update" ||
@@ -326,6 +327,14 @@ function handleMessage(msg) {
     fetchStats();
   }
 }
+
+/* Reset unread count when tab becomes visible */
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden) {
+    unreadCount = 0;
+    document.title = baseTitle;
+  }
+});
 
 function connect() {
   var statusEl = document.getElementById("conn-status");
@@ -380,7 +389,6 @@ function connect() {
     }
   };
 }
-
 /* Sidebar agents + stats fetching */
 async function fetchAgents() {
   try {
@@ -389,8 +397,15 @@ async function fetchAgents() {
     var container = document.getElementById("agents");
     if (agents.length === 0) {
       container.innerHTML = '<p id="no-agents">No agents connected</p>';
+      var cEl = document.getElementById("sidebar-count-agents");
+      if (cEl) cEl.textContent = "";
       return;
     }
+    var cEl = document.getElementById("sidebar-count-agents");
+    if (cEl) cEl.textContent = "(" + agents.length + ")";
+    agents.forEach(function (a) {
+      if (a.icon) cachedAgentIcons[a.name] = a.icon;
+    });
     container.innerHTML = agents
       .map(function (a) {
         var color = getAgentColor(a.name);
@@ -400,7 +415,7 @@ async function fetchAgents() {
         var taskHtml = a.current_task
           ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
           : "";
-        var agentIcon = getSnakeIcon(16, color);
+        var agentIcon = a.icon ? getSenderIcon(a.name, true) : getSnakeIcon(16, color);
         var workdirHtml = "";
         if (a.workdir) {
           var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
@@ -458,11 +473,6 @@ async function fetchStats() {
   try {
     var res = await fetch(apiUrl("/api/stats"));
     var stats = await res.json();
-    document.getElementById("stat-agents").textContent = stats.agents_online;
-    document.getElementById("stat-channels").textContent =
-      stats.channels_active;
-    document.getElementById("stat-observers").textContent =
-      stats.observers_connected;
     var chContainer = document.getElementById("channels");
     chContainer.innerHTML = stats.channels
       .map(function (c, i) {
@@ -489,25 +499,14 @@ async function fetchStats() {
           currentChannel = ch;
           loadChannelHistory(ch);
         }
+        addTag("channel", ch);
         fetchStats();
       });
     });
-    updateChannelSelect(stats.channels);
-    var tgEl = document.getElementById("stat-telegram");
-    var tgStatus = document.getElementById("stat-telegram-status");
-    if (stats.telegram_bridge && tgEl && tgStatus) {
-      tgEl.style.display = "";
-      if (stats.telegram_bridge.running) {
-        tgStatus.textContent = "\u2713";
-      } else if (stats.telegram_bridge.enabled) {
-        tgStatus.textContent = "stopped";
-      } else {
-        tgEl.style.display = "none";
-      }
-    }
+    var chCountEl = document.getElementById("sidebar-count-channels");
+    if (chCountEl) chCountEl.textContent = "(" + stats.channels.length + ")";
   } catch (e) {
     /* fetch error */
   }
 }
-
 /* Init is deferred to init.js (loaded after all modules) */

@@ -41,9 +41,33 @@ function appendMessage(msg) {
   var highlightedContent = escapeHtml(content)
     .replace(/\n/g, "<br>")
     .replace(
-      /(^|[\s])@([\w-]+)/g,
-      '$1<span class="mention-highlight">@$2</span>',
+      /(^|[\s])@([\w@.\-]+)/g,
+      function (_match, prefix, name) {
+        var isSpecial = name === "all" || name === "channel" || name === "agents";
+        var isAgent = cachedAgentNames.indexOf(name) !== -1;
+        if (isSpecial || isAgent) {
+          return prefix + '<span class="mention-highlight">@' + name + '</span>';
+        }
+        return prefix + '@' + name;
+      },
+    )
+    .replace(
+      /#(\d+)\b/g,
+      '<a class="issue-link" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
     );
+  /* Fold long posts (>10 lines) */
+  var MAX_LINES = 10;
+  var lines = highlightedContent.split("<br>");
+  var isFolded = lines.length > MAX_LINES;
+  if (isFolded) {
+    var preview = lines.slice(0, MAX_LINES).join("<br>");
+    var full = highlightedContent;
+    highlightedContent =
+      '<div class="msg-preview">' + preview + "</div>" +
+      '<div class="msg-full" style="display:none">' + full + "</div>" +
+      '<button class="msg-fold-btn" onclick="this.previousElementSibling.style.display=\'block\';this.previousElementSibling.previousElementSibling.style.display=\'none\';this.textContent=\'Show less\';var b=this;b.onclick=function(){b.previousElementSibling.style.display=\'none\';b.previousElementSibling.previousElementSibling.style.display=\'block\';b.textContent=\'Show more (' + (lines.length - MAX_LINES) + ' more lines)\';b.onclick=arguments.callee}">' +
+      "Show more (" + (lines.length - MAX_LINES) + " more lines)</button>";
+  }
   var attachmentsHtml = "";
   var attachments =
     (msg.payload && msg.payload.attachments) || msg.attachments || [];
@@ -78,9 +102,7 @@ function appendMessage(msg) {
         "</a></div>";
     }
   });
-  var roleBadge = isAgent
-    ? '<span class="role-badge badge-agent">agent</span>'
-    : '<span class="role-badge badge-human">human</span>';
+  var roleBadge = "";
   var youTag =
     senderName === userName ? ' <span class="you-tag">(You)</span>' : "";
   var senderIcon = getSenderIcon(senderName, isAgent);
