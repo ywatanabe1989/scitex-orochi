@@ -327,25 +327,31 @@ function sendMessage() {
   var input = document.getElementById("msg-input");
   var channel = currentChannel || "#general";
   var text = input.value.trim();
-  if (!text) return;
+
+  /* Pull any attachments the user staged via paste/drop/picker before
+   * hitting Send. Attachments alone (empty text) are a valid message. */
+  var attachments =
+    typeof getPendingAttachments === "function" ? getPendingAttachments() : [];
+  if (!text && attachments.length === 0) return;
+
+  var payload = { channel: channel, content: text };
+  if (attachments.length > 0) payload.attachments = attachments;
 
   /* Prefer WebSocket send when connected (instant echo), fall back to REST */
   if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(
-      JSON.stringify({
-        type: "message",
-        payload: { channel: channel, content: text },
-      }),
-    );
+    ws.send(JSON.stringify({ type: "message", payload: payload }));
   } else {
     sendOrochiMessage({
       type: "message",
       sender: userName,
-      payload: { channel: channel, content: text },
+      payload: payload,
     });
   }
   input.value = "";
   input.style.height = "auto";
+  if (typeof clearPendingAttachments === "function") {
+    clearPendingAttachments();
+  }
 }
 
 /* Auto-resize textarea as content grows */
