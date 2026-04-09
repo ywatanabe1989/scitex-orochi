@@ -97,19 +97,50 @@ def set_current_task(name: str, task: str) -> None:
 def set_health(name: str, status: str, reason: str = "", source: str = "caduceus") -> None:
     """Record caduceus's (or any healer's) diagnosis for an agent.
 
-    status — one of: healthy, idle, stale, stuck_prompt, dead, ghost, unknown
+    status — free-form string (mamba taxonomy — healthy, idle, stale,
+    stuck_prompt, dead, ghost, degraded, remediating, unknown, ...)
     reason — short free-text explanation (<= 200 chars)
     source — who wrote this diagnosis (default caduceus)
+
+    Writes to the in-memory registry AND persists to AgentProfile so
+    the diagnosis survives container restarts. Without persistence,
+    caduceus has to re-POST after every deploy.
     """
     import time as _time
+    st = (status or "unknown")[:32]
+    rn = (reason or "")[:200]
+    sc = (source or "")[:64]
     with _lock:
         if name in _agents:
             _agents[name]["health"] = {
-                "status": (status or "unknown")[:32],
-                "reason": (reason or "")[:200],
-                "source": (source or "")[:64],
+                "status": st,
+                "reason": rn,
+                "source": sc,
                 "ts": _time.time(),
             }
+            workspace_id = _agents[name].get("workspace_id")
+        else:
+            workspace_id = None
+
+    # Best-effort persist to AgentProfile. Swallow errors so health
+    # updates never break the hot path.
+    if workspace_id is not None:
+        try:
+            from django.utils import timezone
+            from hub.models import AgentProfile
+
+            AgentProfile.objects.update_or_create(
+                workspace_id=workspace_id,
+                name=name,
+                defaults={
+                    "health_status": st,
+                    "health_reason": rn,
+                    "health_source": sc,
+                    "health_ts": timezone.now(),
+                },
+            )
+        except Exception:
+            pass
 
 
 def update_heartbeat(name: str, metrics: dict | None = None) -> None:
@@ -181,6 +212,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     "icon_emoji": p.icon_emoji or "",
                     "icon_image": p.icon_image or "",
                     "icon_text": p.icon_text or "",
+                    "health_status": p.health_status or "",
+                    "health_reason": p.health_reason or "",
+                    "health_source": p.health_source or "",
+                    "health_ts": p.health_ts,
                 }
         except Exception:
             pass
@@ -209,6 +244,19 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         icon_image = prof.get("icon_image") or a.get("icon", "")
         icon_emoji = prof.get("icon_emoji") or a.get("icon_emoji", "")
         icon_text = prof.get("icon_text") or a.get("icon_text", "")
+        # Health: in-memory wins when present (fresh updates from current
+        # session), fall back to the persisted profile row so the pill
+        # survives container restarts. Timestamps converted to ISO.
+        live_health = a.get("health") or {}
+        health = live_health
+        if not live_health and prof.get("health_status"):
+            _ts = prof.get("health_ts")
+            health = {
+                "status": prof.get("health_status") or "",
+                "reason": prof.get("health_reason") or "",
+                "source": prof.get("health_source") or "",
+                "ts": _ts.isoformat() if _ts else None,
+            }
         result.append(
             {
                 "name": a["name"],
