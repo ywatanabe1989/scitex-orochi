@@ -22,9 +22,11 @@ def github_issues(request):
     state = request.GET.get("state", "all")
     if state not in ("open", "closed", "all"):
         state = "all"
+    labels = request.GET.get("labels", "").strip()
+    label_qs = f"&labels={urllib.request.quote(labels)}" if labels else ""
     github_url = (
         "https://api.github.com/repos/ywatanabe1989/todo/issues"
-        f"?state={state}&per_page=100&sort=updated&direction=desc"
+        f"?state={state}&per_page=100&sort=updated&direction=desc{label_qs}"
     )
     headers = {
         "Accept": "application/vnd.github.v3+json",

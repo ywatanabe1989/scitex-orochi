@@ -475,3 +475,65 @@ body {
   background: rgba(78, 205, 196, 0.15);
   border-left: 3px solid #4ecdc4;
 }
+
+/* Blockers sidebar section */
+.blockers-heading {
+  color: #ef4444 !important;
+}
+.blockers-heading .blocker-flag {
+  margin-right: 4px;
+  font-size: 12px;
+}
+.blockers-count {
+  color: #ef4444;
+  font-weight: 700;
+}
+.blockers-section {
+  max-height: 240px;
+  overflow-y: auto;
+}
+.blockers-empty {
+  color: #444;
+  font-size: 11px;
+  font-style: italic;
+  padding: 4px 6px;
+  margin: 0;
+}
+.blocker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border-left: 3px solid #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 3px;
+  font-size: 11px;
+  color: #ddd;
+  text-decoration: none;
+  transition: background 0.1s;
+}
+.blocker-item:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+.blocker-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+.blocker-num {
+  color: #f59e0b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+.blocker-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.blocker-assignee {
+  color: #888;
+  font-size: 10px;
+  flex-shrink: 0;
+}
