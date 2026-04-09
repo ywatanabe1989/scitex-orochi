@@ -19,6 +19,8 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     var agentsTabView = document.getElementById("agents-tab-view");
     var workspacesView = document.getElementById("workspaces-view");
     var filesView = document.getElementById("files-view");
+    var activityView = document.getElementById("activity-view");
+    var releasesView = document.getElementById("releases-view");
     var settingsView = document.getElementById("settings-view");
     messagesEl.style.display = "none";
     inputBar.style.display = "none";
@@ -27,6 +29,8 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     agentsTabView.style.display = "none";
     workspacesView.style.display = "none";
     if (filesView) filesView.style.display = "none";
+    if (activityView) activityView.style.display = "none";
+    if (releasesView) releasesView.style.display = "none";
     if (settingsView) settingsView.style.display = "none";
     if (tab === "chat") {
       messagesEl.style.display = "";
@@ -53,6 +57,19 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
         filesView.style.flex = "1";
       }
       if (typeof fetchFiles === "function") fetchFiles();
+    } else if (tab === "activity") {
+      if (activityView) {
+        activityView.style.display = "block";
+        activityView.style.flex = "1";
+      }
+      if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
+      if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
+    } else if (tab === "releases") {
+      if (releasesView) {
+        releasesView.style.display = "block";
+        releasesView.style.flex = "1";
+      }
+      if (typeof fetchReleases === "function") fetchReleases();
     } else if (tab === "settings" && settingsView) {
       settingsView.style.display = "block";
       settingsView.style.flex = "1";

@@ -360,6 +360,9 @@ async function fetchAgents() {
   try {
     var res = await fetch(apiUrl("/api/agents"));
     var agents = await res.json();
+    /* Cache for the Activity tab and other consumers */
+    window.__lastAgents = agents;
+    if (typeof renderActivityTab === "function") renderActivityTab();
     var container = document.getElementById("agents");
     if (agents.length === 0) {
       container.innerHTML = '<p id="no-agents">No agents connected</p>';

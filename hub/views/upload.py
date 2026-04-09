@@ -85,7 +85,12 @@ def _save_to_media(data: bytes, filename: str, mime_type: str) -> dict:
     dest_file = dest_dir / f"{file_id}{ext}"
     dest_file.write_bytes(data)
 
-    url = f"/{settings.MEDIA_URL}{subdir}/{file_id}{ext}"
+    # Build the URL defensively — settings.MEDIA_URL may or may not have
+    # leading/trailing slashes. Always emit exactly one leading slash and
+    # exactly one separator slash so we never produce // (protocol-relative
+    # URL) or //media (the bug that broke ywatanabe's image paste).
+    media_prefix = "/" + settings.MEDIA_URL.strip("/") + "/"
+    url = f"{media_prefix}{subdir}/{file_id}{ext}"
     return {
         "file_id": file_id,
         "url": url,
