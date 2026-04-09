@@ -386,3 +386,23 @@
 .settings-form-icon {
   margin-top: 0.8rem;
 }
+
+/* Token action buttons — plain text style */
+.btn-token-show,
+.btn-token-copy {
+  background: #1a1d21;
+  color: #aaa;
+  border: 1px solid #333;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: all 0.1s;
+}
+.btn-token-show:hover,
+.btn-token-copy:hover {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
