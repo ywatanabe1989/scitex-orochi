@@ -237,8 +237,13 @@ def loop(
     import socket as _socket
 
     last_action_ts: dict[str, float] = {}
-    self_host = _socket.gethostname().split(".")[0] or "unknown"
-    self_name = f"caduceus@{self_host}"
+    self_host = (
+        os.environ.get("CADUCEUS_HOST")
+        or os.environ.get("SCITEX_OROCHI_MACHINE")
+        or _socket.gethostname().split(".")[0]
+        or "unknown"
+    )
+    self_name = os.environ.get("CADUCEUS_NAME") or f"caduceus@{self_host}"
     log.info(
         "caduceus starting: hub=%s interval=%ds autoremedy=%s self=%s",
         hub,

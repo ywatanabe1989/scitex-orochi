@@ -45,6 +45,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_message_preview": prev.get("last_message_preview", ""),
             "current_task": prev.get("current_task", ""),
             "subagents": list(prev.get("subagents") or []),
+            "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
         }
 
@@ -91,6 +92,24 @@ def set_current_task(name: str, task: str) -> None:
     with _lock:
         if name in _agents:
             _agents[name]["current_task"] = task[:120] if task else ""
+
+
+def set_health(name: str, status: str, reason: str = "", source: str = "caduceus") -> None:
+    """Record caduceus's (or any healer's) diagnosis for an agent.
+
+    status — one of: healthy, idle, stale, stuck_prompt, dead, ghost, unknown
+    reason — short free-text explanation (<= 200 chars)
+    source — who wrote this diagnosis (default caduceus)
+    """
+    import time as _time
+    with _lock:
+        if name in _agents:
+            _agents[name]["health"] = {
+                "status": (status or "unknown")[:32],
+                "reason": (reason or "")[:200],
+                "source": (source or "")[:64],
+                "ts": _time.time(),
+            }
 
 
 def update_heartbeat(name: str, metrics: dict | None = None) -> None:
@@ -224,6 +243,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "current_task": a.get("current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
+                "health": a.get("health") or {},
             }
         )
     return result

@@ -61,6 +61,7 @@ urlpatterns = [
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     path("api/subagents/update/", views.api_subagents_update, name="api-subagents-update"),
+    path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),

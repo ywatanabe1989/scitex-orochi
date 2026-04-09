@@ -14,6 +14,7 @@ import {
 import { OROCHI_AGENT, OROCHI_TOKEN, buildHttpBase, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
 import {
+  handleHealth,
   handleReply,
   handleHistory,
   handleReact,
@@ -251,6 +252,34 @@ const TOOL_DEFS = [
     },
   },
   {
+    name: "health",
+    description:
+      "Record a health diagnosis for an agent (caduceus primary caller). Use for real-time Agents tab status. Status values: healthy, idle, stale, stuck_prompt, dead, ghost, remediating, unknown.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Target agent name (exact match)" },
+        status: { type: "string", description: "healthy|idle|stale|stuck_prompt|dead|ghost|remediating|unknown" },
+        reason: { type: "string", description: "Short explanation (<=200 chars)" },
+        source: { type: "string", description: "Reporter name (defaults to self)" },
+        updates: {
+          type: "array",
+          description: "Bulk: list of {agent,status,reason?,source?}",
+          items: {
+            type: "object",
+            properties: {
+              agent: { type: "string" },
+              status: { type: "string" },
+              reason: { type: "string" },
+              source: { type: "string" },
+            },
+            required: ["agent", "status"],
+          },
+        },
+      },
+    },
+  },
+  {
     name: "task",
     description:
       "Update this agent's current intellectual task so users can see what it is thinking about in real time in the Activity tab. Call this whenever picking up a new piece of work — even for work that has no shell signature (reading, designing, reviewing).",
@@ -328,6 +357,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "react") return handleReact(args as any);
   if (name === "subagents") return handleSubagents(conn, args as any);
   if (name === "task") return handleTask(conn, args as any);
+  if (name === "health") return handleHealth(args as any);
   if (name === "status") return handleStatus(conn);
   throw new Error(`Unknown tool: ${name}`);
 });
