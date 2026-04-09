@@ -2,19 +2,21 @@
 
 .msg-thread-btn {
   position: absolute;
-  top: 6px;
-  right: 32px;
+  bottom: 6px;
+  right: 42px;
   background: #1a1a1a;
-  color: #888;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 0 8px;
-  height: 20px;
-  font-size: 10px;
+  color: #aaa;
+  border: 1px solid #333;
+  border-radius: 14px;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s;
+  z-index: 2;
 }
 
 .msg:hover .msg-thread-btn {
