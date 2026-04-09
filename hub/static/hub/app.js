@@ -109,6 +109,21 @@ function cleanAgentName(name) {
   return name;
 }
 
+/**
+ * Return the agent name with host suffix. If the registered name already
+ * contains @host (e.g. "head@mba"), return as-is. Otherwise append
+ * "@<machine>" from the agent record so the sidebar always shows an
+ * identity tied to a host (mamba shows as "mamba@ywata-note-win" even if
+ * the agent config still registered plain "mamba").
+ */
+function hostedAgentName(a) {
+  var name = a && a.name ? a.name : "";
+  if (!name) return name;
+  if (name.indexOf("@") !== -1) return cleanAgentName(name);
+  var host = (a && a.machine) ? a.machine : "";
+  return host ? name + "@" + host : name;
+}
+
 function fuzzyMatch(query, text) {
   if (!query) return true;
   query = query.toLowerCase();
@@ -411,7 +426,7 @@ async function fetchAgents() {
           statusClass +
           '"></span>' +
           '<span class="name">' +
-          escapeHtml(cleanAgentName(a.name)) +
+          escapeHtml(hostedAgentName(a)) +
           (a.model
             ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
             : "") +

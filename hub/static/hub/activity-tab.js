@@ -88,7 +88,9 @@ function renderActivityTab() {
     var preview = a.last_message_preview || "";
     var machine = escapeHtml(a.machine || "—");
     var role = escapeHtml(a.role || "agent");
-    var name = escapeHtml(cleanAgentName(a.name));
+    var name = escapeHtml(
+      typeof hostedAgentName === "function" ? hostedAgentName(a) : cleanAgentName(a.name),
+    );
     var previewHtml = preview
       ? '<div class="activity-preview">' +
         '<span class="activity-preview-label">last:</span> ' +

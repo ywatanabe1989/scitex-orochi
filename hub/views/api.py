@@ -718,6 +718,75 @@ def api_agents_registry(request):
     return api_agents(request)
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_agents_register(request):
+    """POST /api/agents/register — REST-level agent registration + heartbeat.
+
+    Intended for lightweight Python/stdlib agents (caduceus) that do not
+    run a WebSocket consumer. Accepts JSON:
+        {
+          "token": "wks_...",
+          "name": "caduceus@host",
+          "machine": "host",
+          "role": "healer",
+          "model": "stdlib",
+          "channels": ["#general"],
+          "current_task": "monitoring"
+        }
+    Auth: workspace token in body or query string.
+    """
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "invalid json"}, status=400)
+
+    token = body.get("token") or request.GET.get("token")
+    if not token:
+        return JsonResponse({"error": "token required"}, status=401)
+
+    from hub.models import WorkspaceToken
+
+    try:
+        wt = WorkspaceToken.objects.get(token=token)
+    except WorkspaceToken.DoesNotExist:
+        return JsonResponse({"error": "invalid token"}, status=401)
+
+    name = (body.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "name required"}, status=400)
+
+    from hub.registry import (
+        mark_activity,
+        register_agent,
+        set_current_task,
+        update_heartbeat,
+    )
+
+    register_agent(
+        name=name,
+        workspace_id=wt.workspace_id,
+        info={
+            "agent_id": body.get("agent_id") or name,
+            "machine": body.get("machine", ""),
+            "role": body.get("role", "agent"),
+            "model": body.get("model", ""),
+            "workdir": body.get("workdir", ""),
+            "channels": body.get("channels") or ["#general"],
+        },
+    )
+    update_heartbeat(name, metrics=body.get("metrics") or {})
+    task = body.get("current_task") or ""
+    if task:
+        set_current_task(name, task)
+    preview = body.get("last_message_preview") or ""
+    if preview:
+        mark_activity(name, action=preview)
+    return JsonResponse({"status": "ok", "name": name})
+
+
 @login_required
 @require_http_methods(["POST"])
 def api_agents_purge(request):

@@ -188,6 +188,45 @@ def heal_dead(hub: str, token: str | None, agent: AgentState) -> None:
     log.error("DEAD %s — would heal via SSH", agent.name)
 
 
+def register_self(hub: str, token: str | None, name: str, machine: str) -> bool:
+    """Announce caduceus to Orochi via REST agent-register endpoint.
+
+    This is what makes caduceus visible in the Agents/Activity tab
+    alongside the Claude Code agents even though it has no WebSocket
+    consumer. Idempotent — can be called every loop iteration as a
+    heartbeat.
+    """
+    if not token:
+        return False
+    import json as _json
+    import urllib.error
+    import urllib.request
+
+    body = {
+        "token": token,
+        "name": name,
+        "machine": machine,
+        "role": "healer",
+        "model": "stdlib-daemon",
+        "channels": ["#general"],
+        "current_task": "monitoring agent liveness",
+    }
+    req = urllib.request.Request(
+        f"{hub.rstrip('/')}/api/agents/register/",
+        data=_json.dumps(body).encode(),
+        headers={"Content-Type": "application/json", "User-Agent": "caduceus/0.1"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return resp.status == 200
+    except urllib.error.HTTPError as e:
+        log.warning("register %s -> %d %s", req.full_url, e.code, e.reason)
+    except Exception as e:
+        log.warning("register %s -> %s", req.full_url, e)
+    return False
+
+
 def loop(
     hub: str,
     token: str | None,
@@ -195,14 +234,23 @@ def loop(
     autoremedy: bool,
     once: bool,
 ) -> None:
+    import socket as _socket
+
     last_action_ts: dict[str, float] = {}
+    self_host = _socket.gethostname().split(".")[0] or "unknown"
+    self_name = f"caduceus@{self_host}"
     log.info(
-        "caduceus starting: hub=%s interval=%ds autoremedy=%s",
+        "caduceus starting: hub=%s interval=%ds autoremedy=%s self=%s",
         hub,
         interval,
         autoremedy,
+        self_name,
     )
     while True:
+        # Re-register every cycle so we show up as an online agent
+        # with a fresh heartbeat timestamp.
+        if register_self(hub, token, self_name, self_host):
+            log.debug("self-register ok")
         agents = fetch_agents(hub, token)
         log.info("scan: %d agents", len(agents))
         for a in agents:
