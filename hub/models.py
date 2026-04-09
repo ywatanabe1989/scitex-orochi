@@ -69,6 +69,29 @@ class WorkspaceMember(models.Model):
         return f"{self.user} in {self.workspace} ({self.role})"
 
 
+class AgentProfile(models.Model):
+    """Per-agent display settings (icon, label) that persist across
+    WebSocket reconnects and container restarts. The in-memory registry
+    reads this at agent-join time and falls back to the transient fields
+    the agent registered with when there's no profile yet."""
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_profiles"
+    )
+    name = models.CharField(max_length=150, db_index=True)
+    icon_emoji = models.CharField(max_length=16, blank=True, default="")
+    icon_image = models.CharField(max_length=500, blank=True, default="")
+    icon_text = models.CharField(max_length=16, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("workspace", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name}@{self.workspace.name}"
+
+
 class Channel(models.Model):
     """A channel within a workspace — like a Slack channel."""
 

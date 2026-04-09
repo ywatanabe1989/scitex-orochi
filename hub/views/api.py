@@ -732,6 +732,93 @@ def api_agents_registry(request):
 
 
 @csrf_exempt
+@require_http_methods(["GET", "POST"])
+def api_agent_profiles(request):
+    """GET / POST persistent per-agent display profiles (icon etc).
+
+    GET  — returns all profiles for the current workspace
+    POST — upserts one profile: {name, icon_emoji?, icon_image?, icon_text?}
+
+    Both sessions and workspace tokens are accepted.
+    """
+    # Auth: session OR workspace token
+    token = None
+    if not (request.user and request.user.is_authenticated):
+        body = {}
+        if request.method == "POST" and request.body:
+            try:
+                body = json.loads(request.body)
+            except (json.JSONDecodeError, ValueError):
+                body = {}
+        token = (
+            request.GET.get("token")
+            or (body.get("token") if isinstance(body, dict) else None)
+        )
+        if not token:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        from hub.models import WorkspaceToken
+
+        try:
+            WorkspaceToken.objects.get(token=token)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+
+    workspace = get_workspace(request)
+    from hub.models import AgentProfile
+
+    if request.method == "GET":
+        profiles = AgentProfile.objects.filter(workspace=workspace)
+        data = [
+            {
+                "name": p.name,
+                "icon_emoji": p.icon_emoji,
+                "icon_image": p.icon_image,
+                "icon_text": p.icon_text,
+                "updated_at": p.updated_at.isoformat(),
+            }
+            for p in profiles
+        ]
+        return JsonResponse(data, safe=False)
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    name = (body.get("name") or "").strip()
+    if not name:
+        return JsonResponse({"error": "name required"}, status=400)
+    profile, _ = AgentProfile.objects.update_or_create(
+        workspace=workspace,
+        name=name,
+        defaults={
+            "icon_emoji": (body.get("icon_emoji") or "")[:16],
+            "icon_image": (body.get("icon_image") or "")[:500],
+            "icon_text": (body.get("icon_text") or "")[:16],
+        },
+    )
+    # Push into the in-memory registry so the live card updates too
+    from hub.registry import _agents, _lock
+
+    with _lock:
+        if name in _agents:
+            if profile.icon_emoji:
+                _agents[name]["icon_emoji"] = profile.icon_emoji
+            if profile.icon_image:
+                _agents[name]["icon"] = profile.icon_image
+            if profile.icon_text:
+                _agents[name]["icon_text"] = profile.icon_text
+    return JsonResponse(
+        {
+            "status": "ok",
+            "name": name,
+            "icon_emoji": profile.icon_emoji,
+            "icon_image": profile.icon_image,
+            "icon_text": profile.icon_text,
+        }
+    )
+
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def api_subagents_update(request):
     """POST /api/subagents/update — bulk set subagents for one or more agents.

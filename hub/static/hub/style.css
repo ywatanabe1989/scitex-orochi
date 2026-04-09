@@ -375,6 +375,14 @@ body {
   display: flex;
   gap: 24px;
 }
+/* Collapse the stats bar when it has no content so it doesn't add a
+ * dead band below the input on desktop. On small screens the mobile
+ * rules in responsive.css can re-enable it for safe-area padding. */
+.stats-bar:empty {
+  display: none;
+  padding: 0;
+  border-top: 0;
+}
 /* Tab Bar */
 .tab-bar {
   display: flex;

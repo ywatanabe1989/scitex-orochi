@@ -141,12 +141,31 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
     """Return list of agents, optionally filtered by workspace.
 
     Automatically cleans up stale entries on each call.
+    Merges persistent per-agent display profiles (AgentProfile) over
+    the in-memory transient icon fields so user-configured icons
+    survive across agent restarts.
     """
     with _lock:
         _cleanup_locked()
         agents = list(_agents.values())
     if workspace_id is not None:
         agents = [a for a in agents if a.get("workspace_id") == workspace_id]
+
+    # Load persistent profiles once per call and build a lookup.
+    profile_by_name: dict[str, dict] = {}
+    if workspace_id is not None:
+        try:
+            from hub.models import AgentProfile
+
+            for p in AgentProfile.objects.filter(workspace_id=workspace_id):
+                profile_by_name[p.name] = {
+                    "icon_emoji": p.icon_emoji or "",
+                    "icon_image": p.icon_image or "",
+                    "icon_text": p.icon_text or "",
+                }
+        except Exception:
+            pass
+
     result = []
     now = time.time()
     for a in agents:
@@ -166,6 +185,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     liveness = "stale"  # >10min silent — probably stuck
                 elif idle_seconds > 120:
                     liveness = "idle"  # >2min silent — paused/thinking
+        # Prefer persistent profile icon over transient register-time icon
+        prof = profile_by_name.get(a["name"], {})
+        icon_image = prof.get("icon_image") or a.get("icon", "")
+        icon_emoji = prof.get("icon_emoji") or a.get("icon_emoji", "")
+        icon_text = prof.get("icon_text") or a.get("icon_text", "")
         result.append(
             {
                 "name": a["name"],
@@ -174,9 +198,9 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
                 "workdir": a.get("workdir", ""),
-                "icon": a.get("icon", ""),
-                "icon_emoji": a.get("icon_emoji", ""),
-                "icon_text": a.get("icon_text", ""),
+                "icon": icon_image,
+                "icon_emoji": icon_emoji,
+                "icon_text": icon_text,
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
                 "liveness": liveness,
