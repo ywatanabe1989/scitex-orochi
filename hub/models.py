@@ -82,6 +82,14 @@ class AgentProfile(models.Model):
     icon_emoji = models.CharField(max_length=16, blank=True, default="")
     icon_image = models.CharField(max_length=500, blank=True, default="")
     icon_text = models.CharField(max_length=16, blank=True, default="")
+    # Last-known caduceus-reported health — persisted so the Agents tab
+    # + sidebar pills survive container restarts without agents having
+    # to re-POST their diagnosis. Free-form status string per mamba's
+    # taxonomy-extension model; reason capped at 200 chars.
+    health_status = models.CharField(max_length=32, blank=True, default="")
+    health_reason = models.CharField(max_length=200, blank=True, default="")
+    health_source = models.CharField(max_length=64, blank=True, default="")
+    health_ts = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
