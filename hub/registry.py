@@ -106,6 +106,9 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
                 "workdir": a.get("workdir", ""),
+                "icon": a.get("icon", ""),
+                "icon_emoji": a.get("icon_emoji", ""),
+                "icon_text": a.get("icon_text", ""),
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
                 "registered_at": (
