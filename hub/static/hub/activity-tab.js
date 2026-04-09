@@ -85,9 +85,16 @@ function renderActivityTab() {
     var liveness = a.liveness || a.status || "online";
     var idleStr = _formatIdle(a.idle_seconds);
     var task = a.current_task || "";
+    var preview = a.last_message_preview || "";
     var machine = escapeHtml(a.machine || "—");
     var role = escapeHtml(a.role || "agent");
     var name = escapeHtml(cleanAgentName(a.name));
+    var previewHtml = preview
+      ? '<div class="activity-preview">' +
+        '<span class="activity-preview-label">last:</span> ' +
+        escapeHtml(preview) +
+        '</div>'
+      : "";
     return (
       '<div class="activity-card activity-' + liveness + '">' +
       '<div class="activity-card-header">' +
@@ -97,6 +104,7 @@ function renderActivityTab() {
       '</div>' +
       '<div class="activity-meta">' + machine + ' · ' + role + '</div>' +
       '<div class="activity-task">' + _renderTaskField(task) + '</div>' +
+      previewHtml +
       '</div>'
     );
   }).join("");
