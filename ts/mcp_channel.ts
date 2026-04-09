@@ -102,10 +102,30 @@ const conn = new OrochiConnection(async (raw: string) => {
 
     if (sender === OROCHI_AGENT || !content) return;
 
-    const attachments = payload.attachments || [];
+    /* Attachments may arrive under three shapes depending on sender path:
+     *  - msg.metadata.attachments (current hub flat broadcast)
+     *  - msg.attachments (some clients)
+     *  - payload.attachments (legacy nested format)
+     * Normalize into one list and rewrite relative URLs into absolute
+     * ones so the receiving agent can fetch them directly with curl/Read. */
+    const rawAttachments =
+      (msg.metadata && msg.metadata.attachments) ||
+      msg.attachments ||
+      payload.attachments ||
+      [];
+    const hubBase = httpBase || "";
+    const attachments = (rawAttachments as Array<{ url?: string; filename?: string; mime_type?: string }>).map(
+      (a) => {
+        const u = a.url || "";
+        const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
+        return { ...a, url: abs };
+      },
+    );
     const attachmentInfo =
       attachments.length > 0
-        ? `\n[Attachments: ${(attachments as Array<{ url: string }>).map((a) => a.url).join(", ")}]`
+        ? `\n[Attachments: ${attachments
+            .map((a) => `${a.filename || "file"} -> ${a.url}`)
+            .join(", ")}]`
         : "";
 
     await mcp.notification({
