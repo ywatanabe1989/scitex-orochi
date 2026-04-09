@@ -396,14 +396,36 @@ body {
   font-weight: normal;
 }
 
+/* Mention highlights (@agent) */
+.mention-highlight {
+  color: #4ecdc4;
+  font-weight: 600;
+  background: rgba(78, 205, 196, 0.12);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
+/* Channel highlights (#general) */
+.channel-highlight {
+  color: #7ec8e3;
+  font-weight: 600;
+  background: rgba(126, 200, 227, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
 /* Issue links (#XX → GitHub) */
 .issue-link {
-  color: #4ecdc4;
+  color: #ffd93d;
   text-decoration: none;
   font-weight: 600;
+  background: rgba(255, 217, 61, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
 }
 .issue-link:hover {
   text-decoration: underline;
+  background: rgba(255, 217, 61, 0.2);
 }
 
 /* Fold/expand long messages */

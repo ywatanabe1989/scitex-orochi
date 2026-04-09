@@ -40,19 +40,20 @@ function appendMessage(msg) {
   }
   var highlightedContent = escapeHtml(content)
     .replace(/\n/g, "<br>")
+    .replace(/(^|[\s])@([\w@.\-]+)/g, function (_match, prefix, name) {
+      var isSpecial = name === "all" || name === "channel" || name === "agents";
+      var isAgent = cachedAgentNames.indexOf(name) !== -1;
+      if (isSpecial || isAgent) {
+        return prefix + '<span class="mention-highlight">@' + name + "</span>";
+      }
+      return prefix + "@" + name;
+    })
     .replace(
-      /(^|[\s])@([\w@.\-]+)/g,
-      function (_match, prefix, name) {
-        var isSpecial = name === "all" || name === "channel" || name === "agents";
-        var isAgent = cachedAgentNames.indexOf(name) !== -1;
-        if (isSpecial || isAgent) {
-          return prefix + '<span class="mention-highlight">@' + name + '</span>';
-        }
-        return prefix + '@' + name;
-      },
+      /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
+      '<span class="channel-highlight">$1</span>',
     )
     .replace(
-      /#(\d+)\b/g,
+      /(?<![\/\w])#(\d+)\b/g,
       '<a class="issue-link" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
     );
   /* Fold long posts (>10 lines) */
@@ -63,10 +64,18 @@ function appendMessage(msg) {
     var preview = lines.slice(0, MAX_LINES).join("<br>");
     var full = highlightedContent;
     highlightedContent =
-      '<div class="msg-preview">' + preview + "</div>" +
-      '<div class="msg-full" style="display:none">' + full + "</div>" +
-      '<button class="msg-fold-btn" onclick="this.previousElementSibling.style.display=\'block\';this.previousElementSibling.previousElementSibling.style.display=\'none\';this.textContent=\'Show less\';var b=this;b.onclick=function(){b.previousElementSibling.style.display=\'none\';b.previousElementSibling.previousElementSibling.style.display=\'block\';b.textContent=\'Show more (' + (lines.length - MAX_LINES) + ' more lines)\';b.onclick=arguments.callee}">' +
-      "Show more (" + (lines.length - MAX_LINES) + " more lines)</button>";
+      '<div class="msg-preview">' +
+      preview +
+      "</div>" +
+      '<div class="msg-full" style="display:none">' +
+      full +
+      "</div>" +
+      "<button class=\"msg-fold-btn\" onclick=\"this.previousElementSibling.style.display='block';this.previousElementSibling.previousElementSibling.style.display='none';this.textContent='Show less';var b=this;b.onclick=function(){b.previousElementSibling.style.display='none';b.previousElementSibling.previousElementSibling.style.display='block';b.textContent='Show more (" +
+      (lines.length - MAX_LINES) +
+      " more lines)';b.onclick=arguments.callee}\">" +
+      "Show more (" +
+      (lines.length - MAX_LINES) +
+      " more lines)</button>";
   }
   var attachmentsHtml = "";
   var attachments =
