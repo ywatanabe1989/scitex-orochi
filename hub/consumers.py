@@ -12,8 +12,17 @@ log = logging.getLogger("orochi.consumers")
 
 
 def _sanitize_group(name: str) -> str:
-    """Sanitize a channel/group name for Django Channels (ASCII alnum, -, _, . only)."""
-    return name.replace("#", "").replace("@", "at-").replace(" ", "-")
+    """Sanitize a channel/group name for Django Channels.
+
+    Channels requires names matching ^[a-zA-Z0-9._-]{1,99}$. The previous
+    version only handled #, @, and space, which broke registration when
+    channels included other characters (slashes, colons, unicode, etc.).
+    """
+    import re
+
+    sanitized = re.sub(r"[^a-zA-Z0-9._-]", "-", name)
+    sanitized = sanitized.strip("-_.") or "x"
+    return sanitized[:99]
 
 
 class AgentConsumer(AsyncJsonWebsocketConsumer):
