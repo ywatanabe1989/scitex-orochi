@@ -120,6 +120,40 @@ class Message(models.Model):
         return f"{self.sender} in {self.channel.name}: {self.content[:50]}"
 
 
+class MessageReaction(models.Model):
+    """An emoji reaction on a message."""
+
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="reactions"
+    )
+    emoji = models.CharField(max_length=32)
+    reactor = models.CharField(max_length=100)  # username or agent name
+    reactor_type = models.CharField(max_length=10, default="human")
+    ts = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("message", "emoji", "reactor")
+        indexes = [models.Index(fields=["message", "emoji"])]
+
+    def __str__(self):
+        return f"{self.reactor} {self.emoji} on msg#{self.message_id}"
+
+
+class MessageThread(models.Model):
+    """Thread association — a message is a reply to another message."""
+
+    parent = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="thread_replies"
+    )
+    reply = models.OneToOneField(
+        Message, on_delete=models.CASCADE, related_name="thread_parent"
+    )
+    ts = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"reply#{self.reply_id} → parent#{self.parent_id}"
+
+
 class WorkspaceInvitation(models.Model):
     """Email invitation to join a workspace."""
 

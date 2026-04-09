@@ -19,9 +19,12 @@ def github_issues(request):
             status=503,
         )
 
+    state = request.GET.get("state", "all")
+    if state not in ("open", "closed", "all"):
+        state = "all"
     github_url = (
         "https://api.github.com/repos/ywatanabe1989/todo/issues"
-        "?state=open&per_page=100&sort=updated&direction=desc"
+        f"?state={state}&per_page=100&sort=updated&direction=desc"
     )
     headers = {
         "Accept": "application/vnd.github.v3+json",

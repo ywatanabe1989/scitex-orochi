@@ -11,7 +11,14 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
-from hub.models import Channel, Message, Workspace, WorkspaceMember
+from hub.models import (
+    Channel,
+    Message,
+    MessageReaction,
+    MessageThread,
+    Workspace,
+    WorkspaceMember,
+)
 from hub.views._helpers import get_workspace
 
 log = logging.getLogger("orochi.api")
@@ -84,8 +91,12 @@ def api_messages(request):
     payload = body.get("payload", {})
     ch_name = body.get("channel") or payload.get("channel") or "#general"
     text = body.get("text") or payload.get("content") or payload.get("text") or ""
-    if not text:
-        return JsonResponse({"error": "text is required"}, status=400)
+    attachments = payload.get("attachments") or body.get("attachments") or []
+    metadata = payload.get("metadata") or body.get("metadata") or {}
+    if attachments:
+        metadata = {**metadata, "attachments": attachments}
+    if not text and not attachments:
+        return JsonResponse({"error": "text or attachments required"}, status=400)
 
     channel, _ = Channel.objects.get_or_create(workspace=workspace, name=ch_name)
     msg = Message.objects.create(
@@ -94,6 +105,7 @@ def api_messages(request):
         sender=request.user.username,
         sender_type="human",
         content=text,
+        metadata=metadata,
     )
 
     layer = get_channel_layer()
@@ -102,11 +114,13 @@ def api_messages(request):
         group,
         {
             "type": "chat.message",
+            "id": msg.id,
             "sender": request.user.username,
             "sender_type": "human",
             "channel": ch_name,
             "text": text,
             "ts": msg.ts.isoformat(),
+            "metadata": metadata,
         },
     )
 
@@ -186,12 +200,301 @@ def api_config(request):
     data = {
         "workspace": workspace.name,
         "version": version,
+        "deployed_at": getattr(settings, "OROCHI_DEPLOYED_AT", ""),
+        "build_id": getattr(settings, "OROCHI_BUILD_ID", ""),
     }
     # Expose dashboard token if set on workspace
     token = request.GET.get("token", "")
     if token:
         data["dashboard_token"] = token
     return JsonResponse(data)
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def api_threads(request):
+    """Thread API — list replies or post a new reply.
+
+    GET  /api/threads/?parent_id=N — list all replies under parent message.
+    POST /api/threads/ {parent_id, text, attachments?} — post a reply.
+    """
+    workspace = get_workspace(request)
+
+    if request.method == "GET":
+        try:
+            parent_id = int(request.GET.get("parent_id", "0"))
+        except ValueError:
+            return JsonResponse({"error": "invalid parent_id"}, status=400)
+        if not parent_id:
+            return JsonResponse({"error": "parent_id required"}, status=400)
+        try:
+            parent = Message.objects.get(id=parent_id, workspace=workspace)
+        except Message.DoesNotExist:
+            return JsonResponse({"error": "parent not found"}, status=404)
+        thread_rows = (
+            MessageThread.objects.filter(parent=parent)
+            .select_related("reply", "reply__channel")
+            .order_by("ts")
+        )
+        data = [
+            {
+                "id": t.reply.id,
+                "sender": t.reply.sender,
+                "sender_type": t.reply.sender_type,
+                "content": t.reply.content,
+                "ts": t.reply.ts.isoformat(),
+                "metadata": t.reply.metadata,
+            }
+            for t in thread_rows
+        ]
+        return JsonResponse(data, safe=False)
+
+    # POST — create a threaded reply
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    parent_id = body.get("parent_id")
+    text = body.get("text") or ""
+    attachments = body.get("attachments") or []
+    if not parent_id or (not text and not attachments):
+        return JsonResponse({"error": "parent_id and text/attachments required"}, status=400)
+    try:
+        parent = Message.objects.get(id=parent_id, workspace=workspace)
+    except Message.DoesNotExist:
+        return JsonResponse({"error": "parent not found"}, status=404)
+
+    metadata = {}
+    if attachments:
+        metadata["attachments"] = attachments
+    reply = Message.objects.create(
+        workspace=workspace,
+        channel=parent.channel,
+        sender=request.user.username,
+        sender_type="human",
+        content=text,
+        metadata=metadata,
+    )
+    MessageThread.objects.create(parent=parent, reply=reply)
+
+    layer = get_channel_layer()
+    group = f"workspace_{workspace.id}"
+    async_to_sync(layer.group_send)(
+        group,
+        {
+            "type": "thread.reply",
+            "parent_id": parent.id,
+            "reply_id": reply.id,
+            "sender": request.user.username,
+            "sender_type": "human",
+            "text": text,
+            "ts": reply.ts.isoformat(),
+            "metadata": metadata,
+        },
+    )
+    return JsonResponse({"status": "ok", "reply_id": reply.id}, status=201)
+
+
+@login_required
+@require_http_methods(["GET", "POST", "DELETE"])
+def api_reactions(request):
+    """Reactions API.
+
+    GET  /api/reactions/?message_ids=1,2,3 — list reactions grouped per message.
+    POST /api/reactions/ {message_id, emoji} — toggle reaction by current user.
+    DELETE /api/reactions/ {message_id, emoji} — remove reaction by current user.
+    """
+    workspace = get_workspace(request)
+
+    if request.method == "GET":
+        ids_raw = request.GET.get("message_ids", "")
+        try:
+            ids = [int(x) for x in ids_raw.split(",") if x.strip().isdigit()]
+        except ValueError:
+            ids = []
+        if not ids:
+            return JsonResponse({}, safe=False)
+        qs = (
+            MessageReaction.objects.filter(
+                message__workspace=workspace, message_id__in=ids
+            )
+            .values("message_id", "emoji", "reactor", "reactor_type")
+        )
+        grouped: dict[int, dict[str, list]] = {}
+        for r in qs:
+            m = grouped.setdefault(r["message_id"], {})
+            lst = m.setdefault(r["emoji"], [])
+            lst.append({"reactor": r["reactor"], "reactor_type": r["reactor_type"]})
+        return JsonResponse(grouped)
+
+    # POST or DELETE — modify
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    message_id = body.get("message_id")
+    emoji = (body.get("emoji") or "").strip()
+    if not message_id or not emoji:
+        return JsonResponse({"error": "message_id and emoji required"}, status=400)
+    try:
+        msg = Message.objects.get(id=message_id, workspace=workspace)
+    except Message.DoesNotExist:
+        return JsonResponse({"error": "message not found"}, status=404)
+
+    reactor = request.user.username
+    if request.method == "POST":
+        obj, created = MessageReaction.objects.get_or_create(
+            message=msg, emoji=emoji, reactor=reactor,
+            defaults={"reactor_type": "human"},
+        )
+        action = "added" if created else "existed"
+    else:  # DELETE
+        deleted, _ = MessageReaction.objects.filter(
+            message=msg, emoji=emoji, reactor=reactor
+        ).delete()
+        action = "removed" if deleted else "not_found"
+
+    # Broadcast reaction update to workspace group
+    layer = get_channel_layer()
+    group = f"workspace_{workspace.id}"
+    async_to_sync(layer.group_send)(
+        group,
+        {
+            "type": "reaction.update",
+            "message_id": msg.id,
+            "emoji": emoji,
+            "reactor": reactor,
+            "action": action,
+        },
+    )
+    return JsonResponse({"status": "ok", "action": action})
+
+
+@login_required
+@require_GET
+def api_releases(request):
+    """GET /api/releases/ — list recent git commits as releases.
+
+    Reads `git log` against the Orochi codebase. Falls back gracefully
+    when git is unavailable (e.g., in a stripped container).
+    """
+    import subprocess
+    from pathlib import Path
+
+    # Walk up from this file until we find a .git directory
+    search_root = Path(__file__).resolve()
+    git_root = None
+    for parent in [search_root, *search_root.parents]:
+        if (parent / ".git").exists():
+            git_root = parent
+            break
+
+    if git_root is None:
+        return JsonResponse([], safe=False)
+
+    limit = min(int(request.GET.get("limit", "100")), 500)
+    fmt = "%H%x00%h%x00%ci%x00%an%x00%s%x00%b%x00%D"
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(git_root), "log", f"--max-count={limit}", f"--format={fmt}%x1e"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return JsonResponse([], safe=False)
+
+    if proc.returncode != 0:
+        return JsonResponse([], safe=False)
+
+    items = []
+    for raw in proc.stdout.split("\x1e"):
+        raw = raw.strip("\n")
+        if not raw:
+            continue
+        parts = raw.split("\x00")
+        if len(parts) < 5:
+            continue
+        sha, short_sha, date, author, subject = parts[0], parts[1], parts[2], parts[3], parts[4]
+        body = parts[5] if len(parts) > 5 else ""
+        refs = parts[6] if len(parts) > 6 else ""
+        items.append(
+            {
+                "sha": sha,
+                "short_sha": short_sha,
+                "date": date,
+                "author": author,
+                "subject": subject,
+                "body": body.strip(),
+                "refs": refs,
+            }
+        )
+
+    return JsonResponse(items, safe=False)
+
+
+@login_required
+@require_GET
+def api_media(request):
+    """GET /api/media/ — list all file attachments from message metadata.
+
+    Returns newest-first, with sender, timestamp, channel, and attachment info.
+    """
+    workspace = get_workspace(request)
+    limit = min(int(request.GET.get("limit", "200")), 1000)
+
+    msgs = (
+        Message.objects.filter(workspace=workspace)
+        .exclude(metadata={})
+        .select_related("channel")
+        .order_by("-ts")[: limit * 2]  # overshoot — some messages have empty metadata
+    )
+
+    items = []
+    for m in msgs:
+        if not isinstance(m.metadata, dict):
+            continue
+        attachments = m.metadata.get("attachments") or []
+        if not isinstance(attachments, list):
+            continue
+        for att in attachments:
+            if not isinstance(att, dict) or not att.get("url"):
+                continue
+            items.append(
+                {
+                    "url": att.get("url"),
+                    "filename": att.get("filename") or "",
+                    "mime_type": att.get("mime_type") or "",
+                    "size": att.get("size") or 0,
+                    "sender": m.sender,
+                    "sender_type": m.sender_type,
+                    "channel": m.channel.name,
+                    "ts": m.ts.isoformat(),
+                    "message_id": m.id,
+                }
+            )
+            if len(items) >= limit:
+                break
+        if len(items) >= limit:
+            break
+
+    return JsonResponse(items, safe=False)
+
+
+@login_required
+@require_GET
+def api_members(request):
+    """GET /api/members/ — list human members of the current workspace."""
+    workspace = get_workspace(request)
+    members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
+    data = [
+        {
+            "username": m.user.username,
+            "role": m.role,
+        }
+        for m in members
+    ]
+    return JsonResponse(data, safe=False)
 
 
 @login_required

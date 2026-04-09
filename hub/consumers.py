@@ -146,12 +146,14 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         elif msg_type == "message":
             payload = content.get("payload", {})
             ch_name = payload.get("channel", "#general")
+            # Support both "text" and "content" keys from agents
+            text = payload.get("content") or payload.get("text") or ""
 
             # Persist message
             msg = await self._save_message(
                 channel_name=ch_name,
                 sender=self.agent_name,
-                content_text=payload.get("text", ""),
+                content_text=text,
                 metadata=payload.get("metadata", {}),
             )
 
@@ -161,10 +163,11 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 group,
                 {
                     "type": "chat.message",
+                    "id": msg["id"] if msg else None,
                     "sender": self.agent_name,
                     "sender_type": "agent",
                     "channel": ch_name,
-                    "text": payload.get("text", ""),
+                    "text": text,
                     "ts": msg["ts"] if msg else None,
                     "metadata": payload.get("metadata", {}),
                 },
@@ -175,10 +178,11 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 self.workspace_group,
                 {
                     "type": "chat.message",
+                    "id": msg["id"] if msg else None,
                     "sender": self.agent_name,
                     "sender_type": "agent",
                     "channel": ch_name,
-                    "text": payload.get("text", ""),
+                    "text": text,
                     "ts": msg["ts"] if msg else None,
                     "metadata": payload.get("metadata", {}),
                 },
@@ -189,6 +193,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json(
             {
                 "type": "message",
+                "id": event.get("id"),
                 "sender": event["sender"],
                 "sender_type": event.get("sender_type", "human"),
                 "channel": event["channel"],
@@ -204,6 +209,14 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def agent_info(self, event):
         """Handle agent.info from channel layer — ignore for agent sockets."""
+        pass
+
+    async def reaction_update(self, event):
+        """Ignore reaction events on agent sockets."""
+        pass
+
+    async def thread_reply(self, event):
+        """Ignore thread events on agent sockets."""
         pass
 
     @database_sync_to_async
@@ -318,6 +331,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 group,
                 {
                     "type": "chat.message",
+                    "id": msg["id"] if msg else None,
                     "sender": self.user.username,
                     "sender_type": "human",
                     "channel": ch_name,
@@ -331,6 +345,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 self.workspace_group,
                 {
                     "type": "chat.message",
+                    "id": msg["id"] if msg else None,
                     "sender": self.user.username,
                     "sender_type": "human",
                     "channel": ch_name,
@@ -345,6 +360,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json(
             {
                 "type": "message",
+                "id": event.get("id"),
                 "sender": event["sender"],
                 "sender_type": event.get("sender_type", "human"),
                 "channel": event["channel"],
@@ -372,6 +388,33 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "agent": event["agent"],
                 "info": event.get("info", {}),
                 "metrics": event.get("metrics", {}),
+            }
+        )
+
+    async def reaction_update(self, event):
+        """Forward reaction add/remove events to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "reaction_update",
+                "message_id": event["message_id"],
+                "emoji": event["emoji"],
+                "reactor": event["reactor"],
+                "action": event["action"],
+            }
+        )
+
+    async def thread_reply(self, event):
+        """Forward thread reply events to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "thread_reply",
+                "parent_id": event["parent_id"],
+                "reply_id": event["reply_id"],
+                "sender": event["sender"],
+                "sender_type": event.get("sender_type", "human"),
+                "text": event.get("text", ""),
+                "ts": event.get("ts"),
+                "metadata": event.get("metadata", {}),
             }
         )
 

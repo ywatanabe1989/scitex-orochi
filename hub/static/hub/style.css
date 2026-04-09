@@ -177,6 +177,24 @@ body {
   font-size: 10px;
   color: #666;
   font-weight: normal;
+  font-variant-numeric: tabular-nums;
+}
+.brand-new-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #0a0a0a;
+  background: #4ecdc4;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  animation: brand-new-pulse 2s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes brand-new-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 .sidebar-brand .status {
   font-size: 11px;
