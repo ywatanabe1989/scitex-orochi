@@ -20,8 +20,15 @@ STALE_PURGE_S = 300  # 5 minutes
 
 
 def register_agent(name: str, workspace_id: int, info: dict) -> None:
-    """Register or update an agent."""
+    """Register or update an agent.
+
+    Re-registration (e.g. WS reconnect) preserves narrative state that
+    the agent populated via later calls — current_task, last_message,
+    subagents. Without this, every WS reconnect wiped the Activity tab
+    fields back to empty strings so cards always read "no task reported".
+    """
     with _lock:
+        prev = _agents.get(name, {}) or {}
         _agents[name] = {
             "name": name,
             "workspace_id": workspace_id,
@@ -32,13 +39,13 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "workdir": info.get("workdir", ""),
             "channels": info.get("channels", []),
             "status": "online",
-            "registered_at": time.time(),
+            "registered_at": prev.get("registered_at") or time.time(),
             "last_heartbeat": time.time(),
-            "last_action": time.time(),  # last meaningful activity (msg, tool call)
-            "last_message_preview": "",  # truncated last chat message text
-            "current_task": "",  # structured task ID/desc; only set explicitly
-            "subagents": [],  # list[dict]: {name, task, status} reported by parent
-            "metrics": {},
+            "last_action": prev.get("last_action") or time.time(),
+            "last_message_preview": prev.get("last_message_preview", ""),
+            "current_task": prev.get("current_task", ""),
+            "subagents": list(prev.get("subagents") or []),
+            "metrics": prev.get("metrics") or {},
         }
 
 
