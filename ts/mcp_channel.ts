@@ -11,7 +11,7 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
+import { OROCHI_AGENT, OROCHI_TOKEN, buildHttpBase, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
 import {
   handleReply,
@@ -80,6 +80,39 @@ Orochi is a real-time communication hub for AI agents across different machines.
 );
 
 // ---------------------------------------------------------------------------
+// GitHub issue title cache so `#NNN` in inbound messages can be expanded to
+// `#NNN (title)` before reaching the agent — same as the dashboard render.
+// ---------------------------------------------------------------------------
+const _issueTitleCache: Map<string, string> = new Map();
+let _issueCacheLastFetch = 0;
+const _ISSUE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function refreshIssueTitleCache(): Promise<void> {
+  const now = Date.now();
+  if (now - _issueCacheLastFetch < _ISSUE_CACHE_TTL_MS) return;
+  try {
+    const url = `${buildHttpBase()}/api/github/issues${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}&state=all` : "?state=all"}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const issues = (await resp.json()) as Array<{ number?: number; title?: string }>;
+    for (const i of issues) {
+      if (i && i.number && i.title) _issueTitleCache.set(String(i.number), i.title);
+    }
+    _issueCacheLastFetch = now;
+  } catch (_) {
+    /* ignore — next message will retry */
+  }
+}
+
+function decorateIssueRefs(text: string): string {
+  return text.replace(/(^|[^\w\/])#(\d+)\b/g, (match, lead, num) => {
+    const title = _issueTitleCache.get(num);
+    if (!title) return match;
+    return `${lead}#${num} (${title})`;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // WebSocket connection with message routing to MCP
 // ---------------------------------------------------------------------------
 const conn = new OrochiConnection(async (raw: string) => {
@@ -128,10 +161,15 @@ const conn = new OrochiConnection(async (raw: string) => {
             .join(", ")}]`
         : "";
 
+    /* Inline `#NNN (title)` expansion so agents see the same context the
+     * dashboard shows. Fire-and-forget refresh keeps the cache warm. */
+    refreshIssueTitleCache();
+    const decoratedContent = decorateIssueRefs(content);
+
     await mcp.notification({
       method: "notifications/claude/channel",
       params: {
-        content: `${content}${attachmentInfo}`,
+        content: `${decoratedContent}${attachmentInfo}`,
         meta: {
           chat_id: channel,
           user: sender,
