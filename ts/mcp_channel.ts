@@ -13,7 +13,13 @@ import {
 
 import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
-import { handleReply, handleHistory, handleReact, handleStatus } from "./src/tools.js";
+import {
+  handleReply,
+  handleHistory,
+  handleReact,
+  handleStatus,
+  handleSubagents,
+} from "./src/tools.js";
 
 // Unified truthy check for env var guards
 const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
@@ -164,6 +170,31 @@ const TOOL_DEFS = [
     },
   },
   {
+    name: "subagents",
+    description:
+      "Report this agent's current subagent tree to Orochi so the Activity tab renders them nested under this agent. Pass the full list on every call (full-replace semantics).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        subagents: {
+          type: "array",
+          description:
+            "Current subagents. Each item: {name, task, status?}. status is one of running|done|failed (default running).",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              task: { type: "string" },
+              status: { type: "string" },
+            },
+            required: ["name", "task"],
+          },
+        },
+      },
+      required: ["subagents"],
+    },
+  },
+  {
     name: "react",
     description:
       "React to an Orochi message with an emoji (toggle semantics). Pass the integer message_id and the emoji character.",
@@ -198,6 +229,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "reply") return handleReply(conn, args as any);
   if (name === "history") return handleHistory(args as any);
   if (name === "react") return handleReact(args as any);
+  if (name === "subagents") return handleSubagents(conn, args as any);
   if (name === "status") return handleStatus(conn);
   throw new Error(`Unknown tool: ${name}`);
 });
