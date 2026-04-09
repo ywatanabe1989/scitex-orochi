@@ -1,5 +1,13 @@
-/* File upload -- attach, drag-drop, clipboard paste */
-/* globals: currentChannel, userName, sendOrochiMessage, token, apiUrl */
+/* File upload -- attach, drag-drop, clipboard paste (multi-file) */
+/* globals: currentChannel, userName, sendOrochiMessage, token, apiUrl, csrfToken */
+
+(function () {
+  /* Make the file input multi-select */
+  var fileInput = document.getElementById("file-input");
+  if (fileInput && !fileInput.hasAttribute("multiple")) {
+    fileInput.setAttribute("multiple", "multiple");
+  }
+})();
 
 document.getElementById("msg-attach").addEventListener("click", function () {
   document.getElementById("file-input").click();
@@ -8,47 +16,29 @@ document.getElementById("msg-attach").addEventListener("click", function () {
 document
   .getElementById("file-input")
   .addEventListener("change", async function () {
-    var file = this.files[0];
-    if (!file) return;
-    var formData = new FormData();
-    formData.append("file", file);
-    try {
-      var headers = {};
-      if (csrfToken) headers["X-CSRFToken"] = csrfToken;
-      var res = await fetch(apiUrl("/api/upload"), {
-        method: "POST",
-        headers: headers,
-        credentials: "same-origin",
-        body: formData,
-      });
-      if (!res.ok) {
-        console.error("Upload failed:", res.status);
-        return;
-      }
-      var result = await res.json();
-      var channel = currentChannel || "#general";
-      sendOrochiMessage({
-        type: "message",
-        sender: userName,
-        payload: {
-          channel: channel,
-          content: file.name,
-          attachments: [result],
-        },
-      });
-    } catch (e) {
-      console.error("Upload error:", e);
-    }
+    if (!this.files || this.files.length === 0) return;
+    var arr = Array.prototype.slice.call(this.files);
+    await uploadFiles(arr);
     this.value = "";
   });
 
-async function uploadFile(file) {
-  console.log("[orochi-upload] uploadFile called:", file.name, file.type, file.size);
+/**
+ * Upload one or more files in a single POST and emit ONE message that
+ * carries all attachments. Used by the file picker, drag-drop, and
+ * clipboard paste — all paths converge here.
+ */
+async function uploadFiles(files) {
+  if (!files || files.length === 0) return;
+  console.log("[orochi-upload] uploadFiles called:", files.length, "files");
   var formData = new FormData();
-  formData.append("file", file);
+  files.forEach(function (f) {
+    formData.append("file", f);
+  });
   try {
     var headers = {};
-    if (csrfToken) headers["X-CSRFToken"] = csrfToken;
+    if (typeof csrfToken !== "undefined" && csrfToken) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
     var uploadUrl = apiUrl("/api/upload");
     console.log("[orochi-upload] POST to:", uploadUrl);
     var res = await fetch(uploadUrl, {
@@ -64,24 +54,33 @@ async function uploadFile(file) {
     }
     var result = await res.json();
     console.log("[orochi-upload] Upload result:", result);
-    if (!result.url) {
-      console.error("[orochi-upload] Response has no url field!", result);
+    /* Backend returns {files: [...], errors: [...], count, ...top-level-mirror} */
+    var attachments = (result && result.files) || (result && result.url ? [result] : []);
+    if (attachments.length === 0) {
+      console.error("[orochi-upload] no successful uploads", result);
       return;
     }
     var channel = currentChannel || "#general";
-    console.log("[orochi-upload] Sending message with attachment, url:", result.url);
+    var contentText = attachments.length === 1
+      ? attachments[0].filename
+      : attachments.length + " files: " + attachments.map(function (a) { return a.filename; }).join(", ");
     sendOrochiMessage({
       type: "message",
       sender: userName,
       payload: {
         channel: channel,
-        content: file.name,
-        attachments: [result],
+        content: contentText,
+        attachments: attachments,
       },
     });
   } catch (e) {
     console.error("[orochi-upload] Upload error:", e);
   }
+}
+
+/* Backward-compat single-file wrapper */
+async function uploadFile(file) {
+  return uploadFiles([file]);
 }
 
 var msgInput = document.getElementById("msg-input");
@@ -97,8 +96,8 @@ msgInput.addEventListener("drop", function (e) {
   e.preventDefault();
   this.classList.remove("drag-over");
   var files = e.dataTransfer.files;
-  for (var i = 0; i < files.length; i++) {
-    uploadFile(files[i]);
+  if (files && files.length) {
+    uploadFiles(Array.prototype.slice.call(files));
   }
 });
 
@@ -112,35 +111,32 @@ msgInput.addEventListener("drop", function (e) {
 function handleClipboardPaste(e) {
   var cd = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;
-  /* Try files[] first (Chrome/Edge for screenshots) */
+  /* Collect ALL image files from the clipboard (multi-paste support).
+     Some browsers expose images in cd.files, others in cd.items — try both. */
+  var collected = [];
   var fileList = cd.files;
   if (fileList && fileList.length) {
     for (var i = 0; i < fileList.length; i++) {
       var f = fileList[i];
-      if (f && f.type && f.type.indexOf("image/") === 0) {
-        e.preventDefault();
-        console.log("[orochi-upload] pasting image via files[]:", f.name || "pasted", f.type, f.size);
-        uploadFile(f);
-        return;
+      if (f && f.type && f.type.indexOf("image/") === 0) collected.push(f);
+    }
+  }
+  var items = cd.items;
+  if (items) {
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      if (it && it.type && it.type.indexOf("image/") === 0) {
+        var file = it.getAsFile();
+        if (file && collected.indexOf(file) === -1) collected.push(file);
       }
     }
   }
-  /* Fallback to items[] (Firefox, Safari) */
-  var items = cd.items;
-  if (!items) return;
-  for (var j = 0; j < items.length; j++) {
-    var it = items[j];
-    if (it && it.type && it.type.indexOf("image/") === 0) {
-      e.preventDefault();
-      var file = it.getAsFile();
-      if (file) {
-        console.log("[orochi-upload] pasting image via items[]:", file.name || "pasted", file.type, file.size);
-        uploadFile(file);
-      }
-      return;
-    }
+  if (collected.length > 0) {
+    e.preventDefault();
+    console.log("[orochi-upload] pasting", collected.length, "image(s) from clipboard");
+    uploadFiles(collected);
   }
 }
+/* Bind ONCE to the textarea — duplicate-binding (also on document) caused
+   "image.png shown twice" because both handlers fired for the same event. */
 msgInput.addEventListener("paste", handleClipboardPaste);
-/* Also listen on document as a backup in case focus is elsewhere */
-document.addEventListener("paste", handleClipboardPaste);
