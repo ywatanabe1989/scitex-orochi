@@ -127,8 +127,14 @@ export function getSystemMetrics(): Metrics {
     if (match) diskUsagePercent = parseInt(match[1]);
   } catch (_) {}
 
-  const mem =
-    _tryScitexResource() || _tryProcMeminfo() || _fromNodeOs();
+  /* NOTE: `scitex.resource` has a module-import side effect that
+   * spawns a local Flask dashboard on 127.0.0.1:5000. Sidecars must
+   * NOT spawn surprise web listeners, so we intentionally do NOT
+   * import it here. /proc/meminfo is the correct primary on Linux
+   * (same MemAvailable that scitex.resource reads underneath), and
+   * os.freemem() is only honest on macOS. scitex-orochi#5 / mamba's
+   * warning 2026-04-09. */
+  const mem = _tryProcMeminfo() || _fromNodeOs();
 
   return {
     cpu_count: cpuInfo.length,
