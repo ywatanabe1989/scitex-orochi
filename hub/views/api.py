@@ -652,10 +652,23 @@ def api_members(request):
     return JsonResponse(data, safe=False)
 
 
-@login_required
 @require_GET
 def api_agents(request):
-    """GET /api/agents — list agents from in-memory registry + DB fallback."""
+    """GET /api/agents — list agents from in-memory registry + DB fallback.
+
+    Auth: Django session OR workspace token (?token=wks_...) so lightweight
+    stdlib agents (e.g. caduceus) can poll without a browser login.
+    """
+    if not (request.user and request.user.is_authenticated):
+        token = request.GET.get("token")
+        if not token:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        from hub.models import WorkspaceToken
+
+        try:
+            WorkspaceToken.objects.get(token=token)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
     workspace = get_workspace(request)
 
     # Primary: in-memory registry (has live metadata from WS connections)
