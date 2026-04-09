@@ -228,10 +228,12 @@ async function loadHistory() {
       var key = messageKey(row.sender, row.ts, row.content);
       knownMessageKeys[key] = true;
       appendMessage({
+        id: row.id,
         type: "message",
         sender: row.sender,
         sender_type: row.sender_type,
         ts: row.ts,
+        metadata: row.metadata || {},
         payload: {
           channel: row.channel,
           content: row.content,
@@ -277,10 +279,12 @@ async function loadChannelHistory(channel) {
       var key = messageKey(row.sender, row.ts, row.content);
       knownMessageKeys[key] = true;
       appendMessage({
+        id: row.id,
         type: "message",
         sender: row.sender,
         sender_type: row.sender_type,
         ts: row.ts,
+        metadata: row.metadata || {},
         payload: {
           channel: channel,
           content: row.content,
@@ -290,6 +294,10 @@ async function loadChannelHistory(channel) {
       });
     });
     container.scrollTop = container.scrollHeight;
+    if (typeof fetchReactionsForMessages === "function") {
+      var ids = messages.map(function (r) { return r.id; }).filter(Boolean);
+      fetchReactionsForMessages(ids);
+    }
   } catch (e) {
     console.error("Failed to load channel history:", e);
   }
