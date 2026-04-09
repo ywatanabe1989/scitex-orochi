@@ -118,7 +118,25 @@ function decorateIssueRefs(text: string): string {
 const conn = new OrochiConnection(async (raw: string) => {
   try {
     const msg = JSON.parse(raw);
-    if (msg.type !== "message") return;
+
+    /* Thread replies and reaction updates must reach agents too.
+     * Server broadcasts them as distinct event types; we rewrite them
+     * into a message-shaped notification so the existing content path
+     * below can format + push them without duplication. */
+    if (msg.type === "thread_reply") {
+      const parentId = msg.parent_id ?? msg.parent ?? "?";
+      msg.type = "message";
+      msg.text = `↳ reply to msg#${parentId}: ${msg.text || msg.content || ""}`;
+    } else if (msg.type === "reaction_update") {
+      const targetId = msg.message_id ?? msg.target ?? "?";
+      const emoji = msg.emoji || "?";
+      const action = msg.action || (msg.added ? "added" : "removed");
+      msg.type = "message";
+      msg.text = `${action === "removed" ? "➖" : "➕"} ${emoji} on msg#${targetId}`;
+      msg.sender = msg.actor || msg.sender || "unknown";
+    } else if (msg.type !== "message") {
+      return;
+    }
 
     // Hub sends flat messages: {type, sender, channel, text, ts, metadata}
     // Also support legacy nested payload format for backward compatibility
