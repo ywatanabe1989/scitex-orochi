@@ -1,0 +1,203 @@
+/* Activity tab — agent status board */
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e1e1e;
+}
+
+.activity-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ddd;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.activity-summary {
+  display: flex;
+  gap: 8px;
+}
+
+.activity-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.activity-pill-online { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
+.activity-pill-idle { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.activity-pill-stale { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.activity-pill-offline { background: #1a1a1a; color: #555; }
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.activity-card {
+  background: #141414;
+  border: 1px solid #222;
+  border-left: 3px solid #444;
+  border-radius: 4px;
+  padding: 10px 12px;
+  transition: border-color 0.15s;
+}
+
+.activity-card.activity-online { border-left-color: #4ecdc4; }
+.activity-card.activity-idle { border-left-color: #f59e0b; }
+.activity-card.activity-stale {
+  border-left-color: #ef4444;
+  animation: activity-pulse 2s ease-in-out infinite;
+}
+.activity-card.activity-offline { border-left-color: #444; opacity: 0.6; }
+
+@keyframes activity-pulse {
+  0%, 100% { background: #141414; }
+  50% { background: #1d1212; }
+}
+
+.activity-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.activity-dot-online { background: #4ecdc4; box-shadow: 0 0 4px #4ecdc4; }
+.activity-dot-idle { background: #f59e0b; }
+.activity-dot-stale { background: #ef4444; }
+.activity-dot-offline { background: #444; }
+
+.activity-name {
+  font-weight: 700;
+  font-size: 13px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-liveness {
+  font-size: 10px;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.activity-meta {
+  font-size: 10px;
+  color: #666;
+  margin: 4px 0 6px;
+}
+
+.activity-task {
+  font-size: 11px;
+  color: #ccc;
+  background: #0f0f0f;
+  border: 1px solid #1e1e1e;
+  border-radius: 3px;
+  padding: 6px 8px;
+  word-wrap: break-word;
+  line-height: 1.4;
+}
+
+.activity-task-empty {
+  color: #555;
+  font-style: italic;
+}
+
+.activity-task .issue-link {
+  color: #4ecdc4;
+}
+
+.activity-preview {
+  font-size: 10px;
+  color: #666;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #1f1f1f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-preview-label {
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Subagent tree under each activity card */
+.activity-subagents {
+  list-style: none;
+  margin: 6px 0 0 0;
+  padding: 0 0 0 10px;
+  border-left: 1px dashed #2a2a2a;
+}
+.activity-subagent {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10px;
+  color: #bbb;
+  padding: 2px 0;
+}
+.activity-subagent-branch {
+  color: #444;
+  flex-shrink: 0;
+  font-family: monospace;
+}
+.activity-subagent-name {
+  color: #9ca3af;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.activity-subagent-task {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-subagent-done .activity-subagent-name { color: #4ecdc4; }
+.activity-subagent-failed .activity-subagent-name { color: #ef4444; }
+
+/* Fallback task display when no structured current_task — shows the
+ * last_message_preview in the same slot so cards never look empty. */
+.activity-task-fallback {
+  color: #888;
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* caduceus health line per agent card */
+.activity-health {
+  margin-top: 6px;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  border-left: 3px solid #444;
+  color: #bbb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-health-icon { margin-right: 2px; }
+.activity-health-status { font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-right: 2px; }
+.activity-health-healthy { border-left-color: #4ecdc4; color: #4ecdc4; }
+.activity-health-idle { border-left-color: #f59e0b; }
+.activity-health-stale { border-left-color: #ef4444; color: #ef4444; }
+.activity-health-stuck_prompt { border-left-color: #ef4444; color: #ef4444; animation: activity-pulse 2s ease-in-out infinite; }
+.activity-health-dead { border-left-color: #7a1f1f; color: #ef4444; }
+.activity-health-ghost { border-left-color: #6b21a8; color: #c084fc; }
+.activity-health-remediating { border-left-color: #4ecdc4; color: #4ecdc4; animation: activity-pulse 1.4s ease-in-out infinite; }

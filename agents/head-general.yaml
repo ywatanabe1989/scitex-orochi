@@ -1,3 +1,4 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize
 # Orochi Head Agent (General) -- agent-container definition
 # Launched via: scitex-orochi launch head general
 # Auto-discovered from agents/head-general.yaml (no --agent-config needed)
@@ -8,7 +9,7 @@ metadata:
   labels:
     role: head
     team: orochi
-    machine: ywata-note-win
+    machine: CHANGEME
     capabilities: development,testing,git
 spec:
   runtime: claude-code
@@ -16,11 +17,11 @@ spec:
   workdir: ~/proj
 
   claude:
-    channels:
-      - server:scitex-orochi
+    channels: []
     flags:
       - --dangerously-skip-permissions
-    session: new
+      - "--dangerously-load-development-channels server:scitex-orochi"
+    session: continue
 
   skills:
     required:
@@ -29,8 +30,8 @@ spec:
   orochi:
     enabled: true
     hosts:
-      - 192.168.11.22        # MBA LAN (fast)
-      - scitex-orochi.com    # domain (fallback)
+      - CHANGEME_LAN_IP      # LAN IP (fast)
+      - CHANGEME_DOMAIN      # domain (fallback)
     port: 8559
     token_env: SCITEX_OROCHI_TOKEN
     channels:
@@ -38,9 +39,11 @@ spec:
     heartbeat_interval: 60
 
   env:
-    SCITEX_OROCHI_HOST: "192.168.0.100"
-    SCITEX_OROCHI_PORT: "8559"
-    SCITEX_OROCHI_AGENT: orochi-head-general
+    SCITEX_OROCHI_URL: "ws://CHANGEME_HUB_IP:8559"
+    SCITEX_OROCHI_TOKEN: "CHANGEME_WORKSPACE_TOKEN"
+    SCITEX_OROCHI_AGENT: orochi-head-general  # matches metadata.name
+    SCITEX_OROCHI_CHANNELS: "#general"
+    SCITEX_OROCHI_MODEL: "Sonnet 4.6"
     CLAUDE_AGENT_ROLE: head
     CLAUDE_AGENT_ID: orochi-head-general
 

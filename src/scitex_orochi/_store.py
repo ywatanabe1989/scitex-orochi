@@ -18,12 +18,23 @@ CREATE TABLE IF NOT EXISTS messages (
     sender      TEXT NOT NULL,
     content     TEXT NOT NULL,
     mentions    TEXT,
-    metadata    TEXT
+    metadata    TEXT,
+    sender_type TEXT NOT NULL DEFAULT 'human'
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel);
 CREATE INDEX IF NOT EXISTS idx_messages_sender  ON messages(sender);
 CREATE INDEX IF NOT EXISTS idx_messages_ts      ON messages(ts);
+"""
+
+MIGRATE_SENDER_TYPE = """
+ALTER TABLE messages ADD COLUMN sender_type TEXT NOT NULL DEFAULT 'human';
+"""
+
+BACKFILL_SENDER_TYPE = """
+UPDATE messages SET sender_type = 'agent'
+WHERE sender_type = 'human'
+  AND (sender LIKE '%orochi-%' OR sender LIKE '%head-%');
 """
 
 
@@ -43,6 +54,13 @@ class MessageStore:
         self._db = await aiosqlite.connect(self.db_path)
         await self._db.executescript(SCHEMA)
         await self._db.commit()
+        # Migrate existing DBs: add sender_type column if missing
+        try:
+            await self._db.execute(MIGRATE_SENDER_TYPE)
+            await self._db.execute(BACKFILL_SENDER_TYPE)
+            await self._db.commit()
+        except Exception:
+            pass  # Column already exists
 
     async def close(self) -> None:
         if self._db:
@@ -58,12 +76,13 @@ class MessageStore:
         content: str,
         mentions: list[str] | None = None,
         metadata: dict | None = None,
+        sender_type: str = "human",
     ) -> None:
         if not self._db:
             raise RuntimeError("Store not open")
         await self._db.execute(
-            "INSERT INTO messages (msg_id, ts, channel, sender, content, mentions, metadata) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO messages (msg_id, ts, channel, sender, content, mentions, metadata, sender_type) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 msg_id,
                 ts,
@@ -72,6 +91,7 @@ class MessageStore:
                 content,
                 json.dumps(mentions) if mentions else None,
                 json.dumps(metadata) if metadata else None,
+                sender_type,
             ),
         )
         await self._db.commit()
@@ -96,13 +116,13 @@ class MessageStore:
             raise RuntimeError("Store not open")
         if since:
             cursor = await self._db.execute(
-                "SELECT msg_id, ts, channel, sender, content, mentions, metadata "
+                "SELECT msg_id, ts, channel, sender, content, mentions, metadata, sender_type "
                 "FROM messages WHERE channel = ? AND ts >= ? ORDER BY ts DESC LIMIT ?",
                 (channel, since, limit),
             )
         else:
             cursor = await self._db.execute(
-                "SELECT msg_id, ts, channel, sender, content, mentions, metadata "
+                "SELECT msg_id, ts, channel, sender, content, mentions, metadata, sender_type "
                 "FROM messages WHERE channel = ? ORDER BY ts DESC LIMIT ?",
                 (channel, limit),
             )
@@ -114,7 +134,7 @@ class MessageStore:
         if not self._db:
             raise RuntimeError("Store not open")
         cursor = await self._db.execute(
-            "SELECT msg_id, ts, channel, sender, content, mentions, metadata "
+            "SELECT msg_id, ts, channel, sender, content, mentions, metadata, sender_type "
             "FROM messages ORDER BY ts DESC LIMIT ?",
             (limit,),
         )
@@ -143,5 +163,6 @@ class MessageStore:
             "content": r[4],
             "mentions": json.loads(r[5]) if r[5] else [],
             "metadata": metadata,
+            "sender_type": r[7] if len(r) > 7 else "human",
             "attachments": metadata.get("attachments", []),
         }

@@ -1,9 +1,9 @@
 /* Push notification toggle styles */
 .push-toggle {
   background: none;
-  border: 1px solid #444;
+  border: 1px solid #2a2a4a;
   border-radius: 4px;
-  color: #888;
+  color: #6a6a8a;
   cursor: pointer;
   font-size: 11px;
   margin-left: 8px;
@@ -12,13 +12,13 @@
 }
 
 .push-toggle:hover {
-  border-color: #666;
-  color: #ccc;
+  border-color: #0f3460;
+  color: #b0b0d0;
 }
 
 .push-toggle.push-on {
-  border-color: #4ecdc4;
-  color: #4ecdc4;
+  border-color: #0f3460;
+  color: #7ec8e3;
 }
 
 .push-toggle.push-on:hover {
@@ -27,6 +27,6 @@
 }
 
 .push-toggle.push-off {
-  border-color: #555;
-  color: #888;
+  border-color: #2a2a4a;
+  color: #6a6a8a;
 }

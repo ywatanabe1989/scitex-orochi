@@ -1,3 +1,4 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize
 # Orochi Telegrammer Agent -- agent-container definition
 #
 # IMPORTANT: This agent runs SEPARATELY from the Orochi launch system.
@@ -49,7 +50,7 @@ spec:
     flags:
       - --dangerously-skip-permissions
       - --strict-mcp-config
-      - "--mcp-config /tmp/scitex-agent-container/mcp-orochi-telegrammer.json"
+      - "--mcp-config ~/.scitex/agent-container/cache/mcp-configs/mcp-orochi-telegrammer.json"
       - "--dangerously-load-development-channels server:telegram"
     session: new
 
@@ -57,20 +58,20 @@ spec:
     CLAUDE_AGENT_ROLE: telegram
     CLAUDE_AGENT_ID: orochi-telegrammer
     SCITEX_OROCHI_DISABLE: "true"
-    TELEGRAM_STATE_DIR: ~/.scitex/agent-container/telegram/8146978246
+    TELEGRAM_STATE_DIR: ~/.scitex/agent-container/telegram/CHANGEME_BOT_ID
     TELEGRAM_BOT_TOKEN: "${SCITEX_OROCHI_TELEGRAM_BOT_TOKEN}"
 
   telegram:
     bot_token_env: SCITEX_OROCHI_TELEGRAM_BOT_TOKEN
     allowed_users:
-      - "8379369979"
+      - "CHANGEME_TELEGRAM_USER_ID"
     auto_connect: true
     greeting: "SciTeX Orochi Telegrammer connected."
 
   orochi:
     hosts:
-      - 192.168.11.22
-      - scitex-orochi.com
+      - CHANGEME_LAN_IP
+      - CHANGEME_DOMAIN
     port: 8559
     token_env: SCITEX_OROCHI_TOKEN
     channels:

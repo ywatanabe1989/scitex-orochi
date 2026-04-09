@@ -1,0 +1,303 @@
+"""Helper functions for launch commands: resolution, legacy fallback."""
+
+from __future__ import annotations
+
+import importlib.resources
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+import click
+
+from scitex_orochi._config_loader import (
+    ConfigError,
+    _find_head,
+    build_template_vars,
+    load_config,
+    render_template,
+)
+
+# Optional scitex-agent-container integration
+try:
+    from scitex_agent_container import agent_start as _ac_agent_start
+
+    HAS_AGENT_CONTAINER = True
+except ImportError:
+    HAS_AGENT_CONTAINER = False
+
+# Default agents directory (relative to project root / cwd)
+DEFAULT_AGENTS_DIR = Path("agents")
+USER_AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
+
+
+def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
+    """Resolve an agent YAML file by convention.
+
+    Search order for a given name (e.g. "master", "head-general", "research"):
+      1. ~/.scitex/orochi/agents/<name>.yaml  (user config, flat)
+      2. ~/.scitex/orochi/agents/<name>/<name>.yaml  (user config, subdirectory)
+      3. ~/.scitex/orochi/agents/head-<name>.yaml
+      4. agents/<name>.yaml   (repo fallback)
+      5. agents/<name>.yml
+      6. agents/head-<name>.yaml
+      7. agents/head-<name>.yml
+
+    Returns the resolved Path or None if not found.
+    """
+    # Check user config dir first (flat files + subdirectory convention)
+    if USER_AGENTS_DIR.is_dir():
+        for ext in (".yaml", ".yml"):
+            for prefix in ("", "head-"):
+                for candidate in (
+                    USER_AGENTS_DIR / f"{prefix}{name}{ext}",
+                    USER_AGENTS_DIR / name / f"{prefix}{name}{ext}",
+                ):
+                    if candidate.exists():
+                        return candidate
+
+    # Fall back to repo agents/ dir
+    d = (agents_dir or DEFAULT_AGENTS_DIR).resolve()
+    if not d.is_dir():
+        return None
+
+    candidates = [
+        d / f"{name}.yaml",
+        d / f"{name}.yml",
+        d / f"head-{name}.yaml",
+        d / f"head-{name}.yml",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
+def find_all_agent_yamls(agents_dir: Path | None = None) -> list[Path]:
+    """Find all agent YAML files in the agents directory.
+
+    Returns sorted list of YAML paths, excluding files whose names start
+    with underscore (convention for disabled/template files).
+    """
+    d = (agents_dir or DEFAULT_AGENTS_DIR).resolve()
+    if not d.is_dir():
+        return []
+
+    yamls = sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml"))
+    return [y for y in yamls if not y.name.startswith("_")]
+
+
+def load_cfg(config_path: str | None) -> dict:
+    """Load config or exit with error."""
+    try:
+        return load_config(Path(config_path) if config_path else None)
+    except ConfigError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+
+def read_template(name: str) -> str:
+    """Read a template file from the package."""
+    pkg = "scitex_orochi.templates"
+    try:
+        ref = importlib.resources.files(pkg).joinpath(name)
+        return ref.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError) as exc:
+        click.echo(f"Error: Cannot find template: {exc}", err=True)
+        sys.exit(1)
+
+
+def launch_via_agent_container(
+    agent_config_path: str, dry_run: bool, as_json: bool
+) -> None:
+    """Delegate launch to scitex-agent-container."""
+    if not HAS_AGENT_CONTAINER:
+        click.echo(
+            "Error: scitex-agent-container is not installed.\n"
+            "  Install with: pip install scitex-orochi[agent-container]",
+            err=True,
+        )
+        sys.exit(1)
+
+    config_path = Path(agent_config_path).resolve()
+    if not config_path.exists():
+        click.echo(f"Error: Agent config not found: {config_path}", err=True)
+        sys.exit(1)
+
+    if dry_run:
+        result = {
+            "action": "launch-via-agent-container",
+            "config": str(config_path),
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo("Would launch agent via scitex-agent-container:")
+            click.echo(f"  Config: {config_path}")
+        return
+
+    try:
+        _ac_agent_start(str(config_path))  # type: ignore[possibly-unbound]
+        if as_json:
+            click.echo(json.dumps({"status": "launched", "config": str(config_path)}))
+        else:
+            click.echo(f"Agent launched via scitex-agent-container: {config_path}")
+    except Exception as exc:
+        click.echo(f"Error: Agent container launch failed: {exc}", err=True)
+        sys.exit(1)
+
+
+def screen_exists(name: str, ssh_prefix: str | None = None) -> bool:
+    """Check if a screen session exists (local or remote)."""
+    cmd = "screen -ls 2>/dev/null"
+    if ssh_prefix:
+        cmd = f"{ssh_prefix} {cmd}"
+    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+    return name in result.stdout
+
+
+def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
+    """Launch master via legacy orochi-config.yaml."""
+    master = cfg["master"]
+    screen_name = master["name"]
+    model = master.get("model", "opus[1m]")
+    channels = master.get("channels", ["#general"])
+    server = cfg["server"]
+
+    tvars = build_template_vars(cfg, role="master")
+    rendered = render_template(read_template("master-claude.md"), tvars)
+
+    claude_md = Path(f"/tmp/{screen_name}-CLAUDE.md")
+    claude_md.write_text(rendered, encoding="utf-8")
+
+    channel_args = " ".join(f"--channel server:scitex-orochi:{ch}" for ch in channels)
+    launch_cmd = (
+        f"screen -dmS {screen_name} bash -c '"
+        f"export SCITEX_OROCHI_HOST={server['host']}; "
+        f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
+        f"export SCITEX_OROCHI_AGENT={screen_name}; "
+        f"claude --model {model} "
+        f'--system-prompt "$(cat {claude_md})" '
+        f"{channel_args}; "
+        f"exec bash'"
+    )
+
+    if dry_run:
+        result = {
+            "action": "launch-master",
+            "screen": screen_name,
+            "model": model,
+            "channels": channels,
+            "command": launch_cmd,
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo("Would execute:")
+            click.echo(launch_cmd)
+            click.echo(f"\nRendered CLAUDE.md at: {claude_md}")
+        return
+
+    if screen_exists(screen_name):
+        click.echo(
+            f"Error: Screen '{screen_name}' already exists.\n"
+            f"  Kill it first: screen -S {screen_name} -X quit",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(f"Launching {screen_name}...")
+    subprocess.run(launch_cmd, shell=True, check=True)
+
+    if as_json:
+        click.echo(
+            json.dumps({"status": "launched", "screen": screen_name, "model": model})
+        )
+    else:
+        click.echo(f"Started screen session: {screen_name}")
+        click.echo(f"Attach with: screen -r {screen_name}")
+
+
+def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> None:
+    """Launch head agent via legacy orochi-config.yaml."""
+    try:
+        head = _find_head(cfg, name)
+    except ConfigError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        sys.exit(1)
+
+    screen_name = head["name"]
+    ssh_cmd = head["ssh"]
+    model = head.get("model", "sonnet")
+    channels = head.get("channels", ["#general"])
+    workdir = head.get("workdir", "~/proj")
+    server = cfg["server"]
+
+    tvars = build_template_vars(cfg, role="head", head_name=name)
+    rendered = render_template(read_template("head-claude.md"), tvars)
+
+    channel_args = " ".join(f"--channel server:scitex-orochi:{ch}" for ch in channels)
+    remote_script = (
+        f"cat > /tmp/{screen_name}-CLAUDE.md << 'CLAUDE_EOF'\n"
+        f"{rendered}\n"
+        f"CLAUDE_EOF\n"
+        f"screen -dmS {screen_name} bash -c '"
+        f"cd {workdir}; "
+        f"export SCITEX_OROCHI_HOST={server['host']}; "
+        f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
+        f"export SCITEX_OROCHI_AGENT={screen_name}; "
+        f"claude --model {model} "
+        f'--system-prompt "$(cat /tmp/{screen_name}-CLAUDE.md)" '
+        f"{channel_args}; "
+        f"exec bash'"
+    )
+    full_cmd = f"{ssh_cmd} bash -s << 'SSH_EOF'\n{remote_script}\nSSH_EOF"
+
+    if dry_run:
+        result = {
+            "action": "launch-head",
+            "name": name,
+            "screen": screen_name,
+            "ssh": ssh_cmd,
+            "model": model,
+            "channels": channels,
+            "command": full_cmd,
+        }
+        if as_json:
+            click.echo(json.dumps(result, indent=2))
+        else:
+            click.echo("Would execute via SSH:")
+            click.echo(full_cmd)
+        return
+
+    if screen_exists(screen_name, ssh_cmd):
+        click.echo(
+            f"Error: Screen '{screen_name}' already exists on remote.\n"
+            f"  Kill it first: {ssh_cmd} screen -S {screen_name} -X quit",
+            err=True,
+        )
+        sys.exit(1)
+
+    click.echo(f"Launching {screen_name} via {ssh_cmd}...")
+    result_proc = subprocess.run(
+        full_cmd,
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    if result_proc.returncode != 0:
+        click.echo(
+            f"Error: SSH command failed (exit {result_proc.returncode})",
+            err=True,
+        )
+        if result_proc.stderr:
+            click.echo(result_proc.stderr, err=True)
+        sys.exit(1)
+
+    if as_json:
+        click.echo(
+            json.dumps({"status": "launched", "screen": screen_name, "ssh": ssh_cmd})
+        )
+    else:
+        click.echo(f"Started remote screen session: {screen_name}")
+        click.echo(f"Attach with: {ssh_cmd} -t screen -r {screen_name}")

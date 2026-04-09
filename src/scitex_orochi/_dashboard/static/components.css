@@ -19,16 +19,16 @@
 }
 #msg-attach {
   background: transparent;
-  border: 1px solid #333;
-  color: #999;
-  border-radius: 4px;
+  border: 1px solid #2a2a4a;
+  color: #6a6a8a;
+  border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
   font-size: 16px;
 }
 #msg-attach:hover {
-  border-color: #4ecdc4;
-  color: #4ecdc4;
+  border-color: #0f3460;
+  color: #7ec8e3;
 }
 /* Sketch Canvas */
 .sketch-overlay {
@@ -41,8 +41,8 @@
   justify-content: center;
 }
 .sketch-panel {
-  background: #161b22;
-  border: 1px solid #333;
+  background: #16213e;
+  border: 1px solid #2a2a4a;
   border-radius: 12px;
   padding: 1rem;
   display: flex;
@@ -62,9 +62,9 @@
 .sketch-tool-btn,
 .sketch-width-btn {
   padding: 4px 8px;
-  border: 1px solid #333;
+  border: 1px solid #2a2a4a;
   border-radius: 6px;
-  background: #0d1117;
+  background: #0f1629;
   color: #8b949e;
   font-size: 12px;
   cursor: pointer;
@@ -72,14 +72,14 @@
 }
 .sketch-tool-btn:hover,
 .sketch-width-btn:hover {
-  background: #21262d;
+  background: #1a2744;
   color: #e0e0e0;
 }
 .sketch-tool-btn.active,
 .sketch-width-btn.active {
-  background: #4ecdc4;
-  color: #0a0a0a;
-  border-color: #4ecdc4;
+  background: #0f3460;
+  color: #e0e0e0;
+  border-color: #0f3460;
 }
 .sketch-sep {
   width: 1px;
@@ -99,8 +99,8 @@
   border-color: rgba(255, 255, 255, 0.4);
 }
 .sketch-color.active {
-  border-color: #4ecdc4;
-  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.3);
+  border-color: #7ec8e3;
+  box-shadow: 0 0 0 2px rgba(15, 52, 96, 0.4);
 }
 .sketch-canvas {
   width: 100%;
@@ -117,47 +117,51 @@
 }
 .sketch-btn {
   padding: 6px 14px;
-  border: 1px solid #333;
+  border: 1px solid #2a2a4a;
   border-radius: 6px;
-  background: #0d1117;
+  background: #0f1629;
   color: #8b949e;
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
 }
 .sketch-btn:hover {
-  background: #21262d;
+  background: #1a2744;
   color: #e0e0e0;
 }
 .sketch-btn-primary {
-  background: #4ecdc4;
-  color: #0a0a0a;
-  border-color: #4ecdc4;
+  background: #0f3460;
+  color: #e0e0e0;
+  border-color: #0f3460;
   font-weight: bold;
 }
 .sketch-btn-primary:hover {
-  background: #45b7b0;
+  background: #1a4a7a;
 }
 #msg-sketch {
   background: transparent;
-  border: 1px solid #333;
-  color: #999;
-  border-radius: 4px;
+  border: 1px solid #2a2a4a;
+  color: #6a6a8a;
+  border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
   font-size: 16px;
 }
 #msg-sketch:hover {
-  border-color: #4ecdc4;
-  color: #4ecdc4;
+  border-color: #0f3460;
+  color: #7ec8e3;
 }
 /* Resource Monitor */
 .res-card {
   border-left: 3px solid #4ecdc4;
   padding: 6px 8px;
   margin-bottom: 6px;
-  background: #1a1a1a;
+  background: #16213e;
   border-radius: 4px;
+  transition: background 0.15s;
+}
+.res-card:hover {
+  background: #1a2744;
 }
 .res-host {
   font-size: 12px;
@@ -188,7 +192,7 @@
 .res-bar-track {
   flex: 1;
   height: 6px;
-  background: #222;
+  background: #0f1629;
   border-radius: 3px;
   overflow: hidden;
 }
@@ -209,39 +213,29 @@
 /* Tab Bar */
 .tab-bar {
   display: flex;
-  background: #111;
-  border-bottom: 1px solid #333;
+  background: #16213e;
+  border-bottom: 1px solid #2a2a4a;
   padding: 0 16px;
 }
 .tab-btn {
   background: transparent;
-  color: #888;
+  color: #6a6a8a;
   border: none;
   padding: 10px 20px;
   font-family: inherit;
   font-size: 13px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  transition: color 0.15s;
 }
 .tab-btn:hover {
-  color: #ccc;
+  color: #b0b0d0;
 }
 .tab-btn.active {
-  color: #4ecdc4;
-  border-bottom-color: #4ecdc4;
+  color: #7ec8e3;
+  border-bottom-color: #0f3460;
 }
-/* TODO View (main content) */
-.todo-view {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  min-height: 0;
-}
-.todo-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
+/* TODO styles -- see todo-tab.css */
 /* Collapsible Sidebar Headings */
 .collapsible-heading {
   cursor: pointer;
@@ -259,56 +253,8 @@
 .sidebar-section.collapsed {
   display: none;
 }
-/* TODO List -- single-row layout */
-.todo-item {
-  width: 100%;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  background: #1a1a1a;
-  border: 1px solid #222;
-  border-radius: 3px;
-  padding: 4px 8px;
-  text-decoration: none;
-  color: inherit;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-}
-.todo-item:hover {
-  background: #222;
-  border-color: #4ecdc4;
-}
-.todo-number {
-  font-size: 11px;
-  color: #555;
-  flex-shrink: 0;
-}
-.todo-title {
-  font-size: 12px;
-  color: #ccc;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
-}
-.todo-labels {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 3px;
-  flex-shrink: 0;
-}
-.todo-label {
-  font-size: 10px;
-  padding: 1px 5px;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-.todo-assignee {
-  font-size: 10px;
-  color: #666;
-  flex-shrink: 0;
+.collapsible-heading {
+  color: #6a6a8a;
 }
 /* Agents Registry Table */
 .agents-summary {
@@ -341,7 +287,13 @@
   vertical-align: middle;
 }
 .agents-registry-table tbody tr:hover {
-  background: #1a1a2e;
+  background: #1a2744;
+}
+.agents-registry-table th {
+  border-bottom-color: #2a2a4a;
+}
+.agents-registry-table td {
+  border-bottom-color: #16213e;
 }
 /* Hamburger toggle -- hidden on desktop */
 .sidebar-toggle {

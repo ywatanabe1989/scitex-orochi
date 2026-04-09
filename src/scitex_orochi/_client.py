@@ -79,10 +79,23 @@ class OrochiClient:
         self._ws = await websockets.connect(self.uri)
         if self._django_mode:
             # Django Channels: send register, expect {"type": "registered"}
-            await self._ws.send(json.dumps({
-                "type": "register",
-                "payload": {"channels": self.channels},
-            }))
+            import platform as _plat
+
+            await self._ws.send(
+                json.dumps(
+                    {
+                        "type": "register",
+                        "payload": {
+                            "channels": self.channels,
+                            "machine": self.machine or _plat.node(),
+                            "role": self.role,
+                            "model": "",
+                            "agent_id": self.agent_id,
+                            "workdir": self.project,
+                        },
+                    }
+                )
+            )
             raw = await self._ws.recv()
             ack = json.loads(raw)
             if ack.get("type") == "error":
@@ -127,14 +140,18 @@ class OrochiClient:
         if not self._ws:
             raise RuntimeError("Not connected")
         if self._django_mode:
-            await self._ws.send(json.dumps({
-                "type": "message",
-                "payload": {
-                    "channel": channel,
-                    "text": content,
-                    "metadata": metadata or {},
-                },
-            }))
+            await self._ws.send(
+                json.dumps(
+                    {
+                        "type": "message",
+                        "payload": {
+                            "channel": channel,
+                            "text": content,
+                            "metadata": metadata or {},
+                        },
+                    }
+                )
+            )
         else:
             msg = Message(
                 type="message",

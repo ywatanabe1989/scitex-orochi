@@ -1,0 +1,448 @@
+/* Orochi Dashboard -- component styles (old design 007eb89 + new features) */
+
+/* Role badges */
+.role-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
+.badge-agent {
+  background: #4ecdc4;
+  color: #0a0a0a;
+}
+.badge-human {
+  background: #c4a6e8;
+  color: #0a0a0a;
+}
+.you-tag {
+  font-size: 10px;
+  color: #7ec8e3;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+/* Sender name color */
+.msg .sender {
+  font-weight: bold;
+}
+
+/* Filter bar tags & suggestions */
+.filter-bar input {
+  width: 100%;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.filter-bar input:focus {
+  border-color: #4ecdc4;
+}
+.filter-bar input::placeholder {
+  color: #555;
+}
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.filter-tags:empty {
+  display: none;
+}
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #1a2a2a;
+  border: 1px solid #4ecdc4;
+  color: #4ecdc4;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.filter-tag:hover {
+  background: #2a3a3a;
+}
+.filter-tag .tag-remove {
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.7;
+}
+.filter-tag .tag-remove:hover {
+  opacity: 1;
+}
+.filter-tag[data-type="agent"] {
+  border-color: #c4a6e8;
+  color: #c4a6e8;
+  background: #1a1a2a;
+}
+.filter-tag[data-type="channel"] {
+  border-color: #7ec8e3;
+  color: #7ec8e3;
+  background: #1a1a2a;
+}
+.filter-tag[data-type="host"] {
+  border-color: #ffb374;
+  color: #ffb374;
+  background: #2a1a0a;
+}
+.filter-tag[data-type="label"] {
+  border-color: #a8e6a3;
+  color: #a8e6a3;
+  background: #0a2a0a;
+}
+.filter-suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+}
+.filter-suggest.visible {
+  display: block;
+}
+.filter-suggest-item {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #aaa;
+  cursor: pointer;
+}
+.filter-suggest-item:hover,
+.filter-suggest-item.selected {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+.filter-suggest-item .suggest-type {
+  color: #4ecdc4;
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+/* Agent cards */
+.agent-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.agent-card:hover {
+  background: #222;
+  border-color: #4ecdc4;
+}
+.agent-card .name {
+  color: #4ecdc4;
+  font-weight: bold;
+  font-size: 13px;
+}
+.agent-card .meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+.agent-card .task {
+  font-size: 11px;
+  color: #ffd93d;
+  margin-top: 4px;
+}
+.agent-card .status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.agent-card .status-dot.online {
+  background: #4ecdc4;
+}
+.agent-card .status-dot.busy {
+  background: #ffd93d;
+}
+.agent-card .status-dot.offline {
+  background: #666;
+}
+.agent-card.offline,
+.agent-card.inactive {
+  opacity: 0.4;
+}
+.task-card.inactive {
+  opacity: 0.4;
+}
+
+/* Messages */
+.msg {
+  background: #1a1a1a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  border-left: 3px solid #333;
+  width: 100%;
+  transition: background 0.15s;
+}
+.msg:hover {
+  background: #222;
+}
+.msg.msg-human {
+  background: #1a1a2e;
+  border-left-color: #533483;
+}
+.msg.msg-human:hover {
+  background: #201a3e;
+}
+.msg .msg-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.msg .sender {
+  font-weight: bold;
+  font-size: 13px;
+}
+.msg .role-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.msg .role-badge.badge-agent {
+  background: rgba(78, 205, 196, 0.15);
+  color: #4ecdc4;
+}
+.msg .role-badge.badge-human {
+  background: rgba(83, 52, 131, 0.25);
+  color: #c4a6e8;
+}
+.msg .channel {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.msg .ts {
+  color: #555;
+  font-size: 11px;
+  margin-left: auto;
+  cursor: default;
+}
+.msg .content {
+  color: #ccc;
+  font-size: 13px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+/* Mention dropdown */
+.mention-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  z-index: 100;
+  min-width: 200px;
+  margin-bottom: 4px;
+}
+.mention-dropdown.visible {
+  display: block;
+}
+.mention-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #e0e0e0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mention-item .mention-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.mention-item .mention-dot-online {
+  background: #4ecdc4;
+}
+.mention-item .mention-dot-offline {
+  background: #555;
+}
+.mention-item .mention-dot-special {
+  background: #ffd93d;
+}
+.mention-item .mention-desc {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #888;
+}
+.mention-item.mention-special {
+  color: #ffd93d;
+}
+.mention-divider {
+  height: 1px;
+  background: #333;
+  margin: 4px 0;
+}
+.mention-item:hover,
+.mention-item.selected {
+  background: #333;
+}
+.mention-highlight {
+  background: rgba(78, 205, 196, 0.15);
+  color: #4ecdc4;
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+
+/* TODO list styles -- see todo-tab.css */
+
+/* Agents Registry Table */
+.agents-summary {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.purge-btn {
+  margin-left: 8px;
+  padding: 2px 10px;
+  font-size: 11px;
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.purge-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+.agents-registry-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.agents-registry-table th {
+  text-align: left;
+  color: #888;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #333;
+  white-space: nowrap;
+}
+.agents-registry-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1a1a1a;
+  color: #ccc;
+  vertical-align: middle;
+}
+.agents-registry-table tbody tr:hover {
+  background: #222;
+}
+.agents-count {
+  color: #aaa;
+  font-size: 12px;
+  margin-right: 12px;
+}
+.machine-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  margin-right: 6px;
+}
+.machine-ok {
+  background: rgba(78, 205, 196, 0.13);
+  color: #4ecdc4;
+  border: 1px solid rgba(78, 205, 196, 0.27);
+}
+.machine-warn {
+  background: rgba(255, 217, 61, 0.13);
+  color: #ffd93d;
+  border: 1px solid rgba(255, 217, 61, 0.27);
+}
+.machine-off {
+  background: rgba(239, 68, 68, 0.13);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.27);
+}
+.agent-row {
+  cursor: pointer;
+}
+.agent-inactive {
+  opacity: 0.5;
+}
+.agent-id-cell {
+  font-weight: 600;
+}
+.monospace-cell {
+  font-family: monospace;
+  font-size: 12px;
+}
+.muted-cell {
+  color: #888;
+  font-size: 12px;
+}
+.small-cell {
+  font-size: 12px;
+}
+.task-cell {
+  color: #ffd93d;
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ch-badge {
+  background: #333;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 3px;
+}
+.status-dot-inline {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: #4ecdc4;
+}
+.agent-inactive .status-dot-inline {
+  background: #ef4444;
+}
+.status-label {
+  font-size: 12px;
+}
+.empty-notice {
+  color: #555;
+  font-size: 13px;
+  font-style: italic;
+}

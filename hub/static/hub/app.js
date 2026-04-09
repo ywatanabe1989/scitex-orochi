@@ -1,260 +1,516 @@
-/* Orochi Dashboard — WebSocket chat client */
-(function () {
-  var workspace = window.__orochiWorkspace;
-  var wsUrl = window.__orochiWsUrl;
-  var csrfToken = window.__orochiCsrfToken;
+/* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
+/* Yamata no Orochi color palette (from mascot icon heads) */
+var OROCHI_COLORS = [
+  "#C4A6E8",
+  "#7EC8E3",
+  "#FF9B9B",
+  "#A8E6A3",
+  "#FFD93D",
+  "#FFB374",
+  "#B8D4E3",
+  "#E8A6C8",
+];
+var currentChannel = null;
+var cachedAgentNames = [];
+var historyLoaded = false;
+var knownMessageKeys = {};
+var unreadCount = 0;
+var baseTitle = document.title;
 
-  var messagesEl = document.getElementById("messages");
-  var inputEl = document.getElementById("message-input");
-  var formEl = document.getElementById("message-form");
-  var channelListEl = document.getElementById("channel-list");
-  var currentChannelEl = document.getElementById("current-channel");
+/* User display name -- from Django auth or fallback to localStorage */
+var userName =
+  window.__orochiUserName || localStorage.getItem("orochi_username");
+if (!userName) {
+  userName = prompt("Enter your display name for Orochi:", "");
+  if (userName) {
+    localStorage.setItem("orochi_username", userName);
+  } else {
+    userName = "human";
+  }
+}
+var csrfToken = window.__orochiCsrfToken || "";
+function getAgentColor(name) {
+  var s = name || "unknown";
+  var sum = 0;
+  for (var i = 0; i < s.length; i++) {
+    sum += s.charCodeAt(i);
+  }
+  return OROCHI_COLORS[sum % OROCHI_COLORS.length];
+}
 
-  var currentChannel = "#general";
-  var ws = null;
-  var agentListEl = document.getElementById("agent-list");
-  var agentInfoPanel = document.getElementById("agent-info-panel");
-  var agentInfoName = document.getElementById("agent-info-name");
-  var agentInfoDetails = document.getElementById("agent-info-details");
+/* Workspace icon — Slack-style colored rounded square with first letter */
+var WORKSPACE_ICON_COLORS = [
+  "#4A154B",
+  "#1264A3",
+  "#2BAC76",
+  "#E01E5A",
+  "#36C5F0",
+  "#ECB22E",
+  "#611f69",
+  "#0b4f6c",
+];
 
-  /* Agent metadata store: { agentName: { info: {...}, metrics: {...} } } */
-  var agentData = {};
+function getWorkspaceColor(name) {
+  var s = name || "workspace";
+  var sum = 0;
+  for (var i = 0; i < s.length; i++) {
+    sum += s.charCodeAt(i) * (i + 1);
+  }
+  return WORKSPACE_ICON_COLORS[sum % WORKSPACE_ICON_COLORS.length];
+}
 
-  function handleAgentPresence(agentName, status) {
-    if (!agentListEl) return;
-    var existing = agentListEl.querySelector('li[data-agent="' + agentName + '"]');
+function getWorkspaceIcon(name, size) {
+  size = size || 20;
+  var color = getWorkspaceColor(name);
+  var letter = (name || "W").charAt(0).toUpperCase();
+  var fontSize = Math.round(size * 0.55);
+  var radius = Math.round(size * 0.22);
+  return (
+    '<svg class="ws-icon-svg" width="' +
+    size +
+    '" height="' +
+    size +
+    '" viewBox="0 0 ' +
+    size +
+    " " +
+    size +
+    '" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="' +
+    size +
+    '" height="' +
+    size +
+    '" rx="' +
+    radius +
+    '" fill="' +
+    color +
+    '"/>' +
+    '<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" ' +
+    'fill="#fff" font-family="-apple-system,BlinkMacSystemFont,sans-serif" ' +
+    'font-weight="700" font-size="' +
+    fontSize +
+    '">' +
+    letter +
+    "</text></svg>"
+  );
+}
+function escapeHtml(s) {
+  var d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
 
-    if (status === "connected") {
-      if (!existing) {
-        var li = document.createElement("li");
-        li.setAttribute("data-agent", agentName);
-        li.innerHTML =
-          '<span class="agent-status connected">&#9679;</span> ' + agentName;
-        agentListEl.appendChild(li);
-      } else {
-        var dot = existing.querySelector(".agent-status");
-        if (dot) {
-          dot.className = "agent-status connected";
-        }
+/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
+function cleanAgentName(name) {
+  if (!name) return name;
+  var parts = name.split("@");
+  if (parts.length >= 3) {
+    return parts[0] + "@" + parts[1];
+  }
+  return name;
+}
+
+/**
+ * Return the agent name with host suffix. If the registered name already
+ * contains @host (e.g. "head@mba"), return as-is. Otherwise append
+ * "@<machine>" from the agent record so the sidebar always shows an
+ * identity tied to a host (mamba shows as "mamba@ywata-note-win" even if
+ * the agent config still registered plain "mamba").
+ */
+function hostedAgentName(a) {
+  var name = a && a.name ? a.name : "";
+  if (!name) return name;
+  if (name.indexOf("@") !== -1) return cleanAgentName(name);
+  var host = (a && a.machine) ? a.machine : "";
+  return host ? name + "@" + host : name;
+}
+
+function fuzzyMatch(query, text) {
+  if (!query) return true;
+  query = query.toLowerCase();
+  text = text.toLowerCase();
+  var qi = 0;
+  for (var ti = 0; ti < text.length && qi < query.length; ti++) {
+    if (text[ti] === query[qi]) qi++;
+  }
+  return qi === query.length;
+}
+
+function messageKey(sender, ts, content) {
+  return (
+    (sender || "") + "|" + (ts || "") + "|" + (content || "").substring(0, 80)
+  );
+}
+
+function isAgentInactive(agent) {
+  if (agent.status === "offline") return true;
+  if (!agent.last_heartbeat) return false;
+  var hb = new Date(agent.last_heartbeat);
+  if (isNaN(hb.getTime())) return false;
+  return Date.now() - hb.getTime() > 60000;
+}
+
+function timeAgo(isoStr) {
+  if (!isoStr) return "";
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "";
+  var pad = function (n) {
+    return n < 10 ? "0" + n : "" + n;
+  };
+  return (
+    d.getFullYear() +
+    "-" +
+    pad(d.getMonth() + 1) +
+    "-" +
+    pad(d.getDate()) +
+    " " +
+    pad(d.getHours()) +
+    ":" +
+    pad(d.getMinutes()) +
+    ":" +
+    pad(d.getSeconds())
+  );
+}
+
+function uptime(isoStr) {
+  if (!isoStr) return "";
+  var then = new Date(isoStr);
+  if (isNaN(then.getTime())) return "";
+  var diff = Math.floor((Date.now() - then.getTime()) / 1000);
+  var h = Math.floor(diff / 3600);
+  var m = Math.floor((diff % 3600) / 60);
+  return h + "h " + m + "m";
+}
+
+/* REST helper -- Django uses CSRF + session auth, no token param */
+function orochiHeaders() {
+  var h = { "Content-Type": "application/json" };
+  if (csrfToken) h["X-CSRFToken"] = csrfToken;
+  return h;
+}
+
+/* token for API calls (Flask upstream or Django) */
+var token =
+  window.__orochiToken ||
+  new URLSearchParams(location.search).get("token") ||
+  "";
+
+function apiUrl(path) {
+  var base = window.__orochiApiUpstream || "";
+  var sep = path.indexOf("?") === -1 ? "?" : "&";
+  return base + path + (token ? sep + "token=" + token : "");
+}
+
+function sendOrochiMessage(msgData) {
+  fetch(apiUrl("/api/messages/"), {
+    method: "POST",
+    headers: orochiHeaders(),
+    body: JSON.stringify(msgData),
+  })
+    .then(function (res) {
+      if (!res.ok) console.error("REST send failed:", res.status);
+    })
+    .catch(function (e) {
+      console.error("REST send error:", e);
+    });
+}
+
+/* WebSocket connection */
+var ws;
+var wsConnected = false;
+var restPollTimer = null;
+var restPollInterval = 5000;
+
+function startRestPolling() {
+  if (restPollTimer) return;
+  restPollTimer = setInterval(async function () {
+    if (wsConnected) return;
+    try {
+      var res = await fetch(apiUrl("/api/messages/?limit=50"), {
+        credentials: "same-origin",
+      });
+      if (!res.ok) return;
+      var messages = await res.json();
+      /* API returns newest-first; reverse so new messages append chronologically */
+      messages.reverse();
+      messages.forEach(function (row) {
+        var key = messageKey(row.sender, row.ts, row.content);
+        if (knownMessageKeys[key]) return;
+        knownMessageKeys[key] = true;
+        appendMessage({
+          type: "message",
+          sender: row.sender,
+          sender_type: row.sender_type,
+          ts: row.ts,
+          payload: {
+            channel: row.channel,
+            content: row.content,
+            attachments:
+              (row.metadata && row.metadata.attachments) ||
+              row.attachments ||
+              [],
+          },
+        });
+      });
+    } catch (e) {
+      console.warn("REST poll failed:", e);
+    }
+    fetchAgents();
+    fetchStats();
+  }, restPollInterval);
+}
+
+function stopRestPolling() {
+  if (restPollTimer) {
+    clearInterval(restPollTimer);
+    restPollTimer = null;
+  }
+}
+
+function handleMessage(msg) {
+  if (msg.type === "message") {
+    var content = "";
+    /* Hub sends flat messages: {type, sender, channel, text, ts, metadata} */
+    if (msg.text || msg.channel) {
+      content = msg.text || "";
+      if (!msg.payload) {
+        var attachments = (msg.metadata && msg.metadata.attachments) || [];
+        msg.payload = {
+          channel: msg.channel || "",
+          content: content,
+          metadata: msg.metadata || {},
+          attachments: attachments,
+        };
       }
-    } else if (status === "disconnected" && existing) {
-      var dot = existing.querySelector(".agent-status");
-      if (dot) {
-        dot.className = "agent-status disconnected";
-      }
+    } else if (msg.payload) {
+      content =
+        msg.payload.content || msg.payload.text || msg.payload.message || "";
     }
+    var key = messageKey(msg.sender, msg.ts, content);
+    if (knownMessageKeys[key]) return;
+    knownMessageKeys[key] = true;
+    appendMessage(msg);
+    if (document.hidden) {
+      unreadCount++;
+      document.title = "(" + unreadCount + ") " + baseTitle;
+    }
+  } else if (
+    msg.type === "presence_change" ||
+    msg.type === "status_update" ||
+    msg.type === "agent_presence" ||
+    msg.type === "agent_info"
+  ) {
+    fetchAgents();
+    fetchStats();
+    fetchResources();
+  } else if (msg.type === "reaction_update") {
+    if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
+  } else if (msg.type === "thread_reply") {
+    if (typeof handleThreadReply === "function") handleThreadReply(msg);
   }
+}
 
-  function handleAgentInfo(agentName, info, metrics) {
-    if (!agentData[agentName]) agentData[agentName] = {};
-    if (info) agentData[agentName].info = info;
-    if (metrics) agentData[agentName].metrics = metrics;
-
-    /* If this agent's panel is currently open, refresh it */
-    if (
-      agentInfoPanel &&
-      agentInfoPanel.style.display !== "none" &&
-      agentInfoName.textContent === agentName
-    ) {
-      showAgentPanel(agentName);
-    }
+/* Reset unread count when tab becomes visible */
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden) {
+    unreadCount = 0;
+    document.title = baseTitle;
   }
+});
 
-  function showAgentPanel(agentName) {
-    var d = agentData[agentName] || {};
-    var info = d.info || {};
-    var metrics = d.metrics || {};
-
-    agentInfoName.textContent = agentName;
-
-    var lines = [];
-    if (info.machine) lines.push("Machine: " + info.machine);
-    if (info.role) lines.push("Role: " + info.role);
-    if (info.model) lines.push("Model: " + info.model);
-    if (info.channels && info.channels.length) {
-      lines.push("Channels: " + info.channels.join(", "));
-    }
-    if (metrics.cpu_count != null) {
-      lines.push(
-        "CPU: " + metrics.cpu_count + " cores (load " +
-        (metrics.load_avg_1m != null ? metrics.load_avg_1m.toFixed(1) : "?") +
-        ")"
-      );
-    }
-    if (metrics.mem_used_percent != null) {
-      lines.push(
-        "Memory: " + metrics.mem_used_percent + "%" +
-        (metrics.mem_total_mb ? " of " + metrics.mem_total_mb + " MB" : "")
-      );
-    }
-    if (metrics.disk_used_percent != null) {
-      lines.push("Disk: " + metrics.disk_used_percent + "%");
-    }
-
-    if (lines.length === 0) lines.push("Waiting for agent data...");
-    agentInfoDetails.textContent = lines.join("\n");
-    agentInfoPanel.style.display = "block";
+function connect() {
+  var statusEl = document.getElementById("conn-status");
+  /* Build WS URL: prefer Django WS, fallback to upstream or auto-detect */
+  var wsUrl;
+  if (window.__orochiWsUrl) {
+    wsUrl = window.__orochiWsUrl;
+  } else {
+    var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
+    var wsHost = window.__orochiWsUpstream
+      ? window.__orochiWsUpstream.replace(/^https?:\/\//, "")
+      : location.host;
+    wsUrl = wsProto + "//" + wsHost + "/ws";
+    if (token) wsUrl += "?token=" + token;
   }
-
-  function connectWs() {
+  try {
     ws = new WebSocket(wsUrl);
-    ws.onopen = function () {
-      console.log("Dashboard WS connected");
-    };
-    ws.onmessage = function (evt) {
-      var data = JSON.parse(evt.data);
-      if (data.type === "message" && data.channel === currentChannel) {
-        appendMessage(data.sender, data.text, data.ts, data.meta);
-      } else if (data.type === "agent_presence") {
-        handleAgentPresence(data.agent, data.status);
-      } else if (data.type === "agent_info") {
-        handleAgentInfo(data.agent, data.info, data.metrics);
-      }
-    };
-    ws.onclose = function () {
-      console.log("Dashboard WS closed, reconnecting in 3s...");
-      setTimeout(connectWs, 3000);
-    };
+  } catch (e) {
+    console.warn("WebSocket constructor failed:", e);
+    statusEl.textContent = "polling";
+    statusEl.className = "status conn-poll";
+    statusEl.title = "WebSocket unavailable — falling back to REST polling";
+    startRestPolling();
+    return;
   }
-
-  function isSystemMessage(sender, meta) {
-    if (meta && meta.type === "system") return true;
-    if (typeof sender === "string" && sender.toLowerCase().startsWith("system"))
-      return true;
-    return false;
-  }
-
-  function appendMessage(sender, text, ts, meta) {
-    var div = document.createElement("div");
-    div.className = "message";
-    if (isSystemMessage(sender, meta)) {
-      div.className += " system";
+  ws.onopen = function () {
+    wsConnected = true;
+    /* Compact, muted when fine; state class drives the styling */
+    statusEl.textContent = "";
+    statusEl.title = "Connected to Orochi server";
+    statusEl.className = "status conn-ok";
+    stopRestPolling();
+    fetchStats();
+    fetchAgents();
+    loadHistory();
+  };
+  ws.onclose = function () {
+    wsConnected = false;
+    statusEl.textContent = "reconnecting";
+    statusEl.title = "Disconnected — retrying every 3s";
+    statusEl.className = "status conn-down";
+    startRestPolling();
+    setTimeout(connect, 3000);
+  };
+  ws.onerror = function () {
+    if (!wsConnected) startRestPolling();
+  };
+  ws.onmessage = function (event) {
+    try {
+      handleMessage(JSON.parse(event.data));
+    } catch (e) {
+      console.error("[orochi-ws] message handling error:", e, "raw:", event.data.substring(0, 200));
     }
-
-    var senderSpan = document.createElement("span");
-    senderSpan.className = "sender";
-    senderSpan.textContent = sender;
-
-    var tsSpan = document.createElement("span");
-    tsSpan.className = "ts";
-    if (ts) {
-      var d = new Date(ts);
-      tsSpan.textContent = d.toLocaleTimeString();
+  };
+}
+/* Sidebar agents + stats fetching */
+async function fetchAgents() {
+  try {
+    var res = await fetch(apiUrl("/api/agents"));
+    var agents = await res.json();
+    /* Cache for the Activity tab and other consumers */
+    window.__lastAgents = agents;
+    if (typeof renderActivityTab === "function") renderActivityTab();
+    var container = document.getElementById("agents");
+    if (agents.length === 0) {
+      container.innerHTML = '<p id="no-agents">No agents connected</p>';
+      var cEl = document.getElementById("sidebar-count-agents");
+      if (cEl) cEl.textContent = "";
+      return;
     }
-
-    var textDiv = document.createElement("div");
-    textDiv.className = "text";
-    textDiv.textContent = text;
-
-    div.appendChild(senderSpan);
-    div.appendChild(tsSpan);
-    div.appendChild(textDiv);
-    messagesEl.appendChild(div);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-  }
-
-  function sendMessage(text) {
-    /* Send via REST API (reliable through Cloudflare) */
-    var url = "/api/messages/";
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", url);
-    xhr.setRequestHeader("Content-Type", "application/json");
-    xhr.setRequestHeader("X-CSRFToken", csrfToken);
-    xhr.send(JSON.stringify({ channel: currentChannel, text: text }));
-  }
-
-  function switchChannel(name) {
-    currentChannel = name;
-    currentChannelEl.textContent = name;
-    messagesEl.innerHTML = "";
-    /* Mark active in sidebar */
-    var items = channelListEl.querySelectorAll("li");
-    for (var i = 0; i < items.length; i++) {
-      items[i].classList.toggle("active", items[i].dataset.channel === name);
-    }
-    loadHistory(name);
-  }
-
-  function loadHistory(channelName) {
-    var ch = channelName.replace(/^#/, "");
-    var url = "/api/history/" + ch + "/?limit=50";
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url);
-    xhr.onload = function () {
-      if (xhr.status === 200) {
-        var msgs = JSON.parse(xhr.responseText);
-        msgs.reverse();
-        for (var i = 0; i < msgs.length; i++) {
-          appendMessage(
-            msgs[i].sender,
-            msgs[i].content,
-            msgs[i].ts,
-            msgs[i].meta,
-          );
+    var cEl = document.getElementById("sidebar-count-agents");
+    if (cEl) cEl.textContent = "(" + agents.length + ")";
+    agents.forEach(function (a) {
+      cacheAgentIcons([a]);
+    });
+    container.innerHTML = agents
+      .map(function (a) {
+        var color = getAgentColor(a.name);
+        var inactive = isAgentInactive(a);
+        var statusClass =
+          (a.status || "online") + (inactive ? " inactive" : "");
+        var taskHtml = a.current_task
+          ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
+          : "";
+        /* Tiny health pill — mirrors the Agents tab classification. */
+        var healthHtml = "";
+        if (a.health && a.health.status) {
+          var hs = String(a.health.status);
+          var hReason = a.health.reason
+            ? ' title="' + escapeHtml(a.health.reason) + '"'
+            : "";
+          healthHtml =
+            '<span class="sidebar-health sidebar-health-' +
+            escapeHtml(hs) +
+            '"' +
+            hReason +
+            ">\uD83E\uDE7A " +
+            escapeHtml(hs) +
+            "</span>";
         }
-      }
-    };
-    xhr.send();
+        var agentIcon = a.icon
+          ? getSenderIcon(a.name, true)
+          : getSnakeIcon(16, color);
+        var workdirHtml = "";
+        if (a.workdir) {
+          var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
+          workdirHtml =
+            '<div class="agent-workdir">' +
+            escapeHtml(cleanAgentName(a.name)) +
+            ":" +
+            escapeHtml(displayDir) +
+            "</div>";
+        }
+        return (
+          '<div class="agent-card' +
+          (inactive ? " inactive" : "") +
+          '" data-agent-name="' +
+          escapeHtml(a.name) +
+          '">' +
+          '<span class="agent-card-icon">' +
+          agentIcon +
+          "</span>" +
+          '<span class="status-dot ' +
+          statusClass +
+          '"></span>' +
+          '<span class="name">' +
+          escapeHtml(hostedAgentName(a)) +
+          (a.model
+            ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
+            : "") +
+          "</span>" +
+          workdirHtml +
+          '<div class="meta">' +
+          escapeHtml(a.machine || "unknown") +
+          " / " +
+          escapeHtml(a.role || "agent") +
+          "</div>" +
+          healthHtml +
+          taskHtml +
+          '<div class="meta">channels: ' +
+          [...new Set(a.channels)].map(escapeHtml).join(", ") +
+          "</div></div>"
+        );
+      })
+      .join("");
+    container
+      .querySelectorAll(".agent-card[data-agent-name]")
+      .forEach(function (el) {
+        el.addEventListener("click", function () {
+          addTag("agent", el.getAttribute("data-agent-name"));
+        });
+      });
+  } catch (e) {
+    /* fetch error */
   }
+}
 
-  /* Mobile sidebar toggle */
-  var sidebarToggle = document.getElementById("sidebar-toggle");
-  var sidebarOverlay = document.getElementById("sidebar-overlay");
-  var sidebar = document.getElementById("sidebar");
-
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener("click", function () {
-      sidebar.classList.toggle("open");
-      sidebarOverlay.classList.toggle("active");
+async function fetchStats() {
+  try {
+    var res = await fetch(apiUrl("/api/stats"));
+    var stats = await res.json();
+    var chContainer = document.getElementById("channels");
+    chContainer.innerHTML = stats.channels
+      .map(function (c, i) {
+        var active = currentChannel === c ? " active" : "";
+        var chColor = OROCHI_COLORS[i % OROCHI_COLORS.length];
+        return (
+          '<div class="channel-item' +
+          active +
+          '" data-channel="' +
+          escapeHtml(c) +
+          '">' +
+          escapeHtml(c) +
+          "</div>"
+        );
+      })
+      .join("");
+    chContainer.querySelectorAll(".channel-item").forEach(function (el) {
+      el.addEventListener("click", function () {
+        var ch = el.getAttribute("data-channel");
+        if (currentChannel === ch) {
+          currentChannel = null;
+          loadHistory();
+        } else {
+          currentChannel = ch;
+          loadChannelHistory(ch);
+        }
+        addTag("channel", ch);
+        fetchStats();
+      });
     });
+    var chCountEl = document.getElementById("sidebar-count-channels");
+    if (chCountEl) chCountEl.textContent = "(" + stats.channels.length + ")";
+  } catch (e) {
+    /* fetch error */
   }
-  if (sidebarOverlay) {
-    sidebarOverlay.addEventListener("click", function () {
-      sidebar.classList.remove("open");
-      sidebarOverlay.classList.remove("active");
-    });
-  }
-
-  /* Event listeners */
-  formEl.addEventListener("submit", function (e) {
-    e.preventDefault();
-    var text = inputEl.value.trim();
-    if (!text) return;
-    sendMessage(text);
-    inputEl.value = "";
-  });
-
-  channelListEl.addEventListener("click", function (e) {
-    var li = e.target.closest("li");
-    if (li && li.dataset.channel) {
-      switchChannel(li.dataset.channel);
-    }
-  });
-
-  /* Agent info panel — click agent name to show, click elsewhere to dismiss */
-  if (agentListEl) {
-    agentListEl.addEventListener("click", function (e) {
-      e.stopPropagation();
-      var li = e.target.closest("li");
-      if (li && li.dataset.agent) {
-        showAgentPanel(li.dataset.agent);
-      }
-    });
-  }
-
-  document.addEventListener("click", function (e) {
-    if (
-      agentInfoPanel &&
-      agentInfoPanel.style.display !== "none" &&
-      !agentInfoPanel.contains(e.target)
-    ) {
-      agentInfoPanel.style.display = "none";
-    }
-  });
-
-  /* Init */
-  if (wsUrl) {
-    connectWs();
-  }
-  switchChannel("#general");
-})();
+}
+/* Init is deferred to init.js (loaded after all modules) */

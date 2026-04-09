@@ -1,3 +1,4 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize
 # Orochi Head Agent (Deploy/CI) -- agent-container definition
 # Launched via: scitex-orochi launch head deploy
 # Or explicitly: scitex-orochi launch head deploy --agent-config agents/head-deploy.yaml
@@ -9,7 +10,7 @@ metadata:
     role: head
     team: orochi
     specialty: deploy
-    machine: nas
+    machine: CHANGEME
     capabilities: docker,deployment,ci-cd,persistent-services
 spec:
   runtime: claude-code
@@ -17,21 +18,21 @@ spec:
   workdir: ~/proj
 
   remote:
-    host: nas
-    user: ywatanabe
+    host: CHANGEME_HOST
+    user: CHANGEME_USER
 
   claude:
-    channels:
-      - server:scitex-orochi
+    channels: []
     flags:
       - --dangerously-skip-permissions
-    session: new
+      - "--dangerously-load-development-channels server:scitex-orochi"
+    session: continue
 
   orochi:
     enabled: true
     hosts:
-      - 192.168.11.22        # MBA LAN (fast)
-      - scitex-orochi.com    # domain (fallback)
+      - CHANGEME_LAN_IP      # LAN IP (fast)
+      - CHANGEME_DOMAIN      # domain (fallback)
     port: 8559
     token_env: SCITEX_OROCHI_TOKEN
     channels:
@@ -40,9 +41,9 @@ spec:
     heartbeat_interval: 60
 
   env:
-    SCITEX_OROCHI_HOST: "192.168.0.100"
+    SCITEX_OROCHI_HOST: "CHANGEME_HUB_IP"
     SCITEX_OROCHI_PORT: "8559"
-    SCITEX_OROCHI_AGENT: orochi-head-deploy
+    SCITEX_OROCHI_AGENT: orochi-head-deploy  # matches metadata.name
     CLAUDE_AGENT_ROLE: head
     CLAUDE_AGENT_ID: orochi-head-deploy
 

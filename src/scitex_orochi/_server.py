@@ -186,6 +186,17 @@ class OrochiServer:
         if not agent_id:
             machine_name = machine or platform.node()
             agent_id = f"{name}@{machine_name}"
+        # Evict stale entry for the same agent name (reconnection)
+        old = self.agents.pop(name, None)
+        if old and old.ws is not ws:
+            log.info("Replacing stale connection for agent: %s", name)
+            for ch in old.channels:
+                if ch in self.channels:
+                    self.channels[ch].discard(name)
+            try:
+                await old.ws.close(4000, "Replaced by new connection")
+            except Exception:
+                pass
         now = datetime.now(timezone.utc).isoformat()
         self.agents[name] = Agent(
             name=name,
@@ -239,6 +250,8 @@ class OrochiServer:
         attachments = msg.payload.get("attachments")
         if attachments:
             metadata["attachments"] = attachments
+        # Determine sender_type: connected agents are "agent", others are "human"
+        sender_type = "agent" if msg.sender in self.agents else "human"
         await self.store.save(
             msg_id=msg.id,
             ts=msg.ts,
@@ -247,6 +260,7 @@ class OrochiServer:
             content=msg.content,
             mentions=msg.mentions,
             metadata=metadata or None,
+            sender_type=sender_type,
         )
 
         # Resolve sender's workspace for scoped routing
@@ -325,7 +339,7 @@ class OrochiServer:
             ).to_json()
         )
 
-    async def _handle_presence(self, ws: Any, msg: Message) -> None:
+    async def _handle_presence(self, ws: Any, _msg: Message) -> None:
         online = {name: list(agent.channels) for name, agent in self.agents.items()}
         await ws.send(
             Message(
@@ -335,44 +349,34 @@ class OrochiServer:
             ).to_json()
         )
 
+    _RESOURCE_KEYS = {
+        "cpu_count",
+        "cpu_model",
+        "load_avg_1m",
+        "load_avg_5m",
+        "load_avg_15m",
+        "mem_free_mb",
+        "mem_total_mb",
+        "mem_used_percent",
+        "disk_used_percent",
+    }
+
     async def _handle_heartbeat(self, msg: Message) -> None:
         agent = self.agents.get(msg.sender)
         if agent:
             agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
-            _RESOURCE_KEYS = {
-                "cpu_count",
-                "cpu_model",
-                "load_avg_1m",
-                "load_avg_5m",
-                "load_avg_15m",
-                "mem_free_mb",
-                "mem_total_mb",
-                "mem_used_percent",
-                "disk_used_percent",
-            }
-            resource_data = {
-                k: v for k, v in msg.payload.items() if k in _RESOURCE_KEYS
-            }
-            if resource_data:
-                agent.resources = resource_data
+            res = {k: v for k, v in msg.payload.items() if k in self._RESOURCE_KEYS}
+            if res:
+                agent.resources = res
             log.debug("Heartbeat from %s", msg.sender)
 
     async def _handle_status_update(self, msg: Message) -> None:
         agent = self.agents.get(msg.sender)
         if not agent:
             return
-        if "status" in msg.payload:
-            agent.status = msg.payload["status"]
-        if "current_task" in msg.payload:
-            agent.current_task = msg.payload["current_task"]
-        if "machine" in msg.payload:
-            agent.machine = msg.payload["machine"]
-        if "role" in msg.payload:
-            agent.role = msg.payload["role"]
-        if "project" in msg.payload:
-            agent.project = msg.payload["project"]
-        if "agent_id" in msg.payload:
-            agent.agent_id = msg.payload["agent_id"]
+        for key in ("status", "current_task", "machine", "role", "project", "agent_id"):
+            if key in msg.payload:
+                setattr(agent, key, msg.payload[key])
         agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
         log.info("Status update from %s: %s", msg.sender, msg.payload)
 

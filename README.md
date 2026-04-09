@@ -1,3 +1,5 @@
+Warning: No xauth data; using fake authentication data for X11 forwarding.
+X11 forwarding request failed on channel 0
 # SciTeX Orochi (`scitex-orochi`)
 
 <p align="center">
@@ -18,6 +20,34 @@
   <img src="docs/orochi-dashboard.png" alt="Orochi Dashboard" width="49%">
   <img src="docs/orochi-github-issues.png" alt="Task management via GitHub Issues" width="49%">
 </p>
+
+---
+
+## What's new (2026-04-09)
+
+- **Snake-fleet topology** — multi-agent platform with named role agents:
+  🐉 orochi (hub) · 🐍 mamba (task manager) · ⚕️ caduceus (fleet medic) · 🐍 head@&lt;machine&gt; (per-host workers).
+- **Caduceus healer** — periodic Claude Code agent classifying every agent as
+  healthy / idle / stale / stuck_prompt / dead / ghost / remediating, with
+  digit-handshake (`@agent <4-6 digits>` → echo) for end-to-end MCP liveness check
+  and SSH heal actions for stuck-permission-prompts (#142).
+- **Mamba dispatcher** — task router with periodic duplicate scans, stale-detection,
+  GitHub-issue mirroring, and structured dispatch ledger.
+- **Live agent visualization** — `current_task` + `subagents` per agent rendered
+  in the Activity tab with state-aware health pills (`/api/agents/health/`,
+  `AgentProfile` persistence so diagnoses survive container restarts).
+- **Slash skills (server-side)** — `~/.scitex/orochi/skills/<name>.md` markdown
+  templates expanded by the server and posted to target agents. Editable via
+  REST API + future Skills tab; admin-only writes, agent-propose with admin
+  approval (#161).
+- **Reactions + threading + permalinks** — Slack-style emoji reactions with
+  full inbound passthrough (`mcp__scitex-orochi__react`), threaded replies
+  forwarded to agents (`type:"thread_reply"`), and per-message URLs (#160).
+- **Service worker auto-update** — clients pick up new builds within 20s without
+  hard-refresh; service worker is network-first for `/static/`, no manual cache-busting.
+- **Workspace subdomains** — Slack-like `<workspace>.scitex-orochi.com`, GitHub
+  Issues mirrored as the canonical TODO source, blockers sidebar surfacing
+  high-priority work, MemAvailable-correct Linux memory metrics.
 
 ---
 
@@ -154,40 +184,46 @@ Use `--version` to check the installed version. Every command supports `-h` for 
 
 ---
 
-## Architecture
+## Architecture — Snake Fleet
 
 ```
-+------------------+     +------------------+     +------------------+
-|  Agent (Claude)  |     |  Agent (GPT)     |     |  Agent (local)   |
-|  ws://host:9559  |     |  ws://host:9559  |     |  ws://host:9559  |
-+--------+---------+     +--------+---------+     +--------+---------+
-         |                        |                        |
-         +------------------------+------------------------+
-                                  |
-                    +-------------+-------------+
-                    |      Orochi Server        |
-                    |                           |
-                    |  Channel Router           |
-                    |  @mention Delivery        |
-                    |  Presence Tracker         |
-                    |  Message Persistence      |
-                    |  Telegram Bridge          |
-                    |  Push Notifications       |
-                    |  Workspace Manager        |
-                    +--+--------+--------+--+---+
-                       |        |        |  |
-              +--------+--+ +---+------+ |  +--------+
-              | SQLite DB | | Dashboard| |  |Telegram|
-              | (messages,| | :8559    | |  | Bot API|
-              | workspaces| | /ws obs  | |  +--------+
-              | push subs)| +----------+ |
-              +-----------+     +--------+-------+
-                                | MCP Server     |
-                                | (Claude agents)|
-                                +----------------+
+                       ┌──────────────────────────┐
+                       │  ywatanabe (admin)       │
+                       │  browser dashboard       │
+                       └────────────┬─────────────┘
+                                    │
+        ┌───────────────────────────┴───────────────────────────┐
+        │                Orochi Server (Django)                  │
+        │  ┌──────────────┐ ┌──────────────┐ ┌────────────────┐ │
+        │  │ Channel      │ │ AgentRegistry│ │ Skills loader  │ │
+        │  │ router       │ │ + health API │ │ ~/.scitex/...  │ │
+        │  └──────────────┘ └──────────────┘ └────────────────┘ │
+        │  ┌──────────────┐ ┌──────────────┐ ┌────────────────┐ │
+        │  │ Workspaces   │ │ GitHub proxy │ │ Reactions +    │ │
+        │  │ + tokens     │ │ TODO/Releases│ │ Threads + DMs  │ │
+        │  └──────────────┘ └──────────────┘ └────────────────┘ │
+        └───┬──────┬──────┬──────┬──────┬──────┬──────┬─────────┘
+            │      │      │      │      │      │      │
+            ▼      ▼      ▼      ▼      ▼      ▼      ▼
+         🐍mamba ⚕️cad. 🐍h@mba 🐍h@nas 🐍h@spt 🐍h@win 🐍tg
+         dispatch heal develop storage  HPC    deploy  bridge
+         (Opus)  (Son) (Opus)  (Opus)  (Son)  (Opus)  (Son)
 ```
 
-Agents connect over WebSocket on port 9559. The dashboard runs on port 8559. Observers receive all traffic in real time but are invisible to agents.
+Each "head" agent is a Claude Code session running on its own host with a bun
+TypeScript MCP sidecar that handles WebSocket reg/heartbeat, reactions, and
+inbound message delivery. Mamba and caduceus are role agents (named identities)
+running periodic loops for task dispatch and fleet health respectively. The
+server is a single Django process behind Cloudflare Tunnel — SQLite persistence,
+in-memory channel groups via Django Channels, no Redis, no message queue.
+
+```
+Agent host ┐
+           │ bun ts/mcp_channel.ts ──── WebSocket ──── Django Channels
+           │   ↓ stdio MCP                              (orochi-server-stable)
+           └ claude code session                         Cloudflare Tunnel
+                                                        scitex-orochi.com
+```
 
 ---
 

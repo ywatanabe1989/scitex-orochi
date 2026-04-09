@@ -2,70 +2,158 @@
 {% load static %}
 {% block title %}{{ workspace.name }} - SciTeX Orochi{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}">
+    <meta name="theme-color" content="#4ecdc4">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent">
+    <link rel="manifest" href="{% static 'hub/manifest.json' %}">
+    <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=117">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
+    <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=116">
+    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
+    <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=115">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
+<!-- hook-bypass: inline-style -->
 {% block body %}
-    <div id="app">
-        <button id="sidebar-toggle" aria-label="Toggle sidebar">&#9776;</button>
-        <div id="sidebar-overlay"></div>
-        <nav id="sidebar">
-            <div class="sidebar-header">
-                <img src="{% static 'hub/orochi-icon.png' %}"
-                     alt="Orochi"
-                     class="sidebar-logo">
-                <h2>SciTeX Orochi</h2>
-                <span class="workspace-name">{{ workspace.name }}</span>
+    <div class="container">
+        <button id="sidebar-toggle"
+                class="sidebar-toggle"
+                aria-label="Toggle sidebar">&#9776;</button>
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo" id="brand-logo"></div>
+                <div class="brand-info">
+                    <h2 class="workspace-title brand-product-name">
+                        SciTeX Orochi <span class="brand-version" id="orochi-version"></span>
+                    </h2>
+                    <div class="workspace-selector" id="workspace-selector">
+                        <span class="ws-icon" id="ws-icon-slot"></span>
+                        <span class="ws-name">{{ workspace.name }}</span>
+                        <span class="ws-caret">&#9662;</span>
+                    </div>
+                </div>
+                <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
-            <div class="sidebar-section">
-                <h3>Channels</h3>
-                <ul id="channel-list">
-                    {% for ch in channels %}<li data-channel="{{ ch.name }}">{{ ch.name }}</li>{% endfor %}
-                </ul>
-            </div>
-            <div class="sidebar-section">
-                <h3>Members</h3>
-                <ul id="member-list">
-                    {% for member in members %}
-                        <li>
-                            <span class="member-status">&#9679;</span> {{ member.user.username }}
-                        </li>
-                    {% endfor %}
-                </ul>
-                <h3>Agents</h3>
-                <ul id="agent-list">
-                    {% for agent_name in agents %}
-                        <li data-agent="{{ agent_name }}">
-                            <span class="agent-status">&#9679;</span> {{ agent_name }}
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div class="sidebar-footer">
-                <span>{{ request.user.username }}</span>
-                {% if is_admin %}
-                    <a href="{% url 'workspace-settings' %}">Settings</a>
-                {% endif %}
-                <a href="{% url 'signout' %}">Logout</a>
-            </div>
-        </nav>
-        <div id="agent-info-panel" style="display:none">
-            <h4 id="agent-info-name"></h4>
-            <div id="agent-info-details"></div>
-        </div>
-        <main id="chat-area">
-            <div id="chat-header">
-                <h3 id="current-channel">#general</h3>
-            </div>
-            <div id="messages"></div>
-            <form id="message-form">
+            <div class="filter-bar" style="position:relative">
                 <input type="text"
-                       id="message-input"
-                       placeholder="Type a message..."
+                       id="filter-input"
+                       placeholder="Filter... (agent: host: channel: label: or text)"
                        autocomplete="off">
-                <button type="submit">Send</button>
-            </form>
-        </main>
+                <div id="filter-suggest" class="filter-suggest"></div>
+                <div id="filter-tags" class="filter-tags"></div>
+            </div>
+            <h2 class="collapsible-heading channels-heading blockers-heading">
+                <span class="blocker-flag">⚠</span> Blockers
+                <span class="sidebar-count blockers-count" id="sidebar-count-blockers"></span>
+            </h2>
+            <div id="blockers" class="sidebar-section blockers-section">
+                <p class="blockers-empty">No blockers</p>
+            </div>
+            <h2 class="collapsible-heading channels-heading">
+                Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
+            </h2>
+            <div id="agents" class="sidebar-section">
+                <p id="no-agents">No agents connected</p>
+            </div>
+            <h2 class="collapsible-heading channels-heading">
+                Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
+            </h2>
+            <div id="channels" class="sidebar-section"></div>
+            <h2 class="collapsible-heading channels-heading">
+                Machines <span class="sidebar-count" id="sidebar-count-machines"></span>
+            </h2>
+            <div id="resources" class="sidebar-section"></div>
+        </div>
+        <div class="main">
+            <div class="tab-bar">
+                <button class="tab-btn active" data-tab="chat">Chat</button>
+                <button class="tab-btn" data-tab="todo">TODO</button>
+                <button class="tab-btn" data-tab="activity">Agents</button>
+                <button class="tab-btn" data-tab="resources">Machines</button>
+                <button class="tab-btn" data-tab="files">Files</button>
+                <button class="tab-btn" data-tab="releases">Releases</button>
+                {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
+            </div>
+            <div id="messages" class="messages"></div>
+            <div id="todo-view" class="todo-view" style="display:none">
+                <div class="todo-state-filter">
+                    <button type="button" class="todo-state-btn active" data-group="all">All</button>
+                    <button type="button" class="todo-state-btn" data-group="high-priority">High</button>
+                    <button type="button" class="todo-state-btn" data-group="medium-priority">Medium</button>
+                    <button type="button" class="todo-state-btn" data-group="low-priority">Low</button>
+                    <button type="button" class="todo-state-btn" data-group="future">Future</button>
+                    <button type="button" class="todo-state-btn" data-group="blocker">Blocker</button>
+                    <button type="button" class="todo-state-btn" data-group="closed">Closed</button>
+                </div>
+                <div id="todo-grid" class="todo-grid"></div>
+            </div>
+            <div id="agents-tab-view" class="todo-view" style="display:none">
+                <div id="agents-grid" class="todo-grid"></div>
+            </div>
+            <div id="resources-view" class="todo-view" style="display:none">
+                <div id="connectivity-map" class="connectivity-section"></div>
+                <div id="resources-grid" class="todo-grid"></div>
+            </div>
+            <div id="workspaces-view" class="todo-view" style="display:none">
+                <div id="workspaces-grid" class="todo-grid"></div>
+            </div>
+            <div id="activity-view" class="todo-view" style="display:none">
+                <div class="activity-header">
+                    <span class="activity-title">Agent Activity</span>
+                    <span class="activity-summary" id="activity-summary"></span>
+                </div>
+                <div id="activity-grid" class="activity-grid"></div>
+            </div>
+            <div id="releases-view" class="todo-view" style="display:none">
+                <div id="releases-list" class="releases-list"></div>
+            </div>
+            <div id="files-view" class="todo-view" style="display:none">
+                <div class="files-filter-bar">
+                    <button class="files-filter-btn active" data-mime="all">All</button>
+                    <button class="files-filter-btn" data-mime="image">Images</button>
+                    <button class="files-filter-btn" data-mime="video">Videos</button>
+                    <button class="files-filter-btn" data-mime="audio">Audio</button>
+                    <button class="files-filter-btn" data-mime="application/pdf">PDFs</button>
+                    <button class="files-filter-btn" data-mime="other">Other</button>
+                </div>
+                <div id="files-grid" class="files-grid"></div>
+            </div>
+            {% if is_admin %}
+                <div id="settings-view" class="todo-view" style="display:none">
+                    <div id="settings-content" class="settings-tab-content">
+                        <p class="empty-notice">Loading settings...</p>
+                    </div>
+                </div>
+            {% endif %}
+            <div class="input-bar">
+                <div id="mention-dropdown" class="mention-dropdown"></div>
+                <div class="input-bar-row">
+                    <textarea id="msg-input"
+                              placeholder="Type a message..."
+                              autocomplete="off"
+                              rows="3"></textarea>
+                    <input type="file" id="file-input" style="display:none">
+                    <div class="input-bar-actions">
+                        <button id="msg-attach" type="button" title="Attach file" aria-label="Attach file">📎</button>
+                        <button id="msg-sketch" type="button" title="Draw sketch" aria-label="Draw sketch">✏️</button>
+                        <button id="msg-send" type="button" title="Send message">Send</button>
+                    </div>
+                </div>
+            </div>
+            <div class="stats-bar"></div>
+        </div>
     </div>
 {% endblock %}
 {% block extra_js %}
@@ -74,6 +162,35 @@
       window.__orochiWorkspace = "{{ workspace.name|escapejs }}";
       window.__orochiWsUrl = "wss://{{ request.get_host }}/ws/dashboard/";
       window.__orochiCsrfToken = "{{ csrf_token }}";
+      /* Django auth -- user is already authenticated, use username as display name */
+      window.__orochiUserName = "{{ request.user.username|escapejs }}";
+      window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
+      window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
     </script>
-    <script src="{% static 'hub/app.js' %}"></script>
+    <script src="{% static 'hub/config.js' %}?v=117"></script>
+    <script src="{% static 'hub/agent-icons.js' %}?v=99"></script>
+    <script src="{% static 'hub/app.js' %}?v=117"></script>
+    <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
+    <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=100"></script>
+    <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/chat.js' %}?v=111"></script>
+    <script src="{% static 'hub/mention.js' %}?v=99"></script>
+    <script src="{% static 'hub/settings-tab.js' %}?v=104"></script>
+    <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
+    <script src="{% static 'hub/filter.js' %}?v=99"></script>
+    <script src="{% static 'hub/blockers.js' %}?v=1"></script>
+    <script src="{% static 'hub/agents-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/connectivity-map.js' %}?v=99"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=116"></script>
+    <script src="{% static 'hub/upload.js' %}?v=111"></script>
+    <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/releases-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/reactions.js' %}?v=107"></script>
+    <script src="{% static 'hub/threads.js' %}?v=99"></script>
+    <script src="{% static 'hub/sketch.js' %}?v=99"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=102"></script>
+    <script src="{% static 'hub/init.js' %}?v=99"></script>
+    <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
+    <script src="{% static 'hub/push.js' %}?v=99"></script>
 {% endblock %}

@@ -1,0 +1,24 @@
+/* Orochi Dashboard -- icon & branding styles */
+
+/* Inline SVG icons */
+.orochi-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.msg-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.agent-card-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+}
+.agent-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 4px;
+  vertical-align: middle;
+}

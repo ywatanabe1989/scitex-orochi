@@ -12,22 +12,23 @@ orochi:
 
   server:
     # WebSocket server location (where orochi-server runs)
-    host: 192.168.0.100
+    host: 192.168.11.22
 
     # Stable instance (production -- never break)
+    # Django ASGI serves both HTTP and WebSocket on the same port (8559)
     stable:
-      ws_port: 9559
+      ws_port: 8559
       dashboard_port: 8559
-      domain: orochi.scitex.ai
+      domain: scitex-lab.scitex-orochi.com
 
     # Dev instance (development -- break freely)
     dev:
-      ws_port: 9560
+      ws_port: 8560
       dashboard_port: 8560
       domain: orochi-dev.scitex.ai
 
     # Legacy flat fields (used when environment is not set)
-    ws_port: 9559
+    ws_port: 8559
     dashboard_port: 8559
     domain: orochi.example.com
 

@@ -33,4 +33,5 @@ urlpatterns = [
     ),
     # API (bare domain)
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),
+    path("api/github/issues/", views.github_issues, name="api-github-issues"),
 ]

@@ -1,10 +1,27 @@
 """URL configuration for the hub app."""
 
+import os
+
+from django.http import HttpResponse
 from django.urls import path
 
 from hub import views
 
+_sw_js_path = os.path.join(os.path.dirname(__file__), "static", "hub", "sw.js")
+
+
+def _serve_sw(request):
+    """Serve service worker at root scope (required by SW spec)."""
+    try:
+        with open(_sw_js_path) as f:
+            return HttpResponse(f.read(), content_type="application/javascript")
+    except FileNotFoundError:
+        return HttpResponse("", status=404)
+
+
 urlpatterns = [
+    # Service worker must be at root for proper scope
+    path("sw.js", _serve_sw, name="sw"),
     # Auth
     path("signin/", views.signin_view, name="signin"),
     path("signup/", views.signup_view, name="signup"),
@@ -38,4 +55,24 @@ urlpatterns = [
         name="api-history",
     ),
     path("api/workspace/<slug:slug>/stats/", views.api_stats, name="api-stats"),
+    # Agent API
+    path("api/agents/", views.api_agents, name="api-agents"),
+    path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
+    path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
+    path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    path("api/subagents/update/", views.api_subagents_update, name="api-subagents-update"),
+    path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
+    path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
+    path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
+    path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
+    path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
+    path("api/media/", views.api_media, name="api-media"),
+    path("api/members/", views.api_members, name="api-members"),
+    path("api/reactions/", views.api_reactions, name="api-reactions"),
+    path("api/releases/", views.api_releases, name="api-releases"),
+    path("api/threads/", views.api_threads, name="api-threads"),
+    path("api/resources/", views.api_resources, name="api-resources"),
+    # File upload
+    path("api/upload", views.api_upload, name="api-upload"),
+    path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
 ]

@@ -12,3 +12,64 @@ function toggleToken(btn) {
     btn.textContent = "\u{1F441}";
   }
 }
+
+/* Copy token to clipboard */
+function copyToken(btn) {
+  /* The <code> is the first child of the <td> -- walk back from the copy button */
+  var td = btn.parentElement;
+  var code = td.querySelector("code[data-token]");
+  if (!code) return;
+  var full = code.dataset.token;
+  var fallback = function () {
+    var ta = document.createElement("textarea");
+    ta.value = full;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+    } catch (e) {
+      /* ignore */
+    }
+    document.body.removeChild(ta);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(full).catch(fallback);
+  } else {
+    fallback();
+  }
+  var orig = btn.textContent;
+  btn.textContent = "\u2713";
+  setTimeout(function () {
+    btn.textContent = orig;
+  }, 1200);
+}
+
+/* User vs Workspace mode tabs (#147) */
+(function () {
+  var btns = document.querySelectorAll(".settings-mode-btn");
+  var panes = document.querySelectorAll(".settings-mode-pane");
+  if (!btns.length) return;
+  btns.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var mode = btn.getAttribute("data-mode");
+      btns.forEach(function (b) { b.classList.toggle("active", b === btn); });
+      panes.forEach(function (p) {
+        p.style.display = p.getAttribute("data-mode") === mode ? "" : "none";
+      });
+    });
+  });
+})();
+
+/* Render workspace icon preview on settings page */
+(function () {
+  var preview = document.getElementById("ws-icon-preview");
+  if (!preview || typeof getWorkspaceIcon !== "function") return;
+  var nameEl = document.querySelector(".workspace-name");
+  var wsName = nameEl ? nameEl.textContent.trim() : "workspace";
+  var wsIcon = window.__orochiWorkspaceIcon || "";
+  preview.innerHTML = wsIcon
+    ? '<span class="ws-emoji-icon ws-emoji-icon-lg">' + wsIcon + "</span>"
+    : getWorkspaceIcon(wsName, 64);
+})();

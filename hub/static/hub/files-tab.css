@@ -1,0 +1,146 @@
+/* Files tab — media grid and previews */
+
+.files-filter-bar {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #1e1e1e;
+  flex-wrap: wrap;
+}
+
+.files-filter-btn {
+  background: #1a1a1a;
+  color: #aaa;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.files-filter-btn:hover {
+  background: #222;
+  color: #ddd;
+}
+
+.files-filter-btn.active {
+  background: #4ecdc4;
+  color: #0a0a0a;
+  border-color: #4ecdc4;
+  font-weight: 600;
+}
+
+.files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.file-card {
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s;
+}
+
+.file-card:hover {
+  border-color: #4ecdc4;
+}
+
+.file-preview {
+  width: 100%;
+  height: 140px;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.file-preview-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.file-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.file-preview-video,
+.file-preview-audio {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.file-preview-audio {
+  width: 90%;
+}
+
+.file-icon-pdf {
+  width: 60px;
+  height: 75px;
+  background: #d32f2f;
+  color: white;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.file-icon-generic {
+  font-size: 48px;
+  color: #666;
+}
+
+.file-info {
+  padding: 10px 12px;
+  border-top: 1px solid #222;
+}
+
+.file-name {
+  font-size: 12px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name a {
+  color: #4ecdc4;
+  text-decoration: none;
+}
+
+.file-name a:hover {
+  text-decoration: underline;
+}
+
+.file-meta {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 2px;
+}
+
+.file-sender {
+  font-weight: 600;
+}
+
+.file-meta-small {
+  font-size: 9px;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
