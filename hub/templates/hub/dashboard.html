@@ -8,7 +8,7 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=103">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=105">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=99">
@@ -44,7 +44,7 @@
                         <span class="ws-caret">&#9662;</span>
                     </div>
                 </div>
-                <span id="conn-status" class="status">disconnected</span>
+                <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
             <div class="filter-bar" style="position:relative">
                 <input type="text"
@@ -165,7 +165,7 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=99"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=99"></script>
-    <script src="{% static 'hub/app.js' %}?v=99"></script>
+    <script src="{% static 'hub/app.js' %}?v=105"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=100"></script>

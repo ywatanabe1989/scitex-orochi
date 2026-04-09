@@ -196,17 +196,60 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
 }
+/* Connection status indicator — compact state-aware dot in the brand row.
+ * Invisible-ish when fine (small muted dot), prominent when broken. */
 .sidebar-brand .status {
-  font-size: 11px;
-  color: #666;
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  cursor: help;
+  text-transform: lowercase;
+  color: #555;
 }
-.sidebar-brand .status.connected {
+.sidebar-brand .status::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #555;
+  flex-shrink: 0;
+}
+.sidebar-brand .status.conn-ok {
   color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.08);
 }
-.sidebar-brand .status.rest-mode {
+.sidebar-brand .status.conn-ok::before {
+  background: #4ecdc4;
+  box-shadow: 0 0 4px #4ecdc4;
+}
+.sidebar-brand .status.conn-poll {
   color: #ffd93d;
+  background: rgba(255, 217, 61, 0.1);
 }
+.sidebar-brand .status.conn-poll::before {
+  background: #ffd93d;
+}
+.sidebar-brand .status.conn-down {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  animation: conn-pulse 1.6s ease-in-out infinite;
+}
+.sidebar-brand .status.conn-down::before {
+  background: #ef4444;
+}
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+/* Back-compat aliases — older code-paths may still flip these classes */
+.sidebar-brand .status.connected { color: #4ecdc4; }
+.sidebar-brand .status.rest-mode { color: #ffd93d; }
 .sidebar-footer {
   margin-top: auto;
   padding-top: 12px;

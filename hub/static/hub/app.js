@@ -320,17 +320,18 @@ function connect() {
     ws = new WebSocket(wsUrl);
   } catch (e) {
     console.warn("WebSocket constructor failed:", e);
-    statusEl.textContent = "ws: polling";
-    statusEl.classList.remove("connected");
-    statusEl.classList.add("rest-mode");
+    statusEl.textContent = "polling";
+    statusEl.className = "status conn-poll";
+    statusEl.title = "WebSocket unavailable — falling back to REST polling";
     startRestPolling();
     return;
   }
   ws.onopen = function () {
     wsConnected = true;
-    statusEl.textContent = "Orochi Server: Connected";
-    statusEl.classList.add("connected");
-    statusEl.classList.remove("rest-mode");
+    /* Compact, muted when fine; state class drives the styling */
+    statusEl.textContent = "";
+    statusEl.title = "Connected to Orochi server";
+    statusEl.className = "status conn-ok";
     stopRestPolling();
     fetchStats();
     fetchAgents();
@@ -338,9 +339,9 @@ function connect() {
   };
   ws.onclose = function () {
     wsConnected = false;
-    statusEl.textContent = "ws: polling";
-    statusEl.classList.remove("connected");
-    statusEl.classList.add("rest-mode");
+    statusEl.textContent = "reconnecting";
+    statusEl.title = "Disconnected — retrying every 3s";
+    statusEl.className = "status conn-down";
     startRestPolling();
     setTimeout(connect, 3000);
   };
