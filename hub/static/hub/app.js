@@ -136,13 +136,24 @@ function isAgentInactive(agent) {
 
 function timeAgo(isoStr) {
   if (!isoStr) return "";
-  var then = new Date(isoStr);
-  if (isNaN(then.getTime())) return "";
-  var diff = Math.floor((Date.now() - then.getTime()) / 1000);
-  if (diff < 60) return diff + "s ago";
-  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-  return Math.floor(diff / 86400) + "d ago";
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "";
+  var pad = function (n) {
+    return n < 10 ? "0" + n : "" + n;
+  };
+  return (
+    d.getFullYear() +
+    "-" +
+    pad(d.getMonth() + 1) +
+    "-" +
+    pad(d.getDate()) +
+    " " +
+    pad(d.getHours()) +
+    ":" +
+    pad(d.getMinutes()) +
+    ":" +
+    pad(d.getSeconds())
+  );
 }
 
 function uptime(isoStr) {
@@ -309,7 +320,7 @@ function connect() {
   }
   ws.onopen = function () {
     wsConnected = true;
-    statusEl.textContent = "ws: live";
+    statusEl.textContent = "Orochi Server: Connected";
     statusEl.classList.add("connected");
     statusEl.classList.remove("rest-mode");
     stopRestPolling();

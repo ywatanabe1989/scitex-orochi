@@ -287,13 +287,4 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
   }
 });
 
-/* Periodically refresh relative timestamps in visible messages */
-setInterval(function () {
-  document.querySelectorAll(".msg .ts").forEach(function (el) {
-    var full = el.getAttribute("title");
-    if (!full) return;
-    var d = new Date(full);
-    if (isNaN(d.getTime())) return;
-    el.textContent = timeAgo(d.toISOString());
-  });
-}, 30000);
+/* Timestamps are now absolute (YYYY-MM-DD HH:mm:ss), no periodic refresh needed */
