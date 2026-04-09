@@ -36,6 +36,20 @@ function _livenessOrder(liveness) {
   }
 }
 
+function _renderHealthField(health) {
+  if (!health || !health.status) return "";
+  var st = String(health.status);
+  var reason = health.reason ? ' · ' + escapeHtml(health.reason) : "";
+  var src = health.source ? ' (' + escapeHtml(health.source) + ')' : "";
+  return (
+    '<div class="activity-health activity-health-' + escapeHtml(st) + '">' +
+    '<span class="activity-health-icon">\uD83E\uDE7A</span> ' +
+    '<span class="activity-health-status">' + escapeHtml(st) + '</span>' +
+    reason + src +
+    '</div>'
+  );
+}
+
 function _renderTaskField(task, fallback) {
   if (!task) {
     if (fallback) {
@@ -136,6 +150,7 @@ function renderActivityTab() {
       '</div>' +
       '<div class="activity-meta">' + machine + ' · ' + role + '</div>' +
       '<div class="activity-task">' + _renderTaskField(task, preview) + '</div>' +
+      _renderHealthField(a.health) +
       subagentsHtml +
       '</div>'
     );

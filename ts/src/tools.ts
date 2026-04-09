@@ -114,6 +114,53 @@ export async function handleHistory(args: {
   }
 }
 
+export async function handleHealth(args: {
+  agent?: string;
+  status?: string;
+  reason?: string;
+  source?: string;
+  updates?: Array<{ agent: string; status: string; reason?: string; source?: string }>;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  try {
+    const url = `${httpBase}/api/agents/health/${tokenParam("?")}`;
+    const body: Record<string, unknown> = {};
+    if (args.updates) body.updates = args.updates;
+    else {
+      if (!args.agent || !args.status) {
+        return {
+          content: [
+            { type: "text", text: "Error: agent and status required (or pass updates[])" },
+          ],
+        };
+      }
+      body.agent = args.agent;
+      body.status = args.status;
+      if (args.reason) body.reason = args.reason;
+      if (args.source) body.source = args.source;
+      else body.source = OROCHI_AGENT;
+    }
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const t = await resp.text();
+      return {
+        content: [{ type: "text", text: `Error: HTTP ${resp.status} — ${t.slice(0, 200)}` }],
+      };
+    }
+    const out = (await resp.json()) as { applied?: number };
+    return {
+      content: [{ type: "text", text: `health applied: ${out.applied ?? 0}` }],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
 export async function handleTask(
   conn: OrochiConnection,
   args: { task: string },

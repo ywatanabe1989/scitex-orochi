@@ -1,6 +1,7 @@
 """Hub views package — re-exports all view functions."""
 
 from hub.views.api import (  # noqa: F401
+    api_agent_health,
     api_agent_profiles,
     api_agents,
     api_agents_purge,

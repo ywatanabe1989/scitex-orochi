@@ -820,6 +820,66 @@ def api_agent_profiles(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def api_agent_health(request):
+    """POST /api/agents/health/ — caduceus (or any authorized healer)
+    records a diagnosis for one or more agents.
+
+    Single:
+        {"token":"wks_...", "agent":"head@mba",
+         "status":"healthy|idle|stale|stuck_prompt|dead|ghost|unknown",
+         "reason":"Simmering… bypass-perms on",
+         "source":"caduceus@mba"}
+
+    Bulk:
+        {"token":"wks_...", "updates":[{agent, status, reason, source}, ...]}
+    """
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    token = body.get("token") or request.GET.get("token")
+    if not token:
+        return JsonResponse({"error": "token required"}, status=401)
+    from hub.models import WorkspaceToken
+
+    try:
+        WorkspaceToken.objects.get(token=token)
+    except WorkspaceToken.DoesNotExist:
+        return JsonResponse({"error": "invalid token"}, status=401)
+
+    from hub.registry import set_health
+
+    updates = body.get("updates")
+    if not updates:
+        single = body.get("agent")
+        if not single:
+            return JsonResponse({"error": "agent or updates required"}, status=400)
+        updates = [
+            {
+                "agent": single,
+                "status": body.get("status", "unknown"),
+                "reason": body.get("reason", ""),
+                "source": body.get("source", "caduceus"),
+            }
+        ]
+
+    applied = 0
+    for u in updates:
+        name = (u.get("agent") or "").strip()
+        if not name:
+            continue
+        set_health(
+            name=name,
+            status=u.get("status") or "unknown",
+            reason=u.get("reason") or "",
+            source=u.get("source") or "caduceus",
+        )
+        applied += 1
+    return JsonResponse({"status": "ok", "applied": applied})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def api_subagents_update(request):
     """POST /api/subagents/update — bulk set subagents for one or more agents.
 

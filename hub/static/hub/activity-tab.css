@@ -178,3 +178,26 @@
   font-style: italic;
   font-size: 11px;
 }
+
+/* caduceus health line per agent card */
+.activity-health {
+  margin-top: 6px;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  border-left: 3px solid #444;
+  color: #bbb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-health-icon { margin-right: 2px; }
+.activity-health-status { font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-right: 2px; }
+.activity-health-healthy { border-left-color: #4ecdc4; color: #4ecdc4; }
+.activity-health-idle { border-left-color: #f59e0b; }
+.activity-health-stale { border-left-color: #ef4444; color: #ef4444; }
+.activity-health-stuck_prompt { border-left-color: #ef4444; color: #ef4444; animation: activity-pulse 2s ease-in-out infinite; }
+.activity-health-dead { border-left-color: #7a1f1f; color: #ef4444; }
+.activity-health-ghost { border-left-color: #6b21a8; color: #c084fc; }
+.activity-health-remediating { border-left-color: #4ecdc4; color: #4ecdc4; animation: activity-pulse 1.4s ease-in-out infinite; }
