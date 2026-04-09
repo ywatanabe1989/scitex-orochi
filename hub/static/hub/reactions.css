@@ -6,20 +6,21 @@
 
 .msg-react-btn {
   position: absolute;
-  top: 6px;
+  bottom: 6px;
   right: 6px;
   background: #1a1a1a;
-  color: #888;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  width: 20px;
-  height: 20px;
-  font-size: 12px;
+  color: #aaa;
+  border: 1px solid #333;
+  border-radius: 14px;
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s;
   padding: 0;
+  z-index: 2;
 }
 
 .msg:hover .msg-react-btn {
