@@ -521,63 +521,70 @@ def api_reactions(request):
 @login_required
 @require_GET
 def api_releases(request):
-    """GET /api/releases/ — list recent git commits as releases.
+    """GET /api/releases/ — recent commits sourced from the GitHub API.
 
-    Reads `git log` against the Orochi codebase. Falls back gracefully
-    when git is unavailable (e.g., in a stripped container).
+    This used to shell `git log` against a container-local `.git` dir, which
+    broke whenever the image didn't ship with git/.git (the normal case).
+    We now proxy GitHub's commits API using the existing GITHUB_TOKEN, so
+    the endpoint works on any stripped image and always reflects what
+    `origin` actually has.
     """
-    import subprocess
-    from pathlib import Path
+    import json
+    import os
+    import urllib.error
+    import urllib.request
 
-    # Walk up from this file until we find a .git directory
-    search_root = Path(__file__).resolve()
-    git_root = None
-    for parent in [search_root, *search_root.parents]:
-        if (parent / ".git").exists():
-            git_root = parent
-            break
-
-    if git_root is None:
-        return JsonResponse([], safe=False)
-
-    limit = min(int(request.GET.get("limit", "100")), 500)
-    fmt = "%H%x00%h%x00%ci%x00%an%x00%s%x00%b%x00%D"
-    try:
-        proc = subprocess.run(
-            ["git", "-C", str(git_root), "log", f"--max-count={limit}", f"--format={fmt}%x1e"],
-            capture_output=True,
-            text=True,
-            timeout=5,
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return JsonResponse(
+            {"error": "GITHUB_TOKEN not configured", "code": "missing_token"},
+            status=503,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return JsonResponse([], safe=False)
 
-    if proc.returncode != 0:
-        return JsonResponse([], safe=False)
+    repo = os.environ.get("GITHUB_REPO", "ywatanabe1989/scitex-orochi")
+    limit = min(int(request.GET.get("limit", "100")), 100)
+    url = (
+        f"https://api.github.com/repos/{repo}/commits"
+        f"?per_page={limit}"
+    )
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Orochi-Dashboard",
+        "Authorization": f"token {token}",
+    }
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        return JsonResponse(
+            {"error": f"GitHub API returned {e.code}: {e.reason}", "code": "github_error"},
+            status=502,
+        )
+    except Exception as e:
+        return JsonResponse(
+            {"error": str(e), "code": "proxy_error"},
+            status=502,
+        )
 
     items = []
-    for raw in proc.stdout.split("\x1e"):
-        raw = raw.strip("\n")
-        if not raw:
-            continue
-        parts = raw.split("\x00")
-        if len(parts) < 5:
-            continue
-        sha, short_sha, date, author, subject = parts[0], parts[1], parts[2], parts[3], parts[4]
-        body = parts[5] if len(parts) > 5 else ""
-        refs = parts[6] if len(parts) > 6 else ""
+    for c in raw:
+        commit = c.get("commit", {}) or {}
+        author = commit.get("author", {}) or {}
+        msg = commit.get("message", "") or ""
+        subject, _, body = msg.partition("\n")
         items.append(
             {
-                "sha": sha,
-                "short_sha": short_sha,
-                "date": date,
-                "author": author,
+                "sha": c.get("sha", ""),
+                "short_sha": (c.get("sha") or "")[:7],
+                "date": author.get("date", ""),
+                "author": author.get("name", ""),
                 "subject": subject,
                 "body": body.strip(),
-                "refs": refs,
+                "refs": "",
+                "url": c.get("html_url", ""),
             }
         )
-
     return JsonResponse(items, safe=False)
 
 
