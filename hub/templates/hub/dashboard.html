@@ -8,21 +8,21 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=43">
-    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=5">
-    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=1">
-    <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=99">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
 <!-- hook-bypass: inline-style -->
@@ -112,7 +112,6 @@
                     <span class="activity-summary" id="activity-summary"></span>
                 </div>
                 <div id="activity-grid" class="activity-grid"></div>
-            </div>
             <div id="releases-view" class="todo-view" style="display:none">
                 <div id="releases-list" class="releases-list"></div>
             </div>
@@ -160,29 +159,30 @@
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
     </script>
-    <script src="{% static 'hub/config.js' %}?v=5"></script>
-    <script src="{% static 'hub/agent-icons.js' %}?v=1"></script>
-    <script src="{% static 'hub/app.js' %}?v=43"></script>
-    <script src="{% static 'hub/workspace-dropdown.js' %}?v=1"></script>
-    <script src="{% static 'hub/resources-tab.js' %}?v=2"></script>
-    <script src="{% static 'hub/todo-tab.js' %}?v=2"></script>
-    <script src="{% static 'hub/workspaces-tab.js' %}?v=2"></script>
-    <script src="{% static 'hub/chat.js' %}?v=4"></script>
-    <script src="{% static 'hub/mention.js' %}?v=3"></script>
-    <script src="{% static 'hub/settings-tab.js' %}?v=1"></script>
-    <script src="{% static 'hub/emoji-picker.js' %}?v=1"></script>
-    <script src="{% static 'hub/filter.js' %}?v=2"></script>
-    <script src="{% static 'hub/agents-tab.js' %}?v=3"></script>
-    <script src="{% static 'hub/upload.js' %}?v=4"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=1"></script>
-    <script src="{% static 'hub/files-tab.js' %}?v=1"></script>
-    <script src="{% static 'hub/releases-tab.js' %}?v=1"></script>
-    <script src="{% static 'hub/reactions.js' %}?v=1"></script>
-    <script src="{% static 'hub/threads.js' %}?v=1"></script>
-    <script src="{% static 'hub/connectivity-map.js' %}?v=1"></script>
-    <script src="{% static 'hub/sketch.js' %}?v=2"></script>
-    <script src="{% static 'hub/tabs.js' %}?v=2"></script>
-    <script src="{% static 'hub/init.js' %}?v=5"></script>
-    <script src="{% static 'hub/sw-register.js' %}?v=2"></script>
-    <script src="{% static 'hub/push.js' %}?v=2"></script>
+    <script src="{% static 'hub/config.js' %}?v=99"></script>
+    <script src="{% static 'hub/agent-icons.js' %}?v=99"></script>
+    <script src="{% static 'hub/app.js' %}?v=99"></script>
+    <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
+    <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/chat.js' %}?v=99"></script>
+    <script src="{% static 'hub/mention.js' %}?v=99"></script>
+    <script src="{% static 'hub/settings-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
+    <script src="{% static 'hub/filter.js' %}?v=99"></script>
+    <script src="{% static 'hub/agents-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/upload.js' %}?v=99"></script>
+    <script src="{% static 'hub/connectivity-map.js' %}?v=99"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/upload.js' %}?v=99"></script>
+    <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/releases-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/reactions.js' %}?v=99"></script>
+    <script src="{% static 'hub/threads.js' %}?v=99"></script>
+    <script src="{% static 'hub/sketch.js' %}?v=99"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=99"></script>
+    <script src="{% static 'hub/init.js' %}?v=99"></script>
+    <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
+    <script src="{% static 'hub/push.js' %}?v=99"></script>
 {% endblock %}

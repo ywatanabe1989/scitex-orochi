@@ -11,11 +11,13 @@ from hub.views.api import (  # noqa: F401
     api_media,
     api_members,
     api_messages,
+    api_event_tool_use,
     api_reactions,
     api_releases,
     api_threads,
     api_resources,
     api_stats,
+    api_watchdog_alerts,
     api_workspaces,
 )
 from hub.views.auth import (  # noqa: F401
