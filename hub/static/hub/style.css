@@ -648,3 +648,44 @@ body {
   padding: 0 2px;
 }
 .pending-attachment-remove:hover { color: #ef4444; }
+
+/* Input bar layout — tray above, textarea + right-side action column below */
+.input-bar-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  flex: 1;
+}
+.input-bar-row textarea {
+  flex: 1;
+  min-width: 0;
+}
+.input-bar-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.input-bar-actions #msg-attach,
+.input-bar-actions #msg-sketch {
+  background: #1a1a1a;
+  color: #ccc;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 16px;
+  font-weight: normal;
+  min-width: 38px;
+}
+.input-bar-actions #msg-attach:hover,
+.input-bar-actions #msg-sketch:hover {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+  background: #1a1a1a;
+}
+.input-bar-actions #msg-send {
+  min-width: 60px;
+  padding: 10px 16px;
+}
