@@ -213,8 +213,16 @@ function _todoBackendState() {
   return "open";
 }
 
+function _hasBlockerLabel(issue) {
+  return (issue.labels || []).some(function (l) {
+    return (l.name || "").toLowerCase() === "blocker";
+  });
+}
+
 function _passesGroupFilter(issue) {
   if (todoActiveGroups.has("all")) return true;
+  /* Blocker pill — matches any issue (open or closed) carrying the blocker label */
+  if (todoActiveGroups.has("blocker") && _hasBlockerLabel(issue)) return true;
   if (issue.state === "closed") {
     return todoActiveGroups.has("closed");
   }
