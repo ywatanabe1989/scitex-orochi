@@ -176,6 +176,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # Support both "text" and "content" keys from agents
             text = payload.get("content") or payload.get("text") or ""
 
+            # Attachments may arrive either nested in metadata (new clients)
+            # or at the payload top-level (upload.js). Normalize into one
+            # metadata dict so both persistence and broadcast carry them.
+            metadata = dict(payload.get("metadata", {}) or {})
+            if "attachments" in payload and "attachments" not in metadata:
+                metadata["attachments"] = payload.get("attachments") or []
+
             # Update activity timestamp — this is a meaningful action,
             # distinct from a passive heartbeat.
             from hub.registry import mark_activity
@@ -187,7 +194,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 channel_name=ch_name,
                 sender=self.agent_name,
                 content_text=text,
-                metadata=payload.get("metadata", {}),
+                metadata=metadata,
             )
 
             # Broadcast to channel group
@@ -350,7 +357,11 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             ch_name = payload.get("channel", "#general")
             # Support both "text" and "content" keys from frontend
             text = payload.get("content") or payload.get("text") or ""
-            metadata = payload.get("metadata", {})
+
+            # Normalize top-level attachments into metadata (upload.js path).
+            metadata = dict(payload.get("metadata", {}) or {})
+            if "attachments" in payload and "attachments" not in metadata:
+                metadata["attachments"] = payload.get("attachments") or []
 
             msg = await self._save_message(
                 channel_name=ch_name,

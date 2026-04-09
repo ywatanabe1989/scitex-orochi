@@ -111,23 +111,31 @@ msgInput.addEventListener("drop", function (e) {
 function handleClipboardPaste(e) {
   var cd = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;
-  /* Collect ALL image files from the clipboard (multi-paste support).
-     Some browsers expose images in cd.files, others in cd.items — try both. */
+  /* Collect image files from the clipboard.
+   *
+   * A single paste event can expose the same image via BOTH cd.files and
+   * cd.items (getAsFile() returns a fresh File object each time, so
+   * reference-equality dedup fails). Prefer cd.files when non-empty and
+   * fall back to cd.items only when files is empty. Then dedup by
+   * (name, size, type, lastModified) to guard against duplicates from
+   * multi-source browsers. */
   var collected = [];
+  var seen = new Set();
+  function pushUnique(f) {
+    if (!f || !f.type || f.type.indexOf("image/") !== 0) return;
+    var key = f.name + "|" + f.size + "|" + f.type + "|" + (f.lastModified || 0);
+    if (seen.has(key)) return;
+    seen.add(key);
+    collected.push(f);
+  }
   var fileList = cd.files;
   if (fileList && fileList.length) {
-    for (var i = 0; i < fileList.length; i++) {
-      var f = fileList[i];
-      if (f && f.type && f.type.indexOf("image/") === 0) collected.push(f);
-    }
-  }
-  var items = cd.items;
-  if (items) {
-    for (var j = 0; j < items.length; j++) {
-      var it = items[j];
+    for (var i = 0; i < fileList.length; i++) pushUnique(fileList[i]);
+  } else if (cd.items) {
+    for (var j = 0; j < cd.items.length; j++) {
+      var it = cd.items[j];
       if (it && it.type && it.type.indexOf("image/") === 0) {
-        var file = it.getAsFile();
-        if (file && collected.indexOf(file) === -1) collected.push(file);
+        pushUnique(it.getAsFile());
       }
     }
   }

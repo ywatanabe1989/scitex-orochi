@@ -116,8 +116,15 @@ function appendMessage(msg) {
       " more lines)</button>";
   }
   var attachmentsHtml = "";
+  /* Attachments may arrive under three shapes depending on path:
+   *  - payload.attachments (legacy direct-emit path)
+   *  - metadata.attachments (what the WS broadcast now uses)
+   *  - top-level attachments (REST history reload)  */
   var attachments =
-    (msg.payload && msg.payload.attachments) || msg.attachments || [];
+    (msg.payload && msg.payload.attachments) ||
+    (msg.metadata && msg.metadata.attachments) ||
+    msg.attachments ||
+    [];
   attachments.forEach(function (att) {
     if (att.mime_type && att.mime_type.startsWith("image/")) {
       attachmentsHtml +=
