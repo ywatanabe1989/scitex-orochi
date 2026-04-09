@@ -34,8 +34,30 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "status": "online",
             "registered_at": time.time(),
             "last_heartbeat": time.time(),
+            "last_action": time.time(),  # last meaningful activity (msg, tool call)
+            "current_task": "",
             "metrics": {},
         }
+
+
+def mark_activity(name: str, action: str = "") -> None:
+    """Record that an agent did something meaningful (sent a message, ran a tool).
+
+    Distinct from heartbeat — this signals the agent is actively making
+    progress, not just keeping its WebSocket alive.
+    """
+    with _lock:
+        if name in _agents:
+            _agents[name]["last_action"] = time.time()
+            if action:
+                _agents[name]["current_task"] = action[:120]
+
+
+def set_current_task(name: str, task: str) -> None:
+    """Explicitly set the agent's current task description."""
+    with _lock:
+        if name in _agents:
+            _agents[name]["current_task"] = task[:120] if task else ""
 
 
 def update_heartbeat(name: str, metrics: dict | None = None) -> None:
@@ -93,11 +115,24 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
     if workspace_id is not None:
         agents = [a for a in agents if a.get("workspace_id") == workspace_id]
     result = []
+    now = time.time()
     for a in agents:
         from datetime import datetime, timezone
 
         reg_ts = a.get("registered_at")
         hb_ts = a.get("last_heartbeat")
+        action_ts = a.get("last_action")
+        # Liveness classification distinct from WS connection state.
+        # An agent can be "online" (WS open) but "stale" (no activity for >2min).
+        liveness = a.get("status", "online")
+        idle_seconds = None
+        if action_ts:
+            idle_seconds = int(now - action_ts)
+            if a.get("status") == "online":
+                if idle_seconds > 600:
+                    liveness = "stale"  # >10min silent — probably stuck
+                elif idle_seconds > 120:
+                    liveness = "idle"  # >2min silent — paused/thinking
         result.append(
             {
                 "name": a["name"],
@@ -111,6 +146,8 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "icon_text": a.get("icon_text", ""),
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
+                "liveness": liveness,
+                "idle_seconds": idle_seconds,
                 "registered_at": (
                     datetime.fromtimestamp(reg_ts, tz=timezone.utc).isoformat()
                     if reg_ts
@@ -121,8 +158,13 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     if hb_ts
                     else None
                 ),
+                "last_action": (
+                    datetime.fromtimestamp(action_ts, tz=timezone.utc).isoformat()
+                    if action_ts
+                    else None
+                ),
                 "metrics": a.get("metrics", {}),
-                "current_task": "",
+                "current_task": a.get("current_task", ""),
             }
         )
     return result

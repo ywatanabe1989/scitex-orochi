@@ -143,9 +143,33 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
+        elif msg_type == "task_update":
+            # Agent reports its current task — visible in the Activity tab.
+            payload = content.get("payload", {})
+            task = payload.get("task", "")
+            from hub.registry import set_current_task, mark_activity
+
+            set_current_task(self.agent_name, task)
+            mark_activity(self.agent_name, action=task)
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "agent.info",
+                    "agent": self.agent_name,
+                    "info": getattr(self, "agent_meta", {}),
+                    "metrics": getattr(self, "agent_metrics", {}),
+                },
+            )
+
         elif msg_type == "message":
             payload = content.get("payload", {})
             ch_name = payload.get("channel", "#general")
+
+            # Update activity timestamp — this is a meaningful action,
+            # distinct from a passive heartbeat.
+            from hub.registry import mark_activity
+
+            mark_activity(self.agent_name, action=payload.get("text", "")[:120])
 
             # Persist message
             msg = await self._save_message(
