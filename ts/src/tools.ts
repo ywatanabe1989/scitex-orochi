@@ -114,6 +114,24 @@ export async function handleHistory(args: {
   }
 }
 
+export async function handleTask(
+  conn: OrochiConnection,
+  args: { task: string },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  if (!conn.isConnected) {
+    return { content: [{ type: "text", text: "Error: not connected" }] };
+  }
+  const task = (args.task || "").slice(0, 200);
+  conn.send(
+    JSON.stringify({
+      type: "task_update",
+      sender: OROCHI_AGENT,
+      payload: { task },
+    }),
+  );
+  return { content: [{ type: "text", text: `task: ${task}` }] };
+}
+
 export async function handleSubagents(
   conn: OrochiConnection,
   args: { subagents: Array<{ name?: string; task?: string; status?: string }> },
