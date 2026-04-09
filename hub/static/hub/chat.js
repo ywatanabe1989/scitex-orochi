@@ -93,10 +93,49 @@ function appendMessage(msg) {
   /* Mentions must be highlighted BEFORE the newline→<br> conversion,
    * otherwise a mention sitting right after a line break doesn't match
    * the `(^|[\s])` anchor (since <br> is not whitespace). */
-  var highlightedContent = escapeHtml(content)
+  var escaped = escapeHtml(content);
+
+  /* Bare-name mentions: highlight the known agent/member names even when
+   * they appear without a leading @. Kept conservative by requiring the
+   * name to be sourced from cachedAgentNames/cachedMemberNames and by
+   * using word boundaries so substrings inside other words don't match. */
+  function _highlightBareNames(s) {
+    var names = [];
+    if (typeof cachedAgentNames !== "undefined" && Array.isArray(cachedAgentNames)) {
+      names = names.concat(cachedAgentNames);
+    }
+    if (typeof cachedMemberNames !== "undefined" && Array.isArray(cachedMemberNames)) {
+      names = names.concat(cachedMemberNames);
+    }
+    /* Dedup + longest-first so "head@mba" wins over "head" */
+    names = Array.from(new Set(names)).filter(Boolean);
+    names.sort(function (a, b) { return b.length - a.length; });
+    names.forEach(function (n) {
+      if (!n || n.length < 2) return;
+      var escName = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      /* Skip if already inside a mention-highlight span */
+      var re = new RegExp(
+        "(^|[^\\w@>])" + escName + "(?![\\w@.-])",
+        "g",
+      );
+      s = s.replace(re, function (match, lead, offset, full) {
+        /* Don't double-wrap if the match is already within an existing
+         * <span class="mention-highlight">…</span>. Cheap scan backwards. */
+        var before = full.slice(0, offset + lead.length);
+        var lastOpen = before.lastIndexOf("<span");
+        var lastClose = before.lastIndexOf("</span>");
+        if (lastOpen > lastClose) return match;
+        return lead + '<span class="mention-highlight">' + n + "</span>";
+      });
+    });
+    return s;
+  }
+
+  var highlightedContent = escaped
     .replace(/(^|[\s\r\n])@([\w@.\-]+)/g, function (_match, prefix, name) {
       return prefix + '<span class="mention-highlight">@' + name + "</span>";
-    })
+    });
+  highlightedContent = _highlightBareNames(highlightedContent)
     .replace(/\n/g, "<br>")
     .replace(
       /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
