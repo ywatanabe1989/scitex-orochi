@@ -1,7 +1,13 @@
-"""Telegram webhook receiver — POST /webhook/telegram"""
+"""Telegram webhook receiver — POST /webhook/telegram
+
+Security: Telegram sends X-Telegram-Bot-Api-Secret-Token header when
+configured via setWebhook(secret_token=...). We verify this header
+to reject spoofed requests.
+"""
 
 import json
 import logging
+import os
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -13,11 +19,21 @@ from hub.models import Channel, Message, Workspace
 
 log = logging.getLogger("orochi.telegram")
 
+# Secret token for webhook verification — must match what's passed to setWebhook
+_WEBHOOK_SECRET = os.environ.get("SCITEX_OROCHI_TELEGRAM_WEBHOOK_SECRET", "")
+
 
 @csrf_exempt
 @require_POST
 def telegram_webhook(request):
     """Receive a Telegram Update via webhook and broadcast to #telegram channel."""
+    # Verify secret token if configured
+    if _WEBHOOK_SECRET:
+        token = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+        if token != _WEBHOOK_SECRET:
+            log.warning("Telegram webhook: invalid secret token")
+            return HttpResponse("forbidden", status=403)
+
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
