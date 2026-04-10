@@ -43,7 +43,7 @@ if (isTruthy(process.env.SCITEX_OROCHI_DISABLE)) {
 }
 
 // Zero-trust: telegram agents must never run this MCP server
-if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
+if ((process.env.SCITEX_OROCHI_AGENT_ROLE || "").toLowerCase() === "telegram") {
   console.error(
     "[scitex-orochi] BLOCKED: telegram agent must not run Orochi MCP channel",
   );
@@ -54,9 +54,7 @@ if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
 // Exception: if SCITEX_OROCHI_TOKEN is explicitly set, this MCP server was
 // intentionally configured (e.g., via agent-container) and should run despite
 // telegram vars leaking from the parent environment.
-const _telegramToken =
-  process.env.TELEGRAM_BOT_TOKEN ||
-  process.env.SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN;
+const _telegramToken = process.env.SCITEX_OROCHI_TELEGRAM_BOT_TOKEN;
 if (_telegramToken && !process.env.SCITEX_OROCHI_TOKEN) {
   console.error(
     "[scitex-orochi] WARNING: Telegram bot token detected in environment",
@@ -215,21 +213,23 @@ const conn = new OrochiConnection(async (raw: string) => {
     refreshIssueTitleCache();
     const decoratedContent = decorateIssueRefs(content);
 
-    await mcp.notification({
-      method: "notifications/claude/channel",
-      params: {
-        content: `${decoratedContent}${attachmentInfo}`,
-        meta: {
-          chat_id: channel,
-          user: sender,
-          ts: msg.ts || new Date().toISOString(),
-          /* Expose message id so agents can target it via the `react`
-           * tool. Server broadcasts id on chat.message events; legacy
-           * nested payloads use payload.id. */
-          msg_id: msg.id ?? payload.id ?? null,
+    // Fire-and-forget — do NOT await. Matches the Telegram plugin pattern.
+    // Awaiting blocks the WS handler on the stdio pipe write; if claude
+    // is busy the pipe backs up and the handler deadlocks.
+    mcp
+      .notification({
+        method: "notifications/claude/channel",
+        params: {
+          content: `${decoratedContent}${attachmentInfo}`,
+          meta: {
+            chat_id: channel,
+            user: sender,
+            ts: msg.ts || new Date().toISOString(),
+            msg_id: msg.id ?? payload.id ?? null,
+          },
         },
-      },
-    });
+      })
+      .catch(() => {});
   } catch (_) {
     // Parse errors are normal for non-JSON frames
   }

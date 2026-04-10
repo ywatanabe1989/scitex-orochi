@@ -79,7 +79,7 @@ async def handle_github_issues(request: web.Request) -> web.Response:
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "Orochi-Dashboard",
     }
-    github_token = os.environ.get("GITHUB_TOKEN")
+    github_token = os.environ.get("SCITEX_OROCHI_GITHUB_TOKEN")
     if github_token:
         headers["Authorization"] = f"token {github_token}"
 

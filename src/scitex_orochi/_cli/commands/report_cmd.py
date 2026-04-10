@@ -28,14 +28,12 @@ import urllib.request
 
 import click
 
-from scitex_orochi._cli._helpers import EXAMPLES_HEADER
-
 
 def _agent_name() -> str:
     """Determine the agent's display name from env."""
     return (
         os.environ.get("SCITEX_OROCHI_AGENT")
-        or os.environ.get("CLAUDE_AGENT_ROLE")
+        or os.environ.get("SCITEX_OROCHI_AGENT_ROLE")
         or f"unknown@{platform.node().split('.')[0]}"
     )
 
@@ -74,7 +72,9 @@ def report() -> None:
 # ── activity ───────────────────────────────────────────────────────
 @report.command()
 @click.option("--tool", default="", help="Tool name (e.g. Edit, Bash).")
-@click.option("--task", default="", help="Current task description (becomes current_task).")
+@click.option(
+    "--task", default="", help="Current task description (becomes current_task)."
+)
 @click.option("--summary", default="", help="Optional one-line summary of the action.")
 @click.option("--phase", type=click.Choice(["pre", "post"]), default="post")
 @click.pass_context

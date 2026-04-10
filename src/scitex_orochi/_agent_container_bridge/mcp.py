@@ -147,9 +147,8 @@ def build_orochi_mcp_config(
         # Defuse mcp_channel.ts's telegram-guard when the parent shell has
         # a telegram bot token in env (e.g., launched from a telegrammer
         # shell). Empty string is falsy, so the guard passes harmlessly.
-        "TELEGRAM_BOT_TOKEN": "",
-        "SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN": "",
-        "CLAUDE_AGENT_ROLE": "",
+        "SCITEX_OROCHI_TELEGRAM_BOT_TOKEN": "",
+        "SCITEX_OROCHI_AGENT_ROLE": "",
     }
     if token:
         env_block["SCITEX_OROCHI_TOKEN"] = token

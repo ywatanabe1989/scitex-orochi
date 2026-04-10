@@ -28,14 +28,12 @@ if _is_truthy(os.environ.get("SCITEX_OROCHI_DISABLE")):
     sys.exit(0)
 
 # 2. Block telegram agent role
-if (os.environ.get("CLAUDE_AGENT_ROLE") or "").lower() == "telegram":
+if (os.environ.get("SCITEX_OROCHI_AGENT_ROLE") or "").lower() == "telegram":
     _guard_msg("BLOCKED: telegram agent must not run Orochi MCP server")
     sys.exit(1)
 
 # 3. Block if Telegram bot token env vars are present
-_telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get(
-    "SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN"
-)
+_telegram_token = os.environ.get("SCITEX_OROCHI_TELEGRAM_BOT_TOKEN")
 if _telegram_token:
     _guard_msg(
         "Telegram bot token detected -- Orochi MCP server refuses to run "
@@ -126,7 +124,9 @@ if _FASTMCP_AVAILABLE:
             return json.dumps({"error": f"status unavailable: {e}"})
 
     @mcp.tool()
-    async def orochi_upload(file_path: str, channel: str = "#general", message: str = "") -> str:
+    async def orochi_upload(
+        file_path: str, channel: str = "#general", message: str = ""
+    ) -> str:
         """Upload a file to Orochi and optionally share it in a channel.
 
         Args:
@@ -158,11 +158,13 @@ if _FASTMCP_AVAILABLE:
         import asyncio
         import urllib.request
 
-        payload = json.dumps({
-            "data": b64,
-            "filename": p.name,
-            "mime_type": mime_type,
-        }).encode()
+        payload = json.dumps(
+            {
+                "data": b64,
+                "filename": p.name,
+                "mime_type": mime_type,
+            }
+        ).encode()
         req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
         try:
             resp = await asyncio.get_event_loop().run_in_executor(
@@ -170,7 +172,9 @@ if _FASTMCP_AVAILABLE:
             )
             result = json.loads(resp.read().decode())
         except urllib.error.HTTPError as e:
-            return json.dumps({"error": f"Upload failed ({e.code}): {e.read().decode()}"})
+            return json.dumps(
+                {"error": f"Upload failed ({e.code}): {e.read().decode()}"}
+            )
 
         # Share in channel if requested
         if channel:
@@ -218,11 +222,13 @@ if _FASTMCP_AVAILABLE:
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(data)
 
-        return json.dumps({
-            "status": "downloaded",
-            "path": str(dest),
-            "size": len(data),
-        })
+        return json.dumps(
+            {
+                "status": "downloaded",
+                "path": str(dest),
+                "size": len(data),
+            }
+        )
 
 
 def main() -> None:

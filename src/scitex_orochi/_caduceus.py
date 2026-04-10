@@ -48,14 +48,12 @@ import argparse
 import json
 import logging
 import os
-import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable
 
 log = logging.getLogger("orochi.caduceus")
 
@@ -238,12 +236,12 @@ def loop(
 
     last_action_ts: dict[str, float] = {}
     self_host = (
-        os.environ.get("CADUCEUS_HOST")
+        os.environ.get("SCITEX_OROCHI_CADUCEUS_HOST")
         or os.environ.get("SCITEX_OROCHI_MACHINE")
         or _socket.gethostname().split(".")[0]
         or "unknown"
     )
-    self_name = os.environ.get("CADUCEUS_NAME") or f"caduceus@{self_host}"
+    self_name = os.environ.get("SCITEX_OROCHI_CADUCEUS_NAME") or f"caduceus@{self_host}"
     log.info(
         "caduceus starting: hub=%s interval=%ds autoremedy=%s self=%s",
         hub,
@@ -287,10 +285,11 @@ def loop(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="caduceus — Orochi agent healer")
-    parser.add_argument("--hub", default=os.environ.get("OROCHI_HUB", "https://scitex-orochi.com"))
     parser.add_argument(
-        "--token", default=os.environ.get("SCITEX_OROCHI_TOKEN", "")
+        "--hub",
+        default=os.environ.get("SCITEX_OROCHI_HUB", "https://scitex-orochi.com"),
     )
+    parser.add_argument("--token", default=os.environ.get("SCITEX_OROCHI_TOKEN", ""))
     parser.add_argument("--interval", type=int, default=30)
     parser.add_argument(
         "--autoremedy",

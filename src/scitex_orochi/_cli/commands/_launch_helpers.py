@@ -27,7 +27,9 @@ except ImportError:
     HAS_AGENT_CONTAINER = False
 
 # Default agents directory (relative to project root / cwd)
-DEFAULT_AGENTS_DIR = Path("agents")
+# The repo ships example definitions under examples/agents/; real configs
+# live in ~/.scitex/orochi/agents/ (USER_AGENTS_DIR) and are checked first.
+DEFAULT_AGENTS_DIR = Path("examples/agents")
 USER_AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
 
 
@@ -46,7 +48,7 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
          e.g. ``master`` resolves to ``master-ywata-note-win`` if that is
          the only matching directory. If multiple matches exist, returns
          None (ambiguous — caller should use --agent-config explicitly).
-      5. Repo fallback: ``agents/{name,head-<name>}.{yaml,yml}``
+      5. Repo fallback: ``examples/agents/{name,head-<name>}.{yaml,yml}``
 
     Returns the resolved Path or None if not found.
     """
@@ -106,7 +108,7 @@ def find_all_agent_yamls(agents_dir: Path | None = None) -> list[Path]:
     """Find all agent YAML files in the agents directory.
 
     Prefers the user config dir (~/.scitex/orochi/agents/) when it exists,
-    otherwise falls back to the repo `agents/` directory.
+    otherwise falls back to the repo ``examples/agents/`` directory.
 
     Walks one level deep to support the dir-per-agent layout
     (e.g. ``mamba/mamba.yaml``). Excludes:

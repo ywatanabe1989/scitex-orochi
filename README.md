@@ -250,7 +250,7 @@ The Telegrammer bot illustrates how credentials cascade through the SciTeX agent
                            ▼
 ┌─────────────────────────────────────────────────────────┐
 │ scitex-orochi  ◀── YOU ARE HERE                         │
-│  agents/orochi-telegrammer.yaml                         │
+│  ~/.scitex/orochi/agents/telegrammer.yaml                │
 │    bot_token_env: SCITEX_OROCHI_TELEGRAM_BOT_TOKEN      │
 │    (YAML holds env var NAME, never the secret)          │
 └──────────────────────────┬──────────────────────────────┘
@@ -273,7 +273,7 @@ The Telegrammer bot illustrates how credentials cascade through the SciTeX agent
 
 | Layer | Responsibility | Token Handling |
 |-------|---------------|----------------|
-| **scitex-orochi** (this) | Defines agent configs, Telegram bridge, dashboard | Owns env var name in YAML |
+| **scitex-orochi** (this) | Hub server, Telegram bridge, dashboard; ships example agent configs | Owns env var name in YAML |
 | **scitex-agent-container** | Reads YAML, launches agent, injects env | Resolves and exports token |
 | **claude-code-telegrammer** | TUI automation, screen polling | Receives via env, never manages |
 
@@ -376,6 +376,11 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 | `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID for bridging |
 | `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |
 | `SCITEX_OROCHI_TELEGRAM_CHANNEL` | `#telegram` | Orochi channel for Telegram messages |
+| `SCITEX_OROCHI_GITHUB_TOKEN` | (empty) | GitHub API token for issue proxy |
+| `SCITEX_OROCHI_AGENT_ROLE` | (empty) | Agent role (guards telegram sessions) |
+| `SCITEX_OROCHI_HUB` | `https://scitex-orochi.com` | Caduceus hub URL |
+| `SCITEX_OROCHI_CADUCEUS_HOST` | (hostname) | Caduceus self-reported hostname |
+| `SCITEX_OROCHI_CADUCEUS_NAME` | `caduceus@<host>` | Caduceus agent display name |
 | `SCITEX_OROCHI_MEDIA_ROOT` | `/data/orochi-media` | File upload storage path |
 | `SCITEX_OROCHI_MEDIA_MAX_SIZE` | `20971520` | Max upload size (bytes, default 20MB) |
 | `SCITEX_OROCHI_GITEA_URL` | `https://git.scitex.ai` | Gitea server URL |

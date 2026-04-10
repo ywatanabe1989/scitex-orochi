@@ -30,8 +30,9 @@ def launch() -> None:
     """Launch orochi agents (master, head, or all).
 
     By default, agents are launched via scitex-agent-container using YAML
-    definitions from the agents/ directory. If no YAML is found and
-    agent-container is not installed, falls back to legacy orochi-config.yaml.
+    definitions from ~/.scitex/orochi/agents/ (or examples/agents/ as
+    fallback). If no YAML is found and agent-container is not installed,
+    falls back to legacy orochi-config.yaml.
     """
 
 
@@ -40,7 +41,7 @@ def launch() -> None:
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch master\n"
     + "  scitex-orochi launch master --dry-run\n"
-    + "  scitex-orochi launch master --agent-config agents/custom.yaml\n"
+    + "  scitex-orochi launch master --agent-config examples/agents/custom.yaml\n"
     + "  scitex-orochi launch master --json\n",
 )
 @click.option(
@@ -60,7 +61,7 @@ def launch() -> None:
     "--agents-dir",
     "agents_dir",
     default=None,
-    help="Directory containing agent YAML definitions (default: ./agents).",
+    help="Directory containing agent YAML definitions (default: examples/agents).",
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
@@ -82,7 +83,7 @@ def launch_master(
 
     Resolution order:
       1. --agent-config (explicit YAML path)
-      2. agents/master.yaml (auto-discovery)
+      2. ~/.scitex/orochi/agents/ or examples/agents/ (auto-discovery)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
@@ -114,7 +115,7 @@ def launch_master(
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch head general\n"
     + "  scitex-orochi launch head research --dry-run\n"
-    + "  scitex-orochi launch head deploy --agent-config agents/custom.yaml\n"
+    + "  scitex-orochi launch head deploy --agent-config examples/agents/custom.yaml\n"
     + "  scitex-orochi launch head general --json\n",
 )
 @click.argument("name")
@@ -135,7 +136,7 @@ def launch_master(
     "--agents-dir",
     "agents_dir",
     default=None,
-    help="Directory containing agent YAML definitions (default: ./agents).",
+    help="Directory containing agent YAML definitions (default: examples/agents).",
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
@@ -158,7 +159,7 @@ def launch_head(
 
     Resolution order:
       1. --agent-config (explicit YAML path)
-      2. agents/<name>.yaml or agents/head-<name>.yaml (auto-discovery)
+      2. ~/.scitex/orochi/agents/ or examples/agents/ (auto-discovery)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
@@ -190,7 +191,7 @@ def launch_head(
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch all\n"
     + "  scitex-orochi launch all --dry-run\n"
-    + "  scitex-orochi launch all --agents-dir agents/\n"
+    + "  scitex-orochi launch all --agents-dir examples/agents/\n"
     + "  scitex-orochi launch all --json\n",
 )
 @click.option(
@@ -234,7 +235,7 @@ def launch_all(
 
     Resolution order:
       1. --agent-config-dir (explicit directory, all YAMLs launched)
-      2. agents/ directory auto-discovery (if agent-container installed)
+      2. ~/.scitex/orochi/agents/ or examples/agents/ (if agent-container installed)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_dir:

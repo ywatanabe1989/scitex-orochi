@@ -56,7 +56,7 @@ SECRETS_FILE="$HOME/.bash.d/secrets/010_scitex/01_notification.src"
 if [[ -f "$PLUGIN_ENV_FILE" ]] && [[ -f "$SECRETS_FILE" ]]; then
     PLUGIN_TOKEN=$(grep -oP 'TELEGRAM_BOT_TOKEN=\K.*' "$PLUGIN_ENV_FILE" 2>/dev/null)
     # Source secrets to get the env var
-    ENV_TOKEN=$(bash -c "source '$SECRETS_FILE' 2>/dev/null && echo \$SCITEX_NOTIFICATION_TELEGRAM_TOKEN")
+    ENV_TOKEN=$(bash -c "source '$SECRETS_FILE' 2>/dev/null && echo \$SCITEX_OROCHI_TELEGRAM_BOT_TOKEN")
 
     if [[ -n "$PLUGIN_TOKEN" ]] && [[ -n "$ENV_TOKEN" ]] && [[ "$PLUGIN_TOKEN" == "$ENV_TOKEN" ]]; then
         ok "Token matches env var"
