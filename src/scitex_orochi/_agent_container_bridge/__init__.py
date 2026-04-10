@@ -18,6 +18,7 @@ Public API:
 """
 
 from .connector import resolve_orochi_token, start_orochi_sidecar
+from .dispatch import prepare_shim_yaml, scp_mcp_config_to_remote
 from .mcp import build_orochi_mcp_config, write_mcp_config_file
 from .spec import OrochiSpec, load_orochi_spec
 
@@ -28,4 +29,6 @@ __all__ = [
     "write_mcp_config_file",
     "resolve_orochi_token",
     "start_orochi_sidecar",
+    "prepare_shim_yaml",
+    "scp_mcp_config_to_remote",
 ]

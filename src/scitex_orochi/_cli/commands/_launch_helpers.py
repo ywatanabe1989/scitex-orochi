@@ -181,6 +181,7 @@ def launch_via_agent_container(
     # available (e.g., during early CLI smoke tests).
     from scitex_orochi._agent_container_bridge import (
         load_orochi_spec,
+        prepare_shim_yaml,
         start_orochi_sidecar,
         write_mcp_config_file,
     )
@@ -206,8 +207,10 @@ def launch_via_agent_container(
         return
 
     # Build a shim yaml with Orochi-specific flags injected, so
-    # scitex-agent-container can stay generic.
-    launch_yaml_path = _prepare_orochi_shim_yaml(
+    # scitex-agent-container can stay generic. For remote agents, the
+    # generated mcp-config json is also scp'd to the remote at the same
+    # path so claude finds it there.
+    launch_yaml_path = prepare_shim_yaml(
         config_path, orochi_spec, write_mcp_config_file
     )
 
@@ -239,62 +242,6 @@ def launch_via_agent_container(
             )
         except Exception as exc:
             click.echo(f"Warning: Orochi sidecar failed to start: {exc}", err=True)
-
-
-def _prepare_orochi_shim_yaml(
-    config_path: Path,
-    orochi_spec,
-    write_mcp_config_file,
-) -> Path:
-    """Write a shim yaml with Orochi-specific claude flags injected.
-
-    Returns the path to the shim. If Orochi is not enabled, returns the
-    original path unchanged (no shim needed).
-    """
-    if not orochi_spec.is_enabled:
-        return config_path
-
-    import yaml as _yaml
-
-    with open(config_path) as f:
-        raw = _yaml.safe_load(f) or {}
-
-    spec = raw.setdefault("spec", {}) or {}
-    metadata = raw.get("metadata", {}) or {}
-    agent_name = metadata.get("name", config_path.stem)
-
-    claude_section = spec.setdefault("claude", {}) or {}
-    existing_flags = list(claude_section.get("flags", []) or [])
-
-    mcp_path = write_mcp_config_file(
-        agent_name=agent_name,
-        orochi=orochi_spec,
-        claude_channels=claude_section.get("channels", []) or [],
-        agent_env=spec.get("env", {}) or {},
-        agent_labels=metadata.get("labels", {}) or {},
-    )
-
-    if mcp_path:
-        # Prepend the MCP flags so they appear before any user flags
-        # (matters when --strict-mcp-config is set, since the file
-        # provided by --mcp-config must be reachable from CLI parsing).
-        injected = [
-            f"--mcp-config '{mcp_path}'",
-            "--dangerously-load-development-channels server:scitex-orochi",
-        ]
-        # Avoid duplicating if the user already declared them.
-        for flag in injected:
-            if flag not in existing_flags:
-                existing_flags.append(flag)
-        claude_section["flags"] = existing_flags
-        spec["claude"] = claude_section
-        raw["spec"] = spec
-
-    shim_dir = Path("/tmp/scitex-orochi-shim-yamls")
-    shim_dir.mkdir(parents=True, exist_ok=True)
-    shim_path = shim_dir / config_path.name
-    shim_path.write_text(_yaml.safe_dump(raw, sort_keys=False))
-    return shim_path
 
 
 def screen_exists(name: str, ssh_prefix: str | None = None) -> bool:

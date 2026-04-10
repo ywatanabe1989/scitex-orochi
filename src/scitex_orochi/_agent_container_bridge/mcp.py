@@ -192,6 +192,12 @@ def write_mcp_config_file(
 ) -> str | None:
     """Generate the MCP config JSON file and return its path.
 
+    The file lives under ``/tmp/scitex-orochi/mcp-configs/`` so the same
+    absolute path is valid on every host (Linux ``/home/<user>``, macOS
+    ``/Users/<user>``, etc.). The bridge then scp's this file to the
+    remote at the *same* path before claude starts there, so the
+    ``--mcp-config`` flag in the shim yaml is portable.
+
     Returns None if Orochi is not enabled (the caller should skip the
     ``--mcp-config`` flag entirely in that case).
     """
@@ -205,7 +211,7 @@ def write_mcp_config_file(
     if mcp_config is None:
         return None
 
-    config_dir = Path.home() / ".scitex" / "agent-container" / "cache" / "mcp-configs"
+    config_dir = Path("/tmp/scitex-orochi/mcp-configs")
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / f"mcp-{agent_name}.json"
 
