@@ -34,14 +34,19 @@ USER_AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
 def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     """Resolve an agent YAML file by convention.
 
-    Search order for a given name (e.g. "master", "head-general", "research"):
-      1. ~/.scitex/orochi/agents/<name>.yaml  (user config, flat)
-      2. ~/.scitex/orochi/agents/<name>/<name>.yaml  (user config, subdirectory)
-      3. ~/.scitex/orochi/agents/head-<name>.yaml
-      4. agents/<name>.yaml   (repo fallback)
-      5. agents/<name>.yml
-      6. agents/head-<name>.yaml
-      7. agents/head-<name>.yml
+    Given a short role name like "master", "head", "mamba", or a more
+    specific "head-mba", find the agent yaml file to launch.
+
+    Search order (first hit wins):
+      1. ``~/.scitex/orochi/agents/<name>.yaml`` (flat file)
+      2. ``~/.scitex/orochi/agents/<name>/<name>.yaml`` (dir-per-agent)
+      3. ``~/.scitex/orochi/agents/head-<name>/head-<name>.yaml``
+         (dir-per-agent with "head-" prefix, e.g. ``head-mba``)
+      4. ``~/.scitex/orochi/agents/<name>-*/` — machine-suffix convention,
+         e.g. ``master`` resolves to ``master-ywata-note-win`` if that is
+         the only matching directory. If multiple matches exist, returns
+         None (ambiguous — caller should use --agent-config explicitly).
+      5. Repo fallback: ``agents/{name,head-<name>}.{yaml,yml}``
 
     Returns the resolved Path or None if not found.
     """
@@ -53,12 +58,32 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
                 for candidate in (
                     USER_AGENTS_DIR / f"{prefixed}{ext}",
                     USER_AGENTS_DIR / name / f"{prefixed}{ext}",
-                    # dir-per-agent with prefix applied to both dir and file:
-                    # e.g. head-nas/head-nas.yaml
+                    # dir-per-agent with prefix applied to both dir and
+                    # file, e.g. head-nas/head-nas.yaml
                     USER_AGENTS_DIR / prefixed / f"{prefixed}{ext}",
                 ):
                     if candidate.exists():
                         return candidate
+
+        # Machine-suffix convention: resolve ``master`` to the
+        # unambiguous ``master-*/master-*.yaml``, ``mamba`` to
+        # ``mamba-*/mamba-*.yaml``, etc. Only match at the start of the
+        # directory name, and only if exactly one directory matches.
+        matches: list[Path] = []
+        for sub in sorted(USER_AGENTS_DIR.iterdir()):
+            if not sub.is_dir():
+                continue
+            if sub.name == "legacy" or sub.name.startswith("_"):
+                continue
+            if not (sub.name == name or sub.name.startswith(f"{name}-")):
+                continue
+            for ext in (".yaml", ".yml"):
+                candidate = sub / f"{sub.name}{ext}"
+                if candidate.exists():
+                    matches.append(candidate)
+                    break
+        if len(matches) == 1:
+            return matches[0]
 
     # Fall back to repo agents/ dir
     d = (agents_dir or DEFAULT_AGENTS_DIR).resolve()
