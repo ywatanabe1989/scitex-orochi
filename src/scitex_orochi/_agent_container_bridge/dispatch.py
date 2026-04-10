@@ -75,15 +75,30 @@ def prepare_shim_yaml(
         if remote_host:
             scp_mcp_config_to_remote(mcp_path, remote_host, remote_section)
 
-        # Inject the MCP flags. Append rather than prepend so any user
-        # --strict-mcp-config (which is order-independent) keeps working.
-        injected = [
-            f"--mcp-config '{mcp_path}'",
-            "--dangerously-load-development-channels server:scitex-orochi",
+        # Inject the MCP flags. ORDER MATTERS: --mcp-config MUST come
+        # BEFORE --dangerously-load-development-channels because the
+        # channels flag references a server by name ("server:scitex-orochi")
+        # and the server is only registered after --mcp-config loads the
+        # JSON file that declares it. If the order is reversed, the
+        # channel registration silently fails and push notifications
+        # never arrive — the MCP tools still work but the real-time
+        # channel delivery path is dead.
+        mcp_config_flag = f"--mcp-config '{mcp_path}'"
+        dev_channels_flag = (
+            "--dangerously-load-development-channels server:scitex-orochi"
+        )
+
+        # Remove any existing instances to prevent duplicates, then
+        # re-insert in the correct order (mcp-config first, then channels).
+        existing_flags = [
+            f
+            for f in existing_flags
+            if "--mcp-config" not in f
+            and "--dangerously-load-development-channels" not in f
         ]
-        for flag in injected:
-            if flag not in existing_flags:
-                existing_flags.append(flag)
+        existing_flags.append(mcp_config_flag)
+        existing_flags.append(dev_channels_flag)
+
         claude_section["flags"] = existing_flags
         spec["claude"] = claude_section
         raw["spec"] = spec
