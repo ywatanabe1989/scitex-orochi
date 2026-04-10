@@ -199,6 +199,26 @@ async def handle_config(_request: web.Request) -> web.Response:
     )
 
 
+async def handle_telegram_webhook(request: web.Request) -> web.Response:
+    """POST /webhook/telegram -- receive a Telegram Update via webhook."""
+    server: OrochiServer = request.app["orochi_server"]
+    bridge = getattr(server, "telegram_bridge", None)
+    if bridge is None or not bridge.webhook_mode:
+        return web.json_response({"error": "Telegram webhook not enabled"}, status=404)
+
+    try:
+        data = await request.json()
+    except (json.JSONDecodeError, Exception):
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    try:
+        await bridge.handle_webhook_update(data)
+    except Exception:
+        log.exception("Error processing Telegram webhook update")
+        # Return 200 anyway so Telegram doesn't retry indefinitely
+    return web.Response(status=200, text="ok")
+
+
 async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
@@ -218,6 +238,7 @@ async def handle_stats(request: web.Request) -> web.Response:
             "telegram_bridge": {
                 "enabled": tg is not None,
                 "running": tg._running if tg else False,
+                "mode": ("webhook" if tg.webhook_mode else "polling") if tg else None,
             },
             "push_subscriptions": push_subscriptions,
         }
@@ -386,6 +407,9 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/config", handle_config)
     app.router.add_get("/api/stats", handle_stats)
+
+    # Telegram webhook (receives updates when webhook mode is enabled)
+    app.router.add_post("/webhook/telegram", handle_telegram_webhook)
 
     # Modular route groups
     register_workspace_routes(app)
