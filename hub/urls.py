@@ -60,7 +60,9 @@ urlpatterns = [
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
-    path("api/subagents/update/", views.api_subagents_update, name="api-subagents-update"),
+    path(
+        "api/subagents/update/", views.api_subagents_update, name="api-subagents-update"
+    ),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
@@ -75,4 +77,6 @@ urlpatterns = [
     # File upload
     path("api/upload", views.api_upload, name="api-upload"),
     path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
+    # Telegram webhook
+    path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
 ]

@@ -79,39 +79,43 @@ export async function handleHistory(args: {
   channel?: string;
   limit?: number;
 }): Promise<{ content: Array<{ type: string; text: string }> }> {
+  // Previously this called Django's /api/messages REST endpoint, but
+  // that view requires session auth (login cookie) which the MCP
+  // server can't provide, so every call returned HTTP 400/302. Read
+  // from the in-memory buffer instead — mcp_channel.ts populates it
+  // for every message that flows through the persistent WebSocket,
+  // and the WS was authenticated via the workspace token at
+  // connection time.
+  const { getRecentMessages } = await import("./message_buffer.js");
   const channel = args.channel || "#general";
   const limit = args.limit || 10;
 
-  try {
-    const url = `${httpBase}/api/messages?channel=${encodeURIComponent(channel)}&limit=${limit}${tokenParam("&")}`;
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      return {
-        content: [
-          { type: "text", text: `Error: HTTP ${resp.status} from Orochi` },
-        ],
-      };
-    }
-    const messages = await resp.json();
-    const formatted = (messages as Array<Record<string, string>>)
-      .map(
-        (m) =>
-          `[${m.ts || ""}] ${m.sender || "unknown"}: ${m.content || m.text || ""}`,
-      )
-      .join("\n");
-    return {
-      content: [{ type: "text", text: formatted || "(no messages)" }],
-    };
-  } catch (err) {
+  const messages = getRecentMessages(channel, limit);
+  if (messages.length === 0) {
     return {
       content: [
         {
           type: "text",
-          text: `Error fetching history: ${(err as Error).message}`,
+          text:
+            `(no messages in buffer for ${channel}) — the MCP history ` +
+            "buffer only contains messages received since this agent " +
+            "session started. Older messages are only visible via the " +
+            "dashboard.",
         },
       ],
     };
   }
+
+  const formatted = messages
+    .map(
+      (m) =>
+        `[${m.ts}] ${m.sender}${m.id !== null ? ` (msg#${m.id})` : ""}: ${m.content}`,
+    )
+    .join("\n");
+
+  return {
+    content: [{ type: "text", text: formatted }],
+  };
 }
 
 export async function handleHealth(args: {
@@ -119,7 +123,12 @@ export async function handleHealth(args: {
   status?: string;
   reason?: string;
   source?: string;
-  updates?: Array<{ agent: string; status: string; reason?: string; source?: string }>;
+  updates?: Array<{
+    agent: string;
+    status: string;
+    reason?: string;
+    source?: string;
+  }>;
 }): Promise<{ content: Array<{ type: string; text: string }> }> {
   try {
     const url = `${httpBase}/api/agents/health/${tokenParam("?")}`;
@@ -129,7 +138,10 @@ export async function handleHealth(args: {
       if (!args.agent || !args.status) {
         return {
           content: [
-            { type: "text", text: "Error: agent and status required (or pass updates[])" },
+            {
+              type: "text",
+              text: "Error: agent and status required (or pass updates[])",
+            },
           ],
         };
       }
@@ -147,7 +159,12 @@ export async function handleHealth(args: {
     if (!resp.ok) {
       const t = await resp.text();
       return {
-        content: [{ type: "text", text: `Error: HTTP ${resp.status} — ${t.slice(0, 200)}` }],
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${t.slice(0, 200)}`,
+          },
+        ],
       };
     }
     const out = (await resp.json()) as { applied?: number };
@@ -221,11 +238,16 @@ export async function handleReact(args: {
       const body = await resp.text();
       return {
         content: [
-          { type: "text", text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}` },
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
+          },
         ],
       };
     }
-    return { content: [{ type: "text", text: `reacted ${emoji} to ${messageId}` }] };
+    return {
+      content: [{ type: "text", text: `reacted ${emoji} to ${messageId}` }],
+    };
   } catch (err) {
     return {
       content: [{ type: "text", text: `Error: ${(err as Error).message}` }],

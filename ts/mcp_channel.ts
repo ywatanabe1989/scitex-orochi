@@ -11,8 +11,15 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { OROCHI_AGENT, OROCHI_TOKEN, buildHttpBase, buildWsUrl, maskUrl } from "./src/config.js";
+import {
+  OROCHI_AGENT,
+  OROCHI_TOKEN,
+  buildHttpBase,
+  buildWsUrl,
+  maskUrl,
+} from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
+import { addMessage } from "./src/message_buffer.js";
 import {
   handleHealth,
   handleReply,
@@ -36,7 +43,7 @@ if (isTruthy(process.env.SCITEX_OROCHI_DISABLE)) {
 }
 
 // Zero-trust: telegram agents must never run this MCP server
-if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
+if ((process.env.SCITEX_OROCHI_AGENT_ROLE || "").toLowerCase() === "telegram") {
   console.error(
     "[scitex-orochi] BLOCKED: telegram agent must not run Orochi MCP channel",
   );
@@ -47,9 +54,7 @@ if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
 // Exception: if SCITEX_OROCHI_TOKEN is explicitly set, this MCP server was
 // intentionally configured (e.g., via agent-container) and should run despite
 // telegram vars leaking from the parent environment.
-const _telegramToken =
-  process.env.TELEGRAM_BOT_TOKEN ||
-  process.env.SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN;
+const _telegramToken = process.env.SCITEX_OROCHI_TELEGRAM_BOT_TOKEN;
 if (_telegramToken && !process.env.SCITEX_OROCHI_TOKEN) {
   console.error(
     "[scitex-orochi] WARNING: Telegram bot token detected in environment",
@@ -95,9 +100,13 @@ async function refreshIssueTitleCache(): Promise<void> {
     const url = `${buildHttpBase()}/api/github/issues${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}&state=all` : "?state=all"}`;
     const resp = await fetch(url);
     if (!resp.ok) return;
-    const issues = (await resp.json()) as Array<{ number?: number; title?: string }>;
+    const issues = (await resp.json()) as Array<{
+      number?: number;
+      title?: string;
+    }>;
     for (const i of issues) {
-      if (i && i.number && i.title) _issueTitleCache.set(String(i.number), i.title);
+      if (i && i.number && i.title)
+        _issueTitleCache.set(String(i.number), i.title);
     }
     _issueCacheLastFetch = now;
   } catch (_) {
@@ -152,6 +161,21 @@ const conn = new OrochiConnection(async (raw: string) => {
     const sender = msg.sender || payload.sender || "unknown";
     const channel = msg.channel || payload.channel || "";
 
+    // Cache every parsed message in the in-memory buffer so the
+    // `history` MCP tool can read recent messages without hitting the
+    // Django REST endpoint (which requires session auth we don't have).
+    // We cache BEFORE the self-echo / empty-content guards so that
+    // even the agent's own posts are visible to itself on a follow-up
+    // history call.
+    addMessage({
+      id: msg.id ?? payload.id ?? null,
+      channel: channel,
+      sender: sender,
+      content: content,
+      ts: msg.ts || new Date().toISOString(),
+      metadata: msg.metadata || payload.metadata || {},
+    });
+
     if (sender === OROCHI_AGENT || !content) return;
 
     /* Attachments may arrive under three shapes depending on sender path:
@@ -166,13 +190,17 @@ const conn = new OrochiConnection(async (raw: string) => {
       payload.attachments ||
       [];
     const hubBase = httpBase || "";
-    const attachments = (rawAttachments as Array<{ url?: string; filename?: string; mime_type?: string }>).map(
-      (a) => {
-        const u = a.url || "";
-        const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
-        return { ...a, url: abs };
-      },
-    );
+    const attachments = (
+      rawAttachments as Array<{
+        url?: string;
+        filename?: string;
+        mime_type?: string;
+      }>
+    ).map((a) => {
+      const u = a.url || "";
+      const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
+      return { ...a, url: abs };
+    });
     const attachmentInfo =
       attachments.length > 0
         ? `\n[Attachments: ${attachments
@@ -185,21 +213,23 @@ const conn = new OrochiConnection(async (raw: string) => {
     refreshIssueTitleCache();
     const decoratedContent = decorateIssueRefs(content);
 
-    await mcp.notification({
-      method: "notifications/claude/channel",
-      params: {
-        content: `${decoratedContent}${attachmentInfo}`,
-        meta: {
-          chat_id: channel,
-          user: sender,
-          ts: msg.ts || new Date().toISOString(),
-          /* Expose message id so agents can target it via the `react`
-           * tool. Server broadcasts id on chat.message events; legacy
-           * nested payloads use payload.id. */
-          msg_id: msg.id ?? payload.id ?? null,
+    // Fire-and-forget — do NOT await. Matches the Telegram plugin pattern.
+    // Awaiting blocks the WS handler on the stdio pipe write; if claude
+    // is busy the pipe backs up and the handler deadlocks.
+    mcp
+      .notification({
+        method: "notifications/claude/channel",
+        params: {
+          content: `${decoratedContent}${attachmentInfo}`,
+          meta: {
+            chat_id: channel,
+            user: sender,
+            ts: msg.ts || new Date().toISOString(),
+            msg_id: msg.id ?? payload.id ?? null,
+          },
         },
-      },
-    });
+      })
+      .catch(() => {});
   } catch (_) {
     // Parse errors are normal for non-JSON frames
   }
@@ -258,10 +288,23 @@ const TOOL_DEFS = [
     inputSchema: {
       type: "object" as const,
       properties: {
-        agent: { type: "string", description: "Target agent name (exact match)" },
-        status: { type: "string", description: "healthy|idle|stale|stuck_prompt|dead|ghost|remediating|unknown" },
-        reason: { type: "string", description: "Short explanation (<=200 chars)" },
-        source: { type: "string", description: "Reporter name (defaults to self)" },
+        agent: {
+          type: "string",
+          description: "Target agent name (exact match)",
+        },
+        status: {
+          type: "string",
+          description:
+            "healthy|idle|stale|stuck_prompt|dead|ghost|remediating|unknown",
+        },
+        reason: {
+          type: "string",
+          description: "Short explanation (<=200 chars)",
+        },
+        source: {
+          type: "string",
+          description: "Reporter name (defaults to self)",
+        },
         updates: {
           type: "array",
           description: "Bulk: list of {agent,status,reason?,source?}",

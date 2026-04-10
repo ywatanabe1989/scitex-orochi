@@ -30,8 +30,9 @@ def launch() -> None:
     """Launch orochi agents (master, head, or all).
 
     By default, agents are launched via scitex-agent-container using YAML
-    definitions from the agents/ directory. If no YAML is found and
-    agent-container is not installed, falls back to legacy orochi-config.yaml.
+    definitions from ~/.scitex/orochi/agents/ (or examples/agents/ as
+    fallback). If no YAML is found and agent-container is not installed,
+    falls back to legacy orochi-config.yaml.
     """
 
 
@@ -40,7 +41,7 @@ def launch() -> None:
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch master\n"
     + "  scitex-orochi launch master --dry-run\n"
-    + "  scitex-orochi launch master --agent-config agents/custom.yaml\n"
+    + "  scitex-orochi launch master --agent-config examples/agents/custom.yaml\n"
     + "  scitex-orochi launch master --json\n",
 )
 @click.option(
@@ -60,26 +61,33 @@ def launch() -> None:
     "--agents-dir",
     "agents_dir",
     default=None,
-    help="Directory containing agent YAML definitions (default: ./agents).",
+    help="Directory containing agent YAML definitions (default: examples/agents).",
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Stop any running instance first, then launch fresh.",
+)
 def launch_master(
     config_path: str | None,
     agent_config_path: str | None,
     agents_dir: str | None,
     dry_run: bool,
     as_json: bool,
+    force: bool,
 ) -> None:
     """Launch orochi-agent:master.
 
     Resolution order:
       1. --agent-config (explicit YAML path)
-      2. agents/master.yaml (auto-discovery)
+      2. ~/.scitex/orochi/agents/ or examples/agents/ (auto-discovery)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
-        launch_via_agent_container(agent_config_path, dry_run, as_json)
+        launch_via_agent_container(agent_config_path, dry_run, as_json, force=force)
         return
 
     search_dir = Path(agents_dir) if agents_dir else None
@@ -87,7 +95,7 @@ def launch_master(
     if yaml_path and HAS_AGENT_CONTAINER:
         if not as_json:
             click.echo(f"Using agent config: {yaml_path}")
-        launch_via_agent_container(str(yaml_path), dry_run, as_json)
+        launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
         return
 
     if yaml_path and not HAS_AGENT_CONTAINER:
@@ -107,7 +115,7 @@ def launch_master(
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch head general\n"
     + "  scitex-orochi launch head research --dry-run\n"
-    + "  scitex-orochi launch head deploy --agent-config agents/custom.yaml\n"
+    + "  scitex-orochi launch head deploy --agent-config examples/agents/custom.yaml\n"
     + "  scitex-orochi launch head general --json\n",
 )
 @click.argument("name")
@@ -128,10 +136,16 @@ def launch_master(
     "--agents-dir",
     "agents_dir",
     default=None,
-    help="Directory containing agent YAML definitions (default: ./agents).",
+    help="Directory containing agent YAML definitions (default: examples/agents).",
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Stop any running instance first, then launch fresh.",
+)
 def launch_head(
     name: str,
     config_path: str | None,
@@ -139,16 +153,17 @@ def launch_head(
     agents_dir: str | None,
     dry_run: bool,
     as_json: bool,
+    force: bool,
 ) -> None:
     """Launch an orochi-agent:head by name.
 
     Resolution order:
       1. --agent-config (explicit YAML path)
-      2. agents/<name>.yaml or agents/head-<name>.yaml (auto-discovery)
+      2. ~/.scitex/orochi/agents/ or examples/agents/ (auto-discovery)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
-        launch_via_agent_container(agent_config_path, dry_run, as_json)
+        launch_via_agent_container(agent_config_path, dry_run, as_json, force=force)
         return
 
     search_dir = Path(agents_dir) if agents_dir else None
@@ -156,7 +171,7 @@ def launch_head(
     if yaml_path and HAS_AGENT_CONTAINER:
         if not as_json:
             click.echo(f"Using agent config: {yaml_path}")
-        launch_via_agent_container(str(yaml_path), dry_run, as_json)
+        launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
         return
 
     if yaml_path and not HAS_AGENT_CONTAINER:
@@ -176,7 +191,7 @@ def launch_head(
     epilog=EXAMPLES_HEADER
     + "  scitex-orochi launch all\n"
     + "  scitex-orochi launch all --dry-run\n"
-    + "  scitex-orochi launch all --agents-dir agents/\n"
+    + "  scitex-orochi launch all --agents-dir examples/agents/\n"
     + "  scitex-orochi launch all --json\n",
 )
 @click.option(
@@ -200,6 +215,12 @@ def launch_head(
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Stop any running instance first, then launch fresh.",
+)
 @click.pass_context
 def launch_all(
     ctx: click.Context,
@@ -208,12 +229,13 @@ def launch_all(
     agents_dir: str | None,
     dry_run: bool,
     as_json: bool,
+    force: bool,
 ) -> None:
     """Launch master and all configured head agents.
 
     Resolution order:
       1. --agent-config-dir (explicit directory, all YAMLs launched)
-      2. agents/ directory auto-discovery (if agent-container installed)
+      2. ~/.scitex/orochi/agents/ or examples/agents/ (if agent-container installed)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_dir:
@@ -231,7 +253,7 @@ def launch_all(
         for yaml_path in yamls:
             if not as_json:
                 click.echo(f"\n=== Launching from {yaml_path.name} ===")
-            launch_via_agent_container(str(yaml_path), dry_run, as_json)
+            launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
 
         if not as_json:
             click.echo(f"\nAll agents launched from {config_dir}")
@@ -248,7 +270,11 @@ def launch_all(
             )
 
         for yaml_path in yamls:
-            if yaml_path.stem == "telegrammer":
+            # Skip telegrammer — runs independently with its own MCP bridge.
+            # Matches "telegrammer" (legacy) and "telegrammer-<machine>" (new).
+            if yaml_path.stem == "telegrammer" or yaml_path.stem.startswith(
+                "telegrammer-"
+            ):
                 if not as_json:
                     click.echo(
                         f"\n--- Skipping {yaml_path.name} "
@@ -258,7 +284,7 @@ def launch_all(
 
             if not as_json:
                 click.echo(f"\n=== Launching from {yaml_path.name} ===")
-            launch_via_agent_container(str(yaml_path), dry_run, as_json)
+            launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
 
         if not as_json:
             click.echo("\nAll agents launched.")

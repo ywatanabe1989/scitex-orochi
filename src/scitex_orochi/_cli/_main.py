@@ -80,10 +80,13 @@ orochi.add_command(serve)
 orochi.add_command(doctor_cmd)
 orochi.add_command(setup_push)
 
+from scitex_orochi._cli.commands.stop_cmd import stop as stop_cmd
+
 # Deployment
 orochi.add_command(init_cmd)
 orochi.add_command(launch)
 orochi.add_command(deploy)
+orochi.add_command(stop_cmd)
 
 # Workspace
 from scitex_orochi._cli.commands.workspace_cmd import (

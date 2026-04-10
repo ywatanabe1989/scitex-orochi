@@ -58,19 +58,21 @@ orochi:
       workdir: ~/proj
 
   # Agent Container Integration (recommended)
-  # Agent YAML definitions in the agents/ directory are auto-discovered.
+  # Agent YAML definitions live in ~/.scitex/orochi/agents/ (per-user).
+  # The repo ships example definitions under examples/agents/ as reference.
   # No --agent-config flag needed -- just run:
-  #   scitex-orochi launch master        # discovers agents/master.yaml
-  #   scitex-orochi launch head general  # discovers agents/head-general.yaml
-  #   scitex-orochi launch all           # discovers all YAMLs in agents/
+  #   scitex-orochi launch master        # discovers ~/.scitex/orochi/agents/master*.yaml
+  #   scitex-orochi launch head general  # discovers head-general*.yaml
+  #   scitex-orochi launch all           # discovers all YAMLs
   #
   # Install: pip install scitex-orochi[agent-container]
   #
   # Falls back to the master/heads sections above if agent-container is
   # not installed or no YAML files are found.
   agents:
-    directory: ./agents        # Default directory for agent YAML definitions
-    master: master.yaml        # Master agent config
+    directory: ~/.scitex/orochi/agents   # Per-user agent definitions
+    examples: ./examples/agents          # Example definitions shipped with repo
+    master: master.yaml
     heads:
       - head-general.yaml
       - head-research.yaml
@@ -81,6 +83,6 @@ orochi:
   # Master agent replies by posting to #telegram -> orochi-server -> Telegram.
   telegram:
     enabled: true
-    bot_token_env: SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN  # read from env var
-    chat_id_env: SCITEX_NOTIFICATION_TELEGRAM_CHAT_ID      # read from env var
+    bot_token_env: SCITEX_OROCHI_TELEGRAM_BOT_TOKEN  # read from env var
+    chat_id_env: SCITEX_OROCHI_TELEGRAM_CHAT_ID      # read from env var
     channel: "#telegram"  # Orochi channel for bidirectional Telegram relay

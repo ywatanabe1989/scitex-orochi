@@ -170,6 +170,36 @@ function appendMessage(msg) {
       (lines.length - MAX_LINES) +
       " more lines)</button>";
   }
+  /* Inline reply reference — if this message has metadata.reply_to
+   * pointing at another message id, render a small quoted preview of
+   * the parent above the content so the relationship is visible in
+   * the main feed (not only in the thread side panel). */
+  var replyRefHtml = "";
+  var metaObj = (msg.payload && msg.payload.metadata) || msg.metadata || {};
+  var replyToId = metaObj && metaObj.reply_to;
+  if (replyToId) {
+    var parentEl = document.querySelector('.msg[data-msg-id="' + String(replyToId) + '"]');
+    var parentSender = "";
+    var parentSnippet = "";
+    if (parentEl) {
+      var senderEl = parentEl.querySelector(".sender");
+      var bodyEl = parentEl.querySelector(".content");
+      parentSender = senderEl ? senderEl.textContent : "";
+      parentSnippet = bodyEl ? bodyEl.textContent.slice(0, 120) : "";
+    }
+    replyRefHtml =
+      '<div class="msg-reply-ref" data-parent-id="' + String(replyToId) +
+      '" title="Click to jump to parent">' +
+      '<span class="msg-reply-icon">\u21b3</span> ' +
+      (parentSender
+        ? '<span class="msg-reply-parent">' + escapeHtml(parentSender) + "</span>: "
+        : "<span class=\"msg-reply-parent\">msg#" + replyToId + "</span>: ") +
+      '<span class="msg-reply-snippet">' +
+      escapeHtml(parentSnippet || "(scroll up to load)") +
+      "</span>" +
+      "</div>";
+  }
+
   var attachmentsHtml = "";
   /* Attachments may arrive under three shapes depending on path:
    *  - payload.attachments (legacy direct-emit path)
@@ -236,6 +266,7 @@ function appendMessage(msg) {
     ts +
     "</span>" +
     "</div>" +
+    replyRefHtml +
     '<div class="content">' +
     highlightedContent +
     "</div>" +

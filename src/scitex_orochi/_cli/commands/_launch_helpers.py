@@ -27,21 +27,28 @@ except ImportError:
     HAS_AGENT_CONTAINER = False
 
 # Default agents directory (relative to project root / cwd)
-DEFAULT_AGENTS_DIR = Path("agents")
+# The repo ships example definitions under examples/agents/; real configs
+# live in ~/.scitex/orochi/agents/ (USER_AGENTS_DIR) and are checked first.
+DEFAULT_AGENTS_DIR = Path("examples/agents")
 USER_AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
 
 
 def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     """Resolve an agent YAML file by convention.
 
-    Search order for a given name (e.g. "master", "head-general", "research"):
-      1. ~/.scitex/orochi/agents/<name>.yaml  (user config, flat)
-      2. ~/.scitex/orochi/agents/<name>/<name>.yaml  (user config, subdirectory)
-      3. ~/.scitex/orochi/agents/head-<name>.yaml
-      4. agents/<name>.yaml   (repo fallback)
-      5. agents/<name>.yml
-      6. agents/head-<name>.yaml
-      7. agents/head-<name>.yml
+    Given a short role name like "master", "head", "mamba", or a more
+    specific "head-mba", find the agent yaml file to launch.
+
+    Search order (first hit wins):
+      1. ``~/.scitex/orochi/agents/<name>.yaml`` (flat file)
+      2. ``~/.scitex/orochi/agents/<name>/<name>.yaml`` (dir-per-agent)
+      3. ``~/.scitex/orochi/agents/head-<name>/head-<name>.yaml``
+         (dir-per-agent with "head-" prefix, e.g. ``head-mba``)
+      4. ``~/.scitex/orochi/agents/<name>-*/` — machine-suffix convention,
+         e.g. ``master`` resolves to ``master-ywata-note-win`` if that is
+         the only matching directory. If multiple matches exist, returns
+         None (ambiguous — caller should use --agent-config explicitly).
+      5. Repo fallback: ``examples/agents/{name,head-<name>}.{yaml,yml}``
 
     Returns the resolved Path or None if not found.
     """
@@ -49,12 +56,36 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     if USER_AGENTS_DIR.is_dir():
         for ext in (".yaml", ".yml"):
             for prefix in ("", "head-"):
+                prefixed = f"{prefix}{name}"
                 for candidate in (
-                    USER_AGENTS_DIR / f"{prefix}{name}{ext}",
-                    USER_AGENTS_DIR / name / f"{prefix}{name}{ext}",
+                    USER_AGENTS_DIR / f"{prefixed}{ext}",
+                    USER_AGENTS_DIR / name / f"{prefixed}{ext}",
+                    # dir-per-agent with prefix applied to both dir and
+                    # file, e.g. head-nas/head-nas.yaml
+                    USER_AGENTS_DIR / prefixed / f"{prefixed}{ext}",
                 ):
                     if candidate.exists():
                         return candidate
+
+        # Machine-suffix convention: resolve ``master`` to the
+        # unambiguous ``master-*/master-*.yaml``, ``mamba`` to
+        # ``mamba-*/mamba-*.yaml``, etc. Only match at the start of the
+        # directory name, and only if exactly one directory matches.
+        matches: list[Path] = []
+        for sub in sorted(USER_AGENTS_DIR.iterdir()):
+            if not sub.is_dir():
+                continue
+            if sub.name == "legacy" or sub.name.startswith("_"):
+                continue
+            if not (sub.name == name or sub.name.startswith(f"{name}-")):
+                continue
+            for ext in (".yaml", ".yml"):
+                candidate = sub / f"{sub.name}{ext}"
+                if candidate.exists():
+                    matches.append(candidate)
+                    break
+        if len(matches) == 1:
+            return matches[0]
 
     # Fall back to repo agents/ dir
     d = (agents_dir or DEFAULT_AGENTS_DIR).resolve()
@@ -76,15 +107,46 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
 def find_all_agent_yamls(agents_dir: Path | None = None) -> list[Path]:
     """Find all agent YAML files in the agents directory.
 
-    Returns sorted list of YAML paths, excluding files whose names start
-    with underscore (convention for disabled/template files).
+    Prefers the user config dir (~/.scitex/orochi/agents/) when it exists,
+    otherwise falls back to the repo ``examples/agents/`` directory.
+
+    Walks one level deep to support the dir-per-agent layout
+    (e.g. ``mamba/mamba.yaml``). Excludes:
+      - files whose names start with ``_`` (disabled/template convention)
+      - anything under a ``legacy/`` directory
+      - for dir-per-agent entries, only the YAML matching the dir name
+        (e.g. ``mamba/mamba.yaml``) is collected, to avoid duplicates when
+        an agent dir holds multiple yamls.
     """
-    d = (agents_dir or DEFAULT_AGENTS_DIR).resolve()
+    if agents_dir is not None:
+        d = agents_dir.resolve()
+    elif USER_AGENTS_DIR.is_dir():
+        d = USER_AGENTS_DIR.resolve()
+    else:
+        d = DEFAULT_AGENTS_DIR.resolve()
+
     if not d.is_dir():
         return []
 
-    yamls = sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml"))
-    return [y for y in yamls if not y.name.startswith("_")]
+    found: list[Path] = []
+
+    # Top-level flat yamls: agents/<name>.yaml
+    for p in sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml")):
+        if p.name.startswith("_"):
+            continue
+        found.append(p)
+
+    # Dir-per-agent: agents/<name>/<name>.yaml
+    for sub in sorted(p for p in d.iterdir() if p.is_dir()):
+        if sub.name == "legacy" or sub.name.startswith("_"):
+            continue
+        for ext in (".yaml", ".yml"):
+            candidate = sub / f"{sub.name}{ext}"
+            if candidate.exists():
+                found.append(candidate)
+                break
+
+    return found
 
 
 def load_cfg(config_path: str | None) -> dict:
@@ -108,9 +170,27 @@ def read_template(name: str) -> str:
 
 
 def launch_via_agent_container(
-    agent_config_path: str, dry_run: bool, as_json: bool
+    agent_config_path: str,
+    dry_run: bool,
+    as_json: bool,
+    force: bool = False,
 ) -> None:
-    """Delegate launch to scitex-agent-container."""
+    """Dispatch an agent launch through scitex-agent-container.
+
+    scitex-agent-container itself is now Orochi-agnostic. This function is
+    the bridge: it parses the ``spec.orochi:`` section ourselves, generates
+    the MCP config file, augments the yaml's ``claude.flags`` with
+    ``--mcp-config`` and ``--dangerously-load-development-channels``, writes
+    a shim yaml to ``/tmp``, and then calls ``agent_start`` on the shim.
+    After ``agent_start`` returns, the Orochi sidecar thread is started in
+    this process so the agent registers with the hub.
+
+    Args:
+        agent_config_path: Path to the agent yaml file.
+        dry_run: If True, print what would happen without launching.
+        as_json: Emit JSON status messages.
+        force: If True, stop any existing instance first then relaunch.
+    """
     if not HAS_AGENT_CONTAINER:
         click.echo(
             "Error: scitex-agent-container is not installed.\n"
@@ -124,20 +204,45 @@ def launch_via_agent_container(
         click.echo(f"Error: Agent config not found: {config_path}", err=True)
         sys.exit(1)
 
+    # Deferred import so the CLI module loads even when the bridge isn't
+    # available (e.g., during early CLI smoke tests).
+    from scitex_orochi._agent_container_bridge import (
+        load_orochi_spec,
+        prepare_shim_yaml,
+        start_orochi_sidecar,
+        write_mcp_config_file,
+    )
+
+    orochi_spec = load_orochi_spec(config_path)
+
     if dry_run:
         result = {
             "action": "launch-via-agent-container",
             "config": str(config_path),
+            "force": force,
+            "orochi_enabled": orochi_spec.is_enabled,
         }
         if as_json:
             click.echo(json.dumps(result, indent=2))
         else:
             click.echo("Would launch agent via scitex-agent-container:")
             click.echo(f"  Config: {config_path}")
+            if orochi_spec.is_enabled:
+                click.echo(f"  Orochi: hosts={orochi_spec.hosts}")
+            if force:
+                click.echo("  Mode: --force (stop existing first)")
         return
 
+    # Build a shim yaml with Orochi-specific flags injected, so
+    # scitex-agent-container can stay generic. For remote agents, the
+    # generated mcp-config json is also scp'd to the remote at the same
+    # path so claude finds it there.
+    launch_yaml_path = prepare_shim_yaml(
+        config_path, orochi_spec, write_mcp_config_file
+    )
+
     try:
-        _ac_agent_start(str(config_path))  # type: ignore[possibly-unbound]
+        _ac_agent_start(str(launch_yaml_path), force=force)  # type: ignore[possibly-unbound]
         if as_json:
             click.echo(json.dumps({"status": "launched", "config": str(config_path)}))
         else:
@@ -145,6 +250,25 @@ def launch_via_agent_container(
     except Exception as exc:
         click.echo(f"Error: Agent container launch failed: {exc}", err=True)
         sys.exit(1)
+
+    # Start the Orochi sidecar in this process so the agent registers
+    # with the hub. agent-container no longer does this for us.
+    if orochi_spec.is_enabled:
+        try:
+            import yaml as _yaml
+
+            with open(config_path) as f:
+                _raw = _yaml.safe_load(f) or {}
+            _spec = _raw.get("spec", {}) or {}
+            _meta = _raw.get("metadata", {}) or {}
+            start_orochi_sidecar(
+                agent_name=_meta.get("name", config_path.stem),
+                orochi=orochi_spec,
+                agent_env=_spec.get("env", {}) or {},
+                agent_labels=_meta.get("labels", {}) or {},
+            )
+        except Exception as exc:
+            click.echo(f"Warning: Orochi sidecar failed to start: {exc}", err=True)
 
 
 def screen_exists(name: str, ssh_prefix: str | None = None) -> bool:

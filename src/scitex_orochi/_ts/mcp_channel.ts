@@ -28,7 +28,7 @@ if (isTruthy(process.env.SCITEX_OROCHI_DISABLE)) {
 }
 
 // Zero-trust: telegram agents must never run this MCP server
-if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
+if ((process.env.SCITEX_OROCHI_AGENT_ROLE || "").toLowerCase() === "telegram") {
   console.error(
     "[scitex-orochi] BLOCKED: telegram agent must not run Orochi MCP channel",
   );
@@ -36,9 +36,7 @@ if ((process.env.CLAUDE_AGENT_ROLE || "").toLowerCase() === "telegram") {
 }
 
 // Safety: block if Telegram bot token env vars are present (indicates a Telegram agent session)
-const _telegramToken =
-  process.env.TELEGRAM_BOT_TOKEN ||
-  process.env.SCITEX_NOTIFICATION_TELEGRAM_BOT_TOKEN;
+const _telegramToken = process.env.SCITEX_OROCHI_TELEGRAM_BOT_TOKEN;
 if (_telegramToken) {
   console.error(
     "[scitex-orochi] WARNING: Telegram bot token detected in environment",
