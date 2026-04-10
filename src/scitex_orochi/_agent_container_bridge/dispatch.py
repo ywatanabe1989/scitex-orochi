@@ -95,12 +95,42 @@ def prepare_shim_yaml(
     return shim_path
 
 
+def _remote_home_dir(target: str, ssh_opts: list[str]) -> str | None:
+    """Return the remote user's $HOME or None if detection fails."""
+    try:
+        proc = subprocess.run(
+            ["ssh", *ssh_opts, target, "echo $HOME"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if proc.returncode != 0:
+            return None
+        # Remote bashrc may print noise to stdout (scitex-resource-monitor
+        # "Dashboard started in background" etc). Our $HOME line is
+        # usually the last non-empty line.
+        for line in reversed(proc.stdout.splitlines()):
+            line = line.strip()
+            if line.startswith("/"):
+                return line
+    except Exception:
+        pass
+    return None
+
+
 def scp_mcp_config_to_remote(
     local_path: str,
     remote_host: str,
     remote_section: dict,
 ) -> None:
     """Copy a generated mcp-config json to ``remote_host:<same path>``.
+
+    The json's ``args[0]`` holds a path to ``mcp_channel.ts`` that was
+    resolved on the DISPATCHER (e.g. ``/home/ywatanabe/...`` on Linux).
+    That path is wrong on a macOS remote where ``$HOME=/Users/...``, so
+    before transferring we detect the remote's home dir and rewrite any
+    occurrences of the dispatcher's home prefix to the remote's.
 
     Creates the parent directory on the remote first. Failures are
     logged as warnings (not raised) so the launch can still proceed —
@@ -112,6 +142,27 @@ def scp_mcp_config_to_remote(
     remote_dir = str(Path(local_path).parent)
 
     ssh_opts = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
+
+    # Rewrite ts_path in the JSON for cross-platform portability.
+    local_home = str(Path.home())
+    remote_home = _remote_home_dir(target, ssh_opts)
+    rewritten_bytes: bytes
+    if remote_home and remote_home != local_home:
+        try:
+            raw = Path(local_path).read_text()
+            rewritten = raw.replace(local_home, remote_home)
+            rewritten_bytes = rewritten.encode("utf-8")
+            logger.info(
+                "Rewrote ts_path home prefix %s -> %s for %s",
+                local_home,
+                remote_home,
+                target,
+            )
+        except Exception as exc:
+            logger.warning("ts_path rewrite failed, falling back to raw file: %s", exc)
+            rewritten_bytes = Path(local_path).read_bytes()
+    else:
+        rewritten_bytes = Path(local_path).read_bytes()
 
     # Use ``cat | ssh 'cat >'`` rather than scp/sftp because the OpenSSH
     # scp protocol breaks when the remote login shell prints to stdout
@@ -136,19 +187,18 @@ def scp_mcp_config_to_remote(
             )
             return
 
-        with open(local_path, "rb") as src:
-            transfer_proc = subprocess.run(
-                [
-                    "ssh",
-                    *ssh_opts,
-                    target,
-                    f"cat > {shlex.quote(local_path)}",
-                ],
-                stdin=src,
-                capture_output=True,
-                timeout=60,
-                check=False,
-            )
+        transfer_proc = subprocess.run(
+            [
+                "ssh",
+                *ssh_opts,
+                target,
+                f"cat > {shlex.quote(local_path)}",
+            ],
+            input=rewritten_bytes,
+            capture_output=True,
+            timeout=60,
+            check=False,
+        )
         if transfer_proc.returncode != 0:
             logger.warning(
                 "Remote write failed for %s:%s: %s",
