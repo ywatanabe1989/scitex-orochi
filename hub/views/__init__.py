@@ -7,20 +7,20 @@ from hub.views.api import (  # noqa: F401
     api_agents_purge,
     api_agents_register,
     api_agents_registry,
-    api_subagents_update,
     api_channels,
     api_config,
     api_connectivity,
+    api_event_tool_use,
     api_history,
     api_media,
     api_members,
     api_messages,
-    api_event_tool_use,
     api_reactions,
     api_releases,
-    api_threads,
     api_resources,
     api_stats,
+    api_subagents_update,
+    api_threads,
     api_watchdog_alerts,
     api_workspaces,
 )
@@ -39,6 +39,7 @@ from hub.views.landing import (  # noqa: F401
     landing_page,
     redirect_old_workspace_url,
 )
+from hub.views.telegram import telegram_webhook  # noqa: F401
 from hub.views.upload import api_upload, api_upload_base64  # noqa: F401
 from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
