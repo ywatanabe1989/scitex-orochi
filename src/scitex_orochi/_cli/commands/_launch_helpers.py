@@ -49,9 +49,13 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     if USER_AGENTS_DIR.is_dir():
         for ext in (".yaml", ".yml"):
             for prefix in ("", "head-"):
+                prefixed = f"{prefix}{name}"
                 for candidate in (
-                    USER_AGENTS_DIR / f"{prefix}{name}{ext}",
-                    USER_AGENTS_DIR / name / f"{prefix}{name}{ext}",
+                    USER_AGENTS_DIR / f"{prefixed}{ext}",
+                    USER_AGENTS_DIR / name / f"{prefixed}{ext}",
+                    # dir-per-agent with prefix applied to both dir and file:
+                    # e.g. head-nas/head-nas.yaml
+                    USER_AGENTS_DIR / prefixed / f"{prefixed}{ext}",
                 ):
                     if candidate.exists():
                         return candidate
@@ -76,15 +80,46 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
 def find_all_agent_yamls(agents_dir: Path | None = None) -> list[Path]:
     """Find all agent YAML files in the agents directory.
 
-    Returns sorted list of YAML paths, excluding files whose names start
-    with underscore (convention for disabled/template files).
+    Prefers the user config dir (~/.scitex/orochi/agents/) when it exists,
+    otherwise falls back to the repo `agents/` directory.
+
+    Walks one level deep to support the dir-per-agent layout
+    (e.g. ``mamba/mamba.yaml``). Excludes:
+      - files whose names start with ``_`` (disabled/template convention)
+      - anything under a ``legacy/`` directory
+      - for dir-per-agent entries, only the YAML matching the dir name
+        (e.g. ``mamba/mamba.yaml``) is collected, to avoid duplicates when
+        an agent dir holds multiple yamls.
     """
-    d = (agents_dir or DEFAULT_AGENTS_DIR).resolve()
+    if agents_dir is not None:
+        d = agents_dir.resolve()
+    elif USER_AGENTS_DIR.is_dir():
+        d = USER_AGENTS_DIR.resolve()
+    else:
+        d = DEFAULT_AGENTS_DIR.resolve()
+
     if not d.is_dir():
         return []
 
-    yamls = sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml"))
-    return [y for y in yamls if not y.name.startswith("_")]
+    found: list[Path] = []
+
+    # Top-level flat yamls: agents/<name>.yaml
+    for p in sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml")):
+        if p.name.startswith("_"):
+            continue
+        found.append(p)
+
+    # Dir-per-agent: agents/<name>/<name>.yaml
+    for sub in sorted(p for p in d.iterdir() if p.is_dir()):
+        if sub.name == "legacy" or sub.name.startswith("_"):
+            continue
+        for ext in (".yaml", ".yml"):
+            candidate = sub / f"{sub.name}{ext}"
+            if candidate.exists():
+                found.append(candidate)
+                break
+
+    return found
 
 
 def load_cfg(config_path: str | None) -> dict:
@@ -108,9 +143,27 @@ def read_template(name: str) -> str:
 
 
 def launch_via_agent_container(
-    agent_config_path: str, dry_run: bool, as_json: bool
+    agent_config_path: str,
+    dry_run: bool,
+    as_json: bool,
+    force: bool = False,
 ) -> None:
-    """Delegate launch to scitex-agent-container."""
+    """Dispatch an agent launch through scitex-agent-container.
+
+    scitex-agent-container itself is now Orochi-agnostic. This function is
+    the bridge: it parses the ``spec.orochi:`` section ourselves, generates
+    the MCP config file, augments the yaml's ``claude.flags`` with
+    ``--mcp-config`` and ``--dangerously-load-development-channels``, writes
+    a shim yaml to ``/tmp``, and then calls ``agent_start`` on the shim.
+    After ``agent_start`` returns, the Orochi sidecar thread is started in
+    this process so the agent registers with the hub.
+
+    Args:
+        agent_config_path: Path to the agent yaml file.
+        dry_run: If True, print what would happen without launching.
+        as_json: Emit JSON status messages.
+        force: If True, stop any existing instance first then relaunch.
+    """
     if not HAS_AGENT_CONTAINER:
         click.echo(
             "Error: scitex-agent-container is not installed.\n"
@@ -124,20 +177,42 @@ def launch_via_agent_container(
         click.echo(f"Error: Agent config not found: {config_path}", err=True)
         sys.exit(1)
 
+    # Deferred import so the CLI module loads even when the bridge isn't
+    # available (e.g., during early CLI smoke tests).
+    from scitex_orochi._agent_container_bridge import (
+        load_orochi_spec,
+        start_orochi_sidecar,
+        write_mcp_config_file,
+    )
+
+    orochi_spec = load_orochi_spec(config_path)
+
     if dry_run:
         result = {
             "action": "launch-via-agent-container",
             "config": str(config_path),
+            "force": force,
+            "orochi_enabled": orochi_spec.is_enabled,
         }
         if as_json:
             click.echo(json.dumps(result, indent=2))
         else:
             click.echo("Would launch agent via scitex-agent-container:")
             click.echo(f"  Config: {config_path}")
+            if orochi_spec.is_enabled:
+                click.echo(f"  Orochi: hosts={orochi_spec.hosts}")
+            if force:
+                click.echo("  Mode: --force (stop existing first)")
         return
 
+    # Build a shim yaml with Orochi-specific flags injected, so
+    # scitex-agent-container can stay generic.
+    launch_yaml_path = _prepare_orochi_shim_yaml(
+        config_path, orochi_spec, write_mcp_config_file
+    )
+
     try:
-        _ac_agent_start(str(config_path))  # type: ignore[possibly-unbound]
+        _ac_agent_start(str(launch_yaml_path), force=force)  # type: ignore[possibly-unbound]
         if as_json:
             click.echo(json.dumps({"status": "launched", "config": str(config_path)}))
         else:
@@ -145,6 +220,81 @@ def launch_via_agent_container(
     except Exception as exc:
         click.echo(f"Error: Agent container launch failed: {exc}", err=True)
         sys.exit(1)
+
+    # Start the Orochi sidecar in this process so the agent registers
+    # with the hub. agent-container no longer does this for us.
+    if orochi_spec.is_enabled:
+        try:
+            import yaml as _yaml
+
+            with open(config_path) as f:
+                _raw = _yaml.safe_load(f) or {}
+            _spec = _raw.get("spec", {}) or {}
+            _meta = _raw.get("metadata", {}) or {}
+            start_orochi_sidecar(
+                agent_name=_meta.get("name", config_path.stem),
+                orochi=orochi_spec,
+                agent_env=_spec.get("env", {}) or {},
+                agent_labels=_meta.get("labels", {}) or {},
+            )
+        except Exception as exc:
+            click.echo(f"Warning: Orochi sidecar failed to start: {exc}", err=True)
+
+
+def _prepare_orochi_shim_yaml(
+    config_path: Path,
+    orochi_spec,
+    write_mcp_config_file,
+) -> Path:
+    """Write a shim yaml with Orochi-specific claude flags injected.
+
+    Returns the path to the shim. If Orochi is not enabled, returns the
+    original path unchanged (no shim needed).
+    """
+    if not orochi_spec.is_enabled:
+        return config_path
+
+    import yaml as _yaml
+
+    with open(config_path) as f:
+        raw = _yaml.safe_load(f) or {}
+
+    spec = raw.setdefault("spec", {}) or {}
+    metadata = raw.get("metadata", {}) or {}
+    agent_name = metadata.get("name", config_path.stem)
+
+    claude_section = spec.setdefault("claude", {}) or {}
+    existing_flags = list(claude_section.get("flags", []) or [])
+
+    mcp_path = write_mcp_config_file(
+        agent_name=agent_name,
+        orochi=orochi_spec,
+        claude_channels=claude_section.get("channels", []) or [],
+        agent_env=spec.get("env", {}) or {},
+        agent_labels=metadata.get("labels", {}) or {},
+    )
+
+    if mcp_path:
+        # Prepend the MCP flags so they appear before any user flags
+        # (matters when --strict-mcp-config is set, since the file
+        # provided by --mcp-config must be reachable from CLI parsing).
+        injected = [
+            f"--mcp-config '{mcp_path}'",
+            "--dangerously-load-development-channels server:scitex-orochi",
+        ]
+        # Avoid duplicating if the user already declared them.
+        for flag in injected:
+            if flag not in existing_flags:
+                existing_flags.append(flag)
+        claude_section["flags"] = existing_flags
+        spec["claude"] = claude_section
+        raw["spec"] = spec
+
+    shim_dir = Path("/tmp/scitex-orochi-shim-yamls")
+    shim_dir.mkdir(parents=True, exist_ok=True)
+    shim_path = shim_dir / config_path.name
+    shim_path.write_text(_yaml.safe_dump(raw, sort_keys=False))
+    return shim_path
 
 
 def screen_exists(name: str, ssh_prefix: str | None = None) -> bool:

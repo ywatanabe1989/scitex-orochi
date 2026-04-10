@@ -64,12 +64,19 @@ def launch() -> None:
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Stop any running instance first, then launch fresh.",
+)
 def launch_master(
     config_path: str | None,
     agent_config_path: str | None,
     agents_dir: str | None,
     dry_run: bool,
     as_json: bool,
+    force: bool,
 ) -> None:
     """Launch orochi-agent:master.
 
@@ -79,7 +86,7 @@ def launch_master(
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
-        launch_via_agent_container(agent_config_path, dry_run, as_json)
+        launch_via_agent_container(agent_config_path, dry_run, as_json, force=force)
         return
 
     search_dir = Path(agents_dir) if agents_dir else None
@@ -87,7 +94,7 @@ def launch_master(
     if yaml_path and HAS_AGENT_CONTAINER:
         if not as_json:
             click.echo(f"Using agent config: {yaml_path}")
-        launch_via_agent_container(str(yaml_path), dry_run, as_json)
+        launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
         return
 
     if yaml_path and not HAS_AGENT_CONTAINER:
@@ -132,6 +139,12 @@ def launch_master(
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Stop any running instance first, then launch fresh.",
+)
 def launch_head(
     name: str,
     config_path: str | None,
@@ -139,6 +152,7 @@ def launch_head(
     agents_dir: str | None,
     dry_run: bool,
     as_json: bool,
+    force: bool,
 ) -> None:
     """Launch an orochi-agent:head by name.
 
@@ -148,7 +162,7 @@ def launch_head(
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
-        launch_via_agent_container(agent_config_path, dry_run, as_json)
+        launch_via_agent_container(agent_config_path, dry_run, as_json, force=force)
         return
 
     search_dir = Path(agents_dir) if agents_dir else None
@@ -156,7 +170,7 @@ def launch_head(
     if yaml_path and HAS_AGENT_CONTAINER:
         if not as_json:
             click.echo(f"Using agent config: {yaml_path}")
-        launch_via_agent_container(str(yaml_path), dry_run, as_json)
+        launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
         return
 
     if yaml_path and not HAS_AGENT_CONTAINER:
@@ -200,6 +214,12 @@ def launch_head(
 )
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 @click.option("--json", "as_json", is_flag=True, help="Output as JSON.")
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Stop any running instance first, then launch fresh.",
+)
 @click.pass_context
 def launch_all(
     ctx: click.Context,
@@ -208,6 +228,7 @@ def launch_all(
     agents_dir: str | None,
     dry_run: bool,
     as_json: bool,
+    force: bool,
 ) -> None:
     """Launch master and all configured head agents.
 
@@ -231,7 +252,7 @@ def launch_all(
         for yaml_path in yamls:
             if not as_json:
                 click.echo(f"\n=== Launching from {yaml_path.name} ===")
-            launch_via_agent_container(str(yaml_path), dry_run, as_json)
+            launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
 
         if not as_json:
             click.echo(f"\nAll agents launched from {config_dir}")
@@ -248,7 +269,11 @@ def launch_all(
             )
 
         for yaml_path in yamls:
-            if yaml_path.stem == "telegrammer":
+            # Skip telegrammer — runs independently with its own MCP bridge.
+            # Matches "telegrammer" (legacy) and "telegrammer-<machine>" (new).
+            if yaml_path.stem == "telegrammer" or yaml_path.stem.startswith(
+                "telegrammer-"
+            ):
                 if not as_json:
                     click.echo(
                         f"\n--- Skipping {yaml_path.name} "
@@ -258,7 +283,7 @@ def launch_all(
 
             if not as_json:
                 click.echo(f"\n=== Launching from {yaml_path.name} ===")
-            launch_via_agent_container(str(yaml_path), dry_run, as_json)
+            launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
 
         if not as_json:
             click.echo("\nAll agents launched.")
