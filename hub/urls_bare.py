@@ -34,6 +34,8 @@ urlpatterns = [
     # API (bare domain)
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),
     path("api/github/issues/", views.github_issues, name="api-github-issues"),
+    # Discovery
+    path("api/discover/", views.api_discover, name="api-discover"),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
 ]

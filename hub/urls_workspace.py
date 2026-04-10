@@ -73,6 +73,8 @@ urlpatterns = [
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
     path("api/config/", views.api_config, name="api-config"),
+    # Discovery
+    path("api/discover/", views.api_discover, name="api-discover"),
     # File upload
     path("api/upload", views.api_upload, name="api-upload"),
     path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
