@@ -269,25 +269,52 @@ def launch_all(
                 f"in {(search_dir or DEFAULT_AGENTS_DIR).resolve()}"
             )
 
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        # Filter out telegrammer agents
+        to_launch = []
         for yaml_path in yamls:
-            # Skip telegrammer — runs independently with its own MCP bridge.
-            # Matches "telegrammer" (legacy) and "telegrammer-<machine>" (new).
             if yaml_path.stem == "telegrammer" or yaml_path.stem.startswith(
                 "telegrammer-"
             ):
                 if not as_json:
-                    click.echo(
-                        f"\n--- Skipping {yaml_path.name} "
-                        f"(runs separately, not via Orochi launch) ---"
-                    )
+                    click.echo(f"  Skipping {yaml_path.name} (runs separately)")
                 continue
-
-            if not as_json:
-                click.echo(f"\n=== Launching from {yaml_path.name} ===")
-            launch_via_agent_container(str(yaml_path), dry_run, as_json, force=force)
+            to_launch.append(yaml_path)
 
         if not as_json:
-            click.echo("\nAll agents launched.")
+            click.echo(f"Launching {len(to_launch)} agents in parallel...")
+
+        def _launch_one(yp: Path) -> tuple[str, bool, str]:
+            try:
+                launch_via_agent_container(str(yp), dry_run, as_json, force=force)
+                return (yp.stem, True, "OK")
+            except Exception as exc:
+                msg = str(exc).split("\n")[0]
+                return (yp.stem, False, msg)
+
+        results: list[tuple[str, bool, str]] = []
+        with ThreadPoolExecutor(max_workers=len(to_launch)) as pool:
+            futures = {pool.submit(_launch_one, yp): yp for yp in to_launch}
+            for future in as_completed(futures):
+                name, ok, msg = future.result()
+                results.append((name, ok, msg))
+                if not as_json:
+                    status = "✓" if ok else "✗"
+                    click.echo(f"  {status} {name}: {msg}")
+
+        # Summary
+        if not as_json:
+            ok_list = [r for r in results if r[1]]
+            fail_list = [r for r in results if not r[1]]
+            click.echo("\n=== Fleet Launch Summary ===")
+            click.echo(
+                f"  OK: {len(ok_list)}/{len(results)}  "
+                f"FAILED: {len(fail_list)}/{len(results)}"
+            )
+            if fail_list:
+                for name, _, msg in fail_list:
+                    click.echo(f"    ✗ {name}: {msg}")
         return
 
     if yamls and not HAS_AGENT_CONTAINER:
