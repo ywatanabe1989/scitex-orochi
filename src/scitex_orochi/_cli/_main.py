@@ -45,6 +45,12 @@ def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
 
 
 # ── Register subcommands ────────────────────────────────────────
+from scitex_orochi._cli.commands.agent_cmd import (
+    agent_launch,
+    agent_restart,
+    agent_status,
+    agent_stop,
+)
 from scitex_orochi._cli.commands.deploy_cmd import deploy
 from scitex_orochi._cli.commands.docs_cmd import docs
 from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
@@ -62,6 +68,12 @@ from scitex_orochi._cli.commands.query_cmd import (
 from scitex_orochi._cli.commands.report_cmd import report
 from scitex_orochi._cli.commands.server_cmd import serve, setup_push
 from scitex_orochi._cli.commands.skills_cmd import skills
+
+# Agent lifecycle (direct screen-based management)
+orochi.add_command(agent_launch)
+orochi.add_command(agent_restart)
+orochi.add_command(agent_stop)
+orochi.add_command(agent_status)
 
 # Fleet
 orochi.add_command(fleet)
@@ -86,7 +98,7 @@ orochi.add_command(setup_push)
 
 from scitex_orochi._cli.commands.stop_cmd import stop as stop_cmd
 
-# Deployment
+# Deployment (legacy agent-container based)
 orochi.add_command(init_cmd)
 orochi.add_command(launch)
 orochi.add_command(deploy)

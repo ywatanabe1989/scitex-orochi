@@ -43,24 +43,31 @@ function getPersonIcon(size, color) {
 }
 
 /* Gravatar-style cascade: image URL > emoji > text > default SVG */
-function getSenderIcon(senderName, isAgent) {
+function getSenderIcon(senderName, isAgent, size) {
+  size = size || 18;
   var icon = cachedAgentIcons[senderName];
   if (icon) {
     if (icon.startsWith("http") || icon.startsWith("/")) {
       return (
-        '<img class="agent-custom-icon" src="' +
+        '<img class="agent-avatar" src="' +
         escapeHtml(icon) +
-        '" width="18" height="18" alt="">'
+        '" width="' +
+        size +
+        '" height="' +
+        size +
+        '" alt="">'
       );
     }
     return (
-      '<span class="agent-custom-icon" style="font-size:16px">' +
+      '<span class="agent-custom-icon" style="font-size:' +
+      Math.round(size * 0.9) +
+      'px">' +
       icon +
       "</span>"
     );
   }
-  if (isAgent) return getLetterIcon(senderName, 18);
-  return getPersonIcon(18, "#c4a6e8");
+  if (isAgent) return getLetterIcon(senderName, size);
+  return getPersonIcon(size, "#c4a6e8");
 }
 
 function getSnakeLogo() {
@@ -71,14 +78,23 @@ function getSnakeLogo() {
 function getLetterIcon(name, size) {
   size = size || 18;
   var letter = (name || "?").charAt(0).toUpperCase();
-  var color = (cachedAgentColors[name]) || getAgentColor(name);
+  var color = cachedAgentColors[name] || getAgentColor(name);
   return (
     '<span class="agent-letter-icon" style="' +
     "display:inline-flex;align-items:center;justify-content:center;" +
-    "width:" + size + "px;height:" + size + "px;" +
-    "border-radius:50%;background:" + color + ";" +
-    'font-size:' + Math.round(size * 0.55) + 'px;font-weight:700;color:#0a0a0a;">' +
-    letter + "</span>"
+    "width:" +
+    size +
+    "px;height:" +
+    size +
+    "px;" +
+    "border-radius:50%;background:" +
+    color +
+    ";" +
+    "font-size:" +
+    Math.round(size * 0.55) +
+    'px;font-weight:700;color:#0a0a0a;">' +
+    letter +
+    "</span>"
   );
 }
 
@@ -94,4 +110,57 @@ function cacheAgentIcons(agents) {
     if (icon) cachedAgentIcons[a.name] = icon;
     if (a.color) cachedAgentColors[a.name] = a.color;
   });
+}
+
+/* Avatar upload — shared hidden file input and upload logic */
+var _avatarFileInput = null;
+var _avatarTargetAgent = null;
+
+function _ensureAvatarInput() {
+  if (_avatarFileInput) return;
+  _avatarFileInput = document.createElement("input");
+  _avatarFileInput.type = "file";
+  _avatarFileInput.accept = "image/*";
+  _avatarFileInput.style.display = "none";
+  document.body.appendChild(_avatarFileInput);
+  _avatarFileInput.addEventListener("change", function () {
+    if (!this.files || !this.files[0] || !_avatarTargetAgent) return;
+    uploadAgentAvatar(_avatarTargetAgent, this.files[0]);
+    this.value = "";
+  });
+}
+
+function openAvatarPicker(agentName) {
+  _ensureAvatarInput();
+  _avatarTargetAgent = agentName;
+  _avatarFileInput.click();
+}
+
+function uploadAgentAvatar(agentName, file) {
+  var fd = new FormData();
+  fd.append("name", agentName);
+  fd.append("file", file);
+  var headers = {};
+  if (typeof csrfToken !== "undefined" && csrfToken) {
+    headers["X-CSRFToken"] = csrfToken;
+  }
+  fetch(apiUrl("/api/agents/avatar/"), {
+    method: "POST",
+    headers: headers,
+    credentials: "same-origin",
+    body: fd,
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (data) {
+      if (data.url) {
+        cachedAgentIcons[agentName] = data.url;
+        if (typeof fetchAgents === "function") fetchAgents();
+        if (typeof renderAgentsTab === "function") renderAgentsTab();
+      }
+    })
+    .catch(function (e) {
+      console.error("Avatar upload failed:", e);
+    });
 }

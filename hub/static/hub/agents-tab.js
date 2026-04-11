@@ -111,8 +111,8 @@ function buildAgentRow(a) {
   var statusColor = inactive ? "#ef4444" : "#4ecdc4";
   var statusLabel = inactive ? "offline" : "online";
   var agentIcon = cachedAgentIcons[a.name]
-    ? getSenderIcon(a.name, true)
-    : getLetterIcon(a.name, 20);
+    ? getSenderIcon(a.name, true, 24)
+    : getLetterIcon(a.name, 24);
   var dotHtml =
     '<span class="status-dot-inline"></span>' +
     '<span class="status-label">' +
@@ -127,20 +127,39 @@ function buildAgentRow(a) {
   var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
   var pinTitle = a.pinned ? "Unpin" : "Pin";
   var pinBtnHtml =
-    '<button class="pin-btn' + (a.pinned ? " pinned" : "") +
-    '" data-pin-name="' + escapeHtml(a.name) +
-    '" title="' + pinTitle + '" onclick="event.stopPropagation();togglePinAgent(\'' +
-    escapeHtml(a.name).replace(/'/g, "\\'") + "', " + (!a.pinned) + ')">' +
-    pinIcon + '</button>';
-  var rowClass = "agent-row" + (inactive ? " agent-inactive" : "") + (a.pinned && inactive ? " pinned-offline" : "");
+    '<button class="pin-btn' +
+    (a.pinned ? " pinned" : "") +
+    '" data-pin-name="' +
+    escapeHtml(a.name) +
+    '" title="' +
+    pinTitle +
+    '" onclick="event.stopPropagation();togglePinAgent(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', " +
+    !a.pinned +
+    ')">' +
+    pinIcon +
+    "</button>";
+  var rowClass =
+    "agent-row" +
+    (inactive ? " agent-inactive" : "") +
+    (a.pinned && inactive ? " pinned-offline" : "");
   return (
     '<tr class="' +
     rowClass +
     '" data-agent-name="' +
     escapeHtml(a.name) +
     '">' +
-    "<td>" + pinBtnHtml + "</td>" +
-    '<td class="agent-icon-cell">' + agentIcon + "</td>" +
+    "<td>" +
+    pinBtnHtml +
+    "</td>" +
+    '<td class="agent-icon-cell avatar-clickable" data-avatar-agent="' +
+    escapeHtml(a.name) +
+    '" title="Click to change avatar" onclick="event.stopPropagation();openAvatarPicker(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "')" >' +
+    agentIcon +
+    "</td>" +
     "<td>" +
     dotHtml +
     "</td>" +
@@ -162,7 +181,9 @@ function buildAgentRow(a) {
     '<td class="muted-cell">' +
     escapeHtml(a.project || "-") +
     "</td>" +
-    '<td class="monospace-cell small-cell" title="' + escapeHtml(a.workdir || "") + '">' +
+    '<td class="monospace-cell small-cell" title="' +
+    escapeHtml(a.workdir || "") +
+    '">' +
     escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
     "</td>" +
     '<td class="task-cell">' +

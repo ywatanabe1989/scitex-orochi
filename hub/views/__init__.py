@@ -35,6 +35,7 @@ from hub.views.auth import (  # noqa: F401
     signout_view,
     signup_view,
 )
+from hub.views.avatar import api_agents_avatar  # noqa: F401
 from hub.views.discover import api_discover  # noqa: F401
 from hub.views.github import github_issues  # noqa: F401
 from hub.views.landing import (  # noqa: F401

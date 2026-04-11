@@ -451,8 +451,8 @@ async function fetchAgents() {
         var statusClass =
           (a.status || "online") + (inactive ? " inactive" : "");
         var agentIcon = cachedAgentIcons[a.name]
-          ? getSenderIcon(a.name, true)
-          : getLetterIcon(a.name, 16);
+          ? getSenderIcon(a.name, true, 32)
+          : getLetterIcon(a.name, 32);
         /* Tiny health pill — mirrors the Agents tab classification. */
         var healthHtml = "";
         if (a.health && a.health.status) {
@@ -472,14 +472,24 @@ async function fetchAgents() {
         var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
         var pinTitle = a.pinned ? "Unpin agent" : "Pin agent";
         var pinBtnHtml =
-          '<button class="pin-btn' + (a.pinned ? " pinned" : "") +
-          '" data-pin-name="' + escapeHtml(a.name) +
-          '" title="' + pinTitle + '">' + pinIcon + '</button>';
+          '<button class="pin-btn' +
+          (a.pinned ? " pinned" : "") +
+          '" data-pin-name="' +
+          escapeHtml(a.name) +
+          '" title="' +
+          pinTitle +
+          '">' +
+          pinIcon +
+          "</button>";
         /* Compact badges for role + machine */
-        var roleBadge = '<span class="agent-badge agent-badge-role">' +
-          escapeHtml(a.role || "agent") + "</span>";
-        var machineBadge = '<span class="agent-badge agent-badge-machine">' +
-          escapeHtml(a.machine || "unknown") + "</span>";
+        var roleBadge =
+          '<span class="agent-badge agent-badge-role">' +
+          escapeHtml(a.role || "agent") +
+          "</span>";
+        var machineBadge =
+          '<span class="agent-badge agent-badge-machine">' +
+          escapeHtml(a.machine || "unknown") +
+          "</span>";
         /* Tooltip metadata (shown on hover) */
         var uniqueChannels = [...new Set(a.channels || [])];
         var tooltipLines = [];
@@ -487,31 +497,60 @@ async function fetchAgents() {
         tooltipLines.push("Role: " + (a.role || "agent"));
         tooltipLines.push("Host: " + (a.machine || "unknown"));
         if (a.model) tooltipLines.push("Model: " + a.model);
-        if (uniqueChannels.length) tooltipLines.push("Channels: " + uniqueChannels.join(", "));
+        if (uniqueChannels.length)
+          tooltipLines.push("Channels: " + uniqueChannels.join(", "));
         if (a.project) tooltipLines.push("Project: " + a.project);
-        if (a.workdir) tooltipLines.push("Workdir: " + a.workdir.replace(/^\/home\/[^/]+/, "~"));
+        if (a.workdir)
+          tooltipLines.push(
+            "Workdir: " + a.workdir.replace(/^\/home\/[^/]+/, "~"),
+          );
         if (a.current_task) tooltipLines.push("Task: " + a.current_task);
         /* Popup detail panel (click to expand) */
         var detailHtml =
           '<div class="agent-detail-popup">' +
           '<div class="agent-detail-row"><span class="agent-detail-label">Channels</span>' +
-          (uniqueChannels.length ? uniqueChannels.map(function(c) {
-            return '<span class="ch-badge">' + escapeHtml(c) + '</span>';
-          }).join(" ") : '<span class="muted-cell">-</span>') + '</div>' +
-          (a.model ? '<div class="agent-detail-row"><span class="agent-detail-label">Model</span>' + escapeHtml(a.model) + '</div>' : '') +
-          (a.project ? '<div class="agent-detail-row"><span class="agent-detail-label">Project</span>' + escapeHtml(a.project) + '</div>' : '') +
-          (a.workdir ? '<div class="agent-detail-row"><span class="agent-detail-label">Workdir</span><span class="monospace-cell">' + escapeHtml(a.workdir.replace(/^\/home\/[^/]+/, "~")) + '</span></div>' : '') +
-          (a.current_task ? '<div class="agent-detail-row"><span class="agent-detail-label">Task</span>' + escapeHtml(a.current_task) + '</div>' : '') +
-          '</div>';
+          (uniqueChannels.length
+            ? uniqueChannels
+                .map(function (c) {
+                  return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
+                })
+                .join(" ")
+            : '<span class="muted-cell">-</span>') +
+          "</div>" +
+          (a.model
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Model</span>' +
+              escapeHtml(a.model) +
+              "</div>"
+            : "") +
+          (a.project
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Project</span>' +
+              escapeHtml(a.project) +
+              "</div>"
+            : "") +
+          (a.workdir
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Workdir</span><span class="monospace-cell">' +
+              escapeHtml(a.workdir.replace(/^\/home\/[^/]+/, "~")) +
+              "</span></div>"
+            : "") +
+          (a.current_task
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Task</span>' +
+              escapeHtml(a.current_task) +
+              "</div>"
+            : "") +
+          "</div>";
         return (
           '<div class="agent-card' +
           (inactive ? " inactive" : "") +
           (a.pinned && inactive ? " pinned-offline" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
-          '" title="' + escapeHtml(tooltipLines.join("\n")) + '">' +
+          '" title="' +
+          escapeHtml(tooltipLines.join("\n")) +
+          '">' +
           '<div class="agent-card-top">' +
-          '<span class="agent-card-icon">' +
+          '<span class="agent-card-icon avatar-clickable" data-avatar-agent="' +
+          escapeHtml(a.name) +
+          '" title="Click to change avatar">' +
           agentIcon +
           "</span>" +
           '<span class="status-dot ' +
@@ -523,7 +562,9 @@ async function fetchAgents() {
           pinBtnHtml +
           "</div>" +
           '<div class="agent-card-badges">' +
-          roleBadge + machineBadge + healthHtml +
+          roleBadge +
+          machineBadge +
+          healthHtml +
           "</div>" +
           detailHtml +
           "</div>"
@@ -535,14 +576,18 @@ async function fetchAgents() {
       .forEach(function (el) {
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
+          if (ev.target.closest(".avatar-clickable"))
+            return; /* handled below */
           /* Toggle detail popup on click */
           var popup = el.querySelector(".agent-detail-popup");
           if (popup) {
             var isOpen = popup.classList.contains("open");
             /* Close all others first */
-            container.querySelectorAll(".agent-detail-popup.open").forEach(function (p) {
-              p.classList.remove("open");
-            });
+            container
+              .querySelectorAll(".agent-detail-popup.open")
+              .forEach(function (p) {
+                p.classList.remove("open");
+              });
             if (!isOpen) popup.classList.add("open");
           }
           addTag("agent", el.getAttribute("data-agent-name"));
@@ -553,7 +598,18 @@ async function fetchAgents() {
       .forEach(function (btn) {
         btn.addEventListener("click", function (ev) {
           ev.stopPropagation();
-          togglePinAgent(btn.getAttribute("data-pin-name"), !btn.classList.contains("pinned"));
+          togglePinAgent(
+            btn.getAttribute("data-pin-name"),
+            !btn.classList.contains("pinned"),
+          );
+        });
+      });
+    container
+      .querySelectorAll(".avatar-clickable[data-avatar-agent]")
+      .forEach(function (el) {
+        el.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          openAvatarPicker(el.getAttribute("data-avatar-agent"));
         });
       });
   } catch (e) {
