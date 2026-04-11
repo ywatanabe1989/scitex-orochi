@@ -159,7 +159,7 @@ const conn = {
           return;
         }
         const pongAge = Date.now() - _lastPong;
-        if (pongAge > 15000) {
+        if (pongAge > 10000) {
           console.error(
             `[orochi] stale connection (no pong for ${Math.round(pongAge / 1000)}s), forcing reconnect`,
           );
@@ -171,7 +171,7 @@ const conn = {
         try {
           _ws.ping();
         } catch {}
-      }, 10000);
+      }, 5000);
       _ws!.on("pong", () => {
         _lastPong = Date.now();
       });
