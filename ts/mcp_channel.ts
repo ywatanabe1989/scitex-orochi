@@ -201,7 +201,7 @@ const conn = {
       );
     });
 
-    _ws.on("message", (data: Buffer) => {
+    _ws.on("message", async (data: Buffer) => {
       const raw = data.toString();
       try {
         _dbg(`ws recv: ${raw.slice(0, 200)}`);
@@ -303,23 +303,25 @@ const conn = {
         const decoratedContent = decorateIssueRefs(content);
 
         const notifContent = `${decoratedContent}${attachmentInfo}`;
-        const notifMeta = {
-          chat_id: channel,
+        // Meta values must all be strings — Claude Code ignores
+        // notifications where meta contains non-string values (numbers, null).
+        const notifMeta: Record<string, string> = {
+          chat_id: channel || "#general",
           user: sender,
           ts: msg.ts || new Date().toISOString(),
-          msg_id: msg.id ?? payload.id ?? null,
         };
-        setTimeout(() => {
-          mcp
-            .notification({
-              method: "notifications/claude/channel",
-              params: { content: notifContent, meta: notifMeta },
-            })
-            .then(() => _dbg(`notification sent OK: ${channel} ${sender}`))
-            .catch((e: unknown) => _dbg(`notification FAILED: ${e}`));
-        }, 0);
+        const msgIdVal = msg.id ?? payload.id;
+        if (msgIdVal != null) notifMeta.msg_id = String(msgIdVal);
+
+        await mcp.notification({
+          method: "notifications/claude/channel",
+          params: { content: notifContent, meta: notifMeta },
+        });
+        _dbg(`notification sent OK: ${channel} ${sender}`);
       } catch (e) {
-        _dbg(`parse error: ${e}`);
+        const errMsg = e instanceof Error ? e.message : String(e);
+        _dbg(`error: ${errMsg}`);
+        console.error(`[orochi] message handler error: ${errMsg}`);
       }
     });
 
