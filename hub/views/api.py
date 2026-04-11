@@ -1421,17 +1421,9 @@ def api_agents_kill(request):
 
     # Step 2: Kill bun sidecar (mcp_channel.ts spawned by the screen)
     try:
-        kill_bun_cmd = (
-            f"pgrep -f 'mcp_channel.ts' | xargs -r "
-            f"sh -c 'for p; do "
-            f'if [ "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d " ")" = "1" ] || '
-            f"screen -ls 2>/dev/null | grep -q {screen_name}; then "
-            f'kill "$p" 2>/dev/null && echo "killed $p"; fi; done\' _'
-        )
-        # Simpler: kill bun processes whose cmdline includes the workspace name
+        # Only kill bun processes associated with this specific agent
         kill_bun_cmd = (
             f"pkill -f 'mcp_channel.ts.*{screen_name}' 2>/dev/null; "
-            f"pkill -f 'bun.*mcp_channel' 2>/dev/null; "
             f"echo done"
         )
         _run(kill_bun_cmd)

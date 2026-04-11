@@ -57,6 +57,7 @@ urlpatterns = [
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
     path("api/agents/restart/", views.api_agents_restart, name="api-agents-restart"),
+    path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     path(
