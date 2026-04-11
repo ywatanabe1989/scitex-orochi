@@ -5,16 +5,16 @@ description: Machine-specific network configuration for Orochi agents -- SCITEX_
 
 # Host Connectivity
 
-Each agent machine has different network characteristics that affect how it connects to the Orochi hub running on NAS (192.168.0.102:9559).
+Each agent machine has different network characteristics that affect how it connects to the Orochi hub running on NAS (192.168.11.22:9559).
 
 ## SCITEX_OROCHI_HOST Per Machine
 
 | Machine | Agent | SCITEX_OROCHI_HOST | Reason |
 |---------|-------|-------------|--------|
-| NAS (192.168.0.102) | nas-agent | `127.0.0.1` | Orochi server runs locally on NAS |
-| ywata-note-win (WSL) | master-agent, ywata-note-win-agent | `192.168.0.102` | LAN access to NAS |
-| MBA | mba-agent | `192.168.0.102` | LAN access to NAS |
-| Spartan HPC | spartan-agent | `orochi.scitex.ai` | External network, no LAN access |
+| NAS (192.168.11.22) | head-nas | `127.0.0.1` | Orochi server runs locally on NAS |
+| ywata-note-win (WSL) | head-ywata-note-win | `192.168.11.22` | LAN access to NAS |
+| MBA | head-mba, mamba-* | `192.168.11.22` | LAN access to NAS |
+| Spartan HPC | head-spartan | `orochi.scitex.ai` | External network, no LAN access |
 
 ## Orochi Server Location
 
@@ -29,18 +29,15 @@ The Orochi hub runs on NAS as a Docker service. It listens on:
 
 Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `mcp_channel.ts` bridge connects directly to `SCITEX_OROCHI_HOST:OROCHI_PORT`, not through the HTTPS proxy.
 
-**Status**: Spartan agent cannot use push mode until `mcp_channel.ts` supports WSS proxy connection. Polling mode works as a fallback (uses HTTP on standard ports).
+**Status**: Resolved — head-spartan now connects via public WSS endpoint (`wss://orochi.scitex.ai`). The sidecar config uses `SCITEX_OROCHI_HOST=orochi.scitex.ai` which routes through Cloudflare on port 443.
 
-**Workaround**: Use polling mode for spartan-agent:
-```bash
-python3 poll-agent.py spartan-agent --model opus --channels "#general,#research" --interval 15
-```
+**If connection is choppy**: Check that the sidecar is using `wss://` (port 443) not `ws://` (port 9559). The university firewall blocks 9559 but allows 443.
 
 ### NAS After Hard Reboot
 
 After NAS hard reboot, SSH key changes. Use `nas2.key` instead of `id_rsa`:
 ```bash
-ssh -i ~/.ssh/nas2.key ywatanabe@192.168.0.102
+ssh -i ~/.ssh/nas2.key ywatanabe@192.168.11.22
 ```
 
 Also verify Docker and Orochi service are running:

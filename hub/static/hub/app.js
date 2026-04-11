@@ -483,6 +483,10 @@ async function fetchAgents() {
           '<button class="restart-btn" data-restart-name="' +
           escapeHtml(a.name) +
           '" title="Restart agent">\u21BB</button>';
+        var killBtnHtml =
+          '<button class="kill-btn" data-kill-name="' +
+          escapeHtml(a.name) +
+          '" title="Kill agent (screen + sidecar)">\u2715</button>';
         /* Compact badges for role + machine */
         var roleBadge =
           '<span class="agent-badge agent-badge-role">' +
@@ -561,6 +565,7 @@ async function fetchAgents() {
           '<span class="name">' +
           escapeHtml(hostedAgentName(a)) +
           "</span>" +
+          killBtnHtml +
           restartBtnHtml +
           pinBtnHtml +
           "</div>" +
@@ -579,6 +584,7 @@ async function fetchAgents() {
       .forEach(function (el) {
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
+          if (ev.target.closest(".kill-btn")) return; /* handled separately */
           if (ev.target.closest(".avatar-clickable"))
             return; /* handled below */
           /* Toggle detail popup on click */
@@ -613,6 +619,14 @@ async function fetchAgents() {
         el.addEventListener("click", function (ev) {
           ev.stopPropagation();
           openAvatarPicker(el.getAttribute("data-avatar-agent"));
+        });
+      });
+    container
+      .querySelectorAll(".kill-btn[data-kill-name]")
+      .forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          killAgent(btn.getAttribute("data-kill-name"), btn);
         });
       });
     container
@@ -665,6 +679,46 @@ async function restartAgent(name, btn) {
     btn.textContent = origText;
     btn.disabled = false;
     btn.classList.remove("restarting");
+  }
+}
+
+async function killAgent(name, btn) {
+  if (!confirm("Kill agent " + name + "?\nThis will terminate screen, bun sidecar, and disconnect.")) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "\u23F3";
+  btn.classList.add("killing");
+  try {
+    var headers = orochiHeaders();
+    var res = await fetch(apiUrl("/api/agents/kill/"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name }),
+    });
+    var data = await res.json();
+    if (res.ok) {
+      btn.textContent = "\u2713";
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("killing");
+        fetchAgents();
+      }, 2000);
+    } else {
+      btn.textContent = "\u2717";
+      console.error("Kill failed:", data.error || res.status);
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("killing");
+      }, 3000);
+    }
+  } catch (e) {
+    console.error("Kill error:", e);
+    btn.textContent = origText;
+    btn.disabled = false;
+    btn.classList.remove("killing");
   }
 }
 

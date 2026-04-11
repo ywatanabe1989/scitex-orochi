@@ -1344,6 +1344,123 @@ def api_agents_restart(request):
     return JsonResponse({"status": "ok", "name": name, "host": host})
 
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_agents_kill(request):
+    """POST /api/agents/kill/ — kill an agent: screen + bun sidecar + WS.
+
+    Body: {"name": "agent-name"}
+
+    Auth: Django session OR workspace token.
+    """
+    import re
+    import subprocess
+
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    if not (request.user and request.user.is_authenticated):
+        token_str = request.GET.get("token") or body.get("token")
+        if not token_str:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        try:
+            WorkspaceToken.objects.get(token=token_str)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+
+    name = body.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        return JsonResponse({"error": "invalid agent name"}, status=400)
+
+    def _derive_host(agent_name):
+        parts = agent_name.split("-", 1)
+        if len(parts) < 2:
+            return "localhost"
+        machine = parts[1]
+        local_hostname = platform.node()
+        if machine == local_hostname or machine in local_hostname:
+            return "localhost"
+        return machine
+
+    host = _derive_host(name)
+    is_local = host in ("localhost", "127.0.0.1", "::1", "")
+    screen_name = name
+
+    ssh_prefix = None
+    if not is_local:
+        ssh_prefix = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {host}"
+
+    def _shell_quote(s):
+        return "'" + s.replace("'", "'\"'\"'") + "'"
+
+    def _run(cmd):
+        if ssh_prefix:
+            full = f"{ssh_prefix} bash -lc {_shell_quote(cmd)}"
+        else:
+            full = cmd
+        return subprocess.run(
+            full, shell=True, capture_output=True, text=True, timeout=15
+        )
+
+    log.info("Killing agent %s on host %s", name, host)
+    killed = []
+
+    # Step 1: Kill screen session
+    try:
+        _run(f"screen -S {screen_name} -X quit")
+        killed.append("screen")
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout killing screen for %s", name)
+
+    # Step 2: Kill bun sidecar (mcp_channel.ts spawned by the screen)
+    try:
+        kill_bun_cmd = (
+            f"pgrep -f 'mcp_channel.ts' | xargs -r "
+            f"sh -c 'for p; do "
+            f'if [ "$(ps -o ppid= -p "$p" 2>/dev/null | tr -d " ")" = "1" ] || '
+            f"screen -ls 2>/dev/null | grep -q {screen_name}; then "
+            f'kill "$p" 2>/dev/null && echo "killed $p"; fi; done\' _'
+        )
+        # Simpler: kill bun processes whose cmdline includes the workspace name
+        kill_bun_cmd = (
+            f"pkill -f 'mcp_channel.ts.*{screen_name}' 2>/dev/null; "
+            f"pkill -f 'bun.*mcp_channel' 2>/dev/null; "
+            f"echo done"
+        )
+        _run(kill_bun_cmd)
+        killed.append("bun-sidecar")
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout killing bun sidecar for %s", name)
+
+    # Step 3: Mark agent offline in registry
+    from hub.registry import unregister_agent
+
+    unregister_agent(name)
+    killed.append("registry")
+
+    # Step 4: Broadcast presence update
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "dashboard",
+            {"type": "agent.presence", "name": name, "status": "offline"},
+        )
+    except Exception:
+        log.warning("Failed to broadcast kill presence for %s", name)
+
+    return JsonResponse({"status": "ok", "name": name, "killed": killed})
+
+
 @login_required
 @require_GET
 def api_resources(request):

@@ -900,6 +900,35 @@ body {
 .pin-btn.pinned {
   opacity: 0.9;
 }
+/* Kill button */
+.kill-btn {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  opacity: 0.4;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  line-height: 1;
+  border-radius: 3px;
+  color: inherit;
+}
+.kill-btn:hover {
+  opacity: 1;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+.kill-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.kill-btn.killing {
+  opacity: 0.9;
+  color: #dc2626;
+}
 /* Restart button */
 .restart-btn {
   background: none;

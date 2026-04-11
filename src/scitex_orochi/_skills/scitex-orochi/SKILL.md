@@ -24,6 +24,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [deploy-workflow](deploy-workflow.md) — Hub deployment process, agent restart, dev channel handling
 - [dashboard-features](dashboard-features.md) — Chat, Agents tab, element inspector, TODO, settings
 - [known-issues](known-issues.md) — Active operational issues with workarounds (media 400, thread gaps, quota)
+- [agent-self-evolution](agent-self-evolution.md) — How agents learn, share knowledge, and improve fleet operations
 
 ## MCP Tools
 
