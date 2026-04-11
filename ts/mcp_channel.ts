@@ -429,6 +429,7 @@ const wsUrl = buildWsUrl();
 console.error(
   `[orochi] starting push client v0.2.0 (agent=${OROCHI_AGENT}, url=${maskUrl(wsUrl)})`,
 );
-conn.connect();
 const transport = new StdioServerTransport();
 await mcp.connect(transport);
+console.error("[orochi] MCP stdio connected, starting WebSocket...");
+conn.connect();
