@@ -87,6 +87,7 @@ async function renderAgentsTab() {
       "<th>Project</th>" +
       "<th>Workdir</th>" +
       "<th>Task</th>" +
+      "<th>Subagents</th>" +
       "<th>Config</th>" +
       "<th>Registered</th>" +
       "<th>Last Seen</th>" +
@@ -187,6 +188,16 @@ function buildAgentRow(a) {
     '<td class="task-cell">' +
     escapeHtml(a.current_task || "-") +
     "</td>" +
+    '<td class="small-cell">' +
+    (a.subagents && a.subagents.length > 0
+      ? a.subagents.map(function(s) {
+          var sClass = s.status === "done" ? "subagent-done" : "subagent-running";
+          return '<span class="subagent-badge ' + sClass + '" title="' +
+            escapeHtml(s.task || "") + '">' +
+            escapeHtml(s.name || "subagent") + '</span>';
+        }).join(" ")
+      : '<span class="muted-cell">-</span>') +
+    "</td>" +
     "<td>" +
     (a.claude_md
       ? '<button class="claude-md-btn" onclick="event.stopPropagation();toggleClaudeMd(this)" title="View CLAUDE.md">CLAUDE.md</button>'
@@ -204,7 +215,7 @@ function buildAgentRow(a) {
     "</td>" +
     "</tr>" +
     (a.claude_md
-      ? '<tr class="claude-md-detail" style="display:none"><td colspan="14"><pre class="claude-md-content">' +
+      ? '<tr class="claude-md-detail" style="display:none"><td colspan="15"><pre class="claude-md-content">' +
         escapeHtml(a.claude_md) +
         "</pre></td></tr>"
       : "")

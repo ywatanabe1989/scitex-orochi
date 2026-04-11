@@ -118,6 +118,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # Store agent metadata for info display
             self.agent_meta = {
                 "agent_id": payload.get("agent_id", self.agent_name),
+                "project": payload.get("project", ""),
                 "machine": payload.get("machine", ""),
                 "role": payload.get("role", ""),
                 "model": payload.get("model", ""),

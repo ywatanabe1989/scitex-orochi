@@ -444,6 +444,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.subagent-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin: 1px 2px;
+}
+.subagent-running {
+  background: rgba(255, 217, 61, 0.15);
+  color: #ffd93d;
+  border: 1px solid rgba(255, 217, 61, 0.3);
+}
+.subagent-done {
+  background: rgba(78, 205, 196, 0.1);
+  color: #888;
+  border: 1px solid rgba(78, 205, 196, 0.2);
+}
 .ch-badge {
   background: #333;
   padding: 1px 5px;
