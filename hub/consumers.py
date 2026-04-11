@@ -11,6 +11,21 @@ from hub.models import Channel, Message, Workspace, WorkspaceToken
 log = logging.getLogger("orochi.consumers")
 
 
+@database_sync_to_async
+def _resolve_workspace_token(token_str):
+    """Resolve a workspace token string to workspace info dict, or None."""
+    if not token_str:
+        return None
+    try:
+        wt = WorkspaceToken.objects.select_related("workspace").get(token=token_str)
+        return {
+            "workspace_id": wt.workspace_id,
+            "workspace_name": wt.workspace.name,
+        }
+    except WorkspaceToken.DoesNotExist:
+        return None
+
+
 def _sanitize_group(name: str) -> str:
     """Sanitize a channel/group name for Django Channels.
 
@@ -32,7 +47,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         qs = parse_qs(self.scope["query_string"].decode())
         token_str = qs.get("token", [None])[0]
 
-        result = await self._resolve_token(token_str)
+        result = await _resolve_workspace_token(token_str)
         if result is None:
             await self.close(code=4001)
             return
@@ -278,19 +293,6 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     @database_sync_to_async
-    def _resolve_token(self, token_str):
-        if not token_str:
-            return None
-        try:
-            wt = WorkspaceToken.objects.select_related("workspace").get(token=token_str)
-            return {
-                "workspace_id": wt.workspace_id,
-                "workspace_name": wt.workspace.name,
-            }
-        except WorkspaceToken.DoesNotExist:
-            return None
-
-    @database_sync_to_async
     def _save_message(self, channel_name, sender, content_text, metadata=None):
         try:
             workspace = Workspace.objects.get(id=self.workspace_id)
@@ -316,33 +318,53 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         user = self.scope.get("user")
-        if not user or not user.is_authenticated:
-            log.warning(
-                "Dashboard WS rejected: user=%s auth=%s",
-                user,
-                getattr(user, "is_authenticated", None),
+        authenticated_via_session = user and user.is_authenticated
+
+        if authenticated_via_session:
+            # Session auth succeeded -- resolve workspace from subdomain
+            workspace_slug = self._get_subdomain_from_scope()
+            if not workspace_slug:
+                await self.close(code=4004)
+                return
+            workspace = await self._get_workspace(workspace_slug)
+            if not workspace:
+                await self.close(code=4004)
+                return
+
+            # Check membership
+            has_access = await self._check_membership(user.id, workspace["id"])
+            if not has_access:
+                await self.close(code=4003)
+                return
+
+            self.workspace_id = workspace["id"]
+            self.workspace_name = workspace["name"]
+            self.user = user
+        else:
+            # Fallback: token-based auth (same as AgentConsumer)
+            # Handles cases where session cookies are stripped (Cloudflare,
+            # SECURE cookie mismatch, etc.)
+            qs = parse_qs(self.scope["query_string"].decode())
+            token_str = qs.get("token", [None])[0]
+            result = await _resolve_workspace_token(token_str)
+            if result is None:
+                log.warning(
+                    "Dashboard WS rejected: user=%s auth=%s token=%s",
+                    user,
+                    getattr(user, "is_authenticated", None),
+                    "present" if token_str else "missing",
+                )
+                await self.close(code=4001)
+                return
+
+            self.workspace_id = result["workspace_id"]
+            self.workspace_name = result["workspace_name"]
+            # Create a lightweight user stand-in for send attribution
+            self.user = await self._get_token_user(token_str)
+            log.info(
+                "Dashboard WS authenticated via token for workspace %s",
+                self.workspace_name,
             )
-            await self.close(code=4001)
-            return
-
-        workspace_slug = self._get_subdomain_from_scope()
-        if not workspace_slug:
-            await self.close(code=4004)
-            return
-        workspace = await self._get_workspace(workspace_slug)
-        if not workspace:
-            await self.close(code=4004)
-            return
-
-        # Check membership
-        has_access = await self._check_membership(user.id, workspace["id"])
-        if not has_access:
-            await self.close(code=4003)
-            return
-
-        self.workspace_id = workspace["id"]
-        self.workspace_name = workspace["name"]
-        self.user = user
 
         # Join workspace group to receive all messages
         self.workspace_group = f"workspace_{self.workspace_id}"
@@ -350,7 +372,9 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
 
         await self.accept()
         log.info(
-            "Dashboard user %s connected to workspace %s", user.username, workspace_slug
+            "Dashboard user %s connected to workspace %s",
+            getattr(self.user, "username", "token-user"),
+            self.workspace_name,
         )
 
     def _get_subdomain_from_scope(self):
@@ -484,6 +508,41 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "metadata": event.get("metadata", {}),
             }
         )
+
+    @database_sync_to_async
+    def _get_token_user(self, token_str):
+        """Return the first superuser or workspace admin as the acting user
+        for token-authenticated dashboard sessions.  Falls back to a simple
+        namespace object so send attribution still works."""
+        try:
+            wt = WorkspaceToken.objects.select_related("workspace").get(token=token_str)
+            # Try to find an admin member of this workspace
+            from hub.models import WorkspaceMember
+
+            member = (
+                WorkspaceMember.objects.filter(workspace=wt.workspace, role="admin")
+                .select_related("user")
+                .first()
+            )
+            if member:
+                return member.user
+            # Fallback: any superuser
+            from django.contrib.auth import get_user_model
+
+            User = get_user_model()
+            su = User.objects.filter(is_superuser=True).first()
+            if su:
+                return su
+        except Exception:
+            pass
+
+        # Last resort: anonymous-like object with .username
+        class _TokenUser:
+            username = "dashboard"
+            id = None
+            is_authenticated = True
+
+        return _TokenUser()
 
     @database_sync_to_async
     def _get_workspace(self, slug):

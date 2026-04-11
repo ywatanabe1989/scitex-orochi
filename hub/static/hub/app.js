@@ -215,6 +215,7 @@ function orochiHeaders() {
 /* token for API calls (Flask upstream or Django) */
 var token =
   window.__orochiToken ||
+  window.__orochiDashboardToken ||
   new URLSearchParams(location.search).get("token") ||
   "";
 
@@ -347,6 +348,10 @@ function connect() {
   var wsUrl;
   if (window.__orochiWsUrl) {
     wsUrl = window.__orochiWsUrl;
+    /* Append token if not already present (fallback for stripped cookies) */
+    if (token && wsUrl.indexOf("token=") === -1) {
+      wsUrl += (wsUrl.indexOf("?") === -1 ? "?" : "&") + "token=" + token;
+    }
   } else {
     var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
     var wsHost = window.__orochiWsUpstream

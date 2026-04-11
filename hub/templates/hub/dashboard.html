@@ -163,7 +163,9 @@
     <!-- hook-bypass: inline-script — Django template vars must be injected server-side -->
     <script>
       window.__orochiWorkspace = "{{ workspace.name|escapejs }}";
-      window.__orochiWsUrl = "wss://{{ request.get_host }}/ws/dashboard/";
+      window.__orochiDashboardToken = "{{ dashboard_token|escapejs }}";
+      window.__orochiWsUrl = "wss://{{ request.get_host }}/ws/dashboard/"
+        + (window.__orochiDashboardToken ? "?token=" + window.__orochiDashboardToken : "");
       window.__orochiCsrfToken = "{{ csrf_token }}";
       /* Django auth -- user is already authenticated, use username as display name */
       window.__orochiUserName = "{{ request.user.username|escapejs }}";
