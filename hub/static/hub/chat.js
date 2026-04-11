@@ -113,7 +113,13 @@ function appendMessage(msg) {
   if (meta.type === "resource_report" && meta.data) {
     updateResourcePanel(meta.data);
   }
-  if (!content) return;
+  /* Allow attachment-only messages (empty text with images/files) */
+  var attachments =
+    (msg.payload && msg.payload.attachments) ||
+    (msg.metadata && msg.metadata.attachments) ||
+    msg.attachments ||
+    [];
+  if (!content && attachments.length === 0) return;
   var senderColor = getResolvedAgentColor(senderName);
   if (channel) {
     el.setAttribute("data-channel", channel);
@@ -241,15 +247,7 @@ function appendMessage(msg) {
   }
 
   var attachmentsHtml = "";
-  /* Attachments may arrive under three shapes depending on path:
-   *  - payload.attachments (legacy direct-emit path)
-   *  - metadata.attachments (what the WS broadcast now uses)
-   *  - top-level attachments (REST history reload)  */
-  var attachments =
-    (msg.payload && msg.payload.attachments) ||
-    (msg.metadata && msg.metadata.attachments) ||
-    msg.attachments ||
-    [];
+  /* attachments already resolved above (for the empty-content guard) */
   attachments.forEach(function (att) {
     if (att.mime_type && att.mime_type.startsWith("image/")) {
       attachmentsHtml +=
