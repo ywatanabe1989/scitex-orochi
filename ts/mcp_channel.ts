@@ -125,8 +125,16 @@ function decorateIssueRefs(text: string): string {
 // ---------------------------------------------------------------------------
 // WebSocket connection with message routing to MCP
 // ---------------------------------------------------------------------------
+import { appendFileSync } from "fs";
+const _dbg = (s: string) => {
+  try {
+    appendFileSync("/tmp/orochi-mcp-debug.log", s + "\n");
+  } catch {}
+};
+
 const conn = new OrochiConnection(async (raw: string) => {
   try {
+    _dbg(`ws recv: ${raw.slice(0, 200)}`);
     const msg = JSON.parse(raw);
 
     /* Thread replies and reaction updates must reach agents too.
@@ -176,7 +184,15 @@ const conn = new OrochiConnection(async (raw: string) => {
       metadata: msg.metadata || payload.metadata || {},
     });
 
-    if (sender === OROCHI_AGENT || !content) return;
+    if (sender === OROCHI_AGENT || !content) {
+      _dbg(
+        `skipped: sender=${sender} agent=${OROCHI_AGENT} content=${!!content}`,
+      );
+      return;
+    }
+    _dbg(
+      `delivering: sender=${sender} channel=${channel} content=${content.slice(0, 50)}`,
+    );
 
     /* Attachments may arrive under three shapes depending on sender path:
      *  - msg.metadata.attachments (current hub flat broadcast)
@@ -189,7 +205,7 @@ const conn = new OrochiConnection(async (raw: string) => {
       msg.attachments ||
       payload.attachments ||
       [];
-    const hubBase = httpBase || "";
+    const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
     const attachments = (
       rawAttachments as Array<{
         url?: string;
@@ -229,9 +245,10 @@ const conn = new OrochiConnection(async (raw: string) => {
           },
         },
       })
-      .catch(() => {});
-  } catch (_) {
-    // Parse errors are normal for non-JSON frames
+      .then(() => _dbg(`notification sent OK: ${channel} ${sender}`))
+      .catch((e: unknown) => _dbg(`notification FAILED: ${e}`));
+  } catch (e) {
+    _dbg(`parse error: ${e}`);
   }
 });
 
