@@ -273,6 +273,24 @@ const conn = {
           }
         }
 
+        // @mention filtering: only deliver messages addressed to this agent
+        const mentions = content.match(/@(\w[\w-]*)/g);
+        if (mentions && mentions.length > 0) {
+          const mentionedNames = mentions.map((m: string) =>
+            m.slice(1).toLowerCase(),
+          );
+          const myName = OROCHI_AGENT.toLowerCase();
+          if (
+            !mentionedNames.includes(myName) &&
+            !mentionedNames.includes("all")
+          ) {
+            _dbg(
+              `mention-filter: skipping msg for [${mentionedNames.join(",")}], I am ${OROCHI_AGENT}`,
+            );
+            return;
+          }
+        }
+
         _dbg(
           `delivering: sender=${sender} channel=${channel} content=${content.slice(0, 50)} id=${msgId}`,
         );
