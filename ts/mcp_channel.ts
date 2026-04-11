@@ -170,6 +170,14 @@ const conn = {
         }
         try {
           _ws.ping();
+          // App-level heartbeat for hub registry
+          _ws.send(
+            JSON.stringify({
+              type: "heartbeat",
+              sender: OROCHI_AGENT,
+              payload: {},
+            }),
+          );
         } catch {}
       }, 5000);
       _ws!.on("pong", () => {
