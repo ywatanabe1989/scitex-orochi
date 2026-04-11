@@ -1,4 +1,28 @@
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
+
+/* System error banner — shown at top of page for critical errors */
+function showSystemBanner(message, level) {
+  var existing = document.getElementById("system-banner");
+  if (existing) existing.remove();
+  var banner = document.createElement("div");
+  banner.id = "system-banner";
+  banner.textContent = message;
+  banner.style.cssText =
+    "position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 20px;" +
+    "text-align:center;font-weight:bold;font-size:14px;" +
+    (level === "error"
+      ? "background:#d32f2f;color:#fff;"
+      : "background:#f57c00;color:#fff;");
+  var close = document.createElement("span");
+  close.textContent = " ✕";
+  close.style.cssText = "cursor:pointer;margin-left:16px;";
+  close.onclick = function () {
+    banner.remove();
+  };
+  banner.appendChild(close);
+  document.body.prepend(banner);
+}
+
 /* Yamata no Orochi color palette (from mascot icon heads) */
 var OROCHI_COLORS = [
   "#C4A6E8",
@@ -120,7 +144,7 @@ function hostedAgentName(a) {
   var name = a && a.name ? a.name : "";
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
-  var host = (a && a.machine) ? a.machine : "";
+  var host = a && a.machine ? a.machine : "";
   return host ? name + "@" + host : name;
 }
 
@@ -352,13 +376,28 @@ function connect() {
     fetchAgents();
     loadHistory();
   };
-  ws.onclose = function () {
+  ws.onclose = function (event) {
     wsConnected = false;
-    statusEl.textContent = "reconnecting";
-    statusEl.title = "Disconnected — retrying every 3s";
+    statusEl.textContent = "disconnected";
     statusEl.className = "status conn-down";
     startRestPolling();
-    setTimeout(connect, 3000);
+    if (event.code === 4001) {
+      statusEl.title = "Session expired — please log in again";
+      showSystemBanner(
+        "Session expired. Please reload and log in again.",
+        "error",
+      );
+    } else if (event.code === 4003) {
+      statusEl.title = "No access to this workspace";
+      showSystemBanner("Access denied to this workspace.", "error");
+    } else if (event.code === 4004) {
+      statusEl.title = "Workspace not found";
+      showSystemBanner("Workspace not found.", "error");
+    } else {
+      statusEl.title = "Disconnected — retrying every 3s";
+      statusEl.textContent = "reconnecting";
+      setTimeout(connect, 3000);
+    }
   };
   ws.onerror = function () {
     if (!wsConnected) startRestPolling();
@@ -367,7 +406,12 @@ function connect() {
     try {
       handleMessage(JSON.parse(event.data));
     } catch (e) {
-      console.error("[orochi-ws] message handling error:", e, "raw:", event.data.substring(0, 200));
+      console.error(
+        "[orochi-ws] message handling error:",
+        e,
+        "raw:",
+        event.data.substring(0, 200),
+      );
     }
   };
 }
