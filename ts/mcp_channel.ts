@@ -151,6 +151,32 @@ const conn = {
       console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
       _dbg(`ws open`);
 
+      // Ping/pong heartbeat — detect half-open connections
+      let _lastPong = Date.now();
+      const _pingInterval = setInterval(() => {
+        if (!_ws || _ws.readyState !== WebSocket.OPEN) {
+          clearInterval(_pingInterval);
+          return;
+        }
+        const pongAge = Date.now() - _lastPong;
+        if (pongAge > 15000) {
+          console.error(
+            `[orochi] stale connection (no pong for ${Math.round(pongAge / 1000)}s), forcing reconnect`,
+          );
+          _dbg(`stale: pong age ${pongAge}ms, terminating`);
+          clearInterval(_pingInterval);
+          _ws.terminate();
+          return;
+        }
+        try {
+          _ws.ping();
+        } catch {}
+      }, 10000);
+      _ws!.on("pong", () => {
+        _lastPong = Date.now();
+      });
+      _ws!.on("close", () => clearInterval(_pingInterval));
+
       // Register with the hub
       _ws!.send(
         JSON.stringify({
