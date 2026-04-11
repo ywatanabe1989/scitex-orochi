@@ -205,9 +205,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
         elif msg_type == "message":
             payload = content.get("payload", {})
-            ch_name = payload.get("channel", "#general")
-            # Support both "text" and "content" keys from agents
-            text = payload.get("content") or payload.get("text") or ""
+            # Support channel/text inside payload (canonical) or at top level (legacy TS clients)
+            ch_name = payload.get("channel") or content.get("channel") or "#general"
+            text = payload.get("content") or payload.get("text") or content.get("text") or content.get("content") or ""
 
             # Attachments may arrive either nested in metadata (new clients)
             # or at the payload top-level (upload.js). Normalize into one
@@ -220,7 +220,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # distinct from a passive heartbeat.
             from hub.registry import mark_activity
 
-            mark_activity(self.agent_name, action=payload.get("text", "")[:120])
+            mark_activity(self.agent_name, action=text[:120])
 
             # Persist message
             msg = await self._save_message(
@@ -401,9 +401,9 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
 
         if msg_type == "message":
             payload = content.get("payload", {})
-            ch_name = payload.get("channel", "#general")
-            # Support both "text" and "content" keys from frontend
-            text = payload.get("content") or payload.get("text") or ""
+            # Support channel/text inside payload (canonical) or at top level (legacy clients)
+            ch_name = payload.get("channel") or content.get("channel") or "#general"
+            text = payload.get("content") or payload.get("text") or content.get("text") or content.get("content") or ""
 
             # Normalize top-level attachments into metadata (upload.js path).
             metadata = dict(payload.get("metadata", {}) or {})
