@@ -55,6 +55,48 @@ def resolve_orochi_token(orochi: OrochiSpec, agent_env: dict[str, str]) -> str:
     return ""
 
 
+def discover_server(
+    token: str,
+    known_hosts: list[str],
+    port: int = 8559,
+) -> dict[str, str] | None:
+    """Try each known host's /api/discover/ endpoint to resolve server URLs.
+
+    Returns a dict with keys ``ws_url``, ``http_url``, ``workspace`` on
+    success, or ``None`` if all hosts fail.  This is backward-compatible:
+    callers fall back to the existing host list when discovery fails.
+    """
+    import json as _json
+    import ssl
+    import urllib.error
+    import urllib.request
+
+    # Accept self-signed certs for local dev
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    for host in known_hosts:
+        for scheme in ("https", "http"):
+            url = f"{scheme}://{host}:{port}/api/discover/?token={token}"
+            try:
+                req = urllib.request.Request(url, method="GET")
+                with urllib.request.urlopen(req, timeout=5, context=ctx) as resp:
+                    if resp.status == 200:
+                        data = _json.loads(resp.read().decode())
+                        log.info(
+                            "Server discovery via %s:%d -> workspace=%s",
+                            host,
+                            port,
+                            data.get("workspace", "?"),
+                        )
+                        return data
+            except Exception as exc:
+                log.debug("Discovery %s:%d (%s) failed: %s", host, port, scheme, exc)
+    log.warning("Server discovery failed on all hosts, falling back to host list")
+    return None
+
+
 def start_orochi_sidecar(
     *,
     agent_name: str,
@@ -164,6 +206,29 @@ async def _connect_loop(
     channels = orochi.channels or ["#general"]
     attempt = 0
 
+    # Try token-based server discovery (runs once, result cached for loop)
+    discovered = discover_server(token, orochi.hosts, orochi.port)
+    if discovered:
+        # Extract host from the discovered http_url for use in _try_host
+        from urllib.parse import urlparse
+
+        parsed = urlparse(discovered["http_url"])
+        discovered_host = parsed.hostname or ""
+        if discovered_host:
+            # Prepend discovered host so it's tried first, keep originals as fallback
+            hosts = [discovered_host] + [
+                h for h in orochi.hosts if h != discovered_host
+            ]
+            log.info(
+                "Discovery resolved workspace=%s, using hosts=%s",
+                discovered.get("workspace"),
+                hosts,
+            )
+        else:
+            hosts = list(orochi.hosts)
+    else:
+        hosts = list(orochi.hosts)
+
     while True:
         attempt += 1
         max_retries = orochi.reconnect_max_retries
@@ -177,7 +242,7 @@ async def _connect_loop(
         client = None
         results: list[str] = []
         connected_host = None
-        for host in orochi.hosts:
+        for host in hosts:
             client = await _try_host(
                 OrochiClient,
                 host,

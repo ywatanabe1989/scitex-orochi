@@ -193,8 +193,13 @@ body {
   vertical-align: middle;
 }
 @keyframes brand-new-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 /* Connection status indicator — compact state-aware dot in the brand row.
  * Invisible-ish when fine (small muted dot), prominent when broken. */
@@ -244,12 +249,21 @@ body {
   background: #ef4444;
 }
 @keyframes conn-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 /* Back-compat aliases — older code-paths may still flip these classes */
-.sidebar-brand .status.connected { color: #4ecdc4; }
-.sidebar-brand .status.rest-mode { color: #ffd93d; }
+.sidebar-brand .status.connected {
+  color: #4ecdc4;
+}
+.sidebar-brand .status.rest-mode {
+  color: #ffd93d;
+}
 .sidebar-footer {
   margin-top: auto;
   padding-top: 12px;
@@ -608,7 +622,10 @@ body {
 }
 
 /* Pending attachment tray — staged file chips above the textarea */
-.input-bar { flex-direction: column; align-items: stretch; }
+.input-bar {
+  flex-direction: column;
+  align-items: stretch;
+}
 .pending-attachments {
   display: none;
   flex-wrap: wrap;
@@ -655,7 +672,9 @@ body {
   cursor: pointer;
   padding: 0 2px;
 }
-.pending-attachment-remove:hover { color: #ef4444; }
+.pending-attachment-remove:hover {
+  color: #ef4444;
+}
 
 /* Input bar layout — tray above, textarea + right-side action column below */
 .input-bar-row {
@@ -677,7 +696,8 @@ body {
   flex-shrink: 0;
 }
 .input-bar-actions #msg-attach,
-.input-bar-actions #msg-sketch {
+.input-bar-actions #msg-sketch,
+.input-bar-actions #msg-voice {
   background: #1a1a1a;
   color: #ccc;
   border: 1px solid #333;
@@ -688,10 +708,30 @@ body {
   min-width: 38px;
 }
 .input-bar-actions #msg-attach:hover,
-.input-bar-actions #msg-sketch:hover {
+.input-bar-actions #msg-sketch:hover,
+.input-bar-actions #msg-voice:hover {
   border-color: #4ecdc4;
   color: #4ecdc4;
   background: #1a1a1a;
+}
+/* Voice input button — hidden until JS detects Web Speech API support */
+.voice-btn-hidden {
+  display: none;
+}
+.input-bar-actions #msg-voice.voice-active {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  animation: voice-pulse 1.4s ease-in-out infinite;
+}
+@keyframes voice-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 .input-bar-actions #msg-send {
   min-width: 60px;
@@ -712,14 +752,40 @@ body {
   border: 1px solid #333;
   color: #bbb;
 }
-.sidebar-health-healthy { color: #4ecdc4; border-color: #2e665f; }
-.sidebar-health-idle { color: #f59e0b; border-color: #6b4a12; }
-.sidebar-health-stale { color: #ef4444; border-color: #6b1f1f; }
-.sidebar-health-stuck_prompt { color: #ef4444; border-color: #6b1f1f; animation: brand-new-pulse 1.6s ease-in-out infinite; }
-.sidebar-health-dead { color: #ef4444; background: #2a0f0f; }
-.sidebar-health-ghost { color: #c084fc; border-color: #5b21b6; }
-.sidebar-health-degraded { color: #ffd93d; border-color: #6b5a12; }
-.sidebar-health-remediating { color: #4ecdc4; border-color: #2e665f; animation: brand-new-pulse 1.4s ease-in-out infinite; }
+.sidebar-health-healthy {
+  color: #4ecdc4;
+  border-color: #2e665f;
+}
+.sidebar-health-idle {
+  color: #f59e0b;
+  border-color: #6b4a12;
+}
+.sidebar-health-stale {
+  color: #ef4444;
+  border-color: #6b1f1f;
+}
+.sidebar-health-stuck_prompt {
+  color: #ef4444;
+  border-color: #6b1f1f;
+  animation: brand-new-pulse 1.6s ease-in-out infinite;
+}
+.sidebar-health-dead {
+  color: #ef4444;
+  background: #2a0f0f;
+}
+.sidebar-health-ghost {
+  color: #c084fc;
+  border-color: #5b21b6;
+}
+.sidebar-health-degraded {
+  color: #ffd93d;
+  border-color: #6b5a12;
+}
+.sidebar-health-remediating {
+  color: #4ecdc4;
+  border-color: #2e665f;
+  animation: brand-new-pulse 1.4s ease-in-out infinite;
+}
 
 /* Inline reply-to quote block above a message body */
 .msg-reply-ref {
@@ -736,7 +802,302 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.msg-reply-ref:hover { background: rgba(78, 205, 196, 0.12); }
-.msg-reply-ref .msg-reply-icon { color: #4ecdc4; margin-right: 3px; }
-.msg-reply-ref .msg-reply-parent { color: #9ca3af; font-weight: 600; }
-.msg-reply-ref .msg-reply-snippet { color: #666; }
+.msg-reply-ref:hover {
+  background: rgba(78, 205, 196, 0.12);
+}
+.msg-reply-ref .msg-reply-icon {
+  color: #4ecdc4;
+  margin-right: 3px;
+}
+.msg-reply-ref .msg-reply-parent {
+  color: #9ca3af;
+  font-weight: 600;
+}
+.msg-reply-ref .msg-reply-snippet {
+  color: #666;
+}
+
+/* System messages — subtle, centered, distinct from chat */
+.msg.msg-system {
+  background: none;
+  border: none;
+  padding: 2px 16px;
+  margin: 2px 0;
+  text-align: center;
+}
+.msg-system-content {
+  display: inline-block;
+  font-size: 12px;
+  font-style: italic;
+  color: #6b7280;
+  line-height: 1.4;
+}
+.msg-system-icon {
+  color: #4b5563;
+  margin-right: 2px;
+}
+.msg-system-text {
+  color: #6b7280;
+}
+.msg.msg-system .ts {
+  font-size: 11px;
+  color: #4b5563;
+  margin-left: 6px;
+}
+
+/* Server info at sidebar bottom */
+.sidebar-server-info {
+  padding: 8px 12px;
+  border-top: 1px solid #333;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.6;
+}
+.sidebar-server-info .server-label {
+  color: #555;
+  margin-right: 4px;
+}
+.sidebar-server-info .server-value {
+  color: #888;
+}
+
+/* Sign-out link at sidebar bottom */
+.sidebar-signout {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+.signout-link {
+  display: block;
+  color: #888;
+  font-size: 13px;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.signout-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+}
+
+/* Pin/unpin agent button */
+.pin-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.pin-btn:hover {
+  opacity: 1;
+}
+.pin-btn.pinned {
+  opacity: 0.9;
+}
+/* Kill button */
+.kill-btn {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 5px;
+  opacity: 0.4;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  line-height: 1;
+  border-radius: 3px;
+  color: inherit;
+}
+.kill-btn:hover {
+  opacity: 1;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+.kill-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.kill-btn.killing {
+  opacity: 0.9;
+  color: #dc2626;
+}
+/* Restart button */
+.restart-btn {
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 5px;
+  opacity: 0.4;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+  line-height: 1;
+  border-radius: 3px;
+  color: inherit;
+}
+.restart-btn:hover {
+  opacity: 1;
+  color: #ef4444;
+  border-color: #ef4444;
+}
+.restart-btn:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+.restart-btn.restarting {
+  opacity: 0.9;
+  color: #f59e0b;
+  animation: restart-spin 1s linear infinite;
+}
+@keyframes restart-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.agent-card {
+  position: relative;
+}
+.agent-card > .pin-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+/* Pinned but offline agent styling */
+.agent-card.pinned-offline {
+  opacity: 0.55;
+  border-left: 2px dashed #666;
+}
+.agent-row.pinned-offline td {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+/* Agent icon cells */
+.agent-icon-cell {
+  text-align: center;
+  width: 36px;
+}
+.agent-letter-icon {
+  line-height: 1;
+}
+.agent-custom-icon {
+  vertical-align: middle;
+}
+
+/* Agent avatar images — circular crop like Slack profile pictures */
+.agent-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: middle;
+  background: #1a1a1a;
+}
+
+/* Clickable avatar areas — hover overlay hint */
+.avatar-clickable {
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: opacity 0.15s;
+}
+.avatar-clickable:hover {
+  opacity: 0.75;
+}
+.avatar-clickable:hover::after {
+  content: "\270E";
+  position: absolute;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  bottom: -2px;
+  right: -2px;
+}
+
+/* Agent card compact layout */
+.agent-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.agent-card-top .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.agent-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 8px;
+  text-transform: lowercase;
+  letter-spacing: 0.2px;
+}
+.agent-badge-role {
+  color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.12);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+}
+.agent-badge-machine {
+  color: #7ec8e3;
+  background: rgba(126, 200, 227, 0.1);
+  border: 1px solid rgba(126, 200, 227, 0.25);
+}
+
+/* Agent detail popup (click to expand in sidebar) */
+.agent-detail-popup {
+  display: none;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.agent-detail-popup.open {
+  display: block;
+}
+.agent-detail-row {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  color: #aaa;
+  align-items: center;
+}
+.agent-detail-label {
+  color: #666;
+  min-width: 60px;
+  flex-shrink: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}

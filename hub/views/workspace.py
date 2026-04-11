@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
-from hub.models import Channel, Message, Workspace, WorkspaceMember
+from hub.models import Channel, Message, Workspace, WorkspaceMember, WorkspaceToken
 from hub.views._helpers import bare_url, get_workspace, workspace_url
 
 
@@ -45,6 +45,11 @@ def workspace_dashboard(request):
     )
     agents = sorted(name for name in agent_senders if name not in member_usernames)
 
+    # Expose a workspace token for WS auth fallback (session cookies may be
+    # stripped by Cloudflare or fail due to SECURE cookie mismatch).
+    ws_token = WorkspaceToken.objects.filter(workspace=workspace).first()
+    dashboard_token = ws_token.token if ws_token else ""
+
     return render(
         request,
         "hub/dashboard.html",
@@ -54,6 +59,7 @@ def workspace_dashboard(request):
             "members": members,
             "agents": agents,
             "is_admin": is_admin,
+            "dashboard_token": dashboard_token,
         },
     )
 
@@ -70,7 +76,7 @@ def workspace_settings_view(request):
     if not is_admin:
         return render(request, "hub/no_access.html", status=403)
 
-    from hub.models import WorkspaceInvitation, WorkspaceToken
+    from hub.models import WorkspaceInvitation
 
     if request.method == "POST":
         response = _handle_settings_post(request, workspace)
@@ -101,7 +107,7 @@ def _handle_settings_post(request, workspace):
     Returns an HttpResponse for redirects, or None to fall through to
     the normal render path.
     """
-    from hub.models import WorkspaceInvitation, WorkspaceToken
+    from hub.models import WorkspaceInvitation
 
     action = request.POST.get("action")
     if action == "create_token":

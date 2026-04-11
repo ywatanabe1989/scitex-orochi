@@ -2,10 +2,8 @@
  * activate. The previous v5 served cache-first, which shadowed every JS/CSS
  * fix we shipped today. Do not drop below the highest previously-deployed
  * value or old clients will keep serving stale assets. */
-const CACHE_NAME = "orochi-v200";
-const SHELL_ASSETS = [
-  "/",
-];
+const CACHE_NAME = "orochi-v201";
+const SHELL_ASSETS = ["/"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

@@ -11,16 +11,20 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
+import WebSocket from "ws";
 import {
   OROCHI_AGENT,
+  OROCHI_CHANNELS,
+  OROCHI_MODEL,
   OROCHI_TOKEN,
   buildHttpBase,
   buildWsUrl,
   maskUrl,
 } from "./src/config.js";
-import { OrochiConnection } from "./src/connection.js";
 import { addMessage } from "./src/message_buffer.js";
 import {
+  handleContext,
+  handleDownloadMedia,
   handleHealth,
   handleReply,
   handleHistory,
@@ -28,7 +32,11 @@ import {
   handleStatus,
   handleSubagents,
   handleTask,
+  handleUploadMedia,
 } from "./src/tools.js";
+import { hostname, homedir } from "os";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 // Unified truthy check for env var guards
 const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
@@ -85,309 +93,343 @@ Orochi is a real-time communication hub for AI agents across different machines.
   },
 );
 
-// ---------------------------------------------------------------------------
-// GitHub issue title cache so `#NNN` in inbound messages can be expanded to
-// `#NNN (title)` before reaching the agent — same as the dashboard render.
-// ---------------------------------------------------------------------------
-const _issueTitleCache: Map<string, string> = new Map();
-let _issueCacheLastFetch = 0;
-const _ISSUE_CACHE_TTL_MS = 5 * 60 * 1000;
+import {
+  refreshIssueTitleCache,
+  decorateIssueRefs,
+} from "./src/issue_cache.js";
+import { TOOL_DEFS } from "./src/tool_defs.js";
 
-async function refreshIssueTitleCache(): Promise<void> {
-  const now = Date.now();
-  if (now - _issueCacheLastFetch < _ISSUE_CACHE_TTL_MS) return;
+// ---------------------------------------------------------------------------
+// Direct WebSocket connection (replaces OrochiConnection class).
+// The class wrapper was suspected of interfering with idle-state
+// MCP notifications -- this minimal approach mirrors the working
+// /tmp/test-channel-ws.ts pattern.
+// ---------------------------------------------------------------------------
+import { appendFileSync } from "fs";
+const _dbg = (s: string) => {
   try {
-    const url = `${buildHttpBase()}/api/github/issues${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}&state=all` : "?state=all"}`;
-    const resp = await fetch(url);
-    if (!resp.ok) return;
-    const issues = (await resp.json()) as Array<{
-      number?: number;
-      title?: string;
-    }>;
-    for (const i of issues) {
-      if (i && i.number && i.title)
-        _issueTitleCache.set(String(i.number), i.title);
+    appendFileSync("/tmp/orochi-mcp-debug.log", s + "\n");
+  } catch {}
+};
+
+// Dedup: track recently delivered message IDs to prevent duplicate notifications
+const _deliveredIds = new Set<string | number>();
+
+// Lightweight adapter that satisfies the OrochiConnection interface
+// expected by tools.ts (isConnected, state, send, reconnectAttempts, etc.)
+let _ws: WebSocket | null = null;
+const conn = {
+  state: "disconnected" as string,
+  lastConnectedAt: null as Date | null,
+  totalReconnects: 0,
+  reconnectAttempts: 0,
+  get isConnected(): boolean {
+    return _ws !== null && _ws.readyState === WebSocket.OPEN;
+  },
+  get lastPongAgeMs(): number | null {
+    return null; // no ping/pong in minimal mode
+  },
+  get socket(): WebSocket | null {
+    return _ws;
+  },
+  send(data: string): boolean {
+    if (!this.isConnected) return false;
+    try {
+      _ws!.send(data);
+      return true;
+    } catch (_) {
+      return false;
     }
-    _issueCacheLastFetch = now;
-  } catch (_) {
-    /* ignore — next message will retry */
-  }
-}
+  },
+  connect(): void {
+    const wsUrl = buildWsUrl();
+    _dbg(`ws connecting to ${maskUrl(wsUrl)}`);
+    conn.state = "connecting";
 
-function decorateIssueRefs(text: string): string {
-  return text.replace(/(^|[^\w\/])#(\d+)\b/g, (match, lead, num) => {
-    const title = _issueTitleCache.get(num);
-    if (!title) return match;
-    return `${lead}#${num} (${title})`;
-  });
-}
+    _ws = new WebSocket(wsUrl);
 
-// ---------------------------------------------------------------------------
-// WebSocket connection with message routing to MCP
-// ---------------------------------------------------------------------------
-const conn = new OrochiConnection(async (raw: string) => {
-  try {
-    const msg = JSON.parse(raw);
+    _ws.on("open", () => {
+      conn.state = "connected";
+      conn.lastConnectedAt = new Date();
+      conn.reconnectAttempts = 0;
+      console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
+      _dbg(`ws open`);
 
-    /* Thread replies and reaction updates must reach agents too.
-     * Server broadcasts them as distinct event types; we rewrite them
-     * into a message-shaped notification so the existing content path
-     * below can format + push them without duplication. */
-    if (msg.type === "thread_reply") {
-      const parentId = msg.parent_id ?? msg.parent ?? "?";
-      msg.type = "message";
-      msg.text = `↳ reply to msg#${parentId}: ${msg.text || msg.content || ""}`;
-    } else if (msg.type === "reaction_update") {
-      const targetId = msg.message_id ?? msg.target ?? "?";
-      const emoji = msg.emoji || "?";
-      const action = msg.action || (msg.added ? "added" : "removed");
-      msg.type = "message";
-      msg.text = `${action === "removed" ? "➖" : "➕"} ${emoji} on msg#${targetId}`;
-      msg.sender = msg.actor || msg.sender || "unknown";
-    } else if (msg.type !== "message") {
-      return;
-    }
+      // Ping/pong heartbeat — detect half-open connections
+      let _lastPong = Date.now();
+      const _pingInterval = setInterval(() => {
+        if (!_ws || _ws.readyState !== WebSocket.OPEN) {
+          clearInterval(_pingInterval);
+          return;
+        }
+        const pongAge = Date.now() - _lastPong;
+        if (pongAge > 10000) {
+          console.error(
+            `[orochi] stale connection (no pong for ${Math.round(pongAge / 1000)}s), forcing reconnect`,
+          );
+          _dbg(`stale: pong age ${pongAge}ms, terminating`);
+          clearInterval(_pingInterval);
+          _ws.terminate();
+          return;
+        }
+        try {
+          _ws.ping();
+          // App-level heartbeat for hub registry
+          _ws.send(
+            JSON.stringify({
+              type: "heartbeat",
+              sender: OROCHI_AGENT,
+              payload: {},
+            }),
+          );
+        } catch {}
+      }, 5000);
+      _ws!.on("pong", () => {
+        _lastPong = Date.now();
+      });
+      _ws!.on("close", () => clearInterval(_pingInterval));
 
-    // Hub sends flat messages: {type, sender, channel, text, ts, metadata}
-    // Also support legacy nested payload format for backward compatibility
-    const payload = msg.payload || {};
-    const content =
-      msg.text ||
-      msg.content ||
-      payload.content ||
-      payload.text ||
-      payload.message ||
-      "";
-    const sender = msg.sender || payload.sender || "unknown";
-    const channel = msg.channel || payload.channel || "";
+      // Read CLAUDE.md from agent definition dir if available
+      let claudeMd = "";
+      try {
+        const agentDefPath = join(
+          homedir(),
+          ".scitex",
+          "orochi",
+          "agents",
+          OROCHI_AGENT,
+          "CLAUDE.md",
+        );
+        if (existsSync(agentDefPath)) {
+          claudeMd = readFileSync(agentDefPath, "utf-8");
+        }
+      } catch {}
 
-    // Cache every parsed message in the in-memory buffer so the
-    // `history` MCP tool can read recent messages without hitting the
-    // Django REST endpoint (which requires session auth we don't have).
-    // We cache BEFORE the self-echo / empty-content guards so that
-    // even the agent's own posts are visible to itself on a follow-up
-    // history call.
-    addMessage({
-      id: msg.id ?? payload.id ?? null,
-      channel: channel,
-      sender: sender,
-      content: content,
-      ts: msg.ts || new Date().toISOString(),
-      metadata: msg.metadata || payload.metadata || {},
+      // Register with the hub
+      _ws!.send(
+        JSON.stringify({
+          type: "register",
+          sender: OROCHI_AGENT,
+          payload: {
+            channels: OROCHI_CHANNELS,
+            machine: hostname(),
+            role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
+            model: OROCHI_MODEL,
+            agent_id: `${OROCHI_AGENT}@${hostname()}`,
+            icon: process.env.SCITEX_OROCHI_ICON || "",
+            icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
+            icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
+            color: process.env.SCITEX_OROCHI_COLOR || "",
+            project: process.env.SCITEX_OROCHI_PROJECT || "",
+            workdir: process.cwd(),
+            claude_md: claudeMd,
+          },
+        }),
+      );
     });
 
-    if (sender === OROCHI_AGENT || !content) return;
+    _ws.on("message", async (data: Buffer) => {
+      const raw = data.toString();
+      try {
+        _dbg(`ws recv: ${raw.slice(0, 200)}`);
+        const msg = JSON.parse(raw);
 
-    /* Attachments may arrive under three shapes depending on sender path:
-     *  - msg.metadata.attachments (current hub flat broadcast)
-     *  - msg.attachments (some clients)
-     *  - payload.attachments (legacy nested format)
-     * Normalize into one list and rewrite relative URLs into absolute
-     * ones so the receiving agent can fetch them directly with curl/Read. */
-    const rawAttachments =
-      (msg.metadata && msg.metadata.attachments) ||
-      msg.attachments ||
-      payload.attachments ||
-      [];
-    const hubBase = httpBase || "";
-    const attachments = (
-      rawAttachments as Array<{
-        url?: string;
-        filename?: string;
-        mime_type?: string;
-      }>
-    ).map((a) => {
-      const u = a.url || "";
-      const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
-      return { ...a, url: abs };
+        // Thread replies and reaction updates -> rewrite to message type
+        if (msg.type === "thread_reply") {
+          const parentId = msg.parent_id ?? msg.parent ?? "?";
+          msg.type = "message";
+          msg.text = `\u21b3 reply to msg#${parentId}: ${msg.text || msg.content || ""}`;
+        } else if (msg.type === "reaction_update") {
+          const targetId = msg.message_id ?? msg.target ?? "?";
+          const emoji = msg.emoji || "?";
+          const action = msg.action || (msg.added ? "added" : "removed");
+          msg.type = "message";
+          msg.text = `${action === "removed" ? "\u2796" : "\u2795"} ${emoji} on msg#${targetId}`;
+          msg.sender = msg.actor || msg.sender || "unknown";
+        } else if (msg.type !== "message") {
+          return;
+        }
+
+        const payload = msg.payload || {};
+        const content =
+          msg.text ||
+          msg.content ||
+          payload.content ||
+          payload.text ||
+          payload.message ||
+          "";
+        const sender = msg.sender || payload.sender || "unknown";
+        const channel = msg.channel || payload.channel || "";
+
+        addMessage({
+          id: msg.id ?? payload.id ?? null,
+          channel: channel,
+          sender: sender,
+          content: content,
+          ts: msg.ts || new Date().toISOString(),
+          metadata: msg.metadata || payload.metadata || {},
+        });
+
+        if (sender === OROCHI_AGENT || !content) {
+          _dbg(
+            `skipped: sender=${sender} agent=${OROCHI_AGENT} content=${!!content}`,
+          );
+          return;
+        }
+
+        // Dedup
+        const msgId = msg.id ?? payload.id;
+        if (msgId != null) {
+          if (_deliveredIds.has(msgId)) {
+            _dbg(`dedup: skipping duplicate msg ${msgId}`);
+            return;
+          }
+          _deliveredIds.add(msgId);
+          if (_deliveredIds.size > 100) {
+            const iter = _deliveredIds.values();
+            for (let i = 0; i < 50; i++) iter.next();
+            const keep = new Set<string | number>();
+            for (const v of iter) keep.add(v);
+            _deliveredIds.clear();
+            for (const v of keep) _deliveredIds.add(v);
+          }
+        }
+
+        // @mention filtering: only deliver messages addressed to this agent
+        const mentions = content.match(/@(\w[\w-]*)/g);
+        if (mentions && mentions.length > 0) {
+          const mentionedNames = mentions.map((m: string) =>
+            m.slice(1).toLowerCase(),
+          );
+          const myName = OROCHI_AGENT.toLowerCase();
+          if (
+            !mentionedNames.includes(myName) &&
+            !mentionedNames.includes("all")
+          ) {
+            _dbg(
+              `mention-filter: skipping msg for [${mentionedNames.join(",")}], I am ${OROCHI_AGENT}`,
+            );
+            return;
+          }
+        }
+
+        _dbg(
+          `delivering: sender=${sender} channel=${channel} content=${content.slice(0, 50)} id=${msgId}`,
+        );
+
+        // Attachment normalization — wrapped in try/catch so malformed
+        // attachment data never crashes the sidecar or drops the message.
+        let attachmentInfo = "";
+        try {
+          const rawAttachments =
+            (msg.metadata && msg.metadata.attachments) ||
+            msg.attachments ||
+            payload.attachments ||
+            [];
+          const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          const attachments: Array<{ url: string; filename: string }> = [];
+          for (const a of rawAttachments as unknown[]) {
+            try {
+              if (a == null || typeof a !== "object") continue;
+              const att = a as Record<string, unknown>;
+              const u = typeof att.url === "string" ? att.url : "";
+              if (!u) continue; // skip attachments with no url
+              const abs = u.startsWith("http")
+                ? u
+                : hubBase.replace(/\/$/, "") + u;
+              const filename =
+                typeof att.filename === "string" ? att.filename : "file";
+              attachments.push({ url: abs, filename });
+            } catch (attErr) {
+              _dbg(`skipping malformed attachment: ${attErr}`);
+            }
+          }
+          if (attachments.length > 0) {
+            // Cap attachment list to avoid oversized notifications
+            const shown = attachments.slice(0, 10);
+            const extra =
+              attachments.length > 10
+                ? ` (+${attachments.length - 10} more)`
+                : "";
+            attachmentInfo = `\n[Attachments: ${shown
+              .map((a) => `${a.filename} -> ${a.url}`)
+              .join(", ")}${extra}]`;
+          }
+        } catch (attNormErr) {
+          _dbg(`attachment normalization failed: ${attNormErr}`);
+        }
+
+        refreshIssueTitleCache();
+        const decoratedContent = decorateIssueRefs(content);
+
+        const notifContent = `${decoratedContent}${attachmentInfo}`;
+        // Meta values must all be strings — Claude Code ignores
+        // notifications where meta contains non-string values (numbers, null).
+        const notifMeta: Record<string, string> = {
+          chat_id: channel || "#general",
+          user: sender,
+          ts: msg.ts || new Date().toISOString(),
+        };
+        const msgIdVal = msg.id ?? payload.id;
+        if (msgIdVal != null) notifMeta.msg_id = String(msgIdVal);
+
+        // Retry with exponential backoff (pattern from official Discord plugin).
+        // Claude Code can silently drop notifications; retrying mitigates this.
+        const notifPayload = {
+          method: "notifications/claude/channel" as const,
+          params: { content: notifContent, meta: notifMeta },
+        };
+        const delays = [0, 500, 1000];
+        let delivered = false;
+        for (let attempt = 0; attempt < delays.length; attempt++) {
+          if (attempt > 0)
+            await new Promise((r) => setTimeout(r, delays[attempt]));
+          try {
+            await mcp.notification(notifPayload);
+            _dbg(
+              `notification sent OK (attempt ${attempt + 1}): ${channel} ${sender}`,
+            );
+            delivered = true;
+            break;
+          } catch (retryErr) {
+            _dbg(`notification attempt ${attempt + 1} failed: ${retryErr}`);
+          }
+        }
+        if (!delivered) {
+          console.error(
+            `[orochi] all notification attempts failed for ${channel} ${sender}`,
+          );
+        }
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : String(e);
+        _dbg(`error: ${errMsg}`);
+        console.error(`[orochi] message handler error: ${errMsg}`);
+      }
     });
-    const attachmentInfo =
-      attachments.length > 0
-        ? `\n[Attachments: ${attachments
-            .map((a) => `${a.filename || "file"} -> ${a.url}`)
-            .join(", ")}]`
-        : "";
 
-    /* Inline `#NNN (title)` expansion so agents see the same context the
-     * dashboard shows. Fire-and-forget refresh keeps the cache warm. */
-    refreshIssueTitleCache();
-    const decoratedContent = decorateIssueRefs(content);
+    _ws.on("close", (code: number, reason: Buffer) => {
+      const reasonStr = reason?.toString() || "unknown";
+      console.error(
+        `[orochi] ws disconnected (code=${code}, reason=${reasonStr})`,
+      );
+      _dbg(`ws close code=${code}`);
+      conn.state = "disconnected";
+      _ws = null;
+      // Simple reconnect after 3s
+      conn.reconnectAttempts++;
+      conn.totalReconnects++;
+      setTimeout(() => conn.connect(), 3000);
+    });
 
-    // Fire-and-forget — do NOT await. Matches the Telegram plugin pattern.
-    // Awaiting blocks the WS handler on the stdio pipe write; if claude
-    // is busy the pipe backs up and the handler deadlocks.
-    mcp
-      .notification({
-        method: "notifications/claude/channel",
-        params: {
-          content: `${decoratedContent}${attachmentInfo}`,
-          meta: {
-            chat_id: channel,
-            user: sender,
-            ts: msg.ts || new Date().toISOString(),
-            msg_id: msg.id ?? payload.id ?? null,
-          },
-        },
-      })
-      .catch(() => {});
-  } catch (_) {
-    // Parse errors are normal for non-JSON frames
-  }
-});
+    _ws.on("error", (err) => {
+      console.error("[orochi] ws error:", err.message);
+      _dbg(`ws error: ${err.message}`);
+      // close event will fire after error, triggering reconnect
+    });
+  },
+};
 
-// ---------------------------------------------------------------------------
-// Tool definitions
-// ---------------------------------------------------------------------------
-const TOOL_DEFS = [
-  {
-    name: "reply",
-    description:
-      "Send a message to an Orochi channel. Pass chat_id from the inbound <channel> tag.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        chat_id: {
-          type: "string",
-          description: "The channel to send to (e.g. #general).",
-        },
-        text: { type: "string", description: "The message text to send." },
-        reply_to: {
-          type: "string",
-          description: "Optional: message ID to reply to.",
-        },
-        files: {
-          type: "array",
-          items: { type: "string" },
-          description: "Optional: absolute file paths to attach.",
-        },
-      },
-      required: ["chat_id", "text"],
-    },
-  },
-  {
-    name: "history",
-    description: "Get recent message history from an Orochi channel.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        channel: {
-          type: "string",
-          description: "Channel name (default: #general).",
-        },
-        limit: {
-          type: "number",
-          description: "Max messages to return (default: 10).",
-        },
-      },
-    },
-  },
-  {
-    name: "health",
-    description:
-      "Record a health diagnosis for an agent (caduceus primary caller). Use for real-time Agents tab status. Status values: healthy, idle, stale, stuck_prompt, dead, ghost, remediating, unknown.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        agent: {
-          type: "string",
-          description: "Target agent name (exact match)",
-        },
-        status: {
-          type: "string",
-          description:
-            "healthy|idle|stale|stuck_prompt|dead|ghost|remediating|unknown",
-        },
-        reason: {
-          type: "string",
-          description: "Short explanation (<=200 chars)",
-        },
-        source: {
-          type: "string",
-          description: "Reporter name (defaults to self)",
-        },
-        updates: {
-          type: "array",
-          description: "Bulk: list of {agent,status,reason?,source?}",
-          items: {
-            type: "object",
-            properties: {
-              agent: { type: "string" },
-              status: { type: "string" },
-              reason: { type: "string" },
-              source: { type: "string" },
-            },
-            required: ["agent", "status"],
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "task",
-    description:
-      "Update this agent's current intellectual task so users can see what it is thinking about in real time in the Activity tab. Call this whenever picking up a new piece of work — even for work that has no shell signature (reading, designing, reviewing).",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        task: {
-          type: "string",
-          description:
-            "Short description of the current work (<= 200 chars). Include issue refs like #142 when relevant.",
-        },
-      },
-      required: ["task"],
-    },
-  },
-  {
-    name: "subagents",
-    description:
-      "Report this agent's current subagent tree to Orochi so the Activity tab renders them nested under this agent. Pass the full list on every call (full-replace semantics).",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        subagents: {
-          type: "array",
-          description:
-            "Current subagents. Each item: {name, task, status?}. status is one of running|done|failed (default running).",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              task: { type: "string" },
-              status: { type: "string" },
-            },
-            required: ["name", "task"],
-          },
-        },
-      },
-      required: ["subagents"],
-    },
-  },
-  {
-    name: "react",
-    description:
-      "React to an Orochi message with an emoji (toggle semantics). Pass the integer message_id and the emoji character.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        message_id: {
-          type: ["number", "string"],
-          description: "The integer ID of the message to react to.",
-        },
-        emoji: {
-          type: "string",
-          description: "The emoji character (e.g. 👍, ❌, 👀).",
-        },
-      },
-      required: ["message_id", "emoji"],
-    },
-  },
-  {
-    name: "status",
-    description: "Get current Orochi connection status and diagnostics.",
-    inputSchema: { type: "object" as const, properties: {} },
-  },
-];
+// Tool definitions imported from src/tool_defs.ts
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOL_DEFS,
@@ -395,13 +437,16 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
 
 mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   const { name, arguments: args } = req.params;
-  if (name === "reply") return handleReply(conn, args as any);
+  if (name === "reply") return handleReply(conn as any, args as any);
   if (name === "history") return handleHistory(args as any);
   if (name === "react") return handleReact(args as any);
-  if (name === "subagents") return handleSubagents(conn, args as any);
-  if (name === "task") return handleTask(conn, args as any);
+  if (name === "subagents") return handleSubagents(conn as any, args as any);
+  if (name === "task") return handleTask(conn as any, args as any);
   if (name === "health") return handleHealth(args as any);
-  if (name === "status") return handleStatus(conn);
+  if (name === "context") return handleContext(args as any);
+  if (name === "status") return handleStatus(conn as any);
+  if (name === "download_media") return handleDownloadMedia(args as any);
+  if (name === "upload_media") return handleUploadMedia(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 
@@ -412,6 +457,7 @@ const wsUrl = buildWsUrl();
 console.error(
   `[orochi] starting push client v0.2.0 (agent=${OROCHI_AGENT}, url=${maskUrl(wsUrl)})`,
 );
-conn.connect();
 const transport = new StdioServerTransport();
 await mcp.connect(transport);
+console.error("[orochi] MCP stdio connected, starting WebSocket...");
+conn.connect();

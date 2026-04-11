@@ -2,6 +2,9 @@
 
 import json
 import logging
+import os
+import platform
+import time
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -12,6 +15,9 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
+_server_start_time = time.time()
+
+
 from hub.models import (
     Channel,
     Message,
@@ -19,6 +25,7 @@ from hub.models import (
     MessageThread,
     Workspace,
     WorkspaceMember,
+    WorkspaceToken,
 )
 from hub.views._helpers import get_workspace
 
@@ -66,10 +73,16 @@ def api_messages(request):
     workspace = get_workspace(request)
 
     if request.method == "GET":
+        from django.db.models import Count, Exists, OuterRef
+
         limit = min(int(request.GET.get("limit", "100")), 500)
+        # Exclude messages that are thread replies (they appear in thread panel only)
+        is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
         msgs = (
             Message.objects.filter(workspace=workspace)
+            .exclude(is_thread_reply)
             .select_related("channel")
+            .annotate(thread_count=Count("thread_replies"))
             .order_by("-ts")[:limit]
         )
         data = [
@@ -81,6 +94,7 @@ def api_messages(request):
                 "content": m.content,
                 "ts": m.ts.isoformat(),
                 "metadata": m.metadata,
+                "thread_count": m.thread_count,
             }
             for m in msgs
         ]
@@ -139,9 +153,16 @@ def api_history(request, channel_name):
     limit = min(int(request.GET.get("limit", "50")), 500)
     since = request.GET.get("since")
 
-    qs = Message.objects.filter(
-        workspace=workspace, channel__name=channel_name
-    ).order_by("-ts")
+    from django.db.models import Count, Exists, OuterRef
+
+    # Exclude thread replies from main channel feed
+    is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
+    qs = (
+        Message.objects.filter(workspace=workspace, channel__name=channel_name)
+        .exclude(is_thread_reply)
+        .annotate(thread_count=Count("thread_replies"))
+        .order_by("-ts")
+    )
 
     if since:
         qs = qs.filter(ts__gt=since)
@@ -155,6 +176,7 @@ def api_history(request, channel_name):
             "content": m.content,
             "ts": m.ts.isoformat(),
             "metadata": m.metadata,
+            "thread_count": m.thread_count,
         }
         for m in msgs
     ]
@@ -198,11 +220,22 @@ def api_config(request):
     """GET /api/config — dashboard configuration."""
     workspace = get_workspace(request)
     version = getattr(settings, "OROCHI_VERSION", "0.0.0")
+    # Server metadata
+    uptime_secs = int(time.time() - _server_start_time)
+    hostname = os.environ.get("OROCHI_HOSTNAME", platform.node())
+    external_ip = os.environ.get("OROCHI_EXTERNAL_IP", "")
+
     data = {
         "workspace": workspace.name,
         "version": version,
         "deployed_at": getattr(settings, "OROCHI_DEPLOYED_AT", ""),
         "build_id": getattr(settings, "OROCHI_BUILD_ID", ""),
+        "server": {
+            "hostname": hostname,
+            "external_ip": external_ip,
+            "uptime": uptime_secs,
+            "version": version,
+        },
     }
     # Expose dashboard token if set on workspace
     token = request.GET.get("token", "")
@@ -234,6 +267,7 @@ def api_event_tool_use(request):
     token = request.GET.get("token") or request.POST.get("token")
     if token:
         from hub.models import WorkspaceToken
+
         try:
             WorkspaceToken.objects.get(token=token)
         except WorkspaceToken.DoesNotExist:
@@ -250,6 +284,7 @@ def api_event_tool_use(request):
         return JsonResponse({"error": "agent required"}, status=400)
 
     from hub.registry import mark_activity, set_current_task
+
     summary = (body.get("summary") or body.get("tool") or "").strip()[:120]
     mark_activity(agent, action=summary)
     if body.get("task"):
@@ -320,7 +355,11 @@ def api_connectivity(request):
     backed by real ping results from the bastion's connectivity probe.
     """
     nodes = [
-        {"id": "ywata-note-win", "label": "ywata-note-win", "role": "deployer/coordinator"},
+        {
+            "id": "ywata-note-win",
+            "label": "ywata-note-win",
+            "role": "deployer/coordinator",
+        },
         {"id": "mba", "label": "mba", "role": "orochi-host"},
         {"id": "nas", "label": "nas", "role": "data/scitex-cloud"},
         {"id": "spartan", "label": "spartan", "role": "hpc"},
@@ -406,7 +445,9 @@ def api_threads(request):
     text = body.get("text") or ""
     attachments = body.get("attachments") or []
     if not parent_id or (not text and not attachments):
-        return JsonResponse({"error": "parent_id and text/attachments required"}, status=400)
+        return JsonResponse(
+            {"error": "parent_id and text/attachments required"}, status=400
+        )
     try:
         parent = Message.objects.get(id=parent_id, workspace=workspace)
     except Message.DoesNotExist:
@@ -443,16 +484,36 @@ def api_threads(request):
     return JsonResponse({"status": "ok", "reply_id": reply.id}, status=201)
 
 
-@login_required
+@csrf_exempt
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_reactions(request):
     """Reactions API.
+
+    Supports both session auth (browser) and workspace token auth (agents).
+    Token can be passed as ?token= query param.
 
     GET  /api/reactions/?message_ids=1,2,3 — list reactions grouped per message.
     POST /api/reactions/ {message_id, emoji} — toggle reaction by current user.
     DELETE /api/reactions/ {message_id, emoji} — remove reaction by current user.
     """
-    workspace = get_workspace(request)
+    # --- auth: token or session ---
+    token_str = request.GET.get("token") or request.POST.get("token")
+    wks_token = None
+    if token_str:
+        try:
+            wks_token = WorkspaceToken.objects.select_related("workspace").get(
+                token=token_str
+            )
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "invalid token"}, status=401)
+    elif not (request.user and request.user.is_authenticated):
+        return JsonResponse({"error": "auth required"}, status=401)
+
+    # --- resolve workspace ---
+    if wks_token:
+        workspace = wks_token.workspace
+    else:
+        workspace = get_workspace(request)
 
     if request.method == "GET":
         ids_raw = request.GET.get("message_ids", "")
@@ -462,12 +523,9 @@ def api_reactions(request):
             ids = []
         if not ids:
             return JsonResponse({}, safe=False)
-        qs = (
-            MessageReaction.objects.filter(
-                message__workspace=workspace, message_id__in=ids
-            )
-            .values("message_id", "emoji", "reactor", "reactor_type")
-        )
+        qs = MessageReaction.objects.filter(
+            message__workspace=workspace, message_id__in=ids
+        ).values("message_id", "emoji", "reactor", "reactor_type")
         grouped: dict[int, dict[str, list]] = {}
         for r in qs:
             m = grouped.setdefault(r["message_id"], {})
@@ -489,11 +547,20 @@ def api_reactions(request):
     except Message.DoesNotExist:
         return JsonResponse({"error": "message not found"}, status=404)
 
-    reactor = request.user.username
+    # Determine reactor identity
+    if request.user and request.user.is_authenticated:
+        reactor = request.user.username
+        reactor_type = "human"
+    else:
+        reactor = body.get("reactor") or body.get("agent") or "agent"
+        reactor_type = "agent"
+
     if request.method == "POST":
         obj, created = MessageReaction.objects.get_or_create(
-            message=msg, emoji=emoji, reactor=reactor,
-            defaults={"reactor_type": "human"},
+            message=msg,
+            emoji=emoji,
+            reactor=reactor,
+            defaults={"reactor_type": reactor_type},
         )
         action = "added" if created else "existed"
     else:  # DELETE
@@ -543,10 +610,7 @@ def api_releases(request):
 
     repo = os.environ.get("GITHUB_REPO", "ywatanabe1989/scitex-orochi")
     limit = min(int(request.GET.get("limit", "100")), 100)
-    url = (
-        f"https://api.github.com/repos/{repo}/commits"
-        f"?per_page={limit}"
-    )
+    url = f"https://api.github.com/repos/{repo}/commits?per_page={limit}"
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "Orochi-Dashboard",
@@ -558,7 +622,10 @@ def api_releases(request):
             raw = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         return JsonResponse(
-            {"error": f"GitHub API returned {e.code}: {e.reason}", "code": "github_error"},
+            {
+                "error": f"GitHub API returned {e.code}: {e.reason}",
+                "code": "github_error",
+            },
             status=502,
         )
     except Exception as e:
@@ -654,7 +721,7 @@ def api_members(request):
 
 @require_GET
 def api_agents(request):
-    """GET /api/agents — list agents from in-memory registry + DB fallback.
+    """GET /api/agents — list agents from in-memory registry only.
 
     Auth: Django session OR workspace token (?token=wks_...) so lightweight
     stdlib agents (e.g. caduceus) can poll without a browser login.
@@ -671,56 +738,57 @@ def api_agents(request):
             return JsonResponse({"error": "Invalid token"}, status=401)
     workspace = get_workspace(request)
 
-    # Primary: in-memory registry (has live metadata from WS connections)
+    # In-memory registry is the single source of truth for connected agents.
+    # No DB fallback — querying Message senders created ghost entries for
+    # agents that had disconnected but sent messages recently.
     from hub.registry import get_agents
 
     registry_agents = get_agents(workspace_id=workspace.id)
 
-    # Fallback: also include agents from recent messages not in registry
-    cutoff = timezone.now() - timezone.timedelta(hours=2)
-    db_agent_names = set(
-        Message.objects.filter(
-            workspace=workspace,
-            sender_type="agent",
-            ts__gte=cutoff,
-        ).values_list("sender", flat=True)
-    )
-    registry_names = {a["name"] for a in registry_agents}
+    # Merge pinned agents: any pinned agent not in the live registry
+    # is added as an "offline" placeholder so the dashboard always shows
+    # the expected team roster.
+    from hub.models import PinnedAgent
 
-    # Add DB-only agents (not currently in registry)
-    for name in db_agent_names - registry_names:
-        last_msg = (
-            Message.objects.filter(
-                workspace=workspace, sender=name, sender_type="agent"
+    live_names = {a["name"] for a in registry_agents}
+    pinned = PinnedAgent.objects.filter(workspace=workspace)
+    for p in pinned:
+        if p.name not in live_names:
+            registry_agents.append(
+                {
+                    "name": p.name,
+                    "agent_id": p.name,
+                    "machine": p.machine,
+                    "role": p.role,
+                    "model": "",
+                    "workdir": "",
+                    "icon": "",
+                    "icon_emoji": p.icon_emoji,
+                    "icon_text": "",
+                    "color": getattr(p, "color", ""),
+                    "channels": [],
+                    "status": "offline",
+                    "liveness": "offline",
+                    "idle_seconds": None,
+                    "registered_at": None,
+                    "last_heartbeat": None,
+                    "last_action": None,
+                    "metrics": {},
+                    "current_task": "",
+                    "last_message_preview": "",
+                    "subagents": [],
+                    "health": {},
+                    "claude_md": "",
+                    "pinned": True,
+                }
             )
-            .order_by("-ts")
-            .first()
-        )
-        last_ts = last_msg.ts.isoformat() if last_msg else None
-        channels = list(
-            set(
-                Message.objects.filter(
-                    workspace=workspace, sender=name, sender_type="agent"
-                )
-                .values_list("channel__name", flat=True)
-                .distinct()
-            )
-        )
-        registry_agents.append(
-            {
-                "name": name,
-                "agent_id": name,
-                "status": "offline",
-                "role": "agent",
-                "machine": "",
-                "model": "",
-                "channels": channels,
-                "current_task": "",
-                "registered_at": last_ts,
-                "last_heartbeat": last_ts,
-                "metrics": {},
-            }
-        )
+
+    # Tag live agents that are also pinned
+    pinned_names = {p.name for p in pinned}
+    for a in registry_agents:
+        if "pinned" not in a:
+            a["pinned"] = a["name"] in pinned_names
+
     return JsonResponse(registry_agents, safe=False)
 
 
@@ -750,9 +818,8 @@ def api_agent_profiles(request):
                 body = json.loads(request.body)
             except (json.JSONDecodeError, ValueError):
                 body = {}
-        token = (
-            request.GET.get("token")
-            or (body.get("token") if isinstance(body, dict) else None)
+        token = request.GET.get("token") or (
+            body.get("token") if isinstance(body, dict) else None
         )
         if not token:
             return JsonResponse({"error": "Authentication required"}, status=401)
@@ -774,6 +841,7 @@ def api_agent_profiles(request):
                 "icon_emoji": p.icon_emoji,
                 "icon_image": p.icon_image,
                 "icon_text": p.icon_text,
+                "color": p.color,
                 "updated_at": p.updated_at.isoformat(),
             }
             for p in profiles
@@ -794,6 +862,7 @@ def api_agent_profiles(request):
             "icon_emoji": (body.get("icon_emoji") or "")[:16],
             "icon_image": (body.get("icon_image") or "")[:500],
             "icon_text": (body.get("icon_text") or "")[:16],
+            "color": (body.get("color") or "")[:16],
         },
     )
     # Push into the in-memory registry so the live card updates too
@@ -807,6 +876,8 @@ def api_agent_profiles(request):
                 _agents[name]["icon"] = profile.icon_image
             if profile.icon_text:
                 _agents[name]["icon_text"] = profile.icon_text
+            if profile.color:
+                _agents[name]["color"] = profile.color
     return JsonResponse(
         {
             "status": "ok",
@@ -814,6 +885,7 @@ def api_agent_profiles(request):
             "icon_emoji": profile.icon_emoji,
             "icon_image": profile.icon_image,
             "icon_text": profile.icon_text,
+            "color": profile.color,
         }
     )
 
@@ -1041,6 +1113,344 @@ def api_agents_purge(request):
 
     count = purge_all_offline()
     return JsonResponse({"status": "ok", "purged_count": count})
+
+
+@csrf_exempt
+@require_http_methods(["POST", "DELETE"])
+def api_agents_pin(request):
+    """POST /api/agents/pin/ — pin an agent so it always appears in dashboard.
+    DELETE /api/agents/pin/ — unpin an agent.
+
+    POST body: {"name": "agent-name", "role": "...", "machine": "...", "icon_emoji": "..."}
+    DELETE body: {"name": "agent-name"}
+
+    Auth: Django session OR workspace token.
+    """
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    if not (request.user and request.user.is_authenticated):
+        token = request.GET.get("token") or body.get("token")
+        if not token:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        from hub.models import WorkspaceToken
+
+        try:
+            WorkspaceToken.objects.get(token=token)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+
+    workspace = get_workspace(request)
+    name = body.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+
+    from hub.models import PinnedAgent
+
+    if request.method == "POST":
+        obj, created = PinnedAgent.objects.update_or_create(
+            workspace=workspace,
+            name=name,
+            defaults={
+                "role": body.get("role", ""),
+                "machine": body.get("machine", ""),
+                "icon_emoji": body.get("icon_emoji", ""),
+            },
+        )
+        return JsonResponse(
+            {
+                "status": "pinned",
+                "name": obj.name,
+                "created": created,
+            }
+        )
+
+    # DELETE
+    deleted, _ = PinnedAgent.objects.filter(workspace=workspace, name=name).delete()
+    if deleted:
+        return JsonResponse({"status": "unpinned", "name": name})
+    return JsonResponse({"status": "not_found", "name": name}, status=404)
+
+
+@login_required
+@require_GET
+def api_agents_pinned(request):
+    """GET /api/agents/pinned/ — list all pinned agents for the workspace."""
+    workspace = get_workspace(request)
+    from hub.models import PinnedAgent
+
+    pins = PinnedAgent.objects.filter(workspace=workspace)
+    data = [
+        {
+            "name": p.name,
+            "role": p.role,
+            "machine": p.machine,
+            "icon_emoji": p.icon_emoji,
+            "added_at": p.added_at.isoformat() if p.added_at else None,
+        }
+        for p in pins
+    ]
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_agents_restart(request):
+    """POST /api/agents/restart/ — restart an agent's screen session.
+
+    Body: {"name": "head-mba"}
+
+    Auth: Django session OR workspace token.
+
+    The hub SSHs to the agent's host, quits the screen session, and
+    relaunches it with claude + dev-channel confirmation.
+    """
+    import re
+    import subprocess
+
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    if not (request.user and request.user.is_authenticated):
+        token_str = request.GET.get("token") or body.get("token")
+        if not token_str:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        try:
+            WorkspaceToken.objects.get(token=token_str)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+
+    name = body.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+
+    # Validate agent name (alphanumeric, hyphens, underscores only)
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        return JsonResponse({"error": "invalid agent name"}, status=400)
+
+    # Derive host from agent name (same logic as agent_cmd.py)
+    def _derive_host(agent_name):
+        parts = agent_name.split("-", 1)
+        if len(parts) < 2:
+            return "localhost"
+        machine = parts[1]
+        local_hostname = platform.node()
+        if machine == local_hostname or machine in local_hostname:
+            return "localhost"
+        return machine
+
+    host = _derive_host(name)
+    is_local = host in ("localhost", "127.0.0.1", "::1", "")
+    screen_name = name
+    workspace = f"~/.scitex/orochi/workspaces/{name}"
+
+    ssh_prefix = None
+    if not is_local:
+        ssh_prefix = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {host}"
+
+    def _run(cmd):
+        if ssh_prefix:
+            full = f"{ssh_prefix} bash -lc {_shell_quote(cmd)}"
+        else:
+            full = cmd
+        return subprocess.run(
+            full, shell=True, capture_output=True, text=True, timeout=15
+        )
+
+    def _shell_quote(s):
+        return "'" + s.replace("'", "'\"'\"'") + "'"
+
+    log.info("Restarting agent %s on host %s", name, host)
+
+    # Step 1: Quit existing screen
+    quit_cmd = f"screen -S {screen_name} -X quit"
+    if ssh_prefix:
+        quit_cmd = f"{ssh_prefix} {quit_cmd}"
+    try:
+        subprocess.run(quit_cmd, shell=True, capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout quitting screen for %s", name)
+
+    time.sleep(2)
+
+    # Step 2: Launch new screen session
+    claude_cmd = (
+        f"cd {workspace} && "
+        f"exec claude "
+        f"--dangerously-skip-permissions "
+        f"--dangerously-load-development-channels server:scitex-orochi"
+    )
+    screen_cmd = f"screen -dmS {screen_name} bash -lc '{claude_cmd}'"
+    try:
+        if ssh_prefix:
+            result = subprocess.run(
+                f"{ssh_prefix} {_shell_quote(screen_cmd)}",
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+        else:
+            result = subprocess.run(
+                screen_cmd, shell=True, capture_output=True, text=True, timeout=15
+            )
+        if result.returncode != 0:
+            return JsonResponse(
+                {"error": f"screen start failed: {result.stderr.strip()}"},
+                status=500,
+            )
+    except subprocess.TimeoutExpired:
+        return JsonResponse({"error": "timeout starting screen"}, status=500)
+
+    # Step 3: Schedule Enter key press after delay (run in background)
+    confirm_cmd = f"screen -S {screen_name} -X stuff $'\\r'"
+    delay = 8
+
+    def _confirm_dev_channel():
+        time.sleep(delay)
+        try:
+            if ssh_prefix:
+                subprocess.run(
+                    f"{ssh_prefix} {_shell_quote(confirm_cmd)}",
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+            else:
+                subprocess.run(
+                    confirm_cmd,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+        except Exception:
+            log.warning("Failed to confirm dev-channel dialog for %s", name)
+
+    import threading
+
+    threading.Thread(target=_confirm_dev_channel, daemon=True).start()
+
+    log.info("Agent %s restart initiated (Enter in %ds)", name, delay)
+    return JsonResponse({"status": "ok", "name": name, "host": host})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_agents_kill(request):
+    """POST /api/agents/kill/ — kill an agent: screen + bun sidecar + WS.
+
+    Body: {"name": "agent-name"}
+
+    Auth: Django session OR workspace token.
+    """
+    import re
+    import subprocess
+
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    if not (request.user and request.user.is_authenticated):
+        token_str = request.GET.get("token") or body.get("token")
+        if not token_str:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        try:
+            WorkspaceToken.objects.get(token=token_str)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+
+    name = body.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+
+    if not re.match(r"^[a-zA-Z0-9_-]+$", name):
+        return JsonResponse({"error": "invalid agent name"}, status=400)
+
+    def _derive_host(agent_name):
+        parts = agent_name.split("-", 1)
+        if len(parts) < 2:
+            return "localhost"
+        machine = parts[1]
+        local_hostname = platform.node()
+        if machine == local_hostname or machine in local_hostname:
+            return "localhost"
+        return machine
+
+    host = _derive_host(name)
+    is_local = host in ("localhost", "127.0.0.1", "::1", "")
+    screen_name = name
+
+    ssh_prefix = None
+    if not is_local:
+        ssh_prefix = f"ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {host}"
+
+    def _shell_quote(s):
+        return "'" + s.replace("'", "'\"'\"'") + "'"
+
+    def _run(cmd):
+        if ssh_prefix:
+            full = f"{ssh_prefix} bash -lc {_shell_quote(cmd)}"
+        else:
+            full = cmd
+        return subprocess.run(
+            full, shell=True, capture_output=True, text=True, timeout=15
+        )
+
+    log.info("Killing agent %s on host %s", name, host)
+    killed = []
+
+    # Step 1: Kill screen session
+    try:
+        _run(f"screen -S {screen_name} -X quit")
+        killed.append("screen")
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout killing screen for %s", name)
+
+    # Step 2: Kill bun sidecar (mcp_channel.ts spawned by the screen)
+    try:
+        # Only kill bun processes associated with this specific agent
+        kill_bun_cmd = (
+            f"pkill -f 'mcp_channel.ts.*{screen_name}' 2>/dev/null; "
+            f"echo done"
+        )
+        _run(kill_bun_cmd)
+        killed.append("bun-sidecar")
+    except subprocess.TimeoutExpired:
+        log.warning("Timeout killing bun sidecar for %s", name)
+
+    # Step 3: Mark agent offline in registry
+    from hub.registry import unregister_agent
+
+    unregister_agent(name)
+    killed.append("registry")
+
+    # Step 4: Broadcast presence update
+    try:
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            "dashboard",
+            {"type": "agent.presence", "name": name, "status": "offline"},
+        )
+    except Exception:
+        log.warning("Failed to broadcast kill presence for %s", name)
+
+    return JsonResponse({"status": "ok", "name": name, "killed": killed})
 
 
 @login_required

@@ -1,16 +1,31 @@
 /**
- * MCP tool handlers for Orochi push client: reply, history, status.
+ * MCP tool handlers for Orochi push client: reply, history, status, context.
  */
-import { readFileSync } from "fs";
-import { basename } from "path";
+import {
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+} from "fs";
+import { basename, dirname } from "path";
+import { execSync } from "child_process";
 import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
   buildHttpBase,
+  buildFetchHeaders,
   buildWsUrl,
   maskUrl,
 } from "./config.js";
-import type { OrochiConnection } from "./connection.js";
+// Lightweight interface — avoids importing connection.ts which pulls in
+// metrics.ts + execSync, interfering with MCP stdio notifications.
+interface ConnLike {
+  send(data: string): void;
+  isConnected: boolean;
+  state: string;
+  lastConnectedAt: number | null;
+}
 
 const httpBase = buildHttpBase();
 
@@ -19,7 +34,7 @@ function tokenParam(prefix: "?" | "&"): string {
 }
 
 export async function handleReply(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { chat_id: string; text: string; reply_to?: string; files?: string[] },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -44,7 +59,7 @@ export async function handleReply(
           `${httpBase}/api/upload-base64${tokenParam("?")}`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: buildFetchHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify({ data: b64, filename }),
           },
         );
@@ -153,7 +168,7 @@ export async function handleHealth(args: {
     }
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
@@ -179,7 +194,7 @@ export async function handleHealth(args: {
 }
 
 export async function handleTask(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { task: string },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -197,7 +212,7 @@ export async function handleTask(
 }
 
 export async function handleSubagents(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { subagents: Array<{ name?: string; task?: string; status?: string }> },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -231,8 +246,12 @@ export async function handleReact(args: {
     const url = `${httpBase}/api/reactions/${tokenParam("?")}`;
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message_id: Number(messageId), emoji }),
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        message_id: Number(messageId),
+        emoji,
+        reactor: OROCHI_AGENT,
+      }),
     });
     if (!resp.ok) {
       const body = await resp.text();
@@ -255,7 +274,72 @@ export async function handleReact(args: {
   }
 }
 
-export function handleStatus(conn: OrochiConnection): {
+export async function handleContext(args: {
+  screen_name?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const screenName = args.screen_name || OROCHI_AGENT;
+  const tmpFile = `/tmp/screen-context-${screenName}.txt`;
+  try {
+    // Capture screen hardcopy
+    execSync(`screen -S ${screenName} -X hardcopy ${tmpFile}`, {
+      timeout: 5000,
+    });
+    const raw = readFileSync(tmpFile, "utf-8");
+    try {
+      unlinkSync(tmpFile);
+    } catch {}
+
+    // Parse context percentage from statusline.
+    // claude-hud formats like "42% (2h 15m / 5h)" or just "42%"
+    const lines = raw.split("\n").filter((l) => l.trim());
+    // Search from bottom up — statusline is typically the last non-empty line
+    let contextPercent: number | null = null;
+    let rawStatusline = "";
+    for (let i = lines.length - 1; i >= Math.max(0, lines.length - 5); i--) {
+      const line = lines[i];
+      const match = line.match(/(\d+)%/);
+      if (match) {
+        contextPercent = parseInt(match[1], 10);
+        rawStatusline = line.trim();
+        break;
+      }
+    }
+
+    if (contextPercent === null) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Could not parse context percentage from screen "${screenName}". Last 3 lines:\n${lines.slice(-3).join("\n")}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            context_percent: contextPercent,
+            raw_statusline: rawStatusline,
+          }),
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error reading screen "${screenName}": ${(err as Error).message}`,
+        },
+      ],
+    };
+  }
+}
+
+export function handleStatus(conn: ConnLike): {
   content: Array<{ type: string; text: string }>;
 } {
   const uptime = conn.lastConnectedAt
@@ -278,4 +362,133 @@ export function handleStatus(conn: OrochiConnection): {
       },
     ],
   };
+}
+
+const MEDIA_DIR = "/tmp/orochi-media";
+
+export async function handleDownloadMedia(args: {
+  url: string;
+  output_path?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  try {
+    // Resolve URL: if relative, prepend hub base
+    let fullUrl = args.url;
+    if (!fullUrl.startsWith("http")) {
+      fullUrl =
+        httpBase.replace(/\/$/, "") +
+        (fullUrl.startsWith("/") ? "" : "/") +
+        fullUrl;
+    }
+
+    // Append token if needed
+    const sep = fullUrl.includes("?") ? "&" : "?";
+    const fetchUrl = OROCHI_TOKEN
+      ? `${fullUrl}${sep}token=${OROCHI_TOKEN}`
+      : fullUrl;
+
+    const resp = await fetch(fetchUrl, {
+      headers: buildFetchHeaders(),
+    });
+    if (!resp.ok) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} downloading ${fullUrl}`,
+          },
+        ],
+      };
+    }
+
+    // Determine output path
+    const urlPath = new URL(fullUrl).pathname;
+    const filename = basename(urlPath) || "download";
+    const outputPath = args.output_path || `${MEDIA_DIR}/${filename}`;
+
+    // Ensure directory exists
+    const dir = dirname(outputPath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    writeFileSync(outputPath, buffer);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Downloaded to ${outputPath} (${buffer.length} bytes)`,
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+export async function handleUploadMedia(args: {
+  file_path: string;
+  channel?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  try {
+    if (!existsSync(args.file_path)) {
+      return {
+        content: [
+          { type: "text", text: `Error: file not found: ${args.file_path}` },
+        ],
+      };
+    }
+
+    const fileData = readFileSync(args.file_path);
+    const b64 = fileData.toString("base64");
+    const filename = basename(args.file_path);
+
+    const resp = await fetch(
+      `${httpBase}/api/upload-base64${tokenParam("?")}`,
+      {
+        method: "POST",
+        headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          data: b64,
+          filename,
+          channel: args.channel || "#general",
+        }),
+      },
+    );
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
+          },
+        ],
+      };
+    }
+
+    const result = (await resp.json()) as { url?: string; filename?: string };
+    const mediaUrl = result.url
+      ? result.url.startsWith("http")
+        ? result.url
+        : `${httpBase}${result.url}`
+      : "unknown";
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Uploaded ${filename} -> ${mediaUrl}`,
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
 }

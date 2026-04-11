@@ -27,10 +27,11 @@ function applyIssueTitleHints(scope) {
       /* Inline the title so readers can see it without hovering. Kept
        * compact and clipped via CSS so long titles don't wrap the msg. */
       a.innerHTML =
-        '#' + num +
+        "#" +
+        num +
         ' <span class="issue-link-title">(' +
         escapeHtml(title) +
-        ')</span>';
+        ")</span>";
       a.dataset.hinted = "1";
     }
   });
@@ -38,12 +39,15 @@ function applyIssueTitleHints(scope) {
 
 async function refreshIssueTitleCache() {
   try {
-    var res = await fetch(apiUrl("/api/github/issues"), { credentials: "same-origin" });
+    var res = await fetch(apiUrl("/api/github/issues"), {
+      credentials: "same-origin",
+    });
     if (!res.ok) return;
     var issues = await res.json();
     if (Array.isArray(issues)) {
       issues.forEach(function (i) {
-        if (i && i.number && i.title) issueTitleCache[String(i.number)] = i.title;
+        if (i && i.number && i.title)
+          issueTitleCache[String(i.number)] = i.title;
       });
       applyIssueTitleHints();
     }
@@ -54,6 +58,30 @@ async function refreshIssueTitleCache() {
 /* Refresh on load and every 2 minutes */
 refreshIssueTitleCache();
 setInterval(refreshIssueTitleCache, 120000);
+
+function appendSystemMessage(msg) {
+  var el = document.createElement("div");
+  el.className = "msg msg-system";
+  var ts = "";
+  if (msg.ts) {
+    var d = new Date(msg.ts);
+    if (!isNaN(d.getTime())) {
+      ts = timeAgo(msg.ts);
+    }
+  }
+  var text = msg.text || "";
+  el.innerHTML =
+    '<div class="msg-system-content">' +
+    '<span class="msg-system-icon">\u2022</span> ' +
+    '<span class="msg-system-text">' +
+    escapeHtml(text) +
+    "</span>" +
+    (ts ? ' <span class="ts">' + ts + "</span>" : "") +
+    "</div>";
+  var container = document.getElementById("messages");
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
 
 function appendMessage(msg) {
   var el = document.createElement("div");
@@ -85,8 +113,14 @@ function appendMessage(msg) {
   if (meta.type === "resource_report" && meta.data) {
     updateResourcePanel(meta.data);
   }
-  if (!content) return;
-  var senderColor = getAgentColor(senderName);
+  /* Allow attachment-only messages (empty text with images/files) */
+  var attachments =
+    (msg.payload && msg.payload.attachments) ||
+    (msg.metadata && msg.metadata.attachments) ||
+    msg.attachments ||
+    [];
+  if (!content && attachments.length === 0) return;
+  var senderColor = getResolvedAgentColor(senderName);
   if (channel) {
     el.setAttribute("data-channel", channel);
   }
@@ -101,23 +135,28 @@ function appendMessage(msg) {
    * using word boundaries so substrings inside other words don't match. */
   function _highlightBareNames(s) {
     var names = [];
-    if (typeof cachedAgentNames !== "undefined" && Array.isArray(cachedAgentNames)) {
+    if (
+      typeof cachedAgentNames !== "undefined" &&
+      Array.isArray(cachedAgentNames)
+    ) {
       names = names.concat(cachedAgentNames);
     }
-    if (typeof cachedMemberNames !== "undefined" && Array.isArray(cachedMemberNames)) {
+    if (
+      typeof cachedMemberNames !== "undefined" &&
+      Array.isArray(cachedMemberNames)
+    ) {
       names = names.concat(cachedMemberNames);
     }
     /* Dedup + longest-first so "head@mba" wins over "head" */
     names = Array.from(new Set(names)).filter(Boolean);
-    names.sort(function (a, b) { return b.length - a.length; });
+    names.sort(function (a, b) {
+      return b.length - a.length;
+    });
     names.forEach(function (n) {
       if (!n || n.length < 2) return;
       var escName = n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       /* Skip if already inside a mention-highlight span */
-      var re = new RegExp(
-        "(^|[^\\w@>])" + escName + "(?![\\w@.-])",
-        "g",
-      );
+      var re = new RegExp("(^|[^\\w@>])" + escName + "(?![\\w@.-])", "g");
       s = s.replace(re, function (match, lead, offset, full) {
         /* Don't double-wrap if the match is already within an existing
          * <span class="mention-highlight">…</span>. Cheap scan backwards. */
@@ -131,10 +170,12 @@ function appendMessage(msg) {
     return s;
   }
 
-  var highlightedContent = escaped
-    .replace(/(^|[\s\r\n])@([\w@.\-]+)/g, function (_match, prefix, name) {
+  var highlightedContent = escaped.replace(
+    /(^|[\s\r\n])@([\w@.\-]+)/g,
+    function (_match, prefix, name) {
       return prefix + '<span class="mention-highlight">@' + name + "</span>";
-    });
+    },
+  );
   highlightedContent = _highlightBareNames(highlightedContent)
     .replace(/\n/g, "<br>")
     .replace(
@@ -178,7 +219,9 @@ function appendMessage(msg) {
   var metaObj = (msg.payload && msg.payload.metadata) || msg.metadata || {};
   var replyToId = metaObj && metaObj.reply_to;
   if (replyToId) {
-    var parentEl = document.querySelector('.msg[data-msg-id="' + String(replyToId) + '"]');
+    var parentEl = document.querySelector(
+      '.msg[data-msg-id="' + String(replyToId) + '"]',
+    );
     var parentSender = "";
     var parentSnippet = "";
     if (parentEl) {
@@ -188,12 +231,15 @@ function appendMessage(msg) {
       parentSnippet = bodyEl ? bodyEl.textContent.slice(0, 120) : "";
     }
     replyRefHtml =
-      '<div class="msg-reply-ref" data-parent-id="' + String(replyToId) +
+      '<div class="msg-reply-ref" data-parent-id="' +
+      String(replyToId) +
       '" title="Click to jump to parent">' +
       '<span class="msg-reply-icon">\u21b3</span> ' +
       (parentSender
-        ? '<span class="msg-reply-parent">' + escapeHtml(parentSender) + "</span>: "
-        : "<span class=\"msg-reply-parent\">msg#" + replyToId + "</span>: ") +
+        ? '<span class="msg-reply-parent">' +
+          escapeHtml(parentSender) +
+          "</span>: "
+        : '<span class="msg-reply-parent">msg#' + replyToId + "</span>: ") +
       '<span class="msg-reply-snippet">' +
       escapeHtml(parentSnippet || "(scroll up to load)") +
       "</span>" +
@@ -201,15 +247,7 @@ function appendMessage(msg) {
   }
 
   var attachmentsHtml = "";
-  /* Attachments may arrive under three shapes depending on path:
-   *  - payload.attachments (legacy direct-emit path)
-   *  - metadata.attachments (what the WS broadcast now uses)
-   *  - top-level attachments (REST history reload)  */
-  var attachments =
-    (msg.payload && msg.payload.attachments) ||
-    (msg.metadata && msg.metadata.attachments) ||
-    msg.attachments ||
-    [];
+  /* attachments already resolved above (for the empty-content guard) */
   attachments.forEach(function (att) {
     if (att.mime_type && att.mime_type.startsWith("image/")) {
       attachmentsHtml +=
@@ -271,9 +309,34 @@ function appendMessage(msg) {
     highlightedContent +
     "</div>" +
     attachmentsHtml +
-    (msg.id ? '<div class="msg-reactions" data-msg-id="' + msg.id + '"></div>' : "") +
-    (msg.id ? '<button class="msg-react-btn" type="button" title="React" onclick="openReactionPicker(this,' + msg.id + ')">+</button>' : "") +
-    (msg.id ? '<button class="msg-thread-btn" type="button" title="Reply in thread" onclick="openThreadForMessage(' + msg.id + ')">\uD83D\uDCAC</button>' : "");
+    (msg.id
+      ? '<div class="msg-reactions" data-msg-id="' + msg.id + '"></div>'
+      : "") +
+    (msg.id
+      ? '<button class="msg-react-btn" type="button" title="React" onclick="openReactionPicker(this,' +
+        msg.id +
+        ')">+</button>'
+      : "") +
+    (msg.id
+      ? '<button class="msg-thread-btn" type="button" title="Reply in thread" onclick="openThreadForMessage(' +
+        msg.id +
+        ')">\uD83D\uDCAC</button>'
+      : "") +
+    (function () {
+      var tc = msg.thread_count || 0;
+      if (!msg.id || tc === 0) return "";
+      return (
+        '<div class="msg-thread-count" data-msg-id="' +
+        msg.id +
+        '" onclick="openThreadForMessage(' +
+        msg.id +
+        ')">' +
+        "\uD83D\uDCAC " +
+        tc +
+        (tc === 1 ? " reply" : " replies") +
+        "</div>"
+      );
+    })();
   if (currentChannel && channel !== currentChannel) {
     el.style.display = "none";
   }
@@ -319,6 +382,7 @@ async function loadHistory() {
         sender: row.sender,
         sender_type: row.sender_type,
         ts: row.ts,
+        thread_count: row.thread_count || 0,
         metadata: row.metadata || {},
         payload: {
           channel: row.channel,
@@ -332,7 +396,11 @@ async function loadHistory() {
     historyLoaded = true;
     /* Fetch reactions for all loaded messages */
     if (typeof fetchReactionsForMessages === "function") {
-      var ids = messages.map(function (r) { return r.id; }).filter(Boolean);
+      var ids = messages
+        .map(function (r) {
+          return r.id;
+        })
+        .filter(Boolean);
       fetchReactionsForMessages(ids);
     }
   } catch (e) {
@@ -370,6 +438,7 @@ async function loadChannelHistory(channel) {
         sender: row.sender,
         sender_type: row.sender_type,
         ts: row.ts,
+        thread_count: row.thread_count || 0,
         metadata: row.metadata || {},
         payload: {
           channel: channel,
@@ -381,7 +450,11 @@ async function loadChannelHistory(channel) {
     });
     container.scrollTop = container.scrollHeight;
     if (typeof fetchReactionsForMessages === "function") {
-      var ids = messages.map(function (r) { return r.id; }).filter(Boolean);
+      var ids = messages
+        .map(function (r) {
+          return r.id;
+        })
+        .filter(Boolean);
       fetchReactionsForMessages(ids);
     }
   } catch (e) {

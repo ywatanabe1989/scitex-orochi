@@ -79,6 +79,45 @@ body {
   margin-top: 0.2rem;
 }
 
+/* Password visibility toggle */
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 2.5rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0.2rem;
+  line-height: 1;
+}
+
+.password-toggle:hover {
+  color: #ccc;
+}
+
+.password-toggle .eye-closed {
+  display: none;
+}
+
+.password-toggle.active .eye-open {
+  display: none;
+}
+
+.password-toggle.active .eye-closed {
+  display: block;
+}
+
 /* Buttons */
 .btn {
   width: 100%;

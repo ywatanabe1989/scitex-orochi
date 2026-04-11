@@ -1,4 +1,28 @@
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
+
+/* System error banner — shown at top of page for critical errors */
+function showSystemBanner(message, level) {
+  var existing = document.getElementById("system-banner");
+  if (existing) existing.remove();
+  var banner = document.createElement("div");
+  banner.id = "system-banner";
+  banner.textContent = message;
+  banner.style.cssText =
+    "position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 20px;" +
+    "text-align:center;font-weight:bold;font-size:14px;" +
+    (level === "error"
+      ? "background:#d32f2f;color:#fff;"
+      : "background:#f57c00;color:#fff;");
+  var close = document.createElement("span");
+  close.textContent = " ✕";
+  close.style.cssText = "cursor:pointer;margin-left:16px;";
+  close.onclick = function () {
+    banner.remove();
+  };
+  banner.appendChild(close);
+  document.body.prepend(banner);
+}
+
 /* Yamata no Orochi color palette (from mascot icon heads) */
 var OROCHI_COLORS = [
   "#C4A6E8",
@@ -120,7 +144,7 @@ function hostedAgentName(a) {
   var name = a && a.name ? a.name : "";
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
-  var host = (a && a.machine) ? a.machine : "";
+  var host = a && a.machine ? a.machine : "";
   return host ? name + "@" + host : name;
 }
 
@@ -191,6 +215,7 @@ function orochiHeaders() {
 /* token for API calls (Flask upstream or Django) */
 var token =
   window.__orochiToken ||
+  window.__orochiDashboardToken ||
   new URLSearchParams(location.search).get("token") ||
   "";
 
@@ -293,6 +318,10 @@ function handleMessage(msg) {
       unreadCount++;
       document.title = "(" + unreadCount + ") " + baseTitle;
     }
+  } else if (msg.type === "system_message") {
+    if (typeof appendSystemMessage === "function") {
+      appendSystemMessage(msg);
+    }
   } else if (
     msg.type === "presence_change" ||
     msg.type === "status_update" ||
@@ -323,6 +352,10 @@ function connect() {
   var wsUrl;
   if (window.__orochiWsUrl) {
     wsUrl = window.__orochiWsUrl;
+    /* Append token if not already present (fallback for stripped cookies) */
+    if (token && wsUrl.indexOf("token=") === -1) {
+      wsUrl += (wsUrl.indexOf("?") === -1 ? "?" : "&") + "token=" + token;
+    }
   } else {
     var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
     var wsHost = window.__orochiWsUpstream
@@ -352,13 +385,28 @@ function connect() {
     fetchAgents();
     loadHistory();
   };
-  ws.onclose = function () {
+  ws.onclose = function (event) {
     wsConnected = false;
-    statusEl.textContent = "reconnecting";
-    statusEl.title = "Disconnected — retrying every 3s";
+    statusEl.textContent = "disconnected";
     statusEl.className = "status conn-down";
     startRestPolling();
-    setTimeout(connect, 3000);
+    if (event.code === 4001) {
+      statusEl.title = "Session expired — please log in again";
+      showSystemBanner(
+        "Session expired. Please reload and log in again.",
+        "error",
+      );
+    } else if (event.code === 4003) {
+      statusEl.title = "No access to this workspace";
+      showSystemBanner("Access denied to this workspace.", "error");
+    } else if (event.code === 4004) {
+      statusEl.title = "Workspace not found";
+      showSystemBanner("Workspace not found.", "error");
+    } else {
+      statusEl.title = "Disconnected — retrying every 3s";
+      statusEl.textContent = "reconnecting";
+      setTimeout(connect, 3000);
+    }
   };
   ws.onerror = function () {
     if (!wsConnected) startRestPolling();
@@ -367,7 +415,12 @@ function connect() {
     try {
       handleMessage(JSON.parse(event.data));
     } catch (e) {
-      console.error("[orochi-ws] message handling error:", e, "raw:", event.data.substring(0, 200));
+      console.error(
+        "[orochi-ws] message handling error:",
+        e,
+        "raw:",
+        event.data.substring(0, 200),
+      );
     }
   };
 }
@@ -393,13 +446,11 @@ async function fetchAgents() {
     });
     container.innerHTML = agents
       .map(function (a) {
-        var color = getAgentColor(a.name);
+        var color = getResolvedAgentColor(a.name);
         var inactive = isAgentInactive(a);
         var statusClass =
           (a.status || "online") + (inactive ? " inactive" : "");
-        var taskHtml = a.current_task
-          ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
-          : "";
+        var agentIcon = getSenderIcon(a.name, true, 32);
         /* Tiny health pill — mirrors the Agents tab classification. */
         var healthHtml = "";
         if (a.health && a.health.status) {
@@ -416,26 +467,96 @@ async function fetchAgents() {
             escapeHtml(hs) +
             "</span>";
         }
-        var agentIcon = a.icon
-          ? getSenderIcon(a.name, true)
-          : getSnakeIcon(16, color);
-        var workdirHtml = "";
-        if (a.workdir) {
-          var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
-          workdirHtml =
-            '<div class="agent-workdir">' +
-            escapeHtml(cleanAgentName(a.name)) +
-            ":" +
-            escapeHtml(displayDir) +
-            "</div>";
-        }
+        var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
+        var pinTitle = a.pinned ? "Unpin agent" : "Pin agent";
+        var pinBtnHtml =
+          '<button class="pin-btn' +
+          (a.pinned ? " pinned" : "") +
+          '" data-pin-name="' +
+          escapeHtml(a.name) +
+          '" title="' +
+          pinTitle +
+          '">' +
+          pinIcon +
+          "</button>";
+        var restartBtnHtml =
+          '<button class="restart-btn" data-restart-name="' +
+          escapeHtml(a.name) +
+          '" title="Restart agent">\u21BB</button>';
+        var killBtnHtml =
+          '<button class="kill-btn" data-kill-name="' +
+          escapeHtml(a.name) +
+          '" title="Kill agent (screen + sidecar)">\u2715</button>';
+        /* Compact badges for role + machine */
+        var roleBadge =
+          '<span class="agent-badge agent-badge-role">' +
+          escapeHtml(a.role || "agent") +
+          "</span>";
+        var machineBadge =
+          '<span class="agent-badge agent-badge-machine">' +
+          escapeHtml(a.machine || "unknown") +
+          "</span>";
+        /* Tooltip metadata (shown on hover) */
+        var uniqueChannels = [...new Set(a.channels || [])];
+        var tooltipLines = [];
+        tooltipLines.push("Agent ID: " + (a.agent_id || a.name));
+        tooltipLines.push("Role: " + (a.role || "agent"));
+        tooltipLines.push("Host: " + (a.machine || "unknown"));
+        if (a.model) tooltipLines.push("Model: " + a.model);
+        if (uniqueChannels.length)
+          tooltipLines.push("Channels: " + uniqueChannels.join(", "));
+        if (a.project) tooltipLines.push("Project: " + a.project);
+        if (a.workdir)
+          tooltipLines.push(
+            "Workdir: " + a.workdir.replace(/^\/home\/[^/]+/, "~"),
+          );
+        if (a.current_task) tooltipLines.push("Task: " + a.current_task);
+        /* Popup detail panel (click to expand) */
+        var detailHtml =
+          '<div class="agent-detail-popup">' +
+          '<div class="agent-detail-row"><span class="agent-detail-label">Channels</span>' +
+          (uniqueChannels.length
+            ? uniqueChannels
+                .map(function (c) {
+                  return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
+                })
+                .join(" ")
+            : '<span class="muted-cell">-</span>') +
+          "</div>" +
+          (a.model
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Model</span>' +
+              escapeHtml(a.model) +
+              "</div>"
+            : "") +
+          (a.project
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Project</span>' +
+              escapeHtml(a.project) +
+              "</div>"
+            : "") +
+          (a.workdir
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Workdir</span><span class="monospace-cell">' +
+              escapeHtml(a.workdir.replace(/^\/home\/[^/]+/, "~")) +
+              "</span></div>"
+            : "") +
+          (a.current_task
+            ? '<div class="agent-detail-row"><span class="agent-detail-label">Task</span>' +
+              escapeHtml(a.current_task) +
+              "</div>"
+            : "") +
+          "</div>";
         return (
           '<div class="agent-card' +
           (inactive ? " inactive" : "") +
+          (a.pinned && inactive ? " pinned-offline" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
+          '" title="' +
+          escapeHtml(tooltipLines.join("\n")) +
           '">' +
-          '<span class="agent-card-icon">' +
+          '<div class="agent-card-top">' +
+          '<span class="agent-card-icon avatar-clickable" data-avatar-agent="' +
+          escapeHtml(a.name) +
+          '" title="Click to change avatar">' +
           agentIcon +
           "</span>" +
           '<span class="status-dot ' +
@@ -443,33 +564,183 @@ async function fetchAgents() {
           '"></span>' +
           '<span class="name">' +
           escapeHtml(hostedAgentName(a)) +
-          (a.model
-            ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
-            : "") +
           "</span>" +
-          workdirHtml +
-          '<div class="meta">' +
-          escapeHtml(a.machine || "unknown") +
-          " / " +
-          escapeHtml(a.role || "agent") +
+          killBtnHtml +
+          restartBtnHtml +
+          pinBtnHtml +
           "</div>" +
+          '<div class="agent-card-badges">' +
+          roleBadge +
+          machineBadge +
           healthHtml +
-          taskHtml +
-          '<div class="meta">channels: ' +
-          [...new Set(a.channels)].map(escapeHtml).join(", ") +
-          "</div></div>"
+          "</div>" +
+          detailHtml +
+          "</div>"
         );
       })
       .join("");
     container
       .querySelectorAll(".agent-card[data-agent-name]")
       .forEach(function (el) {
-        el.addEventListener("click", function () {
+        el.addEventListener("click", function (ev) {
+          if (ev.target.closest(".pin-btn")) return; /* handled separately */
+          if (ev.target.closest(".kill-btn")) return; /* handled separately */
+          if (ev.target.closest(".avatar-clickable"))
+            return; /* handled below */
+          /* Toggle detail popup on click */
+          var popup = el.querySelector(".agent-detail-popup");
+          if (popup) {
+            var isOpen = popup.classList.contains("open");
+            /* Close all others first */
+            container
+              .querySelectorAll(".agent-detail-popup.open")
+              .forEach(function (p) {
+                p.classList.remove("open");
+              });
+            if (!isOpen) popup.classList.add("open");
+          }
           addTag("agent", el.getAttribute("data-agent-name"));
+        });
+      });
+    container
+      .querySelectorAll(".pin-btn[data-pin-name]")
+      .forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          togglePinAgent(
+            btn.getAttribute("data-pin-name"),
+            !btn.classList.contains("pinned"),
+          );
+        });
+      });
+    container
+      .querySelectorAll(".avatar-clickable[data-avatar-agent]")
+      .forEach(function (el) {
+        el.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          openAvatarPicker(el.getAttribute("data-avatar-agent"));
+        });
+      });
+    container
+      .querySelectorAll(".kill-btn[data-kill-name]")
+      .forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          killAgent(btn.getAttribute("data-kill-name"), btn);
+        });
+      });
+    container
+      .querySelectorAll(".restart-btn[data-restart-name]")
+      .forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          restartAgent(btn.getAttribute("data-restart-name"), btn);
         });
       });
   } catch (e) {
     /* fetch error */
+  }
+}
+
+async function restartAgent(name, btn) {
+  if (!confirm("Restart agent " + name + "?")) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "\u23F3";
+  btn.classList.add("restarting");
+  try {
+    var headers = orochiHeaders();
+    var res = await fetch(apiUrl("/api/agents/restart/"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name }),
+    });
+    var data = await res.json();
+    if (res.ok) {
+      btn.textContent = "\u2713";
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("restarting");
+        fetchAgents();
+      }, 3000);
+    } else {
+      btn.textContent = "\u2717";
+      console.error("Restart failed:", data.error || res.status);
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("restarting");
+      }, 3000);
+    }
+  } catch (e) {
+    console.error("Restart error:", e);
+    btn.textContent = origText;
+    btn.disabled = false;
+    btn.classList.remove("restarting");
+  }
+}
+
+async function killAgent(name, btn) {
+  if (!confirm("Kill agent " + name + "?\nThis will terminate screen, bun sidecar, and disconnect.")) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "\u23F3";
+  btn.classList.add("killing");
+  try {
+    var headers = orochiHeaders();
+    var res = await fetch(apiUrl("/api/agents/kill/"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name }),
+    });
+    var data = await res.json();
+    if (res.ok) {
+      btn.textContent = "\u2713";
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("killing");
+        fetchAgents();
+      }, 2000);
+    } else {
+      btn.textContent = "\u2717";
+      console.error("Kill failed:", data.error || res.status);
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("killing");
+      }, 3000);
+    }
+  } catch (e) {
+    console.error("Kill error:", e);
+    btn.textContent = origText;
+    btn.disabled = false;
+    btn.classList.remove("killing");
+  }
+}
+
+async function togglePinAgent(name, shouldPin) {
+  try {
+    var token = window.__orochiCsrfToken || "";
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["X-CSRFToken"] = token;
+    var method = shouldPin ? "POST" : "DELETE";
+    var res = await fetch(apiUrl("/api/agents/pin/"), {
+      method: method,
+      headers: headers,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name }),
+    });
+    if (res.ok) {
+      fetchAgents();
+    } else {
+      console.error("Pin/unpin failed:", res.status);
+    }
+  } catch (e) {
+    console.error("Pin/unpin error:", e);
   }
 }
 
