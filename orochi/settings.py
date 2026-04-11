@@ -10,7 +10,7 @@ try:
 
     OROCHI_VERSION = _pkg_version("scitex-orochi")
 except Exception:
-    OROCHI_VERSION = "0.6.3"
+    OROCHI_VERSION = "0.6.4"
 
 # Deployment build ID — set at container start or read from env.
 # Used by the dashboard to show a "new/updated" badge and verify deploys.
