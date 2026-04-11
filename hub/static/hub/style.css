@@ -796,6 +796,34 @@ body {
   color: #666;
 }
 
+/* System messages — subtle, centered, distinct from chat */
+.msg.msg-system {
+  background: none;
+  border: none;
+  padding: 2px 16px;
+  margin: 2px 0;
+  text-align: center;
+}
+.msg-system-content {
+  display: inline-block;
+  font-size: 12px;
+  font-style: italic;
+  color: #6b7280;
+  line-height: 1.4;
+}
+.msg-system-icon {
+  color: #4b5563;
+  margin-right: 2px;
+}
+.msg-system-text {
+  color: #6b7280;
+}
+.msg.msg-system .ts {
+  font-size: 11px;
+  color: #4b5563;
+  margin-left: 6px;
+}
+
 /* Sign-out link at sidebar bottom */
 .sidebar-signout {
   margin-top: auto;

@@ -77,6 +77,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             },
         )
 
+        # Broadcast system message to chat feed
+        await self.channel_layer.group_send(
+            self.workspace_group,
+            {
+                "type": "system.message",
+                "text": f"Agent {self.agent_name} connected",
+                "event": "agent_connected",
+            },
+        )
+
     async def disconnect(self, code):
         if hasattr(self, "workspace_group"):
             # Mark agent offline in registry
@@ -92,6 +102,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     "type": "agent.presence",
                     "agent": agent_name,
                     "status": "disconnected",
+                },
+            )
+
+            # Broadcast system message to chat feed
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "system.message",
+                    "text": f"Agent {agent_name} disconnected",
+                    "event": "agent_disconnected",
                 },
             )
             await self.channel_layer.group_discard(
@@ -139,6 +159,17 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             )
 
             await self.send_json({"type": "registered", "channels": channels})
+
+            # Broadcast system message for registration
+            ch_list = ", ".join(channels) if channels else "(none)"
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "system.message",
+                    "text": f"Agent {self.agent_name} registered on channels: {ch_list}",
+                    "event": "agent_registered",
+                },
+            )
 
         elif msg_type == "heartbeat":
             # Store resource metrics from agent heartbeat
@@ -282,6 +313,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def agent_info(self, event):
         """Handle agent.info from channel layer — ignore for agent sockets."""
+        pass
+
+    async def system_message(self, event):
+        """Handle system.message from channel layer — ignore for agent sockets."""
         pass
 
     async def reaction_update(self, event):
@@ -491,6 +526,19 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "emoji": event["emoji"],
                 "reactor": event["reactor"],
                 "action": event["action"],
+            }
+        )
+
+    async def system_message(self, event):
+        """Forward system messages to dashboard WebSocket client."""
+        import datetime
+
+        await self.send_json(
+            {
+                "type": "system_message",
+                "text": event.get("text", ""),
+                "event": event.get("event", ""),
+                "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             }
         )
 

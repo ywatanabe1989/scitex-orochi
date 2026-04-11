@@ -318,6 +318,10 @@ function handleMessage(msg) {
       unreadCount++;
       document.title = "(" + unreadCount + ") " + baseTitle;
     }
+  } else if (msg.type === "system_message") {
+    if (typeof appendSystemMessage === "function") {
+      appendSystemMessage(msg);
+    }
   } else if (
     msg.type === "presence_change" ||
     msg.type === "status_update" ||

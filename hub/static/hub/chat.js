@@ -55,6 +55,28 @@ async function refreshIssueTitleCache() {
 refreshIssueTitleCache();
 setInterval(refreshIssueTitleCache, 120000);
 
+function appendSystemMessage(msg) {
+  var el = document.createElement("div");
+  el.className = "msg msg-system";
+  var ts = "";
+  if (msg.ts) {
+    var d = new Date(msg.ts);
+    if (!isNaN(d.getTime())) {
+      ts = timeAgo(msg.ts);
+    }
+  }
+  var text = msg.text || "";
+  el.innerHTML =
+    '<div class="msg-system-content">' +
+    '<span class="msg-system-icon">\u2022</span> ' +
+    '<span class="msg-system-text">' + escapeHtml(text) + '</span>' +
+    (ts ? ' <span class="ts">' + ts + '</span>' : '') +
+    '</div>';
+  var container = document.getElementById("messages");
+  container.appendChild(el);
+  container.scrollTop = container.scrollHeight;
+}
+
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
