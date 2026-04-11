@@ -479,6 +479,10 @@ async function fetchAgents() {
           '">' +
           pinIcon +
           "</button>";
+        var restartBtnHtml =
+          '<button class="restart-btn" data-restart-name="' +
+          escapeHtml(a.name) +
+          '" title="Restart agent">\u21BB</button>';
         /* Compact badges for role + machine */
         var roleBadge =
           '<span class="agent-badge agent-badge-role">' +
@@ -557,6 +561,7 @@ async function fetchAgents() {
           '<span class="name">' +
           escapeHtml(hostedAgentName(a)) +
           "</span>" +
+          restartBtnHtml +
           pinBtnHtml +
           "</div>" +
           '<div class="agent-card-badges">' +
@@ -610,8 +615,56 @@ async function fetchAgents() {
           openAvatarPicker(el.getAttribute("data-avatar-agent"));
         });
       });
+    container
+      .querySelectorAll(".restart-btn[data-restart-name]")
+      .forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          restartAgent(btn.getAttribute("data-restart-name"), btn);
+        });
+      });
   } catch (e) {
     /* fetch error */
+  }
+}
+
+async function restartAgent(name, btn) {
+  if (!confirm("Restart agent " + name + "?")) return;
+  var origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "\u23F3";
+  btn.classList.add("restarting");
+  try {
+    var headers = orochiHeaders();
+    var res = await fetch(apiUrl("/api/agents/restart/"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name }),
+    });
+    var data = await res.json();
+    if (res.ok) {
+      btn.textContent = "\u2713";
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("restarting");
+        fetchAgents();
+      }, 3000);
+    } else {
+      btn.textContent = "\u2717";
+      console.error("Restart failed:", data.error || res.status);
+      setTimeout(function () {
+        btn.textContent = origText;
+        btn.disabled = false;
+        btn.classList.remove("restarting");
+      }, 3000);
+    }
+  } catch (e) {
+    console.error("Restart error:", e);
+    btn.textContent = origText;
+    btn.disabled = false;
+    btn.classList.remove("restarting");
   }
 }
 

@@ -77,6 +77,7 @@ async function renderAgentsTab() {
       '<table class="agents-registry-table">' +
       "<thead><tr>" +
       "<th>Pin</th>" +
+      "<th></th>" +
       "<th>Icon</th>" +
       "<th>Status</th>" +
       "<th>Agent ID</th>" +
@@ -152,6 +153,11 @@ function buildAgentRow(a) {
     "<td>" +
     pinBtnHtml +
     "</td>" +
+    '<td><button class="restart-btn" data-restart-name="' +
+    escapeHtml(a.name) +
+    '" title="Restart agent" onclick="event.stopPropagation();restartAgent(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', this)\">\u21BB</button></td>" +
     '<td class="agent-icon-cell avatar-clickable" data-avatar-agent="' +
     escapeHtml(a.name) +
     '" title="Click to change avatar" onclick="event.stopPropagation();openAvatarPicker(\'' +
@@ -215,7 +221,7 @@ function buildAgentRow(a) {
     "</td>" +
     "</tr>" +
     (a.claude_md
-      ? '<tr class="claude-md-detail" style="display:none"><td colspan="15"><pre class="claude-md-content">' +
+      ? '<tr class="claude-md-detail" style="display:none"><td colspan="16"><pre class="claude-md-content">' +
         escapeHtml(a.claude_md) +
         "</pre></td></tr>"
       : "")
