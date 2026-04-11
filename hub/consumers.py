@@ -309,8 +309,24 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     async def thread_reply(self, event):
-        """Ignore thread events on agent sockets."""
-        pass
+        """Forward thread reply events to agent WebSocket.
+
+        The MCP sidecar rewrites thread_reply into a message with parent
+        context, so agents can recognise and respond to threaded replies.
+        """
+        await self.send_json(
+            {
+                "type": "thread_reply",
+                "parent_id": event["parent_id"],
+                "reply_id": event["reply_id"],
+                "sender": event["sender"],
+                "sender_type": event.get("sender_type", "human"),
+                "channel": event.get("channel", ""),
+                "text": event.get("text", ""),
+                "ts": event.get("ts"),
+                "metadata": event.get("metadata", {}),
+            }
+        )
 
     @database_sync_to_async
     def _save_message(self, channel_name, sender, content_text, metadata=None):
@@ -542,6 +558,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "reply_id": event["reply_id"],
                 "sender": event["sender"],
                 "sender_type": event.get("sender_type", "human"),
+                "channel": event.get("channel", ""),
                 "text": event.get("text", ""),
                 "ts": event.get("ts"),
                 "metadata": event.get("metadata", {}),

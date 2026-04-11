@@ -476,6 +476,7 @@ def api_threads(request):
             "reply_id": reply.id,
             "sender": request.user.username,
             "sender_type": "human",
+            "channel": parent.channel.name,
             "text": text,
             "ts": reply.ts.isoformat(),
             "metadata": metadata,
