@@ -17,6 +17,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 _server_start_time = time.time()
 
+
 from hub.models import (
     Channel,
     Message,
@@ -72,10 +73,16 @@ def api_messages(request):
     workspace = get_workspace(request)
 
     if request.method == "GET":
+        from django.db.models import Count, Exists, OuterRef
+
         limit = min(int(request.GET.get("limit", "100")), 500)
+        # Exclude messages that are thread replies (they appear in thread panel only)
+        is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
         msgs = (
             Message.objects.filter(workspace=workspace)
+            .exclude(is_thread_reply)
             .select_related("channel")
+            .annotate(thread_count=Count("thread_replies"))
             .order_by("-ts")[:limit]
         )
         data = [
@@ -87,6 +94,7 @@ def api_messages(request):
                 "content": m.content,
                 "ts": m.ts.isoformat(),
                 "metadata": m.metadata,
+                "thread_count": m.thread_count,
             }
             for m in msgs
         ]
@@ -145,9 +153,16 @@ def api_history(request, channel_name):
     limit = min(int(request.GET.get("limit", "50")), 500)
     since = request.GET.get("since")
 
-    qs = Message.objects.filter(
-        workspace=workspace, channel__name=channel_name
-    ).order_by("-ts")
+    from django.db.models import Count, Exists, OuterRef
+
+    # Exclude thread replies from main channel feed
+    is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
+    qs = (
+        Message.objects.filter(workspace=workspace, channel__name=channel_name)
+        .exclude(is_thread_reply)
+        .annotate(thread_count=Count("thread_replies"))
+        .order_by("-ts")
+    )
 
     if since:
         qs = qs.filter(ts__gt=since)
@@ -161,6 +176,7 @@ def api_history(request, channel_name):
             "content": m.content,
             "ts": m.ts.isoformat(),
             "metadata": m.metadata,
+            "thread_count": m.thread_count,
         }
         for m in msgs
     ]
@@ -251,6 +267,7 @@ def api_event_tool_use(request):
     token = request.GET.get("token") or request.POST.get("token")
     if token:
         from hub.models import WorkspaceToken
+
         try:
             WorkspaceToken.objects.get(token=token)
         except WorkspaceToken.DoesNotExist:
@@ -267,6 +284,7 @@ def api_event_tool_use(request):
         return JsonResponse({"error": "agent required"}, status=400)
 
     from hub.registry import mark_activity, set_current_task
+
     summary = (body.get("summary") or body.get("tool") or "").strip()[:120]
     mark_activity(agent, action=summary)
     if body.get("task"):
@@ -337,7 +355,11 @@ def api_connectivity(request):
     backed by real ping results from the bastion's connectivity probe.
     """
     nodes = [
-        {"id": "ywata-note-win", "label": "ywata-note-win", "role": "deployer/coordinator"},
+        {
+            "id": "ywata-note-win",
+            "label": "ywata-note-win",
+            "role": "deployer/coordinator",
+        },
         {"id": "mba", "label": "mba", "role": "orochi-host"},
         {"id": "nas", "label": "nas", "role": "data/scitex-cloud"},
         {"id": "spartan", "label": "spartan", "role": "hpc"},
@@ -423,7 +445,9 @@ def api_threads(request):
     text = body.get("text") or ""
     attachments = body.get("attachments") or []
     if not parent_id or (not text and not attachments):
-        return JsonResponse({"error": "parent_id and text/attachments required"}, status=400)
+        return JsonResponse(
+            {"error": "parent_id and text/attachments required"}, status=400
+        )
     try:
         parent = Message.objects.get(id=parent_id, workspace=workspace)
     except Message.DoesNotExist:
@@ -499,12 +523,9 @@ def api_reactions(request):
             ids = []
         if not ids:
             return JsonResponse({}, safe=False)
-        qs = (
-            MessageReaction.objects.filter(
-                message__workspace=workspace, message_id__in=ids
-            )
-            .values("message_id", "emoji", "reactor", "reactor_type")
-        )
+        qs = MessageReaction.objects.filter(
+            message__workspace=workspace, message_id__in=ids
+        ).values("message_id", "emoji", "reactor", "reactor_type")
         grouped: dict[int, dict[str, list]] = {}
         for r in qs:
             m = grouped.setdefault(r["message_id"], {})
@@ -536,7 +557,9 @@ def api_reactions(request):
 
     if request.method == "POST":
         obj, created = MessageReaction.objects.get_or_create(
-            message=msg, emoji=emoji, reactor=reactor,
+            message=msg,
+            emoji=emoji,
+            reactor=reactor,
             defaults={"reactor_type": reactor_type},
         )
         action = "added" if created else "existed"
@@ -587,10 +610,7 @@ def api_releases(request):
 
     repo = os.environ.get("GITHUB_REPO", "ywatanabe1989/scitex-orochi")
     limit = min(int(request.GET.get("limit", "100")), 100)
-    url = (
-        f"https://api.github.com/repos/{repo}/commits"
-        f"?per_page={limit}"
-    )
+    url = f"https://api.github.com/repos/{repo}/commits?per_page={limit}"
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "Orochi-Dashboard",
@@ -602,7 +622,10 @@ def api_releases(request):
             raw = json.loads(resp.read())
     except urllib.error.HTTPError as e:
         return JsonResponse(
-            {"error": f"GitHub API returned {e.code}: {e.reason}", "code": "github_error"},
+            {
+                "error": f"GitHub API returned {e.code}: {e.reason}",
+                "code": "github_error",
+            },
             status=502,
         )
     except Exception as e:
@@ -731,32 +754,34 @@ def api_agents(request):
     pinned = PinnedAgent.objects.filter(workspace=workspace)
     for p in pinned:
         if p.name not in live_names:
-            registry_agents.append({
-                "name": p.name,
-                "agent_id": p.name,
-                "machine": p.machine,
-                "role": p.role,
-                "model": "",
-                "workdir": "",
-                "icon": "",
-                "icon_emoji": p.icon_emoji,
-                "icon_text": "",
-                "color": getattr(p, "color", ""),
-                "channels": [],
-                "status": "offline",
-                "liveness": "offline",
-                "idle_seconds": None,
-                "registered_at": None,
-                "last_heartbeat": None,
-                "last_action": None,
-                "metrics": {},
-                "current_task": "",
-                "last_message_preview": "",
-                "subagents": [],
-                "health": {},
-                "claude_md": "",
-                "pinned": True,
-            })
+            registry_agents.append(
+                {
+                    "name": p.name,
+                    "agent_id": p.name,
+                    "machine": p.machine,
+                    "role": p.role,
+                    "model": "",
+                    "workdir": "",
+                    "icon": "",
+                    "icon_emoji": p.icon_emoji,
+                    "icon_text": "",
+                    "color": getattr(p, "color", ""),
+                    "channels": [],
+                    "status": "offline",
+                    "liveness": "offline",
+                    "idle_seconds": None,
+                    "registered_at": None,
+                    "last_heartbeat": None,
+                    "last_action": None,
+                    "metrics": {},
+                    "current_task": "",
+                    "last_message_preview": "",
+                    "subagents": [],
+                    "health": {},
+                    "claude_md": "",
+                    "pinned": True,
+                }
+            )
 
     # Tag live agents that are also pinned
     pinned_names = {p.name for p in pinned}
@@ -793,9 +818,8 @@ def api_agent_profiles(request):
                 body = json.loads(request.body)
             except (json.JSONDecodeError, ValueError):
                 body = {}
-        token = (
-            request.GET.get("token")
-            or (body.get("token") if isinstance(body, dict) else None)
+        token = request.GET.get("token") or (
+            body.get("token") if isinstance(body, dict) else None
         )
         if not token:
             return JsonResponse({"error": "Authentication required"}, status=401)
@@ -1137,11 +1161,13 @@ def api_agents_pin(request):
                 "icon_emoji": body.get("icon_emoji", ""),
             },
         )
-        return JsonResponse({
-            "status": "pinned",
-            "name": obj.name,
-            "created": created,
-        })
+        return JsonResponse(
+            {
+                "status": "pinned",
+                "name": obj.name,
+                "created": created,
+            }
+        )
 
     # DELETE
     deleted, _ = PinnedAgent.objects.filter(workspace=workspace, name=name).delete()
