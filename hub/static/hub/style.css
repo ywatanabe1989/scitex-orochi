@@ -193,8 +193,13 @@ body {
   vertical-align: middle;
 }
 @keyframes brand-new-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 /* Connection status indicator — compact state-aware dot in the brand row.
  * Invisible-ish when fine (small muted dot), prominent when broken. */
@@ -244,12 +249,21 @@ body {
   background: #ef4444;
 }
 @keyframes conn-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
 }
 /* Back-compat aliases — older code-paths may still flip these classes */
-.sidebar-brand .status.connected { color: #4ecdc4; }
-.sidebar-brand .status.rest-mode { color: #ffd93d; }
+.sidebar-brand .status.connected {
+  color: #4ecdc4;
+}
+.sidebar-brand .status.rest-mode {
+  color: #ffd93d;
+}
 .sidebar-footer {
   margin-top: auto;
   padding-top: 12px;
@@ -608,7 +622,10 @@ body {
 }
 
 /* Pending attachment tray — staged file chips above the textarea */
-.input-bar { flex-direction: column; align-items: stretch; }
+.input-bar {
+  flex-direction: column;
+  align-items: stretch;
+}
 .pending-attachments {
   display: none;
   flex-wrap: wrap;
@@ -655,7 +672,9 @@ body {
   cursor: pointer;
   padding: 0 2px;
 }
-.pending-attachment-remove:hover { color: #ef4444; }
+.pending-attachment-remove:hover {
+  color: #ef4444;
+}
 
 /* Input bar layout — tray above, textarea + right-side action column below */
 .input-bar-row {
@@ -712,14 +731,40 @@ body {
   border: 1px solid #333;
   color: #bbb;
 }
-.sidebar-health-healthy { color: #4ecdc4; border-color: #2e665f; }
-.sidebar-health-idle { color: #f59e0b; border-color: #6b4a12; }
-.sidebar-health-stale { color: #ef4444; border-color: #6b1f1f; }
-.sidebar-health-stuck_prompt { color: #ef4444; border-color: #6b1f1f; animation: brand-new-pulse 1.6s ease-in-out infinite; }
-.sidebar-health-dead { color: #ef4444; background: #2a0f0f; }
-.sidebar-health-ghost { color: #c084fc; border-color: #5b21b6; }
-.sidebar-health-degraded { color: #ffd93d; border-color: #6b5a12; }
-.sidebar-health-remediating { color: #4ecdc4; border-color: #2e665f; animation: brand-new-pulse 1.4s ease-in-out infinite; }
+.sidebar-health-healthy {
+  color: #4ecdc4;
+  border-color: #2e665f;
+}
+.sidebar-health-idle {
+  color: #f59e0b;
+  border-color: #6b4a12;
+}
+.sidebar-health-stale {
+  color: #ef4444;
+  border-color: #6b1f1f;
+}
+.sidebar-health-stuck_prompt {
+  color: #ef4444;
+  border-color: #6b1f1f;
+  animation: brand-new-pulse 1.6s ease-in-out infinite;
+}
+.sidebar-health-dead {
+  color: #ef4444;
+  background: #2a0f0f;
+}
+.sidebar-health-ghost {
+  color: #c084fc;
+  border-color: #5b21b6;
+}
+.sidebar-health-degraded {
+  color: #ffd93d;
+  border-color: #6b5a12;
+}
+.sidebar-health-remediating {
+  color: #4ecdc4;
+  border-color: #2e665f;
+  animation: brand-new-pulse 1.4s ease-in-out infinite;
+}
 
 /* Inline reply-to quote block above a message body */
 .msg-reply-ref {
@@ -736,7 +781,39 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.msg-reply-ref:hover { background: rgba(78, 205, 196, 0.12); }
-.msg-reply-ref .msg-reply-icon { color: #4ecdc4; margin-right: 3px; }
-.msg-reply-ref .msg-reply-parent { color: #9ca3af; font-weight: 600; }
-.msg-reply-ref .msg-reply-snippet { color: #666; }
+.msg-reply-ref:hover {
+  background: rgba(78, 205, 196, 0.12);
+}
+.msg-reply-ref .msg-reply-icon {
+  color: #4ecdc4;
+  margin-right: 3px;
+}
+.msg-reply-ref .msg-reply-parent {
+  color: #9ca3af;
+  font-weight: 600;
+}
+.msg-reply-ref .msg-reply-snippet {
+  color: #666;
+}
+
+/* Sign-out link at sidebar bottom */
+.sidebar-signout {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+.signout-link {
+  display: block;
+  color: #888;
+  font-size: 13px;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.signout-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e0e0e0;
+}
