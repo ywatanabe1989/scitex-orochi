@@ -313,11 +313,28 @@ const conn = {
         const msgIdVal = msg.id ?? payload.id;
         if (msgIdVal != null) notifMeta.msg_id = String(msgIdVal);
 
-        await mcp.notification({
-          method: "notifications/claude/channel",
+        // Retry with exponential backoff (pattern from official Discord plugin).
+        // Claude Code can silently drop notifications; retrying mitigates this.
+        const notifPayload = {
+          method: "notifications/claude/channel" as const,
           params: { content: notifContent, meta: notifMeta },
-        });
-        _dbg(`notification sent OK: ${channel} ${sender}`);
+        };
+        const delays = [0, 500, 1000];
+        let delivered = false;
+        for (let attempt = 0; attempt < delays.length; attempt++) {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
+          try {
+            await mcp.notification(notifPayload);
+            _dbg(`notification sent OK (attempt ${attempt + 1}): ${channel} ${sender}`);
+            delivered = true;
+            break;
+          } catch (retryErr) {
+            _dbg(`notification attempt ${attempt + 1} failed: ${retryErr}`);
+          }
+        }
+        if (!delivered) {
+          console.error(`[orochi] all notification attempts failed for ${channel} ${sender}`);
+        }
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e);
         _dbg(`error: ${errMsg}`);
