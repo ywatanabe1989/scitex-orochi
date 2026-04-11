@@ -110,9 +110,7 @@ function buildAgentRow(a) {
   var color = getResolvedAgentColor(a.name);
   var statusColor = inactive ? "#ef4444" : "#4ecdc4";
   var statusLabel = inactive ? "offline" : "online";
-  var agentIcon = cachedAgentIcons[a.name]
-    ? getSenderIcon(a.name, true, 24)
-    : getLetterIcon(a.name, 24);
+  var agentIcon = getSenderIcon(a.name, true, 24);
   var dotHtml =
     '<span class="status-dot-inline"></span>' +
     '<span class="status-label">' +

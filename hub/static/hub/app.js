@@ -450,9 +450,7 @@ async function fetchAgents() {
         var inactive = isAgentInactive(a);
         var statusClass =
           (a.status || "online") + (inactive ? " inactive" : "");
-        var agentIcon = cachedAgentIcons[a.name]
-          ? getSenderIcon(a.name, true, 32)
-          : getLetterIcon(a.name, 32);
+        var agentIcon = getSenderIcon(a.name, true, 32);
         /* Tiny health pill — mirrors the Agents tab classification. */
         var healthHtml = "";
         if (a.health && a.health.status) {

@@ -42,7 +42,7 @@ function getPersonIcon(size, color) {
   );
 }
 
-/* Gravatar-style cascade: image URL > emoji > text > default SVG */
+/* Gravatar-style cascade: custom avatar image > emoji/text > snake SVG > person icon */
 function getSenderIcon(senderName, isAgent, size) {
   size = size || 18;
   var icon = cachedAgentIcons[senderName];
@@ -66,7 +66,10 @@ function getSenderIcon(senderName, isAgent, size) {
       "</span>"
     );
   }
-  if (isAgent) return getLetterIcon(senderName, size);
+  if (isAgent) {
+    var color = cachedAgentColors[senderName] || getAgentColor(senderName);
+    return getSnakeIcon(size, color);
+  }
   return getPersonIcon(size, "#c4a6e8");
 }
 
