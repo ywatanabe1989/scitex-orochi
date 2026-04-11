@@ -308,6 +308,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         """Ignore reaction events on agent sockets."""
         pass
 
+    async def message_edit(self, event):
+        """Forward message edit events to agent WebSocket."""
+        await self.send_json(
+            {
+                "type": "message_edit",
+                "message_id": event["message_id"],
+                "sender": event["sender"],
+                "channel": event.get("channel", ""),
+                "text": event["text"],
+                "edited_at": event.get("edited_at"),
+            }
+        )
+
+    async def message_delete(self, event):
+        """Forward message delete events to agent WebSocket."""
+        await self.send_json(
+            {
+                "type": "message_delete",
+                "message_id": event["message_id"],
+                "sender": event["sender"],
+                "channel": event.get("channel", ""),
+            }
+        )
+
     async def thread_reply(self, event):
         """Forward thread reply events to agent WebSocket.
 
@@ -533,6 +557,30 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "emoji": event["emoji"],
                 "reactor": event["reactor"],
                 "action": event["action"],
+            }
+        )
+
+    async def message_edit(self, event):
+        """Forward message edit events to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "message_edit",
+                "message_id": event["message_id"],
+                "sender": event["sender"],
+                "channel": event.get("channel", ""),
+                "text": event["text"],
+                "edited_at": event.get("edited_at"),
+            }
+        )
+
+    async def message_delete(self, event):
+        """Forward message delete events to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "message_delete",
+                "message_id": event["message_id"],
+                "sender": event["sender"],
+                "channel": event.get("channel", ""),
             }
         )
 

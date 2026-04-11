@@ -303,6 +303,11 @@ function appendMessage(msg) {
     '">' +
     ts +
     "</span>" +
+    (msg.edited
+      ? '<span class="msg-edited-tag" title="' +
+        escapeHtml(msg.edited_at ? "Edited " + timeAgo(msg.edited_at) : "Edited") +
+        '">(edited)</span>'
+      : "") +
     "</div>" +
     replyRefHtml +
     '<div class="content">' +
@@ -321,6 +326,16 @@ function appendMessage(msg) {
       ? '<button class="msg-thread-btn" type="button" title="Reply in thread" onclick="openThreadForMessage(' +
         msg.id +
         ')">\uD83D\uDCAC</button>'
+      : "") +
+    (msg.id && senderName === userName
+      ? '<button class="msg-edit-btn" type="button" title="Edit message" onclick="startEditMessage(' +
+        msg.id +
+        ')">&#9998;</button>'
+      : "") +
+    (msg.id && senderName === userName
+      ? '<button class="msg-delete-btn" type="button" title="Delete message" onclick="deleteMessage(' +
+        msg.id +
+        ')">&#10005;</button>'
       : "") +
     (function () {
       var tc = msg.thread_count || 0;
@@ -382,6 +397,8 @@ async function loadHistory() {
         sender: row.sender,
         sender_type: row.sender_type,
         ts: row.ts,
+        edited: row.edited || false,
+        edited_at: row.edited_at || null,
         thread_count: row.thread_count || 0,
         metadata: row.metadata || {},
         payload: {
@@ -438,6 +455,8 @@ async function loadChannelHistory(channel) {
         sender: row.sender,
         sender_type: row.sender_type,
         ts: row.ts,
+        edited: row.edited || false,
+        edited_at: row.edited_at || null,
         thread_count: row.thread_count || 0,
         metadata: row.metadata || {},
         payload: {
@@ -513,5 +532,148 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
     sendMessage();
   }
 });
+
+/* --- Edit / Delete message support --- */
+
+function startEditMessage(msgId) {
+  var el = document.querySelector('.msg[data-msg-id="' + msgId + '"]');
+  if (!el) return;
+  var contentEl = el.querySelector(".content");
+  if (!contentEl) return;
+  /* Prevent double-editing */
+  if (el.querySelector(".msg-edit-input")) return;
+
+  /* Extract plain text from rendered HTML (reverse of escapeHtml + <br>) */
+  var currentText = contentEl.innerText || contentEl.textContent || "";
+
+  /* Hide content and action buttons while editing */
+  contentEl.style.display = "none";
+  var editContainer = document.createElement("div");
+  editContainer.className = "msg-edit-container";
+  editContainer.innerHTML =
+    '<textarea class="msg-edit-input" rows="2">' +
+    escapeHtml(currentText) +
+    "</textarea>" +
+    '<div class="msg-edit-actions">' +
+    '<button class="msg-edit-save" type="button">Save</button>' +
+    '<button class="msg-edit-cancel" type="button">Cancel</button>' +
+    "</div>";
+  contentEl.parentNode.insertBefore(editContainer, contentEl.nextSibling);
+
+  var textarea = editContainer.querySelector(".msg-edit-input");
+  textarea.focus();
+  textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+  /* Auto-resize */
+  textarea.style.height = "auto";
+  textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px";
+
+  editContainer
+    .querySelector(".msg-edit-save")
+    .addEventListener("click", function () {
+      saveEditMessage(msgId, textarea.value);
+    });
+  editContainer
+    .querySelector(".msg-edit-cancel")
+    .addEventListener("click", function () {
+      cancelEditMessage(msgId);
+    });
+  textarea.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      saveEditMessage(msgId, textarea.value);
+    }
+    if (e.key === "Escape") {
+      cancelEditMessage(msgId);
+    }
+  });
+}
+
+function saveEditMessage(msgId, newText) {
+  newText = (newText || "").trim();
+  if (!newText) return;
+  fetch(apiUrl("/api/messages/" + msgId + "/"), {
+    method: "PATCH",
+    headers: orochiHeaders(),
+    credentials: "same-origin",
+    body: JSON.stringify({ text: newText }),
+  })
+    .then(function (res) {
+      if (!res.ok) {
+        res.json().then(function (d) {
+          console.error("Edit failed:", d.error || res.status);
+        });
+      }
+      /* The WebSocket broadcast will update the UI */
+    })
+    .catch(function (e) {
+      console.error("Edit error:", e);
+    });
+  /* Immediately close the editor for snappy UX */
+  cancelEditMessage(msgId);
+}
+
+function cancelEditMessage(msgId) {
+  var el = document.querySelector('.msg[data-msg-id="' + msgId + '"]');
+  if (!el) return;
+  var editContainer = el.querySelector(".msg-edit-container");
+  if (editContainer) editContainer.remove();
+  var contentEl = el.querySelector(".content");
+  if (contentEl) contentEl.style.display = "";
+}
+
+function deleteMessage(msgId) {
+  if (!confirm("Delete this message?")) return;
+  fetch(apiUrl("/api/messages/" + msgId + "/"), {
+    method: "DELETE",
+    headers: orochiHeaders(),
+    credentials: "same-origin",
+  })
+    .then(function (res) {
+      if (!res.ok) {
+        res.json().then(function (d) {
+          console.error("Delete failed:", d.error || res.status);
+        });
+      }
+      /* The WebSocket broadcast will remove it from the UI */
+    })
+    .catch(function (e) {
+      console.error("Delete error:", e);
+    });
+}
+
+function handleMessageEdit(event) {
+  var el = document.querySelector(
+    '.msg[data-msg-id="' + event.message_id + '"]',
+  );
+  if (!el) return;
+  var contentEl = el.querySelector(".content");
+  if (contentEl) {
+    contentEl.innerHTML = escapeHtml(event.text).replace(/\n/g, "<br>");
+  }
+  /* Add or update the (edited) tag */
+  var header = el.querySelector(".msg-header");
+  if (header && !header.querySelector(".msg-edited-tag")) {
+    var tag = document.createElement("span");
+    tag.className = "msg-edited-tag";
+    tag.title = event.edited_at
+      ? "Edited " + timeAgo(event.edited_at)
+      : "Edited";
+    tag.textContent = "(edited)";
+    header.appendChild(tag);
+  }
+}
+
+function handleMessageDelete(event) {
+  var el = document.querySelector(
+    '.msg[data-msg-id="' + event.message_id + '"]',
+  );
+  if (el) {
+    el.classList.add("msg-deleted");
+    setTimeout(function () {
+      el.remove();
+    }, 300);
+  }
+}
 
 /* Timestamps are now absolute (YYYY-MM-DD HH:mm:ss), no periodic refresh needed */

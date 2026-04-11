@@ -335,6 +335,10 @@ function handleMessage(msg) {
     if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
   } else if (msg.type === "thread_reply") {
     if (typeof handleThreadReply === "function") handleThreadReply(msg);
+  } else if (msg.type === "message_edit") {
+    if (typeof handleMessageEdit === "function") handleMessageEdit(msg);
+  } else if (msg.type === "message_delete") {
+    if (typeof handleMessageDelete === "function") handleMessageDelete(msg);
   }
 }
 

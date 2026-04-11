@@ -139,6 +139,8 @@ class Message(models.Model):
     )
     content = models.TextField()
     ts = models.DateTimeField(auto_now_add=True)
+    edited = models.BooleanField(default=False)
+    edited_at = models.DateTimeField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:

@@ -93,6 +93,8 @@ def api_messages(request):
                 "sender_type": m.sender_type,
                 "content": m.content,
                 "ts": m.ts.isoformat(),
+                "edited": m.edited,
+                "edited_at": m.edited_at.isoformat() if m.edited_at else None,
                 "metadata": m.metadata,
                 "thread_count": m.thread_count,
             }
@@ -175,6 +177,8 @@ def api_history(request, channel_name):
             "sender_type": m.sender_type,
             "content": m.content,
             "ts": m.ts.isoformat(),
+            "edited": m.edited,
+            "edited_at": m.edited_at.isoformat() if m.edited_at else None,
             "metadata": m.metadata,
             "thread_count": m.thread_count,
         }
@@ -584,6 +588,122 @@ def api_reactions(request):
         },
     )
     return JsonResponse({"status": "ok", "action": action})
+
+
+@csrf_exempt
+@require_http_methods(["PATCH", "DELETE"])
+def api_message_detail(request, message_id):
+    """PATCH/DELETE /api/messages/<id>/ — edit or delete a single message.
+
+    Supports both session auth (browser) and workspace token auth (agents).
+    Only the original sender can edit. Only the original sender or an admin
+    can delete.
+    """
+    # --- auth: token or session ---
+    token_str = request.GET.get("token") or request.POST.get("token")
+    wks_token = None
+    acting_user = None
+    is_admin = False
+
+    if token_str:
+        try:
+            wks_token = WorkspaceToken.objects.select_related("workspace").get(
+                token=token_str
+            )
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "invalid token"}, status=401)
+    elif not (request.user and request.user.is_authenticated):
+        return JsonResponse({"error": "auth required"}, status=401)
+
+    # --- resolve workspace + acting identity ---
+    if wks_token:
+        workspace = wks_token.workspace
+        # For token auth, the sender identity comes from the request body
+        try:
+            body = json.loads(request.body or b"{}")
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "invalid json"}, status=400)
+        acting_user = body.get("sender") or body.get("agent") or "agent"
+    else:
+        workspace = get_workspace(request)
+        acting_user = request.user.username
+        is_admin = request.user.is_superuser or WorkspaceMember.objects.filter(
+            user=request.user, workspace=workspace, role="admin"
+        ).exists()
+        try:
+            body = json.loads(request.body or b"{}")
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "invalid json"}, status=400)
+
+    # --- fetch message ---
+    try:
+        msg = Message.objects.select_related("channel").get(
+            id=message_id, workspace=workspace
+        )
+    except Message.DoesNotExist:
+        return JsonResponse({"error": "message not found"}, status=404)
+
+    if request.method == "PATCH":
+        # Only the original sender can edit
+        if msg.sender != acting_user:
+            return JsonResponse(
+                {"error": "only the original sender can edit"}, status=403
+            )
+        new_text = body.get("text") or body.get("content")
+        if new_text is None:
+            return JsonResponse({"error": "text required"}, status=400)
+
+        msg.content = new_text
+        msg.edited = True
+        msg.edited_at = timezone.now()
+        msg.save(update_fields=["content", "edited", "edited_at"])
+
+        # Broadcast edit event
+        layer = get_channel_layer()
+        group = f"workspace_{workspace.id}"
+        async_to_sync(layer.group_send)(
+            group,
+            {
+                "type": "message.edit",
+                "message_id": msg.id,
+                "sender": msg.sender,
+                "channel": msg.channel.name,
+                "text": new_text,
+                "edited_at": msg.edited_at.isoformat(),
+            },
+        )
+        return JsonResponse({
+            "status": "ok",
+            "id": msg.id,
+            "edited": True,
+            "edited_at": msg.edited_at.isoformat(),
+        })
+
+    else:  # DELETE
+        # Only the original sender or an admin can delete
+        if msg.sender != acting_user and not is_admin:
+            return JsonResponse(
+                {"error": "only the original sender or admin can delete"},
+                status=403,
+            )
+        msg_id = msg.id
+        channel_name = msg.channel.name
+
+        msg.delete()
+
+        # Broadcast delete event
+        layer = get_channel_layer()
+        group = f"workspace_{workspace.id}"
+        async_to_sync(layer.group_send)(
+            group,
+            {
+                "type": "message.delete",
+                "message_id": msg_id,
+                "sender": acting_user,
+                "channel": channel_name,
+            },
+        )
+        return JsonResponse({"status": "ok", "id": msg_id, "deleted": True})
 
 
 @login_required

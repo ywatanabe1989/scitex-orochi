@@ -7,35 +7,17 @@ description: Known operational issues with Orochi agents and the hub, with worka
 
 Active issues encountered during fleet operations. Check here before debugging a "new" problem.
 
-## Media Download Returns HTTP 400
+## ~~Media Download Returns HTTP 400~~ (RESOLVED 2026-04-11)
 
-**Symptom**: `download_media` MCP tool and direct `curl` to `http://192.168.11.22:8559/media/...` return HTTP 400.
+**Fix applied**: LAN IPs added to `DJANGO_ALLOWED_HOSTS` in Docker config. Media downloads now work for agents on LAN.
 
-**Root cause**: Django's `ALLOWED_HOSTS` may not include the LAN IP. The Daphne server rejects HTTP requests with `Host: 192.168.11.22:8559`. WebSocket connections bypass this check, so agent messaging works fine.
+## ~~Agents Crash on Media in Reply/Threading~~ (RESOLVED 2026-04-11)
 
-**Impact**: Agents cannot download images or files shared in chat. Agents that attempt auto-fetch may enter error loops or go silent.
+**Fix applied**: Root cause was the HTTP 400 above. With ALLOWED_HOSTS fixed, media downloads succeed and agents no longer crash.
 
-**Workaround**: Agents should gracefully handle media attachment URLs they cannot download — log the URL and continue processing the text content. Do not block or retry indefinitely.
+## ~~Thread Notifications Not Delivered to MCP~~ (RESOLVED 2026-04-11)
 
-**Fix**: Add the LAN IP to `ALLOWED_HOSTS` in the Django settings on the hub server.
-
-## Agents Crash on Media in Reply/Threading
-
-**Symptom**: Agents go offline shortly after a message with media attachments is posted, especially in replies or threads.
-
-**Root cause**: The MCP sidecar formats attachments as `[Attachments: filename -> url]` in notification text. If the agent tries to auto-process the URL and hits the 400 error above, it may enter an error loop.
-
-**Workaround**: Agents should treat attachment URLs as informational only — do not attempt automatic download unless explicitly asked.
-
-## Thread Notifications Not Delivered to MCP
-
-**Symptom**: Messages posted in threads (reply_to) do not trigger MCP channel notifications to agents. Agents only see top-level channel messages.
-
-**Root cause**: The MCP sidecar's WebSocket subscription may not include threaded messages, or the hub's broadcast logic skips thread replies for the main channel feed.
-
-**Impact**: Agents miss context when conversations happen in threads. Users must re-post in the main channel to get agent attention.
-
-**Workaround**: For messages that need agent response, post in the main channel (not in a thread). Use `@mention` in top-level messages.
+**Fix applied**: `AgentConsumer.thread_reply` was a no-op (`pass`). Now forwards thread replies to agents. MCP sidecar already handles rewriting them with parent context.
 
 ## Dev Channel Dialog Blocks Agent Startup
 

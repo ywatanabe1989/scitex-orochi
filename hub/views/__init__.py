@@ -18,6 +18,7 @@ from hub.views.api import (  # noqa: F401
     api_history,
     api_media,
     api_members,
+    api_message_detail,
     api_messages,
     api_reactions,
     api_releases,
