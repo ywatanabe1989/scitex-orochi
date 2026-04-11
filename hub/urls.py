@@ -58,6 +58,8 @@ urlpatterns = [
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
+    path("api/agents/pin/", views.api_agents_pin, name="api-agents-pin"),
+    path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     path(

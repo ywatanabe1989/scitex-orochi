@@ -108,7 +108,7 @@ function appendMessage(msg) {
     updateResourcePanel(meta.data);
   }
   if (!content) return;
-  var senderColor = getAgentColor(senderName);
+  var senderColor = getResolvedAgentColor(senderName);
   if (channel) {
     el.setAttribute("data-channel", channel);
   }

@@ -38,6 +38,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "model": info.get("model", ""),
             "workdir": info.get("workdir", ""),
             "channels": info.get("channels", []),
+            "claude_md": info.get("claude_md", "") or prev.get("claude_md", ""),
             "status": "online",
             "registered_at": prev.get("registered_at") or time.time(),
             "last_heartbeat": time.time(),
@@ -212,6 +213,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     "icon_emoji": p.icon_emoji or "",
                     "icon_image": p.icon_image or "",
                     "icon_text": p.icon_text or "",
+                    "color": getattr(p, "color", "") or "",
                     "health_status": p.health_status or "",
                     "health_reason": p.health_reason or "",
                     "health_source": p.health_source or "",
@@ -268,6 +270,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "icon": icon_image,
                 "icon_emoji": icon_emoji,
                 "icon_text": icon_text,
+                "color": prof.get("color") or a.get("color", ""),
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
                 "liveness": liveness,
@@ -292,6 +295,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
                 "health": a.get("health") or {},
+                "claude_md": a.get("claude_md", ""),
             }
         )
     return result

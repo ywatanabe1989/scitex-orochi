@@ -824,6 +824,22 @@ body {
   margin-left: 6px;
 }
 
+/* Server info at sidebar bottom */
+.sidebar-server-info {
+  padding: 8px 12px;
+  border-top: 1px solid #333;
+  font-size: 11px;
+  color: #666;
+  line-height: 1.6;
+}
+.sidebar-server-info .server-label {
+  color: #555;
+  margin-right: 4px;
+}
+.sidebar-server-info .server-value {
+  color: #888;
+}
+
 /* Sign-out link at sidebar bottom */
 .sidebar-signout {
   margin-top: auto;
@@ -844,4 +860,119 @@ body {
 .signout-link:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #e0e0e0;
+}
+
+/* Pin/unpin agent button */
+.pin-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  opacity: 0.4;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.pin-btn:hover {
+  opacity: 1;
+}
+.pin-btn.pinned {
+  opacity: 0.9;
+}
+.agent-card {
+  position: relative;
+}
+.agent-card > .pin-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+/* Pinned but offline agent styling */
+.agent-card.pinned-offline {
+  opacity: 0.55;
+  border-left: 2px dashed #666;
+}
+.agent-row.pinned-offline td {
+  opacity: 0.55;
+  font-style: italic;
+}
+
+/* Agent icon cells */
+.agent-icon-cell {
+  text-align: center;
+  width: 36px;
+}
+.agent-letter-icon {
+  line-height: 1;
+}
+.agent-custom-icon {
+  vertical-align: middle;
+}
+
+/* Agent card compact layout */
+.agent-card-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.agent-card-top .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.agent-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 8px;
+  text-transform: lowercase;
+  letter-spacing: 0.2px;
+}
+.agent-badge-role {
+  color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.12);
+  border: 1px solid rgba(78, 205, 196, 0.3);
+}
+.agent-badge-machine {
+  color: #7ec8e3;
+  background: rgba(126, 200, 227, 0.1);
+  border: 1px solid rgba(126, 200, 227, 0.25);
+}
+
+/* Agent detail popup (click to expand in sidebar) */
+.agent-detail-popup {
+  display: none;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.agent-detail-popup.open {
+  display: block;
+}
+.agent-detail-row {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  color: #aaa;
+  align-items: center;
+}
+.agent-detail-label {
+  color: #666;
+  min-width: 60px;
+  flex-shrink: 0;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }

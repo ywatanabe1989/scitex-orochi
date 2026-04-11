@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=115">
+    <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
 <!-- hook-bypass: inline-style -->
@@ -75,6 +76,7 @@
                 Machines <span class="sidebar-count" id="sidebar-count-machines"></span>
             </h2>
             <div id="resources" class="sidebar-section"></div>
+            <div class="sidebar-server-info" id="server-info"></div>
             <div class="sidebar-signout">
                 <a href="/signout/" class="signout-link">Sign out</a>
             </div>
@@ -198,4 +200,5 @@
     <script src="{% static 'hub/init.js' %}?v=99"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
     <script src="{% static 'hub/push.js' %}?v=99"></script>
+    <script src="{% static 'hub/element-inspector.js' %}?v=1"></script>
 {% endblock %}

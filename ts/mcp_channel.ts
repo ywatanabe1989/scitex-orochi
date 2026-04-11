@@ -32,7 +32,9 @@ import {
   handleSubagents,
   handleTask,
 } from "./src/tools.js";
-import { hostname } from "os";
+import { hostname, homedir } from "os";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 // Unified truthy check for env var guards
 const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
@@ -185,6 +187,22 @@ const conn = {
       });
       _ws!.on("close", () => clearInterval(_pingInterval));
 
+      // Read CLAUDE.md from agent definition dir if available
+      let claudeMd = "";
+      try {
+        const agentDefPath = join(
+          homedir(),
+          ".scitex",
+          "orochi",
+          "agents",
+          OROCHI_AGENT,
+          "CLAUDE.md",
+        );
+        if (existsSync(agentDefPath)) {
+          claudeMd = readFileSync(agentDefPath, "utf-8");
+        }
+      } catch {}
+
       // Register with the hub
       _ws!.send(
         JSON.stringify({
@@ -199,8 +217,10 @@ const conn = {
             icon: process.env.SCITEX_OROCHI_ICON || "",
             icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
             icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
+            color: process.env.SCITEX_OROCHI_COLOR || "",
             project: process.env.SCITEX_OROCHI_PROJECT || "",
             workdir: process.cwd(),
+            claude_md: claudeMd,
           },
         }),
       );

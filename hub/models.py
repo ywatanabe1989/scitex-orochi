@@ -82,6 +82,7 @@ class AgentProfile(models.Model):
     icon_emoji = models.CharField(max_length=16, blank=True, default="")
     icon_image = models.CharField(max_length=500, blank=True, default="")
     icon_text = models.CharField(max_length=16, blank=True, default="")
+    color = models.CharField(max_length=16, blank=True, default="")
     # Last-known caduceus-reported health — persisted so the Agents tab
     # + sidebar pills survive container restarts without agents having
     # to re-POST their diagnosis. Free-form status string per mamba's
@@ -183,6 +184,27 @@ class MessageThread(models.Model):
 
     def __str__(self):
         return f"reply#{self.reply_id} → parent#{self.parent_id}"
+
+
+class PinnedAgent(models.Model):
+    """An agent pinned to a workspace so it always appears in the dashboard,
+    even when offline or not in the live registry."""
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="pinned_agents"
+    )
+    name = models.CharField(max_length=150)
+    role = models.CharField(max_length=100, blank=True, default="")
+    machine = models.CharField(max_length=200, blank=True, default="")
+    icon_emoji = models.CharField(max_length=16, blank=True, default="")
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("workspace", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"pin:{self.name}@{self.workspace.name}"
 
 
 class WorkspaceInvitation(models.Model):

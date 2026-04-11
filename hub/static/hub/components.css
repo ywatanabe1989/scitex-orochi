@@ -412,6 +412,30 @@
 .small-cell {
   font-size: 12px;
 }
+.claude-md-btn {
+  background: #2a2a3e;
+  color: #8be9fd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.claude-md-btn:hover {
+  background: #3a3a5e;
+}
+.claude-md-content {
+  background: #1a1a2e;
+  color: #ccc;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 4px 0;
+}
 .task-cell {
   color: #ffd93d;
   font-size: 12px;

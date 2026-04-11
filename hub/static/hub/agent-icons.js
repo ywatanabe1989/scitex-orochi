@@ -2,6 +2,7 @@
 /* globals: escapeHtml */
 
 var cachedAgentIcons = {}; /* {name: image|emoji|text string} */
+var cachedAgentColors = {}; /* {name: hex color string} */
 
 /* Inline SVG icon generators for branding — official SciTeX snake */
 function getSnakeIcon(size, color) {
@@ -58,7 +59,7 @@ function getSenderIcon(senderName, isAgent) {
       "</span>"
     );
   }
-  if (isAgent) return getSnakeIcon(18, getAgentColor(senderName));
+  if (isAgent) return getLetterIcon(senderName, 18);
   return getPersonIcon(18, "#c4a6e8");
 }
 
@@ -66,10 +67,31 @@ function getSnakeLogo() {
   return getSnakeIcon(32, "#4ecdc4");
 }
 
+/* Default letter-circle icon when no icon is configured */
+function getLetterIcon(name, size) {
+  size = size || 18;
+  var letter = (name || "?").charAt(0).toUpperCase();
+  var color = (cachedAgentColors[name]) || getAgentColor(name);
+  return (
+    '<span class="agent-letter-icon" style="' +
+    "display:inline-flex;align-items:center;justify-content:center;" +
+    "width:" + size + "px;height:" + size + "px;" +
+    "border-radius:50%;background:" + color + ";" +
+    'font-size:' + Math.round(size * 0.55) + 'px;font-weight:700;color:#0a0a0a;">' +
+    letter + "</span>"
+  );
+}
+
+/* Return the configured agent color or fall back to hash-based allocation */
+function getResolvedAgentColor(name) {
+  return cachedAgentColors[name] || getAgentColor(name);
+}
+
 /* Cache agent icons from /api/agents response (image > emoji > text) */
 function cacheAgentIcons(agents) {
   agents.forEach(function (a) {
     var icon = a.icon || a.icon_emoji || a.icon_text;
     if (icon) cachedAgentIcons[a.name] = icon;
+    if (a.color) cachedAgentColors[a.name] = a.color;
   });
 }

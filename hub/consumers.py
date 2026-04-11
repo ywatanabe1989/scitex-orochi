@@ -140,7 +140,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "icon": payload.get("icon", ""),
                 "icon_emoji": payload.get("icon_emoji", ""),
                 "icon_text": payload.get("icon_text", ""),
+                "color": payload.get("color", ""),
                 "channels": channels,
+                "claude_md": payload.get("claude_md", ""),
             }
 
             # Persist in in-memory registry for REST API access

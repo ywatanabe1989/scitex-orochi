@@ -2,6 +2,9 @@
 
 import json
 import logging
+import os
+import platform
+import time
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -11,6 +14,8 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
+
+_server_start_time = time.time()
 
 from hub.models import (
     Channel,
@@ -199,11 +204,22 @@ def api_config(request):
     """GET /api/config — dashboard configuration."""
     workspace = get_workspace(request)
     version = getattr(settings, "OROCHI_VERSION", "0.0.0")
+    # Server metadata
+    uptime_secs = int(time.time() - _server_start_time)
+    hostname = os.environ.get("OROCHI_HOSTNAME", platform.node())
+    external_ip = os.environ.get("OROCHI_EXTERNAL_IP", "")
+
     data = {
         "workspace": workspace.name,
         "version": version,
         "deployed_at": getattr(settings, "OROCHI_DEPLOYED_AT", ""),
         "build_id": getattr(settings, "OROCHI_BUILD_ID", ""),
+        "server": {
+            "hostname": hostname,
+            "external_ip": external_ip,
+            "uptime": uptime_secs,
+            "version": version,
+        },
     }
     # Expose dashboard token if set on workspace
     token = request.GET.get("token", "")
@@ -682,7 +698,7 @@ def api_members(request):
 
 @require_GET
 def api_agents(request):
-    """GET /api/agents — list agents from in-memory registry + DB fallback.
+    """GET /api/agents — list agents from in-memory registry only.
 
     Auth: Django session OR workspace token (?token=wks_...) so lightweight
     stdlib agents (e.g. caduceus) can poll without a browser login.
@@ -699,56 +715,55 @@ def api_agents(request):
             return JsonResponse({"error": "Invalid token"}, status=401)
     workspace = get_workspace(request)
 
-    # Primary: in-memory registry (has live metadata from WS connections)
+    # In-memory registry is the single source of truth for connected agents.
+    # No DB fallback — querying Message senders created ghost entries for
+    # agents that had disconnected but sent messages recently.
     from hub.registry import get_agents
 
     registry_agents = get_agents(workspace_id=workspace.id)
 
-    # Fallback: also include agents from recent messages not in registry
-    cutoff = timezone.now() - timezone.timedelta(hours=2)
-    db_agent_names = set(
-        Message.objects.filter(
-            workspace=workspace,
-            sender_type="agent",
-            ts__gte=cutoff,
-        ).values_list("sender", flat=True)
-    )
-    registry_names = {a["name"] for a in registry_agents}
+    # Merge pinned agents: any pinned agent not in the live registry
+    # is added as an "offline" placeholder so the dashboard always shows
+    # the expected team roster.
+    from hub.models import PinnedAgent
 
-    # Add DB-only agents (not currently in registry)
-    for name in db_agent_names - registry_names:
-        last_msg = (
-            Message.objects.filter(
-                workspace=workspace, sender=name, sender_type="agent"
-            )
-            .order_by("-ts")
-            .first()
-        )
-        last_ts = last_msg.ts.isoformat() if last_msg else None
-        channels = list(
-            set(
-                Message.objects.filter(
-                    workspace=workspace, sender=name, sender_type="agent"
-                )
-                .values_list("channel__name", flat=True)
-                .distinct()
-            )
-        )
-        registry_agents.append(
-            {
-                "name": name,
-                "agent_id": name,
-                "status": "offline",
-                "role": "agent",
-                "machine": "",
+    live_names = {a["name"] for a in registry_agents}
+    pinned = PinnedAgent.objects.filter(workspace=workspace)
+    for p in pinned:
+        if p.name not in live_names:
+            registry_agents.append({
+                "name": p.name,
+                "agent_id": p.name,
+                "machine": p.machine,
+                "role": p.role,
                 "model": "",
-                "channels": channels,
-                "current_task": "",
-                "registered_at": last_ts,
-                "last_heartbeat": last_ts,
+                "workdir": "",
+                "icon": "",
+                "icon_emoji": p.icon_emoji,
+                "icon_text": "",
+                "color": getattr(p, "color", ""),
+                "channels": [],
+                "status": "offline",
+                "liveness": "offline",
+                "idle_seconds": None,
+                "registered_at": None,
+                "last_heartbeat": None,
+                "last_action": None,
                 "metrics": {},
-            }
-        )
+                "current_task": "",
+                "last_message_preview": "",
+                "subagents": [],
+                "health": {},
+                "claude_md": "",
+                "pinned": True,
+            })
+
+    # Tag live agents that are also pinned
+    pinned_names = {p.name for p in pinned}
+    for a in registry_agents:
+        if "pinned" not in a:
+            a["pinned"] = a["name"] in pinned_names
+
     return JsonResponse(registry_agents, safe=False)
 
 
@@ -802,6 +817,7 @@ def api_agent_profiles(request):
                 "icon_emoji": p.icon_emoji,
                 "icon_image": p.icon_image,
                 "icon_text": p.icon_text,
+                "color": p.color,
                 "updated_at": p.updated_at.isoformat(),
             }
             for p in profiles
@@ -822,6 +838,7 @@ def api_agent_profiles(request):
             "icon_emoji": (body.get("icon_emoji") or "")[:16],
             "icon_image": (body.get("icon_image") or "")[:500],
             "icon_text": (body.get("icon_text") or "")[:16],
+            "color": (body.get("color") or "")[:16],
         },
     )
     # Push into the in-memory registry so the live card updates too
@@ -835,6 +852,8 @@ def api_agent_profiles(request):
                 _agents[name]["icon"] = profile.icon_image
             if profile.icon_text:
                 _agents[name]["icon_text"] = profile.icon_text
+            if profile.color:
+                _agents[name]["color"] = profile.color
     return JsonResponse(
         {
             "status": "ok",
@@ -842,6 +861,7 @@ def api_agent_profiles(request):
             "icon_emoji": profile.icon_emoji,
             "icon_image": profile.icon_image,
             "icon_text": profile.icon_text,
+            "color": profile.color,
         }
     )
 
@@ -1069,6 +1089,86 @@ def api_agents_purge(request):
 
     count = purge_all_offline()
     return JsonResponse({"status": "ok", "purged_count": count})
+
+
+@csrf_exempt
+@require_http_methods(["POST", "DELETE"])
+def api_agents_pin(request):
+    """POST /api/agents/pin/ — pin an agent so it always appears in dashboard.
+    DELETE /api/agents/pin/ — unpin an agent.
+
+    POST body: {"name": "agent-name", "role": "...", "machine": "...", "icon_emoji": "..."}
+    DELETE body: {"name": "agent-name"}
+
+    Auth: Django session OR workspace token.
+    """
+    body = {}
+    if request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    if not (request.user and request.user.is_authenticated):
+        token = request.GET.get("token") or body.get("token")
+        if not token:
+            return JsonResponse({"error": "Authentication required"}, status=401)
+        from hub.models import WorkspaceToken
+
+        try:
+            WorkspaceToken.objects.get(token=token)
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "Invalid token"}, status=401)
+
+    workspace = get_workspace(request)
+    name = body.get("name", "").strip()
+    if not name:
+        return JsonResponse({"error": "name is required"}, status=400)
+
+    from hub.models import PinnedAgent
+
+    if request.method == "POST":
+        obj, created = PinnedAgent.objects.update_or_create(
+            workspace=workspace,
+            name=name,
+            defaults={
+                "role": body.get("role", ""),
+                "machine": body.get("machine", ""),
+                "icon_emoji": body.get("icon_emoji", ""),
+            },
+        )
+        return JsonResponse({
+            "status": "pinned",
+            "name": obj.name,
+            "created": created,
+        })
+
+    # DELETE
+    deleted, _ = PinnedAgent.objects.filter(workspace=workspace, name=name).delete()
+    if deleted:
+        return JsonResponse({"status": "unpinned", "name": name})
+    return JsonResponse({"status": "not_found", "name": name}, status=404)
+
+
+@login_required
+@require_GET
+def api_agents_pinned(request):
+    """GET /api/agents/pinned/ — list all pinned agents for the workspace."""
+    workspace = get_workspace(request)
+    from hub.models import PinnedAgent
+
+    pins = PinnedAgent.objects.filter(workspace=workspace)
+    data = [
+        {
+            "name": p.name,
+            "role": p.role,
+            "machine": p.machine,
+            "icon_emoji": p.icon_emoji,
+            "added_at": p.added_at.isoformat() if p.added_at else None,
+        }
+        for p in pins
+    ]
+    return JsonResponse(data, safe=False)
 
 
 @login_required

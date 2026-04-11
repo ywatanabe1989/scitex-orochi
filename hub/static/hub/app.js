@@ -446,13 +446,13 @@ async function fetchAgents() {
     });
     container.innerHTML = agents
       .map(function (a) {
-        var color = getAgentColor(a.name);
+        var color = getResolvedAgentColor(a.name);
         var inactive = isAgentInactive(a);
         var statusClass =
           (a.status || "online") + (inactive ? " inactive" : "");
-        var taskHtml = a.current_task
-          ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
-          : "";
+        var agentIcon = cachedAgentIcons[a.name]
+          ? getSenderIcon(a.name, true)
+          : getLetterIcon(a.name, 16);
         /* Tiny health pill — mirrors the Agents tab classification. */
         var healthHtml = "";
         if (a.health && a.health.status) {
@@ -469,25 +469,48 @@ async function fetchAgents() {
             escapeHtml(hs) +
             "</span>";
         }
-        var agentIcon = a.icon
-          ? getSenderIcon(a.name, true)
-          : getSnakeIcon(16, color);
-        var workdirHtml = "";
-        if (a.workdir) {
-          var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
-          workdirHtml =
-            '<div class="agent-workdir">' +
-            escapeHtml(cleanAgentName(a.name)) +
-            ":" +
-            escapeHtml(displayDir) +
-            "</div>";
-        }
+        var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
+        var pinTitle = a.pinned ? "Unpin agent" : "Pin agent";
+        var pinBtnHtml =
+          '<button class="pin-btn' + (a.pinned ? " pinned" : "") +
+          '" data-pin-name="' + escapeHtml(a.name) +
+          '" title="' + pinTitle + '">' + pinIcon + '</button>';
+        /* Compact badges for role + machine */
+        var roleBadge = '<span class="agent-badge agent-badge-role">' +
+          escapeHtml(a.role || "agent") + "</span>";
+        var machineBadge = '<span class="agent-badge agent-badge-machine">' +
+          escapeHtml(a.machine || "unknown") + "</span>";
+        /* Tooltip metadata (shown on hover) */
+        var uniqueChannels = [...new Set(a.channels || [])];
+        var tooltipLines = [];
+        tooltipLines.push("Agent ID: " + (a.agent_id || a.name));
+        tooltipLines.push("Role: " + (a.role || "agent"));
+        tooltipLines.push("Host: " + (a.machine || "unknown"));
+        if (a.model) tooltipLines.push("Model: " + a.model);
+        if (uniqueChannels.length) tooltipLines.push("Channels: " + uniqueChannels.join(", "));
+        if (a.project) tooltipLines.push("Project: " + a.project);
+        if (a.workdir) tooltipLines.push("Workdir: " + a.workdir.replace(/^\/home\/[^/]+/, "~"));
+        if (a.current_task) tooltipLines.push("Task: " + a.current_task);
+        /* Popup detail panel (click to expand) */
+        var detailHtml =
+          '<div class="agent-detail-popup">' +
+          '<div class="agent-detail-row"><span class="agent-detail-label">Channels</span>' +
+          (uniqueChannels.length ? uniqueChannels.map(function(c) {
+            return '<span class="ch-badge">' + escapeHtml(c) + '</span>';
+          }).join(" ") : '<span class="muted-cell">-</span>') + '</div>' +
+          (a.model ? '<div class="agent-detail-row"><span class="agent-detail-label">Model</span>' + escapeHtml(a.model) + '</div>' : '') +
+          (a.project ? '<div class="agent-detail-row"><span class="agent-detail-label">Project</span>' + escapeHtml(a.project) + '</div>' : '') +
+          (a.workdir ? '<div class="agent-detail-row"><span class="agent-detail-label">Workdir</span><span class="monospace-cell">' + escapeHtml(a.workdir.replace(/^\/home\/[^/]+/, "~")) + '</span></div>' : '') +
+          (a.current_task ? '<div class="agent-detail-row"><span class="agent-detail-label">Task</span>' + escapeHtml(a.current_task) + '</div>' : '') +
+          '</div>';
         return (
           '<div class="agent-card' +
           (inactive ? " inactive" : "") +
+          (a.pinned && inactive ? " pinned-offline" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
-          '">' +
+          '" title="' + escapeHtml(tooltipLines.join("\n")) + '">' +
+          '<div class="agent-card-top">' +
           '<span class="agent-card-icon">' +
           agentIcon +
           "</span>" +
@@ -496,33 +519,67 @@ async function fetchAgents() {
           '"></span>' +
           '<span class="name">' +
           escapeHtml(hostedAgentName(a)) +
-          (a.model
-            ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
-            : "") +
           "</span>" +
-          workdirHtml +
-          '<div class="meta">' +
-          escapeHtml(a.machine || "unknown") +
-          " / " +
-          escapeHtml(a.role || "agent") +
+          pinBtnHtml +
           "</div>" +
-          healthHtml +
-          taskHtml +
-          '<div class="meta">channels: ' +
-          [...new Set(a.channels)].map(escapeHtml).join(", ") +
-          "</div></div>"
+          '<div class="agent-card-badges">' +
+          roleBadge + machineBadge + healthHtml +
+          "</div>" +
+          detailHtml +
+          "</div>"
         );
       })
       .join("");
     container
       .querySelectorAll(".agent-card[data-agent-name]")
       .forEach(function (el) {
-        el.addEventListener("click", function () {
+        el.addEventListener("click", function (ev) {
+          if (ev.target.closest(".pin-btn")) return; /* handled separately */
+          /* Toggle detail popup on click */
+          var popup = el.querySelector(".agent-detail-popup");
+          if (popup) {
+            var isOpen = popup.classList.contains("open");
+            /* Close all others first */
+            container.querySelectorAll(".agent-detail-popup.open").forEach(function (p) {
+              p.classList.remove("open");
+            });
+            if (!isOpen) popup.classList.add("open");
+          }
           addTag("agent", el.getAttribute("data-agent-name"));
+        });
+      });
+    container
+      .querySelectorAll(".pin-btn[data-pin-name]")
+      .forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          togglePinAgent(btn.getAttribute("data-pin-name"), !btn.classList.contains("pinned"));
         });
       });
   } catch (e) {
     /* fetch error */
+  }
+}
+
+async function togglePinAgent(name, shouldPin) {
+  try {
+    var token = window.__orochiCsrfToken || "";
+    var headers = { "Content-Type": "application/json" };
+    if (token) headers["X-CSRFToken"] = token;
+    var method = shouldPin ? "POST" : "DELETE";
+    var res = await fetch(apiUrl("/api/agents/pin/"), {
+      method: method,
+      headers: headers,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: name }),
+    });
+    if (res.ok) {
+      fetchAgents();
+    } else {
+      console.error("Pin/unpin failed:", res.status);
+    }
+  } catch (e) {
+    console.error("Pin/unpin error:", e);
   }
 }
 
