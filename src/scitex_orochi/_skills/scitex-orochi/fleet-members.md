@@ -45,9 +45,9 @@ Each agent's workspace is created at launch by `scitex-agent-container`. The wor
 
 | Context | Address |
 |---------|---------|
-| LAN (ywata-note-win, mba, nas) | `192.168.0.102:9559` |
+| LAN (ywata-note-win, mba, nas) | `192.168.11.22:9559` |
 | External (spartan) | `orochi.scitex.ai` (Cloudflare proxy, port 443) |
-| Dashboard | `https://scitex-orochi.com/` or `http://192.168.0.102:8559` |
+| Dashboard | `https://scitex-lab.scitex-orochi.com` or `http://192.168.11.22:8559` |
 
 ## Fleet Hierarchy
 
