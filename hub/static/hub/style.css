@@ -696,7 +696,8 @@ body {
   flex-shrink: 0;
 }
 .input-bar-actions #msg-attach,
-.input-bar-actions #msg-sketch {
+.input-bar-actions #msg-sketch,
+.input-bar-actions #msg-voice {
   background: #1a1a1a;
   color: #ccc;
   border: 1px solid #333;
@@ -707,10 +708,30 @@ body {
   min-width: 38px;
 }
 .input-bar-actions #msg-attach:hover,
-.input-bar-actions #msg-sketch:hover {
+.input-bar-actions #msg-sketch:hover,
+.input-bar-actions #msg-voice:hover {
   border-color: #4ecdc4;
   color: #4ecdc4;
   background: #1a1a1a;
+}
+/* Voice input button — hidden until JS detects Web Speech API support */
+.voice-btn-hidden {
+  display: none;
+}
+.input-bar-actions #msg-voice.voice-active {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  animation: voice-pulse 1.4s ease-in-out infinite;
+}
+@keyframes voice-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 .input-bar-actions #msg-send {
   min-width: 60px;

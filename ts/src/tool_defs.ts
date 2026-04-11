@@ -153,4 +153,45 @@ export const TOOL_DEFS = [
     description: "Get current Orochi connection status and diagnostics.",
     inputSchema: { type: "object" as const, properties: {} },
   },
+  {
+    name: "download_media",
+    description:
+      "Download a file from the Orochi hub to local disk. Use this to view screenshots or files posted in chat.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        url: {
+          type: "string",
+          description:
+            "The media URL from the Orochi chat (absolute or relative to hub).",
+        },
+        output_path: {
+          type: "string",
+          description:
+            "Optional: local path to save the file. Defaults to /tmp/orochi-media/<filename>.",
+        },
+      },
+      required: ["url"],
+    },
+  },
+  {
+    name: "upload_media",
+    description:
+      "Upload a local file to the Orochi hub. Returns the URL of the uploaded file.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file_path: {
+          type: "string",
+          description: "Absolute local path of the file to upload.",
+        },
+        channel: {
+          type: "string",
+          description:
+            "Channel to associate the upload with (default: #general).",
+        },
+      },
+      required: ["file_path"],
+    },
+  },
 ];
