@@ -153,7 +153,12 @@ function buildAgentRow(a) {
     "<td>" +
     pinBtnHtml +
     "</td>" +
-    '<td><button class="restart-btn" data-restart-name="' +
+    '<td><button class="kill-btn" data-kill-name="' +
+    escapeHtml(a.name) +
+    '" title="Kill agent" onclick="event.stopPropagation();killAgent(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', this)\">\u2715</button>" +
+    '<button class="restart-btn" data-restart-name="' +
     escapeHtml(a.name) +
     '" title="Restart agent" onclick="event.stopPropagation();restartAgent(\'' +
     escapeHtml(a.name).replace(/'/g, "\\'") +
