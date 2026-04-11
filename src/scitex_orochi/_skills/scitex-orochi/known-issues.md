@@ -60,3 +60,25 @@ Active issues encountered during fleet operations. Check here before debugging a
 **Root cause**: Anthropic API usage cap reached. Four Opus agents consumed 72% of monthly quota in 3.5 days during testing.
 
 **Workaround**: Use `claude-haiku-4-5` for non-critical agents (mamba-healer, mamba-skill-manager). Reserve Opus for head agents and task-managers that need deep reasoning.
+
+## Decommissioned Bastion VPS (162.43.35.139)
+
+**Date**: 2026-04-11
+
+**What happened**: Old bastion VPS at 162.43.35.139 (b1/b2 in SSH config) was unsubscribed and is unreachable. autossh tunnels targeting it fail with "Connection timed out".
+
+**Action taken**: Removed b1/b2 references from `.ssh` config. Bastion architecture migrated to our own infrastructure:
+- `bastion.scitex.ai` → NAS (Cloudflare Tunnel)
+- `scitex-orochi.com` → MBA (Cloudflare Tunnel)
+
+**Rule**: Never reference 162.43.35.139 or b1/b2 in any config. Use `bastion.scitex.ai` or `scitex-orochi.com` instead.
+
+## Spartan Python 3.11.3 (No Tkinter Module)
+
+**Date**: 2026-04-11
+
+**What happened**: Spartan HPC moved to Python 3.11.3. The `module load Tkinter/3.10.4` line in `.bash.d` broke because there is no `Tkinter/3.11.3` module on spartan (only 3.10.4 and 2.7.18).
+
+**Fix**: Updated `999_unimelb_spartan.src` to load `Python/3.11.3` and removed the Tkinter module load. GCCcore/11.3.0 unchanged.
+
+**Hostname**: Spartan login node is `login1` (was `spartan-login`). `if_host` patterns in bash.d must match `login1`.

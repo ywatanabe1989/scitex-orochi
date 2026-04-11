@@ -12,14 +12,14 @@ All agents connected to the Orochi hub. Definitions are the single source of tru
 | Agent | Host | Role | Model | Notes |
 |-------|------|------|-------|-------|
 | head-ywata-note-win | ywata-note-win (WSL) | head | opus | |
-| head-mba | mba | head | opus | |
-| head-nas | nas | head | opus | |
+| head-mba | mba (192.168.11.22) | head | opus | hosts orochi hub |
+| head-nas | nas (192.168.11.21) | head | opus | hosts scitex.ai |
 | head-spartan | spartan | head | opus | |
 | mamba-todo-manager | mba | task-manager | opus | was mamba-mba |
-| mamba-healer | mba | healer | haiku | was caduceus-mba |
+| mamba-healer-mba | mba | healer | haiku | was caduceus-mba |
 | mamba-skill-manager | mba | skill-manager | haiku | NEW |
 
-Legacy names `mamba-mba` and `caduceus-mba` still exist as definitions; new `mamba-*` names created alongside for clarity.
+Legacy names `mamba-mba` and `caduceus-mba` are deprecated; use `mamba-*` names.
 
 ## Directory Conventions
 

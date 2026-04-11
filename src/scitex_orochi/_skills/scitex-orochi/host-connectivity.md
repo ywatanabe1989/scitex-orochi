@@ -5,20 +5,20 @@ description: Machine-specific network configuration for Orochi agents -- SCITEX_
 
 # Host Connectivity
 
-Each agent machine has different network characteristics that affect how it connects to the Orochi hub running on NAS (192.168.11.22:9559).
+Each agent machine has different network characteristics that affect how it connects to the Orochi hub running on MBA (192.168.11.22:9559).
 
 ## SCITEX_OROCHI_HOST Per Machine
 
 | Machine | Agent | SCITEX_OROCHI_HOST | Reason |
 |---------|-------|-------------|--------|
-| NAS (192.168.11.22) | head-nas | `127.0.0.1` | Orochi server runs locally on NAS |
-| ywata-note-win (WSL) | head-ywata-note-win | `192.168.11.22` | LAN access to NAS |
-| MBA | head-mba, mamba-* | `192.168.11.22` | LAN access to NAS |
+| MBA (192.168.11.22) | head-mba, mamba-* | `127.0.0.1` | Orochi server runs locally on MBA |
+| NAS (192.168.11.21) | head-nas | `192.168.11.22` | LAN access to MBA |
+| ywata-note-win (WSL) | head-ywata-note-win | `192.168.11.22` | LAN access to MBA |
 | Spartan HPC | head-spartan | `orochi.scitex.ai` | External network, no LAN access |
 
 ## Orochi Server Location
 
-The Orochi hub runs on NAS as a Docker service. It listens on:
+The Orochi hub runs on MBA as a Docker service. It listens on:
 - WebSocket: port 9559
 - Dashboard HTTP: port 8559
 - Proxied via Cloudflare: `https://orochi.scitex.ai` (WebSocket + HTTP)
@@ -44,6 +44,23 @@ Also verify Docker and Orochi service are running:
 ```bash
 ssh nas 'docker ps | grep orochi'
 ```
+
+### Bastion Architecture (SSH Mesh)
+
+Old VPS bastion (162.43.35.139, b1/b2) is **decommissioned** — do not reference it. Current bastion setup uses our own infrastructure:
+
+| Bastion | Domain | Host | Purpose |
+|---------|--------|------|---------|
+| NAS | `bastion.scitex.ai` | NAS (Cloudflare Tunnel) | Primary bastion entry point |
+| MBA | `scitex-orochi.com` | MBA (Cloudflare Tunnel) | Secondary bastion |
+
+SSH mesh pattern: `machine1 → bastion → machine2` where machine1 and machine2 are arbitrary fleet machines. This enables full connectivity including spartan (which has no direct LAN access).
+
+Port assignments must be **consistent** across all fleet SSH configs:
+- NAS: 22 (direct LAN)
+- MBA: 22 (direct LAN)
+- ywata-note-win: 1229 (reverse tunnel)
+- spartan: 10001 (via relay)
 
 ### Claude Max Subscription Sharing
 
