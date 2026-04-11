@@ -19,6 +19,10 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 
 - [agent-deployment](agent-deployment.md) — Launch autonomous agents, push/poll modes, MCP config
 - [host-connectivity](host-connectivity.md) — Machine-specific network details, known port blocks
+- [fleet-members](fleet-members.md) — Core fleet members, roles, hosts, directory conventions
+- [agent-health-check](agent-health-check.md) — 8-step health checklist with commands for each check
+- [deploy-workflow](deploy-workflow.md) — Hub deployment process, agent restart, dev channel handling
+- [dashboard-features](dashboard-features.md) — Chat, Agents tab, element inspector, TODO, settings
 
 ## MCP Tools
 
