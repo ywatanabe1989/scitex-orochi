@@ -19,6 +19,7 @@ from hub.models import (
     MessageThread,
     Workspace,
     WorkspaceMember,
+    WorkspaceToken,
 )
 from hub.views._helpers import get_workspace
 
@@ -443,16 +444,36 @@ def api_threads(request):
     return JsonResponse({"status": "ok", "reply_id": reply.id}, status=201)
 
 
-@login_required
+@csrf_exempt
 @require_http_methods(["GET", "POST", "DELETE"])
 def api_reactions(request):
     """Reactions API.
+
+    Supports both session auth (browser) and workspace token auth (agents).
+    Token can be passed as ?token= query param.
 
     GET  /api/reactions/?message_ids=1,2,3 — list reactions grouped per message.
     POST /api/reactions/ {message_id, emoji} — toggle reaction by current user.
     DELETE /api/reactions/ {message_id, emoji} — remove reaction by current user.
     """
-    workspace = get_workspace(request)
+    # --- auth: token or session ---
+    token_str = request.GET.get("token") or request.POST.get("token")
+    wks_token = None
+    if token_str:
+        try:
+            wks_token = WorkspaceToken.objects.select_related("workspace").get(
+                token=token_str
+            )
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "invalid token"}, status=401)
+    elif not (request.user and request.user.is_authenticated):
+        return JsonResponse({"error": "auth required"}, status=401)
+
+    # --- resolve workspace ---
+    if wks_token:
+        workspace = wks_token.workspace
+    else:
+        workspace = get_workspace(request)
 
     if request.method == "GET":
         ids_raw = request.GET.get("message_ids", "")
@@ -489,11 +510,18 @@ def api_reactions(request):
     except Message.DoesNotExist:
         return JsonResponse({"error": "message not found"}, status=404)
 
-    reactor = request.user.username
+    # Determine reactor identity
+    if request.user and request.user.is_authenticated:
+        reactor = request.user.username
+        reactor_type = "human"
+    else:
+        reactor = body.get("reactor") or body.get("agent") or "agent"
+        reactor_type = "agent"
+
     if request.method == "POST":
         obj, created = MessageReaction.objects.get_or_create(
             message=msg, emoji=emoji, reactor=reactor,
-            defaults={"reactor_type": "human"},
+            defaults={"reactor_type": reactor_type},
         )
         action = "added" if created else "existed"
     else:  # DELETE
