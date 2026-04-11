@@ -56,6 +56,7 @@ urlpatterns = [
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
+    path("api/agents/restart/", views.api_agents_restart, name="api-agents-restart"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     path(
@@ -63,6 +64,7 @@ urlpatterns = [
     ),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
+    path("api/agents/avatar/", views.api_agents_avatar, name="api-agents-avatar"),
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),

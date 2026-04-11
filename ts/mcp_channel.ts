@@ -24,6 +24,7 @@ import {
 import { addMessage } from "./src/message_buffer.js";
 import {
   handleContext,
+  handleDownloadMedia,
   handleHealth,
   handleReply,
   handleHistory,
@@ -31,8 +32,11 @@ import {
   handleStatus,
   handleSubagents,
   handleTask,
+  handleUploadMedia,
 } from "./src/tools.js";
-import { hostname } from "os";
+import { hostname, homedir } from "os";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 // Unified truthy check for env var guards
 const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
@@ -185,6 +189,22 @@ const conn = {
       });
       _ws!.on("close", () => clearInterval(_pingInterval));
 
+      // Read CLAUDE.md from agent definition dir if available
+      let claudeMd = "";
+      try {
+        const agentDefPath = join(
+          homedir(),
+          ".scitex",
+          "orochi",
+          "agents",
+          OROCHI_AGENT,
+          "CLAUDE.md",
+        );
+        if (existsSync(agentDefPath)) {
+          claudeMd = readFileSync(agentDefPath, "utf-8");
+        }
+      } catch {}
+
       // Register with the hub
       _ws!.send(
         JSON.stringify({
@@ -199,8 +219,10 @@ const conn = {
             icon: process.env.SCITEX_OROCHI_ICON || "",
             icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
             icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
+            color: process.env.SCITEX_OROCHI_COLOR || "",
             project: process.env.SCITEX_OROCHI_PROJECT || "",
             workdir: process.cwd(),
+            claude_md: claudeMd,
           },
         }),
       );
@@ -295,30 +317,47 @@ const conn = {
           `delivering: sender=${sender} channel=${channel} content=${content.slice(0, 50)} id=${msgId}`,
         );
 
-        // Attachment normalization
-        const rawAttachments =
-          (msg.metadata && msg.metadata.attachments) ||
-          msg.attachments ||
-          payload.attachments ||
-          [];
-        const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
-        const attachments = (
-          rawAttachments as Array<{
-            url?: string;
-            filename?: string;
-            mime_type?: string;
-          }>
-        ).map((a) => {
-          const u = a.url || "";
-          const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
-          return { ...a, url: abs };
-        });
-        const attachmentInfo =
-          attachments.length > 0
-            ? `\n[Attachments: ${attachments
-                .map((a) => `${a.filename || "file"} -> ${a.url}`)
-                .join(", ")}]`
-            : "";
+        // Attachment normalization — wrapped in try/catch so malformed
+        // attachment data never crashes the sidecar or drops the message.
+        let attachmentInfo = "";
+        try {
+          const rawAttachments =
+            (msg.metadata && msg.metadata.attachments) ||
+            msg.attachments ||
+            payload.attachments ||
+            [];
+          const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          const attachments: Array<{ url: string; filename: string }> = [];
+          for (const a of rawAttachments as unknown[]) {
+            try {
+              if (a == null || typeof a !== "object") continue;
+              const att = a as Record<string, unknown>;
+              const u = typeof att.url === "string" ? att.url : "";
+              if (!u) continue; // skip attachments with no url
+              const abs = u.startsWith("http")
+                ? u
+                : hubBase.replace(/\/$/, "") + u;
+              const filename =
+                typeof att.filename === "string" ? att.filename : "file";
+              attachments.push({ url: abs, filename });
+            } catch (attErr) {
+              _dbg(`skipping malformed attachment: ${attErr}`);
+            }
+          }
+          if (attachments.length > 0) {
+            // Cap attachment list to avoid oversized notifications
+            const shown = attachments.slice(0, 10);
+            const extra =
+              attachments.length > 10
+                ? ` (+${attachments.length - 10} more)`
+                : "";
+            attachmentInfo = `\n[Attachments: ${shown
+              .map((a) => `${a.filename} -> ${a.url}`)
+              .join(", ")}${extra}]`;
+          }
+        } catch (attNormErr) {
+          _dbg(`attachment normalization failed: ${attNormErr}`);
+        }
 
         refreshIssueTitleCache();
         const decoratedContent = decorateIssueRefs(content);
@@ -406,6 +445,8 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "health") return handleHealth(args as any);
   if (name === "context") return handleContext(args as any);
   if (name === "status") return handleStatus(conn as any);
+  if (name === "download_media") return handleDownloadMedia(args as any);
+  if (name === "upload_media") return handleUploadMedia(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

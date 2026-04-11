@@ -77,15 +77,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             },
         )
 
-        # Broadcast system message to chat feed
-        await self.channel_layer.group_send(
-            self.workspace_group,
-            {
-                "type": "system.message",
-                "text": f"Agent {self.agent_name} connected",
-                "event": "agent_connected",
-            },
-        )
+        # System messages (connect/disconnect/register) removed from chat feed
+        # — too noisy during restarts. Sidebar presence updates are sufficient.
 
     async def disconnect(self, code):
         if hasattr(self, "workspace_group"):
@@ -105,15 +98,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 },
             )
 
-            # Broadcast system message to chat feed
-            await self.channel_layer.group_send(
-                self.workspace_group,
-                {
-                    "type": "system.message",
-                    "text": f"Agent {agent_name} disconnected",
-                    "event": "agent_disconnected",
-                },
-            )
+            # Disconnect system message removed — too noisy in chat feed
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
@@ -133,6 +118,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # Store agent metadata for info display
             self.agent_meta = {
                 "agent_id": payload.get("agent_id", self.agent_name),
+                "project": payload.get("project", ""),
                 "machine": payload.get("machine", ""),
                 "role": payload.get("role", ""),
                 "model": payload.get("model", ""),
@@ -140,7 +126,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "icon": payload.get("icon", ""),
                 "icon_emoji": payload.get("icon_emoji", ""),
                 "icon_text": payload.get("icon_text", ""),
+                "color": payload.get("color", ""),
                 "channels": channels,
+                "claude_md": payload.get("claude_md", ""),
             }
 
             # Persist in in-memory registry for REST API access
@@ -160,16 +148,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
             await self.send_json({"type": "registered", "channels": channels})
 
-            # Broadcast system message for registration
-            ch_list = ", ".join(channels) if channels else "(none)"
-            await self.channel_layer.group_send(
-                self.workspace_group,
-                {
-                    "type": "system.message",
-                    "text": f"Agent {self.agent_name} registered on channels: {ch_list}",
-                    "event": "agent_registered",
-                },
-            )
+            # Register system message removed — too noisy in chat feed
 
         elif msg_type == "heartbeat":
             # Store resource metrics from agent heartbeat
@@ -238,7 +217,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             payload = content.get("payload", {})
             # Support channel/text inside payload (canonical) or at top level (legacy TS clients)
             ch_name = payload.get("channel") or content.get("channel") or "#general"
-            text = payload.get("content") or payload.get("text") or content.get("text") or content.get("content") or ""
+            text = (
+                payload.get("content")
+                or payload.get("text")
+                or content.get("text")
+                or content.get("content")
+                or ""
+            )
 
             # Attachments may arrive either nested in metadata (new clients)
             # or at the payload top-level (upload.js). Normalize into one
@@ -438,7 +423,13 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             payload = content.get("payload", {})
             # Support channel/text inside payload (canonical) or at top level (legacy clients)
             ch_name = payload.get("channel") or content.get("channel") or "#general"
-            text = payload.get("content") or payload.get("text") or content.get("text") or content.get("content") or ""
+            text = (
+                payload.get("content")
+                or payload.get("text")
+                or content.get("text")
+                or content.get("content")
+                or ""
+            )
 
             # Normalize top-level attachments into metadata (upload.js path).
             metadata = dict(payload.get("metadata", {}) or {})

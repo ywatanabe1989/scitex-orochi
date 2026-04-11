@@ -1,13 +1,20 @@
 /**
  * MCP tool handlers for Orochi push client: reply, history, status, context.
  */
-import { readFileSync, unlinkSync } from "fs";
-import { basename } from "path";
+import {
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+} from "fs";
+import { basename, dirname } from "path";
 import { execSync } from "child_process";
 import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
   buildHttpBase,
+  buildFetchHeaders,
   buildWsUrl,
   maskUrl,
 } from "./config.js";
@@ -52,7 +59,7 @@ export async function handleReply(
           `${httpBase}/api/upload-base64${tokenParam("?")}`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: buildFetchHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify({ data: b64, filename }),
           },
         );
@@ -161,7 +168,7 @@ export async function handleHealth(args: {
     }
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
@@ -239,8 +246,12 @@ export async function handleReact(args: {
     const url = `${httpBase}/api/reactions/${tokenParam("?")}`;
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message_id: Number(messageId), emoji, reactor: OROCHI_AGENT }),
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        message_id: Number(messageId),
+        emoji,
+        reactor: OROCHI_AGENT,
+      }),
     });
     if (!resp.ok) {
       const body = await resp.text();
@@ -351,4 +362,133 @@ export function handleStatus(conn: ConnLike): {
       },
     ],
   };
+}
+
+const MEDIA_DIR = "/tmp/orochi-media";
+
+export async function handleDownloadMedia(args: {
+  url: string;
+  output_path?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  try {
+    // Resolve URL: if relative, prepend hub base
+    let fullUrl = args.url;
+    if (!fullUrl.startsWith("http")) {
+      fullUrl =
+        httpBase.replace(/\/$/, "") +
+        (fullUrl.startsWith("/") ? "" : "/") +
+        fullUrl;
+    }
+
+    // Append token if needed
+    const sep = fullUrl.includes("?") ? "&" : "?";
+    const fetchUrl = OROCHI_TOKEN
+      ? `${fullUrl}${sep}token=${OROCHI_TOKEN}`
+      : fullUrl;
+
+    const resp = await fetch(fetchUrl, {
+      headers: buildFetchHeaders(),
+    });
+    if (!resp.ok) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} downloading ${fullUrl}`,
+          },
+        ],
+      };
+    }
+
+    // Determine output path
+    const urlPath = new URL(fullUrl).pathname;
+    const filename = basename(urlPath) || "download";
+    const outputPath = args.output_path || `${MEDIA_DIR}/${filename}`;
+
+    // Ensure directory exists
+    const dir = dirname(outputPath);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+
+    const buffer = Buffer.from(await resp.arrayBuffer());
+    writeFileSync(outputPath, buffer);
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Downloaded to ${outputPath} (${buffer.length} bytes)`,
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+export async function handleUploadMedia(args: {
+  file_path: string;
+  channel?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  try {
+    if (!existsSync(args.file_path)) {
+      return {
+        content: [
+          { type: "text", text: `Error: file not found: ${args.file_path}` },
+        ],
+      };
+    }
+
+    const fileData = readFileSync(args.file_path);
+    const b64 = fileData.toString("base64");
+    const filename = basename(args.file_path);
+
+    const resp = await fetch(
+      `${httpBase}/api/upload-base64${tokenParam("?")}`,
+      {
+        method: "POST",
+        headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          data: b64,
+          filename,
+          channel: args.channel || "#general",
+        }),
+      },
+    );
+
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
+          },
+        ],
+      };
+    }
+
+    const result = (await resp.json()) as { url?: string; filename?: string };
+    const mediaUrl = result.url
+      ? result.url.startsWith("http")
+        ? result.url
+        : `${httpBase}${result.url}`
+      : "unknown";
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Uploaded ${filename} -> ${mediaUrl}`,
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
 }

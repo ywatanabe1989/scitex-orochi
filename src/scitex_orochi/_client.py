@@ -91,6 +91,7 @@ class OrochiClient:
                             "role": self.role,
                             "model": "",
                             "agent_id": self.agent_id,
+                            "project": self.project,
                             "workdir": self.project,
                         },
                     }

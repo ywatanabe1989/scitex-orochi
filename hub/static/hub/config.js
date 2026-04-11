@@ -61,6 +61,28 @@
       if (cfg.dashboard_token) {
         window.__orochiToken = cfg.dashboard_token;
       }
+      /* Server metadata panel */
+      if (cfg.server) {
+        window.__orochiServer = cfg.server;
+        var infoEl = document.getElementById("server-info");
+        if (infoEl) {
+          var s = cfg.server;
+          var uptimeStr = (function (secs) {
+            var d = Math.floor(secs / 86400);
+            var h = Math.floor((secs % 86400) / 3600);
+            var m = Math.floor((secs % 3600) / 60);
+            if (d > 0) return d + "d " + h + "h";
+            if (h > 0) return h + "h " + m + "m";
+            return m + "m";
+          })(s.uptime || 0);
+          var lines = [];
+          if (s.hostname)    lines.push('<span class="server-label">Host:</span><span class="server-value">' + s.hostname + '</span>');
+          if (s.external_ip) lines.push('<span class="server-label">IP:</span><span class="server-value">' + s.external_ip + '</span>');
+          if (s.version)     lines.push('<span class="server-label">Ver:</span><span class="server-value">v' + s.version + '</span>');
+          lines.push('<span class="server-label">Up:</span><span class="server-value">' + uptimeStr + '</span>');
+          infoEl.innerHTML = lines.join("<br>");
+        }
+      }
     }
   } catch (e) {
     /* config endpoint unavailable -- use defaults */

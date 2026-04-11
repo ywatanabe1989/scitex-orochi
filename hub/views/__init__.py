@@ -4,9 +4,12 @@ from hub.views.api import (  # noqa: F401
     api_agent_health,
     api_agent_profiles,
     api_agents,
+    api_agents_pin,
+    api_agents_pinned,
     api_agents_purge,
     api_agents_register,
     api_agents_registry,
+    api_agents_restart,
     api_channels,
     api_config,
     api_connectivity,
@@ -33,6 +36,7 @@ from hub.views.auth import (  # noqa: F401
     signout_view,
     signup_view,
 )
+from hub.views.avatar import api_agents_avatar  # noqa: F401
 from hub.views.discover import api_discover  # noqa: F401
 from hub.views.github import github_issues  # noqa: F401
 from hub.views.landing import (  # noqa: F401

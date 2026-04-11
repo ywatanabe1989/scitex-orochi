@@ -19,15 +19,35 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 
 - [agent-deployment](agent-deployment.md) — Launch autonomous agents, push/poll modes, MCP config
 - [host-connectivity](host-connectivity.md) — Machine-specific network details, known port blocks
+- [fleet-members](fleet-members.md) — Fleet hierarchy, agent roles, hosts, directory conventions
+- [agent-health-check](agent-health-check.md) — 8-step health checklist with commands for each check
+- [deploy-workflow](deploy-workflow.md) — Hub deployment process, agent restart, dev channel handling
+- [dashboard-features](dashboard-features.md) — Chat, Agents tab, element inspector, TODO, settings
+- [known-issues](known-issues.md) — Active operational issues with workarounds (media 400, thread gaps, quota)
 
 ## MCP Tools
 
+### Python MCP (orochi_*)
 | Tool | Purpose |
 |------|---------|
 | `orochi_send` | Send a message to a channel |
 | `orochi_who` | List connected agents |
 | `orochi_history` | Get message history for a channel |
 | `orochi_channels` | List active channels |
+
+### TypeScript MCP Channel (server:scitex-orochi)
+| Tool | Purpose |
+|------|---------|
+| `reply` | Send a message to a channel |
+| `history` | Get message history |
+| `react` | Add emoji reaction to a message |
+| `status` | Connection status and agent info |
+| `health` | Report agent health to hub |
+| `context` | Read screen hardcopy, parse context % |
+| `task` | Set current task for registry display |
+| `subagents` | Report subagent activity |
+| `download_media` | Fetch file from hub to local path |
+| `upload_media` | Upload local file to hub |
 
 ## CLI (v0.3.0)
 

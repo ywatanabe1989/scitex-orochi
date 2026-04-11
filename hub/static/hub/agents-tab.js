@@ -76,13 +76,20 @@ async function renderAgentsTab() {
     var tableHtml =
       '<table class="agents-registry-table">' +
       "<thead><tr>" +
+      "<th>Pin</th>" +
+      "<th></th>" +
+      "<th>Icon</th>" +
       "<th>Status</th>" +
       "<th>Agent ID</th>" +
       "<th>Role</th>" +
       "<th>Host / Machine</th>" +
       "<th>Model</th>" +
       "<th>Channels</th>" +
+      "<th>Project</th>" +
+      "<th>Workdir</th>" +
       "<th>Task</th>" +
+      "<th>Subagents</th>" +
+      "<th>Config</th>" +
       "<th>Registered</th>" +
       "<th>Last Seen</th>" +
       "</tr></thead><tbody>" +
@@ -102,14 +109,11 @@ async function renderAgentsTab() {
 
 function buildAgentRow(a) {
   var inactive = isAgentInactive(a);
-  var color = getAgentColor(a.name);
+  var color = getResolvedAgentColor(a.name);
   var statusColor = inactive ? "#ef4444" : "#4ecdc4";
   var statusLabel = inactive ? "offline" : "online";
-  var agentIcon = getSnakeIcon(16, color);
+  var agentIcon = getSenderIcon(a.name, true, 24);
   var dotHtml =
-    '<span class="agent-tab-icon">' +
-    agentIcon +
-    "</span>" +
     '<span class="status-dot-inline"></span>' +
     '<span class="status-label">' +
     statusLabel +
@@ -120,13 +124,47 @@ function buildAgentRow(a) {
       return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
     })
     .join("");
-  var rowClass = "agent-row" + (inactive ? " agent-inactive" : "");
+  var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
+  var pinTitle = a.pinned ? "Unpin" : "Pin";
+  var pinBtnHtml =
+    '<button class="pin-btn' +
+    (a.pinned ? " pinned" : "") +
+    '" data-pin-name="' +
+    escapeHtml(a.name) +
+    '" title="' +
+    pinTitle +
+    '" onclick="event.stopPropagation();togglePinAgent(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', " +
+    !a.pinned +
+    ')">' +
+    pinIcon +
+    "</button>";
+  var rowClass =
+    "agent-row" +
+    (inactive ? " agent-inactive" : "") +
+    (a.pinned && inactive ? " pinned-offline" : "");
   return (
     '<tr class="' +
     rowClass +
     '" data-agent-name="' +
     escapeHtml(a.name) +
     '">' +
+    "<td>" +
+    pinBtnHtml +
+    "</td>" +
+    '<td><button class="restart-btn" data-restart-name="' +
+    escapeHtml(a.name) +
+    '" title="Restart agent" onclick="event.stopPropagation();restartAgent(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', this)\">\u21BB</button></td>" +
+    '<td class="agent-icon-cell avatar-clickable" data-avatar-agent="' +
+    escapeHtml(a.name) +
+    '" title="Click to change avatar" onclick="event.stopPropagation();openAvatarPicker(\'' +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "')" >' +
+    agentIcon +
+    "</td>" +
     "<td>" +
     dotHtml +
     "</td>" +
@@ -145,8 +183,31 @@ function buildAgentRow(a) {
     '<td class="small-cell">' +
     channelsHtml +
     "</td>" +
+    '<td class="muted-cell">' +
+    escapeHtml(a.project || "-") +
+    "</td>" +
+    '<td class="monospace-cell small-cell" title="' +
+    escapeHtml(a.workdir || "") +
+    '">' +
+    escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
+    "</td>" +
     '<td class="task-cell">' +
     escapeHtml(a.current_task || "-") +
+    "</td>" +
+    '<td class="small-cell">' +
+    (a.subagents && a.subagents.length > 0
+      ? a.subagents.map(function(s) {
+          var sClass = s.status === "done" ? "subagent-done" : "subagent-running";
+          return '<span class="subagent-badge ' + sClass + '" title="' +
+            escapeHtml(s.task || "") + '">' +
+            escapeHtml(s.name || "subagent") + '</span>';
+        }).join(" ")
+      : '<span class="muted-cell">-</span>') +
+    "</td>" +
+    "<td>" +
+    (a.claude_md
+      ? '<button class="claude-md-btn" onclick="event.stopPropagation();toggleClaudeMd(this)" title="View CLAUDE.md">CLAUDE.md</button>'
+      : '<span class="muted-cell">-</span>') +
     "</td>" +
     '<td class="muted-cell" title="' +
     escapeHtml(a.registered_at || "") +
@@ -158,8 +219,24 @@ function buildAgentRow(a) {
     '">' +
     timeAgo(a.last_heartbeat) +
     "</td>" +
-    "</tr>"
+    "</tr>" +
+    (a.claude_md
+      ? '<tr class="claude-md-detail" style="display:none"><td colspan="16"><pre class="claude-md-content">' +
+        escapeHtml(a.claude_md) +
+        "</pre></td></tr>"
+      : "")
   );
+}
+
+/* Toggle CLAUDE.md detail row visibility */
+function toggleClaudeMd(btn) {
+  var row = btn.closest("tr");
+  var detailRow = row.nextElementSibling;
+  if (detailRow && detailRow.classList.contains("claude-md-detail")) {
+    var visible = detailRow.style.display !== "none";
+    detailRow.style.display = visible ? "none" : "table-row";
+    btn.textContent = visible ? "CLAUDE.md" : "Hide";
+  }
 }
 
 /* Auto-refresh agents tab every 10s when visible */
