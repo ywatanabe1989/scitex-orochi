@@ -219,6 +219,20 @@ async def handle_telegram_webhook(request: web.Request) -> web.Response:
     return web.Response(status=200, text="ok")
 
 
+async def handle_purge_stale(request: web.Request) -> web.Response:
+    """POST /api/agents/purge-stale -- remove agents with stale heartbeats."""
+    token = request.query.get("token")
+    if not await verify_token(token):
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    server: OrochiServer = request.app["orochi_server"]
+    before = set(server.agents.keys())
+    server._reap_stale_agents()
+    after = set(server.agents.keys())
+    removed = sorted(before - after)
+    return web.json_response({"removed": removed, "remaining": len(after)})
+
+
 async def handle_stats(request: web.Request) -> web.Response:
     """GET /api/stats -- server statistics."""
     server: OrochiServer = request.app["orochi_server"]
@@ -407,6 +421,7 @@ def create_web_app(server: OrochiServer) -> web.Application:
     app.router.add_get("/api/history/{channel}", handle_history)
     app.router.add_get("/api/config", handle_config)
     app.router.add_get("/api/stats", handle_stats)
+    app.router.add_post("/api/agents/purge-stale", handle_purge_stale)
 
     # Telegram webhook (receives updates when webhook mode is enabled)
     app.router.add_post("/webhook/telegram", handle_telegram_webhook)

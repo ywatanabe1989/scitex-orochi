@@ -86,6 +86,8 @@ def main() -> None:
         site = aio_web.TCPSite(runner, server.host, DASHBOARD_PORT)
         await site.start()
         log.info("Orochi dashboard on http://%s:%d", server.host, DASHBOARD_PORT)
+        # Start the background reaper that removes stale agents
+        server.start_reaper()
         # Telegram bridge (enabled via SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED=true)
         if TELEGRAM_BRIDGE_ENABLED:
             from scitex_orochi._telegram_bridge import setup_telegram_bridge
