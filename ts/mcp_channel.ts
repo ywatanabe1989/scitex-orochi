@@ -89,42 +89,11 @@ Orochi is a real-time communication hub for AI agents across different machines.
   },
 );
 
-// ---------------------------------------------------------------------------
-// GitHub issue title cache so `#NNN` in inbound messages can be expanded to
-// `#NNN (title)` before reaching the agent — same as the dashboard render.
-// ---------------------------------------------------------------------------
-const _issueTitleCache: Map<string, string> = new Map();
-let _issueCacheLastFetch = 0;
-const _ISSUE_CACHE_TTL_MS = 5 * 60 * 1000;
-
-async function refreshIssueTitleCache(): Promise<void> {
-  const now = Date.now();
-  if (now - _issueCacheLastFetch < _ISSUE_CACHE_TTL_MS) return;
-  try {
-    const url = `${buildHttpBase()}/api/github/issues${OROCHI_TOKEN ? `?token=${OROCHI_TOKEN}&state=all` : "?state=all"}`;
-    const resp = await fetch(url);
-    if (!resp.ok) return;
-    const issues = (await resp.json()) as Array<{
-      number?: number;
-      title?: string;
-    }>;
-    for (const i of issues) {
-      if (i && i.number && i.title)
-        _issueTitleCache.set(String(i.number), i.title);
-    }
-    _issueCacheLastFetch = now;
-  } catch (_) {
-    /* ignore — next message will retry */
-  }
-}
-
-function decorateIssueRefs(text: string): string {
-  return text.replace(/(^|[^\w\/])#(\d+)\b/g, (match, lead, num) => {
-    const title = _issueTitleCache.get(num);
-    if (!title) return match;
-    return `${lead}#${num} (${title})`;
-  });
-}
+import {
+  refreshIssueTitleCache,
+  decorateIssueRefs,
+} from "./src/issue_cache.js";
+import { TOOL_DEFS } from "./src/tool_defs.js";
 
 // ---------------------------------------------------------------------------
 // Direct WebSocket connection (replaces OrochiConnection class).
@@ -182,6 +151,32 @@ const conn = {
       console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
       _dbg(`ws open`);
 
+      // Ping/pong heartbeat — detect half-open connections
+      let _lastPong = Date.now();
+      const _pingInterval = setInterval(() => {
+        if (!_ws || _ws.readyState !== WebSocket.OPEN) {
+          clearInterval(_pingInterval);
+          return;
+        }
+        const pongAge = Date.now() - _lastPong;
+        if (pongAge > 15000) {
+          console.error(
+            `[orochi] stale connection (no pong for ${Math.round(pongAge / 1000)}s), forcing reconnect`,
+          );
+          _dbg(`stale: pong age ${pongAge}ms, terminating`);
+          clearInterval(_pingInterval);
+          _ws.terminate();
+          return;
+        }
+        try {
+          _ws.ping();
+        } catch {}
+      }, 10000);
+      _ws!.on("pong", () => {
+        _lastPong = Date.now();
+      });
+      _ws!.on("close", () => clearInterval(_pingInterval));
+
       // Register with the hub
       _ws!.send(
         JSON.stringify({
@@ -190,13 +185,14 @@ const conn = {
           payload: {
             channels: OROCHI_CHANNELS,
             machine: hostname(),
-            role: "claude-code",
+            role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
             model: OROCHI_MODEL,
             agent_id: `${OROCHI_AGENT}@${hostname()}`,
             icon: process.env.SCITEX_OROCHI_ICON || "",
             icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
             icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
-            project: "",
+            project: process.env.SCITEX_OROCHI_PROJECT || "",
+            workdir: process.cwd(),
           },
         }),
       );
@@ -288,9 +284,7 @@ const conn = {
           }>
         ).map((a) => {
           const u = a.url || "";
-          const abs = u.startsWith("http")
-            ? u
-            : hubBase.replace(/\/$/, "") + u;
+          const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
           return { ...a, url: abs };
         });
         const attachmentInfo =
@@ -323,10 +317,13 @@ const conn = {
         const delays = [0, 500, 1000];
         let delivered = false;
         for (let attempt = 0; attempt < delays.length; attempt++) {
-          if (attempt > 0) await new Promise((r) => setTimeout(r, delays[attempt]));
+          if (attempt > 0)
+            await new Promise((r) => setTimeout(r, delays[attempt]));
           try {
             await mcp.notification(notifPayload);
-            _dbg(`notification sent OK (attempt ${attempt + 1}): ${channel} ${sender}`);
+            _dbg(
+              `notification sent OK (attempt ${attempt + 1}): ${channel} ${sender}`,
+            );
             delivered = true;
             break;
           } catch (retryErr) {
@@ -334,7 +331,9 @@ const conn = {
           }
         }
         if (!delivered) {
-          console.error(`[orochi] all notification attempts failed for ${channel} ${sender}`);
+          console.error(
+            `[orochi] all notification attempts failed for ${channel} ${sender}`,
+          );
         }
       } catch (e) {
         const errMsg = e instanceof Error ? e.message : String(e);
@@ -365,174 +364,7 @@ const conn = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Tool definitions
-// ---------------------------------------------------------------------------
-const TOOL_DEFS = [
-  {
-    name: "reply",
-    description:
-      "Send a message to an Orochi channel. Pass chat_id from the inbound <channel> tag.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        chat_id: {
-          type: "string",
-          description: "The channel to send to (e.g. #general).",
-        },
-        text: { type: "string", description: "The message text to send." },
-        reply_to: {
-          type: "string",
-          description: "Optional: message ID to reply to.",
-        },
-        files: {
-          type: "array",
-          items: { type: "string" },
-          description: "Optional: absolute file paths to attach.",
-        },
-      },
-      required: ["chat_id", "text"],
-    },
-  },
-  {
-    name: "history",
-    description: "Get recent message history from an Orochi channel.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        channel: {
-          type: "string",
-          description: "Channel name (default: #general).",
-        },
-        limit: {
-          type: "number",
-          description: "Max messages to return (default: 10).",
-        },
-      },
-    },
-  },
-  {
-    name: "health",
-    description:
-      "Record a health diagnosis for an agent (caduceus primary caller). Use for real-time Agents tab status. Status values: healthy, idle, stale, stuck_prompt, dead, ghost, remediating, unknown.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        agent: {
-          type: "string",
-          description: "Target agent name (exact match)",
-        },
-        status: {
-          type: "string",
-          description:
-            "healthy|idle|stale|stuck_prompt|dead|ghost|remediating|unknown",
-        },
-        reason: {
-          type: "string",
-          description: "Short explanation (<=200 chars)",
-        },
-        source: {
-          type: "string",
-          description: "Reporter name (defaults to self)",
-        },
-        updates: {
-          type: "array",
-          description: "Bulk: list of {agent,status,reason?,source?}",
-          items: {
-            type: "object",
-            properties: {
-              agent: { type: "string" },
-              status: { type: "string" },
-              reason: { type: "string" },
-              source: { type: "string" },
-            },
-            required: ["agent", "status"],
-          },
-        },
-      },
-    },
-  },
-  {
-    name: "task",
-    description:
-      "Update this agent's current intellectual task so users can see what it is thinking about in real time in the Activity tab. Call this whenever picking up a new piece of work — even for work that has no shell signature (reading, designing, reviewing).",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        task: {
-          type: "string",
-          description:
-            "Short description of the current work (<= 200 chars). Include issue refs like #142 when relevant.",
-        },
-      },
-      required: ["task"],
-    },
-  },
-  {
-    name: "subagents",
-    description:
-      "Report this agent's current subagent tree to Orochi so the Activity tab renders them nested under this agent. Pass the full list on every call (full-replace semantics).",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        subagents: {
-          type: "array",
-          description:
-            "Current subagents. Each item: {name, task, status?}. status is one of running|done|failed (default running).",
-          items: {
-            type: "object",
-            properties: {
-              name: { type: "string" },
-              task: { type: "string" },
-              status: { type: "string" },
-            },
-            required: ["name", "task"],
-          },
-        },
-      },
-      required: ["subagents"],
-    },
-  },
-  {
-    name: "react",
-    description:
-      "React to an Orochi message with an emoji (toggle semantics). Pass the integer message_id and the emoji character.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        message_id: {
-          type: ["number", "string"],
-          description: "The integer ID of the message to react to.",
-        },
-        emoji: {
-          type: "string",
-          description: "The emoji character (e.g. 👍, ❌, 👀).",
-        },
-      },
-      required: ["message_id", "emoji"],
-    },
-  },
-  {
-    name: "context",
-    description:
-      "Get the Claude Code context window usage percentage by reading the screen session's statusline.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        screen_name: {
-          type: "string",
-          description:
-            "GNU screen session name to read from (defaults to this agent's name).",
-        },
-      },
-    },
-  },
-  {
-    name: "status",
-    description: "Get current Orochi connection status and diagnostics.",
-    inputSchema: { type: "object" as const, properties: {} },
-  },
-];
+// Tool definitions imported from src/tool_defs.ts
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOL_DEFS,

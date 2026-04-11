@@ -230,6 +230,38 @@ You should see `Listening for channel messages from: server:scitex-orochi` in th
 
 ---
 
+## Agent Definitions
+
+Agent configuration lives in `~/.scitex/orochi/agents/<agent-name>/`, **not** in this repository. This directory is the single source of truth for all agent configuration, shared across machines via dotfiles.
+
+```
+~/.scitex/orochi/agents/<agent-name>/
+├── <agent-name>.yaml  — Agent definition (apiVersion, kind, metadata, spec)
+├── CLAUDE.md           — Agent instructions (role, behavior, tools)
+└── .mcp.json           — MCP server configuration (orochi hub connection)
+```
+
+The `scitex-orochi` CLI is the **dispatcher** that reads these definitions and launches agents:
+
+1. `scitex-orochi launch <agent-name>` reads the agent definition directory
+2. Creates a workspace at `~/.scitex/orochi/workspaces/<agent-name>/`
+3. Copies `.mcp.json` and `CLAUDE.md` into the workspace
+4. Starts Claude Code in a GNU screen session from the workspace directory
+
+### Current Fleet
+
+| Agent | Role | Description |
+|-------|------|-------------|
+| `head-mba`, `head-nas`, `head-spartan`, `head-ywata-note-win` | head | Per-host Claude Code development workers |
+| `mamba-ywata-note-win` | task-manager | Task dispatch, dedup, GitHub-issue mirroring |
+| `caduceus-mba` | healer | Fleet health monitoring, stuck-agent remediation |
+| `master-ywata-note-win` | master | Orchestrator and delegation |
+| `telegrammer-ywata-note-win` | telegram | Telegram bridge relay |
+
+See `~/.scitex/orochi/README.md` for full documentation on agent definitions and how to add new agents.
+
+---
+
 ## Available MCP Tools
 
 ### Channel Sidecar Tools (ts/mcp_channel.ts -- 8 tools)
