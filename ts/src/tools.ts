@@ -14,6 +14,7 @@ import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
   buildHttpBase,
+  buildFetchHeaders,
   buildWsUrl,
   maskUrl,
 } from "./config.js";
@@ -58,7 +59,7 @@ export async function handleReply(
           `${httpBase}/api/upload-base64${tokenParam("?")}`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: buildFetchHeaders({ "Content-Type": "application/json" }),
             body: JSON.stringify({ data: b64, filename }),
           },
         );
@@ -167,7 +168,7 @@ export async function handleHealth(args: {
     }
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
     });
     if (!resp.ok) {
@@ -245,7 +246,7 @@ export async function handleReact(args: {
     const url = `${httpBase}/api/reactions/${tokenParam("?")}`;
     const resp = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         message_id: Number(messageId),
         emoji,
@@ -385,7 +386,9 @@ export async function handleDownloadMedia(args: {
       ? `${fullUrl}${sep}token=${OROCHI_TOKEN}`
       : fullUrl;
 
-    const resp = await fetch(fetchUrl);
+    const resp = await fetch(fetchUrl, {
+      headers: buildFetchHeaders(),
+    });
     if (!resp.ok) {
       return {
         content: [
@@ -447,7 +450,7 @@ export async function handleUploadMedia(args: {
       `${httpBase}/api/upload-base64${tokenParam("?")}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: buildFetchHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           data: b64,
           filename,

@@ -51,6 +51,40 @@ export function buildHttpBase(): string {
   return `http://${OROCHI_HOST}:${OROCHI_PORT}`;
 }
 
+/**
+ * Return extra headers needed when the hub is accessed by IP.
+ * Django rejects requests whose Host header doesn't match ALLOWED_HOSTS.
+ * When SCITEX_OROCHI_URL contains a real hostname the browser-default Host
+ * header is fine; when we connect by raw IP we must override it.
+ *
+ * Set SCITEX_OROCHI_HOST_HEADER to the domain that Django accepts
+ * (e.g. "scitex-orochi.com").  If unset and the URL contains a real
+ * hostname, that hostname is used automatically.
+ */
+export function buildFetchHeaders(
+  extra?: Record<string, string>,
+): Record<string, string> {
+  const headers: Record<string, string> = { ...extra };
+  const override = process.env.SCITEX_OROCHI_HOST_HEADER || "";
+  if (override) {
+    headers["Host"] = override;
+  } else if (OROCHI_URL) {
+    // Derive from the full URL — e.g. wss://orochi.scitex-orochi.com → orochi.scitex-orochi.com
+    try {
+      const parsed = new URL(
+        OROCHI_URL.replace(/^ws/, "http"), // URL class needs http(s)
+      );
+      // Only override when the hostname is NOT a bare IP address
+      if (!/^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname)) {
+        headers["Host"] = parsed.host; // includes port if non-default
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+  return headers;
+}
+
 /** Mask token in URLs for safe logging. */
 export function maskUrl(url: string): string {
   return url.replace(/token=[^&]+/, "token=***");

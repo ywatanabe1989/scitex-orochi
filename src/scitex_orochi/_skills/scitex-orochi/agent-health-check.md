@@ -73,6 +73,50 @@ If stuck, send Enter via screen:
 ssh <host> screen -S <agent-name> -X stuff $'\n'
 ```
 
+### 6b. Permission Prompt Stuck
+
+Claude Code permission dialogs ("Do you want to proceed?", tool approval prompts) block agents entirely. Unlike the dev channel dialog, **`screen -X stuff` keystrokes do NOT work** for these prompts — Claude Code uses raw terminal input (not line-buffered stdin), so injected keystrokes are silently dropped.
+
+This is a known open issue tracked as "Dev channel dialog auto-confirm."
+
+**Workarounds (in order of preference)**:
+
+1. Pre-configure `allowedTools` in the agent's `settings.json` so permission prompts never appear.
+2. Launch with `--dangerously-skip-permissions` to bypass tool permission prompts entirely.
+3. Use `scitex-agent-container`'s auto-accept script, which handles TUI prompts during launch (but cannot handle mid-session permission prompts).
+
+**When already stuck**: The only current fix is manual interaction (attach to the screen session and press the key) or a full session restart. There is no programmatic way to dismiss a mid-session permission prompt from outside the terminal.
+
+**Root cause found**: Agents were launched without `--dangerously-skip-permissions` despite it being in YAML configs. The launch didn't go through the full scitex-agent-container pipeline — YAML `spec.claude.flags` is only read by the container pipeline, not by manual screen launches.
+
+**Permanent fix**: Add `permissions.allow` to the **workspace-level** `.claude/settings.json` (NOT the global `~/.claude/settings.json`, which would dangerously allow all Claude Code sessions on the machine):
+
+```
+<workspace>/.claude/settings.json
+```
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "mcp__scitex-orochi__*"
+    ]
+  }
+}
+```
+
+These take effect on next agent restart. Each agent workspace (`~/.scitex/orochi/workspaces/<agent-name>/`) should have its own `.claude/settings.json`.
+
+**Prevention**: Use `scitex-orochi launch` (reads YAML flags properly) or rely on settings.json allowlists.
+
+**Known issue**: `screen -X stuff $'\r'` (raw carriage return) DOES work sometimes — it sends Enter which accepts the default option 1 (Yes). This is unreliable but can unblock agents in a pinch.
+
 ### 7. MCP Tools Functional
 
 The agent can send messages via its MCP tools (reply, history, etc.).

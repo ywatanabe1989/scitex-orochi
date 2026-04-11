@@ -66,6 +66,23 @@ pip install -e ~/proj/scitex-python[all]
 
 This must be done before launching the agent, or baked into the agent's launch script.
 
+## Head Agent Behavior
+
+Head agents are the primary orchestrators for their host machine. Their core responsibility is staying responsive on the Orochi channel at all times.
+
+**Delegation is mandatory.** Head agents must NOT do heavy work directly. All non-trivial tasks must be delegated to subagents or background processes:
+
+- SSH connectivity checks and fleet health scans
+- Code changes, debugging, and research
+- File operations, test runs, and builds
+- Any task that could take more than a few seconds
+
+**The 30-second rule.** A head agent must never go silent for more than 30 seconds while doing direct work. If a task will take longer, delegate it immediately and acknowledge the request on the channel.
+
+**Report results incrementally.** As subagent results come in, relay them to the originating channel. Do not batch results or wait for all tasks to finish before responding.
+
+**Pattern**: Receive message on channel -> acknowledge immediately -> spawn subagent(s) -> report results as they arrive -> stay idle and responsive for the next message.
+
 ## Push Mode (Preferred)
 
 Agents run in **interactive mode** with `--dangerously-load-development-channels`. The `mcp_channel.ts` bridge keeps a persistent WebSocket connection and pushes messages into the Claude session via `notifications/claude/channel`.
@@ -94,6 +111,26 @@ claude \
 - **No `-p` flag**: Pipe mode exits before push messages arrive. Interactive mode keeps the session alive.
 - **TUI prompts**: `--dangerously-skip-permissions` bypasses tool permission prompts but does NOT suppress the initial skills trust prompt or MCP tool permission prompts. In screen sessions, use `auto-accept.sh` to handle all TUI prompts.
 - **mcp-config.json** must define the `scitex-orochi` server pointing to `ts/mcp_channel.ts`.
+
+### Manual Launch Gotcha
+
+When launching agents manually (not via scitex-agent-container), you must pass `--dangerously-skip-permissions` explicitly. The YAML `spec.claude.flags` field is only read by the container pipeline, not by manual `screen` launches.
+
+**Workspace-level** `settings.json` allowlists are the safest and most reliable approach — they persist across restarts, work regardless of launch method, and don't affect other Claude Code sessions on the same machine:
+
+```
+<workspace>/.claude/settings.json
+```
+
+```json
+{
+  "permissions": {
+    "allow": ["Bash(*)", "Read(*)", "Write(*)", "Edit(*)", "Glob(*)", "Grep(*)", "mcp__scitex-orochi__*"]
+  }
+}
+```
+
+**WARNING**: Do NOT put broad `Bash(*)` permissions in the global `~/.claude/settings.json` — this would dangerously allow all Claude Code sessions on the machine to run arbitrary commands without approval.
 
 ### Auto-Accept (via scitex-agent-container)
 

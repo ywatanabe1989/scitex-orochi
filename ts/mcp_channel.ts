@@ -317,30 +317,47 @@ const conn = {
           `delivering: sender=${sender} channel=${channel} content=${content.slice(0, 50)} id=${msgId}`,
         );
 
-        // Attachment normalization
-        const rawAttachments =
-          (msg.metadata && msg.metadata.attachments) ||
-          msg.attachments ||
-          payload.attachments ||
-          [];
-        const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
-        const attachments = (
-          rawAttachments as Array<{
-            url?: string;
-            filename?: string;
-            mime_type?: string;
-          }>
-        ).map((a) => {
-          const u = a.url || "";
-          const abs = u.startsWith("http") ? u : hubBase.replace(/\/$/, "") + u;
-          return { ...a, url: abs };
-        });
-        const attachmentInfo =
-          attachments.length > 0
-            ? `\n[Attachments: ${attachments
-                .map((a) => `${a.filename || "file"} -> ${a.url}`)
-                .join(", ")}]`
-            : "";
+        // Attachment normalization — wrapped in try/catch so malformed
+        // attachment data never crashes the sidecar or drops the message.
+        let attachmentInfo = "";
+        try {
+          const rawAttachments =
+            (msg.metadata && msg.metadata.attachments) ||
+            msg.attachments ||
+            payload.attachments ||
+            [];
+          const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          const attachments: Array<{ url: string; filename: string }> = [];
+          for (const a of rawAttachments as unknown[]) {
+            try {
+              if (a == null || typeof a !== "object") continue;
+              const att = a as Record<string, unknown>;
+              const u = typeof att.url === "string" ? att.url : "";
+              if (!u) continue; // skip attachments with no url
+              const abs = u.startsWith("http")
+                ? u
+                : hubBase.replace(/\/$/, "") + u;
+              const filename =
+                typeof att.filename === "string" ? att.filename : "file";
+              attachments.push({ url: abs, filename });
+            } catch (attErr) {
+              _dbg(`skipping malformed attachment: ${attErr}`);
+            }
+          }
+          if (attachments.length > 0) {
+            // Cap attachment list to avoid oversized notifications
+            const shown = attachments.slice(0, 10);
+            const extra =
+              attachments.length > 10
+                ? ` (+${attachments.length - 10} more)`
+                : "";
+            attachmentInfo = `\n[Attachments: ${shown
+              .map((a) => `${a.filename} -> ${a.url}`)
+              .join(", ")}${extra}]`;
+          }
+        } catch (attNormErr) {
+          _dbg(`attachment normalization failed: ${attNormErr}`);
+        }
 
         refreshIssueTitleCache();
         const decoratedContent = decorateIssueRefs(content);

@@ -28,6 +28,7 @@ Detailed view of all registered agents.
 - **Pin** — Pushpin toggle to register/unregister agents as fleet members (prevents ghost agents)
 - **Avatar** — Click to upload a custom profile image (stored on hub server)
 - **Metadata** — Role, hostname, subscribed channels, workdir, project
+- **Restart** — ↻ button to remotely restart an agent via SSH (kills screen, relaunches claude)
 
 The left sidebar shows a simplified agent list with connection status indicators.
 
