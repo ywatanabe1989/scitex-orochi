@@ -10,7 +10,14 @@ import {
   buildWsUrl,
   maskUrl,
 } from "./config.js";
-import type { OrochiConnection } from "./connection.js";
+// Lightweight interface — avoids importing connection.ts which pulls in
+// metrics.ts + execSync, interfering with MCP stdio notifications.
+interface ConnLike {
+  send(data: string): void;
+  isConnected: boolean;
+  state: string;
+  lastConnectedAt: number | null;
+}
 
 const httpBase = buildHttpBase();
 
@@ -19,7 +26,7 @@ function tokenParam(prefix: "?" | "&"): string {
 }
 
 export async function handleReply(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { chat_id: string; text: string; reply_to?: string; files?: string[] },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -179,7 +186,7 @@ export async function handleHealth(args: {
 }
 
 export async function handleTask(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { task: string },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -197,7 +204,7 @@ export async function handleTask(
 }
 
 export async function handleSubagents(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { subagents: Array<{ name?: string; task?: string; status?: string }> },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -255,7 +262,7 @@ export async function handleReact(args: {
   }
 }
 
-export function handleStatus(conn: OrochiConnection): {
+export function handleStatus(conn: ConnLike): {
   content: Array<{ type: string; text: string }>;
 } {
   const uptime = conn.lastConnectedAt
