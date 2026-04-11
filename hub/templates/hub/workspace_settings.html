@@ -38,6 +38,74 @@
                 {% if messages %}
                     {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
                 {% endif %}
+                <div class="settings-mode-tabs">
+                    <button type="button" class="settings-mode-btn active" data-mode="user">User</button>
+                    {% if is_admin %}
+                        <button type="button" class="settings-mode-btn" data-mode="workspace">Workspace</button>
+                    {% endif %}
+                </div>
+                <div class="settings-mode-pane" data-mode="user">
+                    <section class="settings-section">
+                        <h4>You</h4>
+                        <p class="settings-desc">Account-level settings for the signed-in user.</p>
+                        <table class="settings-table">
+                            <tbody>
+                                <tr>
+                                    <td class="info-label">Username</td>
+                                    <td><code>{{ request.user.username }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">Email</td>
+                                    <td>{{ request.user.email|default:"—" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">Joined</td>
+                                    <td>{{ request.user.date_joined|date:"Y-m-d" }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="info-label">Workspaces</td>
+                                    <td>{{ request.user.workspace_memberships.count }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <a href="{% url 'signout' %}" class="btn-small btn-danger" style="margin-top:8px;display:inline-block">Sign out</a>
+                    </section>
+                </div>
+                <div class="settings-mode-pane" data-mode="workspace" style="display:none">
+                <section class="settings-section">
+                    <h4>Workspace Info</h4>
+                    <p class="settings-desc">Basic information about this workspace.</p>
+                    <table class="settings-table">
+                        <tbody>
+                            <tr>
+                                <td class="info-label">Name</td>
+                                <td>
+                                    <code>{{ workspace.name }}</code>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Description</td>
+                                <td>{{ workspace.description|default:"No description set." }}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Created</td>
+                                <td>{{ workspace.created_at|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+                <section class="settings-section">
+                    <h4>Workspace Icon</h4>
+                    <p class="settings-desc">Click the icon to choose an emoji.</p>
+                    <div class="ws-icon-preview ws-icon-clickable"
+                         id="ws-icon-preview"
+                         title="Click to change icon"></div>
+                    <form method="post" class="settings-form settings-form-icon">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="set_icon">
+                        <input type="hidden" name="icon" value="" id="icon-input">
+                    </form>
+                </section>
                 <section class="settings-section">
                     <h4>Agent Tokens</h4>
                     <p class="settings-desc">Tokens allow AI agents to connect to this workspace via WebSocket.</p>
@@ -57,9 +125,13 @@
                                     <td>
                                         <code class="token-masked" data-token="{{ t.token }}">{{ t.token|truncatechars:12 }}...</code>
                                         <button type="button"
-                                                class="btn-eye"
+                                                class="btn-small btn-token-show"
                                                 title="Show/hide token"
-                                                onclick="toggleToken(this)">&#128065;</button>
+                                                onclick="toggleToken(this)">Show</button>
+                                        <button type="button"
+                                                class="btn-small btn-token-copy"
+                                                title="Copy token"
+                                                onclick="copyToken(this)">Copy</button>
                                     </td>
                                     <td>{{ t.created_at|date:"Y-m-d" }}</td>
                                     <td>
@@ -143,10 +215,76 @@
                         <button type="submit" class="btn-small btn-primary">Send Invite</button>
                     </form>
                 </section>
+                <section class="settings-section">
+                    <h4>GitHub Integration</h4>
+                    <p class="settings-desc">GitHub access for issue tracking and repository integration.</p>
+                    <div class="settings-info-box">
+                        <code>GITHUB_TOKEN</code> is configured per-server, not per-user or per-workspace.
+                        It is set as an environment variable on the Orochi server process.
+                        Contact your server administrator to configure or rotate the token.
+                    </div>
+                </section>
+                {% if is_admin %}
+                    <section class="settings-section">
+                        <h4>Rename Workspace</h4>
+                        <p class="settings-desc">Change the workspace URL. This will change the subdomain used to access this workspace.</p>
+                        <form method="post" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="rename_workspace">
+                            <input type="text"
+                                   name="new_name"
+                                   value="{{ workspace.name }}"
+                                   pattern="[a-z0-9]([a-z0-9\-]*[a-z0-9])?"
+                                   title="Lowercase letters, numbers, and hyphens only"
+                                   required>
+                            <button type="submit" class="btn-small btn-primary">Rename</button>
+                        </form>
+                        <p class="settings-desc settings-note">Note: This will change the workspace URL.</p>
+                    </section>
+                    <section class="settings-section danger-zone">
+                        <h4>Danger Zone</h4>
+                        <div class="danger-box">
+                            <div class="danger-box-header">
+                                <strong>Delete this workspace</strong>
+                                <p class="settings-desc">
+                                    Once you delete a workspace, there is no going back. All channels, messages, tokens, and members will be permanently removed.
+                                </p>
+                            </div>
+                            <form method="post" class="danger-form" id="delete-workspace-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="delete_workspace">
+                                <label class="danger-label" for="confirm-delete-name">
+                                    Type <strong>{{ workspace.name }}</strong> to confirm:
+                                </label>
+                                <div class="danger-form-row">
+                                    <input type="text"
+                                           id="confirm-delete-name"
+                                           name="confirm_name"
+                                           placeholder="{{ workspace.name }}"
+                                           autocomplete="off"
+                                           required>
+                                    <button type="submit"
+                                            id="btn-delete-workspace"
+                                            class="btn-small btn-danger"
+                                            disabled>Delete this workspace</button>
+                                </div>
+                            </form>
+                        </div>
+                    </section>
+                {% endif %}
+                </div><!-- /.settings-mode-pane[workspace] -->
             </div>
         </main>
     </div>
 {% endblock %}
 {% block extra_js %}
+    <!-- hook-bypass: inline-script — Django template vars must be injected server-side -->
+    <script>
+      window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
+      window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
+      window.__orochiCsrfToken = "{{ csrf_token }}";
+    </script>
+    <script src="{% static 'hub/app.js' %}"></script>
     <script src="{% static 'hub/settings.js' %}"></script>
+    <script src="{% static 'hub/emoji-picker.js' %}?v=1"></script>
 {% endblock %}

@@ -58,12 +58,14 @@ class TelegramBridge:
         *,
         channel: str = "#telegram",
         poll_timeout: int = 30,
+        webhook_url: str = "",
     ) -> None:
         self._token = bot_token
         self._chat_id = chat_id
         self._server = server
         self._channel = channel
         self._poll_timeout = poll_timeout
+        self._webhook_url = webhook_url
 
         self._offset: int = 0
         self._session: aiohttp.ClientSession | None = None
@@ -76,36 +78,65 @@ class TelegramBridge:
 
     # -- lifecycle --------------------------------------------------------
 
+    @property
+    def webhook_mode(self) -> bool:
+        """True when running in webhook mode (no polling)."""
+        return bool(self._webhook_url)
+
     async def start(self) -> None:
-        """Begin polling Telegram for updates."""
+        """Begin receiving Telegram updates (webhook or polling)."""
         self._session = aiohttp.ClientSession()
         self._running = True
 
-        # Force-clear any stale connections at Telegram's side before polling.
-        # deleteWebhook releases server-side long-poll slots.
-        await self._api("deleteWebhook", {"drop_pending_updates": False})
-
-        # Flush stale getUpdates by skipping all pending updates.
-        # offset=-1 tells Telegram to mark everything as read.
-        await self._api("getUpdates", {"timeout": 0, "offset": -1})
-
-        # Wait for Telegram server to release any previous poll slot
-        await asyncio.sleep(2)
-
-        self._poll_task = asyncio.create_task(self._poll_loop())
-
         me = await self._api("getMe")
         self._bot_name = me.get("username", "unknown") if me else "unknown"
-        log.info(
-            "Telegram bridge active: @%s polling chat_id %s -> Orochi %s",
-            self._bot_name,
-            self._chat_id,
-            self._channel,
-        )
+
+        if self._webhook_url:
+            # --- Webhook mode ---
+            hook_endpoint = self._webhook_url.rstrip("/") + "/webhook/telegram"
+            result = await self._api(
+                "setWebhook",
+                {
+                    "url": hook_endpoint,
+                    "allowed_updates": ["message"],
+                },
+            )
+            if result is not None:
+                log.info(
+                    "Telegram bridge active (webhook): @%s -> %s -> Orochi %s",
+                    self._bot_name,
+                    hook_endpoint,
+                    self._channel,
+                )
+            else:
+                log.error("Failed to set Telegram webhook to %s", hook_endpoint)
+        else:
+            # --- Polling mode (original behaviour) ---
+            # Force-clear any stale connections at Telegram's side before polling.
+            # deleteWebhook releases server-side long-poll slots.
+            await self._api("deleteWebhook", {"drop_pending_updates": False})
+
+            # Flush stale getUpdates by skipping all pending updates.
+            # offset=-1 tells Telegram to mark everything as read.
+            await self._api("getUpdates", {"timeout": 0, "offset": -1})
+
+            # Wait for Telegram server to release any previous poll slot
+            await asyncio.sleep(2)
+
+            self._poll_task = asyncio.create_task(self._poll_loop())
+            log.info(
+                "Telegram bridge active (polling): @%s chat_id %s -> Orochi %s",
+                self._bot_name,
+                self._chat_id,
+                self._channel,
+            )
 
     async def stop(self) -> None:
-        """Gracefully shut down polling and HTTP session."""
+        """Gracefully shut down polling/webhook and HTTP session."""
         self._running = False
+        if self._webhook_url:
+            # Remove the webhook so Telegram stops sending updates
+            await self._api("deleteWebhook", {"drop_pending_updates": False})
         if self._poll_task and not self._poll_task.done():
             self._poll_task.cancel()
             try:
@@ -115,6 +146,12 @@ class TelegramBridge:
         if self._session and not self._session.closed:
             await self._session.close()
         log.info("Telegram bridge stopped")
+
+    # -- incoming: webhook -------------------------------------------------
+
+    async def handle_webhook_update(self, data: dict[str, Any]) -> None:
+        """Process a single Telegram Update received via webhook POST."""
+        await self._process_update(data)
 
     # -- outgoing: Orochi -> Telegram ------------------------------------
 
@@ -336,6 +373,7 @@ async def setup_telegram_bridge(server: OrochiServer) -> TelegramBridge | None:
         TELEGRAM_BRIDGE_ENABLED,
         TELEGRAM_CHANNEL,
         TELEGRAM_CHAT_ID,
+        TELEGRAM_WEBHOOK_URL,
     )
 
     if not TELEGRAM_BRIDGE_ENABLED:
@@ -363,6 +401,7 @@ async def setup_telegram_bridge(server: OrochiServer) -> TelegramBridge | None:
         chat_id=TELEGRAM_CHAT_ID,
         server=server,
         channel=TELEGRAM_CHANNEL,
+        webhook_url=TELEGRAM_WEBHOOK_URL,
     )
 
     # Ensure the #telegram channel exists in the server's channel registry

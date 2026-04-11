@@ -39,9 +39,11 @@ spec:
     heartbeat_interval: 60
 
   env:
-    SCITEX_OROCHI_HOST: "CHANGEME_HUB_IP"
-    SCITEX_OROCHI_PORT: "8559"
+    SCITEX_OROCHI_URL: "ws://CHANGEME_HUB_IP:8559"
+    SCITEX_OROCHI_TOKEN: "CHANGEME_WORKSPACE_TOKEN"
     SCITEX_OROCHI_AGENT: orochi-head-general  # matches metadata.name
+    SCITEX_OROCHI_CHANNELS: "#general"
+    SCITEX_OROCHI_MODEL: "Sonnet 4.6"
     CLAUDE_AGENT_ROLE: head
     CLAUDE_AGENT_ID: orochi-head-general
 

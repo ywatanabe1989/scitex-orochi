@@ -28,6 +28,7 @@ def get_admin_token() -> str:
         val = os.environ.get("SCITEX_OROCHI_TOKEN", "")
     return val
 
+
 GITEA_URL = _env("SCITEX_OROCHI_GITEA_URL", "https://git.scitex.ai")
 GITEA_TOKEN = _env("SCITEX_OROCHI_GITEA_TOKEN", "")
 MEDIA_ROOT = _env("SCITEX_OROCHI_MEDIA_ROOT", "/data/orochi-media")
@@ -50,3 +51,8 @@ TELEGRAM_BRIDGE_ENABLED = _env(
 ).lower() in ("true", "1", "yes")
 # Orochi channel that Telegram messages are posted to / read from
 TELEGRAM_CHANNEL = _env("SCITEX_OROCHI_TELEGRAM_CHANNEL", "#telegram")
+
+# Telegram webhook URL (e.g. "https://scitex-orochi.com").
+# When set, the bridge uses webhook mode instead of getUpdates long-polling.
+# The bridge will call setWebhook(url=<WEBHOOK_URL>/webhook/telegram).
+TELEGRAM_WEBHOOK_URL = _env("SCITEX_OROCHI_TELEGRAM_WEBHOOK_URL", "")

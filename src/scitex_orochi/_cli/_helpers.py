@@ -13,8 +13,18 @@ def get_agent_name() -> str:
 
 
 def make_client(
-    host: str, port: int, channels: list[str] | None = None
+    host: str,
+    port: int,
+    channels: list[str] | None = None,
+    ws_path: str = "/ws/agent/",
 ) -> "OrochiClient":
+    """Build an OrochiClient pointed at a Django Channels backend.
+
+    ``ws_path`` defaults to ``/ws/agent/`` because that is the endpoint
+    the Django Channels backend exposes. Omitting it (earlier versions
+    of this helper did) caused the client to hit ``ws://host:port/``,
+    which the server rejects with HTTP 500.
+    """
     from scitex_orochi._client import OrochiClient
 
     return OrochiClient(
@@ -22,4 +32,5 @@ def make_client(
         host=host,
         port=port,
         channels=channels or ["#general"],
+        ws_path=ws_path,
     )

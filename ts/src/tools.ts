@@ -1,8 +1,9 @@
 /**
- * MCP tool handlers for Orochi push client: reply, history, status.
+ * MCP tool handlers for Orochi push client: reply, history, status, context.
  */
-import { readFileSync } from "fs";
+import { readFileSync, unlinkSync } from "fs";
 import { basename } from "path";
+import { execSync } from "child_process";
 import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
@@ -10,7 +11,14 @@ import {
   buildWsUrl,
   maskUrl,
 } from "./config.js";
-import type { OrochiConnection } from "./connection.js";
+// Lightweight interface — avoids importing connection.ts which pulls in
+// metrics.ts + execSync, interfering with MCP stdio notifications.
+interface ConnLike {
+  send(data: string): void;
+  isConnected: boolean;
+  state: string;
+  lastConnectedAt: number | null;
+}
 
 const httpBase = buildHttpBase();
 
@@ -19,7 +27,7 @@ function tokenParam(prefix: "?" | "&"): string {
 }
 
 export async function handleReply(
-  conn: OrochiConnection,
+  conn: ConnLike,
   args: { chat_id: string; text: string; reply_to?: string; files?: string[] },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
@@ -79,42 +87,248 @@ export async function handleHistory(args: {
   channel?: string;
   limit?: number;
 }): Promise<{ content: Array<{ type: string; text: string }> }> {
+  // Previously this called Django's /api/messages REST endpoint, but
+  // that view requires session auth (login cookie) which the MCP
+  // server can't provide, so every call returned HTTP 400/302. Read
+  // from the in-memory buffer instead — mcp_channel.ts populates it
+  // for every message that flows through the persistent WebSocket,
+  // and the WS was authenticated via the workspace token at
+  // connection time.
+  const { getRecentMessages } = await import("./message_buffer.js");
   const channel = args.channel || "#general";
   const limit = args.limit || 10;
 
+  const messages = getRecentMessages(channel, limit);
+  if (messages.length === 0) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `(no messages in buffer for ${channel}) — the MCP history ` +
+            "buffer only contains messages received since this agent " +
+            "session started. Older messages are only visible via the " +
+            "dashboard.",
+        },
+      ],
+    };
+  }
+
+  const formatted = messages
+    .map(
+      (m) =>
+        `[${m.ts}] ${m.sender}${m.id !== null ? ` (msg#${m.id})` : ""}: ${m.content}`,
+    )
+    .join("\n");
+
+  return {
+    content: [{ type: "text", text: formatted }],
+  };
+}
+
+export async function handleHealth(args: {
+  agent?: string;
+  status?: string;
+  reason?: string;
+  source?: string;
+  updates?: Array<{
+    agent: string;
+    status: string;
+    reason?: string;
+    source?: string;
+  }>;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
   try {
-    const url = `${httpBase}/api/messages?channel=${encodeURIComponent(channel)}&limit=${limit}${tokenParam("&")}`;
-    const resp = await fetch(url);
+    const url = `${httpBase}/api/agents/health/${tokenParam("?")}`;
+    const body: Record<string, unknown> = {};
+    if (args.updates) body.updates = args.updates;
+    else {
+      if (!args.agent || !args.status) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Error: agent and status required (or pass updates[])",
+            },
+          ],
+        };
+      }
+      body.agent = args.agent;
+      body.status = args.status;
+      if (args.reason) body.reason = args.reason;
+      if (args.source) body.source = args.source;
+      else body.source = OROCHI_AGENT;
+    }
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     if (!resp.ok) {
+      const t = await resp.text();
       return {
         content: [
-          { type: "text", text: `Error: HTTP ${resp.status} from Orochi` },
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${t.slice(0, 200)}`,
+          },
         ],
       };
     }
-    const messages = await resp.json();
-    const formatted = (messages as Array<Record<string, string>>)
-      .map(
-        (m) =>
-          `[${m.ts || ""}] ${m.sender || "unknown"}: ${m.content || m.text || ""}`,
-      )
-      .join("\n");
+    const out = (await resp.json()) as { applied?: number };
     return {
-      content: [{ type: "text", text: formatted || "(no messages)" }],
+      content: [{ type: "text", text: `health applied: ${out.applied ?? 0}` }],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+export async function handleTask(
+  conn: ConnLike,
+  args: { task: string },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  if (!conn.isConnected) {
+    return { content: [{ type: "text", text: "Error: not connected" }] };
+  }
+  const task = (args.task || "").slice(0, 200);
+  conn.send(
+    JSON.stringify({
+      type: "task_update",
+      sender: OROCHI_AGENT,
+      payload: { task },
+    }),
+  );
+  return { content: [{ type: "text", text: `task: ${task}` }] };
+}
+
+export async function handleSubagents(
+  conn: ConnLike,
+  args: { subagents: Array<{ name?: string; task?: string; status?: string }> },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  if (!conn.isConnected) {
+    return { content: [{ type: "text", text: "Error: not connected" }] };
+  }
+  const list = Array.isArray(args.subagents) ? args.subagents : [];
+  conn.send(
+    JSON.stringify({
+      type: "subagents_update",
+      sender: OROCHI_AGENT,
+      payload: { subagents: list },
+    }),
+  );
+  return {
+    content: [{ type: "text", text: `reported ${list.length} subagent(s)` }],
+  };
+}
+
+export async function handleReact(args: {
+  message_id: number | string;
+  emoji: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const messageId = String(args.message_id);
+  const emoji = args.emoji;
+  if (!messageId || !emoji) {
+    return {
+      content: [{ type: "text", text: "Error: message_id and emoji required" }],
+    };
+  }
+  try {
+    const url = `${httpBase}/api/reactions/${tokenParam("?")}`;
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: Number(messageId), emoji }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
+          },
+        ],
+      };
+    }
+    return {
+      content: [{ type: "text", text: `reacted ${emoji} to ${messageId}` }],
+    };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+export async function handleContext(args: {
+  screen_name?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const screenName = args.screen_name || OROCHI_AGENT;
+  const tmpFile = `/tmp/screen-context-${screenName}.txt`;
+  try {
+    // Capture screen hardcopy
+    execSync(`screen -S ${screenName} -X hardcopy ${tmpFile}`, {
+      timeout: 5000,
+    });
+    const raw = readFileSync(tmpFile, "utf-8");
+    try {
+      unlinkSync(tmpFile);
+    } catch {}
+
+    // Parse context percentage from statusline.
+    // claude-hud formats like "42% (2h 15m / 5h)" or just "42%"
+    const lines = raw.split("\n").filter((l) => l.trim());
+    // Search from bottom up — statusline is typically the last non-empty line
+    let contextPercent: number | null = null;
+    let rawStatusline = "";
+    for (let i = lines.length - 1; i >= Math.max(0, lines.length - 5); i--) {
+      const line = lines[i];
+      const match = line.match(/(\d+)%/);
+      if (match) {
+        contextPercent = parseInt(match[1], 10);
+        rawStatusline = line.trim();
+        break;
+      }
+    }
+
+    if (contextPercent === null) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Could not parse context percentage from screen "${screenName}". Last 3 lines:\n${lines.slice(-3).join("\n")}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            context_percent: contextPercent,
+            raw_statusline: rawStatusline,
+          }),
+        },
+      ],
     };
   } catch (err) {
     return {
       content: [
         {
           type: "text",
-          text: `Error fetching history: ${(err as Error).message}`,
+          text: `Error reading screen "${screenName}": ${(err as Error).message}`,
         },
       ],
     };
   }
 }
 
-export function handleStatus(conn: OrochiConnection): {
+export function handleStatus(conn: ConnLike): {
   content: Array<{ type: string; text: string }>;
 } {
   const uptime = conn.lastConnectedAt

@@ -39,6 +39,9 @@ def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
     ctx.ensure_object(dict)
     ctx.obj["host"] = host or HOST
     ctx.obj["port"] = port or PORT
+    from scitex_orochi._config import DASHBOARD_PORT
+
+    ctx.obj["dashboard_port"] = DASHBOARD_PORT
 
 
 # ── Register subcommands ────────────────────────────────────────
@@ -48,6 +51,7 @@ from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
 from scitex_orochi._cli.commands.init_cmd import init_cmd
 from scitex_orochi._cli.commands.launch_cmd import launch
 from scitex_orochi._cli.commands.messaging_cmd import join, listen, login, send
+from scitex_orochi._cli.commands.report_cmd import report
 from scitex_orochi._cli.commands.query_cmd import (
     list_agents,
     list_channels,
@@ -76,10 +80,13 @@ orochi.add_command(serve)
 orochi.add_command(doctor_cmd)
 orochi.add_command(setup_push)
 
+from scitex_orochi._cli.commands.stop_cmd import stop as stop_cmd
+
 # Deployment
 orochi.add_command(init_cmd)
 orochi.add_command(launch)
 orochi.add_command(deploy)
+orochi.add_command(stop_cmd)
 
 # Workspace
 from scitex_orochi._cli.commands.workspace_cmd import (
@@ -95,6 +102,9 @@ orochi.add_command(delete_workspace)
 orochi.add_command(list_workspaces)
 orochi.add_command(create_invite)
 orochi.add_command(list_invites)
+
+# Hook-driven liveness reporting (#143)
+orochi.add_command(report)
 
 # Integration
 orochi.add_command(docs)

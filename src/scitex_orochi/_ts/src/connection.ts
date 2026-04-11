@@ -167,6 +167,7 @@ export class OrochiConnection {
           model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${hostname()}`,
           project: "",
+          workdir: process.cwd(),
         },
       }),
     );

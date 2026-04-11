@@ -112,7 +112,7 @@ All env vars use the `SCITEX_OROCHI_*` prefix. No legacy `OROCHI_*` fallbacks.
 ENV (SCITEX_OROCHI_TELEGRAM_BOT_TOKEN)
   ▼
 scitex-orochi  ◀── YOU ARE HERE
-  agents/orochi-telegrammer.yaml (bot_token_env references env var name)
+  ~/.scitex/orochi/agents/telegrammer.yaml (bot_token_env references env var name)
   ▼
 scitex-agent-container
   Reads YAML, injects env into session

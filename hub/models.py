@@ -15,6 +15,7 @@ class Workspace(models.Model):
 
     name = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True, default="")
+    icon = models.CharField(max_length=10, blank=True, default="")  # emoji
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -68,6 +69,37 @@ class WorkspaceMember(models.Model):
         return f"{self.user} in {self.workspace} ({self.role})"
 
 
+class AgentProfile(models.Model):
+    """Per-agent display settings (icon, label) that persist across
+    WebSocket reconnects and container restarts. The in-memory registry
+    reads this at agent-join time and falls back to the transient fields
+    the agent registered with when there's no profile yet."""
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_profiles"
+    )
+    name = models.CharField(max_length=150, db_index=True)
+    icon_emoji = models.CharField(max_length=16, blank=True, default="")
+    icon_image = models.CharField(max_length=500, blank=True, default="")
+    icon_text = models.CharField(max_length=16, blank=True, default="")
+    # Last-known caduceus-reported health — persisted so the Agents tab
+    # + sidebar pills survive container restarts without agents having
+    # to re-POST their diagnosis. Free-form status string per mamba's
+    # taxonomy-extension model; reason capped at 200 chars.
+    health_status = models.CharField(max_length=32, blank=True, default="")
+    health_reason = models.CharField(max_length=200, blank=True, default="")
+    health_source = models.CharField(max_length=64, blank=True, default="")
+    health_ts = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("workspace", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name}@{self.workspace.name}"
+
+
 class Channel(models.Model):
     """A channel within a workspace — like a Slack channel."""
 
@@ -117,6 +149,40 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender} in {self.channel.name}: {self.content[:50]}"
+
+
+class MessageReaction(models.Model):
+    """An emoji reaction on a message."""
+
+    message = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="reactions"
+    )
+    emoji = models.CharField(max_length=32)
+    reactor = models.CharField(max_length=100)  # username or agent name
+    reactor_type = models.CharField(max_length=10, default="human")
+    ts = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("message", "emoji", "reactor")
+        indexes = [models.Index(fields=["message", "emoji"])]
+
+    def __str__(self):
+        return f"{self.reactor} {self.emoji} on msg#{self.message_id}"
+
+
+class MessageThread(models.Model):
+    """Thread association — a message is a reply to another message."""
+
+    parent = models.ForeignKey(
+        Message, on_delete=models.CASCADE, related_name="thread_replies"
+    )
+    reply = models.OneToOneField(
+        Message, on_delete=models.CASCADE, related_name="thread_parent"
+    )
+    ts = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"reply#{self.reply_id} → parent#{self.parent_id}"
 
 
 class WorkspaceInvitation(models.Model):

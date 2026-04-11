@@ -1,5 +1,28 @@
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
 
+/* System error banner — shown at top of page for critical errors */
+function showSystemBanner(message, level) {
+  var existing = document.getElementById("system-banner");
+  if (existing) existing.remove();
+  var banner = document.createElement("div");
+  banner.id = "system-banner";
+  banner.textContent = message;
+  banner.style.cssText =
+    "position:fixed;top:0;left:0;right:0;z-index:9999;padding:12px 20px;" +
+    "text-align:center;font-weight:bold;font-size:14px;" +
+    (level === "error"
+      ? "background:#d32f2f;color:#fff;"
+      : "background:#f57c00;color:#fff;");
+  var close = document.createElement("span");
+  close.textContent = " ✕";
+  close.style.cssText = "cursor:pointer;margin-left:16px;";
+  close.onclick = function () {
+    banner.remove();
+  };
+  banner.appendChild(close);
+  document.body.prepend(banner);
+}
+
 /* Yamata no Orochi color palette (from mascot icon heads) */
 var OROCHI_COLORS = [
   "#C4A6E8",
@@ -15,6 +38,8 @@ var currentChannel = null;
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
+var unreadCount = 0;
+var baseTitle = document.title;
 
 /* User display name -- from Django auth or fallback to localStorage */
 var userName =
@@ -27,9 +52,7 @@ if (!userName) {
     userName = "human";
   }
 }
-
 var csrfToken = window.__orochiCsrfToken || "";
-
 function getAgentColor(name) {
   var s = name || "unknown";
   var sum = 0;
@@ -39,10 +62,90 @@ function getAgentColor(name) {
   return OROCHI_COLORS[sum % OROCHI_COLORS.length];
 }
 
+/* Workspace icon — Slack-style colored rounded square with first letter */
+var WORKSPACE_ICON_COLORS = [
+  "#4A154B",
+  "#1264A3",
+  "#2BAC76",
+  "#E01E5A",
+  "#36C5F0",
+  "#ECB22E",
+  "#611f69",
+  "#0b4f6c",
+];
+
+function getWorkspaceColor(name) {
+  var s = name || "workspace";
+  var sum = 0;
+  for (var i = 0; i < s.length; i++) {
+    sum += s.charCodeAt(i) * (i + 1);
+  }
+  return WORKSPACE_ICON_COLORS[sum % WORKSPACE_ICON_COLORS.length];
+}
+
+function getWorkspaceIcon(name, size) {
+  size = size || 20;
+  var color = getWorkspaceColor(name);
+  var letter = (name || "W").charAt(0).toUpperCase();
+  var fontSize = Math.round(size * 0.55);
+  var radius = Math.round(size * 0.22);
+  return (
+    '<svg class="ws-icon-svg" width="' +
+    size +
+    '" height="' +
+    size +
+    '" viewBox="0 0 ' +
+    size +
+    " " +
+    size +
+    '" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect width="' +
+    size +
+    '" height="' +
+    size +
+    '" rx="' +
+    radius +
+    '" fill="' +
+    color +
+    '"/>' +
+    '<text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" ' +
+    'fill="#fff" font-family="-apple-system,BlinkMacSystemFont,sans-serif" ' +
+    'font-weight="700" font-size="' +
+    fontSize +
+    '">' +
+    letter +
+    "</text></svg>"
+  );
+}
 function escapeHtml(s) {
   var d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
+}
+
+/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
+function cleanAgentName(name) {
+  if (!name) return name;
+  var parts = name.split("@");
+  if (parts.length >= 3) {
+    return parts[0] + "@" + parts[1];
+  }
+  return name;
+}
+
+/**
+ * Return the agent name with host suffix. If the registered name already
+ * contains @host (e.g. "head@mba"), return as-is. Otherwise append
+ * "@<machine>" from the agent record so the sidebar always shows an
+ * identity tied to a host (mamba shows as "mamba@ywata-note-win" even if
+ * the agent config still registered plain "mamba").
+ */
+function hostedAgentName(a) {
+  var name = a && a.name ? a.name : "";
+  if (!name) return name;
+  if (name.indexOf("@") !== -1) return cleanAgentName(name);
+  var host = a && a.machine ? a.machine : "";
+  return host ? name + "@" + host : name;
 }
 
 function fuzzyMatch(query, text) {
@@ -72,13 +175,24 @@ function isAgentInactive(agent) {
 
 function timeAgo(isoStr) {
   if (!isoStr) return "";
-  var then = new Date(isoStr);
-  if (isNaN(then.getTime())) return "";
-  var diff = Math.floor((Date.now() - then.getTime()) / 1000);
-  if (diff < 60) return diff + "s ago";
-  if (diff < 3600) return Math.floor(diff / 60) + "m ago";
-  if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
-  return Math.floor(diff / 86400) + "d ago";
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "";
+  var pad = function (n) {
+    return n < 10 ? "0" + n : "" + n;
+  };
+  return (
+    d.getFullYear() +
+    "-" +
+    pad(d.getMonth() + 1) +
+    "-" +
+    pad(d.getDate()) +
+    " " +
+    pad(d.getHours()) +
+    ":" +
+    pad(d.getMinutes()) +
+    ":" +
+    pad(d.getSeconds())
+  );
 }
 
 function uptime(isoStr) {
@@ -101,6 +215,7 @@ function orochiHeaders() {
 /* token for API calls (Flask upstream or Django) */
 var token =
   window.__orochiToken ||
+  window.__orochiDashboardToken ||
   new URLSearchParams(location.search).get("token") ||
   "";
 
@@ -135,9 +250,13 @@ function startRestPolling() {
   restPollTimer = setInterval(async function () {
     if (wsConnected) return;
     try {
-      var res = await fetch(apiUrl("/api/messages/?limit=50"));
+      var res = await fetch(apiUrl("/api/messages/?limit=50"), {
+        credentials: "same-origin",
+      });
       if (!res.ok) return;
       var messages = await res.json();
+      /* API returns newest-first; reverse so new messages append chronologically */
+      messages.reverse();
       messages.forEach(function (row) {
         var key = messageKey(row.sender, row.ts, row.content);
         if (knownMessageKeys[key]) return;
@@ -145,6 +264,7 @@ function startRestPolling() {
         appendMessage({
           type: "message",
           sender: row.sender,
+          sender_type: row.sender_type,
           ts: row.ts,
           payload: {
             channel: row.channel,
@@ -174,7 +294,19 @@ function stopRestPolling() {
 function handleMessage(msg) {
   if (msg.type === "message") {
     var content = "";
-    if (msg.payload) {
+    /* Hub sends flat messages: {type, sender, channel, text, ts, metadata} */
+    if (msg.text || msg.channel) {
+      content = msg.text || "";
+      if (!msg.payload) {
+        var attachments = (msg.metadata && msg.metadata.attachments) || [];
+        msg.payload = {
+          channel: msg.channel || "",
+          content: content,
+          metadata: msg.metadata || {},
+          attachments: attachments,
+        };
+      }
+    } else if (msg.payload) {
       content =
         msg.payload.content || msg.payload.text || msg.payload.message || "";
     }
@@ -182,11 +314,37 @@ function handleMessage(msg) {
     if (knownMessageKeys[key]) return;
     knownMessageKeys[key] = true;
     appendMessage(msg);
-  } else if (msg.type === "presence_change" || msg.type === "status_update") {
+    if (document.hidden) {
+      unreadCount++;
+      document.title = "(" + unreadCount + ") " + baseTitle;
+    }
+  } else if (msg.type === "system_message") {
+    if (typeof appendSystemMessage === "function") {
+      appendSystemMessage(msg);
+    }
+  } else if (
+    msg.type === "presence_change" ||
+    msg.type === "status_update" ||
+    msg.type === "agent_presence" ||
+    msg.type === "agent_info"
+  ) {
     fetchAgents();
     fetchStats();
+    fetchResources();
+  } else if (msg.type === "reaction_update") {
+    if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
+  } else if (msg.type === "thread_reply") {
+    if (typeof handleThreadReply === "function") handleThreadReply(msg);
   }
 }
+
+/* Reset unread count when tab becomes visible */
+document.addEventListener("visibilitychange", function () {
+  if (!document.hidden) {
+    unreadCount = 0;
+    document.title = baseTitle;
+  }
+});
 
 function connect() {
   var statusEl = document.getElementById("conn-status");
@@ -194,6 +352,10 @@ function connect() {
   var wsUrl;
   if (window.__orochiWsUrl) {
     wsUrl = window.__orochiWsUrl;
+    /* Append token if not already present (fallback for stripped cookies) */
+    if (token && wsUrl.indexOf("token=") === -1) {
+      wsUrl += (wsUrl.indexOf("?") === -1 ? "?" : "&") + "token=" + token;
+    }
   } else {
     var wsProto = location.protocol === "https:" ? "wss:" : "ws:";
     var wsHost = window.__orochiWsUpstream
@@ -206,29 +368,45 @@ function connect() {
     ws = new WebSocket(wsUrl);
   } catch (e) {
     console.warn("WebSocket constructor failed:", e);
-    statusEl.textContent = "ws: polling";
-    statusEl.classList.remove("connected");
-    statusEl.classList.add("rest-mode");
+    statusEl.textContent = "polling";
+    statusEl.className = "status conn-poll";
+    statusEl.title = "WebSocket unavailable — falling back to REST polling";
     startRestPolling();
     return;
   }
   ws.onopen = function () {
     wsConnected = true;
-    statusEl.textContent = "ws: live";
-    statusEl.classList.add("connected");
-    statusEl.classList.remove("rest-mode");
+    /* Compact, muted when fine; state class drives the styling */
+    statusEl.textContent = "";
+    statusEl.title = "Connected to Orochi server";
+    statusEl.className = "status conn-ok";
     stopRestPolling();
     fetchStats();
     fetchAgents();
     loadHistory();
   };
-  ws.onclose = function () {
+  ws.onclose = function (event) {
     wsConnected = false;
-    statusEl.textContent = "ws: polling";
-    statusEl.classList.remove("connected");
-    statusEl.classList.add("rest-mode");
+    statusEl.textContent = "disconnected";
+    statusEl.className = "status conn-down";
     startRestPolling();
-    setTimeout(connect, 3000);
+    if (event.code === 4001) {
+      statusEl.title = "Session expired — please log in again";
+      showSystemBanner(
+        "Session expired. Please reload and log in again.",
+        "error",
+      );
+    } else if (event.code === 4003) {
+      statusEl.title = "No access to this workspace";
+      showSystemBanner("Access denied to this workspace.", "error");
+    } else if (event.code === 4004) {
+      statusEl.title = "Workspace not found";
+      showSystemBanner("Workspace not found.", "error");
+    } else {
+      statusEl.title = "Disconnected — retrying every 3s";
+      statusEl.textContent = "reconnecting";
+      setTimeout(connect, 3000);
+    }
   };
   ws.onerror = function () {
     if (!wsConnected) startRestPolling();
@@ -237,21 +415,35 @@ function connect() {
     try {
       handleMessage(JSON.parse(event.data));
     } catch (e) {
-      /* ignore parse errors */
+      console.error(
+        "[orochi-ws] message handling error:",
+        e,
+        "raw:",
+        event.data.substring(0, 200),
+      );
     }
   };
 }
-
 /* Sidebar agents + stats fetching */
 async function fetchAgents() {
   try {
     var res = await fetch(apiUrl("/api/agents"));
     var agents = await res.json();
+    /* Cache for the Activity tab and other consumers */
+    window.__lastAgents = agents;
+    if (typeof renderActivityTab === "function") renderActivityTab();
     var container = document.getElementById("agents");
     if (agents.length === 0) {
       container.innerHTML = '<p id="no-agents">No agents connected</p>';
+      var cEl = document.getElementById("sidebar-count-agents");
+      if (cEl) cEl.textContent = "";
       return;
     }
+    var cEl = document.getElementById("sidebar-count-agents");
+    if (cEl) cEl.textContent = "(" + agents.length + ")";
+    agents.forEach(function (a) {
+      cacheAgentIcons([a]);
+    });
     container.innerHTML = agents
       .map(function (a) {
         var color = getAgentColor(a.name);
@@ -261,29 +453,63 @@ async function fetchAgents() {
         var taskHtml = a.current_task
           ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
           : "";
+        /* Tiny health pill — mirrors the Agents tab classification. */
+        var healthHtml = "";
+        if (a.health && a.health.status) {
+          var hs = String(a.health.status);
+          var hReason = a.health.reason
+            ? ' title="' + escapeHtml(a.health.reason) + '"'
+            : "";
+          healthHtml =
+            '<span class="sidebar-health sidebar-health-' +
+            escapeHtml(hs) +
+            '"' +
+            hReason +
+            ">\uD83E\uDE7A " +
+            escapeHtml(hs) +
+            "</span>";
+        }
+        var agentIcon = a.icon
+          ? getSenderIcon(a.name, true)
+          : getSnakeIcon(16, color);
+        var workdirHtml = "";
+        if (a.workdir) {
+          var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
+          workdirHtml =
+            '<div class="agent-workdir">' +
+            escapeHtml(cleanAgentName(a.name)) +
+            ":" +
+            escapeHtml(displayDir) +
+            "</div>";
+        }
         return (
           '<div class="agent-card' +
           (inactive ? " inactive" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
           '">' +
+          '<span class="agent-card-icon">' +
+          agentIcon +
+          "</span>" +
           '<span class="status-dot ' +
           statusClass +
           '"></span>' +
           '<span class="name">' +
-          escapeHtml(a.name) +
+          escapeHtml(hostedAgentName(a)) +
           (a.model
             ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
             : "") +
           "</span>" +
+          workdirHtml +
           '<div class="meta">' +
           escapeHtml(a.machine || "unknown") +
           " / " +
           escapeHtml(a.role || "agent") +
           "</div>" +
+          healthHtml +
           taskHtml +
           '<div class="meta">channels: ' +
-          a.channels.map(escapeHtml).join(", ") +
+          [...new Set(a.channels)].map(escapeHtml).join(", ") +
           "</div></div>"
         );
       })
@@ -304,11 +530,6 @@ async function fetchStats() {
   try {
     var res = await fetch(apiUrl("/api/stats"));
     var stats = await res.json();
-    document.getElementById("stat-agents").textContent = stats.agents_online;
-    document.getElementById("stat-channels").textContent =
-      stats.channels_active;
-    document.getElementById("stat-observers").textContent =
-      stats.observers_connected;
     var chContainer = document.getElementById("channels");
     chContainer.innerHTML = stats.channels
       .map(function (c, i) {
@@ -335,25 +556,14 @@ async function fetchStats() {
           currentChannel = ch;
           loadChannelHistory(ch);
         }
+        addTag("channel", ch);
         fetchStats();
       });
     });
-    updateChannelSelect(stats.channels);
-    var tgEl = document.getElementById("stat-telegram");
-    var tgStatus = document.getElementById("stat-telegram-status");
-    if (stats.telegram_bridge && tgEl && tgStatus) {
-      tgEl.style.display = "";
-      if (stats.telegram_bridge.running) {
-        tgStatus.textContent = "\u2713";
-      } else if (stats.telegram_bridge.enabled) {
-        tgStatus.textContent = "stopped";
-      } else {
-        tgEl.style.display = "none";
-      }
-    }
+    var chCountEl = document.getElementById("sidebar-count-channels");
+    if (chCountEl) chCountEl.textContent = "(" + stats.channels.length + ")";
   } catch (e) {
     /* fetch error */
   }
 }
-
 /* Init is deferred to init.js (loaded after all modules) */

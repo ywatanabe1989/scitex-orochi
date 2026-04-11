@@ -1,0 +1,63 @@
+/* Connectivity map (SSH mesh) — Machines tab */
+
+.connectivity-section {
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 6px;
+  padding: 12px;
+  margin: 16px;
+}
+
+.connectivity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.connectivity-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ddd;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.connectivity-summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.conn-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.conn-pill-ok { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
+.conn-pill-fail { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.conn-source { font-size: 10px; color: #555; }
+
+.connectivity-svg {
+  display: block;
+  background: #0a0a0a;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.conn-node circle {
+  transition: stroke 0.15s, fill 0.15s;
+}
+.conn-node:hover circle {
+  fill: #1a1a1a;
+  stroke: #88e6dd;
+}
+.conn-node-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  fill: #e0e0e0;
+  pointer-events: none;
+  user-select: none;
+}

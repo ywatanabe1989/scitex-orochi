@@ -258,6 +258,10 @@
   align-items: center;
   gap: 6px;
 }
+.ws-card-icon .ws-icon-svg {
+  border-radius: 5px;
+  vertical-align: middle;
+}
 .ws-card-name {
   color: #4ecdc4;
   font-weight: 600;

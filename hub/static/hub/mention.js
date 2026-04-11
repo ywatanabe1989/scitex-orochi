@@ -1,8 +1,43 @@
 /* Mention autocomplete module */
-/* globals: escapeHtml, getAgentColor, cachedAgentNames, apiUrl */
+/* globals: escapeHtml, getAgentColor, cachedAgentNames, apiUrl, isAgentInactive */
 
 var mentionDropdown = document.getElementById("mention-dropdown");
 var mentionSelectedIndex = -1;
+var cachedAgentObjects = [];
+var cachedMemberNames = [];
+
+var SPECIAL_MENTIONS = [
+  { name: "all", desc: "notify everyone" },
+  { name: "channel", desc: "notify this channel" },
+  { name: "agents", desc: "notify all agents" },
+];
+
+/* Fuzzy match: check if all query characters appear in order within text.
+   Returns a score (lower = better) or -1 if no match. */
+function fuzzyMatch(query, text) {
+  var q = query.toLowerCase();
+  var t = text.toLowerCase();
+  /* Exact prefix match gets best score */
+  if (t.indexOf(q) === 0) return 0;
+  /* Substring match gets second-best score */
+  if (t.indexOf(q) !== -1) return 1;
+  /* Fuzzy: all query chars must appear in order */
+  var qi = 0;
+  var gaps = 0;
+  for (var ti = 0; ti < t.length && qi < q.length; ti++) {
+    if (t[ti] === q[qi]) {
+      qi++;
+    } else if (qi > 0) {
+      gaps++;
+    }
+  }
+  if (qi === q.length) return 2 + gaps;
+  return -1;
+}
+
+function cleanDisplayName(name) {
+  return name.replace(/^orochi-/, "");
+}
 
 async function refreshAgentNames() {
   try {
@@ -10,6 +45,16 @@ async function refreshAgentNames() {
     var agents = await res.json();
     cachedAgentNames = agents.map(function (a) {
       return a.name;
+    });
+    cachedAgentObjects = agents;
+  } catch (e) {
+    /* ignore */
+  }
+  try {
+    var res2 = await fetch(apiUrl("/api/members/"), { credentials: "same-origin" });
+    var members = await res2.json();
+    cachedMemberNames = members.map(function (m) {
+      return m.username;
     });
   } catch (e) {
     /* ignore */
@@ -20,28 +65,70 @@ function getMentionQuery(input) {
   var val = input.value;
   var pos = input.selectionStart;
   var before = val.substring(0, pos);
-  var match = before.match(/@([\w-]*)$/);
-  if (match) return { query: match[1].toLowerCase(), start: match.index };
+  var match = before.match(/(^|[\s])@([\w@.\-]*)$/);
+  if (match)
+    return {
+      query: match[2].toLowerCase(),
+      start: match.index + match[1].length,
+    };
   return null;
 }
 
-function showMentionDropdown(items) {
+function isAgentOnline(name) {
+  for (var i = 0; i < cachedAgentObjects.length; i++) {
+    if (cachedAgentObjects[i].name === name) {
+      return !isAgentInactive(cachedAgentObjects[i]);
+    }
+  }
+  return false;
+}
+
+function showMentionDropdown(specialItems, agentItems) {
   mentionSelectedIndex = 0;
-  mentionDropdown.innerHTML = items
-    .map(function (name, i) {
-      var color = getAgentColor(name);
-      return (
-        '<div class="mention-item' +
-        (i === 0 ? " selected" : "") +
-        '" data-name="' +
-        escapeHtml(name) +
-        '">' +
-        '<span class="mention-dot"></span>' +
-        escapeHtml(name) +
-        "</div>"
-      );
-    })
-    .join("");
+  var html = "";
+
+  specialItems.forEach(function (item, i) {
+    html +=
+      '<div class="mention-item mention-special' +
+      (i === 0 ? " selected" : "") +
+      '" data-name="' +
+      escapeHtml(item.name) +
+      '">' +
+      '<span class="mention-dot mention-dot-special"></span>' +
+      "<strong>@" +
+      escapeHtml(item.name) +
+      "</strong>" +
+      '<span class="mention-desc">' +
+      escapeHtml(item.desc) +
+      "</span>" +
+      "</div>";
+  });
+
+  if (specialItems.length > 0 && agentItems.length > 0) {
+    html += '<div class="mention-divider"></div>';
+  }
+
+  var offset = specialItems.length;
+  agentItems.forEach(function (name, i) {
+    var online = isAgentOnline(name);
+    var dotClass = online ? "mention-dot-online" : "mention-dot-offline";
+    var display = cleanDisplayName(name);
+    var showFull = display !== name;
+    html +=
+      '<div class="mention-item' +
+      (offset + i === 0 ? " selected" : "") +
+      '" data-name="' +
+      escapeHtml(name) +
+      '">' +
+      '<span class="mention-dot ' +
+      dotClass +
+      '"></span>' +
+      escapeHtml(display) +
+      (showFull ? '<span class="mention-desc">' + escapeHtml(name) + '</span>' : '') +
+      "</div>";
+  });
+
+  mentionDropdown.innerHTML = html;
   mentionDropdown.classList.add("visible");
 }
 
@@ -70,14 +157,38 @@ document.getElementById("msg-input").addEventListener("input", function () {
     hideMentionDropdown();
     return;
   }
-  var filtered = cachedAgentNames.filter(function (n) {
-    return n.toLowerCase().indexOf(info.query) === 0;
+
+  var matchedSpecial = SPECIAL_MENTIONS.filter(function (s) {
+    return s.name.indexOf(info.query) === 0;
   });
-  if (filtered.length === 0) {
+  /* Combine agents and members, deduplicate */
+  var allNames = cachedAgentNames.slice();
+  cachedMemberNames.forEach(function (m) {
+    if (allNames.indexOf(m) === -1) allNames.push(m);
+  });
+  var matchedAgents = allNames
+    .map(function (n) {
+      var score = fuzzyMatch(info.query, n);
+      /* Also match against cleaned display name */
+      var cleanScore = fuzzyMatch(info.query, cleanDisplayName(n));
+      var best = score === -1 ? cleanScore : (cleanScore === -1 ? score : Math.min(score, cleanScore));
+      return { name: n, score: best };
+    })
+    .filter(function (item) {
+      return item.score !== -1;
+    })
+    .sort(function (a, b) {
+      return a.score - b.score;
+    })
+    .map(function (item) {
+      return item.name;
+    });
+
+  if (matchedSpecial.length === 0 && matchedAgents.length === 0) {
     hideMentionDropdown();
     return;
   }
-  showMentionDropdown(filtered);
+  showMentionDropdown(matchedSpecial, matchedAgents);
 });
 
 document.getElementById("msg-input").addEventListener("keydown", function (e) {

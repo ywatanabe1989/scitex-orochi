@@ -8,6 +8,36 @@
   max-width: 800px;
 }
 
+/* User vs Workspace mode tabs (#147) */
+.settings-mode-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 0;
+}
+.settings-mode-btn {
+  background: none;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.settings-mode-btn:hover {
+  color: #ddd;
+}
+.settings-mode-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+}
+.settings-mode-pane {
+  /* Toggled via JS */
+}
+
 .settings-section {
   margin-bottom: 2rem;
   padding-bottom: 1.5rem;
@@ -124,6 +154,74 @@
   color: #f44;
 }
 
+/* Workspace info table */
+.settings-table .info-label {
+  color: #888;
+  width: 120px;
+}
+
+/* Workspace icon preview (settings page) */
+.ws-icon-preview {
+  display: inline-block;
+  line-height: 0;
+}
+
+.ws-icon-preview .ws-icon-svg {
+  border-radius: 12px;
+}
+
+.settings-note {
+  margin-top: 0.8rem;
+}
+
+/* Info box for configuration notes */
+.settings-info-box {
+  background: #1a1d21;
+  border: 1px solid #333;
+  border-left: 3px solid #4ecdc4;
+  border-radius: 4px;
+  padding: 0.8rem 1rem;
+  font-size: 0.85rem;
+  color: #bbb;
+  line-height: 1.5;
+}
+
+.settings-info-box code {
+  background: #0a0a0a;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.8rem;
+  color: #4ecdc4;
+}
+
+/* Email input styling */
+.settings-form input[type="email"] {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1d21;
+  color: #fff;
+  font-size: 0.9rem;
+  flex: 1;
+  max-width: 300px;
+}
+
+.settings-form input[type="email"]:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+/* Eye button */
+.btn-eye,
+.btn-copy {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0 0.3rem;
+  vertical-align: middle;
+}
+
 /* Sidebar links */
 #channel-list a {
   color: #aaa;
@@ -132,4 +230,179 @@
 
 #channel-list a:hover {
   color: #fff;
+}
+
+/* Danger Zone */
+.danger-zone h4 {
+  color: #d32f2f;
+}
+
+.danger-box {
+  border: 1px solid #d32f2f;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  background: #1a1d21;
+}
+
+.danger-box-header {
+  margin-bottom: 1rem;
+}
+
+.danger-box-header strong {
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.danger-box-header .settings-desc {
+  margin-bottom: 0;
+  margin-top: 0.3rem;
+}
+
+.danger-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.danger-label {
+  color: #bbb;
+  font-size: 0.85rem;
+}
+
+.danger-label strong {
+  color: #fff;
+}
+
+.danger-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.danger-form-row input[type="text"] {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #1a1d21;
+  color: #fff;
+  font-size: 0.9rem;
+  flex: 1;
+  max-width: 300px;
+}
+
+.danger-form-row input[type="text"]:focus {
+  outline: none;
+  border-color: #d32f2f;
+}
+
+.btn-danger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Emoji workspace icon */
+.ws-emoji-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.ws-emoji-icon-lg {
+  font-size: 56px;
+}
+
+/* Emoji Picker */
+.emoji-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.emoji-picker-overlay.visible {
+  opacity: 1;
+}
+
+.emoji-picker {
+  background: #1a1d21;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px;
+  max-width: 320px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.emoji-picker-header {
+  color: #ccc;
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #333;
+}
+
+.emoji-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+
+.emoji-picker-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 20px;
+  padding: 4px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 1.2;
+  transition: background 0.1s;
+}
+
+.emoji-picker-btn:hover {
+  background: #2a2d31;
+  border-color: #555;
+}
+
+.emoji-picker-clear {
+  color: #888;
+  font-size: 16px;
+}
+
+.emoji-picker-clear:hover {
+  color: #d32f2f;
+  background: #3b1c1c;
+}
+
+/* Clickable icon preview */
+.ws-icon-clickable {
+  cursor: pointer;
+}
+
+.settings-form-icon {
+  margin-top: 0.8rem;
+}
+
+/* Token action buttons — plain text style */
+.btn-token-show,
+.btn-token-copy {
+  background: #1a1d21;
+  color: #aaa;
+  border: 1px solid #333;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: all 0.1s;
+}
+.btn-token-show:hover,
+.btn-token-copy:hover {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
 }
