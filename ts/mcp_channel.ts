@@ -23,6 +23,7 @@ import {
 } from "./src/config.js";
 import { addMessage } from "./src/message_buffer.js";
 import {
+  handleContext,
   handleHealth,
   handleReply,
   handleHistory,
@@ -512,6 +513,21 @@ const TOOL_DEFS = [
     },
   },
   {
+    name: "context",
+    description:
+      "Get the Claude Code context window usage percentage by reading the screen session's statusline.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        screen_name: {
+          type: "string",
+          description:
+            "GNU screen session name to read from (defaults to this agent's name).",
+        },
+      },
+    },
+  },
+  {
     name: "status",
     description: "Get current Orochi connection status and diagnostics.",
     inputSchema: { type: "object" as const, properties: {} },
@@ -530,6 +546,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "subagents") return handleSubagents(conn as any, args as any);
   if (name === "task") return handleTask(conn as any, args as any);
   if (name === "health") return handleHealth(args as any);
+  if (name === "context") return handleContext(args as any);
   if (name === "status") return handleStatus(conn as any);
   throw new Error(`Unknown tool: ${name}`);
 });

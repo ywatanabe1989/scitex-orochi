@@ -1,8 +1,9 @@
 /**
- * MCP tool handlers for Orochi push client: reply, history, status.
+ * MCP tool handlers for Orochi push client: reply, history, status, context.
  */
-import { readFileSync } from "fs";
+import { readFileSync, unlinkSync } from "fs";
 import { basename } from "path";
+import { execSync } from "child_process";
 import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
@@ -258,6 +259,71 @@ export async function handleReact(args: {
   } catch (err) {
     return {
       content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+export async function handleContext(args: {
+  screen_name?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const screenName = args.screen_name || OROCHI_AGENT;
+  const tmpFile = `/tmp/screen-context-${screenName}.txt`;
+  try {
+    // Capture screen hardcopy
+    execSync(`screen -S ${screenName} -X hardcopy ${tmpFile}`, {
+      timeout: 5000,
+    });
+    const raw = readFileSync(tmpFile, "utf-8");
+    try {
+      unlinkSync(tmpFile);
+    } catch {}
+
+    // Parse context percentage from statusline.
+    // claude-hud formats like "42% (2h 15m / 5h)" or just "42%"
+    const lines = raw.split("\n").filter((l) => l.trim());
+    // Search from bottom up — statusline is typically the last non-empty line
+    let contextPercent: number | null = null;
+    let rawStatusline = "";
+    for (let i = lines.length - 1; i >= Math.max(0, lines.length - 5); i--) {
+      const line = lines[i];
+      const match = line.match(/(\d+)%/);
+      if (match) {
+        contextPercent = parseInt(match[1], 10);
+        rawStatusline = line.trim();
+        break;
+      }
+    }
+
+    if (contextPercent === null) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Could not parse context percentage from screen "${screenName}". Last 3 lines:\n${lines.slice(-3).join("\n")}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify({
+            context_percent: contextPercent,
+            raw_statusline: rawStatusline,
+          }),
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error reading screen "${screenName}": ${(err as Error).message}`,
+        },
+      ],
     };
   }
 }
