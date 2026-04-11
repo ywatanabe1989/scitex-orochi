@@ -51,10 +51,19 @@ async function openThreadPanel(parentId) {
     ta.focus();
     ta.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && !e.shiftKey) {
+        /* Don't send if mention dropdown is open and an item is selected */
+        if (typeof mentionDropdown !== "undefined" && mentionDropdown &&
+            mentionDropdown.classList.contains("visible") && mentionSelectedIndex >= 0) {
+          return; /* Let handleMentionKeydown handle it */
+        }
         e.preventDefault();
         sendThreadReply();
       }
     });
+    /* Enable @mention autocomplete in thread input */
+    if (typeof initMentionAutocomplete === "function") {
+      initMentionAutocomplete(ta);
+    }
   }
 }
 

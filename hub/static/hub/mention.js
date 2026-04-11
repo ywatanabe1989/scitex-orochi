@@ -5,6 +5,7 @@ var mentionDropdown = document.getElementById("mention-dropdown");
 var mentionSelectedIndex = -1;
 var cachedAgentObjects = [];
 var cachedMemberNames = [];
+var mentionActiveInput = null;
 
 var SPECIAL_MENTIONS = [
   { name: "all", desc: "notify everyone" },
@@ -83,6 +84,23 @@ function isAgentOnline(name) {
   return false;
 }
 
+function positionMentionDropdown(inputEl) {
+  /* Move the dropdown near the active input if it is not the main msg-input */
+  if (inputEl && inputEl.id !== "msg-input") {
+    var rect = inputEl.getBoundingClientRect();
+    mentionDropdown.style.position = "fixed";
+    mentionDropdown.style.bottom = (window.innerHeight - rect.top + 4) + "px";
+    mentionDropdown.style.left = rect.left + "px";
+    mentionDropdown.style.width = rect.width + "px";
+  } else {
+    /* Reset to default positioning inside .input-bar */
+    mentionDropdown.style.position = "";
+    mentionDropdown.style.bottom = "";
+    mentionDropdown.style.left = "";
+    mentionDropdown.style.width = "";
+  }
+}
+
 function showMentionDropdown(specialItems, agentItems) {
   mentionSelectedIndex = 0;
   var html = "";
@@ -130,16 +148,23 @@ function showMentionDropdown(specialItems, agentItems) {
 
   mentionDropdown.innerHTML = html;
   mentionDropdown.classList.add("visible");
+  positionMentionDropdown(mentionActiveInput);
 }
 
 function hideMentionDropdown() {
   mentionDropdown.classList.remove("visible");
   mentionDropdown.innerHTML = "";
   mentionSelectedIndex = -1;
+  mentionActiveInput = null;
+  /* Reset positioning */
+  mentionDropdown.style.position = "";
+  mentionDropdown.style.bottom = "";
+  mentionDropdown.style.left = "";
+  mentionDropdown.style.width = "";
 }
 
 function insertMention(name) {
-  var input = document.getElementById("msg-input");
+  var input = mentionActiveInput || document.getElementById("msg-input");
   var info = getMentionQuery(input);
   if (!info) return;
   var before = input.value.substring(0, info.start);
@@ -151,7 +176,8 @@ function insertMention(name) {
   hideMentionDropdown();
 }
 
-document.getElementById("msg-input").addEventListener("input", function () {
+function handleMentionInput(e) {
+  mentionActiveInput = this;
   var info = getMentionQuery(this);
   if (!info) {
     hideMentionDropdown();
@@ -189,9 +215,9 @@ document.getElementById("msg-input").addEventListener("input", function () {
     return;
   }
   showMentionDropdown(matchedSpecial, matchedAgents);
-});
+}
 
-document.getElementById("msg-input").addEventListener("keydown", function (e) {
+function handleMentionKeydown(e) {
   if (!mentionDropdown || !mentionDropdown.classList.contains("visible")) {
     return;
   }
@@ -219,15 +245,25 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
     e.preventDefault();
     hideMentionDropdown();
   }
-});
+}
+
+function handleMentionBlur() {
+  setTimeout(hideMentionDropdown, 150);
+}
+
+/* Attach mention autocomplete to any textarea */
+function initMentionAutocomplete(inputEl) {
+  inputEl.addEventListener("input", handleMentionInput);
+  inputEl.addEventListener("keydown", handleMentionKeydown);
+  inputEl.addEventListener("blur", handleMentionBlur);
+}
+
+/* Init for main compose textarea */
+initMentionAutocomplete(document.getElementById("msg-input"));
 
 mentionDropdown.addEventListener("click", function (e) {
   var item = e.target.closest(".mention-item");
   if (item) insertMention(item.getAttribute("data-name"));
-});
-
-document.getElementById("msg-input").addEventListener("blur", function () {
-  setTimeout(hideMentionDropdown, 150);
 });
 
 setInterval(refreshAgentNames, 15000);
