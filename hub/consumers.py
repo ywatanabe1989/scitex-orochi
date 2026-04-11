@@ -156,7 +156,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # Agent reports its current task — visible in the Activity tab.
             payload = content.get("payload", {})
             task = payload.get("task", "")
-            from hub.registry import set_current_task, mark_activity
+            from hub.registry import mark_activity, set_current_task
 
             set_current_task(self.agent_name, task)
             mark_activity(self.agent_name, action=task)
@@ -174,7 +174,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # Agent reports its current subagent tree.
             # payload = { "subagents": [ {name, task, status}, ... ] }
             payload = content.get("payload", {})
-            from hub.registry import set_subagents, mark_activity
+            from hub.registry import mark_activity, set_subagents
 
             set_subagents(self.agent_name, payload.get("subagents") or [])
             mark_activity(self.agent_name)
@@ -317,6 +317,11 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         user = self.scope.get("user")
         if not user or not user.is_authenticated:
+            log.warning(
+                "Dashboard WS rejected: user=%s auth=%s",
+                user,
+                getattr(user, "is_authenticated", None),
+            )
             await self.close(code=4001)
             return
 
