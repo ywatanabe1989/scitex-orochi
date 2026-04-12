@@ -2,11 +2,80 @@
 
 import json
 import os
+import re
+import threading
+import time
 import urllib.error
 import urllib.request
 
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
+
+# In-process cache: { "owner/repo#N": (expires_epoch, title_or_None) }
+# None value is a negative cache to avoid hammering GitHub for missing issues.
+_ISSUE_TITLE_CACHE: dict = {}
+_ISSUE_TITLE_LOCK = threading.Lock()
+_ISSUE_TITLE_TTL = 3600  # 1 hour for hits
+_ISSUE_TITLE_NEG_TTL = 300  # 5 minutes for misses
+_REPO_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
+
+
+def _fetch_issue_title(repo: str, number: int) -> str | None:
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return None
+    url = f"https://api.github.com/repos/{repo}/issues/{number}"
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Orochi-Dashboard",
+        "Authorization": f"token {token}",
+    }
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            return data.get("title")
+    except Exception:
+        return None
+
+
+def resolve_issue_title(repo: str, number: int) -> str | None:
+    """Cached lookup — safe for concurrent callers."""
+    key = f"{repo}#{number}"
+    now = time.time()
+    with _ISSUE_TITLE_LOCK:
+        entry = _ISSUE_TITLE_CACHE.get(key)
+        if entry and entry[0] > now:
+            return entry[1]
+    title = _fetch_issue_title(repo, number)
+    ttl = _ISSUE_TITLE_TTL if title else _ISSUE_TITLE_NEG_TTL
+    with _ISSUE_TITLE_LOCK:
+        _ISSUE_TITLE_CACHE[key] = (now + ttl, title)
+    return title
+
+
+@require_GET
+def github_issue_title(request):
+    """GET /api/github/issue-title/?repo=owner/repo&number=N
+
+    Returns {repo, number, title} for a single issue. Used by the chat UI
+    to hydrate ``owner/repo#N`` references with an inline title. Fails
+    gracefully — when the repo/issue can't be resolved (no token, 404,
+    network error) returns title=null so the frontend can just show the
+    bare reference.
+    """
+    repo = (request.GET.get("repo") or "").strip()
+    num_raw = (request.GET.get("number") or "").strip()
+    if not repo or not _REPO_RE.match(repo):
+        return JsonResponse({"error": "invalid repo"}, status=400)
+    try:
+        number = int(num_raw)
+        if number <= 0:
+            raise ValueError
+    except ValueError:
+        return JsonResponse({"error": "invalid number"}, status=400)
+    title = resolve_issue_title(repo, number)
+    return JsonResponse({"repo": repo, "number": number, "title": title})
 
 
 @require_GET

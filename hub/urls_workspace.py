@@ -53,6 +53,11 @@ urlpatterns = [
     path("api/stats/", views.api_stats, name="api-stats"),
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),
     path("api/github/issues/", views.github_issues, name="api-github-issues"),
+    path(
+        "api/github/issue-title/",
+        views.github_issue_title,
+        name="api-github-issue-title",
+    ),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),

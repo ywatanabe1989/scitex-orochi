@@ -7,13 +7,61 @@ function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
 
-/* Cache of GitHub issue titles (number → title) used for hover tooltips */
+/* Cache of GitHub issue titles.
+ *   issueTitleCache[number]            → title for the default repo
+ *                                        (ywatanabe1989/todo, legacy `#N`)
+ *   issueTitleCache["owner/repo#N"]    → title for cross-repo references
+ * Negative lookups are stored as the literal string "" so we stop retrying
+ * missing issues on every render pass. */
 var issueTitleCache = {};
+var issueTitleInflight = {};
+
+function _hydrateIssueLink(a, title) {
+  if (!title || a.dataset.hinted) return;
+  var label = a.getAttribute("data-issue-label") || a.textContent;
+  a.title = label + " " + title;
+  a.innerHTML =
+    escapeHtml(label) +
+    ' <span class="issue-link-title">(' +
+    escapeHtml(title) +
+    ")</span>";
+  a.dataset.hinted = "1";
+}
+
+function _fetchCrossRepoTitle(repo, num, cb) {
+  var key = repo + "#" + num;
+  if (issueTitleCache[key] !== undefined) {
+    cb(issueTitleCache[key] || null);
+    return;
+  }
+  if (issueTitleInflight[key]) return;
+  issueTitleInflight[key] = true;
+  var url =
+    apiUrl("/api/github/issue-title") +
+    "?repo=" +
+    encodeURIComponent(repo) +
+    "&number=" +
+    encodeURIComponent(num);
+  fetch(url, { credentials: "same-origin" })
+    .then(function (r) {
+      return r.ok ? r.json() : null;
+    })
+    .then(function (data) {
+      delete issueTitleInflight[key];
+      var title = (data && data.title) || "";
+      issueTitleCache[key] = title;
+      if (title) cb(title);
+    })
+    .catch(function () {
+      delete issueTitleInflight[key];
+    });
+}
 
 function applyIssueTitleHints(scope) {
   var root = scope || document;
   root.querySelectorAll(".issue-link").forEach(function (a) {
-    /* Parse from the raw number — text may already include an inline title */
+    if (a.dataset.hinted) return;
+    var repo = a.getAttribute("data-issue-repo");
     var num = a.getAttribute("data-issue-num");
     if (!num) {
       var m = a.textContent.match(/#(\d+)/);
@@ -21,18 +69,21 @@ function applyIssueTitleHints(scope) {
       num = m[1];
       a.setAttribute("data-issue-num", num);
     }
-    var title = issueTitleCache[num];
-    if (title && !a.dataset.hinted) {
-      a.title = "#" + num + " " + title;
-      /* Inline the title so readers can see it without hovering. Kept
-       * compact and clipped via CSS so long titles don't wrap the msg. */
-      a.innerHTML =
-        "#" +
-        num +
-        ' <span class="issue-link-title">(' +
-        escapeHtml(title) +
-        ")</span>";
-      a.dataset.hinted = "1";
+    if (repo) {
+      /* Cross-repo: hit the per-issue endpoint lazily. */
+      var key = repo + "#" + num;
+      var cached = issueTitleCache[key];
+      if (cached) {
+        _hydrateIssueLink(a, cached);
+      } else if (cached === undefined) {
+        _fetchCrossRepoTitle(repo, num, function (title) {
+          _hydrateIssueLink(a, title);
+        });
+      }
+    } else {
+      /* Legacy bare `#N` → ywatanabe1989/todo, served from the list cache. */
+      var title = issueTitleCache[num];
+      if (title) _hydrateIssueLink(a, title);
     }
   });
 }
@@ -186,9 +237,34 @@ function appendMessage(msg) {
       /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
       '<span class="channel-highlight">$1</span>',
     )
+    /* Cross-repo references: `owner/repo#N` → GitHub issue link.
+     * Must run before the bare `#N` rule so the slash-prefixed form wins
+     * (the bare rule has a `(?<![\/\w])` guard that lets this pass). */
+    .replace(
+      /(^|[^\w\/])([\w.-]+\/[\w.-]+)#(\d+)\b/g,
+      function (_m, lead, repo, num) {
+        var label = repo + "#" + num;
+        return (
+          lead +
+          '<a class="issue-link" data-issue-repo="' +
+          repo +
+          '" data-issue-num="' +
+          num +
+          '" data-issue-label="' +
+          label +
+          '" href="https://github.com/' +
+          repo +
+          "/issues/" +
+          num +
+          '" target="_blank" rel="noopener">' +
+          label +
+          "</a>"
+        );
+      },
+    )
     .replace(
       /(?<![\/\w])#(\d+)\b/g,
-      '<a class="issue-link" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
+      '<a class="issue-link" data-issue-num="$1" data-issue-label="#$1" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
     )
     .replace(
       /(?<![="'>])(https?:\/\/[^\s<>"')\]]+)/g,
