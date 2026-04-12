@@ -132,9 +132,18 @@ function appendSystemMessage(msg) {
   var container = document.getElementById("messages");
   var nearBottom =
     container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+  /* Mirror appendMessage's focus/scroll guard — see todo#225. */
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   container.appendChild(el);
-  if (nearBottom) {
+  if (nearBottom && !inputHasFocus) {
     container.scrollTop = container.scrollHeight;
+  }
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
 }
 
@@ -466,9 +475,27 @@ function appendMessage(msg) {
    * (dismiss keyboard, lose IME composition, or reset input value). */
   var nearBottom =
     container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+  /* Preserve textarea focus/selection across DOM mutation + scroll.
+   * todo#225: on the dashboard, inbound WS messages were causing the
+   * compose textarea to lose focus mid-typing. The root cause is the
+   * appendChild + scrollTop write on #messages: even though the textarea
+   * is a sibling, browsers can blur it when the focused element is in a
+   * container whose layout shifts under an async scroll write, and the
+   * same path is responsible for todo#55's pending-attachment / input
+   * state loss. We snapshot focus before the mutation and restore it
+   * afterward, and we skip the auto-scroll entirely while the user is
+   * actively typing so we don't yank their viewport either. */
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   container.appendChild(el);
-  if (nearBottom) {
+  if (nearBottom && !inputHasFocus) {
     container.scrollTop = container.scrollHeight;
+  }
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
   applyIssueTitleHints(el);
 }
