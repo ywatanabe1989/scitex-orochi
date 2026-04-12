@@ -15,13 +15,25 @@ async function fetchWorkspaces() {
 }
 
 function renderWorkspacesTab() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var grid = document.getElementById("workspaces-grid");
   if (!workspacesData || workspacesData.length === 0) {
     grid.innerHTML = '<p class="empty-notice">No workspaces configured</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   grid.innerHTML = workspacesData.map(buildWorkspaceCard).join("");
   workspacesData.forEach(fetchWorkspaceInvites);
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function buildWorkspaceCard(ws) {
