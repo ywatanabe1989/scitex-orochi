@@ -167,19 +167,20 @@
   }
   /* Input bar: single row, compact */
   .input-bar {
-    padding: 4px 6px;
-    gap: 3px;
+    padding: 2px 4px;
+    gap: 2px;
     flex-wrap: nowrap;
     align-items: stretch;
+    border-top: none;
   }
   /* Inner row: textarea + actions side by side */
   .input-bar-row {
-    gap: 4px;
+    gap: 3px;
   }
   /* Actions: horizontal on mobile (was column) */
   .input-bar-actions {
     flex-direction: row;
-    gap: 4px;
+    gap: 3px;
     align-items: center;
   }
   .input-bar-actions #msg-attach,
@@ -187,15 +188,16 @@
   .input-bar-actions #msg-voice-lang,
   .input-bar-actions #msg-voice,
   .input-bar-actions #msg-send {
-    min-width: 36px;
-    min-height: 36px;
-    padding: 4px 8px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 4px 6px;
     font-size: 14px;
   }
   .input-bar textarea {
-    min-height: 36px;
-    max-height: 80px;
-    padding: 6px 8px;
+    min-height: 32px;
+    max-height: 72px;
+    height: 32px;
+    padding: 5px 8px;
     font-size: 16px;
     flex: 1;
   }
@@ -208,8 +210,8 @@
   }
   /* Stats bar: minimal + safe area for Safari bottom */
   .stats-bar {
-    padding: 3px 8px;
-    padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px));
+    padding: 1px 8px;
+    padding-bottom: calc(1px + env(safe-area-inset-bottom, 0px));
     font-size: 9px;
     gap: 8px;
     flex-wrap: nowrap;
@@ -313,11 +315,11 @@
     font-size: 13px;
   }
   .input-bar {
-    padding: 4px 6px;
-    gap: 3px;
+    padding: 2px 4px;
+    gap: 2px;
   }
   .input-bar textarea {
-    padding: 6px 8px;
+    padding: 4px 6px;
   }
   .input-bar-actions #msg-send {
     min-width: 50px;
@@ -365,15 +367,16 @@
     margin-bottom: 2px;
   }
   .input-bar {
-    padding: 4px 8px;
+    padding: 2px 4px;
   }
   .input-bar textarea {
-    min-height: 32px;
-    max-height: 60px;
+    min-height: 28px;
+    max-height: 52px;
+    height: 28px;
   }
   .stats-bar {
-    padding: 2px 8px;
-    padding-bottom: calc(2px + env(safe-area-inset-bottom, 0px));
+    padding: 1px 8px;
+    padding-bottom: calc(1px + env(safe-area-inset-bottom, 0px));
   }
 }
 
