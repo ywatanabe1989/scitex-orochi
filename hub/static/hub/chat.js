@@ -18,6 +18,10 @@ var issueTitleInflight = {};
 
 function _hydrateIssueLink(a, title) {
   if (!title || a.dataset.hinted) return;
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var label = a.getAttribute("data-issue-label") || a.textContent;
   a.title = label + " " + title;
   a.innerHTML =
@@ -26,6 +30,10 @@ function _hydrateIssueLink(a, title) {
     escapeHtml(title) +
     ")</span>";
   a.dataset.hinted = "1";
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function _fetchCrossRepoTitle(repo, num, cb) {
