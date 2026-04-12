@@ -490,7 +490,13 @@ function appendMessage(msg) {
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   container.appendChild(el);
-  if (nearBottom && !inputHasFocus) {
+  /* ALWAYS auto-scroll when near the bottom — including when the user is
+   * actively typing. Skipping the scroll while focused was too aggressive
+   * and broke the "I just sent a message" case (todo#227): the user's own
+   * outgoing message stayed below the fold because focus was still on
+   * #msg-input. The focus-preserve idiom (save selection → restore after
+   * mutation) is sufficient on its own for the typing-mid-incoming case. */
+  if (nearBottom) {
     container.scrollTop = container.scrollHeight;
   }
   if (inputHasFocus && document.activeElement !== msgInput) {
@@ -742,6 +748,11 @@ function sendMessage() {
   }
   input.value = "";
   input.style.height = "auto";
+  /* Force scroll to bottom immediately on send (#227) */
+  var msgContainer = document.getElementById("messages");
+  if (msgContainer) {
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+  }
   if (typeof clearPendingAttachments === "function") {
     clearPendingAttachments();
   }
