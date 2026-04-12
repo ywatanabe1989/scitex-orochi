@@ -66,6 +66,7 @@ urlpatterns = [
         name="api-message-detail",
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
+    path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/upload", views.api_upload, name="api-upload"),
     path(
         "api/upload-base64",
