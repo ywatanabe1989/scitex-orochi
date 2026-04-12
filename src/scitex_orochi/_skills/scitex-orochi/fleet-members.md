@@ -90,6 +90,11 @@ Mamba agents can use `/loop` for recurring duties:
 - **Orochi channels**: No signatures. The sender's name is already shown in the message header.
 - **GitHub issues/comments**: Signatures are welcome (e.g., `— mamba 🐍`) for branding and traceability.
 
+### Channels
+- **#general**: Normal status, coordination, roll calls
+- **#escalation**: Urgent issues only — triggers email/PWA notifications to the user. Do not post non-urgent messages here.
+- **#todo**: Task tracking (mamba-todo-manager)
+
 ### Language
 - **Orochi channels**: 日本語 (Japanese) — higher information density for chat
 - **GitHub issues/comments**: English — for broader accessibility and demos
