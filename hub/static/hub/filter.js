@@ -75,6 +75,10 @@ function syncFilterVisuals() {
 }
 
 function renderTags() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   filterTagsEl.innerHTML = activeTags
     .map(function (t, i) {
       return (
@@ -90,6 +94,10 @@ function renderTags() {
       );
     })
     .join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function getTagSuggestions(prefix) {
@@ -135,6 +143,10 @@ function showSuggestions(items) {
     hideSuggestions();
     return;
   }
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   suggestIndex = 0;
   filterSuggestEl.innerHTML = items
     .map(function (item, i) {
@@ -155,12 +167,24 @@ function showSuggestions(items) {
     })
     .join("");
   filterSuggestEl.classList.add("visible");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function hideSuggestions() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   filterSuggestEl.classList.remove("visible");
   filterSuggestEl.innerHTML = "";
   suggestIndex = -1;
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 filterSuggestEl.addEventListener("click", function (e) {
