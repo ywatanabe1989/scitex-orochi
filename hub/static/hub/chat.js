@@ -1037,6 +1037,52 @@ document.addEventListener("mousedown", function (e) {
   }
 }, true);
 
+/* Defensive blur watchdog (todo#225 second-order regression).
+ * msg#6692: ywatanabe says focus drops *after an idle period when a
+ * delayed post arrives* — i.e. NOT a click event, so the mousedown
+ * delegate above can't catch it. Some async setInterval / WS-driven
+ * DOM mutation is firing focus() on something else, or the textarea
+ * itself is being briefly unmounted by a re-render. Rather than chase
+ * every async path, install a one-shot watchdog: if #msg-input loses
+ * focus AND nothing else useful (form control / link the user clicked
+ * intentionally) took focus within the next paint frame, snap focus
+ * straight back. The selection range is restored too so the cursor
+ * lands where the user left it. We only re-focus when the textarea
+ * still has user-typed content AND the focus shifted to <body> /
+ * <button> / <a> — the "implicit blur" pattern — so we never fight
+ * an intentional click into another textarea / input / select. */
+(function () {
+  var msgInput = document.getElementById("msg-input");
+  if (!msgInput) return;
+  msgInput.addEventListener("blur", function (e) {
+    if (window.__voiceInputAllowBlur) return;
+    var savedStart = msgInput.selectionStart || 0;
+    var savedEnd = msgInput.selectionEnd || 0;
+    var rt = e && e.relatedTarget;
+    /* If the user clicked into another form control on purpose, leave
+     * the focus where they put it. */
+    if (rt && rt.tagName) {
+      var tn = rt.tagName.toUpperCase();
+      if (tn === "TEXTAREA" || tn === "INPUT" || tn === "SELECT") return;
+      if (rt.isContentEditable) return;
+    }
+    requestAnimationFrame(function () {
+      var still = document.activeElement;
+      if (still === msgInput) return;
+      /* Don't fight a real focus into another control. */
+      if (still && still.tagName) {
+        var stn = still.tagName.toUpperCase();
+        if (stn === "TEXTAREA" || stn === "INPUT" || stn === "SELECT") return;
+        if (still.isContentEditable) return;
+      }
+      try {
+        msgInput.focus();
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
+    });
+  });
+})();
+
 document.getElementById("msg-send").addEventListener("click", function (e) {
   e.preventDefault();
   /* On mobile Safari, tapping the send button blurs the textarea before
