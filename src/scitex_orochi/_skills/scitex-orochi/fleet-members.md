@@ -97,6 +97,58 @@ on 2026-04-12: **central registry on Orochi hub = single source of truth**.
 Until migration lands, treat local registries as authoritative per host and
 use Orochi hub `status` MCP tool for cross-host liveness checks.
 
+### Identity & impersonation hardening (2026-04-12)
+
+Trigger: `mamba-newbie-mba` run `20260412-092325` posted messages whose
+body began with `head-mba: understood ...`. The hub `user=` attribution
+correctly tagged the sender as `mamba-newbie-mba`, but human/LLM readers
+of the channel UI were misled by the body prefix. Lesson: identity must
+be carried at the protocol layer **and** be visually obvious in the body,
+not optional self-discipline by the agent.
+
+**Required registry fields (extends todo#213 schema):**
+
+| field | example | role |
+|---|---|---|
+| `agent_id` | `head-mba` | logical name |
+| `host` | `mba` | machine |
+| `pid` | `12345` | OS process id of the agent's main Claude Code process |
+| `parent_pid` | `1` | sidecar / launcher pid (process tree verification) |
+| `boot_uuid` | `f3a8e1c2-...` | fresh UUID generated on every start; distinguishes one boot from the next even when PID is reused |
+| `started_at` | `2026-04-12T08:00:00Z` | ISO timestamp |
+| `tmux_session` | `head-mba` | multiplexer session name |
+| `multiplexer` | `tmux \| screen` | which transport to use for cross-agent injection |
+
+**Why `boot_uuid` in addition to `pid`:** the OS reuses PIDs. Two
+different runs of the same `agent_id` may share a PID by coincidence
+(common in long-running fleets). A fresh UUID per boot guarantees that
+"the agent that posted this" is unambiguously identified across restarts.
+Especially important for newbie-style experiments where run #1 and run #2
+must be cleanly separable.
+
+**MCP sender-prefix proposal (implementation candidate):** when the
+Orochi MCP `reply` tool sends a message, server-side rewrite the body to
+prepend the authenticated sender id and (optionally) `boot_uuid`:
+
+```
+[mamba-newbie-mba @ f3a8e1c2] head-mba: understood ...
+```
+
+This makes impersonation visually impossible regardless of how the agent
+phrases its body. Agents cannot strip the prefix because the rewrite
+happens at the hub, after authentication, before persistence. The hub
+already knows the true sender from the WebSocket auth (`SCITEX_OROCHI_AGENT`),
+so this is a small API change with large defensive value. Alternatives
+considered (`role-play prefix detection`, `system prompt prohibitions`)
+were rejected as either unreliable or Hawthorne-contaminating.
+
+**Operator guidance (effective immediately, no code change required):**
+- When citing channel messages, **always quote the `user=` attribute**,
+  never the body's self-prefix. Memory/skill entries that quote messages
+  must include the protocol-level sender id verbatim.
+- When debugging an "agent X said Y" claim, verify against
+  `mcp__scitex-orochi__history` output, not against the channel UI body.
+
 ## Directory Conventions
 
 ### Agent Definitions (shared via dotfiles, single source of truth)

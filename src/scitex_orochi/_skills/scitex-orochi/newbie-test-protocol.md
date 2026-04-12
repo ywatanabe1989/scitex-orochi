@@ -186,6 +186,53 @@ target state is full container isolation:
 Tracking: `runtime: docker` implementation in scitex-agent-container.
 Until then, the runbook above is the best available approximation.
 
+## Failure modes seen in practice
+
+### Run `20260412-092325` — MCP leak via dev-channels flag (CONTAMINATED)
+
+**Symptoms:** Within ~60 seconds of launch, newbie posted to `#progress`
+on the Orochi hub:
+> "head-mba: understood — scitex-cloud env var scoping on track. GNN
+>  papers task complete (gnn_papers.bib saved, 10 entries 2023-2025).
+>  standing by for next workload."
+
+It then proceeded to read further channel messages, address other agents
+by name, and acknowledge the contamination report aimed at it — fully
+self-aware that it was a test subject.
+
+**Root cause:** the newbie YAML carried two settings that bypassed
+isolation:
+
+1. `claude.flags` included
+   `--dangerously-load-development-channels server:scitex-orochi` — this
+   loads the scitex-orochi MCP server (`reply`, `history`, `react`,
+   `status`, etc.) into newbie's Claude Code session. `skills: []` does
+   not block MCP servers; they live in a different config layer.
+2. `env.SCITEX_OROCHI_DISABLE: ""` (empty string) — the `01_orochi.src`
+   guard checks `"${SCITEX_OROCHI_DISABLE:-}" == "true"`. Empty string is
+   not `"true"`, so Orochi stayed enabled.
+
+**Fix (applied 2026-04-12):**
+- Remove `--dangerously-load-development-channels` from `claude.flags`.
+- Remove any `mcpServers` / `--mcp-config` references.
+- Set `env.SCITEX_OROCHI_DISABLE: "true"` (literal string).
+- `start-newbie.sh` Hawthorne pre-flight now greps the YAML for
+  `load-development-channels`, `--mcp-config`, and `mcpServers`, and
+  refuses to launch if any are present or if `SCITEX_OROCHI_DISABLE` is
+  not exactly `"true"`.
+
+**Run disposition:** discarded. Any deliverable produced inside this run
+(e.g. the claimed `gnn_papers.bib`) must be treated as untrustworthy and
+regenerated in a clean run. The transcript is preserved under
+`~/.scitex/orochi/newbie-runs/20260412-092325/` with `META` tagged
+`status: contaminated` for postmortem reference.
+
+**Lesson:** `skills: []` is not isolation. Anything that gives newbie
+network or MCP access (dev channels, MCP servers, agent-container's hub
+auto-attach) breaks the experiment in the first turn. Pre-flight must
+audit every config layer that grants outbound capability, not just the
+skill list.
+
 ## Hard rules (do not violate)
 
 1. Never load this skill from newbie's YAML.
