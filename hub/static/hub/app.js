@@ -880,6 +880,10 @@ async function fetchStats() {
     var newStatsJson = JSON.stringify(stats.channels);
     if (chContainer._lastStatsJson === newStatsJson) return;
     chContainer._lastStatsJson = newStatsJson;
+    var msgInput = document.getElementById("msg-input");
+    var inputHasFocus = msgInput && document.activeElement === msgInput;
+    var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+    var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
     chContainer.innerHTML = stats.channels
       .map(function (c, i) {
         var active = currentChannel === c ? " active" : "";
@@ -911,6 +915,10 @@ async function fetchStats() {
     });
     var chCountEl = document.getElementById("sidebar-count-channels");
     if (chCountEl) chCountEl.textContent = "(" + stats.channels.length + ")";
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
   } catch (e) {
     /* fetch error */
   }
