@@ -1338,12 +1338,14 @@ document.addEventListener("click", function (e) {
   var ch = link.getAttribute("data-channel");
   if (!ch) return;
   if (typeof currentChannel !== "undefined") {
-    currentChannel = ch;
-    if (typeof loadChannelHistory === "function") {
-      loadChannelHistory(ch);
+    if (currentChannel === ch) {
+      currentChannel = null;
+      if (typeof loadHistory === "function") loadHistory();
+    } else {
+      currentChannel = ch;
+      if (typeof loadChannelHistory === "function") loadChannelHistory(ch);
     }
-    if (typeof addTag === "function") {
-      addTag("channel", ch);
-    }
+    if (typeof addTag === "function") addTag("channel", ch);
+    if (typeof fetchStats === "function") fetchStats();
   }
 });
