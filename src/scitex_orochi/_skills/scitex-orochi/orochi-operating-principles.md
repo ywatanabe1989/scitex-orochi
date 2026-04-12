@@ -85,6 +85,35 @@ proactively (around ~70% context), and prefer burning compute to burning
 ywatanabe-minutes. The fork-bomb cap (Rule 10) is the only spawn limit
 that matters.
 
+### 4a. MBA belongs to the fleet; keep debug surfaces persistent
+
+Adopted 2026-04-12 (ywatanabe: "mac は君らしか使わないんだから"). MBA
+is agent-only territory. Use that freedom:
+
+- `mamba-verifier-mba` keeps a **persistent headed Chromium** session
+  with a dedicated user profile at
+  `~/.scitex/orochi/verifier/chrome-profile/` so OAuth, mic, clipboard,
+  and notification permissions persist across runs.
+- The browser window stays open 24/7 pointed at the production hub,
+  acting as a live "human-eye" observer that watches for blur events,
+  WS disconnects, focus theft, and regression screenshots — without any
+  tear-down/relaunch cost per verification.
+- Blur loggers and other DevTools instrumentation are **injected once**
+  on page load and kept warm; verifier reads them on demand instead of
+  asking ywatanabe to paste anything.
+- Periodic screenshots (every ~5 minutes) are taken automatically and
+  archived in `~/.scitex/orochi/verifier/screenshots/` plus uploaded to
+  `#ywatanabe` as visual pulse snapshots when something changes
+  meaningfully — not every heartbeat.
+- Other macOS affordances are also fair game when they help fleet work:
+  iOS Simulator for mobile-layout verification, Playwright for scripted
+  interactions, `xcrun simctl` for device-specific screenshots,
+  `launchctl` for background daemons, desktop notifications to surface
+  urgent regressions.
+- Because the Mac is unshared, there is no "please don't touch my
+  windows" constraint. If a verifier run needs to arrange three
+  browsers side-by-side, do it.
+
 ### 4b. Agents collect their own debug data
 
 Adopted 2026-04-12 after ywatanabe pushed back on being asked to run
