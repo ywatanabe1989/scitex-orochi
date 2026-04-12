@@ -204,6 +204,14 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - **Before referencing external OSS examples**: verify the license allows derivative work under AGPL-3.0
 - **New repos**: start with LICENSE file containing AGPL-3.0 text
 
+### Issue References (Cross-Repo)
+
+When referencing GitHub issues in fleet communication, always use the full `owner/repo#number` format to avoid collision between repos:
+
+- ✅ `ywatanabe1989/todo#82` — TODO tracker issue 82
+- ✅ `ywatanabe1989/scitex-orochi#49` — scitex-orochi issue 49
+- ❌ `#82` alone — ambiguous when multiple repos have issue 82
+
 ### GitHub Issue Conventions
 
 **Labels:**
