@@ -11,10 +11,27 @@
   /* Show the button now that we know the API is available */
   btn.classList.remove("voice-btn-hidden");
 
+  /* Language toggle: cycle between en-US and ja-JP */
+  var VOICE_LANGS = [
+    { code: "en-US", label: "EN" },
+    { code: "ja-JP", label: "JA" },
+  ];
+  var langIdx = (navigator.language || "").startsWith("ja") ? 1 : 0;
+  var langBtn = document.getElementById("msg-voice-lang");
+  if (langBtn) {
+    langBtn.classList.remove("voice-btn-hidden");
+    langBtn.textContent = VOICE_LANGS[langIdx].label;
+    langBtn.addEventListener("click", function () {
+      langIdx = (langIdx + 1) % VOICE_LANGS.length;
+      recognition.lang = VOICE_LANGS[langIdx].code;
+      langBtn.textContent = VOICE_LANGS[langIdx].label;
+    });
+  }
+
   var recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.interimResults = true;
-  recognition.lang = navigator.language || "en-US";
+  recognition.lang = VOICE_LANGS[langIdx].code;
 
   var isListening = false;
   /* Snapshot of the textarea value when recording started, so interim

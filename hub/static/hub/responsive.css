@@ -184,6 +184,7 @@
   }
   .input-bar-actions #msg-attach,
   .input-bar-actions #msg-sketch,
+  .input-bar-actions #msg-voice-lang,
   .input-bar-actions #msg-voice,
   .input-bar-actions #msg-send {
     min-width: 36px;
