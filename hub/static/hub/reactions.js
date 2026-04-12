@@ -95,9 +95,21 @@ async function fetchReactionsForMessages(messageIds) {
 function renderReactionsForMessage(messageId, reactionsByEmoji) {
   var container = document.querySelector('.msg-reactions[data-msg-id="' + messageId + '"]');
   if (!container) return;
+  /* Mirror appendMessage's focus guard — see todo#225.
+   * WS reaction_update events fire on foreign reactions and mutate
+   * innerHTML inside a descendant of #messages, which on mobile Safari
+   * can blur the compose textarea. Save + restore focus/selection. */
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var emojis = Object.keys(reactionsByEmoji);
   if (emojis.length === 0) {
     container.innerHTML = "";
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
+    }
     return;
   }
   container.innerHTML = emojis.map(function (emoji) {
@@ -114,6 +126,10 @@ function renderReactionsForMessage(messageId, reactionsByEmoji) {
       '</span>'
     );
   }).join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
+  }
 }
 
 /* Handle WS reaction_update events (wired from app.js handleMessage) */
