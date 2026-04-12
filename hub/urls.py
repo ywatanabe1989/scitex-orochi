@@ -60,6 +60,9 @@ urlpatterns = [
         "api/workspace/<slug:slug>/messages/", views.api_messages, name="api-messages"
     ),
     path(
+        "api/workspace/<slug:slug>/dms/", views.api_dms, name="api-dms"
+    ),
+    path(
         "api/workspace/<slug:slug>/history/<str:channel_name>/",
         views.api_history,
         name="api-history",

@@ -18,8 +18,10 @@ from django.views.decorators.http import require_GET, require_http_methods
 _server_start_time = time.time()
 
 
+from hub.channel_acl import check_write_allowed
 from hub.models import (
     Channel,
+    DMParticipant,
     Message,
     MessageReaction,
     MessageThread,
@@ -68,9 +70,9 @@ def api_channels(request):
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def api_messages(request):
+def api_messages(request, slug=None):
     """GET/POST /api/messages/ — recent messages or send one."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
 
     if request.method == "GET":
         from django.db.models import Count, Exists, OuterRef
@@ -114,6 +116,20 @@ def api_messages(request):
         metadata = {**metadata, "attachments": attachments}
     if not text and not attachments:
         return JsonResponse({"error": "text or attachments required"}, status=400)
+
+    # Spec v3 §8 / todo#258: REST POST /messages/ previously bypassed
+    # the channel write-ACL that AgentConsumer.receive_json enforces.
+    # Mirror the same check here so DM confidentiality (and any
+    # channels.yaml ACL) is enforced regardless of transport.
+    sender_identity = request.user.username
+    if not check_write_allowed(
+        sender=sender_identity,
+        channel=ch_name,
+        workspace_id=workspace.id,
+    ):
+        return JsonResponse(
+            {"error": "not allowed to write to this channel"}, status=403
+        )
 
     channel, _ = Channel.objects.get_or_create(workspace=workspace, name=ch_name)
     msg = Message.objects.create(
@@ -1758,3 +1774,178 @@ def api_resources(request):
                 machines[machine]["last_heartbeat"] = a["last_heartbeat"]
 
     return JsonResponse(machines, safe=False)
+
+
+# ---------------------------------------------------------------------------
+# Direct Messages (spec v3 §4) — todo#60 PR 3
+# ---------------------------------------------------------------------------
+
+
+def _dm_canonical_name(principal_keys):
+    """Return the canonical ``dm:<a>|<b>`` channel name for a sorted pair.
+
+    Spec v3 §2.3: DM channel names are ``dm:`` + ``|``-joined sorted
+    list of ``<type>:<identity>`` principal keys. Sorting makes the
+    name independent of who initiated the DM, so ``get_or_create``
+    is naturally idempotent.
+    """
+    return "dm:" + "|".join(sorted(principal_keys))
+
+
+def _principal_key_for_member(member):
+    """Return ``"agent:<name>"`` or ``"human:<username>"`` for a member."""
+    username = member.user.username or ""
+    if username.startswith("agent-"):
+        return f"agent:{username[len('agent-'):]}"
+    return f"human:{username}"
+
+
+def _resolve_recipient_member(workspace, recipient):
+    """Resolve a ``"agent:<name>"`` or ``"human:<username>"`` recipient
+    string to a :class:`WorkspaceMember`. Returns ``None`` if the
+    recipient is not a member of ``workspace`` or the form is invalid.
+    """
+    if not recipient or ":" not in recipient:
+        return None
+    kind, _, identity = recipient.partition(":")
+    identity = identity.strip()
+    if not identity:
+        return None
+    if kind == "agent":
+        username = f"agent-{identity}"
+    elif kind == "human":
+        username = identity
+    else:
+        return None
+    return (
+        WorkspaceMember.objects.filter(
+            workspace=workspace, user__username=username
+        )
+        .select_related("user")
+        .first()
+    )
+
+
+def _dm_row(channel, current_member):
+    """Build the row dict returned by GET/POST /dms/."""
+    others = []
+    for p in channel.dm_participants.select_related("member__user"):
+        if p.member_id == current_member.id:
+            continue
+        others.append(
+            {"type": p.principal_type, "identity_name": p.identity_name}
+        )
+    last_msg = (
+        Message.objects.filter(channel=channel).order_by("-ts").only("ts").first()
+    )
+    return {
+        "name": channel.name,
+        "kind": channel.kind,
+        "other_participants": others,
+        "last_message_ts": last_msg.ts.isoformat() if last_msg else None,
+    }
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def api_dms(request, slug=None):
+    """GET/POST /api/workspace/<slug>/dms/ — list or create 1:1 DMs.
+
+    Spec v3 §4. The current authenticated principal is resolved via
+    ``WorkspaceMember`` for ``request.user`` in the active workspace.
+    """
+    workspace = get_workspace(request, slug=slug)
+
+    current_member = (
+        WorkspaceMember.objects.filter(workspace=workspace, user=request.user)
+        .select_related("user")
+        .first()
+    )
+    if current_member is None:
+        return JsonResponse(
+            {"error": "not a workspace member"}, status=403
+        )
+
+    if request.method == "GET":
+        my_dm_channel_ids = DMParticipant.objects.filter(
+            member=current_member,
+            channel__workspace=workspace,
+            channel__kind=Channel.KIND_DM,
+        ).values_list("channel_id", flat=True)
+        channels = Channel.objects.filter(id__in=list(my_dm_channel_ids)).order_by(
+            "name"
+        )
+        rows = [_dm_row(ch, current_member) for ch in channels]
+        return JsonResponse({"dms": rows}, safe=False)
+
+    # POST — get-or-create a 1:1 DM
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    recipient = (body.get("recipient") or body.get("peer") or "").strip()
+    if not recipient:
+        return JsonResponse({"error": "recipient required"}, status=400)
+
+    other_member = _resolve_recipient_member(workspace, recipient)
+    if other_member is None:
+        return JsonResponse(
+            {"error": f"recipient {recipient!r} is not a workspace member"},
+            status=404,
+        )
+    if other_member.id == current_member.id:
+        return JsonResponse(
+            {"error": "cannot DM yourself"}, status=400
+        )
+
+    me_key = _principal_key_for_member(current_member)
+    other_key = _principal_key_for_member(other_member)
+    canonical_name = _dm_canonical_name([me_key, other_key])
+
+    # Idempotent get-or-create. We do NOT use Channel.objects.get_or_create
+    # because we need full_clean() (PR 1 dm: prefix guard) to run on
+    # the create path.
+    channel = Channel.objects.filter(
+        workspace=workspace, name=canonical_name
+    ).first()
+    if channel is None:
+        channel = Channel(
+            workspace=workspace,
+            name=canonical_name,
+            kind=Channel.KIND_DM,
+        )
+        channel.full_clean()
+        channel.save()
+
+    def _principal_type(member):
+        return (
+            DMParticipant.PRINCIPAL_AGENT
+            if (member.user.username or "").startswith("agent-")
+            else DMParticipant.PRINCIPAL_HUMAN
+        )
+
+    def _identity_name(member):
+        username = member.user.username or ""
+        if username.startswith("agent-"):
+            return username[len("agent-"):]
+        return username
+
+    DMParticipant.objects.get_or_create(
+        channel=channel,
+        member=current_member,
+        defaults={
+            "principal_type": _principal_type(current_member),
+            "identity_name": _identity_name(current_member),
+        },
+    )
+    DMParticipant.objects.get_or_create(
+        channel=channel,
+        member=other_member,
+        defaults={
+            "principal_type": _principal_type(other_member),
+            "identity_name": _identity_name(other_member),
+        },
+    )
+
+    return JsonResponse(_dm_row(channel, current_member), status=200)
