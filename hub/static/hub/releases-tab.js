@@ -215,6 +215,14 @@ function loadChangelog(key) {
           renderMarkdown(r.data.content) +
           "</div>";
         changelogCache[key] = html;
+      } else if (r.status === 404 || (r.data && r.data.error && /404/.test(r.data.error))) {
+        html =
+          '<div class="empty-notice">' +
+          '<p>📋 No <code>CHANGELOG.md</code> in this repository yet.</p>' +
+          '<p style="opacity:0.7;font-size:13px;">' +
+          'Add a <code>CHANGELOG.md</code> file to the repo root to populate this view. ' +
+          'Format: <a href="https://keepachangelog.com/" target="_blank" rel="noopener">Keep a Changelog</a>.' +
+          '</p></div>';
       } else {
         var msg =
           (r.data && r.data.error) ||
