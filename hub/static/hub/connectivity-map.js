@@ -54,10 +54,18 @@ function _edgePath(p1, p2, offsetSign) {
 }
 
 function renderConnectivityMap() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("connectivity-map");
   if (!container) return;
   if (!connectivityCache || !connectivityCache.nodes || connectivityCache.nodes.length === 0) {
     container.innerHTML = '<p class="empty-notice">No connectivity data.</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   var nodes = connectivityCache.nodes;
@@ -141,6 +149,10 @@ function renderConnectivityMap() {
     '</div>' +
     svgParts.join("");
   container.innerHTML = html;
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 /* Wire up: refresh when Machines tab opens */
