@@ -132,7 +132,20 @@ All env vars use the `SCITEX_OROCHI_*` prefix. No legacy `OROCHI_*` fallbacks.
 
 **Naming convention**: All fleet-wide env vars MUST use `SCITEX_OROCHI_*` prefix for searchability (`grep -r SCITEX_OROCHI_`). No legacy `OROCHI_*` or unprefixed variables.
 
-## Telegram Integration (Telegrammer Flow)
+## HARD RULE: Orochi and Telegram Are Mutually Exclusive
+
+**Never use Telegram in Orochi fleet agents.** There is a known conflict between Orochi and Telegram bridges — using both causes message routing issues.
+
+- Orochi fleet agents: use Orochi channels, scitex-notification (email), PWA push
+- Do NOT configure Telegram bots, Telegram bridges, or Telegram notifications in any Orochi agent
+- The legacy `SCITEX_OROCHI_TELEGRAM_*` env vars should be treated as deprecated
+
+If notification is needed:
+- **Primary**: Email via `scitex-notification`
+- **Secondary**: PWA push notifications from the Orochi dashboard
+- **Tertiary (future)**: Twilio voice/SMS (pending Japan regulatory setup)
+
+## Telegram Integration (Legacy / Not Used by Orochi)
 
 ```
 ENV (SCITEX_OROCHI_TELEGRAM_BOT_TOKEN)
