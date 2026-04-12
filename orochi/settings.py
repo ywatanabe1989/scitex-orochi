@@ -87,7 +87,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.orcid",
     "hub.providers.scitex",
-    "hub",
+    "hub.apps.HubConfig",
 ]
 
 SITE_ID = 1

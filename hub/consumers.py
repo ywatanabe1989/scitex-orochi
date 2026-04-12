@@ -6,10 +6,98 @@ from urllib.parse import parse_qs
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
-from hub.models import Channel, Message, Workspace, WorkspaceToken
+from hub.models import (
+    Channel,
+    DMParticipant,
+    Message,
+    Workspace,
+    WorkspaceMember,
+    WorkspaceToken,
+)
 from hub.channel_acl import check_write_allowed
 
 log = logging.getLogger("orochi.consumers")
+
+
+@database_sync_to_async
+def _ensure_agent_member(workspace_id, agent_name):
+    """Idempotently ensure a ``WorkspaceMember`` row exists for an agent.
+
+    Mirrors the synthetic-user pattern from ``hub/views/auth.py`` —
+    ``agent-<name>`` Django ``User`` + ``WorkspaceMember`` row. Required
+    by spec v3 §2.3 so DMParticipant FKs have a stable target.
+
+    Returns the ``WorkspaceMember`` instance (or ``None`` on failure).
+    """
+    import re
+
+    from django.contrib.auth.models import User
+
+    try:
+        workspace = Workspace.objects.get(id=workspace_id)
+    except Workspace.DoesNotExist:
+        return None
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_.\-]", "-", agent_name or "anonymous-agent")
+    username = f"agent-{safe_name}"
+    user, _ = User.objects.get_or_create(
+        username=username,
+        defaults={
+            "email": f"{username}@agents.orochi.local",
+            "is_active": True,
+            "is_staff": False,
+        },
+    )
+    member, _ = WorkspaceMember.objects.get_or_create(
+        user=user,
+        workspace=workspace,
+        defaults={"role": "member"},
+    )
+    return member
+
+
+@database_sync_to_async
+def _load_dm_channel_names(workspace_id, member_id):
+    """Return canonical ``dm:`` channel names the given member participates in."""
+    if member_id is None:
+        return []
+    return list(
+        DMParticipant.objects.filter(
+            member_id=member_id,
+            channel__workspace_id=workspace_id,
+            channel__kind=Channel.KIND_DM,
+        ).values_list("channel__name", flat=True)
+    )
+
+
+@database_sync_to_async
+def _is_dm_participant_by_member(channel_name, workspace_id, member_id):
+    """Check whether ``member_id`` is a participant of the given DM channel."""
+    if member_id is None:
+        return False
+    return DMParticipant.objects.filter(
+        channel__workspace_id=workspace_id,
+        channel__name=channel_name,
+        channel__kind=Channel.KIND_DM,
+        member_id=member_id,
+    ).exists()
+
+
+@database_sync_to_async
+def _is_dm_participant_by_username(channel_name, workspace_id, username):
+    """Check DM participation for a (possibly unauthenticated) dashboard user.
+
+    ``username=None`` always returns ``False`` — unauthenticated dashboards
+    can never read DMs.
+    """
+    if not username:
+        return False
+    return DMParticipant.objects.filter(
+        channel__workspace_id=workspace_id,
+        channel__name=channel_name,
+        channel__kind=Channel.KIND_DM,
+        member__user__username=username,
+    ).exists()
 
 
 @database_sync_to_async
@@ -57,9 +145,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_name = result["workspace_name"]
         self.agent_name = qs.get("agent", ["anonymous"])[0]
 
+        # Spec v3 §2.3 — idempotently ensure a WorkspaceMember row exists
+        # for this agent so DMParticipant FKs have a stable target.
+        self.workspace_member = await _ensure_agent_member(
+            workspace_id=self.workspace_id,
+            agent_name=self.agent_name,
+        )
+        self.workspace_member_id = (
+            self.workspace_member.id if self.workspace_member else None
+        )
+
         # Join workspace group for broadcasts
         self.workspace_group = f"workspace_{self.workspace_id}"
         await self.channel_layer.group_add(self.workspace_group, self.channel_name)
+
+        # Spec v3 §3.1 — auto-subscribe to all DM channels the agent is
+        # a participant of. The canonical DM channel name is stored on
+        # ``agent_meta["channels"]`` (populated/extended at register time)
+        # so the chat_message filter below forwards DM events correctly.
+        self._dm_channel_names = await _load_dm_channel_names(
+            self.workspace_id, self.workspace_member_id
+        )
+        for ch_name in self._dm_channel_names:
+            group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
+            await self.channel_layer.group_add(group, self.channel_name)
 
         await self.accept()
         log.info(
@@ -111,7 +220,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         if msg_type == "register":
             # Agent registration — subscribe to specific channels
             payload = content.get("payload", {})
-            channels = content.get("channels") or payload.get("channels", [])
+            channels = list(content.get("channels") or payload.get("channels", []) or [])
+            # Spec v3 §3.1 — ensure DM channels auto-subscribed at connect
+            # are also reflected in ``agent_meta["channels"]`` so the
+            # 90158bc chat_message filter forwards DM events.
+            for dm_name in getattr(self, "_dm_channel_names", []) or []:
+                if dm_name not in channels:
+                    channels.insert(0, dm_name)
             for ch_name in channels:
                 group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
                 await self.channel_layer.group_add(group, self.channel_name)
@@ -249,7 +364,15 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # Channel ACL enforcement — check before persisting or broadcasting.
             # check_write_allowed is a sync call (file-cached, sub-ms) so safe to
             # call directly in the async consumer.
-            if not check_write_allowed(self.agent_name, ch_name):
+            # check_write_allowed may touch the DB for DM channels, so
+            # route through sync_to_async. For non-DM channels it's a
+            # cached yaml lookup (sub-ms).
+            from asgiref.sync import sync_to_async as _sta
+
+            _allowed = await _sta(check_write_allowed)(
+                self.agent_name, ch_name, self.workspace_id
+            )
+            if not _allowed:
                 log.warning(
                     "[ACL] blocked write from %s to %s",
                     self.agent_name,
@@ -291,6 +414,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # vanish from the live feed because the WS broadcast carried
             # an empty attachments list, even though the DB row had
             # them and a page reload would have shown them.
+            # Spec v3 §3.3 — DM channels are identified by the reserved
+            # ``dm:`` name prefix (guarded at Channel.clean()) and must
+            # NOT hit the workspace_<id> fanout group, because dashboards
+            # join that group without per-channel filtering.
+            is_dm = ch_name.startswith("dm:")
+            kind = "dm" if is_dm else "group"
+
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_send(
                 group,
@@ -300,33 +430,55 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     "sender": self.agent_name,
                     "sender_type": "agent",
                     "channel": ch_name,
+                    "kind": kind,
                     "text": text,
                     "ts": msg["ts"] if msg else None,
                     "metadata": metadata,
                 },
             )
 
-            # Also broadcast to workspace group (for dashboard observers)
-            await self.channel_layer.group_send(
-                self.workspace_group,
-                {
-                    "type": "chat.message",
-                    "id": msg["id"] if msg else None,
-                    "sender": self.agent_name,
-                    "sender_type": "agent",
-                    "channel": ch_name,
-                    "text": text,
-                    "ts": msg["ts"] if msg else None,
-                    "metadata": metadata,
-                },
-            )
+            # Also broadcast to workspace group (for dashboard observers).
+            # Skip this entirely for DMs — dashboards reach DM participants
+            # through the channel_<ws>_<dm-name> group only.
+            if not is_dm:
+                await self.channel_layer.group_send(
+                    self.workspace_group,
+                    {
+                        "type": "chat.message",
+                        "id": msg["id"] if msg else None,
+                        "sender": self.agent_name,
+                        "sender_type": "agent",
+                        "channel": ch_name,
+                        "kind": kind,
+                        "text": text,
+                        "ts": msg["ts"] if msg else None,
+                        "metadata": metadata,
+                    },
+                )
 
     async def chat_message(self, event):
-        """Handle chat.message from channel layer — forward to WebSocket client."""
-        # Filter: only forward messages from channels this agent subscribed to
-        agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
-        if agent_channels and event.get("channel") not in agent_channels:
-            return
+        """Handle chat.message from channel layer — forward to WebSocket client.
+
+        Spec v3 §3.2/§3.3 — DM events are forwarded only if this
+        connection's principal (``WorkspaceMember``) is a participant of
+        the DM channel. Group events keep the 90158bc agent_meta filter.
+        """
+        ch_name = event.get("channel", "")
+        is_dm = event.get("kind") == "dm" or ch_name.startswith("dm:")
+
+        if is_dm:
+            allowed = await _is_dm_participant_by_member(
+                channel_name=ch_name,
+                workspace_id=self.workspace_id,
+                member_id=getattr(self, "workspace_member_id", None),
+            )
+            if not allowed:
+                return
+        else:
+            # Group channels: existing subscription filter.
+            agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
+            if agent_channels and ch_name not in agent_channels:
+                return
         await self.send_json(
             {
                 "type": "message",
@@ -545,6 +697,9 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 metadata=metadata,
             )
 
+            is_dm = ch_name.startswith("dm:")
+            kind = "dm" if is_dm else "group"
+
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_send(
                 group,
@@ -554,28 +709,58 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                     "sender": self.user.username,
                     "sender_type": "human",
                     "channel": ch_name,
+                    "kind": kind,
                     "text": text,
                     "ts": msg["ts"] if msg else None,
                     "metadata": metadata,
                 },
             )
 
-            await self.channel_layer.group_send(
-                self.workspace_group,
-                {
-                    "type": "chat.message",
-                    "id": msg["id"] if msg else None,
-                    "sender": self.user.username,
-                    "sender_type": "human",
-                    "channel": ch_name,
-                    "text": text,
-                    "ts": msg["ts"] if msg else None,
-                    "metadata": metadata,
-                },
-            )
+            # Spec v3 §3.3 — skip workspace fanout for DM channels.
+            if not is_dm:
+                await self.channel_layer.group_send(
+                    self.workspace_group,
+                    {
+                        "type": "chat.message",
+                        "id": msg["id"] if msg else None,
+                        "sender": self.user.username,
+                        "sender_type": "human",
+                        "channel": ch_name,
+                        "kind": kind,
+                        "text": text,
+                        "ts": msg["ts"] if msg else None,
+                        "metadata": metadata,
+                    },
+                )
 
     async def chat_message(self, event):
-        """Forward channel-layer message to dashboard WebSocket."""
+        """Forward channel-layer message to dashboard WebSocket.
+
+        Spec v3 §3.3 — confidentiality filter for DM events. The
+        dashboard joins ``workspace_<id>`` and will no longer receive
+        DMs via that group (sender skips fanout), but it may still be
+        bridged into ``channel_<ws>_<dm-name>`` groups. For defence in
+        depth we re-check participation here based on the connected
+        user's username. Unauthenticated / token-only dashboards
+        (``self.user.username in {"", "dashboard", None}``) never see
+        DMs — explicit opt-in via session is required.
+        """
+        ch_name = event.get("channel", "")
+        is_dm = event.get("kind") == "dm" or ch_name.startswith("dm:")
+        if is_dm:
+            username = getattr(getattr(self, "user", None), "username", None)
+            # Token-authenticated dashboards use a lightweight stand-in
+            # (_TokenUser with username="dashboard") or an admin fallback;
+            # they must not see DMs.
+            if username in (None, "", "dashboard"):
+                return
+            allowed = await _is_dm_participant_by_username(
+                channel_name=ch_name,
+                workspace_id=self.workspace_id,
+                username=username,
+            )
+            if not allowed:
+                return
         await self.send_json(
             {
                 "type": "message",
