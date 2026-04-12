@@ -30,6 +30,7 @@ import {
   handleHistory,
   handleReact,
   handleStatus,
+  handleSelfCommand,
   handleSubagents,
   handleTask,
   handleUploadMedia,
@@ -447,6 +448,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "status") return handleStatus(conn as any);
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
+  if (name === "self_command") return handleSelfCommand(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

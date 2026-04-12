@@ -194,4 +194,30 @@ export const TOOL_DEFS = [
       required: ["file_path"],
     },
   },
+  {
+    name: "self_command",
+    description:
+      "Send an arbitrary slash command (e.g. /compact, /clear) to the agent's own screen/tmux session. Returns immediately; the command fires after delay_ms when the agent is idle at its prompt. Destructive commands (/clear, /kill, /exit, /quit) require confirm=true.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        command: {
+          type: "string",
+          description:
+            "Slash command text to send, starting with '/'. May include args, e.g. '/compact' or '/model sonnet'. Must match /^\\/[A-Za-z0-9_-]+( .*)?$/ and must not contain single quotes.",
+        },
+        delay_ms: {
+          type: "number",
+          description:
+            "Delay in ms before sending the command (default: 6000). todo-manager recommends >=6000ms so the MCP response round-trip completes and the agent is idle at its prompt before keys are stuffed.",
+        },
+        confirm: {
+          type: "boolean",
+          description:
+            "Required true for destructive commands (/clear, /kill, /exit, /quit). Ignored for non-destructive commands.",
+        },
+      },
+      required: ["command"],
+    },
+  },
 ];

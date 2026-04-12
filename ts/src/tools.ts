@@ -9,7 +9,7 @@ import {
   existsSync,
 } from "fs";
 import { basename, dirname } from "path";
-import { execSync } from "child_process";
+import { exec, execSync } from "child_process";
 import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
@@ -491,4 +491,165 @@ export async function handleUploadMedia(args: {
       content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
     };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Self-command tools: send commands to the agent's own terminal session.
+//
+// Claude Code cannot run /compact, /clear, or exit while it is processing
+// the current request. But this MCP sidecar is a separate bun process, so
+// we schedule the command with setTimeout — by the time it fires, the
+// agent has already received our MCP response and is idle at its prompt.
+//
+// The agent's terminal multiplexer is determined from OROCHI_MULTIPLEXER
+// (screen|tmux); default is "screen" to match handleContext's usage.
+// ---------------------------------------------------------------------------
+
+// Allow only safe characters in the session name to prevent shell injection.
+function validateSessionName(name: string): string | null {
+  if (!/^[A-Za-z0-9._-]+$/.test(name)) return null;
+  return name;
+}
+
+type Multiplexer = "screen" | "tmux";
+
+function getMultiplexer(): Multiplexer {
+  const m = (process.env.OROCHI_MULTIPLEXER || "screen").toLowerCase();
+  return m === "tmux" ? "tmux" : "screen";
+}
+
+/**
+ * Build the shell command that sends `text` followed by Enter into the
+ * given multiplexer session. `text` should NOT contain shell metacharacters
+ * beyond the slash-command payload; it is single-quoted below.
+ */
+function buildSendKeysCommand(
+  mux: Multiplexer,
+  session: string,
+  text: string,
+): string {
+  // We single-quote text for the outer shell. Reject any text containing
+  // a single quote to keep escaping trivial and injection-proof.
+  if (text.includes("'")) {
+    throw new Error("self-command text must not contain single quotes");
+  }
+  if (mux === "tmux") {
+    // `tmux send-keys -l` sends literal then we send Enter separately.
+    return `tmux send-keys -t '${session}' '${text}' Enter`;
+  }
+  // GNU screen: use `stuff` with a literal newline (\r = carriage return).
+  return `screen -S '${session}' -X stuff $'${text}\\r'`;
+}
+
+function scheduleSelfCommand(
+  text: string,
+  delayMs: number,
+  label: string,
+): { content: Array<{ type: string; text: string }> } {
+  const rawSession = process.env.OROCHI_AGENT;
+  if (!rawSession) {
+    return {
+      content: [
+        { type: "text", text: "ERROR: OROCHI_AGENT env var not set" },
+      ],
+    };
+  }
+  const session = validateSessionName(rawSession);
+  if (!session) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `ERROR: OROCHI_AGENT contains unsafe characters: ${rawSession}`,
+        },
+      ],
+    };
+  }
+
+  const mux = getMultiplexer();
+  let cmd: string;
+  try {
+    cmd = buildSendKeysCommand(mux, session, text);
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `ERROR: ${(err as Error).message}` }],
+    };
+  }
+
+  const delay = Math.max(0, delayMs);
+  setTimeout(() => {
+    exec(cmd, (err) => {
+      if (err) {
+        console.error(
+          `[orochi] ${label} failed for session '${session}' (${mux}): ${err.message}`,
+        );
+      } else {
+        console.error(
+          `[orochi] ${label} sent '${text}' to ${mux} session '${session}'`,
+        );
+      }
+    });
+  }, delay);
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `${label} scheduled in ${delay}ms for ${mux} session '${session}'`,
+      },
+    ],
+  };
+}
+
+// Destructive slash commands require confirm=true.
+const DESTRUCTIVE_COMMANDS = new Set([
+  "/clear",
+  "/kill",
+  "/exit",
+  "/quit",
+]);
+
+// Validate slash-command text. Returns error string on failure, null on OK.
+function validateSelfCommand(command: string): string | null {
+  if (!command || typeof command !== "string") {
+    return "command is required";
+  }
+  if (!command.startsWith("/")) {
+    return "command must start with '/'";
+  }
+  if (command.includes("'")) {
+    return "command must not contain single quotes (shell injection guard)";
+  }
+  if (!/^\/[A-Za-z0-9_-]+( .*)?$/.test(command)) {
+    return "command must match /^\\/[A-Za-z0-9_-]+( .*)?$/";
+  }
+  return null;
+}
+
+export async function handleSelfCommand(args: {
+  command?: string;
+  delay_ms?: number;
+  confirm?: boolean;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const command = (args?.command || "").trim();
+  const err = validateSelfCommand(command);
+  if (err) {
+    return { content: [{ type: "text", text: `ERROR: ${err}` }] };
+  }
+
+  // Extract the bare slash name (no args) for destructive-list lookup.
+  const slashName = command.split(/\s+/, 1)[0];
+  if (DESTRUCTIVE_COMMANDS.has(slashName) && !args?.confirm) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `ERROR: '${slashName}' is destructive; pass confirm=true to fire`,
+        },
+      ],
+    };
+  }
+
+  const delay = args?.delay_ms ?? 6000;
+  return scheduleSelfCommand(command, delay, `self_command(${slashName})`);
 }
