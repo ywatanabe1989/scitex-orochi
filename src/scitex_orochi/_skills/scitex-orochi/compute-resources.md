@@ -112,6 +112,25 @@ Agent hosts are cheap to run 24/7; GPU workstations should be on-demand.
 4. **Add GPU last**: Only when spartan queue delays become research bottleneck
 5. **Redundancy**: Always have a backup path — second NAS, external backup drive
 
+## Self-Build PC Example (Research GPU Workstation)
+
+For users experienced with DIY builds. Target: 2-4 GPU research rig.
+
+**Specs:**
+- **CPU**: AMD Ryzen 9 7950X or Threadripper 7xxx (many cores + PCIe lanes)
+- **RAM**: 128 GB DDR5 ECC preferred
+- **GPU**: 2x RTX 4090 (48 GB VRAM total) or 1x RTX 6000 Ada (48 GB single)
+- **Storage**: 2 TB NVMe Gen4 (OS + scratch) + 8-16 TB HDD (datasets)
+- **PSU**: 1600 W 80+ Platinum (for dual 4090)
+- **Case**: Fractal Define 7 XL (airflow for multi-GPU)
+- **Cooling**: AIO 360mm CPU cooler + high static-pressure fans
+
+**Budget**: ~¥1,000,000 for dual-4090 build, ~¥600,000 for single 4090
+
+**OS**: Ubuntu 22.04 LTS + NVIDIA driver 545+ + CUDA 12.x
+
+**For quad-GPU**: Need Threadripper Pro or EPYC for sufficient PCIe lanes. Consider air-cooled GPUs with 2-slot spacing. Budget jumps to ~¥2M+.
+
 ## Reference
 
 - Mac mini M4: https://www.apple.com/jp/shop/buy-mac/mac-mini
