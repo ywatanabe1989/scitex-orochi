@@ -45,3 +45,95 @@ setTimeout(function () {
     startRestPolling();
   }
 }, 3000);
+
+/* Global Escape key handler — closes any open popup/modal/overlay.
+ * Checks in order of most-foreground to least, closing only the top one
+ * per keypress so stacked popups dismiss one at a time. */
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+
+  /* Skip if user is editing a message (chat.js handles its own ESC) */
+  var editInput = document.querySelector(".msg-edit-input");
+  if (editInput && document.activeElement === editInput) return;
+
+  /* Skip if element inspector is active (it handles its own ESC) */
+  if (window.elementInspector && window.elementInspector._isActive) return;
+
+  /* 1. Emoji picker overlay */
+  var emojiOverlay = document.querySelector(".emoji-picker-overlay.visible");
+  if (emojiOverlay) {
+    if (typeof window.closeEmojiPicker === "function") window.closeEmojiPicker();
+    e.preventDefault();
+    return;
+  }
+
+  /* 2. Reaction picker */
+  if (typeof reactionPicker !== "undefined" && reactionPicker) {
+    closeReactionPicker();
+    e.preventDefault();
+    return;
+  }
+
+  /* 3. Sketch overlay */
+  if (typeof sketchOverlay !== "undefined" && sketchOverlay) {
+    /* sketch.js registers its own per-instance ESC handler, but this
+     * serves as a safety net in case that listener was removed. */
+    closeSketch();
+    e.preventDefault();
+    return;
+  }
+
+  /* 4. Thread panel */
+  if (typeof threadPanel !== "undefined" && threadPanel) {
+    closeThreadPanel();
+    e.preventDefault();
+    return;
+  }
+
+  /* 5. Mention dropdown */
+  var mentionDD = document.getElementById("mention-dropdown");
+  if (mentionDD && mentionDD.classList.contains("visible")) {
+    if (typeof hideMentionDropdown === "function") hideMentionDropdown();
+    e.preventDefault();
+    return;
+  }
+
+  /* 6. Filter suggest dropdown */
+  var filterDD = document.getElementById("filter-suggest");
+  if (filterDD && filterDD.classList.contains("visible")) {
+    filterDD.classList.remove("visible");
+    filterDD.innerHTML = "";
+    e.preventDefault();
+    return;
+  }
+
+  /* 7. Agent detail popup */
+  var openDetail = document.querySelector(".agent-detail-popup.open");
+  if (openDetail) {
+    openDetail.classList.remove("open");
+    e.preventDefault();
+    return;
+  }
+
+  /* 8. Workspace dropdown (handled by its own IIFE, but kept as fallback) */
+  var wsDropdown = document.querySelector(".ws-dropdown");
+  if (wsDropdown) {
+    /* The IIFE listener will catch this too; no-op here to avoid double-close. */
+    return;
+  }
+
+  /* 9. Mobile sidebar */
+  var sidebar = document.getElementById("sidebar");
+  if (sidebar && sidebar.classList.contains("open")) {
+    sidebar.classList.remove("open");
+    var toggle = document.getElementById("sidebar-toggle");
+    if (toggle) {
+      toggle.classList.remove("open");
+      toggle.innerHTML = "&#9776;";
+    }
+    var backdrop = document.querySelector(".sidebar-backdrop");
+    if (backdrop) backdrop.classList.remove("visible");
+    e.preventDefault();
+    return;
+  }
+});

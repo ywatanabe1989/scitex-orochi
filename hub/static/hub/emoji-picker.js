@@ -221,4 +221,5 @@
 
   /* Expose for external use */
   window.openEmojiPicker = createPicker;
+  window.closeEmojiPicker = close;
 })();
