@@ -58,6 +58,10 @@ body {
 .brand-product-name {
   font-size: 14px;
   letter-spacing: 0.3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
 }
 .workspace-selector {
   display: flex;
@@ -181,14 +185,15 @@ body {
 }
 .brand-new-badge {
   display: inline-block;
-  margin-left: 6px;
-  padding: 1px 6px;
-  font-size: 9px;
+  margin-left: 0;
+  padding: 2px 8px;
+  font-size: 10px;
   font-weight: 700;
   color: #0a0a0a;
   background: #4ecdc4;
   border-radius: 8px;
   letter-spacing: 0.5px;
+  opacity: 1 !important;
   animation: brand-new-pulse 2s ease-in-out infinite;
   vertical-align: middle;
 }

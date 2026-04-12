@@ -851,3 +851,26 @@ async function fetchStats() {
   }
 }
 /* Init is deferred to init.js (loaded after all modules) */
+
+/* Global ESC handler — close any visible popups/modals (#207) */
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  if (typeof closeEmojiPicker === "function") {
+    var emojiOverlay = document.querySelector(".emoji-picker-overlay.visible");
+    if (emojiOverlay) { closeEmojiPicker(); e.preventDefault(); return; }
+  }
+  if (typeof closeThreadPanel === "function") {
+    var threadPanel = document.querySelector(".thread-panel.open");
+    if (threadPanel) { closeThreadPanel(); e.preventDefault(); return; }
+  }
+  if (typeof closeSketchPanel === "function") {
+    var sketchPanel = document.querySelector(".sketch-panel.open");
+    if (sketchPanel) { closeSketchPanel(); e.preventDefault(); return; }
+  }
+  var generic = document.querySelector(".emoji-picker-overlay.visible, .modal.open, .popup.visible, .long-press-menu");
+  if (generic) {
+    generic.classList.remove("visible", "open");
+    if (generic.classList.contains("long-press-menu")) generic.remove();
+    e.preventDefault();
+  }
+});
