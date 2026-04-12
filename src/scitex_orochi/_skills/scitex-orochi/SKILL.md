@@ -28,6 +28,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [compute-resources](compute-resources.md) — Hardware requirements, host roles, and scaling recommendations
 - [cli-conventions](cli-conventions.md) — CLI design rules: verb-noun, --json, --help-recursive, exit codes, stdout/stderr, SCITEX_<PKG>_* env var convention
 - [newbie-test-protocol](newbie-test-protocol.md) — Operator protocol for mamba-newbie-mba (clueless first-time-user simulation, Hawthorne-avoidance, runbook, metrics). NOT loaded by newbie itself.
+- [orochi-operating-principles](orochi-operating-principles.md) — Fleet-wide rules (mutual aid, ship-next, channel etiquette, deploy protocol, account switching, 3-subagent cap, 2×2 priority matrix). Consolidates decisions from 2026-04-12.
 
 ## MCP Tools
 
