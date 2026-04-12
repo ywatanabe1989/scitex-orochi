@@ -126,6 +126,11 @@ All env vars use the `SCITEX_OROCHI_*` prefix. No legacy `OROCHI_*` fallbacks.
 | `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |
 | `SCITEX_OROCHI_TELEGRAM_BOT_TOKEN` | (empty) | Telegram bot token |
 | `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID |
+| `SCITEX_OROCHI_CONTACT_EMAIL` | (empty) | Escalation contact email |
+| `SCITEX_OROCHI_CONTACT_PHONE` | (empty) | Escalation contact phone |
+| `SCITEX_OROCHI_ESCALATION_THRESHOLD` | `high` | Escalation severity level |
+
+**Naming convention**: All fleet-wide env vars MUST use `SCITEX_OROCHI_*` prefix for searchability (`grep -r SCITEX_OROCHI_`). No legacy `OROCHI_*` or unprefixed variables.
 
 ## Telegram Integration (Telegrammer Flow)
 
