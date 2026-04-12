@@ -816,6 +816,56 @@ document.getElementById("msg-input").addEventListener("input", function () {
 });
 restoreDraftForCurrentChannel();
 
+/* Diagnostic blur logger for todo#225 — captures every blur event on
+ * #msg-input with timestamp, relatedTarget, and a trimmed stack trace,
+ * stored in sessionStorage so a user (or mamba-verifier-mba via
+ * playwright) can inspect the last N events with
+ *   JSON.parse(sessionStorage.getItem("orochi-blurlog") || "[]")
+ * after reproducing the bug. Async-safe (uses requestAnimationFrame to
+ * also catch deferred re-blurs that happen after a synchronous
+ * focus-restore). Capacity-bounded at 50 entries so it never grows
+ * unbounded. Strictly diagnostic — no UI side-effect. */
+(function () {
+  var input = document.getElementById("msg-input");
+  if (!input) return;
+  function _logBlur(label, e) {
+    try {
+      var arr = JSON.parse(sessionStorage.getItem("orochi-blurlog") || "[]");
+      var rt = e && e.relatedTarget;
+      arr.push({
+        t: new Date().toISOString(),
+        label: label,
+        relatedTarget: rt
+          ? (rt.tagName || "?") + "#" + (rt.id || "") + "." + (rt.className || "")
+          : null,
+        activeAfter: document.activeElement
+          ? document.activeElement.tagName + "#" + (document.activeElement.id || "")
+          : null,
+        stack: (new Error()).stack
+          ? (new Error()).stack.split("\n").slice(2, 8).join(" | ")
+          : null,
+      });
+      while (arr.length > 50) arr.shift();
+      sessionStorage.setItem("orochi-blurlog", JSON.stringify(arr));
+    } catch (_) {}
+  }
+  input.addEventListener("blur", function (e) {
+    _logBlur("sync-blur", e);
+    /* Also check after one frame in case something defers focus theft */
+    requestAnimationFrame(function () {
+      if (document.activeElement !== input) {
+        _logBlur("post-rAF-still-blurred", e);
+      }
+    });
+  });
+  /* Also expose a one-shot getter for convenience */
+  window.getBlurLog = function () {
+    try {
+      return JSON.parse(sessionStorage.getItem("orochi-blurlog") || "[]");
+    } catch (_) { return []; }
+  };
+})();
+
 document.getElementById("msg-send").addEventListener("click", function (e) {
   e.preventDefault();
   /* On mobile Safari, tapping the send button blurs the textarea before
