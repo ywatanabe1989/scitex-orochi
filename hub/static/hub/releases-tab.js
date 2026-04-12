@@ -137,6 +137,10 @@ function renderMarkdown(md) {
 }
 
 function renderSubtabs() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var bar = document.getElementById("releases-subtabs");
   if (!bar) return;
   bar.innerHTML = REPOS.map(function (r) {
@@ -160,6 +164,10 @@ function renderSubtabs() {
       selectRepo(key);
     });
   });
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function selectRepo(key) {
@@ -177,16 +185,28 @@ function selectRepo(key) {
 }
 
 function loadChangelog(key) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  var _restoreFocus = function () {
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
+  };
   var content = document.getElementById("releases-content");
   if (!content) return;
 
   if (changelogCache[key]) {
     content.innerHTML = changelogCache[key];
+    _restoreFocus();
     return;
   }
 
   content.innerHTML =
     '<div class="changelog-loading">Loading CHANGELOG.md…</div>';
+  _restoreFocus();
 
   var parts = key.split("/");
   var owner = parts[0];
@@ -201,6 +221,10 @@ function loadChangelog(key) {
     })
     .then(function (r) {
       if (key !== activeRepoKey) return; // user switched away
+      var _mi = document.getElementById("msg-input");
+      var _ihf = _mi && document.activeElement === _mi;
+      var _ss = _ihf ? _mi.selectionStart : 0;
+      var _se = _ihf ? _mi.selectionEnd : 0;
       var html;
       if (r.ok && r.data && typeof r.data.content === "string") {
         var url = r.data.html_url || "";
@@ -230,13 +254,25 @@ function loadChangelog(key) {
         html = '<p class="empty-notice">' + escapeHtml(msg) + "</p>";
       }
       content.innerHTML = html;
+      if (_ihf && document.activeElement !== _mi) {
+        _mi.focus();
+        try { _mi.setSelectionRange(_ss, _se); } catch (_) {}
+      }
     })
     .catch(function (e) {
       if (key !== activeRepoKey) return;
+      var _mi = document.getElementById("msg-input");
+      var _ihf = _mi && document.activeElement === _mi;
+      var _ss = _ihf ? _mi.selectionStart : 0;
+      var _se = _ihf ? _mi.selectionEnd : 0;
       content.innerHTML =
         '<p class="empty-notice">Network error: ' +
         escapeHtml(String(e)) +
         "</p>";
+      if (_ihf && document.activeElement !== _mi) {
+        _mi.focus();
+        try { _mi.setSelectionRange(_ss, _se); } catch (_) {}
+      }
     });
 }
 
