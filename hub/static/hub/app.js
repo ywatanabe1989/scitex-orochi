@@ -329,6 +329,11 @@ function handleMessage(msg) {
     if (knownMessageKeys[key]) return;
     knownMessageKeys[key] = true;
     appendMessage(msg);
+    /* If this message is a reply and the matching thread panel is open,
+     * also live-append it there (deduped by reply id). */
+    if (typeof appendToThreadPanelIfOpen === "function") {
+      appendToThreadPanelIfOpen(msg);
+    }
     if (document.hidden) {
       unreadCount++;
       document.title = "(" + unreadCount + ") " + baseTitle;

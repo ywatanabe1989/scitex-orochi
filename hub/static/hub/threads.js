@@ -155,7 +155,9 @@ async function loadThreadReplies(parentId) {
             ? getSenderIcon(r.sender, r.sender_type === "agent")
             : "";
         return (
-          '<div class="thread-reply">' +
+          '<div class="thread-reply" data-reply-id="' +
+          String(r.id) +
+          '">' +
           '<div class="thread-reply-header">' +
           '<span class="msg-icon">' +
           icon +
@@ -213,12 +215,86 @@ async function sendThreadReply() {
 
 /* Called from app.js on thread_reply WS events */
 function handleThreadReply(msg) {
-  /* Refresh replies if the thread panel is open for this parent */
+  /* Append incrementally to open thread panel (with dedupe) */
   if (threadPanelParentId && msg.parent_id === threadPanelParentId) {
-    loadThreadReplies(threadPanelParentId);
+    _appendReplyToPanel({
+      id: msg.reply_id,
+      sender: msg.sender,
+      sender_type: msg.sender_type,
+      content: msg.text || "",
+      ts: msg.ts,
+    });
   }
   /* Update the thread count badge on the parent message in main feed */
   _incrementThreadCountBadge(msg.parent_id);
+}
+
+/* Called from app.js handleMessage for regular chat.message events that
+ * carry metadata.reply_to — live-append the reply into an open thread
+ * panel whose parent matches. Deduped by data-reply-id so it is safe if
+ * the same message also arrived via a thread_reply WS event. */
+function appendToThreadPanelIfOpen(msg) {
+  if (!threadPanelParentId) return;
+  var meta = (msg && ((msg.payload && msg.payload.metadata) || msg.metadata)) || {};
+  var replyTo = meta.reply_to;
+  if (replyTo == null) return;
+  /* Coerce both sides to number for comparison (metadata may be string) */
+  if (Number(replyTo) !== Number(threadPanelParentId)) return;
+  _appendReplyToPanel({
+    id: msg.id,
+    sender: msg.sender,
+    sender_type: msg.sender_type,
+    content: msg.text || (msg.payload && (msg.payload.content || msg.payload.text)) || "",
+    ts: msg.ts,
+  });
+  _incrementThreadCountBadge(threadPanelParentId);
+}
+
+function _appendReplyToPanel(r) {
+  var container = document.getElementById("thread-replies");
+  if (!container) return;
+  /* Dedupe by reply id */
+  if (r.id != null) {
+    var existing = container.querySelector(
+      '.thread-reply[data-reply-id="' + String(r.id) + '"]',
+    );
+    if (existing) return;
+  }
+  /* Replace empty-notice placeholder on first live append */
+  var emptyEl = container.querySelector(".empty-notice");
+  if (emptyEl) emptyEl.remove();
+
+  var color =
+    typeof getResolvedAgentColor === "function"
+      ? getResolvedAgentColor(r.sender)
+      : typeof getAgentColor === "function"
+        ? getAgentColor(r.sender)
+        : "#aaa";
+  var icon =
+    typeof getSenderIcon === "function"
+      ? getSenderIcon(r.sender, r.sender_type === "agent")
+      : "";
+  var wrap = document.createElement("div");
+  wrap.className = "thread-reply";
+  if (r.id != null) wrap.setAttribute("data-reply-id", String(r.id));
+  wrap.innerHTML =
+    '<div class="thread-reply-header">' +
+    '<span class="msg-icon">' + icon + "</span>" +
+    '<span class="sender" style="color:' + color + '">' +
+    escapeHtml(
+      typeof cleanAgentName === "function" ? cleanAgentName(r.sender) : r.sender,
+    ) +
+    "</span>" +
+    ' <span class="ts">' +
+    escapeHtml((typeof timeAgo === "function" && timeAgo(r.ts)) || "") +
+    "</span>" +
+    "</div>" +
+    '<div class="thread-reply-body">' +
+    escapeHtml(r.content || "").replace(/\n/g, "<br>") +
+    "</div>";
+  container.appendChild(wrap);
+  /* Smooth scroll to newest reply */
+  container.scrollTop = container.scrollHeight;
 }
 
 function _incrementThreadCountBadge(parentId) {
