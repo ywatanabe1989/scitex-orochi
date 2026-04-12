@@ -76,6 +76,38 @@ When a CLI command corresponds to an MCP tool:
 - Same JSON shape for output
 - Document parity in the package SKILL.md
 
+## No Interactive Prompts (Hard Rule)
+
+CLI commands MUST be non-interactive by default — they must work in pipelines, CI, and unattended agent runs.
+
+- **Never prompt for input** at runtime (no `input()`, no `read`, no password prompts)
+- If credentials are needed, read from env vars, config files, or `--flag` args
+- If a value is missing, **fail fast with a clear error message** — do not block waiting
+
+### Fail-First Pattern
+
+Validate all preconditions at the **start** of the command, before doing any work:
+
+```python
+def main():
+    # 1. Check all preconditions FIRST
+    if not have_sudo():
+        sys.stderr.write("error: this command requires sudo. Run with sudo or set X.\n")
+        sys.exit(2)
+    if not config_exists():
+        sys.stderr.write("error: missing config at ~/.scitex/config.yaml\n")
+        sys.exit(2)
+
+    # 2. Only then proceed with the actual work
+    do_work()
+```
+
+**Why**: Interactive prompts break agent automation. A command that asks "Are you sure? [y/N]" or prompts for sudo password mid-run will hang forever in a tmux session. Fail-first means failures happen in seconds, not after partial work.
+
+### Acceptable: `--yes` Override
+
+Mutating commands may use `--yes` / `-y` to bypass safety checks, but the **default** must be safe (e.g., `--dry-run` style preview, then `--yes` to apply).
+
 ## Audit Checklist (For Existing Commands)
 
 When auditing a SciTeX package's CLI for compliance:
