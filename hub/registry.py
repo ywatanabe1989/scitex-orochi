@@ -47,6 +47,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_action": prev.get("last_action") or time.time(),
             "last_message_preview": prev.get("last_message_preview", ""),
             "current_task": prev.get("current_task", ""),
+            "subagent_count": prev.get("subagent_count", 0),
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
@@ -62,7 +63,7 @@ def set_subagents(name: str, subagents: list) -> None:
     """
     with _lock:
         if name in _agents:
-            _agents[name]["subagents"] = [
+            normalized = [
                 {
                     "name": str(s.get("name", "")) or "subagent",
                     "task": str(s.get("task", ""))[:200],
@@ -71,6 +72,11 @@ def set_subagents(name: str, subagents: list) -> None:
                 for s in (subagents or [])
                 if isinstance(s, dict)
             ]
+            _agents[name]["subagents"] = normalized
+            # Keep the count in sync so callers that only read
+            # `subagent_count` (sidebar card badge) stay accurate even
+            # when the full list is what was pushed.
+            _agents[name]["subagent_count"] = len(normalized)
 
 
 def mark_activity(name: str, action: str = "") -> None:
@@ -95,6 +101,18 @@ def set_current_task(name: str, task: str) -> None:
     with _lock:
         if name in _agents:
             _agents[name]["current_task"] = task[:120] if task else ""
+
+
+def set_subagent_count(name: str, count: int) -> None:
+    """Explicitly set the agent's subagent count.
+
+    Agents that track subagents out-of-band (without sending the full
+    subagents list) can report just the count via this setter so the
+    dashboard can still show a `N subagents` badge.
+    """
+    with _lock:
+        if name in _agents:
+            _agents[name]["subagent_count"] = max(0, int(count or 0))
 
 
 def set_health(
@@ -302,6 +320,9 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "current_task": a.get("current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
+                "subagent_count": int(
+                    a.get("subagent_count") or len(a.get("subagents") or [])
+                ),
                 "health": a.get("health") or {},
                 "claude_md": a.get("claude_md", ""),
             }

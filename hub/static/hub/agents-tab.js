@@ -237,7 +237,11 @@ function buildAgentRow(a) {
             escapeHtml(s.task || "") + '">' +
             escapeHtml(s.name || "subagent") + '</span>';
         }).join(" ")
-      : '<span class="muted-cell">-</span>') +
+      : (a.subagent_count && a.subagent_count > 0
+          ? '<span class="subagent-badge subagent-running" title="' +
+            a.subagent_count + ' subagent(s)">\uD83D\uDD27 ' +
+            a.subagent_count + '</span>'
+          : '<span class="muted-cell">-</span>')) +
     "</td>" +
     "<td>" +
     (a.claude_md
@@ -259,7 +263,9 @@ function buildAgentRow(a) {
     '<td class="muted-cell" title="' +
     escapeHtml(a.last_heartbeat || "") +
     '">' +
-    timeAgo(a.last_heartbeat) +
+    (typeof relativeAge === "function"
+      ? relativeAge(a.last_heartbeat)
+      : timeAgo(a.last_heartbeat)) +
     "</td>" +
     "</tr>" +
     (a.claude_md

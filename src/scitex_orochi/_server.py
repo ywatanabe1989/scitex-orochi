@@ -55,6 +55,7 @@ class Agent:
     multiplexer: str = ""
     status: str = "online"
     current_task: str = ""
+    subagent_count: int = 0
     resources: dict[str, Any] = field(default_factory=dict)
     last_heartbeat: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
@@ -223,6 +224,11 @@ class OrochiServer:
         model = msg.payload.get("model", "")
         project = msg.payload.get("project", "")
         multiplexer = msg.payload.get("multiplexer", "")
+        current_task = msg.payload.get("current_task", "") or ""
+        try:
+            subagent_count = int(msg.payload.get("subagent_count", 0) or 0)
+        except (TypeError, ValueError):
+            subagent_count = 0
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
             machine_name = machine or platform.node()
@@ -275,7 +281,8 @@ class OrochiServer:
             multiplexer=multiplexer,
             workspace_id=workspace_id,
             status="online",
-            current_task="",
+            current_task=current_task,
+            subagent_count=subagent_count,
             last_heartbeat=now,
             registered_at=now,
         )
@@ -434,15 +441,39 @@ class OrochiServer:
             res = {k: v for k, v in msg.payload.items() if k in self._RESOURCE_KEYS}
             if res:
                 agent.resources = res
+            # Optional narrative fields carried in heartbeat payload so
+            # simple clients do not need to send separate status_update
+            # messages. Absent fields leave existing values untouched.
+            if "current_task" in msg.payload:
+                agent.current_task = str(msg.payload.get("current_task") or "")[:200]
+            if "subagent_count" in msg.payload:
+                try:
+                    agent.subagent_count = int(msg.payload.get("subagent_count") or 0)
+                except (TypeError, ValueError):
+                    pass
             log.debug("Heartbeat from %s", msg.sender)
 
     async def _handle_status_update(self, msg: Message) -> None:
         agent = self.agents.get(msg.sender)
         if not agent:
             return
-        for key in ("status", "current_task", "machine", "role", "project", "agent_id"):
+        for key in (
+            "status",
+            "current_task",
+            "subagent_count",
+            "machine",
+            "role",
+            "project",
+            "agent_id",
+        ):
             if key in msg.payload:
-                setattr(agent, key, msg.payload[key])
+                value = msg.payload[key]
+                if key == "subagent_count":
+                    try:
+                        value = int(value or 0)
+                    except (TypeError, ValueError):
+                        continue
+                setattr(agent, key, value)
         agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
         log.info("Status update from %s: %s", msg.sender, msg.payload)
 
@@ -455,6 +486,7 @@ class OrochiServer:
                     "agent": msg.sender,
                     "status": agent.status,
                     "current_task": agent.current_task,
+                    "subagent_count": agent.subagent_count,
                     "machine": agent.machine,
                     "role": agent.role,
                     "agent_id": agent.agent_id,
@@ -537,6 +569,7 @@ class OrochiServer:
                 "multiplexer": a.multiplexer,
                 "status": a.status,
                 "current_task": a.current_task,
+                "subagent_count": a.subagent_count,
                 "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,
                 "workspace_id": a.workspace_id,

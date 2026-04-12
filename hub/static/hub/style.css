@@ -1072,6 +1072,32 @@ body {
   background: rgba(126, 200, 227, 0.1);
   border: 1px solid rgba(126, 200, 227, 0.25);
 }
+.agent-badge-subagents {
+  color: #ffd93d;
+  background: rgba(255, 217, 61, 0.1);
+  border: 1px solid rgba(255, 217, 61, 0.3);
+}
+.agent-badge-heartbeat {
+  color: #9aa0a6;
+  background: rgba(154, 160, 166, 0.08);
+  border: 1px solid rgba(154, 160, 166, 0.22);
+}
+.agent-badge-liveness-online { color: #4ecdc4; border-color: rgba(78, 205, 196, 0.35); }
+.agent-badge-liveness-idle { color: #ffd93d; border-color: rgba(255, 217, 61, 0.35); }
+.agent-badge-liveness-stale { color: #ff8c42; border-color: rgba(255, 140, 66, 0.35); }
+.agent-badge-liveness-offline { color: #ef4444; border-color: rgba(239, 68, 68, 0.35); }
+.agent-card-task {
+  margin-top: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: #d8d8d8;
+  background: #0f0f0f;
+  border-left: 2px solid #4ecdc4;
+  border-radius: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Agent detail popup (click to expand in sidebar) */
 .agent-detail-popup {

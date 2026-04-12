@@ -900,6 +900,7 @@ def api_agents(request):
                     "current_task": "",
                     "last_message_preview": "",
                     "subagents": [],
+                    "subagent_count": 0,
                     "health": {},
                     "claude_md": "",
                     "pinned": True,

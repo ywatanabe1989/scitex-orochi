@@ -163,9 +163,28 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             }
 
             # Update in-memory registry
-            from hub.registry import update_heartbeat
+            from hub.registry import (
+                set_current_task,
+                set_subagent_count,
+                update_heartbeat,
+            )
 
             update_heartbeat(self.agent_name, self.agent_metrics)
+
+            # Allow lightweight clients to piggyback narrative fields on
+            # the heartbeat rather than sending separate task_update /
+            # subagents_update frames.
+            if "current_task" in payload:
+                set_current_task(
+                    self.agent_name, str(payload.get("current_task") or "")
+                )
+            if "subagent_count" in payload:
+                try:
+                    set_subagent_count(
+                        self.agent_name, int(payload.get("subagent_count") or 0)
+                    )
+                except (TypeError, ValueError):
+                    pass
 
             # Broadcast metrics update to dashboard observers
             await self.channel_layer.group_send(

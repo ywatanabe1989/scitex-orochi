@@ -173,6 +173,21 @@ function isAgentInactive(agent) {
   return Date.now() - hb.getTime() > 60000;
 }
 
+function relativeAge(isoStr) {
+  if (!isoStr) return "";
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "";
+  var sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (sec < 5) return "just now";
+  if (sec < 60) return sec + "s ago";
+  var min = Math.floor(sec / 60);
+  if (min < 60) return min + "m ago";
+  var hr = Math.floor(min / 60);
+  if (hr < 24) return hr + "h ago";
+  var days = Math.floor(hr / 24);
+  return days + "d ago";
+}
+
 function timeAgo(isoStr) {
   if (!isoStr) return "";
   var d = new Date(isoStr);
@@ -524,6 +539,40 @@ async function fetchAgents() {
             "Workdir: " + a.workdir.replace(/^\/home\/[^/]+/, "~"),
           );
         if (a.current_task) tooltipLines.push("Task: " + a.current_task);
+        var subCount =
+          typeof a.subagent_count === "number"
+            ? a.subagent_count
+            : Array.isArray(a.subagents)
+              ? a.subagents.length
+              : 0;
+        if (subCount > 0) tooltipLines.push("Subagents: " + subCount);
+        if (a.last_heartbeat)
+          tooltipLines.push("Last heartbeat: " + a.last_heartbeat);
+        /* Prominent in-card rows (task + subagent count + heartbeat age) */
+        var taskRowHtml = a.current_task
+          ? '<div class="agent-card-task" title="' +
+            escapeHtml(a.current_task) +
+            '">' +
+            escapeHtml(a.current_task) +
+            "</div>"
+          : "";
+        var subBadgeHtml =
+          subCount > 0
+            ? '<span class="agent-badge agent-badge-subagents" title="' +
+              subCount +
+              ' subagent(s) running">\uD83D\uDD27 ' +
+              subCount +
+              "</span>"
+            : "";
+        var hbAgeHtml = a.last_heartbeat
+          ? '<span class="agent-badge agent-badge-heartbeat agent-badge-liveness-' +
+            escapeHtml(a.liveness || (inactive ? "offline" : "online")) +
+            '" title="Last heartbeat: ' +
+            escapeHtml(a.last_heartbeat) +
+            '">\u2665 ' +
+            escapeHtml(relativeAge(a.last_heartbeat)) +
+            "</span>"
+          : "";
         /* Popup detail panel (click to expand) */
         var detailHtml =
           '<div class="agent-detail-popup">' +
@@ -585,8 +634,11 @@ async function fetchAgents() {
           '<div class="agent-card-badges">' +
           roleBadge +
           machineBadge +
+          subBadgeHtml +
+          hbAgeHtml +
           healthHtml +
           "</div>" +
+          taskRowHtml +
           detailHtml +
           "</div>"
         );
