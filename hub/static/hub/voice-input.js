@@ -16,15 +16,28 @@
     { code: "en-US", label: "EN" },
     { code: "ja-JP", label: "JA" },
   ];
-  var langIdx = (navigator.language || "").startsWith("ja") ? 1 : 0;
+  /* Restore the last-used language across sessions; ywatanabe asked for
+   * this at msg#6528 ("最後に使った言語を記憶してほしい"). Falls back
+   * to the browser locale on first use. */
+  var LANG_KEY = "orochi-voice-lang";
+  function _resolveInitialLangIdx() {
+    try {
+      var saved = localStorage.getItem(LANG_KEY);
+      for (var i = 0; i < VOICE_LANGS.length; i++) {
+        if (VOICE_LANGS[i].code === saved) return i;
+      }
+    } catch (_) {}
+    return (navigator.language || "").startsWith("ja") ? 1 : 0;
+  }
+  var langIdx = _resolveInitialLangIdx();
   var langBtn = document.getElementById("msg-voice-lang");
   if (langBtn) {
     langBtn.classList.remove("voice-btn-hidden");
     langBtn.textContent = VOICE_LANGS[langIdx].label;
     langBtn.addEventListener("click", function () {
-      langIdx = (langIdx + 1) % VOICE_LANGS.length;
-      recognition.lang = VOICE_LANGS[langIdx].code;
-      langBtn.textContent = VOICE_LANGS[langIdx].label;
+      _cycleLang();
+      /* Hand focus back to the textarea so Enter still sends. */
+      try { document.getElementById("msg-input").focus(); } catch (_) {}
     });
   }
 
@@ -39,14 +52,21 @@
   var baseText = "";
 
   function _toggleVoice() {
+    var input = document.getElementById("msg-input");
     if (isListening) {
       recognition.stop();
     } else {
-      var input = document.getElementById("msg-input");
-      baseText = input.value;
+      baseText = input ? input.value : "";
       try {
         recognition.start();
       } catch (_) {}
+    }
+    /* Always hand focus back to the textarea so the next Enter goes to
+     * sendMessage and not to a re-click of the mic button. msg#6537 —
+     * ywatanabe pressed Enter expecting send, hit the mic button instead
+     * (it had focus from the previous click). */
+    if (input) {
+      try { input.focus(); } catch (_) {}
     }
   }
   function _cycleLang() {
@@ -57,6 +77,8 @@
       (isListening ? "Stop voice input" : "Voice input") +
       " · " + VOICE_LANGS[langIdx].label +
       " · right-click to change language · Ctrl+M to toggle";
+    /* Persist for next session (msg#6528). */
+    try { localStorage.setItem(LANG_KEY, VOICE_LANGS[langIdx].code); } catch (_) {}
   }
   btn.addEventListener("click", _toggleVoice);
   /* Right-click on the mic button cycles language without leaving the

@@ -733,11 +733,28 @@ body {
 .voice-btn-hidden {
   display: none;
 }
-.input-bar-actions #msg-voice-lang {
+/* Split button: mic on the left, language pill on the right, sharing
+ * one visual unit so the language indicator is always visible without
+ * a separate widget. msg#6533 — ywatanabe asked for a split-button. */
+.input-bar-actions .voice-split {
+  display: inline-flex;
+  align-items: stretch;
+}
+.input-bar-actions .voice-split .voice-split-mic {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: none;
+  margin-right: 0;
+}
+.input-bar-actions .voice-split .voice-split-lang {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
   font-size: 11px;
   min-width: 32px;
-  padding: 4px 6px;
+  padding: 4px 8px;
   cursor: pointer;
+  letter-spacing: 0.5px;
+  font-weight: 600;
 }
 .input-bar-actions #msg-voice.voice-active {
   border-color: #ef4444;

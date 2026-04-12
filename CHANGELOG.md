@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.6] - 2026-04-13
+
+### 🚀 Features
+- feat(hub/voice): mic + language are now a unified split-button
+  (`<span class="voice-split">`) — mic on the left, language pill on
+  the right, sharing one visual unit so the language indicator is
+  always visible. msg#6533.
+- feat(hub/voice): persist last-used language across sessions via
+  `localStorage["orochi-voice-lang"]`. Falls back to the browser
+  locale on first use. msg#6528.
+
+### 🐛 Bug Fixes
+- fix(hub/voice): clicking the mic button (or its language pill) now
+  immediately hands focus back to `#msg-input`, so the next Enter
+  goes to sendMessage instead of re-toggling the mic. The buttons
+  also gain `tabindex="-1"` so keyboard navigation never lands on
+  them. msg#6537 — ywatanabe pressed Enter expecting send, hit the
+  mic toggle instead.
+
 ## [0.10.5] - 2026-04-13
 
 ### 🚀 Features
