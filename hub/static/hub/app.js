@@ -34,7 +34,25 @@ var OROCHI_COLORS = [
   "#B8D4E3",
   "#E8A6C8",
 ];
+/* Restored from localStorage on every page load so that ywatanabe stays
+ * in the channel they were viewing across deploys, WS reconnects, and
+ * any other re-render cascade. Persisted on every channel switch in
+ * setCurrentChannel(). null = unfiltered (show all channels) which is
+ * also persisted as the literal string "__all__". todo#246 / msg 6090. */
 var currentChannel = null;
+try {
+  var _persistedCh = localStorage.getItem("orochi_active_channel");
+  if (_persistedCh && _persistedCh !== "__all__") {
+    currentChannel = _persistedCh;
+  }
+} catch (_) {}
+function setCurrentChannel(ch) {
+  currentChannel = ch;
+  try {
+    localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
+  } catch (_) {}
+}
+window.setCurrentChannel = setCurrentChannel;
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
@@ -903,10 +921,10 @@ async function fetchStats() {
       el.addEventListener("click", function () {
         var ch = el.getAttribute("data-channel");
         if (currentChannel === ch) {
-          currentChannel = null;
+          setCurrentChannel(null);
           loadHistory();
         } else {
-          currentChannel = ch;
+          setCurrentChannel(ch);
           loadChannelHistory(ch);
         }
         addTag("channel", ch);

@@ -1358,10 +1358,12 @@ document.addEventListener("click", function (e) {
   if (!ch) return;
   if (typeof currentChannel !== "undefined") {
     if (currentChannel === ch) {
-      currentChannel = null;
+      if (typeof setCurrentChannel === "function") setCurrentChannel(null);
+      else currentChannel = null;
       if (typeof loadHistory === "function") loadHistory();
     } else {
-      currentChannel = ch;
+      if (typeof setCurrentChannel === "function") setCurrentChannel(ch);
+      else currentChannel = ch;
       if (typeof loadChannelHistory === "function") loadChannelHistory(ch);
     }
     if (typeof addTag === "function") addTag("channel", ch);
