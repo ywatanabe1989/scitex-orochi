@@ -32,7 +32,7 @@
         </nav>
         <main id="chat-area" class="settings-area">
             <div id="chat-header">
-                <h3>Workspace Settings</h3>
+                <h3>Settings</h3>
             </div>
             <div class="settings-content">
                 {% if messages %}
@@ -68,7 +68,12 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <a href="{% url 'signout' %}" class="btn-small btn-danger" style="margin-top:8px;display:inline-block">Sign out</a>
+                        <a href="{% url 'password-change' %}"
+                           class="btn-small"
+                           style="margin-top:8px;display:inline-block">Change password</a>
+                        <a href="{% url 'signout' %}"
+                           class="btn-small btn-danger"
+                           style="margin-top:8px;display:inline-block">Sign out</a>
                     </section>
                 </div>
                 <div class="settings-mode-pane" data-mode="workspace" style="display:none">
