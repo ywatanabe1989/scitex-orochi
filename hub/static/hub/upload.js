@@ -38,11 +38,19 @@ function _ensureAttachmentTray() {
 }
 
 function _renderAttachmentTray() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var tray = _ensureAttachmentTray();
   if (!tray) return;
   if (!pendingAttachments.length) {
     tray.style.display = "none";
     tray.innerHTML = "";
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   tray.style.display = "flex";
@@ -82,6 +90,10 @@ function _renderAttachmentTray() {
     item.appendChild(remove);
     tray.appendChild(item);
   });
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function clearPendingAttachments() {
