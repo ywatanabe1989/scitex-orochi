@@ -58,3 +58,42 @@ Active issues encountered during fleet operations. Check here before debugging a
 **Fix**: Updated `999_unimelb_spartan.src` to load `Python/3.11.3` and removed the Tkinter module load. GCCcore/11.3.0 unchanged.
 
 **Hostname**: Spartan login node is `login1` (was `spartan-login`). `if_host` patterns in bash.d must match `login1`.
+
+## scitex-agent-container Registry Can Clear Independently
+
+**Date**: 2026-04-12
+
+**What happened**: Registry directory was emptied during a scan, but all agents were still alive (tmux sessions active, Claude processes running, MCP sidecars connected).
+
+**Impact**: `scitex-agent-container list` shows "No agents registered" even though agents are healthy.
+
+**Workaround**: Use tmux-based checks (`tmux ls | grep agent-name`) as fallback when registry is empty. Registry repopulates on next `scitex-agent-container start`.
+
+## HPC Module Version Drift Breaks Agent Launch Silently
+
+**Date**: 2026-04-11
+
+**What happened**: bash.d loaded `Python/3.10.4` but spartan moved to 3.11.3. Lmod aborts the entire module chain when it encounters an unknown module version, silently breaking the environment.
+
+**Rule**: When HPC systems update module versions, check all `module load` lines in bash.d. Lmod does NOT skip missing modules — it fails the entire chain.
+
+## Operational Best Practices (Learned This Session)
+
+### Issue Management
+- **Deduplicate before creating**: Always `gh issue list --search "KEYWORDS" --state all` before creating a new issue
+- **Track issue clusters**: Multiple issues often share a root cause (e.g., #31/#32/#33 all caused by DJANGO_ALLOWED_HOSTS). Fix one, close three.
+
+### /loop via YAML startup_commands
+Persistent periodic tasks work via second `startup_commands` entry:
+```yaml
+startup_commands:
+  - delay: 5
+    command: "<initial prompt>"
+  - delay: 30
+    command: "/loop <periodic task description>"
+```
+Verified by all 3 mamba agents. On restart, the loop auto-starts without manual invocation.
+
+### Overnight Autonomous Operations
+- Agents should reduce channel noise during quiet hours — only post when there are actionable items
+- Route tasks to the right machine: dashboard → head-mba, NAS → head-nas, HPC → head-spartan/head-ywata-note-win

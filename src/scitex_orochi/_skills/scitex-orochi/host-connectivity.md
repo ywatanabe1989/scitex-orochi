@@ -62,6 +62,53 @@ Port assignments must be **consistent** across all fleet SSH configs:
 - ywata-note-win: 1229 (reverse tunnel)
 - spartan: 10001 (via relay)
 
+### Cloudflare Tunnel SSH Configuration
+
+Token-based tunnels can't be configured via CLI — use the Cloudflare API:
+```
+PUT accounts/$ACCOUNT_ID/cfd_tunnel/$TUNNEL_ID/configurations
+```
+DNS CNAME to `$TUNNEL_ID.cfargotunnel.com` with `proxied=true`.
+
+**Reserved domains:**
+- `ssh.scitex.ai` → django:2200 (scitex-cloud container SSH) — **do not repurpose**
+- `bastion.scitex.ai` → 172.17.0.1:22 (NAS host SSH for bastion)
+
+**SSH ProxyCommand pattern for cloudflared:**
+```
+ProxyCommand ~/bin/cloudflared access ssh --hostname %h
+```
+
+### cloudflared User-Local Install (No sudo)
+
+cloudflared is a static binary — install without sudo on any machine:
+```bash
+curl -L -o ~/bin/cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+chmod +x ~/bin/cloudflared
+```
+Used on spartan HPC and NAS (system cloudflared runs as uid 65532, user-local needed for SSH ProxyCommand).
+
+### SCP to Synology NAS Workaround
+
+SCP fails with "Permission denied" even when SSH works. Use pipe instead:
+```bash
+ssh nas "cat > /path/to/dest" < local_file
+```
+
+### Non-Interactive SSH on HPC
+
+gnome-ssh-askpass causes errors in non-interactive sessions. Fix:
+```bash
+export SSH_ASKPASS="" DISPLAY=""
+```
+
+### autossh Process Leak Prevention
+
+**Never spawn autossh from bash.d startup scripts** — each shell invocation spawns a new process, causing hundreds of orphans. Use systemd services for persistent tunnels instead. If bash.d must be used, guard with `pgrep`:
+```bash
+pgrep -f "autossh.*portnum" || autossh ...
+```
+
 ### Claude Max Subscription Sharing
 
 Claude Max subscription is shared across all hosts. Running 4+ Opus agents simultaneously consumes quota rapidly (72% in 3.5 days observed). Mitigations:
