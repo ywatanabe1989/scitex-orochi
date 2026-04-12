@@ -67,6 +67,16 @@ urlpatterns = [
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
+    # Bun MCP sidecars POST registry heartbeats here. Must exist on the
+    # bare domain because SCITEX_OROCHI_URL defaults to wss://scitex-orochi.com
+    # (no subdomain). Without this entry the heartbeat 404s and the
+    # Activity tab shows empty current_task / context_pct for everyone
+    # (todo#155 root cause).
+    path(
+        "api/agents/register/",
+        views.api_agents_register,
+        name="api-agents-register",
+    ),
     # Central container-agent registry — mounted on bare domain so the MCP
     # sidecar on localhost can reach it without the subdomain middleware.
     path(
