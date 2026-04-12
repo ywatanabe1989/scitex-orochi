@@ -119,6 +119,27 @@ After significant fleet activity, `@mamba-skill-manager` solicits learnings from
 
 This ensures operational knowledge is captured, not lost between sessions.
 
+## Agentic Testing Frameworks (External References)
+
+Known LLM-as-judge testing frameworks for evaluating agent behavior:
+
+| Framework | Focus | Notes |
+|-----------|-------|-------|
+| **promptfoo** | Prompt/agent eval, CI/CD | YAML-based, 20k⭐ |
+| **DeepEval** | pytest integration, LLM metrics | Python-first, 15k⭐ |
+| **Braintrust AutoEvals** | Customizable LLM evaluators | 857⭐ |
+| **judgeval** | Agent trajectory + output judgment | 1k⭐ |
+| **any-agent** | Multi-framework agent eval | Mozilla, 1.1k⭐ |
+
+**For SciTeX integration**: DeepEval has the best fit (Python + pytest). promptfoo is strongest for CI/CD integration.
+
+**Pattern for agentic testing**:
+1. Task execution agent produces output
+2. Judgment agent evaluates output against criteria
+3. Results returned as pytest pass/fail for CI integration
+
+See https://github.com/chaosync-org/awesome-ai-agent-testing for a curated list.
+
 ## Evolution Principles
 
 1. **Learn from corrections**: When ywatanabe corrects behavior, codify it immediately
