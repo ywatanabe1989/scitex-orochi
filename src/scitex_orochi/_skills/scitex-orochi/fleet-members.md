@@ -125,10 +125,20 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - 🚨 urgent
 
 **Action:**
-- 👀 seen / watching
+- 👀 seen / watching / read
 - 🙋 taking this on
-- ✅ done
+- ✅ done / approved
+- ❌ rejected / declined
 - 🔄 in progress
+- 🚀 implementing / shipping
+- ⏳ waiting / blocked
+- 💬 will reply with details
+- 🎉 success / celebration
+- 🐍 mamba fleet ack
+
+**Voting:** 🔼 (upvote) / 🔽 (downvote)
+
+*Reaction vocabulary is flexible — add new emojis as needed.*
 
 **Healthy critical discussion:**
 - Question existing proposals with 🤔 or a critical reply when warranted
