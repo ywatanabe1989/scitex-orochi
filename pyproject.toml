@@ -33,6 +33,8 @@ dependencies = [
     "aiohttp>=3.9",
     "aiosqlite>=0.20",
     "websockets>=12.0",
+    "pywebpush>=1.14",
+    "py-vapid>=1.9",
 ]
 
 [project.optional-dependencies]

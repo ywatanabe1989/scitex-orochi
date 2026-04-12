@@ -244,3 +244,19 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024     # 5 MB stream-to-disk threshold
 DATA_UPLOAD_MAX_NUMBER_FIELDS = None              # disable form-field count cap
 
+# ── Web Push (VAPID) — todo#263 ───────────────────────────────────────
+# Generate a keypair with:
+#   python -c "from py_vapid import Vapid01; v=Vapid01(); v.generate_keys(); ..."
+# and inject via the SCITEX_OROCHI_VAPID_* env vars.
+SCITEX_OROCHI_VAPID_PUBLIC = os.environ.get("SCITEX_OROCHI_VAPID_PUBLIC", "")
+SCITEX_OROCHI_VAPID_PRIVATE = os.environ.get("SCITEX_OROCHI_VAPID_PRIVATE", "")
+SCITEX_OROCHI_VAPID_SUBJECT = os.environ.get(
+    "SCITEX_OROCHI_VAPID_SUBJECT", "mailto:noreply@scitex-orochi.com"
+)
+if not SCITEX_OROCHI_VAPID_PUBLIC or not SCITEX_OROCHI_VAPID_PRIVATE:
+    import logging as _logging
+    _logging.getLogger("orochi.push").warning(
+        "VAPID keys not configured — web push notifications disabled. "
+        "Set SCITEX_OROCHI_VAPID_PUBLIC and SCITEX_OROCHI_VAPID_PRIVATE."
+    )
+

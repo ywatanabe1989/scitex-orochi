@@ -119,6 +119,12 @@ urlpatterns = [
     path("api/upload", views.api_upload, name="api-upload"),
     path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
     path("api/media/by-hash/<str:content_hash>", views.api_media_by_hash, name="api-media-by-hash"),
+    # Web push (todo#263)
+    path("api/push/vapid-key", views.api_push_vapid_key, name="api-push-vapid-key"),
+    path("api/push/subscribe", views.api_push_subscribe, name="api-push-subscribe"),
+    path(
+        "api/push/unsubscribe", views.api_push_unsubscribe, name="api-push-unsubscribe"
+    ),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
     # GitHub webhook

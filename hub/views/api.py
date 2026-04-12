@@ -157,6 +157,20 @@ def api_messages(request, slug=None):
         },
     )
 
+    # Web Push fan-out (todo#263). Best-effort; never block the response.
+    try:
+        from hub.push import send_push_to_subscribers_async
+
+        send_push_to_subscribers_async(
+            workspace_id=workspace.id,
+            channel=ch_name,
+            sender=request.user.username,
+            content=text,
+            message_id=msg.id,
+        )
+    except Exception:
+        log.exception("push fan-out failed (REST path)")
+
     return JsonResponse({"status": "ok", "id": msg.id}, status=201)
 
 
@@ -1949,3 +1963,84 @@ def api_dms(request, slug=None):
     )
 
     return JsonResponse(_dm_row(channel, current_member), status=200)
+
+
+# ── Web Push (todo#263) ─────────────────────────────────────────────────
+
+@require_GET
+def api_push_vapid_key(request):
+    """GET /api/push/vapid-key — return the configured VAPID public key.
+
+    Public, unauthenticated. The PWA fetches this before calling
+    ``pushManager.subscribe(...)``. Returns an empty string when push
+    is unconfigured so the client can degrade gracefully.
+    """
+    return JsonResponse(
+        {"public_key": getattr(settings, "SCITEX_OROCHI_VAPID_PUBLIC", "")}
+    )
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_push_subscribe(request, slug=None):
+    """POST /api/push/subscribe — register a Web Push subscription.
+
+    Body: ``{endpoint, keys: {p256dh, auth}, channels?: [...]}``.
+    Idempotent on ``endpoint`` (the unique key on the model).
+    """
+    from hub.models import PushSubscription
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    endpoint = body.get("endpoint") or ""
+    keys = body.get("keys") or {}
+    p256dh = keys.get("p256dh") or ""
+    auth = keys.get("auth") or ""
+    channels = body.get("channels") or []
+
+    if not endpoint or not p256dh or not auth:
+        return JsonResponse(
+            {"error": "endpoint, keys.p256dh, keys.auth required"}, status=400
+        )
+
+    workspace = None
+    try:
+        workspace = get_workspace(request, slug=slug)
+    except Exception:
+        workspace = None
+
+    sub, _created = PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={
+            "user": request.user,
+            "workspace": workspace,
+            "p256dh": p256dh,
+            "auth": auth,
+            "channels": channels if isinstance(channels, list) else [],
+        },
+    )
+    return JsonResponse({"ok": True, "id": sub.pk})
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_push_unsubscribe(request, slug=None):
+    """POST /api/push/unsubscribe — drop a subscription by endpoint."""
+    from hub.models import PushSubscription
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    endpoint = body.get("endpoint") or ""
+    if not endpoint:
+        return JsonResponse({"error": "endpoint required"}, status=400)
+
+    PushSubscription.objects.filter(endpoint=endpoint, user=request.user).delete()
+    return JsonResponse({"ok": True})
