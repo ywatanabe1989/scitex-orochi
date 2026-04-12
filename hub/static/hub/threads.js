@@ -6,6 +6,10 @@ var threadPanel = null;
 var threadPanelParentId = null;
 
 function closeThreadPanel() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   if (threadPanel && threadPanel.parentNode) {
     threadPanel.parentNode.removeChild(threadPanel);
   }
@@ -14,6 +18,10 @@ function closeThreadPanel() {
   /* Restore main area width */
   var mainEl = document.querySelector(".main");
   if (mainEl) mainEl.style.marginRight = "";
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 async function openThreadPanel(parentId) {
@@ -125,6 +133,10 @@ function _buildParentPreview(parentId) {
 }
 
 async function loadThreadReplies(parentId) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("thread-replies");
   if (!container) return;
   try {
@@ -185,6 +197,10 @@ async function loadThreadReplies(parentId) {
     container.scrollTop = container.scrollHeight;
   } catch (e) {
     console.error("loadThreadReplies error:", e);
+  }
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
 }
 
@@ -251,6 +267,10 @@ function appendToThreadPanelIfOpen(msg) {
 }
 
 function _appendReplyToPanel(r) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("thread-replies");
   if (!container) return;
   /* Dedupe by reply id */
@@ -295,9 +315,17 @@ function _appendReplyToPanel(r) {
   container.appendChild(wrap);
   /* Smooth scroll to newest reply */
   container.scrollTop = container.scrollHeight;
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function _incrementThreadCountBadge(parentId) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var badge = document.querySelector(
     '.msg-thread-count[data-msg-id="' + parentId + '"]',
   );
@@ -322,6 +350,10 @@ function _incrementThreadCountBadge(parentId) {
       newBadge.textContent = "\uD83D\uDCAC 1 reply";
       parentEl.appendChild(newBadge);
     }
+  }
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
 }
 
