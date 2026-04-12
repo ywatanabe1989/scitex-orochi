@@ -128,10 +128,19 @@
 }
 
 .thread-close {
-  background: none;
-  border: none;
-  color: #888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid #333;
+  color: #fff;
   cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 24px;
+  font-weight: bold;
+  margin-left: auto;
   font-size: 20px;
   padding: 0 4px;
   line-height: 1;

@@ -258,8 +258,9 @@
   .thread-back {
     display: flex;
   }
+  /* Close button always visible on mobile too — user can't always swipe out */
   .thread-close {
-    display: none;
+    display: flex !important;
   }
   .thread-header {
     padding: 8px 12px;
