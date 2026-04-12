@@ -5,7 +5,110 @@
 var threadPanel = null;
 var threadPanelParentId = null;
 
-function closeThreadPanel() {
+/* Build a permalink URL for a thread parent message. */
+function threadPermalinkUrl(parentId) {
+  return (
+    window.location.origin +
+    window.location.pathname +
+    "?thread=" +
+    encodeURIComponent(String(parentId))
+  );
+}
+
+/* Copy a permalink to the clipboard and flash a "Copied!" tooltip on the
+ * triggering button.  Never steals focus from #msg-input (todo#225). */
+function copyThreadPermalink(parentId, btnEl) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  var url = threadPermalinkUrl(parentId);
+  var done = function () {
+    if (btnEl) {
+      var prev = btnEl.getAttribute("data-prev-title") || btnEl.title || "";
+      btnEl.setAttribute("data-prev-title", prev);
+      btnEl.classList.add("permalink-copied");
+      btnEl.title = "Copied!";
+      setTimeout(function () {
+        btnEl.classList.remove("permalink-copied");
+        btnEl.title = prev;
+      }, 1500);
+    }
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
+  };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(done, done);
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (_) {}
+      document.body.removeChild(ta);
+      done();
+    }
+  } catch (_) {
+    done();
+  }
+}
+
+/* Update window.location to reflect whether a thread is open.  Uses
+ * history.pushState so the back button works naturally. */
+function _pushThreadUrlState(parentId) {
+  try {
+    var url;
+    if (parentId == null) {
+      url = window.location.pathname + window.location.hash;
+    } else {
+      url =
+        window.location.pathname +
+        "?thread=" +
+        encodeURIComponent(String(parentId)) +
+        window.location.hash;
+    }
+    window.history.pushState({ thread: parentId }, "", url);
+  } catch (_) {}
+}
+
+function _readThreadIdFromUrl() {
+  try {
+    var sp = new URLSearchParams(window.location.search);
+    var v = sp.get("thread");
+    if (v == null || v === "") return null;
+    var n = Number(v);
+    return isFinite(n) && n > 0 ? n : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/* Auto-open the thread panel for ?thread=<id> on initial page load.
+ * Called from chat.js#loadHistory() after messages are rendered. */
+function applyThreadUrlOnLoad() {
+  var id = _readThreadIdFromUrl();
+  if (id == null) return;
+  if (threadPanelParentId === id) return;
+  openThreadPanel(id, { skipPushState: true });
+}
+
+/* popstate — user hit back/forward; sync the panel to whatever the URL
+ * now says. */
+window.addEventListener("popstate", function () {
+  var id = _readThreadIdFromUrl();
+  if (id == null) {
+    if (threadPanel) closeThreadPanel({ skipPushState: true });
+  } else if (threadPanelParentId !== id) {
+    openThreadPanel(id, { skipPushState: true });
+  }
+});
+
+function closeThreadPanel(opts) {
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
@@ -18,15 +121,21 @@ function closeThreadPanel() {
   /* Restore main area width */
   var mainEl = document.querySelector(".main");
   if (mainEl) mainEl.style.marginRight = "";
+  if (!(opts && opts.skipPushState)) {
+    _pushThreadUrlState(null);
+  }
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
 }
 
-async function openThreadPanel(parentId) {
-  closeThreadPanel();
+async function openThreadPanel(parentId, opts) {
+  closeThreadPanel({ skipPushState: true });
   threadPanelParentId = parentId;
+  if (!(opts && opts.skipPushState)) {
+    _pushThreadUrlState(parentId);
+  }
 
   /* Build the parent message preview from the DOM */
   var parentPreview = _buildParentPreview(parentId);
@@ -40,6 +149,11 @@ async function openThreadPanel(parentId) {
     '<span class="thread-back-label">Back</span>' +
     '</button>' +
     '<span class="thread-header-title">Thread</span>' +
+    '<button type="button" class="permalink-btn thread-permalink-btn" tabindex="-1" ' +
+    'title="Copy link to this thread" ' +
+    'onclick="event.stopPropagation();copyThreadPermalink(' +
+    String(parentId) +
+    ',this)">\uD83D\uDD17</button>' +
     '<button type="button" class="thread-close" onclick="closeThreadPanel()">&times;</button>' +
     "</div>" +
     '<div class="thread-parent-msg">' +

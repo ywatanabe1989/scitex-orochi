@@ -452,6 +452,13 @@ function appendMessage(msg) {
         msg.id +
         ')">\uD83D\uDCAC</button>'
       : "") +
+    (msg.id
+      ? '<button class="permalink-btn msg-permalink-btn" type="button" tabindex="-1" ' +
+        'title="Copy link to this thread" ' +
+        'onclick="event.stopPropagation();copyThreadPermalink(' +
+        msg.id +
+        ',this)">\uD83D\uDD17</button>'
+      : "") +
     (msg.id && senderName === userName
       ? '<button class="msg-edit-btn" type="button" title="Edit message" onclick="startEditMessage(' +
         msg.id +
@@ -596,6 +603,11 @@ async function loadHistory() {
     }
 
     historyLoaded = true;
+    /* If the page was loaded with ?thread=<id>, auto-open that thread now
+     * that the parent message DOM exists (todo#237). */
+    if (typeof applyThreadUrlOnLoad === "function") {
+      try { applyThreadUrlOnLoad(); } catch (_) {}
+    }
     /* Fetch reactions for all loaded messages */
     if (typeof fetchReactionsForMessages === "function") {
       var ids = messages
