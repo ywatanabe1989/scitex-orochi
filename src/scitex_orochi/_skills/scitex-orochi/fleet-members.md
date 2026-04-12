@@ -17,7 +17,8 @@ All agents connected to the Orochi hub. Definitions are the single source of tru
 | head-spartan | spartan | head | opus | |
 | mamba-todo-manager | mba | task-manager | opus | was mamba-mba |
 | mamba-healer-mba | mba | healer | haiku | was caduceus-mba |
-| mamba-skill-manager | mba | skill-manager | haiku | NEW |
+| mamba-skill-manager | mba | skill-manager | opus | |
+| mamba-synchronizer-mba | mba | synchronizer | opus | NEW |
 
 Legacy names `mamba-mba` and `caduceus-mba` are deprecated; use `mamba-*` names.
 
@@ -60,6 +61,7 @@ Cross-cutting concern managers. Run on mba (the most stable host). Named after t
 - **mamba-todo-manager** — GitHub issues lifecycle on `ywatanabe1989/todo`. Deduplicates, prioritizes, assigns, closes with evidence.
 - **mamba-healer** — Fleet health monitoring. Auto-heals low-risk issues (LP-001–LP-009 learned patterns), escalates destructive actions.
 - **mamba-skill-manager** — Skill file lifecycle. Audits mirrors for drift, creates/updates skills, syncs across fleet.
+- **mamba-synchronizer-mba** — Cross-host sync. Keeps dotfiles, packages, configs consistent across all machines via SSH mesh.
 
 Mamba agents can be **proactive** — scanning for stale issues, running periodic health checks via `/loop`, reporting summaries without being asked. They still delegate heavy work (coding, research) to subagents.
 
@@ -98,3 +100,4 @@ Mamba agents can use `/loop` for recurring duties:
 - **task-manager** (mamba-todo-manager) — Monitors GitHub issues, tracks TODOs, reports to `#todo` channel.
 - **healer** (mamba-healer) — Auto-heals low-risk agent issues (LP-001 through LP-009 learned patterns), escalates destructive actions.
 - **skill-manager** (mamba-skill-manager) — Manages and updates skill files across the fleet.
+- **synchronizer** (mamba-synchronizer-mba) — Cross-host dotfiles, package, and config synchronization.
