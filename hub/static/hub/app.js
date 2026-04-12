@@ -598,6 +598,7 @@ async function fetchAgents() {
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
           if (ev.target.closest(".kill-btn")) return; /* handled separately */
+          if (ev.target.closest(".restart-btn")) return; /* handled separately */
           if (ev.target.closest(".avatar-clickable"))
             return; /* handled below */
           /* Toggle detail popup on click */
