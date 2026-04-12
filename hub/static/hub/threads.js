@@ -27,6 +27,10 @@ async function openThreadPanel(parentId) {
   threadPanel.className = "thread-panel";
   threadPanel.innerHTML =
     '<div class="thread-header">' +
+    '<button type="button" class="thread-back" onclick="closeThreadPanel()" aria-label="Back to chat">' +
+    '<span class="thread-back-arrow">\u2190</span>' +
+    '<span class="thread-back-label">Back</span>' +
+    '</button>' +
     '<span class="thread-header-title">Thread</span>' +
     '<button type="button" class="thread-close" onclick="closeThreadPanel()">&times;</button>' +
     "</div>" +

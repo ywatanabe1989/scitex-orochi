@@ -240,6 +240,20 @@
     max-height: 95vh;
     padding: 0.5rem;
   }
+  /* Thread panel: full-screen overlay on mobile */
+  .thread-panel {
+    width: 100vw;
+    border-left: none;
+  }
+  .thread-back {
+    display: flex;
+  }
+  .thread-close {
+    display: none;
+  }
+  .thread-header {
+    padding: 8px 12px;
+  }
 }
 
 /* iPhone SE and narrow devices (375px and below) */

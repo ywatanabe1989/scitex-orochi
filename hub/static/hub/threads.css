@@ -98,6 +98,35 @@
   color: #e0e0e0;
 }
 
+/* Back button — visible only on mobile (hidden on desktop) */
+.thread-back {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: #4ecdc4;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.thread-back:hover,
+.thread-back:active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.thread-back-arrow {
+  font-size: 18px;
+  line-height: 1;
+}
+
 .thread-close {
   background: none;
   border: none;
