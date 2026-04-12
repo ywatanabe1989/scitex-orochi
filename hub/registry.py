@@ -68,6 +68,25 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "started_at": info.get("started_at") or prev.get("started_at") or "",
             "version": info.get("version") or prev.get("version") or "",
             "runtime": info.get("runtime") or prev.get("runtime") or "",
+            # v0.11.0 Agents-tab visibility fields. Recent action log
+            # + tmux pane tail + workspace CLAUDE.md head + MCP server
+            # list. The bun sidecar pushes these on every 30s
+            # heartbeat via api_agents_register; the dashboard reads
+            # them from get_agents() to render meaningful cards.
+            # todo#155.
+            "recent_actions": (
+                list(info.get("recent_actions"))
+                if isinstance(info.get("recent_actions"), (list, tuple))
+                else prev.get("recent_actions") or []
+            ),
+            "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
+            "pane_tail_block": info.get("pane_tail_block") or prev.get("pane_tail_block") or "",
+            "claude_md_head": info.get("claude_md_head") or prev.get("claude_md_head") or "",
+            "mcp_servers": (
+                list(info.get("mcp_servers"))
+                if isinstance(info.get("mcp_servers"), (list, tuple))
+                else prev.get("mcp_servers") or []
+            ),
         }
 
 
@@ -350,6 +369,12 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "started_at": a.get("started_at", ""),
                 "version": a.get("version", ""),
                 "runtime": a.get("runtime", ""),
+                # v0.11.0 Agents-tab visibility fields.
+                "recent_actions": list(a.get("recent_actions") or []),
+                "pane_tail": a.get("pane_tail", ""),
+                "pane_tail_block": a.get("pane_tail_block", ""),
+                "claude_md_head": a.get("claude_md_head", ""),
+                "mcp_servers": list(a.get("mcp_servers") or []),
             }
         )
     return result

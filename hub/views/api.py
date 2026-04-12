@@ -1289,6 +1289,16 @@ def api_agents_register(request):
             "version": body.get("version", ""),
             "runtime": body.get("runtime", ""),
             "subagent_count": body.get("subagent_count") or 0,
+            # v0.11.0 Agents-tab visibility fields (todo#155). The
+            # heartbeat now carries the recent action log, the live
+            # tmux pane tail, the workspace CLAUDE.md head, and the
+            # MCP server list so the dashboard can render meaningful
+            # cards instead of "no task reported".
+            "recent_actions": body.get("recent_actions") or [],
+            "pane_tail": body.get("pane_tail", ""),
+            "pane_tail_block": body.get("pane_tail_block", ""),
+            "claude_md_head": body.get("claude_md_head", ""),
+            "mcp_servers": body.get("mcp_servers") or [],
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev
