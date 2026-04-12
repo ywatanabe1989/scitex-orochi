@@ -84,13 +84,15 @@ async function renderAgentsTab() {
       "<th>Role</th>" +
       "<th>Host / Machine</th>" +
       "<th>Model</th>" +
+      "<th>Mux</th>" +
       "<th>Channels</th>" +
       "<th>Project</th>" +
       "<th>Workdir</th>" +
       "<th>Task</th>" +
       "<th>Subagents</th>" +
       "<th>Config</th>" +
-      "<th>Registered</th>" +
+      "<th>Uptime</th>" +
+      "<th>Last Activity</th>" +
       "<th>Last Seen</th>" +
       "</tr></thead><tbody>" +
       agents.map(buildAgentRow).join("") +
@@ -107,15 +109,40 @@ async function renderAgentsTab() {
   }
 }
 
+function livenessColor(liveness) {
+  switch (liveness) {
+    case "online": return "#4ecdc4";
+    case "idle": return "#ffd93d";
+    case "stale": return "#ff8c42";
+    case "offline": return "#ef4444";
+    default: return "#888";
+  }
+}
+
+function formatUptime(isoStr) {
+  if (!isoStr) return "-";
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "-";
+  var sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 60) return sec + "s";
+  var min = Math.floor(sec / 60);
+  if (min < 60) return min + "m";
+  var hr = Math.floor(min / 60);
+  if (hr < 24) return hr + "h " + (min % 60) + "m";
+  var days = Math.floor(hr / 24);
+  return days + "d " + (hr % 24) + "h";
+}
+
 function buildAgentRow(a) {
   var inactive = isAgentInactive(a);
   var color = getResolvedAgentColor(a.name);
-  var statusColor = inactive ? "#ef4444" : "#4ecdc4";
-  var statusLabel = inactive ? "offline" : "online";
+  var liveness = a.liveness || (inactive ? "offline" : "online");
+  var statusColor = livenessColor(liveness);
+  var statusLabel = liveness;
   var agentIcon = getSenderIcon(a.name, true, 24);
   var dotHtml =
-    '<span class="status-dot-inline"></span>' +
-    '<span class="status-label">' +
+    '<span class="status-dot-inline" style="background:' + statusColor + '"></span>' +
+    '<span class="status-label" style="color:' + statusColor + '">' +
     statusLabel +
     "</span>";
   var uniqueChannels = [...new Set(a.channels || [])];
@@ -185,6 +212,9 @@ function buildAgentRow(a) {
     '<td class="muted-cell">' +
     escapeHtml(a.model || "-") +
     "</td>" +
+    '<td class="muted-cell">' +
+    escapeHtml(a.multiplexer || "-") +
+    "</td>" +
     '<td class="small-cell">' +
     channelsHtml +
     "</td>" +
@@ -214,10 +244,17 @@ function buildAgentRow(a) {
       ? '<button class="claude-md-btn" onclick="event.stopPropagation();toggleClaudeMd(this)" title="View CLAUDE.md">CLAUDE.md</button>'
       : '<span class="muted-cell">-</span>') +
     "</td>" +
-    '<td class="muted-cell" title="' +
+    '<td class="muted-cell" title="Registered: ' +
     escapeHtml(a.registered_at || "") +
     '">' +
-    timeAgo(a.registered_at) +
+    formatUptime(a.registered_at) +
+    "</td>" +
+    '<td class="muted-cell" title="' +
+    escapeHtml(a.last_action || "") +
+    '">' +
+    (a.idle_seconds != null
+      ? '<span class="idle-badge idle-' + liveness + '">' + formatUptime(a.last_action) + ' ago</span>'
+      : timeAgo(a.last_action)) +
     "</td>" +
     '<td class="muted-cell" title="' +
     escapeHtml(a.last_heartbeat || "") +
@@ -226,7 +263,7 @@ function buildAgentRow(a) {
     "</td>" +
     "</tr>" +
     (a.claude_md
-      ? '<tr class="claude-md-detail" style="display:none"><td colspan="16"><pre class="claude-md-content">' +
+      ? '<tr class="claude-md-detail" style="display:none"><td colspan="19"><pre class="claude-md-content">' +
         escapeHtml(a.claude_md) +
         "</pre></td></tr>"
       : "")

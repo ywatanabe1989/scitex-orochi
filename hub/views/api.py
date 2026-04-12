@@ -882,6 +882,7 @@ def api_agents(request):
                     "machine": p.machine,
                     "role": p.role,
                     "model": "",
+                    "multiplexer": "",
                     "workdir": "",
                     "icon": "",
                     "icon_emoji": p.icon_emoji,

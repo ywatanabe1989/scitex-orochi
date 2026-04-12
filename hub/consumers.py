@@ -127,6 +127,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "icon_emoji": payload.get("icon_emoji", ""),
                 "icon_text": payload.get("icon_text", ""),
                 "color": payload.get("color", ""),
+                "multiplexer": payload.get("multiplexer", ""),
                 "channels": channels,
                 "claude_md": payload.get("claude_md", ""),
             }

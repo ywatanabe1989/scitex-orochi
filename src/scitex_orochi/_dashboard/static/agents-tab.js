@@ -62,9 +62,11 @@ async function renderAgentsTab() {
       "<th>Role</th>" +
       "<th>Host / Machine</th>" +
       "<th>Model</th>" +
+      "<th>Mux</th>" +
       "<th>Channels</th>" +
       "<th>Task</th>" +
-      "<th>Registered</th>" +
+      "<th>Uptime</th>" +
+      "<th>Last Activity</th>" +
       "<th>Last Seen</th>" +
       "</tr></thead><tbody>" +
       agents.map(buildAgentRow).join("") +
@@ -82,11 +84,36 @@ async function renderAgentsTab() {
   }
 }
 
+function livenessColor(liveness) {
+  switch (liveness) {
+    case "online": return "#4ecdc4";
+    case "idle": return "#ffd93d";
+    case "stale": return "#ff8c42";
+    case "offline": return "#ef4444";
+    default: return "#888";
+  }
+}
+
+function formatUptime(isoStr) {
+  if (!isoStr) return "-";
+  var d = new Date(isoStr);
+  if (isNaN(d.getTime())) return "-";
+  var sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 60) return sec + "s";
+  var min = Math.floor(sec / 60);
+  if (min < 60) return min + "m";
+  var hr = Math.floor(min / 60);
+  if (hr < 24) return hr + "h " + (min % 60) + "m";
+  var days = Math.floor(hr / 24);
+  return days + "d " + (hr % 24) + "h";
+}
+
 function buildAgentRow(a) {
   var inactive = isAgentInactive(a);
   var color = getAgentColor(a.name);
-  var statusColor = inactive ? "#ef4444" : "#4ecdc4";
-  var statusLabel = inactive ? "offline" : "online";
+  var liveness = a.liveness || (inactive ? "offline" : "online");
+  var statusColor = livenessColor(liveness);
+  var statusLabel = liveness;
   var dotHtml =
     '<span style="display:inline-block;width:8px;height:8px;' +
     "border-radius:50%;background:" +
@@ -130,6 +157,9 @@ function buildAgentRow(a) {
     '<td style="color:#888;font-size:12px">' +
     escapeHtml(a.model || "-") +
     "</td>" +
+    '<td style="color:#888;font-size:12px">' +
+    escapeHtml(a.multiplexer || "-") +
+    "</td>" +
     '<td style="font-size:12px">' +
     channelsHtml +
     "</td>" +
@@ -137,10 +167,15 @@ function buildAgentRow(a) {
     'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
     escapeHtml(a.current_task || "-") +
     "</td>" +
-    '<td style="color:#888;font-size:12px" title="' +
+    '<td style="color:#888;font-size:12px" title="Registered: ' +
     escapeHtml(a.registered_at || "") +
     '">' +
-    timeAgo(a.registered_at) +
+    formatUptime(a.registered_at) +
+    "</td>" +
+    '<td style="color:' + statusColor + ';font-size:12px" title="' +
+    escapeHtml(a.last_action || "") +
+    '">' +
+    (a.idle_seconds != null ? formatUptime(a.last_action) + " ago" : timeAgo(a.last_action)) +
     "</td>" +
     '<td style="color:#888;font-size:12px" title="' +
     escapeHtml(a.last_heartbeat || "") +

@@ -62,6 +62,8 @@ Port assignments must be **consistent** across all fleet SSH configs:
 - ywata-note-win: 1229 (reverse tunnel)
 - spartan: 10001 (via relay)
 
+**Limitation**: Inbound SSH to spartan (NAS/MBA → spartan) requires ProxyJump via ywata-note-win, since spartan has no bastion reverse tunnel. Spartan outbound to all machines works directly via cloudflared.
+
 ### Cloudflare Tunnel SSH Configuration
 
 Token-based tunnels can't be configured via CLI — use the Cloudflare API:

@@ -52,6 +52,7 @@ class Agent:
     agent_id: str = ""
     project: str = ""
     workspace_id: str = ""
+    multiplexer: str = ""
     status: str = "online"
     current_task: str = ""
     resources: dict[str, Any] = field(default_factory=dict)
@@ -221,6 +222,7 @@ class OrochiServer:
         role = msg.payload.get("role", "")
         model = msg.payload.get("model", "")
         project = msg.payload.get("project", "")
+        multiplexer = msg.payload.get("multiplexer", "")
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
             machine_name = machine or platform.node()
@@ -270,6 +272,7 @@ class OrochiServer:
             model=model,
             agent_id=agent_id,
             project=project,
+            multiplexer=multiplexer,
             workspace_id=workspace_id,
             status="online",
             current_task="",
@@ -531,6 +534,7 @@ class OrochiServer:
                 "model": a.model,
                 "agent_id": a.agent_id,
                 "project": a.project,
+                "multiplexer": a.multiplexer,
                 "status": a.status,
                 "current_task": a.current_task,
                 "resources": a.resources,
