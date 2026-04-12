@@ -62,11 +62,19 @@ function renderFilePreview(item) {
 }
 
 function renderFilesGrid() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var grid = document.getElementById("files-grid");
   if (!grid) return;
   var items = filesCache.filter(matchesFilter);
   if (items.length === 0) {
     grid.innerHTML = '<p class="empty-notice">No files yet. Upload via the chat input (attach, drag, or paste).</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   grid.innerHTML = items.map(function (item) {
@@ -97,6 +105,10 @@ function renderFilesGrid() {
       '</div>'
     );
   }).join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 async function fetchFiles() {
