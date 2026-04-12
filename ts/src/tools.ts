@@ -609,13 +609,42 @@ const DESTRUCTIVE_COMMANDS = new Set([
   "/quit",
 ]);
 
+// Allowlist of slash commands safe to inject via self_command.
+// Modal-opening commands (/model, /agents, /permissions, /login, /config, ...)
+// trap the agent in a selector dialog and require external Escape rescue, so
+// they are NOT on this list. Free-text prompts (no leading '/') bypass this
+// gate entirely — they just land as prompt text.
+const SELF_COMMAND_ALLOWLIST: readonly string[] = [
+  "/compact",
+  "/clear",
+  "/cost",
+  "/help",
+  "/status",
+] as const;
+
+// Returns true if `cmd` is safe to send via self_command.
+// Free-text (no leading '/') is always safe. Slash commands are safe only if
+// their first whitespace-delimited token is in SELF_COMMAND_ALLOWLIST.
+export function isSafeForSelfCommand(cmd: string): boolean {
+  const trimmed = (cmd || "").trim();
+  if (!trimmed.startsWith("/")) {
+    return true;
+  }
+  const slashName = trimmed.split(/\s+/, 1)[0];
+  return SELF_COMMAND_ALLOWLIST.includes(slashName);
+}
+
 // Validate slash-command text. Returns error string on failure, null on OK.
 function validateSelfCommand(command: string): string | null {
   if (!command || typeof command !== "string") {
     return "command is required";
   }
+  // Free-text (no leading '/') is allowed — it lands as prompt text.
   if (!command.startsWith("/")) {
-    return "command must start with '/'";
+    if (command.includes("'")) {
+      return "command must not contain single quotes (shell injection guard)";
+    }
+    return null;
   }
   if (command.includes("'")) {
     return "command must not contain single quotes (shell injection guard)";
@@ -635,6 +664,23 @@ export async function handleSelfCommand(args: {
   const err = validateSelfCommand(command);
   if (err) {
     return { content: [{ type: "text", text: `ERROR: ${err}` }] };
+  }
+
+  // Allowlist gate: reject modal-opening slash commands before scheduling.
+  if (!isSafeForSelfCommand(command)) {
+    const rejected = command.split(/\s+/, 1)[0];
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `ERROR: slash command '${rejected}' is not in self_command allowlist. ` +
+            `Safe commands: ${SELF_COMMAND_ALLOWLIST.join(", ")}. ` +
+            `Modal-opening commands like /model, /agents, /permissions trap the agent and are blocked. ` +
+            `Free-text prompts (no leading slash) are always allowed.`,
+        },
+      ],
+    };
   }
 
   // Extract the bare slash name (no args) for destructive-list lookup.
