@@ -37,11 +37,9 @@ function formatDate(iso) {
   });
 }
 
-function truncateBody(text, max) {
+function normalizeBody(text) {
   if (!text) return "(no description)";
-  text = text.replace(/\r\n/g, "\n");
-  if (text.length > max) return text.substring(0, max) + "...";
-  return text;
+  return text.replace(/\r\n/g, "\n");
 }
 
 function buildLabelsHtml(labels) {
@@ -67,11 +65,14 @@ function buildLabelsHtml(labels) {
 }
 
 function buildDetailHtml(issue) {
-  var body = truncateBody(issue.body || "", 500);
+  var body = normalizeBody(issue.body || "");
   var assignee =
     issue.assignee && issue.assignee.login
       ? issue.assignee.login
       : "unassigned";
+  var commentsCount = issue.comments || 0;
+  var commentsHtml =
+    "<span>Comments: " + commentsCount + "</span>";
   return (
     '<div class="todo-detail">' +
     '<div class="todo-detail-body">' +
@@ -81,6 +82,7 @@ function buildDetailHtml(issue) {
     "<span>Assignee: " +
     escapeHtml(assignee) +
     "</span>" +
+    commentsHtml +
     "<span>Created: " +
     formatDate(issue.created_at) +
     "</span>" +
@@ -89,8 +91,8 @@ function buildDetailHtml(issue) {
     "</span>" +
     '<a href="' +
     escapeHtml(issue.html_url) +
-    '" target="_blank" rel="noopener" class="todo-detail-link">' +
-    "Open on GitHub" +
+    '" target="_blank" rel="noopener" class="todo-detail-link" title="Open on GitHub">' +
+    "&#x1F517;" +
     "</a>" +
     "</div>" +
     "</div>"
@@ -107,11 +109,14 @@ function buildIssueCard(issue) {
       "</span>";
   }
   var closedClass = issue.state === "closed" ? " closed" : "";
+  var stateClass = issue.state === "open" ? "todo-state-open" : "todo-state-closed";
+  var stateTitle = issue.state === "open" ? "Open" : "Closed";
   return (
     '<div class="todo-item' + closedClass + '" data-issue-number="' +
     issue.number +
     '">' +
     '<div class="todo-item-row">' +
+    '<span class="todo-state-dot ' + stateClass + '" title="' + stateTitle + '"></span>' +
     '<span class="todo-number">#' +
     issue.number +
     "</span>" +
