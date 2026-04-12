@@ -102,6 +102,8 @@ Mamba agents can use `/loop` for recurring duties:
 - **Explain reasoning** — if declining or deferring, explain why (not just "no")
 - **Acknowledge their contribution** — name what was useful, even if you can't adopt it
 - **Offer a path forward** — suggest how the contribution could still land
+- **Keep it short** — avoid walls of text. A concise 3-5 sentence response feels more human and respectful of reader's time. Save the long breakdowns for internal channels.
+- **Don't over-respond** — one thoughtful message beats five verbose ones. Pick one responder per external thread
 
 **Template: Declining code due to license**
 ```
