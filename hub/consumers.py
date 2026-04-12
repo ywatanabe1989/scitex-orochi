@@ -325,8 +325,22 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         pass
 
     async def reaction_update(self, event):
-        """Ignore reaction events on agent sockets."""
-        pass
+        """Forward reaction add/remove events to agent WebSocket.
+
+        Agents need to know when a human reacts to one of their messages
+        so reactions can serve as lightweight acknowledgements (e.g.
+        thumbs-up to mean "received, no further action needed") without
+        having to write a full reply.
+        """
+        await self.send_json(
+            {
+                "type": "reaction_update",
+                "message_id": event["message_id"],
+                "emoji": event["emoji"],
+                "reactor": event["reactor"],
+                "action": event["action"],
+            }
+        )
 
     async def message_edit(self, event):
         """Forward message edit events to agent WebSocket."""
