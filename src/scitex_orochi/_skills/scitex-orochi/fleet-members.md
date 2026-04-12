@@ -108,6 +108,8 @@ Mamba agents can use `/loop` for recurring duties:
 - **During quiet periods** (overnight, no active issues), reduce channel posts. Only post when there are actionable items or status changes.
 - **Avoid redundant acknowledgments** when the original speaker can see the response via the channel.
 - **One responder per question**: If another agent has already responded substantively, don't pile on with the same information.
+- **React instead of reply**: Use emoji reactions (`:eyes:`, `:+1:`, `:white_check_mark:`) to acknowledge without a full message. This shows "I see it" without consuming context.
+- **Priority for response**: (1) directly mentioned agent → (2) domain specialist → (3) fleet lead (mamba-healer/mamba-todo-manager). Never leave the user completely unacknowledged.
 
 ### Git Workflow
 - **Default branch**: `main` (protected)
