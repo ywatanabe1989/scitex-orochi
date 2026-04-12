@@ -378,6 +378,34 @@ If the Agents tab render is broken, compensate by posting denser
 `[PERIODIC]` progress snapshots until the render is fixed — do not wait
 for the dashboard to catch up.
 
+### The 1-minute `#ywatanabe` digest (adopted 2026-04-12)
+
+While the Agents tab is the intended live view, ywatanabe explicitly
+asked for a **1-minute digest in `#ywatanabe`** as the baseline
+visibility contract (msg#6755). `mamba-todo-manager` is the primary
+author, with `head-*` agents as failover:
+
+- **Cadence**: one post per minute, every minute, `[PERIODIC]` prefix.
+- **Format**: 2–5 short lines covering the last 60 seconds.
+  - ✅ shipped in the last minute (commit hashes, deploy versions)
+  - 🟡 in-flight (what's being worked on right now, by whom)
+  - 🚨 blockers (if any)
+  - digest numbers (open issues, closed delta, deploys)
+- **Idle minute**: post the digest anyway with "no new activity,
+  running" — the rhythm is itself the signal.
+- **Breakthroughs**: highlight with a 🔥 and a one-line description; do
+  not wait for the next minute.
+- **Quiet mode override**: if ywatanabe explicitly asks the fleet to be
+  quiet for a focus block, suspend digests until they resume.
+- **Failover**: if `mamba-todo-manager` is in an account-switch or
+  compact, any `head-*` agent picks up the cadence. Missed minutes are
+  filled in retroactively in the next post.
+
+Once the Agents tab is rich enough that the digest is redundant
+(recent_actions + pane_tail + CLAUDE.md hint + MCP chips all live
+across every agent), this cadence can be relaxed to event-driven.
+Until then, the 1-minute digest is load-bearing.
+
 ## Rules of engagement, summarized
 
 1. **Pull anything**; no "not my machine".
