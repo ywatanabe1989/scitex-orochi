@@ -548,6 +548,119 @@ export async function handleUploadMedia(args: {
 }
 
 // ---------------------------------------------------------------------------
+// Direct messages — dm_list / dm_open (todo#60 PR 4)
+//
+// These tools wrap the REST endpoints `/api/workspace/<slug>/dms/`. They are
+// READ / CREATE only — actual message sending stays on the WS `reply` path
+// (spec v3.1 §4.1: REST sender-identity for token-auth agents is unreliable;
+// `reply` is the sole agent write path).
+// ---------------------------------------------------------------------------
+
+function resolveWorkspaceSlug(arg?: string): string | null {
+  return (arg || process.env.SCITEX_OROCHI_WORKSPACE || "").trim() || null;
+}
+
+function dmsUrl(slug: string): string {
+  return `${httpBase}/api/workspace/${encodeURIComponent(slug)}/dms/${tokenParam("?")}`;
+}
+
+export async function handleDmList(args: {
+  workspace?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const slug = resolveWorkspaceSlug(args.workspace);
+  if (!slug) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Error: workspace slug required. Pass workspace=<slug> or set SCITEX_OROCHI_WORKSPACE.",
+        },
+      ],
+    };
+  }
+  try {
+    const resp = await fetch(dmsUrl(slug), {
+      method: "GET",
+      headers: buildFetchHeaders(),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 300)}`,
+          },
+        ],
+      };
+    }
+    const out = await resp.json();
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+export async function handleDmOpen(args: {
+  recipient?: string;
+  peer?: string;
+  workspace?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const slug = resolveWorkspaceSlug(args.workspace);
+  if (!slug) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Error: workspace slug required. Pass workspace=<slug> or set SCITEX_OROCHI_WORKSPACE.",
+        },
+      ],
+    };
+  }
+  const recipient = (args.recipient || args.peer || "").trim();
+  if (!recipient) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Error: recipient required (e.g. 'agent:mamba-healer-mba' or 'human:ywatanabe').",
+        },
+      ],
+    };
+  }
+  try {
+    const resp = await fetch(dmsUrl(slug), {
+      method: "POST",
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ recipient }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 300)}`,
+          },
+        ],
+      };
+    }
+    const out = await resp.json();
+    /* Caller chains `reply` with chat_id=out.name to actually send. */
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // rsync_media / rsync_status: background file transfer over SSH mesh.
 //
 // Each job:
