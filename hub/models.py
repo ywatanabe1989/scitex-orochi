@@ -102,13 +102,31 @@ class AgentProfile(models.Model):
 
 
 class Channel(models.Model):
-    """A channel within a workspace — like a Slack channel."""
+    """A channel within a workspace — like a Slack channel.
+
+    ``kind`` distinguishes ordinary broadcast channels ("public") from
+    1-to-1 direct-message channels ("dm"). DM channels follow the
+    deterministic naming ``#dm-{lo}-{hi}`` where ``lo``/``hi`` are the
+    alphabetically-sorted, lower-cased principal names (see
+    ``canonical_dm_name``). Participants are derivable from the name, so
+    no separate membership table is needed.
+    """
+
+    KIND_PUBLIC = "public"
+    KIND_DM = "dm"
+    KIND_CHOICES = [
+        (KIND_PUBLIC, "Public"),
+        (KIND_DM, "Direct Message"),
+    ]
 
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="channels"
     )
-    name = models.CharField(max_length=100)  # e.g. "#general"
+    name = models.CharField(max_length=100)  # e.g. "#general" or "#dm-a-b"
     description = models.TextField(blank=True, default="")
+    kind = models.CharField(
+        max_length=16, choices=KIND_CHOICES, default=KIND_PUBLIC, db_index=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -117,6 +135,81 @@ class Channel(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.workspace.name})"
+
+    @property
+    def is_dm(self) -> bool:
+        return self.kind == self.KIND_DM
+
+    def dm_participants(self) -> list[str]:
+        """Return the two principal names encoded in a DM channel name.
+
+        Returns an empty list for non-DM channels.
+        """
+        if not self.is_dm:
+            return []
+        return dm_participants_from_name(self.name)
+
+
+# ---------------------------------------------------------------------------
+# DM channel name helpers
+# ---------------------------------------------------------------------------
+
+DM_PREFIX = "#dm-"
+
+
+def _normalize_principal(name: str) -> str:
+    """Normalize a principal name for DM channel naming.
+
+    Lower-cases and strips ``@`` / ``#`` prefixes so that a user typing
+    ``@alice`` and ``alice`` resolve to the same DM channel.
+    """
+    if not name:
+        return ""
+    n = name.strip().lstrip("@#").lower()
+    return n
+
+
+def canonical_dm_name(a: str, b: str) -> str:
+    """Return the canonical DM channel name for principals ``a`` and ``b``.
+
+    The hub ALWAYS recomputes this on every write so a client cannot
+    impersonate a DM channel it is not a participant in. Self-DMs
+    (``a == b``) produce ``#dm-{a}-{a}`` and are allowed — they act as
+    a private scratchpad.
+    """
+    na = _normalize_principal(a)
+    nb = _normalize_principal(b)
+    if not na or not nb:
+        raise ValueError("DM channel requires two non-empty principal names")
+    lo, hi = sorted([na, nb])
+    # Use ``__`` as the separator so principals containing single
+    # dashes (e.g. ``head-mba``) round-trip unambiguously.
+    return f"{DM_PREFIX}{lo}__{hi}"
+
+
+def dm_participants_from_name(channel_name: str) -> list[str]:
+    """Parse a canonical DM channel name back into its two principals.
+
+    Returns ``[]`` if ``channel_name`` is not a DM channel. Participant
+    names are separated by the literal ``__`` (two underscores), which
+    cannot appear in a normalized principal name (only ``[a-z0-9._-]``
+    after normalization in practice).
+    """
+    if not channel_name or not channel_name.startswith(DM_PREFIX):
+        return []
+    body = channel_name[len(DM_PREFIX):]
+    if "__" not in body:
+        return []
+    lo, hi = body.split("__", 1)
+    if not lo or not hi:
+        return []
+    return [lo, hi]
+
+
+def dm_includes(channel_name: str, principal: str) -> bool:
+    """True if ``principal`` is a participant in the DM channel."""
+    p = _normalize_principal(principal)
+    return p in dm_participants_from_name(channel_name)
 
 
 class Message(models.Model):
