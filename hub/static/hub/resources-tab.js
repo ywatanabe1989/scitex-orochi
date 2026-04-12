@@ -57,12 +57,20 @@ function donutHtml(label, percent) {
 }
 
 function renderResources() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("resources");
   var keys = Object.keys(resourceData);
   var cEl = document.getElementById("sidebar-count-machines");
   if (cEl) cEl.textContent = keys.length ? "(" + keys.length + ")" : "";
   if (keys.length === 0) {
     container.innerHTML = '<p class="empty-notice">No reports yet</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   container.innerHTML = keys
@@ -111,13 +119,25 @@ function renderResources() {
       return html;
     })
     .join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function renderResourcesTab() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var grid = document.getElementById("resources-grid");
   var keys = Object.keys(resourceData);
   if (keys.length === 0) {
     grid.innerHTML = '<p class="empty-notice">No resource reports yet.</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   grid.innerHTML = keys.map(buildResourceCard).join("");
@@ -126,6 +146,10 @@ function renderResourcesTab() {
       addTag("host", el.getAttribute("data-host-name"));
     });
   });
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function buildResourceCard(k) {
