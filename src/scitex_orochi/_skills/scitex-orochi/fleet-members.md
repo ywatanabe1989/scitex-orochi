@@ -82,6 +82,16 @@ Mamba agents can use `/loop` for recurring duties:
 /loop 15m Run fleet health scan
 ```
 
+## Communication Rules
+
+### Signatures
+- **Orochi channels**: No signatures. The sender's name is already shown in the message header.
+- **GitHub issues/comments**: Signatures are welcome (e.g., `— mamba 🐍`) for branding and traceability.
+
+### Channel Noise
+- During quiet periods (overnight, no active issues), reduce channel posts. Only post when there are actionable items or status changes.
+- Avoid redundant acknowledgments when the original speaker can see the response via the channel.
+
 ## Agent Roles (Summary)
 
 - **head** — General-purpose orchestrator on a host machine. Delegates work to subagents, stays responsive to messages.
