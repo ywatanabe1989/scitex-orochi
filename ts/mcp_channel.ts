@@ -21,6 +21,9 @@ import {
   buildWsUrl,
   maskUrl,
 } from "./src/config.js";
+
+// Captured once at sidecar startup — reflects when this agent process came up.
+const heartbeatStartTime = new Date().toISOString();
 import { addMessage } from "./src/message_buffer.js";
 import {
   handleContext,
@@ -116,9 +119,69 @@ const _dbg = (s: string) => {
 // Dedup: track recently delivered message IDs to prevent duplicate notifications
 const _deliveredIds = new Set<string | number>();
 
+// ---------------------------------------------------------------------------
+// Registry heartbeat — per-agent sidecar POSTs structural metadata to
+// /api/agents/register/ every 30s while WS is connected. This replaces the
+// MBA-only agent_meta.py --push loop for fields that don't require transcript
+// parsing (pid/ppid/started_at/model/multiplexer/role/etc.). Transcript-
+// derived fields (context_pct, current_task, subagent_count, skills_loaded)
+// are intentionally omitted here and remain the job of agent_meta.py.
+// ---------------------------------------------------------------------------
+async function pushRegistryHeartbeat(): Promise<void> {
+  if (process.env.SCITEX_OROCHI_REGISTRY_DISABLE === "1") return;
+  if (!OROCHI_TOKEN) {
+    _dbg("heartbeat: no OROCHI_TOKEN, skipping");
+    return;
+  }
+  const shortHost = hostname().split(".")[0];
+  const payload = {
+    token: OROCHI_TOKEN,
+    name: OROCHI_AGENT,
+    agent_id: OROCHI_AGENT,
+    role: process.env.SCITEX_OROCHI_ROLE || "agent",
+    machine: shortHost,
+    model:
+      OROCHI_MODEL ||
+      process.env.SCITEX_OROCHI_MODEL ||
+      process.env.CLAUDE_MODEL ||
+      "",
+    multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "",
+    project: process.env.SCITEX_OROCHI_PROJECT || OROCHI_AGENT,
+    workdir: process.cwd(),
+    pid: process.pid,
+    ppid: process.ppid,
+    started_at: heartbeatStartTime,
+    version: process.env.SCITEX_OROCHI_AGENT_META_VERSION || "0.2",
+    runtime: "claude-code",
+    channels: OROCHI_CHANNELS,
+  };
+  const url = `${buildHttpBase().replace(/\/$/, "")}/api/agents/register/`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error(
+        `[orochi-heartbeat] POST ${url} -> ${res.status}: ${txt.slice(0, 200)}`,
+      );
+      _dbg(`heartbeat failed: ${res.status} ${txt.slice(0, 200)}`);
+    } else {
+      _dbg(`heartbeat ok: ${OROCHI_AGENT} -> ${maskUrl(url)}`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[orochi-heartbeat] fetch error: ${msg}`);
+    _dbg(`heartbeat error: ${msg}`);
+  }
+}
+
 // Lightweight adapter that satisfies the OrochiConnection interface
 // expected by tools.ts (isConnected, state, send, reconnectAttempts, etc.)
 let _ws: WebSocket | null = null;
+let _heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 const conn = {
   state: "disconnected" as string,
   lastConnectedAt: null as Date | null,
@@ -189,6 +252,17 @@ const conn = {
         _lastPong = Date.now();
       });
       _ws!.on("close", () => clearInterval(_pingInterval));
+
+      // Registry heartbeat — fire immediately, then every 30s while connected.
+      // Stopped in the top-level ws close handler below.
+      if (_heartbeatInterval) {
+        clearInterval(_heartbeatInterval);
+        _heartbeatInterval = null;
+      }
+      pushRegistryHeartbeat().catch(() => {});
+      _heartbeatInterval = setInterval(() => {
+        pushRegistryHeartbeat().catch(() => {});
+      }, 30000);
 
       // Read CLAUDE.md from agent definition dir if available
       let claudeMd = "";
@@ -416,6 +490,10 @@ const conn = {
       _dbg(`ws close code=${code}`);
       conn.state = "disconnected";
       _ws = null;
+      if (_heartbeatInterval) {
+        clearInterval(_heartbeatInterval);
+        _heartbeatInterval = null;
+      }
       // Simple reconnect after 3s
       conn.reconnectAttempts++;
       conn.totalReconnects++;
