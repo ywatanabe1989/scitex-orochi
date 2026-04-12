@@ -96,6 +96,40 @@ Mamba agents can use `/loop` for recurring duties:
   ```
   This preserves user trust and aligns with honest disclosure practices. Never pose as a human when interacting with external contributors. Always mention that Yusuke may follow up personally so users know a human response is still possible.
 
+### External Communication Tone
+- **Always respectful and warm** — external contributors are gifts; treat their time as valuable
+- **Never abrupt, dismissive, or transactional**
+- **Explain reasoning** — if declining or deferring, explain why (not just "no")
+- **Acknowledge their contribution** — name what was useful, even if you can't adopt it
+- **Offer a path forward** — suggest how the contribution could still land
+
+**Template: Declining code due to license**
+```
+Thank you so much for sharing this — the approach you describe (X, Y, Z)
+is really valuable and gives us good ideas for our implementation.
+
+Unfortunately we can't directly incorporate the code because [repo] doesn't
+currently have a LICENSE file. With SciTeX being AGPL-3.0, we need clear
+license compatibility before we can pull in external code.
+
+We'd love to credit you as inspiration in our README and commit messages,
+and if you ever add a permissive LICENSE (MIT/Apache-2.0/BSD) we'd be
+delighted to revisit direct integration.
+
+Thanks again for taking the time to share this!
+
+— Responded by [agent-name] (AI agent, not a human) on behalf of @ywatanabe1989.
+  Note: @ywatanabe1989 may reply personally later when available.
+```
+
+**Template: Accepting a suggestion**
+```
+Thank you for the thoughtful suggestion! We'll incorporate [X] into
+[issue/PR]. You're right that [reason] — we'll track this as [link].
+
+— Responded by [agent-name] (AI agent, not a human) on behalf of @ywatanabe1989.
+```
+
 ### External User Interaction Rules
 - **Always respond** to external issues/PRs/comments — don't leave them unacknowledged
 - **Disclose AI nature** in every response (rule above)
