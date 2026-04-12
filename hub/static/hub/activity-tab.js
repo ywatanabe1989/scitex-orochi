@@ -70,6 +70,10 @@ function _renderTaskField(task, fallback) {
 }
 
 function renderActivityTab() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var grid = document.getElementById("activity-grid");
   var summary = document.getElementById("activity-summary");
   if (!grid) return;
@@ -79,6 +83,10 @@ function renderActivityTab() {
   if (!src.length) {
     grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
     if (summary) summary.textContent = "";
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
 
@@ -155,6 +163,10 @@ function renderActivityTab() {
       '</div>'
     );
   }).join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 async function refreshActivityFromApi() {
