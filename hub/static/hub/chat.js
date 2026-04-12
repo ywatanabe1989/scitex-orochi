@@ -386,26 +386,124 @@ function appendMessage(msg) {
       '<div class="attachment-grid ' + gridClass + '">' + imagesHtml + "</div>";
   }
   attachments.forEach(function (att) {
-    if (att.mime_type && att.mime_type.startsWith("image/")) {
+    if (!att.url) return;
+    var mime = att.mime_type || "";
+    var fname = att.filename || "attachment";
+    var url = att.url;
+    if (mime.indexOf("image/") === 0) {
       /* handled above in grid */
-    } else if (att.url) {
-      var sizeStr = att.size
-        ? " (" +
-          (att.size > 1024 * 1024
-            ? (att.size / 1024 / 1024).toFixed(1) + " MB"
-            : (att.size / 1024).toFixed(0) + " KB") +
-          ")"
-        : "";
-      attachmentsHtml +=
-        '<div class="attachment-file">' +
-        '<a href="' +
-        escapeHtml(att.url) +
-        '" target="_blank" download>' +
-        "\uD83D\uDCCE " +
-        escapeHtml(att.filename || "attachment") +
-        escapeHtml(sizeStr) +
-        "</a></div>";
+      return;
     }
+    var sizeStr = att.size
+      ? (att.size > 1024 * 1024
+          ? (att.size / 1024 / 1024).toFixed(1) + " MB"
+          : (att.size / 1024).toFixed(0) + " KB")
+      : "";
+    var ext = (fname.split(".").pop() || "").toLowerCase();
+    var isMarkdown =
+      mime === "text/markdown" || ext === "md" || ext === "markdown";
+    var isText =
+      mime.indexOf("text/") === 0 ||
+      mime === "application/json" ||
+      ext === "txt" || ext === "log" || ext === "py" || ext === "json" ||
+      ext === "yaml" || ext === "yml" || ext === "toml" || ext === "sh";
+    var isPdf = mime === "application/pdf" || ext === "pdf";
+    var isVideo = mime.indexOf("video/") === 0;
+    var isAudio = mime.indexOf("audio/") === 0;
+    /* Inline video/audio players (controls included) */
+    if (isVideo) {
+      attachmentsHtml +=
+        '<div class="attachment-video">' +
+        '<video src="' + escapeHtml(url) +
+        '" controls preload="metadata" style="max-width:100%"></video>' +
+        '<div class="attachment-caption">' +
+        escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") +
+        '</div></div>';
+      return;
+    }
+    if (isAudio) {
+      attachmentsHtml +=
+        '<div class="attachment-audio">' +
+        '<audio src="' + escapeHtml(url) +
+        '" controls preload="metadata" style="max-width:100%"></audio>' +
+        '<div class="attachment-caption">' +
+        escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") +
+        '</div></div>';
+      return;
+    }
+    /* PDF: card with big "PDF" icon + filename. Click opens the modal
+     * viewer (defined in files-tab.js) so mobile Safari users can close
+     * with the explicit X button (todo#240). */
+    if (isPdf) {
+      attachmentsHtml +=
+        '<div class="attachment-card attachment-card-pdf" ' +
+        'onclick="event.preventDefault();event.stopPropagation();' +
+        'if(typeof openPdfViewer===\'function\')openPdfViewer(' +
+        JSON.stringify(url).replace(/"/g, "&quot;") + ',' +
+        JSON.stringify(fname).replace(/"/g, "&quot;") +
+        ');else window.open(' + JSON.stringify(url).replace(/"/g, "&quot;") +
+        ',\'_blank\')">' +
+        '<div class="attachment-card-icon">PDF</div>' +
+        '<div class="attachment-card-meta">' +
+        '<div class="attachment-card-name">' + escapeHtml(fname) + '</div>' +
+        (sizeStr
+          ? '<div class="attachment-card-size">' + escapeHtml(sizeStr) + '</div>'
+          : "") +
+        '</div></div>';
+      return;
+    }
+    /* Markdown / text: card with first-N-chars inline preview. The
+     * preview is fetched lazily after the message renders so the
+     * attachment shows immediately and the body fills in. */
+    if (isMarkdown || isText) {
+      var previewId =
+        "att-prev-" +
+        Math.random().toString(36).slice(2, 10);
+      attachmentsHtml +=
+        '<div class="attachment-card attachment-card-text' +
+        (isMarkdown ? " attachment-card-md" : "") + '">' +
+        '<div class="attachment-card-header">' +
+        '<a href="' + escapeHtml(url) +
+        '" target="_blank" download class="attachment-card-name">' +
+        escapeHtml(fname) + "</a>" +
+        (sizeStr
+          ? '<span class="attachment-card-size">' + escapeHtml(sizeStr) + '</span>'
+          : "") +
+        '</div>' +
+        '<pre class="attachment-card-preview" id="' + previewId + '">' +
+        '\u2026 loading preview \u2026' +
+        '</pre>' +
+        '</div>';
+      /* Lazy preview fetch (after current renderpass). */
+      setTimeout(function () {
+        var pre = document.getElementById(previewId);
+        if (!pre) return;
+        fetch(url, { credentials: "same-origin" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("preview fetch " + r.status);
+            return r.text();
+          })
+          .then(function (text) {
+            var p = document.getElementById(previewId);
+            if (!p) return;
+            var snippet = (text || "").slice(0, 1200);
+            if (text.length > 1200) snippet += "\n\u2026";
+            p.textContent = snippet;
+          })
+          .catch(function (_) {
+            var p = document.getElementById(previewId);
+            if (p) p.textContent = "(preview unavailable)";
+          });
+      }, 0);
+      return;
+    }
+    /* Fallback: paperclip + filename link, same as before. */
+    attachmentsHtml +=
+      '<div class="attachment-file">' +
+      '<a href="' + escapeHtml(url) + '" target="_blank" download>' +
+      "\uD83D\uDCCE " + escapeHtml(fname) +
+      (sizeStr ? " (" + escapeHtml(sizeStr) + ")" : "") +
+      "</a></div>";
   });
   var roleBadge = "";
   var youTag =

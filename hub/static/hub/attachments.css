@@ -350,3 +350,112 @@
   color: #666;
   font-size: 11px;
 }
+
+/* Inline thumbnail cards for non-image attachments — PDF, markdown,
+ * text, video, audio. Replaces the generic paperclip-link fallback for
+ * the common cases (msg#6423). Image attachments still use
+ * .attachment-grid above. */
+.attachment-card {
+  display: flex;
+  align-items: stretch;
+  margin-top: 4px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 500px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.attachment-card:hover {
+  border-color: #4ecdc4;
+}
+.attachment-card-icon {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2a1a1a;
+  color: #ff6b6b;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.attachment-card-pdf .attachment-card-icon {
+  background: #2a1a1a;
+  color: #ff6b6b;
+}
+.attachment-card-meta {
+  flex: 1 1 auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.attachment-card-name {
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  word-break: break-all;
+  display: block;
+}
+.attachment-card-name:hover {
+  color: #4ecdc4;
+}
+.attachment-card-size {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
+}
+.attachment-card-text,
+.attachment-card-md {
+  display: block;
+  cursor: default;
+  padding: 0;
+}
+.attachment-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2a2a;
+  background: #181818;
+}
+.attachment-card-md .attachment-card-header {
+  background: #1a2424;
+}
+.attachment-card-preview {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #b0b0b0;
+  background: #141414;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.attachment-video,
+.attachment-audio {
+  margin-top: 4px;
+  max-width: 500px;
+}
+.attachment-video video {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 6px;
+  background: #000;
+}
+.attachment-audio audio {
+  width: 100%;
+  max-width: 500px;
+}
+.attachment-caption {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
+}

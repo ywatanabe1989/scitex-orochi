@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3] - 2026-04-13
+
+### 🐛 Bug Fixes
+- fix(hub/upload): /api/upload-base64 now creates a Message row carrying
+  the upload as `metadata.attachments` when the caller passes `channel`
+  and `sender`. The Files tab (`api_media`) only reads attachments from
+  Message metadata, so MCP `upload_media` calls used to land on disk but
+  never appear in the dashboard. Reported by ywatanabe at msg#6425. The
+  bun `handleUploadMedia` now passes both fields automatically.
+- feat(hub/ui): rich inline thumbnails for non-image attachments — PDF
+  cards open in the in-app modal viewer (todo#240 reuse), markdown / text
+  files render a fetched first-1200-char preview card, video and audio
+  attachments embed inline `<video>` / `<audio>` players. Replaces the
+  generic paperclip-link fallback for the common cases. Requested by
+  ywatanabe at msg#6423.
+
 ## [0.10.2] - 2026-04-13
 
 ### 🐛 Bug Fixes
