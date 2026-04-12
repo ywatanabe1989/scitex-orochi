@@ -369,23 +369,24 @@ def api_connectivity(request):
         {"id": "spartan", "label": "spartan", "role": "hpc"},
     ]
     # Source → list of (destination, status, method)
+    # Updated 2026-04-12: dual bastion (bastion.scitex.ai + bastion.scitex-orochi.com)
     raw = [
-        # ywata-note-win can reach all (deployer)
-        ("ywata-note-win", "nas", "ok", "direct"),
+        # ywata-note-win can reach all
+        ("ywata-note-win", "nas", "ok", "bastion"),
         ("ywata-note-win", "spartan", "ok", "direct"),
-        ("ywata-note-win", "mba", "ok", "direct"),
-        # NAS reaches MBA + win (LAN + reverse tunnel)
+        ("ywata-note-win", "mba", "ok", "bastion"),
+        # NAS reaches all (LAN + bastion)
         ("nas", "ywata-note-win", "ok", "tunnel"),
         ("nas", "mba", "ok", "lan"),
-        ("nas", "spartan", "fail", "blocked-firewall"),
-        # MBA reaches NAS + win (LAN + ProxyJump)
+        ("nas", "spartan", "ok", "proxyjump"),
+        # MBA reaches all (LAN + bastion + ProxyJump)
         ("mba", "nas", "ok", "lan"),
         ("mba", "ywata-note-win", "ok", "proxyjump"),
-        ("mba", "spartan", "fail", "blocked-firewall"),
-        # Spartan blocked outbound (HPC firewall)
-        ("spartan", "mba", "fail", "blocked-firewall"),
-        ("spartan", "nas", "fail", "blocked-firewall"),
-        ("spartan", "ywata-note-win", "fail", "blocked-firewall"),
+        ("mba", "spartan", "ok", "proxyjump"),
+        # Spartan reaches all via bastion (cloudflared)
+        ("spartan", "mba", "ok", "bastion"),
+        ("spartan", "nas", "ok", "bastion"),
+        ("spartan", "ywata-note-win", "ok", "direct"),
     ]
     edges = [
         {"source": s, "target": t, "status": status, "method": method}
@@ -395,7 +396,7 @@ def api_connectivity(request):
         {
             "nodes": nodes,
             "edges": edges,
-            "source": "hardcoded",  # will become "live" once basilisk lands
+            "source": "static",  # updated 2026-04-12 with bastion mesh
             "ts": timezone.now().isoformat(),
         }
     )
