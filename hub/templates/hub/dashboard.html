@@ -20,7 +20,7 @@
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=116">
     <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=120">
     <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
@@ -122,7 +122,8 @@
                 <div id="activity-grid" class="activity-grid"></div>
             </div>
             <div id="releases-view" class="todo-view" style="display:none">
-                <div id="releases-list" class="releases-list"></div>
+                <div class="releases-subtabs" id="releases-subtabs"></div>
+                <div id="releases-content" class="releases-content"></div>
             </div>
             <div id="files-view" class="todo-view" style="display:none">
                 <div class="files-filter-bar">
@@ -193,7 +194,7 @@
     <script src="{% static 'hub/activity-tab.js' %}?v=116"></script>
     <script src="{% static 'hub/upload.js' %}?v=111"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
-    <script src="{% static 'hub/releases-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/reactions.js' %}?v=107"></script>
     <script src="{% static 'hub/threads.js' %}?v=120"></script>
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>

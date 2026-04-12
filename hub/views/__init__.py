@@ -22,6 +22,7 @@ from hub.views.api import (  # noqa: F401
     api_messages,
     api_reactions,
     api_releases,
+    api_repo_changelog,
     api_resources,
     api_stats,
     api_subagents_update,

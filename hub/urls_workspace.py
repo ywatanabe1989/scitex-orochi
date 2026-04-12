@@ -78,6 +78,11 @@ urlpatterns = [
     path("api/members/", views.api_members, name="api-members"),
     path("api/reactions/", views.api_reactions, name="api-reactions"),
     path("api/releases/", views.api_releases, name="api-releases"),
+    path(
+        "api/repo/<str:owner>/<str:repo>/changelog/",
+        views.api_repo_changelog,
+        name="api-repo-changelog",
+    ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
     path("api/config/", views.api_config, name="api-config"),
