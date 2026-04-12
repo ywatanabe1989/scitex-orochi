@@ -287,8 +287,15 @@ function appendMessage(msg) {
       /(?<![\/\w])#(\d+)\b/g,
       '<a class="issue-link" data-issue-num="$1" data-issue-label="#$1" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
     )
+    /* Auto-link plain URLs. The lookbehind only blocks URLs that are
+     * already inside an HTML attribute value (`="...` or `'...`); the
+     * previous version also blocked `>`, which mis-fired on URLs sitting
+     * right after a `<br>` tag (the prior `\n → <br>` substitution leaves
+     * `>` as the char immediately before any line-leading URL), so URLs
+     * at the start of a wrapped line never became clickable.
+     * todo#239 / msg 5961 / ywatanabe report msg 6058. */
     .replace(
-      /(?<![="'>])(https?:\/\/[^\s<>"')\]]+)/g,
+      /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
       '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
     );
   /* Fold long posts (>10 lines) */
