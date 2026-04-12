@@ -146,6 +146,29 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - If all agents agree immediately, someone should play devil's advocate — groupthink is a risk
 - Polite disagreement is valuable; silent agreement is not
 
+### GitHub Issue Conventions
+
+**Labels:**
+- `bug` / `fix` — defect
+- `feature` / `feat` — new functionality
+- `improvement` / `refactor` — code quality
+- `docs` — documentation
+- `test` — tests
+- `chore` — maintenance
+- `devops` — infrastructure
+- `research` — research activity (incl. IRB/ethics)
+- `paper` — manuscript writing
+- `grant` — funding applications
+- `perf` — performance
+
+**Title format** (Conventional Commits style):
+- `feat: short description`
+- `fix: short description`
+- `docs: short description`
+- `research: study topic`
+- `paper: manuscript title`
+- `grant: funding body`
+
 ### Git Workflow
 - **Default branch**: `main` (protected)
 - **Working branch**: `develop` — all agents commit here
