@@ -109,6 +109,14 @@ urlpatterns = [
         name="api-repo-changelog",
     ),
     path("api/threads/", views.api_threads, name="api-threads"),
+    # DM channels (todo#60)
+    path("api/dm/send/", views.api_dm_send, name="api-dm-send"),
+    path("api/dm/list/", views.api_dm_list, name="api-dm-list"),
+    path(
+        "api/dm/<str:channel_name>/history/",
+        views.api_dm_history,
+        name="api-dm-history",
+    ),
     path("api/resources/", views.api_resources, name="api-resources"),
     # Discovery
     path("api/discover/", views.api_discover, name="api-discover"),
