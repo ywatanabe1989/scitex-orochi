@@ -98,36 +98,56 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
 
 /* Collapsible sidebar sections */
 (function () {
-  var saved = {};
-  try {
-    saved = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
-  } catch (e) {
-    /* ignore */
-  }
-  document.querySelectorAll(".collapsible-heading").forEach(function (h2) {
-    var key = h2.textContent.trim();
-    var section = h2.nextElementSibling;
-    if (saved[key]) {
-      h2.classList.add("collapsed");
-      if (section) section.classList.add("collapsed");
+  /* Restore collapsed state on initial load */
+  function applySavedState() {
+    var saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
+    } catch (e) {
+      /* ignore */
     }
-    h2.addEventListener("click", function () {
-      var isCollapsed = h2.classList.toggle("collapsed");
-      if (section) section.classList.toggle("collapsed", isCollapsed);
-      try {
-        var state = JSON.parse(
-          localStorage.getItem("orochi_collapsed") || "{}",
-        );
-        if (isCollapsed) {
-          state[key] = true;
-        } else {
-          delete state[key];
-        }
-        localStorage.setItem("orochi_collapsed", JSON.stringify(state));
-      } catch (err) {
-        /* ignore */
+    document.querySelectorAll(".collapsible-heading").forEach(function (h2) {
+      var key = h2.textContent.trim();
+      var section = h2.nextElementSibling;
+      if (saved[key]) {
+        h2.classList.add("collapsed");
+        if (section) section.classList.add("collapsed");
       }
     });
+  }
+  applySavedState();
+  /* Re-apply when sidebar is re-rendered (e.g. after blocker count update) */
+  if (typeof MutationObserver !== "undefined") {
+    var sidebar = document.getElementById("sidebar");
+    if (sidebar) {
+      new MutationObserver(applySavedState).observe(sidebar, {
+        childList: true,
+        subtree: true,
+      });
+    }
+  }
+
+  /* Event delegation: works for dynamically inserted .collapsible-heading */
+  document.addEventListener("click", function (e) {
+    var h2 = e.target.closest(".collapsible-heading");
+    if (!h2) return;
+    var key = h2.textContent.trim();
+    var section = h2.nextElementSibling;
+    var isCollapsed = h2.classList.toggle("collapsed");
+    if (section) section.classList.toggle("collapsed", isCollapsed);
+    try {
+      var state = JSON.parse(
+        localStorage.getItem("orochi_collapsed") || "{}",
+      );
+      if (isCollapsed) {
+        state[key] = true;
+      } else {
+        delete state[key];
+      }
+      localStorage.setItem("orochi_collapsed", JSON.stringify(state));
+    } catch (err) {
+      /* ignore */
+    }
   });
 })();
 
