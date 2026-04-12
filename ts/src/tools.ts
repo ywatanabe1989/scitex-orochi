@@ -546,11 +546,11 @@ function scheduleSelfCommand(
   delayMs: number,
   label: string,
 ): { content: Array<{ type: string; text: string }> } {
-  const rawSession = process.env.OROCHI_AGENT;
+  const rawSession = OROCHI_AGENT;
   if (!rawSession) {
     return {
       content: [
-        { type: "text", text: "ERROR: OROCHI_AGENT env var not set" },
+        { type: "text", text: "ERROR: SCITEX_OROCHI_AGENT env var not set" },
       ],
     };
   }
@@ -560,7 +560,7 @@ function scheduleSelfCommand(
       content: [
         {
           type: "text",
-          text: `ERROR: OROCHI_AGENT contains unsafe characters: ${rawSession}`,
+          text: `ERROR: SCITEX_OROCHI_AGENT contains unsafe characters: ${rawSession}`,
         },
       ],
     };
