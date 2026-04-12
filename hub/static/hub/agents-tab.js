@@ -4,6 +4,10 @@
 var _agentsTabInterval = null;
 
 async function renderAgentsTab() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var grid = document.getElementById("agents-grid");
   try {
     var res = await fetch(apiUrl("/api/agents/registry"));
@@ -110,6 +114,10 @@ async function renderAgentsTab() {
   } catch (e) {
     console.error("Agents tab error:", e);
   }
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function livenessColor(liveness) {
@@ -197,7 +205,7 @@ function buildAgentRow(a) {
     escapeHtml(a.name) +
     '" title="Click to change avatar" onclick="event.stopPropagation();openAvatarPicker(\'' +
     escapeHtml(a.name).replace(/'/g, "\\'") +
-    "')" >' +
+    "')\">" +
     agentIcon +
     "</td>" +
     "<td>" +
