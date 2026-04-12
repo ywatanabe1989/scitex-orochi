@@ -16,6 +16,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
       - DJANGO_DEBUG=false
       - DJANGO_ALLOWED_HOSTS=.scitex-orochi.com,localhost,192.168.11.22,192.168.0.102
+      - SCITEX_OROCHI_MEDIA_ROOT=/data/media
       - DJANGO_CSRF_TRUSTED_ORIGINS=https://*.scitex-orochi.com,https://scitex-orochi.com
       - OROCHI_BASE_DOMAIN=scitex-orochi.com
       - SESSION_COOKIE_DOMAIN=.scitex-orochi.com
