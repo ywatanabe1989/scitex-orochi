@@ -100,12 +100,15 @@ Mamba agents can use `/loop` for recurring duties:
 - Avoid redundant acknowledgments when the original speaker can see the response via the channel.
 
 ### Git Workflow
-- **Base branch**: `develop` (not `main`)
-- **Direct commits to develop**: OK for small fixes (docs, typos, small features)
-- **Feature branches + PR**: Preferred for large changes (new agents, architecture, major refactors)
-- **Conflict resolution**: Rebase or merge as appropriate; don't force-push to develop
-- **Cross-agent parallelism**: Multiple agents can commit to develop simultaneously; pull before pushing
-- **Commit style**: Follow existing repo conventions. Include `Co-Authored-By:` trailer for agent commits.
+- **Default branch**: `main` (protected)
+- **Working branch**: `develop` — all agents commit here
+- **Never push directly to main** — always go through PR
+- **develop → main**: via PR with auto-merge (basic auto-merge is fine)
+- **Feature branches**: Optional for large changes; still target develop first, then PR to main
+- **Conflict resolution**: Rebase or merge; pull before push to avoid conflicts
+- **Cross-agent parallelism**: Multiple agents can commit to develop simultaneously
+- **CI/CD monitoring**: Periodically check that CI isn't failing on develop/main
+- **Commit style**: Follow repo conventions (feat/fix/docs/chore). Include `Co-Authored-By:` trailer for agent commits.
 
 ## Agent Roles (Summary)
 
