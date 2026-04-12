@@ -204,6 +204,12 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - **Before referencing external OSS examples**: verify the license allows derivative work under AGPL-3.0
 - **New repos**: start with LICENSE file containing AGPL-3.0 text
 
+### Issue Creation (Single Source of Truth)
+
+- **Primary repo**: `ywatanabe1989/todo` — ALL tasks must be created here (single source of truth)
+- **Project repos** (scitex-orochi, scitex-cloud, etc.): OPTIONAL — only create public-facing issues here if needed (bugs visible to external users, feature announcements)
+- **Rule**: Always create in `todo` first, then mirror to public project repo if needed with a link back
+
 ### Issue References (Cross-Repo)
 
 When referencing GitHub issues in fleet communication, always use the full `owner/repo#number` format to avoid collision between repos:
