@@ -466,10 +466,21 @@ async function fetchAgents() {
     window.__lastAgents = agents;
     if (typeof renderActivityTab === "function") renderActivityTab();
     var container = document.getElementById("agents");
+    /* Focus guard — see todo#225. This path fires on every WS
+     * presence/status event and on REST poll; mobile Safari can blur
+     * the compose textarea on large innerHTML swaps. */
+    var msgInput = document.getElementById("msg-input");
+    var inputHasFocus = msgInput && document.activeElement === msgInput;
+    var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+    var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
     if (agents.length === 0) {
       container.innerHTML = '<p id="no-agents">No agents connected</p>';
       var cEl = document.getElementById("sidebar-count-agents");
       if (cEl) cEl.textContent = "";
+      if (inputHasFocus && document.activeElement !== msgInput) {
+        msgInput.focus();
+        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
+      }
       return;
     }
     var cEl = document.getElementById("sidebar-count-agents");
@@ -708,6 +719,10 @@ async function fetchAgents() {
           restartAgent(btn.getAttribute("data-restart-name"), btn);
         });
       });
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
+    }
   } catch (e) {
     /* fetch error */
   }
