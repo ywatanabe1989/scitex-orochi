@@ -102,6 +102,10 @@ function positionMentionDropdown(inputEl) {
 }
 
 function showMentionDropdown(specialItems, agentItems) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   mentionSelectedIndex = 0;
   var html = "";
 
@@ -149,9 +153,17 @@ function showMentionDropdown(specialItems, agentItems) {
   mentionDropdown.innerHTML = html;
   mentionDropdown.classList.add("visible");
   positionMentionDropdown(mentionActiveInput);
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function hideMentionDropdown() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   mentionDropdown.classList.remove("visible");
   mentionDropdown.innerHTML = "";
   mentionSelectedIndex = -1;
@@ -161,6 +173,10 @@ function hideMentionDropdown() {
   mentionDropdown.style.bottom = "";
   mentionDropdown.style.left = "";
   mentionDropdown.style.width = "";
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function insertMention(name) {
