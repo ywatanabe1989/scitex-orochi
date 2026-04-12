@@ -22,9 +22,8 @@ import {
   maskUrl,
 } from "./src/config.js";
 
-// Captured once at sidecar startup — reflects when this agent process came up.
-const heartbeatStartTime = new Date().toISOString();
 import { addMessage } from "./src/message_buffer.js";
+import { spawnSync } from "child_process";
 import {
   handleContext,
   handleDownloadMedia,
@@ -120,12 +119,17 @@ const _dbg = (s: string) => {
 const _deliveredIds = new Set<string | number>();
 
 // ---------------------------------------------------------------------------
-// Registry heartbeat — per-agent sidecar POSTs structural metadata to
-// /api/agents/register/ every 30s while WS is connected. This replaces the
-// MBA-only agent_meta.py --push loop for fields that don't require transcript
-// parsing (pid/ppid/started_at/model/multiplexer/role/etc.). Transcript-
-// derived fields (context_pct, current_task, subagent_count, skills_loaded)
-// are intentionally omitted here and remain the job of agent_meta.py.
+// Registry heartbeat — thin pump.
+//
+// The sidecar shells out to
+//     scitex-agent-container status <agent> --json
+// which is the canonical source of truth for claude-hud-style metadata
+// (pid, ppid, multiplexer, context_pct, current_tool, subagent_count,
+// skills_loaded, machine, last_activity, model, started_at, workdir, ...).
+// The resulting dict is spread into the hub heartbeat payload so the
+// collection logic lives in exactly one place (the Python package) and
+// this TypeScript code stays a dumb pump. See commit 204efa6 in
+// scitex-agent-container for the companion implementation.
 // ---------------------------------------------------------------------------
 async function pushRegistryHeartbeat(): Promise<void> {
   if (process.env.SCITEX_OROCHI_REGISTRY_DISABLE === "1") return;
@@ -133,28 +137,38 @@ async function pushRegistryHeartbeat(): Promise<void> {
     _dbg("heartbeat: no OROCHI_TOKEN, skipping");
     return;
   }
-  const shortHost = hostname().split(".")[0];
+  let meta: Record<string, unknown> = {};
+  try {
+    const result = spawnSync(
+      "scitex-agent-container",
+      ["status", OROCHI_AGENT, "--json"],
+      { encoding: "utf-8", timeout: 5000 },
+    );
+    if (result.status !== 0) {
+      console.error(
+        `[orochi-heartbeat] status command failed: ${(result.stderr || "").slice(0, 200)}`,
+      );
+      _dbg(`heartbeat: status cmd rc=${result.status}`);
+      return;
+    }
+    meta = JSON.parse(result.stdout);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[orochi-heartbeat] status spawn failed: ${msg}`);
+    _dbg(`heartbeat: spawn err ${msg}`);
+    return;
+  }
+
   const payload = {
+    // Fields the hub always needs, regardless of what meta contains.
+    ...meta,
     token: OROCHI_TOKEN,
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    machine: shortHost,
-    model:
-      OROCHI_MODEL ||
-      process.env.SCITEX_OROCHI_MODEL ||
-      process.env.CLAUDE_MODEL ||
-      "",
-    multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "",
-    project: process.env.SCITEX_OROCHI_PROJECT || OROCHI_AGENT,
-    workdir: process.cwd(),
-    pid: process.pid,
-    ppid: process.ppid,
-    started_at: heartbeatStartTime,
-    version: process.env.SCITEX_OROCHI_AGENT_META_VERSION || "0.2",
-    runtime: "claude-code",
     channels: OROCHI_CHANNELS,
   };
+
   const url = `${buildHttpBase().replace(/\/$/, "")}/api/agents/register/`;
   try {
     const res = await fetch(url, {
