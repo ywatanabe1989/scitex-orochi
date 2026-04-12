@@ -53,7 +53,7 @@ from hub.views.landing import (  # noqa: F401
 )
 from hub.views.telegram import telegram_webhook  # noqa: F401
 from hub.views.webhook_github import github_webhook  # noqa: F401
-from hub.views.upload import api_upload, api_upload_base64  # noqa: F401
+from hub.views.upload import api_upload, api_upload_base64, api_media_by_hash  # noqa: F401
 from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
     workspace_settings_view,

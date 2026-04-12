@@ -11,7 +11,7 @@ import {
 } from "fs";
 import { basename, dirname, join as pathJoin } from "path";
 import { exec, execSync, spawn } from "child_process";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import {
   OROCHI_AGENT,
   OROCHI_TOKEN,
@@ -445,8 +445,41 @@ export async function handleUploadMedia(args: {
     }
 
     const fileData = readFileSync(args.file_path);
-    const b64 = fileData.toString("base64");
     const filename = basename(args.file_path);
+
+    // --- Content-addressable dedup: check hash before uploading ---
+    const contentHash = createHash("sha256").update(fileData).digest("hex");
+    const hashCheckUrl = `${httpBase}/api/media/by-hash/${contentHash}${tokenParam("?")}`;
+    try {
+      const headResp = await fetch(hashCheckUrl, {
+        method: "HEAD",
+        headers: buildFetchHeaders(),
+      });
+      if (headResp.ok) {
+        // File already on hub — fetch metadata and return existing URL
+        const getResp = await fetch(hashCheckUrl, { headers: buildFetchHeaders() });
+        if (getResp.ok) {
+          const existing = (await getResp.json()) as { url?: string };
+          const mediaUrl = existing.url
+            ? existing.url.startsWith("http")
+              ? existing.url
+              : `${httpBase}${existing.url}`
+            : "unknown";
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Uploaded ${filename} -> ${mediaUrl} (deduplicated, already on hub)`,
+              },
+            ],
+          };
+        }
+      }
+    } catch {
+      // Dedup check failed — fall through to normal upload
+    }
+
+    const b64 = fileData.toString("base64");
 
     const resp = await fetch(
       `${httpBase}/api/upload-base64${tokenParam("?")}`,
@@ -473,18 +506,19 @@ export async function handleUploadMedia(args: {
       };
     }
 
-    const result = (await resp.json()) as { url?: string; filename?: string };
+    const result = (await resp.json()) as { url?: string; filename?: string; deduplicated?: boolean };
     const mediaUrl = result.url
       ? result.url.startsWith("http")
         ? result.url
         : `${httpBase}${result.url}`
       : "unknown";
+    const dedupeNote = result.deduplicated ? " (deduplicated)" : "";
 
     return {
       content: [
         {
           type: "text",
-          text: `Uploaded ${filename} -> ${mediaUrl}`,
+          text: `Uploaded ${filename} -> ${mediaUrl}${dedupeNote}`,
         },
       ],
     };
