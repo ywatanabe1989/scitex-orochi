@@ -99,6 +99,14 @@ Mamba agents can use `/loop` for recurring duties:
 - During quiet periods (overnight, no active issues), reduce channel posts. Only post when there are actionable items or status changes.
 - Avoid redundant acknowledgments when the original speaker can see the response via the channel.
 
+### Git Workflow
+- **Base branch**: `develop` (not `main`)
+- **Direct commits to develop**: OK for small fixes (docs, typos, small features)
+- **Feature branches + PR**: Preferred for large changes (new agents, architecture, major refactors)
+- **Conflict resolution**: Rebase or merge as appropriate; don't force-push to develop
+- **Cross-agent parallelism**: Multiple agents can commit to develop simultaneously; pull before pushing
+- **Commit style**: Follow existing repo conventions. Include `Co-Authored-By:` trailer for agent commits.
+
 ## Agent Roles (Summary)
 
 - **head** — General-purpose orchestrator on a host machine. Delegates work to subagents, stays responsive to messages.
