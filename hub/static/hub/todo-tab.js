@@ -254,9 +254,17 @@ function _passesGroupFilter(issue) {
 }
 
 function _renderTodoFromCache(issues) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("todo-grid");
   if (!issues || issues.length === 0) {
     container.innerHTML = '<p class="empty-notice">No issues</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
 
@@ -264,6 +272,10 @@ function _renderTodoFromCache(issues) {
   issues = issues.filter(_passesGroupFilter);
   if (issues.length === 0) {
     container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
 
@@ -296,9 +308,23 @@ function _renderTodoFromCache(issues) {
   }
   container.innerHTML = html;
   attachTodoEvents(container);
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 async function fetchTodoList(forceRefresh) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  var _restoreFocus = function () {
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
+  };
   var state = _todoBackendState();
   var now = Date.now();
 
@@ -332,6 +358,7 @@ async function fetchTodoList(forceRefresh) {
       }
       document.getElementById("todo-grid").innerHTML =
         '<p class="empty-notice">' + msg + "</p>";
+      _restoreFocus();
       return;
     }
     var issues = await res.json();
@@ -340,6 +367,7 @@ async function fetchTodoList(forceRefresh) {
     var container = document.getElementById("todo-grid");
     if (!issues || issues.length === 0) {
       container.innerHTML = '<p class="empty-notice">No issues</p>';
+      _restoreFocus();
       return;
     }
 
@@ -347,6 +375,7 @@ async function fetchTodoList(forceRefresh) {
     issues = issues.filter(_passesGroupFilter);
     if (issues.length === 0) {
       container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+      _restoreFocus();
       return;
     }
 
@@ -381,6 +410,7 @@ async function fetchTodoList(forceRefresh) {
     container.innerHTML = html;
 
     attachTodoEvents(container);
+    _restoreFocus();
   } catch (e) {
     console.error("TODO list fetch error:", e);
   }
