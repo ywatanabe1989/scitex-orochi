@@ -122,14 +122,22 @@ const _deliveredIds = new Set<string | number>();
 // Registry heartbeat — thin pump.
 //
 // The sidecar shells out to
-//     scitex-agent-container status <agent> --json
-// which is the canonical source of truth for claude-hud-style metadata
-// (pid, ppid, multiplexer, context_pct, current_tool, subagent_count,
-// skills_loaded, machine, last_activity, model, started_at, workdir, ...).
-// The resulting dict is spread into the hub heartbeat payload so the
-// collection logic lives in exactly one place (the Python package) and
-// this TypeScript code stays a dumb pump. See commit 204efa6 in
-// scitex-agent-container for the companion implementation.
+//     ~/.scitex/orochi/scripts/agent_meta.py <agent>
+// which reads the live Claude Code session jsonl transcript and emits
+// claude-hud-style metadata (alive, subagents, context_pct, current_tool,
+// last_activity, model, ...) as a single JSON line. The resulting dict is
+// spread into the hub heartbeat payload.
+//
+// Historical note: this used to call `scitex-agent-container status
+// <agent> --json` instead, but most fleet agents are launched directly via
+// tmux + raw `claude` (not via `scitex-agent-container start`), so they are
+// invisible to scitex-agent-container's own registry. The status command
+// returned `{"error": "Agent X not found in registry"}` with rc=1 for every
+// such agent, the spawn was treated as a hard failure, and pushRegistryHeartbeat
+// returned without ever populating the hub's current_task / subagents /
+// context_pct fields. The Activity tab then rendered "no task / 0 subs / no
+// ctx" for everyone — exactly the symptom ywatanabe flagged at msg#6382. The
+// agent_meta.py path bypasses the broken registry lookup entirely (todo#155).
 // ---------------------------------------------------------------------------
 async function pushRegistryHeartbeat(): Promise<void> {
   if (process.env.SCITEX_OROCHI_REGISTRY_DISABLE === "1") return;
@@ -137,36 +145,59 @@ async function pushRegistryHeartbeat(): Promise<void> {
     _dbg("heartbeat: no OROCHI_TOKEN, skipping");
     return;
   }
+  const agentMetaPath = join(
+    homedir(),
+    ".scitex",
+    "orochi",
+    "scripts",
+    "agent_meta.py",
+  );
   let meta: Record<string, unknown> = {};
   try {
-    const result = spawnSync(
-      "scitex-agent-container",
-      ["status", OROCHI_AGENT, "--json"],
-      { encoding: "utf-8", timeout: 5000 },
-    );
+    const result = spawnSync(agentMetaPath, [OROCHI_AGENT], {
+      encoding: "utf-8",
+      timeout: 5000,
+    });
     if (result.status !== 0) {
       console.error(
-        `[orochi-heartbeat] status command failed: ${(result.stderr || "").slice(0, 200)}`,
+        `[orochi-heartbeat] agent_meta.py failed: ${(result.stderr || "").slice(0, 200)}`,
       );
-      _dbg(`heartbeat: status cmd rc=${result.status}`);
+      _dbg(`heartbeat: agent_meta rc=${result.status}`);
       return;
     }
     meta = JSON.parse(result.stdout);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[orochi-heartbeat] status spawn failed: ${msg}`);
+    console.error(`[orochi-heartbeat] agent_meta spawn failed: ${msg}`);
     _dbg(`heartbeat: spawn err ${msg}`);
     return;
   }
 
+  // agent_meta.py field names → hub /api/agents/register field names.
+  // The hub renderer (activity-tab.js) reads `current_task`,
+  // `subagent_count`, `context_pct`, `model`. agent_meta.py emits
+  // `current_tool`, `subagents`, `context_pct`, `model`. Translate.
+  const currentTool = (meta["current_tool"] as string | undefined) || "";
+  const subagentCount =
+    typeof meta["subagents"] === "number"
+      ? (meta["subagents"] as number)
+      : Array.isArray(meta["subagents"])
+        ? (meta["subagents"] as unknown[]).length
+        : 0;
   const payload = {
-    // Fields the hub always needs, regardless of what meta contains.
+    // Pass the raw meta through too in case downstream consumers want
+    // the original field names — but the hub-canonical fields below
+    // take precedence in the spread merge.
     ...meta,
+    current_task: currentTool,
+    subagent_count: subagentCount,
     token: OROCHI_TOKEN,
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
     channels: OROCHI_CHANNELS,
+    machine: process.env.SCITEX_OROCHI_MACHINE || hostname() || "",
+    multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 
   const url = `${buildHttpBase().replace(/\/$/, "")}/api/agents/register/`;
