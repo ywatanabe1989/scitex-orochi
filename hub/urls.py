@@ -2,8 +2,10 @@
 
 import os
 
+from django.conf import settings
 from django.http import HttpResponse
-from django.urls import path
+from django.urls import path, re_path
+from django.views.static import serve as static_serve
 
 from hub import views
 
@@ -19,9 +21,17 @@ def _serve_sw(request):
         return HttpResponse("", status=404)
 
 
+_media_url = settings.MEDIA_URL.strip("/")
+
 urlpatterns = [
     # Service worker must be at root for proper scope
     path("sw.js", _serve_sw, name="sw"),
+    # Media files (uploaded images, attachments)
+    re_path(
+        rf"^{_media_url}/(?P<path>.*)$",
+        static_serve,
+        {"document_root": settings.MEDIA_ROOT},
+    ),
     # Auth
     path("signin/", views.signin_view, name="signin"),
     path("signup/", views.signup_view, name="signup"),
