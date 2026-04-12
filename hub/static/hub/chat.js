@@ -545,6 +545,13 @@ function filterMessages() {
 }
 
 async function loadHistory() {
+  /* If a channel is currently selected, delegate to loadChannelHistory so we
+   * only fetch that channel's messages.  This prevents a race/flash where the
+   * full all-channels response could briefly render before the client-side
+   * filter hides non-matching messages (todo#247). */
+  if (currentChannel) {
+    return loadChannelHistory(currentChannel);
+  }
   try {
     var res = await fetch(apiUrl("/api/messages/?limit=100"), {
       credentials: "same-origin",
@@ -736,6 +743,11 @@ async function loadChannelHistory(channel) {
       if (typeof _renderAttachmentTray === "function") _renderAttachmentTray();
     }
 
+    historyLoaded = true;
+    /* If the page was loaded with ?thread=<id>, auto-open that thread now */
+    if (typeof applyThreadUrlOnLoad === "function") {
+      try { applyThreadUrlOnLoad(); } catch (_) {}
+    }
     if (typeof fetchReactionsForMessages === "function") {
       var ids = messages
         .map(function (r) {

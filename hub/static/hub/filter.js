@@ -263,22 +263,27 @@ function runFilter() {
       (content ? content.textContent : "");
     var show = fuzzyMatch(q, text);
     if (show && allTags.length > 0) {
-      show = allTags.every(function (tag) {
-        var val = tag.value.toLowerCase();
-        if (tag.type === "agent") {
-          return fuzzyMatch(
-            val,
-            (sender ? sender.textContent : "").toLowerCase(),
-          );
-        }
-        if (tag.type === "channel") {
-          return fuzzyMatch(
-            val,
-            (el.getAttribute("data-channel") || "").toLowerCase(),
-          );
-        }
-        return fuzzyMatch(val, text.toLowerCase());
-      });
+      /* Group agent tags for OR (union) logic; other tags stay AND */
+      var agentTags = allTags.filter(function (t) { return t.type === "agent"; });
+      var otherTags = allTags.filter(function (t) { return t.type !== "agent"; });
+      if (agentTags.length > 0) {
+        var senderText = (sender ? sender.textContent : "").toLowerCase();
+        show = agentTags.some(function (tag) {
+          return fuzzyMatch(tag.value.toLowerCase(), senderText);
+        });
+      }
+      if (show && otherTags.length > 0) {
+        show = otherTags.every(function (tag) {
+          var val = tag.value.toLowerCase();
+          if (tag.type === "channel") {
+            return fuzzyMatch(
+              val,
+              (el.getAttribute("data-channel") || "").toLowerCase(),
+            );
+          }
+          return fuzzyMatch(val, text.toLowerCase());
+        });
+      }
     }
     if (show && currentChannel) {
       show = el.getAttribute("data-channel") === currentChannel;
