@@ -374,3 +374,78 @@
     padding-bottom: calc(2px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* --- Long-press context menu (mobile only) --- */
+.long-press-menu {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse), (max-width: 600px) {
+  .long-press-menu {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    z-index: 10000;
+    min-width: 180px;
+    padding: 6px;
+    background: #1f2329;
+    color: #f0f0f0;
+    border: 1px solid #3a3f47;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    animation: longPressFadeIn 120ms ease-out;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .long-press-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font-size: 15px;
+    text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .long-press-item:active {
+    background: #2c333d;
+  }
+  .long-press-item.danger {
+    color: #ff6b6b;
+  }
+  .long-press-icon {
+    font-size: 18px;
+    width: 22px;
+    text-align: center;
+  }
+  .long-press-label {
+    flex: 1;
+  }
+  /* Disable the iOS long-press text selection / callout on messages so the
+   * custom menu can take over cleanly. */
+  #messages .msg {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Allow selection while editing a message */
+  #messages .msg .msg-edit-container,
+  #messages .msg .msg-edit-input {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+@keyframes longPressFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
