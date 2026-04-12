@@ -3,8 +3,9 @@
 import os
 
 from django.conf import settings
+from django.contrib.auth import views as auth_views
 from django.http import HttpResponse
-from django.urls import path, re_path
+from django.urls import path, re_path, reverse_lazy
 from django.views.static import serve as static_serve
 
 from hub import views
@@ -36,6 +37,21 @@ urlpatterns = [
     path("signin/", views.signin_view, name="signin"),
     path("signup/", views.signup_view, name="signup"),
     path("signout/", views.signout_view, name="signout"),
+    path(
+        "password/change/",
+        auth_views.PasswordChangeView.as_view(
+            template_name="hub/password_change.html",
+            success_url=reverse_lazy("password-change-done"),
+        ),
+        name="password-change",
+    ),
+    path(
+        "password/change/done/",
+        auth_views.PasswordChangeDoneView.as_view(
+            template_name="hub/password_change_done.html",
+        ),
+        name="password-change-done",
+    ),
     # Backward compat
     path("login/", views.signin_view, name="login"),
     path("logout/", views.signout_view, name="logout"),
