@@ -204,6 +204,22 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - **Before referencing external OSS examples**: verify the license allows derivative work under AGPL-3.0
 - **New repos**: start with LICENSE file containing AGPL-3.0 text
 
+### Directory Conventions
+
+SciTeX uses two parallel `.scitex/` directory roots:
+
+**`~/.scitex/`** — User-global state (shared across all projects)
+- `~/.scitex/orochi/` — Orochi fleet (agents, workspaces, skills, channels)
+- `~/.scitex/agent-container/` — agent-container state
+- `~/.scitex/<pkg>/` — per-package global config (drop the `scitex-` prefix)
+
+**`<project-root>/.scitex/`** — Project-local state
+- `myproject/.scitex/<pkg>/` — per-package project state (e.g., `myproject/.scitex/io/cache/`)
+- Same naming: drop the `scitex-` prefix from package name
+- Usually gitignored or git-crypt encrypted
+
+**Naming rule**: For a package called `scitex-foo`, its state goes in `~/.scitex/foo/` (global) or `<project>/.scitex/foo/` (local). Never include the `scitex-` prefix in the path.
+
 ### Issue Creation (Single Source of Truth)
 
 - **Primary repo**: `ywatanabe1989/todo` — ALL tasks must be created here (single source of truth)
