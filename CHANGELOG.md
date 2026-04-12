@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.5] - 2026-04-13
+
+### 🚀 Features
+- feat(hub/voice): right-click the mic button to cycle language
+  (EN ↔ JA), keyboard shortcuts to toggle the mic without touching
+  the mouse (`Ctrl+M` cross-platform, `Alt+V` macOS-friendly backup).
+  Hover tooltip now reflects the current language and the shortcut
+  hint. ywatanabe at msg#6515 ("右クリックで言語選択") and msg#6516
+  ("ショートカットキーがあるとよいね").
+
 ## [0.10.4] - 2026-04-13
 
 ### 🐛 Bug Fixes

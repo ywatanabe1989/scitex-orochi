@@ -38,15 +38,51 @@
    * results can be replaced in-place without accumulating duplicates. */
   var baseText = "";
 
-  btn.addEventListener("click", function () {
+  function _toggleVoice() {
     if (isListening) {
       recognition.stop();
     } else {
       var input = document.getElementById("msg-input");
       baseText = input.value;
-      recognition.start();
+      try {
+        recognition.start();
+      } catch (_) {}
+    }
+  }
+  function _cycleLang() {
+    langIdx = (langIdx + 1) % VOICE_LANGS.length;
+    recognition.lang = VOICE_LANGS[langIdx].code;
+    if (langBtn) langBtn.textContent = VOICE_LANGS[langIdx].label;
+    btn.title =
+      (isListening ? "Stop voice input" : "Voice input") +
+      " · " + VOICE_LANGS[langIdx].label +
+      " · right-click to change language · Ctrl+M to toggle";
+  }
+  btn.addEventListener("click", _toggleVoice);
+  /* Right-click on the mic button cycles language without leaving the
+   * keyboard shortcut path or needing the separate EN/JA pill button.
+   * msg#6515 — ywatanabe wants language switch on right-click. */
+  btn.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+    _cycleLang();
+  });
+  /* Keyboard shortcut: Ctrl+M (or Cmd+M) toggles voice input from
+   * anywhere on the page. msg#6516 — ywatanabe wants no-mouse access.
+   * Cmd+M is reserved by macOS Safari (minimize), so we accept the
+   * Ctrl variant on every platform and the Alt+V backup on macOS. */
+  document.addEventListener("keydown", function (e) {
+    if (
+      (e.ctrlKey && (e.key === "m" || e.key === "M")) ||
+      (e.altKey && (e.key === "v" || e.key === "V"))
+    ) {
+      e.preventDefault();
+      _toggleVoice();
     }
   });
+  /* Initial title with the new shortcut hint. */
+  btn.title =
+    "Voice input · " + VOICE_LANGS[langIdx].label +
+    " · right-click to change language · Ctrl+M to toggle";
 
   recognition.addEventListener("start", function () {
     isListening = true;
