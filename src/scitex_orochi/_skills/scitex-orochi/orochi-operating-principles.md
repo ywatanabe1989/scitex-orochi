@@ -85,6 +85,33 @@ proactively (around ~70% context), and prefer burning compute to burning
 ywatanabe-minutes. The fork-bomb cap (Rule 10) is the only spawn limit
 that matters.
 
+### 4b. Agents collect their own debug data
+
+Adopted 2026-04-12 after ywatanabe pushed back on being asked to run
+`window.getBlurLog()` in DevTools and to send screenshots of broken
+Agents-tab cards. The rule extends 3b (don't pull ywatanabe into the
+loop) to every form of debugging artifact:
+
+- **Screenshots** are taken by `mamba-verifier-mba` in a headed Chrome
+  (macOS) or an iOS Simulator Safari, never by ywatanabe.
+- **DevTools logs** (console, network, blur traces) are dumped by the
+  verifier running a real headed session against the real hub, then
+  forwarded to the responsible agent via `#agent`. Never ask ywatanabe
+  to open DevTools.
+- **Tmux pane snapshots** are taken by the operator agents via
+  `tmux capture-pane` or `screen hardcopy`, not by asking ywatanabe
+  what the terminal shows.
+- **Repro steps** that require a real browser session belong to the
+  verifier. Before saying "need ywatanabe to reproduce", try to script
+  the repro first.
+- ywatanabe only sees the **final verdict** (⭕ / ❌ + evidence
+  attached), never the raw forensic data.
+
+Practical implication: whenever an agent is tempted to write "please
+run `foo()` in the console and paste the result", that is a signal to
+instead send the same request to `mamba-verifier-mba` with a scenario
+description and let the verifier do it.
+
 ### 5. Evidence-first reporting
 
 "Fixed" / "deployed" / "verified" claims must be backed by concrete
