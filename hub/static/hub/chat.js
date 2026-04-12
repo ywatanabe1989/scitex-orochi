@@ -399,15 +399,17 @@ async function loadHistory() {
     messages.reverse();
     var container = document.getElementById("messages");
 
-    /* Preserve the textarea value across history rebuilds.  On mobile
-     * Safari, large DOM mutations (innerHTML="") while the keyboard is
-     * up can cause the browser to reset or blur the focused textarea,
-     * losing the user's in-progress message. */
+    /* Preserve the textarea value and pending attachments across history
+     * rebuilds.  On mobile Safari, large DOM mutations (innerHTML="")
+     * while the keyboard is up can cause the browser to reset or blur
+     * the focused textarea, losing the user's in-progress message. */
     var msgInput = document.getElementById("msg-input");
     var savedValue = msgInput ? msgInput.value : "";
     var hadFocus = msgInput && document.activeElement === msgInput;
     var savedStart = msgInput ? msgInput.selectionStart : 0;
     var savedEnd = msgInput ? msgInput.selectionEnd : 0;
+    /* Save pending attachments (uploaded files waiting to be sent) */
+    var savedAttachments = (typeof pendingAttachments !== "undefined") ? pendingAttachments.slice() : [];
 
     container.innerHTML = "";
     knownMessageKeys = {};
@@ -441,6 +443,11 @@ async function loadHistory() {
         msgInput.focus();
         try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
       }
+    }
+    /* Restore pending attachments if they were lost */
+    if (savedAttachments.length && typeof pendingAttachments !== "undefined" && !pendingAttachments.length) {
+      pendingAttachments = savedAttachments;
+      if (typeof _renderAttachmentTray === "function") _renderAttachmentTray();
     }
 
     historyLoaded = true;
@@ -518,12 +525,13 @@ async function loadChannelHistory(channel) {
     messages.reverse();
     var container = document.getElementById("messages");
 
-    /* Preserve textarea value -- see loadHistory for rationale */
+    /* Preserve textarea value + attachments -- see loadHistory */
     var msgInput = document.getElementById("msg-input");
     var savedValue = msgInput ? msgInput.value : "";
     var hadFocus = msgInput && document.activeElement === msgInput;
     var savedStart = msgInput ? msgInput.selectionStart : 0;
     var savedEnd = msgInput ? msgInput.selectionEnd : 0;
+    var savedAttachments = (typeof pendingAttachments !== "undefined") ? pendingAttachments.slice() : [];
 
     container.innerHTML = "";
     knownMessageKeys = {};
@@ -557,6 +565,11 @@ async function loadChannelHistory(channel) {
         msgInput.focus();
         try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
       }
+    }
+    /* Restore pending attachments */
+    if (savedAttachments.length && typeof pendingAttachments !== "undefined" && !pendingAttachments.length) {
+      pendingAttachments = savedAttachments;
+      if (typeof _renderAttachmentTray === "function") _renderAttachmentTray();
     }
 
     if (typeof fetchReactionsForMessages === "function") {
