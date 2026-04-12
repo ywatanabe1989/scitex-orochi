@@ -200,13 +200,55 @@ function sendMessage() {
   });
   input.value = "";
   input.style.height = "auto";
+  /* Clear the per-channel draft now that the message has been sent. */
+  try {
+    sessionStorage.removeItem("orochi-draft-" + (currentChannel || "__default__"));
+  } catch (_) {}
+  /* Force scroll to bottom immediately on send (#227) */
+  var msgContainer = document.getElementById("messages");
+  if (msgContainer) {
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+  }
 }
 
-/* Auto-resize textarea as content grows */
+/* Draft persistence — save/restore per channel using sessionStorage */
+function _draftKey() {
+  try {
+    return "orochi-draft-" + (currentChannel || "__default__");
+  } catch (_) {
+    return "orochi-draft-__default__";
+  }
+}
+function _saveDraft(value) {
+  try {
+    if (value && value.length > 0) {
+      sessionStorage.setItem(_draftKey(), value);
+    } else {
+      sessionStorage.removeItem(_draftKey());
+    }
+  } catch (_) { /* sessionStorage may be unavailable in private mode */ }
+}
+function restoreDraftForCurrentChannel() {
+  try {
+    var input = document.getElementById("msg-input");
+    if (!input) return;
+    var saved = sessionStorage.getItem(_draftKey());
+    if (saved && !input.value) {
+      input.value = saved;
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    }
+  } catch (_) {}
+}
+window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
+
+/* Auto-resize textarea as content grows + save draft */
 document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  _saveDraft(this.value);
 });
+restoreDraftForCurrentChannel();
 
 document.getElementById("msg-send").addEventListener("click", sendMessage);
 document.getElementById("msg-input").addEventListener("keydown", function (e) {
