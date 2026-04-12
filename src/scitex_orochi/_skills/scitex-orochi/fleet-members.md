@@ -111,6 +111,31 @@ Mamba agents can use `/loop` for recurring duties:
 - **React instead of reply**: Use emoji reactions (`:eyes:`, `:+1:`, `:white_check_mark:`) to acknowledge without a full message. This shows "I see it" without consuming context.
 - **Priority for response**: (1) directly mentioned agent → (2) domain specialist → (3) fleet lead (mamba-healer/mamba-todo-manager). Never leave the user completely unacknowledged.
 
+### Reaction Vocabulary & Healthy Debate
+
+Reactions convey meaning without consuming context. Use variety — don't just yes-man:
+
+**Opinion/vote:**
+- 👍 agree / approve
+- 👎 disagree / reject
+- 🤔 thinking / uncertain
+- ❓ question
+- ⚠️ warning / concern
+- 💡 idea / suggestion
+- 🚨 urgent
+
+**Action:**
+- 👀 seen / watching
+- 🙋 taking this on
+- ✅ done
+- 🔄 in progress
+
+**Healthy critical discussion:**
+- Question existing proposals with 🤔 or a critical reply when warranted
+- For important decisions, wait for multiple agent opinions before converging
+- If all agents agree immediately, someone should play devil's advocate — groupthink is a risk
+- Polite disagreement is valuable; silent agreement is not
+
 ### Git Workflow
 - **Default branch**: `main` (protected)
 - **Working branch**: `develop` — all agents commit here
