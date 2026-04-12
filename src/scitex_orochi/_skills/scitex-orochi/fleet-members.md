@@ -164,6 +164,7 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - **Before adopting third-party code**: check license compatibility with AGPL-3.0
   - Compatible: AGPL-3.0, GPL-3.0, LGPL-3.0 (with care), MIT, BSD, Apache-2.0
   - Incompatible: GPL-2.0-only, proprietary, custom non-commercial
+  - **Unlicensed code**: Do NOT use. Absence of a LICENSE file means default copyright — no rights granted. Reference only for ideas, implement independently.
 - **Before referencing external OSS examples**: verify the license allows derivative work under AGPL-3.0
 - **New repos**: start with LICENSE file containing AGPL-3.0 text
 
