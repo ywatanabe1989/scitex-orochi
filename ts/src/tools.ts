@@ -489,7 +489,12 @@ export async function handleUploadMedia(args: {
         body: JSON.stringify({
           data: b64,
           filename,
+          // channel + sender → server creates a Message row with this file
+          // as an attachment so it shows in the Files tab and the channel
+          // feed. Without these the upload was an orphan blob (todo#155
+          // sibling, msg#6425). Default channel kept for backward compat.
           channel: args.channel || "#general",
+          sender: OROCHI_AGENT,
         }),
       },
     );

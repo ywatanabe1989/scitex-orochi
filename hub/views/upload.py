@@ -199,7 +199,26 @@ def api_upload(request):
 @_login_or_token_required
 @require_POST
 def api_upload_base64(request):
-    """POST /api/upload-base64 -- base64-encoded file upload (sketches)."""
+    """POST /api/upload-base64 -- base64-encoded file upload.
+
+    Body: {
+        "data": "<base64>",
+        "filename": "foo.md",
+        "mime_type": "text/markdown",  # optional, sniffed from filename if absent
+        "channel": "#ywatanabe",        # optional — when present, also creates a
+                                        #   Message row with attachments=[file]
+                                        #   so the file shows in the Files tab.
+                                        #   Without this, the file lands on disk
+                                        #   but is invisible to api_media which
+                                        #   only reads Message.metadata.attachments.
+        "sender": "agent-name",         # optional — sender for the auto-message
+                                        #   when channel is set; falls back to
+                                        #   the workspace token's owner.
+    }
+
+    Response: file metadata dict; if a message was created, response also
+    includes "message_id".
+    """
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -208,6 +227,8 @@ def api_upload_base64(request):
     b64_data = body.get("data", "")
     filename = body.get("filename", "upload")
     mime_type = body.get("mime_type", "")
+    channel_name = (body.get("channel") or "").strip()
+    sender_name = (body.get("sender") or "").strip()
 
     if not b64_data:
         return JsonResponse({"error": "No data field"}, status=400)
@@ -221,6 +242,75 @@ def api_upload_base64(request):
         result = _save_to_media(data, filename, mime_type)
     except ValueError as exc:
         return JsonResponse({"error": str(exc)}, status=413)
+
+    # If the caller passed a channel, persist a Message row carrying this
+    # file as an attachment so the Files tab (api_media) and the channel
+    # feed both see the upload. Without this, agents using upload_media
+    # alone produce orphaned blobs that never appear in the dashboard.
+    if channel_name:
+        try:
+            from hub.models import Channel, Message
+            from hub.views._helpers import get_workspace
+            from channels.layers import get_channel_layer
+            from asgiref.sync import async_to_sync
+
+            workspace = get_workspace(request)
+            ch, _ = Channel.objects.get_or_create(
+                workspace=workspace, name=channel_name
+            )
+            sender = sender_name or (
+                request.user.username
+                if getattr(request, "user", None)
+                and request.user.is_authenticated
+                else "agent"
+            )
+            sender_type = (
+                "human"
+                if getattr(request, "user", None)
+                and request.user.is_authenticated
+                else "agent"
+            )
+            attachment_meta = {
+                "url": result.get("url"),
+                "filename": result.get("filename"),
+                "mime_type": result.get("mime_type"),
+                "size": result.get("size"),
+                "file_id": result.get("file_id"),
+            }
+            msg = Message.objects.create(
+                workspace=workspace,
+                channel=ch,
+                sender=sender,
+                sender_type=sender_type,
+                content="",
+                metadata={"attachments": [attachment_meta]},
+            )
+            result["message_id"] = msg.id
+            # Broadcast to live dashboard listeners.
+            try:
+                layer = get_channel_layer()
+                if layer is not None:
+                    async_to_sync(layer.group_send)(
+                        f"workspace_{workspace.id}",
+                        {
+                            "type": "chat.message",
+                            "id": msg.id,
+                            "sender": sender,
+                            "sender_type": sender_type,
+                            "channel": channel_name,
+                            "text": "",
+                            "ts": msg.ts.isoformat(),
+                            "metadata": {"attachments": [attachment_meta]},
+                        },
+                    )
+            except Exception:
+                pass
+        except Exception as exc:  # noqa: BLE001 — never block the upload
+            log.warning(
+                "[upload] auto-message creation failed for %s: %s",
+                filename,
+                exc,
+            )
 
     status_code = 200 if result.get("deduplicated") else 201
     return JsonResponse(result, status=status_code)
