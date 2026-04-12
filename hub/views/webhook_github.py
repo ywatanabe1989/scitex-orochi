@@ -25,7 +25,7 @@ from hub.models import Channel, Message, Workspace
 log = logging.getLogger("orochi.github")
 
 _WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
-_TARGET_CHANNEL = os.environ.get("GITHUB_WEBHOOK_CHANNEL", "#general")
+_TARGET_CHANNEL = os.environ.get("GITHUB_WEBHOOK_CHANNEL", "#progress")
 
 
 def _verify_signature(body: bytes, header: str) -> bool:
