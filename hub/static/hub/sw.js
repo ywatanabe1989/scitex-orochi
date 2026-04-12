@@ -26,6 +26,14 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Skip non-GET requests entirely — Cache.put() only supports GET, and
+  // POST/PUT/DELETE used to throw the noisy
+  //   "Failed to execute 'put' on 'Cache': Request method 'POST' is unsupported"
+  // every time the dashboard sent a message or registered a heartbeat.
+  if (event.request.method !== "GET") {
+    return; // Let the browser handle it directly, no caching.
+  }
+
   const url = new URL(event.request.url);
 
   // Network-first for API calls and WebSocket upgrades

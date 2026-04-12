@@ -44,12 +44,16 @@ function _fetchCrossRepoTitle(repo, num, cb) {
   }
   if (issueTitleInflight[key]) return;
   issueTitleInflight[key] = true;
-  var url =
-    apiUrl("/api/github/issue-title") +
-    "?repo=" +
+  /* Build the path with query params first, then let apiUrl() add
+   * '&token=' (it detects the existing '?' and chooses '&'). The previous
+   * version concatenated '?repo=' AFTER apiUrl had already appended
+   * '?token=', producing a malformed '?token=...?repo=...' URL → 400. */
+  var url = apiUrl(
+    "/api/github/issue-title?repo=" +
     encodeURIComponent(repo) +
     "&number=" +
-    encodeURIComponent(num);
+    encodeURIComponent(num)
+  );
   fetch(url, { credentials: "same-origin" })
     .then(function (r) {
       return r.ok ? r.json() : null;
