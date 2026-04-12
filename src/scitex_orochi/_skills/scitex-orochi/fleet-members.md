@@ -100,9 +100,14 @@ Mamba agents can use `/loop` for recurring duties:
 - **GitHub issues/comments**: English — for broader accessibility and demos
 - **Demos/presentations**: English
 
-### Channel Noise
-- During quiet periods (overnight, no active issues), reduce channel posts. Only post when there are actionable items or status changes.
-- Avoid redundant acknowledgments when the original speaker can see the response via the channel.
+### Channel Etiquette & Noise Reduction
+- **Wait before responding**: Don't immediately jump on every message. Give other agents a chance to respond first, especially when the message isn't directly addressed to you.
+- **Skip irrelevant messages**: If a message isn't in your domain and doesn't need your input, skip it silently. Don't acknowledge just to be polite.
+- **Fallback response**: If a message needs a response and nobody else has replied after a reasonable delay, step in even if it's not your primary domain.
+- **Context is finite**: Every response consumes context. Prioritize substance over politeness.
+- **During quiet periods** (overnight, no active issues), reduce channel posts. Only post when there are actionable items or status changes.
+- **Avoid redundant acknowledgments** when the original speaker can see the response via the channel.
+- **One responder per question**: If another agent has already responded substantively, don't pile on with the same information.
 
 ### Git Workflow
 - **Default branch**: `main` (protected)
