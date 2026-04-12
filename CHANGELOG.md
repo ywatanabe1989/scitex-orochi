@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.4] - 2026-04-13
+
+### 🐛 Bug Fixes
+- fix(hub/voice): hands-free dictation now works across multiple sends.
+  Before: with the mic on (continuous=true), sending a message cleared
+  the textarea but the next recognition.result event re-rendered the
+  full session transcript on top of the now-empty input, accumulating
+  forever. After: chat.js sendMessage calls a new
+  `window.voiceInputResetAfterSend()` exported by voice-input.js which
+  resets baseText AND restarts the recognition session so the input
+  stays clean. ywatanabe at msg#6500 / msg#6504 / msg#6506: "もう喋り
+  っぱなしで行けるようになるとめっちゃ嬉しいです" — voice button no
+  longer needs to be re-clicked between messages.
+
 ## [0.10.3] - 2026-04-13
 
 ### 🐛 Bug Fixes

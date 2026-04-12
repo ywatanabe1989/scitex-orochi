@@ -903,6 +903,15 @@ function sendMessage() {
       "orochi-draft-" + (currentChannel || "__default__")
     );
   } catch (_) {}
+  /* Hands-free voice dictation: if the mic is currently listening, the
+   * next recognition.result event would re-render the entire cumulative
+   * session transcript on top of the now-empty input. Tell voice-input.js
+   * to reset its baseText snapshot AND restart the recognition session
+   * so the input stays clean. ywatanabe wants to leave the mic on for
+   * continuous dictation across multiple sends (msg#6500 / msg#6504). */
+  if (typeof window.voiceInputResetAfterSend === "function") {
+    try { window.voiceInputResetAfterSend(); } catch (_) {}
+  }
 }
 
 /* Auto-resize textarea as content grows + persist draft per channel.

@@ -83,4 +83,36 @@
     btn.classList.remove("voice-active");
     btn.title = "Voice input";
   });
+
+  /* Hands-free dictation: when chat.js sendMessage clears the textarea,
+   * the next recognition.result event would otherwise re-render the
+   * cumulative transcript on top of the now-empty input (because
+   * recognition.continuous=true keeps the entire session in e.results
+   * and baseText still points at pre-send text). Reset both baseText
+   * AND the recognition session so the input stays clean and the user
+   * can keep talking without manually clicking the mic between sends.
+   * msg#6497 / msg#6500 — ywatanabe explicitly asks for this so the
+   * mic can stay on continuously. */
+  window.voiceInputResetAfterSend = function () {
+    baseText = "";
+    if (isListening) {
+      try {
+        recognition.stop();
+      } catch (_) {}
+      /* Restart on next tick — Web Speech API rejects start() while a
+       * stop() is still in flight, so we wait for the "end" event
+       * instead. Mark a flag so the end handler restarts. */
+      _restartAfterStop = true;
+    }
+  };
+
+  var _restartAfterStop = false;
+  recognition.addEventListener("end", function () {
+    if (_restartAfterStop) {
+      _restartAfterStop = false;
+      try {
+        recognition.start();
+      } catch (_) {}
+    }
+  });
 })();
