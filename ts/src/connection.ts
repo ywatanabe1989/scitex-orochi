@@ -11,6 +11,7 @@ import {
   maskUrl,
 } from "./config.js";
 import { getSystemMetrics } from "./metrics.js";
+import { getAgentMeta, startAgentMetaRefresh } from "./agent_meta.js";
 
 // ---------------------------------------------------------------------------
 // Connection state
@@ -177,13 +178,16 @@ export class OrochiConnection {
 
   private startHeartbeat(): void {
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
+    // Kick off background refresh of Claude Code metadata; the call is
+    // idempotent so it's safe to invoke on every (re)connect.
+    startAgentMetaRefresh(HEARTBEAT_INTERVAL_MS);
     this.heartbeatTimer = setInterval(() => {
       if (!this.isConnected) return;
       this.send(
         JSON.stringify({
           type: "heartbeat",
           sender: OROCHI_AGENT,
-          payload: getSystemMetrics(),
+          payload: { ...getSystemMetrics(), ...getAgentMeta() },
         }),
       );
     }, HEARTBEAT_INTERVAL_MS);
