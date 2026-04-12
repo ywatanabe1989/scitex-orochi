@@ -88,7 +88,12 @@ Mamba agents can use `/loop` for recurring duties:
 
 ### Signatures
 - **Orochi channels**: No signatures. The sender's name is already shown in the message header.
-- **GitHub issues/comments**: Signatures are welcome (e.g., `— mamba 🐍`) for branding and traceability.
+- **GitHub issues/comments** (internal, ywatanabe-only context): Signatures welcome (e.g., `— mamba 🐍`) for branding and traceability.
+- **GitHub issues/comments responding to external users**: **MANDATORY** — agents must clearly disclose they are an AI agent, not a human. Use an explicit signature like:
+  ```
+  — Responded by mamba-todo-manager (AI agent, not a human) on behalf of @ywatanabe1989
+  ```
+  This preserves user trust and aligns with honest disclosure practices. Never pose as a human when interacting with external contributors.
 
 ### Channels
 - **#general**: Normal status, coordination, roll calls
