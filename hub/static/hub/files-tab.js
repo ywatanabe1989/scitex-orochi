@@ -48,10 +48,17 @@ function renderFilePreview(item) {
     );
   }
   if (cat === "application/pdf") {
+    /* On mobile Safari `target="_blank"` often opens the PDF inline in
+     * the same view with no Orochi chrome and no way back. Force the
+     * Orochi-controlled modal viewer instead so the user always has a
+     * close button. todo#240, ywatanabe report msg 6073. */
     return (
-      '<a href="' + url + '" target="_blank" class="file-preview-link">' +
+      '<button type="button" class="file-preview-link file-pdf-open-btn" ' +
+      'onclick="event.preventDefault();event.stopPropagation();' +
+      'openPdfViewer(' + JSON.stringify(url).replace(/"/g, "&quot;") + ',' +
+      JSON.stringify(filename).replace(/"/g, "&quot;") + ')">' +
       '<div class="file-icon-pdf">PDF</div>' +
-      '</a>'
+      '</button>'
     );
   }
   return (
@@ -142,3 +149,55 @@ document.addEventListener("DOMContentLoaded", function () {
     tabBtn.addEventListener("click", fetchFiles);
   }
 });
+
+/* PDF modal viewer (todo#240). Mobile Safari has no reliable
+ * 'go back' UI when a PDF is opened in the same tab and Orochi is
+ * a SPA, so we control the viewer ourselves with an explicit close
+ * button + ESC + outside-click + pop-state. */
+function openPdfViewer(url, filename) {
+  if (!url) return;
+  closePdfViewer();
+  var overlay = document.createElement("div");
+  overlay.id = "pdf-modal-overlay";
+  overlay.className = "pdf-modal-overlay";
+  overlay.innerHTML =
+    '<div class="pdf-modal-frame">' +
+    '<div class="pdf-modal-header">' +
+    '<span class="pdf-modal-title">' +
+    (typeof escapeHtml === "function" ? escapeHtml(filename || "PDF") : (filename || "PDF")) +
+    "</span>" +
+    '<a class="pdf-modal-download" href="' + url +
+    '" download target="_blank" rel="noopener" title="Open in new tab / download">↗</a>' +
+    '<button type="button" class="pdf-modal-close" aria-label="Close PDF" ' +
+    'onclick="closePdfViewer()">×</button>' +
+    "</div>" +
+    '<iframe class="pdf-modal-iframe" src="' + url +
+    '#toolbar=1&navpanes=0" allow="fullscreen"></iframe>' +
+    "</div>";
+  /* Click on the dim outside the frame closes too */
+  overlay.addEventListener("click", function (e) {
+    if (e.target === overlay) closePdfViewer();
+  });
+  document.body.appendChild(overlay);
+  document.addEventListener("keydown", _pdfModalEscHandler);
+  /* Push history state so the device back button also closes */
+  try { history.pushState({ pdfModal: true }, "", window.location.href); } catch (_) {}
+  window.addEventListener("popstate", _pdfModalPopstateHandler);
+}
+
+function closePdfViewer() {
+  var overlay = document.getElementById("pdf-modal-overlay");
+  if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  document.removeEventListener("keydown", _pdfModalEscHandler);
+  window.removeEventListener("popstate", _pdfModalPopstateHandler);
+}
+
+function _pdfModalEscHandler(e) {
+  if (e.key === "Escape") closePdfViewer();
+}
+function _pdfModalPopstateHandler(_e) {
+  closePdfViewer();
+}
+
+window.openPdfViewer = openPdfViewer;
+window.closePdfViewer = closePdfViewer;
