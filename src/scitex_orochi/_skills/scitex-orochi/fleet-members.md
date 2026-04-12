@@ -159,6 +159,14 @@ Reactions convey meaning without consuming context. Use variety — don't just y
 - If all agents agree immediately, someone should play devil's advocate — groupthink is a risk
 - Polite disagreement is valuable; silent agreement is not
 
+### Licensing
+- **Default license**: AGPL-3.0 for all SciTeX / Orochi projects unless explicitly stated otherwise
+- **Before adopting third-party code**: check license compatibility with AGPL-3.0
+  - Compatible: AGPL-3.0, GPL-3.0, LGPL-3.0 (with care), MIT, BSD, Apache-2.0
+  - Incompatible: GPL-2.0-only, proprietary, custom non-commercial
+- **Before referencing external OSS examples**: verify the license allows derivative work under AGPL-3.0
+- **New repos**: start with LICENSE file containing AGPL-3.0 text
+
 ### GitHub Issue Conventions
 
 **Labels:**
