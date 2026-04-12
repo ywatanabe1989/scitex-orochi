@@ -501,8 +501,8 @@ export async function handleUploadMedia(args: {
 // we schedule the command with setTimeout — by the time it fires, the
 // agent has already received our MCP response and is idle at its prompt.
 //
-// The agent's terminal multiplexer is determined from OROCHI_MULTIPLEXER
-// (screen|tmux); default is "tmux" — set OROCHI_MULTIPLEXER=screen to opt in.
+// The agent's terminal multiplexer is determined from SCITEX_OROCHI_MULTIPLEXER
+// (screen|tmux); default is "tmux" — set SCITEX_OROCHI_MULTIPLEXER=screen to opt in.
 // ---------------------------------------------------------------------------
 
 // Allow only safe characters in the session name to prevent shell injection.
@@ -514,7 +514,7 @@ function validateSessionName(name: string): string | null {
 type Multiplexer = "screen" | "tmux";
 
 function getMultiplexer(): Multiplexer {
-  const m = (process.env.OROCHI_MULTIPLEXER || "tmux").toLowerCase();
+  const m = (process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux").toLowerCase();
   return m === "screen" ? "screen" : "tmux";
 }
 

@@ -14,8 +14,8 @@ except Exception:
 
 # Deployment build ID — set at container start or read from env.
 # Used by the dashboard to show a "new/updated" badge and verify deploys.
-OROCHI_BUILD_ID = os.environ.get("OROCHI_BUILD_ID", "")
-OROCHI_DEPLOYED_AT = os.environ.get("OROCHI_DEPLOYED_AT", "")
+OROCHI_BUILD_ID = os.environ.get("SCITEX_OROCHI_BUILD_ID", "")
+OROCHI_DEPLOYED_AT = os.environ.get("SCITEX_OROCHI_DEPLOYED_AT", "")
 if not OROCHI_DEPLOYED_AT:
     # Fall back to process start time (ISO-8601 UTC)
     from datetime import datetime as _dt
@@ -52,7 +52,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Subdomain workspace routing (Slack-style)
-OROCHI_BASE_DOMAIN = os.environ.get("OROCHI_BASE_DOMAIN", "lvh.me:8000")
+OROCHI_BASE_DOMAIN = os.environ.get("SCITEX_OROCHI_BASE_DOMAIN", "lvh.me:8000")
 OROCHI_RESERVED_SUBDOMAINS = {
     "www",
     "api",

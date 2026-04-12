@@ -18,7 +18,7 @@ services:
       - DJANGO_ALLOWED_HOSTS=.scitex-orochi.com,localhost,192.168.11.22,192.168.0.102
       - SCITEX_OROCHI_MEDIA_ROOT=/data/media
       - DJANGO_CSRF_TRUSTED_ORIGINS=https://*.scitex-orochi.com,https://scitex-orochi.com
-      - OROCHI_BASE_DOMAIN=scitex-orochi.com
+      - SCITEX_OROCHI_BASE_DOMAIN=scitex-orochi.com
       - SESSION_COOKIE_DOMAIN=.scitex-orochi.com
       - CSRF_COOKIE_DOMAIN=.scitex-orochi.com
       - SCITEX_OROCHI_SSO_URL=https://scitex.ai
@@ -32,6 +32,6 @@ services:
       - SCITEX_OROCHI_TELEGRAM_WEBHOOK_SECRET=${SCITEX_OROCHI_TELEGRAM_WEBHOOK_SECRET:-}
       - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-ea0d615449c4f6b2d923aecf10a848dc05b0a42a0d7bec38718b498f36f0646e}
       - GITHUB_WEBHOOK_CHANNEL=${GITHUB_WEBHOOK_CHANNEL:-#general}
-      - OROCHI_HOSTNAME=${OROCHI_HOSTNAME:-}
-      - OROCHI_EXTERNAL_IP=${OROCHI_EXTERNAL_IP:-}
+      - SCITEX_OROCHI_HOSTNAME=${SCITEX_OROCHI_HOSTNAME:-}
+      - SCITEX_OROCHI_EXTERNAL_IP=${SCITEX_OROCHI_EXTERNAL_IP:-}
     restart: unless-stopped

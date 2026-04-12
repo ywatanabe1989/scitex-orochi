@@ -27,7 +27,7 @@ The Orochi hub runs on MBA as a Docker service. It listens on:
 
 ### Spartan HPC: WebSocket Port 9559 Blocked
 
-Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `mcp_channel.ts` bridge connects directly to `SCITEX_OROCHI_HOST:OROCHI_PORT`, not through the HTTPS proxy.
+Spartan's university firewall blocks outbound WebSocket connections to port 9559. The `wss://orochi.scitex.ai` proxy (Cloudflare) routes through port 443 which is allowed, but the `mcp_channel.ts` bridge connects directly to `SCITEX_OROCHI_HOST:SCITEX_OROCHI_PORT`, not through the HTTPS proxy.
 
 **Status**: Resolved — head-spartan now connects via public WSS endpoint (`wss://orochi.scitex.ai`). The sidecar config uses `SCITEX_OROCHI_HOST=orochi.scitex.ai` which routes through Cloudflare on port 443.
 
