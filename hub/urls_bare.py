@@ -48,4 +48,23 @@ urlpatterns = [
     path("api/discover/", views.api_discover, name="api-discover"),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
+    # GitHub webhook
+    path("webhook/github/", views.github_webhook, name="github-webhook"),
+    # API endpoints needed by MCP sidecar (localhost/LAN access)
+    # These mirror the workspace API routes so agents on the bare domain
+    # can still hit reactions, messages, agents, etc.
+    path("api/reactions/", views.api_reactions, name="api-reactions"),
+    path("api/messages/", views.api_messages, name="api-messages"),
+    path(
+        "api/messages/<int:message_id>/",
+        views.api_message_detail,
+        name="api-message-detail",
+    ),
+    path("api/agents/", views.api_agents, name="api-agents"),
+    path("api/upload", views.api_upload, name="api-upload"),
+    path(
+        "api/upload-base64",
+        views.api_upload_base64,
+        name="api-upload-base64",
+    ),
 ]
