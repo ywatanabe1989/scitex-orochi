@@ -268,7 +268,11 @@
   max-height: 200px;
   overflow-y: auto;
   display: none;
-  z-index: 100;
+  /* Must outrank .thread-panel (z-index 2000) so the @mention popup
+   * is visible when typing in the thread reply input. Previously z=100
+   * meant the popup rendered BEHIND the thread panel and looked broken
+   * (todo#236, ywatanabe msg 5938). */
+  z-index: 2100;
   min-width: 200px;
   margin-bottom: 4px;
 }
