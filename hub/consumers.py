@@ -7,6 +7,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from hub.models import Channel, Message, Workspace, WorkspaceToken
+from hub.views.dm import _dm_principal_group
 
 log = logging.getLogger("orochi.consumers")
 
@@ -60,6 +61,17 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_group = f"workspace_{self.workspace_id}"
         await self.channel_layer.group_add(self.workspace_group, self.channel_name)
 
+        # Join the per-principal DM inbox group so direct messages
+        # addressed to this agent are delivered without a separate
+        # subscription step. See hub/views/dm.py for the group-name
+        # contract.
+        self.dm_inbox_group = _dm_principal_group(
+            self.workspace_id, self.agent_name
+        )
+        await self.channel_layer.group_add(
+            self.dm_inbox_group, self.channel_name
+        )
+
         await self.accept()
         log.info(
             "Agent %s connected to workspace %s",
@@ -102,6 +114,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
+            if hasattr(self, "dm_inbox_group"):
+                await self.channel_layer.group_discard(
+                    self.dm_inbox_group, self.channel_name
+                )
             log.info("Agent %s disconnected", agent_name)
 
     async def receive_json(self, content, **kwargs):
@@ -386,6 +402,26 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
+    async def dm_message(self, event):
+        """Forward DM events (``dm.message``) to the agent WebSocket.
+
+        The MCP sidecar rewrites ``dm_message`` into a ``message`` tag
+        with the DM channel name, so agents see DMs in their regular
+        inbound channel stream.
+        """
+        await self.send_json(
+            {
+                "type": "dm_message",
+                "id": event.get("id"),
+                "channel": event["channel"],
+                "sender": event["sender"],
+                "sender_type": event.get("sender_type", "human"),
+                "text": event["text"],
+                "ts": event.get("ts"),
+                "metadata": event.get("metadata", {}),
+            }
+        )
+
     @database_sync_to_async
     def _save_message(self, channel_name, sender, content_text, metadata=None):
         try:
@@ -464,6 +500,15 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_group = f"workspace_{self.workspace_id}"
         await self.channel_layer.group_add(self.workspace_group, self.channel_name)
 
+        # Join per-principal DM inbox so direct messages addressed to
+        # this user are delivered live. The principal name is the
+        # Django username (or ``dashboard`` for the token fallback).
+        principal = getattr(self.user, "username", "") or "dashboard"
+        self.dm_inbox_group = _dm_principal_group(self.workspace_id, principal)
+        await self.channel_layer.group_add(
+            self.dm_inbox_group, self.channel_name
+        )
+
         await self.accept()
         log.info(
             "Dashboard user %s connected to workspace %s",
@@ -488,6 +533,10 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         if hasattr(self, "workspace_group"):
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
+            )
+        if hasattr(self, "dm_inbox_group"):
+            await self.channel_layer.group_discard(
+                self.dm_inbox_group, self.channel_name
             )
 
     async def receive_json(self, content, **kwargs):
@@ -642,6 +691,26 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "sender_type": event.get("sender_type", "human"),
                 "channel": event.get("channel", ""),
                 "text": event.get("text", ""),
+                "ts": event.get("ts"),
+                "metadata": event.get("metadata", {}),
+            }
+        )
+
+    async def dm_message(self, event):
+        """Forward DM events to the dashboard WebSocket client.
+
+        Shape mirrors ``chat_message`` but with ``type: dm_message`` so
+        the UI can route DMs into a dedicated tab/side panel rather
+        than the main channel feed.
+        """
+        await self.send_json(
+            {
+                "type": "dm_message",
+                "id": event.get("id"),
+                "channel": event["channel"],
+                "sender": event["sender"],
+                "sender_type": event.get("sender_type", "human"),
+                "text": event["text"],
                 "ts": event.get("ts"),
                 "metadata": event.get("metadata", {}),
             }
