@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-04-13
+
+### 🚀 Features
+- feat(hub/agents-tab): each agent card now shows its **last 10 tool
+  calls with timestamps** as a mini activity log, sourced from
+  `agent_meta.recent_actions` (transcript JSONL parse, skips
+  housekeeping `mcp__scitex-orochi__*` tools, includes the first input
+  arg as preview). msg#6608 / msg#6615.
+- feat(hub/agents-tab): card pulls in workspace `CLAUDE.md` first line
+  (role hint) and `.mcp.json` server keys (chips) so the card has
+  identity context, not just a name + status pill. msg#6579.
+- feat(hub/agents-tab): live tail of the agent's tmux pane is shown as
+  a fallback (`pane_tail_block`) when the JSONL transcript is
+  unavailable, so remote hosts still show *something* about what
+  they're doing. msg#6575.
+- feat(hub/agents-tab): status pills double as a legend with hover
+  tooltips explaining each timing band; "← border color matches"
+  hint anchors the legend to the cards. msg#6567 / msg#6620.
+- feat(hub/agents-tab): wider card grid (`minmax(360px, 1fr)`) and
+  `.activity-name { white-space: normal }` so long names like
+  `mamba-quality-checker-mba` never truncate. msg#6611.
+- feat(hub/agents-tab): short machine label (`MBA` / `NAS` / `spartan`
+  / `win`) instead of `Yusukes-MacBook-Air.local`, computed in
+  `agent_meta.collect()`. msg#6549.
+
+### 🐛 Bug Fixes
+- fix(hub/agents-tab): cards no longer reorder on heartbeat. The sort
+  is now strictly alphabetical by agent name (pinned float to top),
+  so the position you read 5 seconds ago is the same one now.
+  msg#6592 / msg#6596 / msg#6598.
+- fix(hub/agents-tab): the unexplained purple `.activity-stuck`
+  border + gradient + pulse animation is gone. Stuck inherits the
+  stale border color and produces no extra visual noise. ywatanabe at
+  msg#6601: "なんか紫とかない？意味わからん".
+- fix(hub/agents-tab): refresh interval relaxed from 10 s → 30 s
+  and `.activity-card` got a `transition: border-color 0.4s` so
+  heartbeat updates fade instead of flicker. msg#6575.
+- fix(hub/agents-tab): `current_task` is no longer the noisy
+  `mcp__scitex-orochi__reply` from the last housekeeping call —
+  `agent_meta._preview_for()` skips the entire mcp_orochi tool family
+  AND `TodoWrite`, then returns `Bash: docker compose build` style
+  previews using the first input arg of whichever real tool the
+  agent invoked last. msg#6546 / msg#6589.
+
 ## [0.10.6] - 2026-04-13
 
 ### 🚀 Features

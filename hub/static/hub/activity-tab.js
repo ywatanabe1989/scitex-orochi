@@ -167,20 +167,16 @@ function renderActivityTab() {
     return;
   }
 
-  /* Stable sort: pinned first, then liveness (online→idle→stale→offline),
-   * then name. We remap _livenessOrder slightly here so online comes
-   * before idle in the card grid — the summary pills already highlight
-   * stale counts so cards don't need to lead with them. */
-  var _grpOrder = { online: 0, idle: 1, stale: 2, offline: 3 };
+  /* Stable position: alphabetical by name only. ywatanabe at msg#6592
+   * / msg#6596 / msg#6598 said the worst UX is cards moving around mid-
+   * read — so we never reorder by status anymore. The status difference
+   * is conveyed entirely through the border color and the summary
+   * pills at the top. Pinned agents float to the top of the alphabet
+   * group as a soft hint, no liveness reorder. */
   var agents = src.slice().sort(function (a, b) {
     var pa = a.pinned ? 0 : 1;
     var pb = b.pinned ? 0 : 1;
     if (pa !== pb) return pa - pb;
-    var la = a.liveness || a.status || "online";
-    var lb = b.liveness || b.status || "online";
-    var oa = _grpOrder[la] != null ? _grpOrder[la] : 4;
-    var ob = _grpOrder[lb] != null ? _grpOrder[lb] : 4;
-    if (oa !== ob) return oa - ob;
     return (a.name || "").localeCompare(b.name || "");
   });
 
@@ -191,11 +187,21 @@ function renderActivityTab() {
   });
 
   if (summary) {
+    /* Legend explains the card left-border colors. ywatanabe at msg#6567
+     * asked what the highlight color means — there was no key anywhere
+     * on the page. Each pill in the summary doubles as the legend swatch
+     * for the corresponding card border, and a hover title gives the
+     * timing definition. */
     summary.innerHTML =
-      '<span class="activity-pill activity-pill-online">' + counts.online + ' active</span>' +
-      '<span class="activity-pill activity-pill-idle">' + counts.idle + ' idle</span>' +
-      '<span class="activity-pill activity-pill-stale">' + counts.stale + ' stale</span>' +
-      '<span class="activity-pill activity-pill-offline">' + counts.offline + ' offline</span>';
+      '<span class="activity-pill activity-pill-online" title="recently active (heartbeat &lt; 2 min)">' +
+      '<span class="activity-pill-dot"></span>' + counts.online + ' active</span>' +
+      '<span class="activity-pill activity-pill-idle" title="quiet 2–10 min — likely thinking or waiting">' +
+      '<span class="activity-pill-dot"></span>' + counts.idle + ' idle</span>' +
+      '<span class="activity-pill activity-pill-stale" title="quiet &gt;10 min — probably stuck, check it">' +
+      '<span class="activity-pill-dot"></span>' + counts.stale + ' stale</span>' +
+      '<span class="activity-pill activity-pill-offline" title="not connected to the hub right now">' +
+      '<span class="activity-pill-dot"></span>' + counts.offline + ' offline</span>' +
+      '<span class="activity-legend-hint">← border color matches</span>';
   }
 
   grid.innerHTML = agents.map(function (a) {
@@ -297,8 +303,59 @@ function renderActivityTab() {
       '<button type="button" class="activity-copy-btn" title="copy name + task to clipboard" ' +
       'data-copy="' + escapeHtml(copyPayload) + '">\uD83D\uDCCB</button>';
     var stuckClass = isStuck ? ' activity-stuck' : '';
+    /* Recent actions log: 10 most recent meaningful tool_use entries
+     * with timestamps. agent_meta.py emits this as `recent_actions`
+     * after filtering out housekeeping mcp__scitex-orochi__* tools.
+     * ywatanabe at msg#6608: 「最後 10 個の行動をタイムスタンプと一緒に
+     * かくとかは？」. msg#6587: showing only the last single action is
+     * pointless — needs the recent flow. */
+    var recentActions = Array.isArray(a.recent_actions) ? a.recent_actions : [];
+    var recentHtml = "";
+    if (recentActions.length > 0) {
+      recentHtml =
+        '<ul class="activity-recent" title="recent tool calls (latest at bottom)">' +
+        recentActions.map(function (act) {
+          var ts = (act && act.ts) || "";
+          var hh = "";
+          if (ts && ts.length >= 19) hh = ts.slice(11, 19);
+          var prev = (act && act.preview) || "";
+          return (
+            '<li class="activity-recent-row">' +
+            '<span class="activity-recent-ts">' + escapeHtml(hh) + '</span>' +
+            '<span class="activity-recent-preview" title="' + escapeHtml(prev) + '">' +
+            escapeHtml(prev) + '</span></li>'
+          );
+        }).join("") +
+        '</ul>';
+    }
+    /* Live tail of the agent's tmux pane (~10 most recent non-empty
+     * lines). Falls back when recent_actions is empty (e.g. remote
+     * hosts whose JSONL transcript isn't reachable). */
+    var paneTailBlock = a.pane_tail_block || a.pane_tail || "";
+    var paneTailHtml = (recentActions.length === 0 && paneTailBlock)
+      ? '<pre class="activity-pane-tail" title="recent lines from this agent\'s tmux pane">' +
+        escapeHtml(paneTailBlock) +
+        '</pre>'
+      : "";
+    /* CLAUDE.md role hint + MCP server list — agent_meta.py extracts
+     * the first non-empty line of the workspace CLAUDE.md and the
+     * keys of .mcp.json. Both shown only if non-empty. msg#6579. */
+    var claudeMdHead = a.claude_md_head || "";
+    var mcpServers = Array.isArray(a.mcp_servers) ? a.mcp_servers : [];
+    var roleLine = claudeMdHead
+      ? '<div class="activity-role-hint" title="from workspace CLAUDE.md">' +
+        escapeHtml(claudeMdHead) + '</div>'
+      : "";
+    var mcpLine = mcpServers.length > 0
+      ? '<div class="activity-mcp-line" title="MCP servers configured for this agent">' +
+        mcpServers.map(function (s) {
+          return '<span class="activity-mcp-chip">' + escapeHtml(s) + '</span>';
+        }).join("") +
+        '</div>'
+      : "";
     return (
-      '<div class="activity-card activity-' + liveness + stuckClass + '">' +
+      '<div class="activity-card activity-' + liveness + stuckClass + '" ' +
+      'data-agent="' + escapeHtml(rawName) + '">' +
       '<div class="activity-card-header">' +
       '<span class="activity-status-dot activity-dot-' + liveness + '"></span>' +
       '<span class="activity-name" style="color:' + color + '">' + name + '</span>' +
@@ -306,8 +363,11 @@ function renderActivityTab() {
       '<span class="activity-liveness">' + _livenessLabel(liveness) + (idleStr ? ' · ' + idleStr : '') + '</span>' +
       '</div>' +
       '<div class="activity-meta">' + machine + ' · ' + role + '</div>' +
+      roleLine +
       '<div class="activity-task">' + _renderTaskField(task, preview, ageStr) + '</div>' +
+      paneTailHtml +
       chipsHtml +
+      mcpLine +
       _renderHealthField(a.health) +
       subagentsHtml +
       '</div>'
@@ -349,7 +409,10 @@ async function refreshActivityFromApi() {
 
 function startActivityAutoRefresh() {
   if (activityRefreshTimer) return;
-  activityRefreshTimer = setInterval(refreshActivityFromApi, 10000);
+  /* 30s instead of 10s — ywatanabe at msg#6575 said the tab was
+   * "ちかちかしすぎ". 30 s is still fast enough to feel live but
+   * cuts the visual churn down to 1/3. */
+  activityRefreshTimer = setInterval(refreshActivityFromApi, 30000);
 }
 
 function stopActivityAutoRefresh() {
