@@ -895,7 +895,13 @@ async function fetchStats() {
     var res = await fetch(apiUrl("/api/stats"));
     var stats = await res.json();
     var chContainer = document.getElementById("channels");
-    var newStatsJson = JSON.stringify(stats.channels);
+    /* Guard key must include currentChannel: otherwise a channel click that
+     * leaves the stats payload unchanged (same channel list, same counts)
+     * skips the rerender and the .active highlight fails to update — making
+     * it look like the active channel "jumped" or disappeared on the next
+     * unrelated stats refresh (todo#246 reopened). */
+    var newStatsJson =
+      JSON.stringify(stats.channels) + "|" + (currentChannel || "__all__");
     if (chContainer._lastStatsJson === newStatsJson) return;
     chContainer._lastStatsJson = newStatsJson;
     var msgInput = document.getElementById("msg-input");
