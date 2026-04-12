@@ -23,6 +23,87 @@ Active issues encountered during fleet operations. Check here before debugging a
 
 **Fix applied**: Issue #15 and #36 resolved. Permission and dev-channel prompts now handled at the source by scitex-agent-container's auto-accept pipeline. Workspace-level `.claude/settings.json` with permission allowlists also prevents runtime prompts. mamba-healer additionally monitors for runtime prompt dialogs during health scans.
 
+## Self-Sent `/compact` Is Unreliable
+
+**Symptom**: An agent that detects its own context is filling up cannot
+issue `/compact` (or other slash commands) to itself. The keystrokes can be
+delivered to its own tmux/screen pane, but **Claude Code by spec does not
+accept self-sent commands** — input from the same session is ignored, so the
+command never executes. This is a Claude Code design constraint, not a
+timing/race issue.
+
+**Workaround**: Compaction must be triggered **from another agent / process**
+(or from the user). The reliable protocol — used by `emacs-claude-code` (ecc)
+in production — is **Escape first, then send command**:
+
+```bash
+# 1. Interrupt whatever the target is doing (safe whether busy or idle)
+tmux send-keys -t <target-session> Escape
+sleep 0.2
+# 2. Send the slash command
+tmux send-keys -t <target-session> '/compact' Enter
+```
+
+- **Press Escape exactly 1 time.** Two consecutive Escapes enter prior-message
+  edit mode in Claude Code and can corrupt the conversation.
+- No idle/busy detection required — leading Escape handles both states.
+- Confirmed working from emacs vterm (`vterm-send-escape` then
+  `vterm-send-string` + `vterm-send-return`).
+
+Alternative transports (same Escape-first principle):
+
+1. **tmux send-keys** — shown above, preferred when target runs in tmux.
+
+### Slash-command safe list for `self_command` / cross-agent injection
+
+Not every slash command is safe to inject. Commands that pop an
+**interactive selector / modal dialog** trap the target agent inside that
+dialog with no way out except a manual Escape from a separate operator —
+defeating the point of automation. Discovered 2026-04-12 by head-mba while
+testing `self_command`.
+
+| Command | Modal? | Safe to inject? |
+|---|---|---|
+| `/compact` | no | ✅ self-completing, recommended |
+| `/clear`   | no | ✅ self-completing (destructive — gate behind `confirm`) |
+| `/cost`    | no | ✅ prints info, returns to prompt |
+| `/help`    | no | ✅ scrollable text, returns to prompt |
+| `/status`  | no | ✅ prints info, returns to prompt |
+| `/model`   | **YES** | ❌ opens model picker — agent stuck in dialog |
+| `/agents`  | **YES** | ❌ opens agent picker — agent stuck in dialog |
+| `/permissions` | **YES** | ❌ opens permission editor — agent stuck in dialog |
+| `/login`   | **YES** | ❌ opens auth flow |
+| `/config`  | **YES** | ❌ opens settings UI |
+
+**Rule for `self_command` / `send_command` MCP tool implementations:**
+- Maintain an explicit allow-list of self-completing commands.
+- Reject (with a clear error) any command not on the list, OR pair it
+  with an automatic Escape-rescue follow-up that fires after a timeout.
+- Free-text input is always safe (it lands in the prompt without entering
+  any special mode).
+
+When in doubt, test the command **manually in a non-production agent**
+(use `mamba-newbie-mba`) and observe whether it opens a dialog before
+adding it to the allow-list.
+2. **screen stuff** (when target runs in GNU screen, e.g. scitex-agent-container):
+   ```bash
+   screen -S <target-session-name> -X stuff $'/compact\n'
+   ```
+3. **emacs MCP `eval_elisp`** (when target's vterm buffer is reachable from emacs):
+   ```elisp
+   (with-current-buffer (get-buffer "<vterm-buffer-name>")
+     (vterm-send-string "/compact")
+     (vterm-send-return))
+   ```
+4. **User sends `/compact` from the dashboard** directly to the agent's session.
+5. **Automated**: mamba-healer-mba (same-host) watches context% and triggers
+   external compaction when an agent crosses a threshold (e.g. 75%).
+
+**Rule**: Never assume an agent can compact itself. If you see an agent
+reporting >70% context, ask another agent on the same host to compact it, or
+escalate to the user. The struggling agent's own request to compact will not
+work.
+
 ## Global settings.json Is Dangerous
 
 **Symptom**: Adding `Bash(*)` to global `~/.claude/settings.json` allows ALL Claude Code sessions on the machine to run arbitrary commands without approval.

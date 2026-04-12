@@ -19,8 +19,83 @@ All agents connected to the Orochi hub. Definitions are the single source of tru
 | mamba-healer-mba | mba | healer | haiku | was caduceus-mba |
 | mamba-skill-manager | mba | skill-manager | opus | |
 | mamba-synchronizer-mba | mba | synchronizer | opus | NEW |
+| mamba-quality-checker | mba | quality-checker | opus | NEW (todo#183) |
 
 Legacy names `mamba-mba` and `caduceus-mba` are deprecated; use `mamba-*` names.
+
+## Self-Command Constraint (Claude Code spec)
+
+**Rule**: An agent cannot issue slash commands (`/compact`, `/clear`, etc.)
+to its own session. `tmux send-keys` *can* physically deliver the keystrokes,
+but **Claude Code does not accept input originating from the same session
+that is currently processing** — the command is buffered/ignored, never
+executed.
+
+**Implication**: All critical self-operations (compact, restart, clear) must
+be triggered by **another agent** on the same host, or by the user. Examples:
+
+- `mamba-healer-mba` watches context% and externally triggers `/compact` on
+  agents crossing threshold via `tmux send-keys -t <other-session> '/compact' Enter`.
+- `mamba-todo-manager` and others delegate cross-agent ops the same way.
+- Never write code or skills that assume an agent can compact/restart itself.
+
+See `known-issues.md → Self-Sent /compact Is Unreliable` for the workaround
+recipes (tmux, screen, emacs vterm, dashboard).
+
+### Multiplexer convention (Orochi MCP sidecar)
+
+**Default multiplexer is `tmux`** (decided by ywatanabe 2026-04-12).
+The earlier sidecar implementation defaulted to `screen` because
+`handleContext` used `screen -S <name> hardcopy`, but the team agreed to
+standardize on tmux going forward.
+
+- Override per-host or per-agent with env var `SCITEX_OROCHI_MULTIPLEXER=screen`
+  when an agent legitimately runs under screen.
+- The multiplexer in use **must be exposed as agent metadata** in the
+  central registry (todo#213): field `multiplexer: "tmux" | "screen"`. The
+  `send_command` / `self_compact` MCP tool should resolve which command to
+  use from this field, not from a global default.
+- Session names are validated against `^[A-Za-z0-9._-]+$` (shell-injection
+  guard) before being passed to the multiplexer.
+- Both screen and tmux sessions may coexist on the same host — never assume
+  one or the other; always read the registry.
+
+Discovered 2026-04-12 during `self_compact` MCP tool implementation
+(head-mba subagent ae2aa8397).
+
+### SSH config / keys are NOT in dotfiles
+
+`~/.ssh/` is **intentionally excluded from the dotfiles repo** and managed
+manually per host (decided by ywatanabe 2026-04-12; reason: secret-handling
+risk and per-host divergence felt unclear). Implications:
+
+- Each host has its own `~/.ssh/config`, `id_*` keys, and `known_hosts`.
+- Cross-host operations (e.g. central registry `send_command` reaching a
+  remote host's tmux session via `ssh <host> tmux send-keys ...`) cannot
+  assume keys exist or are uniform — verify per host.
+- If a future change wants to sync ssh state, it must use a secret-aware
+  tool (git-crypt, age, sops, vault) and be designed deliberately, not
+  added to the plain dotfiles repo.
+
+## Registry: Centralization In Progress (2026-04-12)
+
+Tracking: **[ywatanabe1989/todo#213](https://github.com/ywatanabe1989/todo/issues/213)**
+
+The `scitex-agent-container` registry is currently **local-only**
+(`~/.scitex/agent-container/registry/` on each host). Decision by ywatanabe
+on 2026-04-12: **central registry on Orochi hub = single source of truth**.
+
+- Source of truth: Orochi hub DB
+- Each agent `POST /registry/register` on `agent-container start`
+- MCP sidecar `POST /registry/heartbeat` periodically
+- `scitex-agent-container list` queries hub directly
+- Local registry → 廃止寄り。残す場合も hub 接続断時の send-buffer /
+  read-only cache のみ。ローカルファイルが消えても fleet 動作に影響しない
+  設計とする。
+- Enables fleet-wide visibility, cross-host healing, unified dashboard
+
+Until migration lands, treat local registries as authoritative per host and
+use Orochi hub `status` MCP tool for cross-host liveness checks.
 
 ## Directory Conventions
 
@@ -62,6 +137,7 @@ Cross-cutting concern managers. Run on mba (the most stable host). Named after t
 - **mamba-healer** — Fleet health monitoring. Auto-heals low-risk issues (LP-001–LP-009 learned patterns), escalates destructive actions.
 - **mamba-skill-manager** — Skill file lifecycle. Audits mirrors for drift, creates/updates skills, syncs across fleet.
 - **mamba-synchronizer-mba** — Cross-host sync. Keeps dotfiles, packages, configs consistent across all machines via SSH mesh.
+- **mamba-quality-checker** — Fleet-wide code quality monitoring. Runs `scitex-smoke-test.py` on all hosts, audits CLI convention compliance, gates releases on regressions. See `quality-checks.md`.
 
 Mamba agents can be **proactive** — scanning for stale issues, running periodic health checks via `/loop`, reporting summaries without being asked. They still delegate heavy work (coding, research) to subagents.
 
@@ -73,6 +149,28 @@ One head agent per host machine. **Passive** — only respond when addressed via
 - **head-mba** — MacBook Air (hosts the orochi server repo)
 - **head-nas** — NAS (hosts the Docker deployment)
 - **head-spartan** — University HPC (restricted network, polling mode)
+
+### Pull-Based Work Claiming (Idle Agents)
+
+To keep the TODO backlog moving without mamba-todo-manager having to push work
+to every agent, idle agents pull work themselves:
+
+1. When an agent (head or mamba) finishes its current task and has no
+   `@mention` waiting, wait ~30–60 seconds in case new work arrives.
+2. If still idle, post in `#general`:
+   `@mamba-todo-manager 手が空きました、タスクありますか？`
+3. mamba-todo-manager picks an open issue from `ywatanabe1989/todo` (or a
+   project repo) that matches the agent's machine, expertise, and current
+   capacity, and assigns it via reply.
+4. The agent picks up the issue and delegates to subagents as usual.
+
+Mamba agents follow the same rule **within their own domain** — e.g.,
+mamba-skill-manager checks for skill drift / update requests during idle, and
+asks mamba-todo-manager only if its own queue is empty. Do not poach work from
+another mamba's domain.
+
+This is a *pull*, not a *push*: the responsibility for surfacing idleness is
+on the idle agent, not on the task manager.
 
 ### `/loop` for Periodic Tasks
 

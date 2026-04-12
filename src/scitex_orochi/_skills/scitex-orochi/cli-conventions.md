@@ -68,6 +68,90 @@ Every command's `--help` must include:
 - CLI flags should override env vars
 - Document env var fallbacks in `--help`
 
+### Bare prefixes are forbidden (Hard Rule)
+
+**Never use a bare package name as an env var prefix.** Always include `SCITEX_`:
+
+| ❌ Forbidden | ✅ Required |
+|---|---|
+| `OROCHI_AGENT` | `SCITEX_OROCHI_AGENT` |
+| `OROCHI_TOKEN` | `SCITEX_OROCHI_TOKEN` |
+| `OROCHI_HOST` | `SCITEX_OROCHI_HOST` |
+| `OROCHI_MULTIPLEXER` | `SCITEX_OROCHI_MULTIPLEXER` |
+| `AGENT_CONTAINER_*` | `SCITEX_AGENT_CONTAINER_*` |
+| `SCHOLAR_*` | `SCITEX_SCHOLAR_*` |
+
+Reason (ywatanabe 2026-04-12): bare prefixes collide with other tools'
+env vars and pollute the global namespace. The `SCITEX_` namespace makes
+ownership unambiguous and lets users `env | grep SCITEX_` to see all
+SciTeX-related state at once.
+
+When auditing existing code, `grep -rE '^OROCHI_|[^A-Z_]OROCHI_'` finds
+violations. Rename and update all references in one commit.
+
+### Scope: scitex-owned vars only
+
+The `SCITEX_<PACKAGE>_*` rule applies **only to env vars that scitex code
+defines and reads**. It does **not** apply to env vars defined by
+third-party tools, frameworks, or upstream conventions:
+
+- **Out of scope (keep upstream names):** `POSTGRES_*`, `DATABASE_URL`,
+  `DJANGO_*`, `ALLOWED_HOSTS`, `VITE_*`, `NODE_ENV`, `PATH`, `HOME`,
+  `LANG`, `BUILD_ID`, `CI`, `GITHUB_*`, `AWS_*`, etc.
+- **In scope (must rename):** any env var that scitex code originates and
+  whose name we control.
+- **Borderline cases** (third-party integration configured by scitex —
+  e.g. `GITEA_URL`, `CROSSREF_INTERNAL_URL`): if scitex code is the only
+  reader and the var is not a standard set by the upstream tool, prefer
+  the namespaced form (`SCITEX_CLOUD_GITEA_URL`). If the upstream tool
+  reads it directly, leave it.
+
+When in doubt: if removing the `SCITEX_` prefix would break a third-party
+tool, keep the upstream name.
+
+**Adapter pattern for framework env vars (preferred):** When a framework
+like Django expects a specific env var name (e.g. `ALLOWED_HOSTS`,
+`POSTGRES_PASSWORD`), the canonical scitex source of truth should still
+be `SCITEX_<PACKAGE>_*`. Translate inside the framework's config file:
+
+```python
+# scitex-cloud/settings.py
+import os
+ALLOWED_HOSTS = os.environ.get("SCITEX_CLOUD_ALLOWED_HOSTS", "").split(",")
+DATABASES = {
+    "default": {
+        "PASSWORD": os.environ["SCITEX_CLOUD_POSTGRES_PASSWORD"],
+        ...
+    }
+}
+```
+
+This keeps the operator-facing env namespace clean (`SCITEX_CLOUD_*` only)
+while letting Django still receive the values it needs internally.
+ywatanabe 2026-04-12 explicitly requested this pattern for scitex-cloud:
+"DJANGO で認識されるようにしないといけないのもあるかも。その場合は
+settings.py で書きなおす". Apply the same pattern to Vite, Postgres
+client libs, etc., when feasible.
+
+### Where SCITEX_* env vars live (canonical location)
+
+All scitex-owned env vars are sourced from
+**`~/.dotfiles/src/.bash.d/secrets/010_scitex/`** (one `.src` file per
+package: `01_orochi.src`, `01_cloud.src`, `01_agent-container.src`,
+`01_scholar.src`, etc.). The aggregator `scitex_entry.src` loads them at
+shell startup so all `SCITEX_*` vars are available to every scitex tool.
+
+Rules:
+- When adding a new `SCITEX_<PACKAGE>_FOO` var, **add the export to the
+  matching `01_<package>.src` file** in `010_scitex/`. Don't scatter
+  scitex env vars across other shell init files.
+- When renaming a bare-prefix var (e.g. `OROCHI_TOKEN` → `SCITEX_OROCHI_TOKEN`),
+  re-import / re-export from the same `01_orochi.src` file so all hosts
+  pick up the new name on next shell init.
+- Secrets stay in this directory (gitignored from the main dotfiles repo;
+  see ywatanabe's secret-dotfiles convention) — never inline secrets in
+  package code or YAML.
+
 ## MCP Tool Parity
 
 When a CLI command corresponds to an MCP tool:
