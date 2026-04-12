@@ -67,6 +67,18 @@ urlpatterns = [
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
+    # Central container-agent registry — mounted on bare domain so the MCP
+    # sidecar on localhost can reach it without the subdomain middleware.
+    path(
+        "api/registry/agents/",
+        views.api_registry_agents,
+        name="api-registry-agents",
+    ),
+    path(
+        "api/registry/agents/<str:name>/",
+        views.api_registry_agent_detail,
+        name="api-registry-agent-detail",
+    ),
     path("api/upload", views.api_upload, name="api-upload"),
     path(
         "api/upload-base64",

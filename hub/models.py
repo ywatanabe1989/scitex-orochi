@@ -209,6 +209,44 @@ class PinnedAgent(models.Model):
         return f"pin:{self.name}@{self.workspace.name}"
 
 
+class ContainerAgent(models.Model):
+    """Central registry of scitex-agent-container processes across the fleet.
+
+    Distinct from the in-memory WebSocket presence registry: this tracks the
+    container/process state (yaml path, machine, tmux-ish session info,
+    restart history) so fleet-wide visibility and cross-machine management
+    are possible without relying on local ``~/.scitex/agent-container/registry/``.
+    """
+
+    class Status(models.TextChoices):
+        RUNNING = "running", "Running"
+        STOPPED = "stopped", "Stopped"
+        ERROR = "error", "Error"
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="container_agents"
+    )
+    name = models.CharField(max_length=200, unique=True, db_index=True)
+    machine = models.CharField(max_length=200, db_index=True)
+    yaml_path = models.CharField(max_length=500, blank=True, default="")
+    status = models.CharField(
+        max_length=16, choices=Status.choices, default=Status.RUNNING
+    )
+    started_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["machine", "name"]
+        indexes = [
+            models.Index(fields=["workspace", "machine"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self):
+        return f"container:{self.name}@{self.machine} ({self.status})"
+
+
 class WorkspaceInvitation(models.Model):
     """Email invitation to join a workspace."""
 

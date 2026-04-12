@@ -74,6 +74,17 @@ urlpatterns = [
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Central container-agent registry (replaces ~/.scitex/agent-container/registry/)
+    path(
+        "api/registry/agents/",
+        views.api_registry_agents,
+        name="api-registry-agents",
+    ),
+    path(
+        "api/registry/agents/<str:name>/",
+        views.api_registry_agent_detail,
+        name="api-registry-agent-detail",
+    ),
     path(
         "api/subagents/update/", views.api_subagents_update, name="api-subagents-update"
     ),
