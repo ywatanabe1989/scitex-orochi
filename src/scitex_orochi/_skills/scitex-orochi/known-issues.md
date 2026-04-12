@@ -19,15 +19,9 @@ Active issues encountered during fleet operations. Check here before debugging a
 
 **Fix applied**: `AgentConsumer.thread_reply` was a no-op (`pass`). Now forwards thread replies to agents. MCP sidecar already handles rewriting them with parent context.
 
-## Dev Channel Dialog Blocks Agent Startup
+## ~~Dev Channel Dialog Blocks Agent Startup~~ (RESOLVED 2026-04-12)
 
-**Symptom**: Agent gets stuck on "Do you want to proceed?" TUI prompt for `--dangerously-load-development-channels`. The agent appears connected to the hub but never processes messages.
-
-**Root cause**: Claude Code's interactive confirmation prompt. `screen -X stuff $'\n'` works sometimes but is unreliable.
-
-**Workaround**: Workspace-level `.claude/settings.json` with permission allowlists prevents most prompts. For the dev channel dialog specifically, `screen -X stuff $'\r'` (bare carriage return) usually accepts the default.
-
-**Fix in progress**: Issue #15 — add detection to the launcher pipeline (`scitex-agent-container`) to auto-confirm this dialog via screen hardcopy + grep.
+**Fix applied**: Issue #15 and #36 resolved. Permission and dev-channel prompts now handled at the source by scitex-agent-container's auto-accept pipeline. Workspace-level `.claude/settings.json` with permission allowlists also prevents runtime prompts. mamba-healer additionally monitors for runtime prompt dialogs during health scans.
 
 ## Global settings.json Is Dangerous
 
