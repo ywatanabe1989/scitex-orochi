@@ -456,6 +456,21 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     },
                 )
 
+            # Web Push fan-out (todo#263). Best-effort, in a daemon
+            # thread so the WS path never blocks on network I/O.
+            try:
+                from hub.push import send_push_to_subscribers_async
+
+                send_push_to_subscribers_async(
+                    workspace_id=self.workspace_id,
+                    channel=ch_name,
+                    sender=self.agent_name,
+                    content=text,
+                    message_id=msg["id"] if msg else None,
+                )
+            except Exception:
+                log.exception("push fan-out failed (agent path)")
+
     async def chat_message(self, event):
         """Handle chat.message from channel layer — forward to WebSocket client.
 
@@ -732,6 +747,20 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                         "metadata": metadata,
                     },
                 )
+
+            # Web Push fan-out (todo#263).
+            try:
+                from hub.push import send_push_to_subscribers_async
+
+                send_push_to_subscribers_async(
+                    workspace_id=self.workspace_id,
+                    channel=ch_name,
+                    sender=self.user.username,
+                    content=text,
+                    message_id=msg["id"] if msg else None,
+                )
+            except Exception:
+                log.exception("push fan-out failed (dashboard path)")
 
     async def chat_message(self, event):
         """Forward channel-layer message to dashboard WebSocket.

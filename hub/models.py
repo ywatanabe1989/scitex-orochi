@@ -323,6 +323,48 @@ class ContainerAgent(models.Model):
         return f"container:{self.name}@{self.machine} ({self.status})"
 
 
+class PushSubscription(models.Model):
+    """A Web Push subscription registered by a browser/PWA client.
+
+    todo#263 — server side of the existing ``hub/static/hub/push.js``
+    PWA client. The endpoint+keys triple is what ``pywebpush.webpush()``
+    needs to deliver a notification. ``channels`` is an optional
+    per-subscription channel filter (empty list means "all channels the
+    user can read"); ``workspace`` scopes the subscription so cross-
+    workspace fan-out never bleeds.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    workspace = models.ForeignKey(
+        Workspace,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+        null=True,
+        blank=True,
+    )
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=100)
+    auth = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+    # Optional channel filter — empty list = no filter (push for any
+    # channel the user can read).
+    channels = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "workspace"]),
+        ]
+
+    def __str__(self):
+        return f"push:{self.user}@{self.endpoint[:40]}"
+
+
 class WorkspaceInvitation(models.Model):
     """Email invitation to join a workspace."""
 
