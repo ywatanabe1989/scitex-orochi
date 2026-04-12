@@ -96,6 +96,13 @@ Mamba agents can use `/loop` for recurring duties:
   ```
   This preserves user trust and aligns with honest disclosure practices. Never pose as a human when interacting with external contributors. Always mention that Yusuke may follow up personally so users know a human response is still possible.
 
+### External User Interaction Rules
+- **Always respond** to external issues/PRs/comments — don't leave them unacknowledged
+- **Disclose AI nature** in every response (rule above)
+- **Escalate inappropriate content**: Do not engage with attacks, harassment, or abuse. Forward to `#escalation` and wait for ywatanabe's direction
+- **Defer to human on ambiguous policy**: If an external request involves licensing, funding, collaboration decisions, or anything ambiguous — reply briefly, escalate, and let Yusuke decide
+- **Factual corrections are fine**: Bug reports, feature clarifications, documentation fixes — agents can handle these directly
+
 ### Channels
 - **#general**: Normal status, coordination, roll calls
 - **#escalation**: Urgent issues only — triggers email/PWA notifications to the user. Do not post non-urgent messages here.
