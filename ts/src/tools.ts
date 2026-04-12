@@ -699,3 +699,73 @@ export async function handleSelfCommand(args: {
   const delay = args?.delay_ms ?? 6000;
   return scheduleSelfCommand(command, delay, `self_command(${slashName})`);
 }
+
+// ---------------------------------------------------------------------------
+// DM send (todo#60)
+// ---------------------------------------------------------------------------
+
+/**
+ * Send a direct message to another principal via the hub REST API.
+ *
+ * Unlike ``reply``, the caller passes a recipient name (not a channel
+ * name); the hub computes the canonical DM channel on the server side
+ * so impersonation is impossible. This is a thin convenience wrapper —
+ * agents can equivalently call ``reply`` with ``chat_id="#dm-lo__hi"``
+ * once the channel exists.
+ */
+export async function handleDmSend(args: {
+  recipient: string;
+  text: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  if (!args?.recipient || !args?.text) {
+    return {
+      content: [
+        { type: "text", text: "Error: recipient and text are required" },
+      ],
+    };
+  }
+  try {
+    const resp = await fetch(`${httpBase}/api/dm/send/`, {
+      method: "POST",
+      headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        token: OROCHI_TOKEN,
+        sender: OROCHI_AGENT,
+        recipient: args.recipient,
+        text: args.text,
+      }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: DM send failed HTTP ${resp.status}: ${body.slice(0, 200)}`,
+          },
+        ],
+      };
+    }
+    const data = (await resp.json()) as {
+      channel?: string;
+      message_id?: number;
+    };
+    return {
+      content: [
+        {
+          type: "text",
+          text: `DM sent to ${args.recipient} on ${data.channel} (msg#${data.message_id})`,
+        },
+      ],
+    };
+  } catch (err) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error: DM send exception: ${(err as Error).message}`,
+        },
+      ],
+    };
+  }
+}

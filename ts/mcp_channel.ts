@@ -24,6 +24,7 @@ import {
 import { addMessage } from "./src/message_buffer.js";
 import {
   handleContext,
+  handleDmSend,
   handleDownloadMedia,
   handleHealth,
   handleReply,
@@ -235,8 +236,14 @@ const conn = {
         _dbg(`ws recv: ${raw.slice(0, 200)}`);
         const msg = JSON.parse(raw);
 
-        // Thread replies and reaction updates -> rewrite to message type
-        if (msg.type === "thread_reply") {
+        // Thread replies, reaction updates, and DMs -> rewrite to message type
+        // so they flow through the same <channel> notification path.
+        if (msg.type === "dm_message") {
+          // DMs already carry their own channel name (``#dm-...``),
+          // sender, text, ts, metadata — just relabel the type so the
+          // branch below treats it as a normal message.
+          msg.type = "message";
+        } else if (msg.type === "thread_reply") {
           const parentId = msg.parent_id ?? msg.parent ?? "?";
           msg.type = "message";
           msg.text = `\u21b3 reply to msg#${parentId}: ${msg.text || msg.content || ""}`;
@@ -449,6 +456,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
   if (name === "self_command") return handleSelfCommand(args as any);
+  if (name === "dm_send") return handleDmSend(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

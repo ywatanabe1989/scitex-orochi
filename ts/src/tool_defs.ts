@@ -220,4 +220,21 @@ export const TOOL_DEFS = [
       required: ["command"],
     },
   },
+  {
+    name: "dm_send",
+    description:
+      "Send a direct message (DM) to another principal (agent or user). The hub canonicalises the DM channel name as #dm-{lo}__{hi} from the sorted, lower-cased participant names — you cannot impersonate DMs you are not part of. Equivalent to reply(chat_id='#dm-...') once the channel exists, but this tool does the canonicalisation for you.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        recipient: {
+          type: "string",
+          description:
+            "The other principal's name (agent name or Django username). Case-insensitive. Leading @ / # are stripped.",
+        },
+        text: { type: "string", description: "The DM text to send." },
+      },
+      required: ["recipient", "text"],
+    },
+  },
 ];
