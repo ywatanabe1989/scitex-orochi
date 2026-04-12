@@ -1277,8 +1277,26 @@ def api_agents_register(request):
             "model": body.get("model", ""),
             "workdir": body.get("workdir", ""),
             "channels": body.get("channels") or ["#general"],
+            # todo#213: claude-hud-style process/runtime metadata pushed by
+            # mamba-healer-mba's agent_meta.py --push loop.
+            "multiplexer": body.get("multiplexer", ""),
+            "project": body.get("project", ""),
+            "pid": body.get("pid") or 0,
+            "ppid": body.get("ppid") or 0,
+            "context_pct": body.get("context_pct"),
+            "skills_loaded": body.get("skills_loaded") or [],
+            "started_at": body.get("started_at", ""),
+            "version": body.get("version", ""),
+            "runtime": body.get("runtime", ""),
+            "subagent_count": body.get("subagent_count") or 0,
         },
     )
+    # Persist subagent_count separately — register_agent() preserves prev
+    # value if it exists, so we must set it explicitly on every push to
+    # reflect current reality.
+    if body.get("subagent_count") is not None:
+        from hub.registry import set_subagent_count
+        set_subagent_count(name, int(body.get("subagent_count") or 0))
     update_heartbeat(name, metrics=body.get("metrics") or {})
     task = body.get("current_task") or ""
     if task:

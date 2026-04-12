@@ -51,6 +51,23 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
+            # Extended process/runtime metadata pushed by agent_meta.py --push.
+            # Optional; absent for legacy WS-only agents.
+            "pid": info.get("pid") or prev.get("pid") or 0,
+            "ppid": info.get("ppid") or prev.get("ppid") or 0,
+            "context_pct": (
+                info.get("context_pct")
+                if info.get("context_pct") is not None
+                else prev.get("context_pct")
+            ),
+            "skills_loaded": (
+                list(info.get("skills_loaded"))
+                if isinstance(info.get("skills_loaded"), (list, tuple))
+                else prev.get("skills_loaded") or []
+            ),
+            "started_at": info.get("started_at") or prev.get("started_at") or "",
+            "version": info.get("version") or prev.get("version") or "",
+            "runtime": info.get("runtime") or prev.get("runtime") or "",
         }
 
 
@@ -325,6 +342,14 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 ),
                 "health": a.get("health") or {},
                 "claude_md": a.get("claude_md", ""),
+                # Extended metadata from agent_meta.py --push (todo#213)
+                "pid": a.get("pid") or 0,
+                "ppid": a.get("ppid") or 0,
+                "context_pct": a.get("context_pct"),
+                "skills_loaded": list(a.get("skills_loaded") or []),
+                "started_at": a.get("started_at", ""),
+                "version": a.get("version", ""),
+                "runtime": a.get("runtime", ""),
             }
         )
     return result

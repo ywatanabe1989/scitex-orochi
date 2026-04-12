@@ -85,6 +85,9 @@ async function renderAgentsTab() {
       "<th>Host / Machine</th>" +
       "<th>Model</th>" +
       "<th>Mux</th>" +
+      "<th>Ctx</th>" +
+      "<th>Skills</th>" +
+      "<th>PID</th>" +
       "<th>Channels</th>" +
       "<th>Project</th>" +
       "<th>Workdir</th>" +
@@ -215,6 +218,15 @@ function buildAgentRow(a) {
     '<td class="muted-cell">' +
     escapeHtml(a.multiplexer || "-") +
     "</td>" +
+    '<td class="ctx-cell">' +
+    renderContextBadge(a.context_pct) +
+    "</td>" +
+    '<td class="skills-cell">' +
+    renderSkillsBadge(a.skills_loaded) +
+    "</td>" +
+    '<td class="pid-cell muted-cell">' +
+    (a.pid ? String(a.pid) : "-") +
+    "</td>" +
     '<td class="small-cell">' +
     channelsHtml +
     "</td>" +
@@ -269,7 +281,7 @@ function buildAgentRow(a) {
     "</td>" +
     "</tr>" +
     (a.claude_md
-      ? '<tr class="claude-md-detail" style="display:none"><td colspan="19"><pre class="claude-md-content">' +
+      ? '<tr class="claude-md-detail" style="display:none"><td colspan="22"><pre class="claude-md-content">' +
         escapeHtml(a.claude_md) +
         "</pre></td></tr>"
       : "")
@@ -287,12 +299,41 @@ function toggleClaudeMd(btn) {
   }
 }
 
-/* Auto-refresh agents tab every 10s when visible */
+/* Render context-percent badge (green/yellow/red by threshold).
+   Returns "-" when context_pct is null/undefined (legacy WS-only agent). */
+function renderContextBadge(pct) {
+  if (pct == null) return '<span class="muted-cell">-</span>';
+  var n = Number(pct);
+  if (isNaN(n)) return '<span class="muted-cell">-</span>';
+  var color;
+  if (n < 50) color = "#4ecdc4";       // green
+  else if (n < 80) color = "#ffd93d";  // yellow
+  else color = "#ef4444";              // red
+  return (
+    '<span class="ctx-badge" title="Context window used" ' +
+    'style="background:' + color + ';color:#111;padding:1px 6px;' +
+    'border-radius:10px;font-size:11px;font-weight:600">ctx ' +
+    n.toFixed(1) + "%</span>"
+  );
+}
+
+/* Render skills-loaded count badge with tooltip listing each skill. */
+function renderSkillsBadge(skills) {
+  if (!skills || !skills.length) return '<span class="muted-cell">-</span>';
+  var tip = skills.map(function (s) { return String(s); }).join("\n");
+  return (
+    '<span class="skills-badge" title="' + escapeHtml(tip) + '" ' +
+    'style="background:#2a3340;color:#9ecbff;padding:1px 6px;' +
+    'border-radius:10px;font-size:11px">skills:' + skills.length + "</span>"
+  );
+}
+
+/* Auto-refresh agents tab every 5s when visible (todo#213). */
 function startAgentsTabRefresh() {
   stopAgentsTabRefresh();
   _agentsTabInterval = setInterval(function () {
     if (activeTab === "agents-tab") renderAgentsTab();
-  }, 10000);
+  }, 5000);
 }
 function stopAgentsTabRefresh() {
   if (_agentsTabInterval) {
