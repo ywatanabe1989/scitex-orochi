@@ -95,4 +95,13 @@ urlpatterns = [
         views.api_upload_base64,
         name="api-upload-base64",
     ),
+    # Web push (todo#263) — mirrored on bare domain so PWAs installed from
+    # the apex can still fetch the VAPID key and subscribe/unsubscribe.
+    path("api/push/vapid-key", views.api_push_vapid_key, name="api-push-vapid-key"),
+    path("api/push/subscribe", views.api_push_subscribe, name="api-push-subscribe"),
+    path(
+        "api/push/unsubscribe",
+        views.api_push_unsubscribe,
+        name="api-push-unsubscribe",
+    ),
 ]
