@@ -80,7 +80,15 @@
           if (s.external_ip) lines.push('<span class="server-label">IP:</span><span class="server-value">' + s.external_ip + '</span>');
           if (s.version)     lines.push('<span class="server-label">Ver:</span><span class="server-value">v' + s.version + '</span>');
           lines.push('<span class="server-label">Up:</span><span class="server-value">' + uptimeStr + '</span>');
+          var msgInput = document.getElementById("msg-input");
+          var inputHasFocus = msgInput && document.activeElement === msgInput;
+          var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+          var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
           infoEl.innerHTML = lines.join("<br>");
+          if (inputHasFocus && document.activeElement !== msgInput) {
+            msgInput.focus();
+            try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+          }
         }
       }
     }
