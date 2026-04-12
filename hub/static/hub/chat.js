@@ -841,6 +841,10 @@ function startEditMessage(msgId) {
   var currentText = contentEl.innerText || contentEl.textContent || "";
 
   /* Hide content and action buttons while editing */
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   contentEl.style.display = "none";
   var editContainer = document.createElement("div");
   editContainer.className = "msg-edit-container";
@@ -853,6 +857,10 @@ function startEditMessage(msgId) {
     '<button class="msg-edit-cancel" type="button">Cancel</button>' +
     "</div>";
   contentEl.parentNode.insertBefore(editContainer, contentEl.nextSibling);
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 
   var textarea = editContainer.querySelector(".msg-edit-input");
   textarea.focus();
@@ -937,6 +945,10 @@ function deleteMessage(msgId) {
 }
 
 function handleMessageEdit(event) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var el = document.querySelector(
     '.msg[data-msg-id="' + event.message_id + '"]',
   );
@@ -955,6 +967,10 @@ function handleMessageEdit(event) {
       : "Edited";
     tag.textContent = "(edited)";
     header.appendChild(tag);
+  }
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
 }
 
