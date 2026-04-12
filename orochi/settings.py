@@ -234,3 +234,13 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     },
 }
+
+# Upload size limits — bumped for fleet PDF/dataset sharing (2026-04-12).
+# Default Django is 2.5 MB which clamps multi-MB uploads at the request body
+# parser stage before our app code can even handle them. We accept up to 100
+# MB; the per-route MAX_UPLOAD_SIZE in hub/views/upload.py enforces the
+# canonical limit.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024     # 5 MB stream-to-disk threshold
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None              # disable form-field count cap
+

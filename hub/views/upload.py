@@ -21,7 +21,7 @@ from hub.models import WorkspaceToken
 
 log = logging.getLogger(__name__)
 
-MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB (was 10 MB; bumped 2026-04-12 for fleet PDF/dataset sharing)
 
 
 def _login_or_token_required(view_func):
