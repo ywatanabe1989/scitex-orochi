@@ -745,13 +745,57 @@ function sendMessage() {
   if (typeof clearPendingAttachments === "function") {
     clearPendingAttachments();
   }
+  /* Clear the per-channel draft now that the message has been sent. */
+  try {
+    sessionStorage.removeItem(
+      "orochi-draft-" + (currentChannel || "__default__")
+    );
+  } catch (_) {}
 }
 
-/* Auto-resize textarea as content grows */
+/* Auto-resize textarea as content grows + persist draft per channel.
+ *
+ * The draft is keyed by `currentChannel` so switching channels preserves
+ * each channel's in-progress message. On page reload (or DOM re-render
+ * accident), restoreDraftForCurrentChannel() puts the text back. We use
+ * sessionStorage so drafts disappear when the tab closes — closer to a
+ * "scratchpad" semantic than localStorage's "permanent" feel.
+ */
+function _draftKey() {
+  try {
+    return "orochi-draft-" + (currentChannel || "__default__");
+  } catch (_) {
+    return "orochi-draft-__default__";
+  }
+}
+function _saveDraft(value) {
+  try {
+    if (value && value.length > 0) {
+      sessionStorage.setItem(_draftKey(), value);
+    } else {
+      sessionStorage.removeItem(_draftKey());
+    }
+  } catch (_) { /* sessionStorage may be unavailable in private mode */ }
+}
+function restoreDraftForCurrentChannel() {
+  try {
+    var input = document.getElementById("msg-input");
+    if (!input) return;
+    var saved = sessionStorage.getItem(_draftKey());
+    if (saved && !input.value) {
+      input.value = saved;
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    }
+  } catch (_) {}
+}
+window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
 document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  _saveDraft(this.value);
 });
+restoreDraftForCurrentChannel();
 
 document.getElementById("msg-send").addEventListener("click", function (e) {
   e.preventDefault();
