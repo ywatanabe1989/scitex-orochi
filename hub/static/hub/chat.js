@@ -252,18 +252,38 @@ function appendMessage(msg) {
 
   var attachmentsHtml = "";
   /* attachments already resolved above (for the empty-content guard) */
+  var imageAttachments = attachments.filter(function (att) {
+    return att.mime_type && att.mime_type.startsWith("image/") && att.url;
+  });
+  var imgCount = imageAttachments.length;
+  var gridClass =
+    imgCount <= 1
+      ? "count-1"
+      : imgCount === 2
+        ? "count-2"
+        : imgCount === 3
+          ? "count-3"
+          : "count-many";
+  var imagesHtml = "";
+  imageAttachments.forEach(function (att) {
+    imagesHtml +=
+      '<div class="attachment-img">' +
+      '<a href="' +
+      escapeHtml(att.url) +
+      '" target="_blank">' +
+      '<img src="' +
+      escapeHtml(att.url) +
+      '" alt="' +
+      escapeHtml(att.filename || "image") +
+      '" loading="lazy"></a></div>';
+  });
+  if (imgCount > 0) {
+    attachmentsHtml +=
+      '<div class="attachment-grid ' + gridClass + '">' + imagesHtml + "</div>";
+  }
   attachments.forEach(function (att) {
     if (att.mime_type && att.mime_type.startsWith("image/")) {
-      attachmentsHtml +=
-        '<div class="attachment-img">' +
-        '<a href="' +
-        escapeHtml(att.url) +
-        '" target="_blank">' +
-        '<img src="' +
-        escapeHtml(att.url) +
-        '" alt="' +
-        escapeHtml(att.filename || "image") +
-        '" loading="lazy"></a></div>';
+      /* handled above in grid */
     } else if (att.url) {
       var sizeStr = att.size
         ? " (" +
