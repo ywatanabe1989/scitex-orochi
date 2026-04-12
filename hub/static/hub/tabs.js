@@ -32,6 +32,20 @@ function _activateTab(tab) {
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
+    /* Always default-focus the compose input when the chat tab is shown.
+     * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
+     * the primary action target on the chat tab, so the user should never
+     * have to click into it manually after switching tabs or reloading.
+     * Defer with rAF so the layout has settled (display:'' just changed). */
+    requestAnimationFrame(function () {
+      var input = document.getElementById("msg-input");
+      if (input) {
+        input.focus();
+        if (typeof restoreDraftForCurrentChannel === "function") {
+          restoreDraftForCurrentChannel();
+        }
+      }
+    });
   } else if (tab === "todo") {
     todoView.style.display = "block";
     todoView.style.flex = "1";
