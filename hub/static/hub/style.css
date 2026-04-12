@@ -173,6 +173,10 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Higher specificity to override .sidebar h2 which would gray out the product name */
+.sidebar h2.workspace-title {
+  color: #e0e0e0;
+}
 .workspace-subtitle {
   font-size: 11px;
   color: #666;
