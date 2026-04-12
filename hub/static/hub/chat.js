@@ -79,8 +79,12 @@ function appendSystemMessage(msg) {
     (ts ? ' <span class="ts">' + ts + "</span>" : "") +
     "</div>";
   var container = document.getElementById("messages");
+  var nearBottom =
+    container.scrollHeight - container.scrollTop - container.clientHeight < 150;
   container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  if (nearBottom) {
+    container.scrollTop = container.scrollHeight;
+  }
 }
 
 function appendMessage(msg) {
@@ -356,8 +360,16 @@ function appendMessage(msg) {
     el.style.display = "none";
   }
   var container = document.getElementById("messages");
+  /* Only auto-scroll if user is already near the bottom (within 150px).
+   * This prevents forced scrolling while the user is typing or reading
+   * older messages, which on mobile Safari can disrupt the textarea
+   * (dismiss keyboard, lose IME composition, or reset input value). */
+  var nearBottom =
+    container.scrollHeight - container.scrollTop - container.clientHeight < 150;
   container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  if (nearBottom) {
+    container.scrollTop = container.scrollHeight;
+  }
   applyIssueTitleHints(el);
 }
 
@@ -386,6 +398,17 @@ async function loadHistory() {
     /* API returns newest-first (-ts); reverse for chronological display */
     messages.reverse();
     var container = document.getElementById("messages");
+
+    /* Preserve the textarea value across history rebuilds.  On mobile
+     * Safari, large DOM mutations (innerHTML="") while the keyboard is
+     * up can cause the browser to reset or blur the focused textarea,
+     * losing the user's in-progress message. */
+    var msgInput = document.getElementById("msg-input");
+    var savedValue = msgInput ? msgInput.value : "";
+    var hadFocus = msgInput && document.activeElement === msgInput;
+    var savedStart = msgInput ? msgInput.selectionStart : 0;
+    var savedEnd = msgInput ? msgInput.selectionEnd : 0;
+
     container.innerHTML = "";
     knownMessageKeys = {};
     messages.forEach(function (row) {
@@ -410,6 +433,16 @@ async function loadHistory() {
       });
     });
     container.scrollTop = container.scrollHeight;
+
+    /* Restore textarea state if the DOM rebuild clobbered it */
+    if (msgInput && savedValue && !msgInput.value) {
+      msgInput.value = savedValue;
+      if (hadFocus) {
+        msgInput.focus();
+        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      }
+    }
+
     historyLoaded = true;
     /* Fetch reactions for all loaded messages */
     if (typeof fetchReactionsForMessages === "function") {
@@ -422,6 +455,46 @@ async function loadHistory() {
     }
   } catch (e) {
     console.error("loadHistory failed:", e);
+  }
+}
+
+/* Lightweight alternative to loadHistory for WebSocket reconnects.
+ * Fetches recent messages and appends only those we haven't seen,
+ * avoiding the full innerHTML="" rebuild that disrupts the textarea
+ * on mobile Safari. */
+async function fetchNewMessages() {
+  try {
+    var endpoint = currentChannel
+      ? "/api/history/" + encodeURIComponent(currentChannel) + "?limit=50"
+      : "/api/messages/?limit=50";
+    var res = await fetch(apiUrl(endpoint), { credentials: "same-origin" });
+    if (!res.ok) return;
+    var messages = await res.json();
+    messages.reverse();
+    messages.forEach(function (row) {
+      var key = messageKey(row.sender, row.ts, row.content);
+      if (knownMessageKeys[key]) return;
+      knownMessageKeys[key] = true;
+      appendMessage({
+        id: row.id,
+        type: "message",
+        sender: row.sender,
+        sender_type: row.sender_type,
+        ts: row.ts,
+        edited: row.edited || false,
+        edited_at: row.edited_at || null,
+        thread_count: row.thread_count || 0,
+        metadata: row.metadata || {},
+        payload: {
+          channel: row.channel || currentChannel || "",
+          content: row.content,
+          attachments:
+            (row.metadata && row.metadata.attachments) || row.attachments || [],
+        },
+      });
+    });
+  } catch (e) {
+    console.warn("fetchNewMessages failed:", e);
   }
 }
 
@@ -444,6 +517,14 @@ async function loadChannelHistory(channel) {
     /* API returns newest-first (-ts); reverse for chronological display */
     messages.reverse();
     var container = document.getElementById("messages");
+
+    /* Preserve textarea value -- see loadHistory for rationale */
+    var msgInput = document.getElementById("msg-input");
+    var savedValue = msgInput ? msgInput.value : "";
+    var hadFocus = msgInput && document.activeElement === msgInput;
+    var savedStart = msgInput ? msgInput.selectionStart : 0;
+    var savedEnd = msgInput ? msgInput.selectionEnd : 0;
+
     container.innerHTML = "";
     knownMessageKeys = {};
     messages.forEach(function (row) {
@@ -468,6 +549,16 @@ async function loadChannelHistory(channel) {
       });
     });
     container.scrollTop = container.scrollHeight;
+
+    /* Restore textarea state if the DOM rebuild clobbered it */
+    if (msgInput && savedValue && !msgInput.value) {
+      msgInput.value = savedValue;
+      if (hadFocus) {
+        msgInput.focus();
+        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      }
+    }
+
     if (typeof fetchReactionsForMessages === "function") {
       var ids = messages
         .map(function (r) {

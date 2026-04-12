@@ -387,7 +387,16 @@ function connect() {
     stopRestPolling();
     fetchStats();
     fetchAgents();
-    loadHistory();
+    /* On reconnect (historyLoaded=true), fetch only new messages
+     * incrementally instead of doing a full DOM rebuild.  A full
+     * loadHistory() on mobile Safari causes massive innerHTML churn
+     * that can reset the textarea value / dismiss the keyboard while
+     * the user is typing. */
+    if (historyLoaded) {
+      fetchNewMessages();
+    } else {
+      loadHistory();
+    }
   };
   ws.onclose = function (event) {
     wsConnected = false;
