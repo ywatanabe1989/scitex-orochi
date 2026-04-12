@@ -7,6 +7,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from hub.models import Channel, Message, Workspace, WorkspaceToken
+from hub.channel_acl import check_write_allowed
 
 log = logging.getLogger("orochi.consumers")
 
@@ -244,6 +245,22 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 or content.get("content")
                 or ""
             )
+
+            # Channel ACL enforcement — check before persisting or broadcasting.
+            # check_write_allowed is a sync call (file-cached, sub-ms) so safe to
+            # call directly in the async consumer.
+            if not check_write_allowed(self.agent_name, ch_name):
+                log.warning(
+                    "[ACL] blocked write from %s to %s",
+                    self.agent_name,
+                    ch_name,
+                )
+                await self.send_json({
+                    "type": "error",
+                    "code": "acl_denied",
+                    "message": f"You are not allowed to write to {ch_name}",
+                })
+                return
 
             # Attachments may arrive either nested in metadata (new clients)
             # or at the payload top-level (upload.js). Normalize into one
