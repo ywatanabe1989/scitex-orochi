@@ -141,6 +141,22 @@ Operators score each run on:
   hand back to user? Give-up = our docs failed.
 - **Successful completion**: did the task actually finish correctly?
   Verify the deliverable, not just newbie's self-report.
+- **Suggested-fix effectiveness**: when an error message tells newbie to
+  do X (e.g. "Install with: pip install crossref-local"), record whether
+  doing X actually fixes the problem on the next try. Suggested fixes
+  that fail to resolve the original error are a top-priority docs/CLI
+  bug — they actively waste user time and erode trust. Discovered in
+  run `20260412-093426` where newbie ran `pip install crossref-local`
+  exactly as suggested and the next invocation reported the same error.
+- **Deliverable plausibility verification (mandatory)**: when newbie
+  produces a file, **never trust it on appearance**. Run #1 fabricated a
+  10-entry `gnn_papers.bib` in ~60 seconds with arXiv IDs and DOIs that
+  looked correct but were never validated against any external source.
+  For every claimed deliverable, the operator must independently
+  resolve identifiers (arXiv ID exists, DOI resolves, URL returns 200,
+  citation counts match) before scoring the run as successful. A
+  hallucinated success looks identical to a real success at first
+  glance — the only defense is external verification.
 
 Record these in `$RUN_DIR/metrics.json`. Compare across runs to measure
 improvements.

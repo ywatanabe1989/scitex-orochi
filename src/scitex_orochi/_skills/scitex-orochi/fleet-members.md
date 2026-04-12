@@ -23,6 +23,40 @@ All agents connected to the Orochi hub. Definitions are the single source of tru
 
 Legacy names `mamba-mba` and `caduceus-mba` are deprecated; use `mamba-*` names.
 
+## Manager-agent responsibility boundaries
+
+The `mamba-*` manager agents have overlapping surface area but distinct
+responsibilities. When in doubt, use this table to route work; do not
+duplicate effort across managers.
+
+| Agent | Owns | Does NOT own |
+|---|---|---|
+| **mamba-skill-manager** | shared skill CRUD; skill source-of-truth in `~/proj/scitex-orochi/src/scitex_orochi/_skills/`; workspace skill mirrors; operator-facing protocol skills (e.g. `newbie-test-protocol.md`); knowledge sharing in #general | code implementation; agent restart; CI; smoke tests; new feature design |
+| **mamba-todo-manager** | GitHub issues on `ywatanabe1989/todo`; cross-issue dependency tracking; sub-issue creation; task → owner routing; periodic progress polling | code; restart; smoke tests |
+| **mamba-healer-mba** | agent liveness diagnosis (alive / stuck / dead); cross-agent compact and restart via tmux/screen send-keys; fleet scan loop; LP-* (Lessons Patterns) capture | code quality; CLI conventions; CI; new skills |
+| **mamba-quality-checker-mba** | smoke test monitoring (`scitex --help`, package imports) on a periodic cycle; CLI convention audits (`--json`, `--help-recursive`, `SCITEX_<PKG>_*` env compliance); CI failure surfacing in coordination with head-nas; regression detection; `#escalation` reporting for critical findings; cycle diff reports | agent liveness; new feature design; conversation commentary; skill content |
+
+**Hard boundary (overlap traps to avoid):**
+
+- `healer` ↔ `quality-checker`: healer watches *agents*, quality-checker
+  watches *code*. A stuck process is healer's; a broken `--json` flag is
+  quality-checker's. They cooperate on regressions that have both a
+  process and a code dimension, but each owns one half.
+- `skill-manager` ↔ `quality-checker`: skill-manager defines the rule
+  (e.g. "all CLIs must support `--json`"), quality-checker measures
+  whether the implementation complies. skill-manager does not run smoke
+  tests; quality-checker does not write skills.
+- `skill-manager` ↔ `todo-manager`: skill-manager records team knowledge
+  in skills, todo-manager records actionable work in issues. The same
+  finding may produce both a skill update and an issue, but each manager
+  owns one artifact.
+- `healer` ↔ `todo-manager`: when healer captures an LP-* it stays in
+  CLAUDE.md / known-issues.md, not as a todo issue, unless action is
+  required from a non-healer agent.
+
+This boundary table was agreed on 2026-04-12 after a #general discussion
+about role overlap. Update here when responsibilities shift.
+
 ## Self-Command Constraint (Claude Code spec)
 
 **Rule**: An agent cannot issue slash commands (`/compact`, `/clear`, etc.)

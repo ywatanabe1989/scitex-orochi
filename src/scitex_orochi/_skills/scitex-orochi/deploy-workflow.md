@@ -5,6 +5,62 @@ description: End-to-end deployment process for Orochi hub and agent restart proc
 
 # Deploy Workflow
 
+## Release Hygiene (Required for Every Deploy)
+
+Every deploy of any Orochi/SciTeX package MUST include:
+
+1. **Version bump** following semver:
+   - `patch` (X.Y.**Z**+1) — bug fixes only
+   - `minor` (X.**Y**+1.0) — backward-compatible feature additions
+   - `major` (**X**+1.0.0) — breaking changes
+2. **Git tag** `vX.Y.Z`
+3. **GitHub Release** with notes (`gh release create vX.Y.Z --notes ...`)
+4. **CHANGELOG.md** update if the package has one
+
+Skipping any of these is a violation of the deploy convention. Tag + release are
+how downstream agents and users discover what changed.
+
+```bash
+# Reusable post-bump release flow
+git tag "v${VERSION}"
+git push && git push --tags
+gh release create "v${VERSION}" --title "v${VERSION}" --notes-file RELEASE_NOTES.md
+```
+
+### Release Notes Format (Required)
+
+Release notes must be human-readable and grouped by change type. Use this
+template (matches GitHub Releases conventions):
+
+```markdown
+## What's Changed
+
+### 🚀 Features
+- feat: short description (#NN)
+
+### 🐛 Bug Fixes
+- fix: short description (#NN)
+
+### 🛠 Improvements
+- improvement: short description (#NN)
+
+### 📚 Documentation
+- docs: short description (#NN)
+
+### 🔧 Internal
+- chore: short description
+- refactor: short description
+
+**Full Changelog**: https://github.com/<owner>/<repo>/compare/vPREV...vNEW
+```
+
+Each repository should also maintain a top-level `CHANGELOG.md` (Keep a
+Changelog convention: https://keepachangelog.com) mirroring the same content in
+reverse-chronological order so the dashboard's Changelog tab can render it
+without hitting the GitHub API.
+
+Empty sections may be omitted, but at least one section must be present.
+
 ## Hub Deployment
 
 The Orochi hub runs on NAS via Docker. Production URL: `https://scitex-orochi.com/`
@@ -18,11 +74,13 @@ The Orochi hub runs on NAS via Docker. Production URL: `https://scitex-orochi.co
    ./scripts/bump-version.sh patch   # or minor, major
    ```
 
-2. **Commit and push**:
+2. **Commit, tag, push, and release**:
 
    ```bash
-   git add -A && git commit -m "Bump version to X.Y.Z"
-   git push origin develop
+   git add -A && git commit -m "chore: bump version to vX.Y.Z"
+   git tag vX.Y.Z
+   git push origin develop && git push --tags
+   gh release create vX.Y.Z --title "vX.Y.Z" --notes "..."
    ```
 
 3. **Pull on NAS**:
