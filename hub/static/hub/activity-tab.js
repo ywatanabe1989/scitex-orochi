@@ -119,9 +119,36 @@ function renderActivityTab() {
     var preview = a.last_message_preview || "";
     var machine = escapeHtml(a.machine || "—");
     var role = escapeHtml(a.role || "agent");
+    var model = a.model ? escapeHtml(a.model) : "";
+    var multiplexer = a.multiplexer ? escapeHtml(a.multiplexer) : "";
+    var pid = a.pid != null && a.pid !== 0 ? a.pid : null;
+    var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
+    var subagentCount = a.subagent_count != null
+      ? Number(a.subagent_count)
+      : (Array.isArray(a.subagents) ? a.subagents.length : null);
+    var skillsLoaded = Array.isArray(a.skills_loaded) ? a.skills_loaded : [];
     var name = escapeHtml(
       typeof hostedAgentName === "function" ? hostedAgentName(a) : cleanAgentName(a.name),
     );
+    /* Build the rich-fields chip row. Each chip is added only when its
+     * underlying value is non-null/non-empty so cards stay clean for
+     * agents whose registry payload doesn't yet include the new fields
+     * (e.g., pre-heartbeat sidecars). */
+    var chips = [];
+    if (model) chips.push('<span class="activity-chip activity-chip-model" title="model">' + model + '</span>');
+    if (multiplexer) chips.push('<span class="activity-chip activity-chip-mux" title="multiplexer">' + multiplexer + '</span>');
+    if (ctxPct != null) {
+      var ctxClass = ctxPct < 50 ? "ctx-ok" : ctxPct < 80 ? "ctx-warn" : "ctx-hot";
+      chips.push('<span class="activity-chip activity-chip-ctx ' + ctxClass + '" title="context usage">ctx ' + ctxPct.toFixed(1) + '%</span>');
+    }
+    if (subagentCount != null && subagentCount > 0) {
+      chips.push('<span class="activity-chip activity-chip-subs" title="subagent count">subs ' + subagentCount + '</span>');
+    }
+    if (skillsLoaded.length > 0) {
+      chips.push('<span class="activity-chip activity-chip-skills" title="' + escapeHtml(skillsLoaded.join(", ")) + '">skills ' + skillsLoaded.length + '</span>');
+    }
+    if (pid != null) chips.push('<span class="activity-chip activity-chip-pid" title="process id">pid ' + pid + '</span>');
+    var chipsHtml = chips.length > 0 ? '<div class="activity-chips">' + chips.join("") + '</div>' : "";
     var previewHtml = preview
       ? '<div class="activity-preview">' +
         '<span class="activity-preview-label">last:</span> ' +
@@ -157,6 +184,7 @@ function renderActivityTab() {
       '<span class="activity-liveness">' + _livenessLabel(liveness) + (idleStr ? ' · ' + idleStr : '') + '</span>' +
       '</div>' +
       '<div class="activity-meta">' + machine + ' · ' + role + '</div>' +
+      chipsHtml +
       '<div class="activity-task">' + _renderTaskField(task, preview) + '</div>' +
       _renderHealthField(a.health) +
       subagentsHtml +
