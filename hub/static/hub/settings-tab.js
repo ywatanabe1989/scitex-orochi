@@ -13,6 +13,10 @@ function fetchSettings() {
       return res.text();
     })
     .then(function (html) {
+      var msgInput = document.getElementById("msg-input");
+      var inputHasFocus = msgInput && document.activeElement === msgInput;
+      var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+      var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
       /* Extract the main content from the settings page HTML */
       var parser = new DOMParser();
       var doc = parser.parseFromString(html, "text/html");
@@ -28,10 +32,22 @@ function fetchSettings() {
       }
       settingsLoaded = true;
       wireSettingsForms(container);
+      if (inputHasFocus && document.activeElement !== msgInput) {
+        msgInput.focus();
+        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      }
     })
     .catch(function () {
+      var msgInput = document.getElementById("msg-input");
+      var inputHasFocus = msgInput && document.activeElement === msgInput;
+      var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+      var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
       container.innerHTML =
         '<p class="empty-notice">Failed to load settings.</p>';
+      if (inputHasFocus && document.activeElement !== msgInput) {
+        msgInput.focus();
+        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      }
     });
 }
 
