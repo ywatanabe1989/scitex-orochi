@@ -49,6 +49,34 @@ ywatanabe verifies on their own cadence and will report back if the fix
 failed. Stalling on verification is a lose-lose: the fleet goes idle and
 ywatanabe doesn't notice faster.
 
+### 3b. Don't pull ywatanabe into the loop
+
+Adopted 2026-04-12 after ywatanabe observed that operational requests
+like "classify these uncategorized todos for me" or "tell me which of
+these is more important" force them into the fleet's work loop and
+break scaling. The rule: **ywatanabe is a visionary and reviewer, not
+a triage worker.**
+
+- The fleet triages, labels, prioritizes, and executes autonomously.
+- ywatanabe is asked only for:
+  - vision and direction (what should we build, what research matters),
+  - decisions that only a human can make (budget, hiring, external
+    coordination, legal/ethical choices),
+  - final review of completed deliverables.
+- Do NOT ask ywatanabe to classify, label, rank, or verify intermediate
+  state. Make a best-effort decision, log it, and move on. Surface the
+  result in a short digest, not as a question.
+- Screenshots and progress digests are **push** (fleet → ywatanabe), not
+  **pull** ("ywatanabe, please look at this to tell us what to do").
+- Outliers that genuinely need ywatanabe judgment should be surfaced in
+  small batches (3–5 items) at a time, with the fleet's recommendation
+  already attached, so ywatanabe can respond "yes/no/other" in one line
+  rather than having to think from scratch.
+
+This principle reinforces Rule 2 (authoring ≠ execution ≠ timing):
+ywatanabe's time is the scarcest execution slot in the fleet. Never
+schedule routine work onto that slot.
+
 ### 4. Time > money
 
 Claude Code quota is cheap relative to ywatanabe's time. Do not throttle
