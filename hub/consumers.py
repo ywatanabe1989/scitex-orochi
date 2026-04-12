@@ -283,7 +283,14 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 metadata=metadata,
             )
 
-            # Broadcast to channel group
+            # Broadcast to channel group. Use the *merged* metadata
+            # (which now includes top-level payload.attachments hoisted
+            # in by the normalization above) — NOT payload.metadata,
+            # which lacks them. Without this fix, ywatanabe at msg#6722
+            # ("レンダリングされてないしね") saw agent-uploaded images
+            # vanish from the live feed because the WS broadcast carried
+            # an empty attachments list, even though the DB row had
+            # them and a page reload would have shown them.
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_send(
                 group,
@@ -295,7 +302,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     "channel": ch_name,
                     "text": text,
                     "ts": msg["ts"] if msg else None,
-                    "metadata": payload.get("metadata", {}),
+                    "metadata": metadata,
                 },
             )
 
@@ -310,7 +317,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     "channel": ch_name,
                     "text": text,
                     "ts": msg["ts"] if msg else None,
-                    "metadata": payload.get("metadata", {}),
+                    "metadata": metadata,
                 },
             )
 
