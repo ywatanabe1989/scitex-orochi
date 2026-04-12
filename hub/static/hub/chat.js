@@ -395,9 +395,13 @@ function appendMessage(msg) {
     "</span>" +
     youTag +
     roleBadge +
-    '<span class="channel">' +
+    '<a href="#" class="channel channel-link" data-channel="' +
     escapeHtml(channel) +
-    "</span>" +
+    '" title="Switch to ' +
+    escapeHtml(channel) +
+    '">' +
+    escapeHtml(channel) +
+    "</a>" +
     '<span class="ts" title="' +
     escapeHtml(fullTs) +
     '">' +
@@ -1165,3 +1169,21 @@ function handleMessageDelete(event) {
     init();
   }
 })();
+
+/* Channel name click → switch channel (#211) */
+document.addEventListener("click", function (e) {
+  var link = e.target.closest(".channel-link");
+  if (!link) return;
+  e.preventDefault();
+  var ch = link.getAttribute("data-channel");
+  if (!ch) return;
+  if (typeof currentChannel !== "undefined") {
+    currentChannel = ch;
+    if (typeof loadChannelHistory === "function") {
+      loadChannelHistory(ch);
+    }
+    if (typeof addTag === "function") {
+      addTag("channel", ch);
+    }
+  }
+});
