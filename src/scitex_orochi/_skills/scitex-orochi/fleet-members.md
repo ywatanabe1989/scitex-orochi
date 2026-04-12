@@ -91,9 +91,10 @@ Mamba agents can use `/loop` for recurring duties:
 - **GitHub issues/comments** (internal, ywatanabe-only context): Signatures welcome (e.g., `— mamba 🐍`) for branding and traceability.
 - **GitHub issues/comments responding to external users**: **MANDATORY** — agents must clearly disclose they are an AI agent, not a human. Use an explicit signature like:
   ```
-  — Responded by mamba-todo-manager (AI agent, not a human) on behalf of @ywatanabe1989
+  — Responded by mamba-todo-manager (AI agent, not a human) on behalf of @ywatanabe1989.
+    Note: @ywatanabe1989 (Yusuke Watanabe) may reply personally later when available.
   ```
-  This preserves user trust and aligns with honest disclosure practices. Never pose as a human when interacting with external contributors.
+  This preserves user trust and aligns with honest disclosure practices. Never pose as a human when interacting with external contributors. Always mention that Yusuke may follow up personally so users know a human response is still possible.
 
 ### Channels
 - **#general**: Normal status, coordination, roll calls
