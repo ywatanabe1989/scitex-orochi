@@ -613,7 +613,15 @@ document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = Math.min(this.scrollHeight, 120) + "px";
 });
 
-document.getElementById("msg-send").addEventListener("click", sendMessage);
+document.getElementById("msg-send").addEventListener("click", function (e) {
+  e.preventDefault();
+  /* On mobile Safari, tapping the send button blurs the textarea before
+   * the click handler fires, which can dismiss the keyboard and cause
+   * unexpected scrolling. We call sendMessage synchronously here. */
+  sendMessage();
+  /* Re-focus the textarea so the keyboard stays open on mobile */
+  document.getElementById("msg-input").focus();
+});
 document.getElementById("msg-input").addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     var dd = document.getElementById("mention-dropdown");
