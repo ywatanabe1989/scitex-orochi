@@ -901,6 +901,35 @@ restoreDraftForCurrentChannel();
   };
 })();
 
+/* Systemic focus-theft guard (todo#225 follow-up after blur log analysis at
+ * msg#6341): clicking any button or link inside the message feed or thread
+ * panel was shifting browser focus away from #msg-input, breaking ywatanabe's
+ * mid-typing flow. The previous fix only patched .msg-fold-btn; the blur log
+ * exposed five more offenders (.msg-thread-btn, .chat-link, .issue-link,
+ * .permalink-btn, .thread-permalink-btn). Rather than chase each one with
+ * tabindex / inline onmousedown, we install a single capture-phase mousedown
+ * delegate: when #msg-input currently holds focus AND the click target is a
+ * <button> or <a> inside .msg / .thread-panel / #messages, preventDefault on
+ * mousedown blocks the browser's default focus shift. The click event still
+ * fires, so the underlying action (open thread, open URL in new tab, fold,
+ * permalink copy, …) runs normally. Form controls (textarea/input/select)
+ * are excluded so the user can still tab into #thread-input intentionally. */
+document.addEventListener("mousedown", function (e) {
+  var msgInput = document.getElementById("msg-input");
+  if (!msgInput || document.activeElement !== msgInput) return;
+  var t = e.target;
+  if (!t || !t.closest) return;
+  /* Allow focus shift onto another form control (e.g. thread reply input). */
+  var formCtrl = t.closest("textarea, input, select");
+  if (formCtrl && formCtrl !== msgInput) return;
+  /* Only intercept clicks inside the message feed or thread panel. */
+  if (!t.closest("#messages, .msg, .thread-panel")) return;
+  /* Block focus shift only for clickable controls. */
+  if (t.closest("button, a")) {
+    e.preventDefault();
+  }
+}, true);
+
 document.getElementById("msg-send").addEventListener("click", function (e) {
   e.preventDefault();
   /* On mobile Safari, tapping the send button blurs the textarea before

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2] - 2026-04-13
+
+### 🐛 Bug Fixes
+- fix(hub/ui): systemic focus-theft guard for #msg-input — single delegated
+  capture-phase mousedown handler on document blocks default focus shift
+  whenever the user clicks any `<button>` or `<a>` inside `#messages`,
+  `.msg`, or `.thread-panel` while the compose textarea has focus. Replaces
+  the per-element fixes that only patched `.msg-fold-btn` in 0.10.1; the
+  blur log analysis at msg#6341 (todo#225 reopen) exposed five more
+  offenders (`.msg-thread-btn`, `.chat-link`, `.issue-link`, `.permalink-btn`,
+  `.thread-permalink-btn`) and a futureproof fix is now in place.
+
 ## [0.9.0] - 2026-04-12
 
 ### 🚀 Features
