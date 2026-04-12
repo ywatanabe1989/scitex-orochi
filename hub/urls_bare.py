@@ -1,11 +1,21 @@
 """URL patterns for the bare domain (scitex-orochi.com)."""
 
+from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
+from django.views.static import serve as static_serve
 
 from hub import views
 
+_media_url = settings.MEDIA_URL.strip("/")
+
 urlpatterns = [
+    # Media files must come before other routes
+    re_path(
+        rf"^{_media_url}/(?P<path>.*)$",
+        static_serve,
+        {"document_root": settings.MEDIA_ROOT},
+    ),
     path("admin/", admin.site.urls),
     path("accounts/", include("allauth.urls")),
     # Landing
