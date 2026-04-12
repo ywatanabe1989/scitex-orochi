@@ -280,6 +280,24 @@ function fetchAgentsThrottled() {
   }, FETCH_AGENTS_THROTTLE_MS);
 }
 
+var _fetchStatsTimer = null;
+var _fetchStatsPending = false;
+
+function fetchStatsThrottled() {
+  if (_fetchStatsTimer) {
+    _fetchStatsPending = true;
+    return;
+  }
+  fetchStats();
+  _fetchStatsTimer = setTimeout(function () {
+    _fetchStatsTimer = null;
+    if (_fetchStatsPending) {
+      _fetchStatsPending = false;
+      fetchStatsThrottled();
+    }
+  }, FETCH_AGENTS_THROTTLE_MS);
+}
+
 function startRestPolling() {
   if (restPollTimer) return;
   restPollTimer = setInterval(async function () {
@@ -369,7 +387,7 @@ function handleMessage(msg) {
     msg.type === "agent_info"
   ) {
     fetchAgentsThrottled();
-    fetchStats();
+    fetchStatsThrottled();
     fetchResources();
   } else if (msg.type === "reaction_update") {
     if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
@@ -859,6 +877,9 @@ async function fetchStats() {
     var res = await fetch(apiUrl("/api/stats"));
     var stats = await res.json();
     var chContainer = document.getElementById("channels");
+    var newStatsJson = JSON.stringify(stats.channels);
+    if (chContainer._lastStatsJson === newStatsJson) return;
+    chContainer._lastStatsJson = newStatsJson;
     chContainer.innerHTML = stats.channels
       .map(function (c, i) {
         var active = currentChannel === c ? " active" : "";

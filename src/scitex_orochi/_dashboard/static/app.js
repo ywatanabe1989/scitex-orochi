@@ -137,6 +137,24 @@ function sendOrochiMessage(msgData) {
     });
 }
 
+var _fetchStatsTimer = null;
+var _fetchStatsPending = false;
+
+function fetchStatsThrottled() {
+  if (_fetchStatsTimer) {
+    _fetchStatsPending = true;
+    return;
+  }
+  fetchStats();
+  _fetchStatsTimer = setTimeout(function () {
+    _fetchStatsTimer = null;
+    if (_fetchStatsPending) {
+      _fetchStatsPending = false;
+      fetchStatsThrottled();
+    }
+  }, FETCH_AGENTS_THROTTLE_MS);
+}
+
 function startRestPolling() {
   if (restPollTimer) return;
   restPollTimer = setInterval(async function () {
@@ -191,7 +209,7 @@ function handleMessage(msg) {
     appendMessage(msg);
   } else if (msg.type === "presence_change" || msg.type === "status_update") {
     fetchAgentsThrottled();
-    fetchStats();
+    fetchStatsThrottled();
   }
 }
 
@@ -317,6 +335,9 @@ async function fetchStats() {
     document.getElementById("stat-observers").textContent =
       stats.observers_connected;
     var chContainer = document.getElementById("channels");
+    var newStatsJson = JSON.stringify(stats.channels);
+    if (chContainer._lastStatsJson === newStatsJson) return;
+    chContainer._lastStatsJson = newStatsJson;
     chContainer.innerHTML = stats.channels
       .map(function (c, i) {
         var active = currentChannel === c ? " active" : "";
