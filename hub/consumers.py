@@ -322,7 +322,17 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             )
 
     async def chat_message(self, event):
-        """Handle chat.message from channel layer — forward to WebSocket client."""
+        """Handle chat.message from channel layer — forward to WebSocket client.
+
+        Honor the agent's SCITEX_OROCHI_CHANNELS subscription: chat messages
+        are broadcast to both the per-channel group and the workspace group
+        (the latter for dashboard observers), so every connected agent
+        receives every message via the workspace fanout. Filter here so the
+        agent only sees channels it explicitly registered for.
+        """
+        agent_channels = getattr(self, "agent_meta", {}).get("channels") or []
+        if agent_channels and event.get("channel") not in agent_channels:
+            return
         await self.send_json(
             {
                 "type": "message",
