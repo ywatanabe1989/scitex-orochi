@@ -132,13 +132,13 @@ function appendSystemMessage(msg) {
   var container = document.getElementById("messages");
   var nearBottom =
     container.scrollHeight - container.scrollTop - container.clientHeight < 150;
-  /* Mirror appendMessage's focus/scroll guard — see todo#225. */
+  /* Mirror appendMessage's focus/scroll guard — see todo#225/#227. */
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   container.appendChild(el);
-  if (nearBottom && !inputHasFocus) {
+  if (nearBottom) {
     container.scrollTop = container.scrollHeight;
   }
   if (inputHasFocus && document.activeElement !== msgInput) {
