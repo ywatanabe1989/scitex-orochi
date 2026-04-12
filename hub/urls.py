@@ -101,4 +101,6 @@ urlpatterns = [
     path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
+    # GitHub webhook
+    path("webhook/github/", views.github_webhook, name="github-webhook"),
 ]
