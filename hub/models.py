@@ -3,6 +3,7 @@
 import secrets
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 
 
@@ -104,11 +105,24 @@ class AgentProfile(models.Model):
 class Channel(models.Model):
     """A channel within a workspace — like a Slack channel."""
 
+    KIND_GROUP = "group"
+    KIND_DM = "dm"
+    KIND_CHOICES = [
+        (KIND_GROUP, "Group"),
+        (KIND_DM, "Direct Message"),
+    ]
+
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="channels"
     )
     name = models.CharField(max_length=100)  # e.g. "#general"
     description = models.TextField(blank=True, default="")
+    kind = models.CharField(
+        max_length=8,
+        choices=KIND_CHOICES,
+        default=KIND_GROUP,
+        db_index=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -117,6 +131,68 @@ class Channel(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.workspace.name})"
+
+    def clean(self):
+        """Reject ``dm:`` prefix on non-DM channels (spec v3 §9 Q5).
+
+        The ``dm:`` namespace is reserved for ``kind="dm"`` channels so
+        that group channels can never collide with the canonical DM
+        channel-name format ``dm:<a>|<b>`` described in spec §2.3.
+        """
+        super().clean()
+        if self.kind == self.KIND_GROUP and self.name.startswith("dm:"):
+            raise ValidationError(
+                {
+                    "name": (
+                        "Channel names starting with 'dm:' are reserved "
+                        "for direct-message channels (kind='dm')."
+                    )
+                }
+            )
+
+
+class DMParticipant(models.Model):
+    """Participant row for a direct-message channel (spec v3 §2.2).
+
+    Unified on :class:`WorkspaceMember` — ``WorkspaceMember`` already
+    models both humans (real Django ``User``) and agents (synthetic
+    ``agent-<name>`` users created by ``hub/views/auth.py``). The
+    ``principal_type`` column is a display discriminator only; identity
+    resolution goes through the ``member`` FK. The denormalized
+    ``identity_name`` column is the hot-path lookup key used by the
+    ``chat_message`` ACL filter (PR 2) to skip the FK→User join.
+    """
+
+    PRINCIPAL_AGENT = "agent"
+    PRINCIPAL_HUMAN = "human"
+    PRINCIPAL_CHOICES = [
+        (PRINCIPAL_AGENT, "Agent"),
+        (PRINCIPAL_HUMAN, "Human"),
+    ]
+
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name="dm_participants",
+    )
+    member = models.ForeignKey(
+        WorkspaceMember,
+        on_delete=models.CASCADE,
+        related_name="dm_memberships",
+    )
+    principal_type = models.CharField(max_length=8, choices=PRINCIPAL_CHOICES)
+    identity_name = models.CharField(max_length=150, db_index=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("channel", "member")]
+        indexes = [
+            models.Index(fields=["identity_name", "channel"]),
+            models.Index(fields=["member"]),
+        ]
+
+    def __str__(self):
+        return f"{self.identity_name} in {self.channel.name}"
 
 
 class Message(models.Model):
