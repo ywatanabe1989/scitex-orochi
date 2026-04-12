@@ -195,6 +195,51 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "rsync_media",
+    description:
+      "Transfer a large file (>10MB) between fleet hosts via background rsync over the SSH mesh. Returns a job_id immediately; use rsync_status to query progress. On completion, posts a message to the specified channel.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        src_path: {
+          type: "string",
+          description:
+            "Absolute path on the local host (source file or directory).",
+        },
+        dst_host: {
+          type: "string",
+          description:
+            "Destination SSH hostname. One of: mba, nas, ywata-note-win, spartan.",
+        },
+        dst_path: {
+          type: "string",
+          description:
+            "Absolute destination path on dst_host (e.g. ~/orochi-inbox/ or ~/archives/foo/).",
+        },
+        channel: {
+          type: "string",
+          description:
+            "Orochi channel to post progress/completion messages (default: #agent).",
+        },
+      },
+      required: ["src_path", "dst_host", "dst_path"],
+    },
+  },
+  {
+    name: "rsync_status",
+    description: "Query the status of a background rsync transfer job.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        job_id: {
+          type: "string",
+          description: "The job ID returned by rsync_media.",
+        },
+      },
+      required: ["job_id"],
+    },
+  },
+  {
     name: "self_command",
     description:
       "Send an arbitrary slash command (e.g. /compact, /clear) to the agent's own screen/tmux session. Returns immediately; the command fires after delay_ms when the agent is idle at its prompt. Destructive commands (/clear, /kill, /exit, /quit) require confirm=true.",
