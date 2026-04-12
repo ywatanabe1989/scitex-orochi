@@ -57,12 +57,20 @@ export async function handleReply(
         const fileData = readFileSync(filePath);
         const b64 = fileData.toString("base64");
         const filename = basename(filePath);
+        const ext = filename.split(".").pop()?.toLowerCase() || "";
+        const MIME: Record<string, string> = {
+          png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+          gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
+          pdf: "application/pdf", txt: "text/plain", md: "text/markdown",
+          json: "application/json", csv: "text/csv",
+        };
+        const mime_type = MIME[ext] || "application/octet-stream";
         const resp = await fetch(
           `${httpBase}/api/upload-base64${tokenParam("?")}`,
           {
             method: "POST",
             headers: buildFetchHeaders({ "Content-Type": "application/json" }),
-            body: JSON.stringify({ data: b64, filename }),
+            body: JSON.stringify({ data: b64, filename, mime_type }),
           },
         );
         if (resp.ok) {
@@ -480,6 +488,14 @@ export async function handleUploadMedia(args: {
     }
 
     const b64 = fileData.toString("base64");
+    const ext = filename.split(".").pop()?.toLowerCase() || "";
+    const MIME: Record<string, string> = {
+      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
+      gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
+      pdf: "application/pdf", txt: "text/plain", md: "text/markdown",
+      json: "application/json", csv: "text/csv",
+    };
+    const mime_type = MIME[ext] || "application/octet-stream";
 
     const resp = await fetch(
       `${httpBase}/api/upload-base64${tokenParam("?")}`,
@@ -489,10 +505,7 @@ export async function handleUploadMedia(args: {
         body: JSON.stringify({
           data: b64,
           filename,
-          // channel + sender → server creates a Message row with this file
-          // as an attachment so it shows in the Files tab and the channel
-          // feed. Without these the upload was an orphan blob (todo#155
-          // sibling, msg#6425). Default channel kept for backward compat.
+          mime_type,
           channel: args.channel || "#general",
           sender: OROCHI_AGENT,
         }),
