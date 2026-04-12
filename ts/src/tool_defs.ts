@@ -240,6 +240,45 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "dm_list",
+    description:
+      "List 1:1 direct-message channels the current agent participates in (todo#60). Returns rows with name, kind, other_participants, last_message_ts. Read-only — does not send messages.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        workspace: {
+          type: "string",
+          description:
+            "Workspace slug. Defaults to env SCITEX_OROCHI_WORKSPACE if set.",
+        },
+      },
+    },
+  },
+  {
+    name: "dm_open",
+    description:
+      "Get-or-create a 1:1 DM channel between the caller and `recipient` (todo#60). Recipient is a principal key like 'agent:mamba-healer-mba' or 'human:ywatanabe'. Returns the DM row {name, kind, other_participants, ...}; the caller must use the existing `reply` tool with chat_id=<returned name> to actually send a message (the WS reply path is the sole agent write path per spec v3.1 §4.1).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        recipient: {
+          type: "string",
+          description:
+            "Principal key: 'agent:<name>' or 'human:<username>'. Alias: peer.",
+        },
+        peer: {
+          type: "string",
+          description: "Alias for recipient.",
+        },
+        workspace: {
+          type: "string",
+          description:
+            "Workspace slug. Defaults to env SCITEX_OROCHI_WORKSPACE if set.",
+        },
+      },
+    },
+  },
+  {
     name: "self_command",
     description:
       "Send an arbitrary slash command (e.g. /compact, /clear) to the agent's own screen/tmux session. Returns immediately; the command fires after delay_ms when the agent is idle at its prompt. Destructive commands (/clear, /kill, /exit, /quit) require confirm=true.",

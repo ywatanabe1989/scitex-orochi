@@ -1276,3 +1276,152 @@ body {
   transform: translateX(-20px);
   transition: opacity 0.3s, transform 0.3s;
 }
+
+/* ---------------- Direct messages (todo#60 PR 4) ---------------- */
+.dm-heading {
+  display: flex;
+  align-items: center;
+}
+.dm-heading .sidebar-count {
+  flex: 1;
+}
+.new-dm-btn {
+  background: transparent;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  line-height: 18px;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0;
+}
+.new-dm-btn:hover {
+  background: #1a1a1a;
+  color: #fff;
+}
+.dm-item {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dm-item:hover {
+  background: #1a1a1a;
+}
+.dm-item.active {
+  background: #1a1a1a;
+  font-weight: bold;
+  color: #fff;
+}
+.dm-item .dm-principal-badge {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  margin-right: 4px;
+  background: #333;
+  color: #ccc;
+}
+.dm-item .dm-principal-badge.agent {
+  background: #2a4a6a;
+  color: #b8d4e3;
+}
+.dm-item .dm-principal-badge.human {
+  background: #4a2a4a;
+  color: #e8a6c8;
+}
+.dm-empty {
+  font-size: 12px;
+  color: #555;
+  font-style: italic;
+  padding: 4px 8px;
+}
+/* New DM modal */
+.dm-modal[hidden] {
+  display: none;
+}
+.dm-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dm-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+}
+.dm-modal-card {
+  position: relative;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 16px;
+  width: 360px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.dm-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #ddd;
+  margin-bottom: 12px;
+}
+.dm-modal-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 22px;
+  cursor: pointer;
+}
+.dm-modal-close:hover {
+  color: #fff;
+}
+#new-dm-search {
+  background: #0d0d0d;
+  color: #eee;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  outline: none;
+}
+#new-dm-search:focus {
+  border-color: #555;
+}
+.dm-modal-results {
+  overflow-y: auto;
+  flex: 1;
+}
+.dm-modal-result {
+  padding: 8px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #ccc;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dm-modal-result:hover {
+  background: #2a2a2a;
+}
+.dm-modal-empty {
+  padding: 12px;
+  color: #666;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+}
