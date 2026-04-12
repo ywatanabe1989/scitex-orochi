@@ -49,6 +49,7 @@ urlpatterns = [
     # REST API — no slug needed, workspace from subdomain
     path("api/channels/", views.api_channels, name="api-channels"),
     path("api/messages/", views.api_messages, name="api-messages"),
+    path("api/dms/", views.api_dms, name="api-dms"),
     path("api/history/<str:channel_name>/", views.api_history, name="api-history"),
     path("api/stats/", views.api_stats, name="api-stats"),
     path("api/workspaces/", views.api_workspaces, name="api-workspaces"),
