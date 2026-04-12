@@ -323,6 +323,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def chat_message(self, event):
         """Handle chat.message from channel layer — forward to WebSocket client."""
+        # Filter: only forward messages from channels this agent subscribed to
+        agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
+        if agent_channels and event.get("channel") not in agent_channels:
+            return
         await self.send_json(
             {
                 "type": "message",
