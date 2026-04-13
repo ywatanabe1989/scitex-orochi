@@ -1142,8 +1142,16 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     var dd = document.getElementById("mention-dropdown");
     if (dd && dd.classList.contains("visible")) return;
-    /* todo#332: Shift+Enter and Alt+Enter both insert a newline */
-    if (e.shiftKey || e.altKey) return;
+    /* todo#332 v2: Alt+Enter is reserved for voice toggle (see voice-input.js).
+     * Shift+Enter remains the newline shortcut. Plain Enter sends. */
+    if (e.shiftKey) return;
+    if (e.altKey) {
+      e.preventDefault();
+      if (typeof window.toggleVoiceInput === "function") {
+        window.toggleVoiceInput();
+      }
+      return;
+    }
     e.preventDefault();
     sendMessage();
   }
