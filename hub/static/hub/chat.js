@@ -616,6 +616,11 @@ function appendMessage(msg) {
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   container.appendChild(el);
+  /* todo#274 Part 2: re-apply multi-select feed filter so newly-arrived
+   * messages get hidden if they don't match the current selection. */
+  if (typeof applyFeedFilter === "function") {
+    try { applyFeedFilter(); } catch (_) {}
+  }
   /* ALWAYS auto-scroll when near the bottom — including when the user is
    * actively typing. Skipping the scroll while focused was too aggressive
    * and broke the "I just sent a message" case (todo#227): the user's own
