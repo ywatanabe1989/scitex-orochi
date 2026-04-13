@@ -575,6 +575,16 @@ async function fetchAgents() {
     var newAgentsJson = JSON.stringify(agents);
     if (container._lastAgentsJson === newAgentsJson) return;
     container._lastAgentsJson = newAgentsJson;
+    /* Preserve Ctrl+Click multi-select state across re-renders (#274 Part 2).
+     * Without this, every fetchAgents() poll/WS presence event clobbers
+     * .selected on agent-cards, defeating multi-select. */
+    var prevSelectedAgents = {};
+    container
+      .querySelectorAll(".agent-card.selected[data-agent-name]")
+      .forEach(function (el) {
+        var n = el.getAttribute("data-agent-name");
+        if (n) prevSelectedAgents[n] = true;
+      });
     /* todo#320: sidebar agent cards are now compact — name + status
      * dot only. Full detail (badges, kill/pin/restart, task rows,
      * detail popup, health pill, tooltip) lives in the Agents tab. */
@@ -605,6 +615,9 @@ async function fetchAgents() {
     container
       .querySelectorAll(".agent-card[data-agent-name]")
       .forEach(function (el) {
+        /* Restore .selected from before re-render (#274 Part 2) */
+        var elName = el.getAttribute("data-agent-name");
+        if (elName && prevSelectedAgents[elName]) el.classList.add("selected");
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
           if (ev.target.closest(".kill-btn")) return; /* handled separately */
