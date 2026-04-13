@@ -741,7 +741,13 @@ async function fetchAgents() {
               });
             if (!isOpen) popup.classList.add("open");
           }
-          addTag("agent", el.getAttribute("data-agent-name"));
+          /* todo#274 Part 1: no longer creates a filter badge. Pure
+           * visual highlight — clicked card gains .selected, siblings
+           * dim via CSS. Toggle off on second click. */
+          var cards = container.querySelectorAll(".agent-card[data-agent-name]");
+          var wasSelected = el.classList.contains("selected");
+          cards.forEach(function (c) { c.classList.remove("selected"); });
+          if (!wasSelected) el.classList.add("selected");
         });
       });
     container
@@ -927,7 +933,15 @@ async function fetchStats() {
           setCurrentChannel(ch);
           loadChannelHistory(ch);
         }
-        addTag("channel", ch);
+        /* todo#274 Part 1: no longer creates a filter badge. Pure
+         * visual highlight — clicked item gains .selected, siblings
+         * dim via CSS. Reset on second click (toggle). */
+        var items = chContainer.querySelectorAll(".channel-item");
+        var wasSelected = el.classList.contains("selected");
+        items.forEach(function (it) { it.classList.remove("selected"); });
+        if (!wasSelected && currentChannel === ch) {
+          el.classList.add("selected");
+        }
         fetchStats();
       });
     });
