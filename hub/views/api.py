@@ -232,8 +232,18 @@ def api_stats(request):
 
     agents_online = get_online_count(workspace_id=workspace.id)
 
-    # Deduplicate channel names (safety measure)
-    unique_channels = list(dict.fromkeys(ch.name for ch in channels))
+    # Normalize channel names: ensure # prefix, deduplicate, exclude DM channels
+    seen: set[str] = set()
+    unique_channels: list[str] = []
+    for ch in channels:
+        name = ch.name
+        if name.startswith("dm:"):
+            continue
+        if not name.startswith("#"):
+            name = "#" + name
+        if name not in seen:
+            seen.add(name)
+            unique_channels.append(name)
 
     return JsonResponse(
         {
