@@ -159,6 +159,27 @@ function appendSystemMessage(msg) {
   }
 }
 
+/* Jump to a referenced message by opening its thread panel (msg#9641 / #362).
+ * Correct spec per ywatanabe msg#9644: clicking msg#NNNN opens thread panel,
+ * does NOT scroll the feed. Falls back to flash-in-place if threads.js
+ * not loaded yet. */
+function jumpToMsg(id) {
+  if (typeof openThreadForMessage === "function") {
+    openThreadForMessage(String(id));
+    return;
+  }
+  /* Fallback: scroll + flash in feed */
+  var el = document.querySelector('[data-msg-id="' + id + '"]');
+  if (!el) return;
+  var container = document.getElementById("messages");
+  if (container) {
+    var top = el.offsetTop - container.clientHeight / 2 + el.offsetHeight / 2;
+    container.scrollTop = Math.max(0, top);
+  }
+  el.classList.add("msg-highlight");
+  setTimeout(function () { el.classList.remove("msg-highlight"); }, 2000);
+}
+
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
@@ -300,10 +321,10 @@ function appendMessage(msg) {
      * `>` as the char immediately before any line-leading URL), so URLs
      * at the start of a wrapped line never became clickable.
      * todo#239 / msg 5961 / ywatanabe report msg 6058. */
-    /* Auto-link msg#NNN references to scroll to that message */
+    /* Auto-link msg#NNN references — click opens thread panel (msg#9644 spec) */
     .replace(
       /\bmsg#(\d+)\b/g,
-      '<a class="msg-ref-link" href="#" data-msg-ref="$1" onclick="event.preventDefault();var el=document.querySelector(\'[data-msg-id=&quot;$1&quot;]\');if(el){el.scrollIntoView({behavior:\'smooth\',block:\'center\'});el.classList.add(\'msg-highlight\');setTimeout(function(){el.classList.remove(\'msg-highlight\')},2000);}">msg#$1</a>',
+      '<a class="msg-ref-link" href="#" data-msg-ref="$1" onclick="event.preventDefault();jumpToMsg(\'$1\')">msg#$1</a>',
     )
     .replace(
       /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,

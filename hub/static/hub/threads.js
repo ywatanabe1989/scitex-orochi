@@ -5,12 +5,17 @@
 var threadPanel = null;
 var threadPanelParentId = null;
 
-/* Auto-link URLs in already-escaped HTML (applied to thread reply bodies). */
+/* Auto-link URLs and msg#NNNN refs in already-escaped HTML (thread reply bodies). */
 function _linkifyThreadContent(html) {
-  return html.replace(
-    /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
-    '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
-  );
+  return html
+    .replace(
+      /\bmsg#(\d+)\b/g,
+      '<a class="msg-ref-link" href="#" data-msg-ref="$1" onclick="event.preventDefault();jumpToMsg(\'$1\')">msg#$1</a>',
+    )
+    .replace(
+      /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
+      '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
+    );
 }
 
 /* Build a permalink URL for a thread parent message. */
