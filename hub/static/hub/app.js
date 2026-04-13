@@ -548,174 +548,29 @@ async function fetchAgents() {
     var newAgentsJson = JSON.stringify(agents);
     if (container._lastAgentsJson === newAgentsJson) return;
     container._lastAgentsJson = newAgentsJson;
+    /* todo#320: sidebar agent cards are now compact — name + status
+     * dot only. Full detail (badges, kill/pin/restart, task rows,
+     * detail popup, health pill, tooltip) lives in the Agents tab. */
     container.innerHTML = agents
       .map(function (a) {
-        var color = getResolvedAgentColor(a.name);
         var inactive = isAgentInactive(a);
-        var statusClass =
-          (a.status || "online") + (inactive ? " inactive" : "");
-        var agentIcon = getSenderIcon(a.name, true, 32);
-        /* Tiny health pill — mirrors the Agents tab classification. */
-        var healthHtml = "";
-        if (a.health && a.health.status) {
-          var hs = String(a.health.status);
-          var hReason = a.health.reason
-            ? ' title="' + escapeHtml(a.health.reason) + '"'
-            : "";
-          healthHtml =
-            '<span class="sidebar-health sidebar-health-' +
-            escapeHtml(hs) +
-            '"' +
-            hReason +
-            ">\uD83E\uDE7A " +
-            escapeHtml(hs) +
-            "</span>";
-        }
-        var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
-        var pinTitle = a.pinned ? "Unpin agent" : "Pin agent";
-        var pinBtnHtml =
-          '<button class="pin-btn' +
-          (a.pinned ? " pinned" : "") +
-          '" data-pin-name="' +
-          escapeHtml(a.name) +
-          '" title="' +
-          pinTitle +
-          '">' +
-          pinIcon +
-          "</button>";
-        var restartBtnHtml =
-          '<button class="restart-btn" data-restart-name="' +
-          escapeHtml(a.name) +
-          '" title="Restart agent">\u21BB</button>';
-        var killBtnHtml =
-          '<button class="kill-btn" data-kill-name="' +
-          escapeHtml(a.name) +
-          '" title="Kill agent (screen + sidecar)">\u2715</button>';
-        /* Compact badges for role + machine */
-        var roleBadge =
-          '<span class="agent-badge agent-badge-role">' +
-          escapeHtml(a.role || "agent") +
-          "</span>";
-        var machineBadge =
-          '<span class="agent-badge agent-badge-machine">' +
-          escapeHtml(a.machine || "unknown") +
-          "</span>";
-        /* Tooltip metadata (shown on hover) */
-        var uniqueChannels = [...new Set(a.channels || [])];
-        var tooltipLines = [];
-        tooltipLines.push("Agent ID: " + (a.agent_id || a.name));
-        tooltipLines.push("Role: " + (a.role || "agent"));
-        tooltipLines.push("Host: " + (a.machine || "unknown"));
-        if (a.model) tooltipLines.push("Model: " + a.model);
-        if (uniqueChannels.length)
-          tooltipLines.push("Channels: " + uniqueChannels.join(", "));
-        if (a.project) tooltipLines.push("Project: " + a.project);
-        if (a.workdir)
-          tooltipLines.push(
-            "Workdir: " + a.workdir.replace(/^\/home\/[^/]+/, "~"),
-          );
-        if (a.current_task) tooltipLines.push("Task: " + a.current_task);
-        var subCount =
-          typeof a.subagent_count === "number"
-            ? a.subagent_count
-            : Array.isArray(a.subagents)
-              ? a.subagents.length
-              : 0;
-        if (subCount > 0) tooltipLines.push("Subagents: " + subCount);
-        if (a.last_heartbeat)
-          tooltipLines.push("Last heartbeat: " + a.last_heartbeat);
-        /* Prominent in-card rows (task + subagent count + heartbeat age) */
-        var taskRowHtml = a.current_task
-          ? '<div class="agent-card-task" title="' +
-            escapeHtml(a.current_task) +
-            '">' +
-            escapeHtml(a.current_task) +
-            "</div>"
-          : "";
-        var subBadgeHtml =
-          subCount > 0
-            ? '<span class="agent-badge agent-badge-subagents" title="' +
-              subCount +
-              ' subagent(s) running">\uD83D\uDD27 ' +
-              subCount +
-              "</span>"
-            : "";
-        var hbAgeHtml = a.last_heartbeat
-          ? '<span class="agent-badge agent-badge-heartbeat agent-badge-liveness-' +
-            escapeHtml(a.liveness || (inactive ? "offline" : "online")) +
-            '" title="Last heartbeat: ' +
-            escapeHtml(a.last_heartbeat) +
-            '">\u2665 ' +
-            escapeHtml(relativeAge(a.last_heartbeat)) +
-            "</span>"
-          : "";
-        /* Popup detail panel (click to expand) */
-        var detailHtml =
-          '<div class="agent-detail-popup">' +
-          '<div class="agent-detail-row"><span class="agent-detail-label">Channels</span>' +
-          (uniqueChannels.length
-            ? uniqueChannels
-                .map(function (c) {
-                  return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
-                })
-                .join(" ")
-            : '<span class="muted-cell">-</span>') +
-          "</div>" +
-          (a.model
-            ? '<div class="agent-detail-row"><span class="agent-detail-label">Model</span>' +
-              escapeHtml(a.model) +
-              "</div>"
-            : "") +
-          (a.project
-            ? '<div class="agent-detail-row"><span class="agent-detail-label">Project</span>' +
-              escapeHtml(a.project) +
-              "</div>"
-            : "") +
-          (a.workdir
-            ? '<div class="agent-detail-row"><span class="agent-detail-label">Workdir</span><span class="monospace-cell">' +
-              escapeHtml(a.workdir.replace(/^\/home\/[^/]+/, "~")) +
-              "</span></div>"
-            : "") +
-          (a.current_task
-            ? '<div class="agent-detail-row"><span class="agent-detail-label">Task</span>' +
-              escapeHtml(a.current_task) +
-              "</div>"
-            : "") +
-          "</div>";
+        var liveness = a.liveness || (inactive ? "offline" : "online");
+        var statusClassCompact = liveness === "online" ? "online" : "offline";
+        var tooltip = (a.agent_id || a.name) + " (" + (a.machine || "unknown") + ")";
         return (
-          '<div class="agent-card' +
+          '<div class="agent-card sidebar-compact' +
           (inactive ? " inactive" : "") +
-          (a.pinned && inactive ? " pinned-offline" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
           '" title="' +
-          escapeHtml(tooltipLines.join("\n")) +
+          escapeHtml(tooltip) +
           '">' +
-          '<div class="agent-card-top">' +
-          '<span class="agent-card-icon avatar-clickable" data-avatar-agent="' +
-          escapeHtml(a.name) +
-          '" title="Click to change avatar">' +
-          agentIcon +
-          "</span>" +
-          '<span class="status-dot ' +
-          statusClass +
+          '<span class="agent-status ' +
+          statusClassCompact +
           '"></span>' +
-          '<span class="name">' +
+          '<span class="agent-name">' +
           escapeHtml(hostedAgentName(a)) +
           "</span>" +
-          killBtnHtml +
-          restartBtnHtml +
-          pinBtnHtml +
-          "</div>" +
-          '<div class="agent-card-badges">' +
-          roleBadge +
-          machineBadge +
-          subBadgeHtml +
-          hbAgeHtml +
-          healthHtml +
-          "</div>" +
-          taskRowHtml +
-          detailHtml +
           "</div>"
         );
       })
