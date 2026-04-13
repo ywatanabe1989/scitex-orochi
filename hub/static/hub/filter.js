@@ -265,7 +265,7 @@ function runFilter() {
       (content ? content.textContent : "");
     /* Each keyword must match independently (AND logic) */
     var show = qWords.length === 0 || qWords.every(function (w) {
-      return fuzzyMatch(w, text);
+      return _fm(w, text);
     });
     if (show && allTags.length > 0) {
       /* Group agent tags for OR (union) logic; other tags stay AND */
@@ -274,19 +274,19 @@ function runFilter() {
       if (agentTags.length > 0) {
         var senderText = (sender ? sender.textContent : "").toLowerCase();
         show = agentTags.some(function (tag) {
-          return fuzzyMatch(tag.value.toLowerCase(), senderText);
+          return _fm(tag.value.toLowerCase(), senderText);
         });
       }
       if (show && otherTags.length > 0) {
         show = otherTags.every(function (tag) {
           var val = tag.value.toLowerCase();
           if (tag.type === "channel") {
-            return fuzzyMatch(
+            return _fm(
               val,
               (el.getAttribute("data-channel") || "").toLowerCase(),
             );
           }
-          return fuzzyMatch(val, text.toLowerCase());
+          return _fm(val, text.toLowerCase());
         });
       }
     }
@@ -297,7 +297,7 @@ function runFilter() {
   });
   document.querySelectorAll(".todo-item").forEach(function (el) {
     var text = el.textContent;
-    var show = qWords.length === 0 || qWords.every(function (w) { return fuzzyMatch(w, text); });
+    var show = qWords.length === 0 || qWords.every(function (w) { return _fm(w, text); });
     if (show && allTags.length > 0) {
       show = allTags.every(function (tag) {
         var val = tag.value.toLowerCase();
@@ -306,11 +306,11 @@ function runFilter() {
           if (labels.length === 0) return false;
           var found = false;
           labels.forEach(function (l) {
-            if (fuzzyMatch(val, l.textContent.toLowerCase())) found = true;
+            if (_fm(val, l.textContent.toLowerCase())) found = true;
           });
           return found;
         }
-        return fuzzyMatch(val, text.toLowerCase());
+        return _fm(val, text.toLowerCase());
       });
     }
     el.style.display = show ? "" : "none";
@@ -319,7 +319,7 @@ function runFilter() {
 }
 
 function _matchAllWords(words, text) {
-  return words.length === 0 || words.every(function (w) { return fuzzyMatch(w, text); });
+  return words.length === 0 || words.every(function (w) { return _fm(w, text); });
 }
 
 function filterSidebarElements(qWords, allTags) {
