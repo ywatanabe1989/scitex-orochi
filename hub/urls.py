@@ -125,6 +125,9 @@ urlpatterns = [
     path(
         "api/push/unsubscribe", views.api_push_unsubscribe, name="api-push-unsubscribe"
     ),
+    # Fleet reporting
+    path("api/fleet/report", views.fleet_report, name="fleet_report"),
+    path("api/fleet/state", views.fleet_state, name="fleet_state"),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
     # GitHub webhook

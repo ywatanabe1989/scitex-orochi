@@ -365,6 +365,28 @@ class PushSubscription(models.Model):
         return f"push:{self.user}@{self.endpoint[:40]}"
 
 
+class FleetReport(models.Model):
+    ENTITY_TYPES = [
+        ("machine", "Machine"),
+        ("agent", "Agent"),
+        ("server", "Orochi Server"),
+        ("session", "Claude Session"),
+    ]
+    entity_type = models.CharField(max_length=20, choices=ENTITY_TYPES)
+    entity_id = models.CharField(max_length=128)  # e.g. "nas", "head-mba", etc.
+    ts = models.DateTimeField(auto_now_add=True, db_index=True)
+    payload = models.JSONField(default=dict)
+    source = models.CharField(max_length=128)  # who reported this
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["entity_type", "entity_id", "-ts"]),
+        ]
+
+    def __str__(self):
+        return f"{self.entity_type}:{self.entity_id} @ {self.ts}"
+
+
 class WorkspaceInvitation(models.Model):
     """Email invitation to join a workspace."""
 

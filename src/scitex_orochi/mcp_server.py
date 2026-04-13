@@ -231,6 +231,52 @@ if _FASTMCP_AVAILABLE:
         )
 
 
+    @mcp.tool()
+    async def fleet_report_tool(
+        entity_type: str, entity_id: str, payload: str, source: str = ""
+    ) -> str:
+        """Report fleet entity state (machine/agent/server/session) to the hub."""
+        import aiohttp
+
+        hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")
+        token = os.getenv("SCITEX_OROCHI_TOKEN", "")
+        source = source or os.getenv("SCITEX_OROCHI_AGENT", "unknown")
+        try:
+            payload_obj = json.loads(payload) if isinstance(payload, str) else payload
+        except json.JSONDecodeError:
+            payload_obj = {"raw": payload}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{hub}/api/fleet/report",
+                json={
+                    "token": token,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "payload": payload_obj,
+                    "source": source,
+                },
+            ) as resp:
+                return await resp.text()
+
+    @mcp.tool()
+    async def state_query(entity_type: str = "", since: str = "") -> str:
+        """Query latest fleet state. Filter by entity_type (machine/agent/server/session) and since (ISO timestamp)."""
+        import aiohttp
+
+        hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")
+        token = os.getenv("SCITEX_OROCHI_TOKEN", "")
+        params: dict = {"token": token}
+        if entity_type:
+            params["entity_type"] = entity_type
+        if since:
+            params["since"] = since
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{hub}/api/fleet/state", params=params
+            ) as resp:
+                return await resp.text()
+
+
 def main() -> None:
     if not _FASTMCP_AVAILABLE:
         import sys

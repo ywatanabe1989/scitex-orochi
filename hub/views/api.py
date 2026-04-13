@@ -22,6 +22,7 @@ from hub.channel_acl import check_write_allowed
 from hub.models import (
     Channel,
     DMParticipant,
+    FleetReport,
     Message,
     MessageReaction,
     MessageThread,
@@ -2056,3 +2057,79 @@ def api_push_unsubscribe(request, slug=None):
 
     PushSubscription.objects.filter(endpoint=endpoint, user=request.user).delete()
     return JsonResponse({"ok": True})
+
+
+@csrf_exempt
+def fleet_report(request):
+    """POST /api/fleet/report — accept a fleet report from any producer."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid JSON"}, status=400)
+
+    # Validate token
+    token = data.get("token") or request.GET.get("token")
+    if not token or not WorkspaceToken.objects.filter(token=token).exists():
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    entity_type = data.get("entity_type")
+    entity_id = data.get("entity_id")
+    payload = data.get("payload", {})
+    source = data.get("source", "unknown")
+
+    if not entity_type or not entity_id:
+        return JsonResponse({"error": "entity_type and entity_id required"}, status=400)
+
+    report = FleetReport.objects.create(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        payload=payload,
+        source=source,
+    )
+    return JsonResponse({"ok": True, "id": report.id})
+
+
+@csrf_exempt
+def fleet_state(request):
+    """GET /api/fleet/state — query latest state per entity."""
+    token = request.GET.get("token")
+    if not token or not WorkspaceToken.objects.filter(token=token).exists():
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    entity_type = request.GET.get("entity_type")
+    since = request.GET.get("since")  # ISO timestamp filter
+
+    # Get latest report per entity
+    from django.db.models import Max
+
+    qs = FleetReport.objects.all()
+    if entity_type:
+        qs = qs.filter(entity_type=entity_type)
+    if since:
+        from django.utils.dateparse import parse_datetime
+        dt = parse_datetime(since)
+        if dt:
+            qs = qs.filter(ts__gte=dt)
+
+    # Latest per entity
+    latest_ids = (
+        qs.values("entity_type", "entity_id")
+        .annotate(latest_ts=Max("ts"))
+        .values_list("entity_type", "entity_id", "latest_ts")
+    )
+
+    results = []
+    for et, eid, lts in latest_ids:
+        report = qs.filter(entity_type=et, entity_id=eid, ts=lts).first()
+        if report:
+            results.append({
+                "entity_type": report.entity_type,
+                "entity_id": report.entity_id,
+                "ts": report.ts.isoformat(),
+                "payload": report.payload,
+                "source": report.source,
+            })
+
+    return JsonResponse({"state": results})

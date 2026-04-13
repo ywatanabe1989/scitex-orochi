@@ -16,6 +16,8 @@ from hub.views.api import (  # noqa: F401
     api_connectivity,
     api_dms,
     api_event_tool_use,
+    fleet_report,
+    fleet_state,
     api_history,
     api_media,
     api_members,
