@@ -124,7 +124,11 @@
     if (input) input.classList.remove("voice-recording");
   });
 
+  var _suppressResults = false;
+
   recognition.addEventListener("result", function (e) {
+    /* Suppress stale results arriving after send-reset (#343) */
+    if (_suppressResults) return;
     var input = document.getElementById("msg-input");
     var transcript = "";
     for (var i = 0; i < e.results.length; i++) {
@@ -159,13 +163,11 @@
    * mic can stay on continuously. */
   window.voiceInputResetAfterSend = function () {
     baseText = "";
+    _suppressResults = true;
     if (isListening) {
       try {
         recognition.stop();
       } catch (_) {}
-      /* Restart on next tick — Web Speech API rejects start() while a
-       * stop() is still in flight, so we wait for the "end" event
-       * instead. Mark a flag so the end handler restarts. */
       _restartAfterStop = true;
     }
   };
@@ -174,6 +176,7 @@
   recognition.addEventListener("end", function () {
     if (_restartAfterStop) {
       _restartAfterStop = false;
+      _suppressResults = false;
       try {
         recognition.start();
       } catch (_) {}
