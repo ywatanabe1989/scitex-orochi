@@ -909,12 +909,22 @@ async function fetchStats() {
     var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
     var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
     /* todo#325: hide dm:* channels from the public Channels list
-     * (they still render in the DM tab via its own path). */
-    var displayChannels = stats.channels.filter(function (c) {
-      return typeof c === "string" && c.indexOf("dm:") !== 0;
+     * (they still render in the DM tab via its own path).
+     * todo#326: normalize "general" -> "#general" and dedupe by
+     * normalized name so legacy rows collapse into a single entry. */
+    var seenNames = {};
+    var displayChannels = [];
+    stats.channels.forEach(function (c) {
+      if (typeof c !== "string") return;
+      if (c.indexOf("dm:") === 0) return;
+      var norm = c.charAt(0) === "#" ? c : "#" + c;
+      if (seenNames[norm]) return;
+      seenNames[norm] = true;
+      displayChannels.push({ raw: c, norm: norm });
     });
     chContainer.innerHTML = displayChannels
-      .map(function (c, i) {
+      .map(function (entry, i) {
+        var c = entry.raw;
         var active = currentChannel === c ? " active" : "";
         var chColor = OROCHI_COLORS[i % OROCHI_COLORS.length];
         return (
@@ -923,7 +933,7 @@ async function fetchStats() {
           '" data-channel="' +
           escapeHtml(c) +
           '">' +
-          escapeHtml(c) +
+          escapeHtml(entry.norm) +
           "</div>"
         );
       })
