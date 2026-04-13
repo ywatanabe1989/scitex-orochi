@@ -1075,6 +1075,20 @@ document.addEventListener("mousedown", function (e) {
         if (stn === "TEXTAREA" || stn === "INPUT" || stn === "SELECT") return;
         if (still.isContentEditable) return;
       }
+      /* todo#315: don't snap focus back if the user is actively
+       * selecting text inside the message feed — refocusing would
+       * collapse the selection and make copy impossible. */
+      try {
+        var sel = window.getSelection && window.getSelection();
+        if (sel && sel.toString().length > 0) {
+          var anchor = sel.anchorNode;
+          if (anchor && anchor.nodeType === 3) anchor = anchor.parentElement;
+          if (anchor && anchor.closest &&
+              anchor.closest("#messages, .msg, .thread-panel")) {
+            return;
+          }
+        }
+      } catch (_) {}
       try {
         msgInput.focus();
         msgInput.setSelectionRange(savedStart, savedEnd);

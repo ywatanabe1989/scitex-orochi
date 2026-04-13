@@ -554,6 +554,22 @@ body {
   border-left: 3px solid #4ecdc4;
 }
 
+/* todo#274 Part 1: pure visual selection in sidebar — clicking a
+ * channel or agent highlights just that item and dims siblings.
+ * Replaces the previous badge-filter UX. */
+.sidebar .channel-item.selected {
+  background: rgba(126, 200, 227, 0.20);
+  border-left: 3px solid #7ec8e3;
+}
+.sidebar .agent-card.selected {
+  background: rgba(78, 205, 196, 0.20);
+  border-left: 3px solid #4ecdc4;
+}
+.sidebar #channels:has(.channel-item.selected) .channel-item:not(.selected),
+.sidebar #agents:has(.agent-card.selected) .agent-card:not(.selected) {
+  opacity: 0.6;
+}
+
 /* Blockers sidebar section */
 .blockers-heading {
   color: #ef4444 !important;
