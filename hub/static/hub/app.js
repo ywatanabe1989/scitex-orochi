@@ -584,25 +584,18 @@ async function fetchAgents() {
           if (ev.target.closest(".restart-btn")) return; /* handled separately */
           if (ev.target.closest(".avatar-clickable"))
             return; /* handled below */
-          /* Toggle detail popup on click */
-          var popup = el.querySelector(".agent-detail-popup");
-          if (popup) {
-            var isOpen = popup.classList.contains("open");
-            /* Close all others first */
-            container
-              .querySelectorAll(".agent-detail-popup.open")
-              .forEach(function (p) {
-                p.classList.remove("open");
-              });
-            if (!isOpen) popup.classList.add("open");
+          var multi = ev.ctrlKey || ev.metaKey;
+          /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select. */
+          if (multi) {
+            el.classList.toggle("selected");
+          } else {
+            /* todo#274 Part 1: single-select highlight (toggle on 2nd click). */
+            var cards = container.querySelectorAll(".agent-card[data-agent-name]");
+            var wasSelected = el.classList.contains("selected");
+            cards.forEach(function (c) { c.classList.remove("selected"); });
+            if (!wasSelected) el.classList.add("selected");
           }
-          /* todo#274 Part 1: no longer creates a filter badge. Pure
-           * visual highlight — clicked card gains .selected, siblings
-           * dim via CSS. Toggle off on second click. */
-          var cards = container.querySelectorAll(".agent-card[data-agent-name]");
-          var wasSelected = el.classList.contains("selected");
-          cards.forEach(function (c) { c.classList.remove("selected"); });
-          if (!wasSelected) el.classList.add("selected");
+          if (typeof applyFeedFilter === "function") applyFeedFilter();
         });
       });
     container
@@ -794,8 +787,16 @@ async function fetchStats() {
       })
       .join("");
     chContainer.querySelectorAll(".channel-item").forEach(function (el) {
-      el.addEventListener("click", function () {
+      el.addEventListener("click", function (ev) {
         var ch = el.getAttribute("data-channel");
+        var multi = ev.ctrlKey || ev.metaKey;
+        /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select without
+         * disturbing siblings; plain click keeps legacy single-select. */
+        if (multi) {
+          el.classList.toggle("selected");
+          if (typeof applyFeedFilter === "function") applyFeedFilter();
+          return;
+        }
         if (currentChannel === ch) {
           setCurrentChannel(null);
           loadHistory();
@@ -803,15 +804,14 @@ async function fetchStats() {
           setCurrentChannel(ch);
           loadChannelHistory(ch);
         }
-        /* todo#274 Part 1: no longer creates a filter badge. Pure
-         * visual highlight — clicked item gains .selected, siblings
-         * dim via CSS. Reset on second click (toggle). */
+        /* todo#274 Part 1: pure visual highlight, toggle on second click. */
         var items = chContainer.querySelectorAll(".channel-item");
         var wasSelected = el.classList.contains("selected");
         items.forEach(function (it) { it.classList.remove("selected"); });
         if (!wasSelected && currentChannel === ch) {
           el.classList.add("selected");
         }
+        if (typeof applyFeedFilter === "function") applyFeedFilter();
         fetchStats();
       });
     });
