@@ -316,7 +316,7 @@ function appendMessage(msg) {
       "</div>" +
       "<button class=\"msg-fold-btn\" tabindex=\"-1\" onclick=\"event.preventDefault();this.previousElementSibling.style.display='block';this.previousElementSibling.previousElementSibling.style.display='none';this.textContent='Show less';var b=this;b.onclick=function(){event.preventDefault();b.previousElementSibling.style.display='none';b.previousElementSibling.previousElementSibling.style.display='block';b.textContent='Show more (" +
       (lines.length - MAX_LINES) +
-      " more lines)';b.onclick=arguments.callee};var _i=document.getElementById('msg-input');if(_i)_i.focus();\">" +
+      " more lines)';b.onclick=arguments.callee}\">" +
       "Show more (" +
       (lines.length - MAX_LINES) +
       " more lines)</button>";
