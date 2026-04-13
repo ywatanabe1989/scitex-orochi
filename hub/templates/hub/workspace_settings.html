@@ -34,7 +34,7 @@
             <div id="chat-header">
                 <h3>Workspace Settings</h3>
             </div>
-            <div class="settings-content">
+            <div class="settings-content" id="settings-content">
                 {% if messages %}
                     {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
                 {% endif %}
@@ -108,7 +108,8 @@
                     <p class="settings-desc">Click the icon to choose an emoji.</p>
                     <div class="ws-icon-preview ws-icon-clickable"
                          id="ws-icon-preview"
-                         title="Click to change icon"></div>
+                         title="Click to change icon"
+                         style="cursor:pointer;font-size:48px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border-radius:8px">{% if workspace.icon %}{{ workspace.icon }}{% else %}🐍{% endif %}</div>
                     <form method="post" class="settings-form settings-form-icon">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="set_icon">
