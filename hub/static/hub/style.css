@@ -962,9 +962,12 @@ body {
 .msg-system-text {
   color: #6b7280;
 }
+.msg .ts {
+  color: #ccc;
+}
 .msg.msg-system .ts {
   font-size: 11px;
-  color: #4b5563;
+  color: #9ca3af;
   margin-left: 6px;
 }
 
