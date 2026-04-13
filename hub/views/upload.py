@@ -129,10 +129,15 @@ def _save_to_media(data: bytes, filename: str, mime_type: str, dedupe: bool = Tr
     ext = Path(filename).suffix or mimetypes.guess_extension(mime_type) or ""
     file_id = str(uuid.uuid4())
     subdir = datetime.now(timezone.utc).strftime("%Y-%m")
+    # Preserve original filename in disk path for human readability (#350)
+    # Sanitize: keep only safe chars, prepend UUID for uniqueness
+    import re as _re
+    safe_name = _re.sub(r'[^\w\-.]', '_', Path(filename).stem)[:60]
+    disk_name = f"{file_id}_{safe_name}{ext}" if safe_name else f"{file_id}{ext}"
 
     dest_dir = Path(settings.MEDIA_ROOT) / subdir
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / f"{file_id}{ext}"
+    dest_file = dest_dir / disk_name
     dest_file.write_bytes(data)
 
     # Build the URL defensively — settings.MEDIA_URL may or may not have
@@ -140,7 +145,7 @@ def _save_to_media(data: bytes, filename: str, mime_type: str, dedupe: bool = Tr
     # exactly one separator slash so we never produce // (protocol-relative
     # URL) or //media (the bug that broke ywatanabe's image paste).
     media_prefix = "/" + settings.MEDIA_URL.strip("/") + "/"
-    url = f"{media_prefix}{subdir}/{file_id}{ext}"
+    url = f"{media_prefix}{subdir}/{disk_name}"
     metadata = {
         "file_id": file_id,
         "url": url,
