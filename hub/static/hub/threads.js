@@ -176,7 +176,8 @@ async function openThreadPanel(parentId, opts) {
   if (ta) {
     ta.focus();
     ta.addEventListener("keydown", function (e) {
-      if (e.key === "Enter" && !e.shiftKey) {
+      /* todo#332: Shift+Enter and Alt+Enter both insert a newline */
+      if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
         /* Don't send if mention dropdown is open and an item is selected */
         if (typeof mentionDropdown !== "undefined" && mentionDropdown &&
             mentionDropdown.classList.contains("visible") && mentionSelectedIndex >= 0) {

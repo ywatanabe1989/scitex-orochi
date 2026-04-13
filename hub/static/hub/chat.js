@@ -1110,7 +1110,8 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     var dd = document.getElementById("mention-dropdown");
     if (dd && dd.classList.contains("visible")) return;
-    if (e.shiftKey) return;
+    /* todo#332: Shift+Enter and Alt+Enter both insert a newline */
+    if (e.shiftKey || e.altKey) return;
     e.preventDefault();
     sendMessage();
   }
@@ -1170,7 +1171,8 @@ function startEditMessage(msgId) {
       cancelEditMessage(msgId);
     });
   textarea.addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && !e.shiftKey) {
+    /* todo#332: Shift+Enter and Alt+Enter both insert a newline */
+    if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       saveEditMessage(msgId, textarea.value);
     }
