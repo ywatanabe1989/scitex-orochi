@@ -87,13 +87,44 @@ if _FASTMCP_AVAILABLE:
         return json.dumps({"agents": agents, "count": len(agents)})
 
     @mcp.tool()
-    async def orochi_history(channel: str = "#general", limit: int = 50) -> str:
-        """Get message history for an Orochi channel."""
+    async def orochi_history(
+        channel: str = "#general",
+        limit: int = 50,
+        since: str = "",
+        user: str = "",
+        contains: str = "",
+    ) -> str:
+        """Get message history for an Orochi channel with optional filters.
+
+        Args:
+            channel: Channel name (e.g. #general)
+            limit: Max messages to return
+            since: ISO timestamp — only messages after this time
+            user: Filter by sender name
+            contains: Filter by substring in message text
+        """
         async with _make_client(channels=[channel]) as client:
-            history = await client.query_history(channel, limit=limit)
+            history = await client.query_history(
+                channel, since=since or None, limit=limit
+            )
+        # Client-side filters (hub may not support all server-side)
+        if user:
+            history = [m for m in history if m.get("sender", "") == user]
+        if contains:
+            history = [
+                m for m in history
+                if contains.lower() in (m.get("text", "") or "").lower()
+            ]
         return json.dumps(
             {"channel": channel, "messages": history, "count": len(history)}
         )
+
+    @mcp.tool()
+    async def orochi_subscribe(channel: str) -> str:
+        """Subscribe to an Orochi channel at runtime (no restart needed)."""
+        async with _make_client(channels=[channel]) as client:
+            await client.subscribe(channel)
+        return json.dumps({"status": "subscribed", "channel": channel})
 
     @mcp.tool()
     async def orochi_channels() -> str:
