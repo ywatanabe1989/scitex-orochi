@@ -744,6 +744,19 @@ body {
   max-width: 100%;
 }
 
+/* URL link highlight in feed — blue tint to match issue-link yellow pattern */
+a.chat-link {
+  color: #6ec6f0;
+  text-decoration: none;
+  background: rgba(110, 198, 240, 0.1);
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+a.chat-link:hover {
+  text-decoration: underline;
+  background: rgba(110, 198, 240, 0.2);
+}
+
 /* Pending attachment tray — staged file chips above the textarea */
 .input-bar {
   flex-direction: column;
