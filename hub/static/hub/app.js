@@ -51,6 +51,13 @@ function setCurrentChannel(ch) {
   try {
     localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
   } catch (_) {}
+  /* Update textarea placeholder to show active channel — msg#9368 */
+  try {
+    var inp = document.getElementById("msg-input");
+    if (inp) {
+      inp.placeholder = ch ? "Message #" + ch.replace(/^#/, "") + "…" : "Type a message…";
+    }
+  } catch (_) {}
 }
 window.setCurrentChannel = setCurrentChannel;
 var cachedAgentNames = [];

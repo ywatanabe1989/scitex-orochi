@@ -95,10 +95,18 @@
    * Cmd+M is reserved by macOS Safari (minimize), so we accept the
    * Ctrl variant on every platform and the Alt+V backup on macOS. */
   document.addEventListener("keydown", function (e) {
+    /* Ctrl+M / Cmd+M or Alt+V toggles voice from anywhere */
     if (
       (e.ctrlKey && (e.key === "m" || e.key === "M")) ||
       (e.altKey && (e.key === "v" || e.key === "V"))
     ) {
+      e.preventDefault();
+      _toggleVoice();
+      return;
+    }
+    /* Ctrl+Enter toggles voice when Chat tab is active — msg#9375 */
+    if (e.ctrlKey && e.key === "Enter" &&
+        typeof activeTab !== "undefined" && activeTab === "chat") {
       e.preventDefault();
       _toggleVoice();
     }
@@ -106,7 +114,7 @@
   /* Initial title with the new shortcut hint. */
   btn.title =
     "Voice input · " + VOICE_LANGS[langIdx].label +
-    " · right-click to change language · Ctrl+M to toggle";
+    " · right-click to change language · Ctrl+Enter or Ctrl+M to toggle";
 
   recognition.addEventListener("start", function () {
     isListening = true;

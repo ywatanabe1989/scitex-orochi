@@ -205,4 +205,40 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       }
     });
   }
+
+  /* Swipe-right from left edge to open sidebar on iPhone — msg#9393 */
+  var _swipeStartX = null;
+  var _swipeStartY = null;
+  document.addEventListener(
+    "touchstart",
+    function (e) {
+      _swipeStartX = e.touches[0].clientX;
+      _swipeStartY = e.touches[0].clientY;
+    },
+    { passive: true },
+  );
+  document.addEventListener(
+    "touchend",
+    function (e) {
+      if (_swipeStartX === null) return;
+      var dx = e.changedTouches[0].clientX - _swipeStartX;
+      var dy = e.changedTouches[0].clientY - _swipeStartY;
+      var absDx = Math.abs(dx);
+      var absDy = Math.abs(dy);
+      /* Only handle horizontal swipes (more x-movement than y) */
+      if (absDx < 40 || absDy > absDx) {
+        _swipeStartX = null;
+        return;
+      }
+      if (dx > 0 && _swipeStartX < 40) {
+        /* Right swipe from left edge → open sidebar */
+        openSidebar();
+      } else if (dx < 0 && sidebar.classList.contains("open")) {
+        /* Left swipe anywhere → close sidebar */
+        closeSidebar();
+      }
+      _swipeStartX = null;
+    },
+    { passive: true },
+  );
 })();
