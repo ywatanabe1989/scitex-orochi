@@ -7,6 +7,12 @@ function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
 
+/* Auto-scroll only when user is near bottom (preserves text selection) */
+function shouldAutoScroll(container) {
+  var threshold = 80;
+  return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+}
+
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
@@ -108,8 +114,9 @@ function appendMessage(msg) {
     el.style.display = "none";
   }
   var container = document.getElementById("messages");
+  var doScroll = shouldAutoScroll(container);
   container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  if (doScroll) container.scrollTop = container.scrollHeight;
 }
 
 function filterMessages() {
