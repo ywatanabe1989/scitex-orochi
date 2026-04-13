@@ -53,11 +53,23 @@ if [ "$os" = "Darwin" ]; then
     mem_total=$("$SYSCTL" -n hw.memsize 2>/dev/null)
     if [ -n "$mem_total" ] && [ "$mem_total" -gt 0 ] 2>/dev/null; then
         mem_total=$(( mem_total / 1024 / 1024 ))
-        pages_free=$(vm_stat 2>/dev/null | awk '/Pages free/ {gsub("\\.","",$3); print $3}')
-        page_size=$(vm_stat 2>/dev/null | awk '/page size of/ {print $8}')
+        # Darwin gotcha: vm_stat "Pages free" alone is always tiny because
+        # macOS aggressively uses inactive + speculative pages as cache and
+        # reclaims on demand. The true "available" memory is
+        # free + inactive + speculative. Treating just "Pages free" as
+        # available causes false-positive memory CRITICAL alerts (msg#8603).
+        vm_out=$(vm_stat 2>/dev/null)
+        page_size=$(printf '%s\n' "$vm_out" | awk '/page size of/ {print $8}')
         page_size=${page_size:-4096}
-        if [ -n "$pages_free" ]; then
-            mem_free_mb=$(( pages_free * page_size / 1024 / 1024 ))
+        pages_free=$(printf '%s\n' "$vm_out" | awk '/Pages free/ {gsub("\\.","",$3); print $3}')
+        pages_inactive=$(printf '%s\n' "$vm_out" | awk '/Pages inactive/ {gsub("\\.","",$3); print $3}')
+        pages_speculative=$(printf '%s\n' "$vm_out" | awk '/Pages speculative/ {gsub("\\.","",$3); print $3}')
+        pages_free=${pages_free:-0}
+        pages_inactive=${pages_inactive:-0}
+        pages_speculative=${pages_speculative:-0}
+        avail_pages=$(( pages_free + pages_inactive + pages_speculative ))
+        if [ "$avail_pages" -gt 0 ]; then
+            mem_free_mb=$(( avail_pages * page_size / 1024 / 1024 ))
             mem_used=$(( mem_total - mem_free_mb ))
         fi
     else
