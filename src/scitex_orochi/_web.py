@@ -19,13 +19,14 @@ from scitex_orochi._config import (
     MEDIA_ROOT,
 )
 
-_CORS_SET = {o.strip() for o in CORS_ORIGINS.split(",") if o.strip()}
 from scitex_orochi._media import MediaStore
 from scitex_orochi._models import Message
 from scitex_orochi._push import PushStore
 from scitex_orochi._web_gitea import register_gitea_routes
 from scitex_orochi._web_push import register_push_routes
 from scitex_orochi._web_workspaces import register_workspace_routes
+
+_CORS_SET = {o.strip() for o in CORS_ORIGINS.split(",") if o.strip()}
 
 if TYPE_CHECKING:
     from scitex_orochi._server import OrochiServer
