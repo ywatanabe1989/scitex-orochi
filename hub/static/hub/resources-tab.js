@@ -242,6 +242,19 @@ function buildResourceCard(k) {
   return html;
 }
 
+/* todo#337: friendly canonical names so DXP480TPLUS-994 shows as "nas" etc. */
+var MACHINE_ALIASES = {
+  "DXP480TPLUS-994": "nas",
+  "Yusukes-MacBook-Air.local": "mba",
+  "spartan-login1.hpc.unimelb.edu.au": "spartan",
+  "spartan-login1": "spartan",
+};
+function _friendlyMachine(raw) {
+  if (!raw) return raw;
+  if (MACHINE_ALIASES[raw]) return MACHINE_ALIASES[raw] + " (" + raw + ")";
+  return raw;
+}
+
 async function fetchResources() {
   try {
     var res = await fetch(apiUrl("/api/resources"));
@@ -254,7 +267,7 @@ async function fetchResources() {
       var existing = resourceData[agentName];
       if (existing && !existing._api && (r.mem_used_percent || 0) === 0 && (existing.memory || {}).percent > 0) return;
       resourceData[agentName] = {
-        hostname: entry.machine || agentName,
+        hostname: _friendlyMachine(entry.machine || agentName),
         agent: agentName,
         cpu: {
           percent: Math.round(
