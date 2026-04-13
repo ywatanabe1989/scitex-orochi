@@ -353,6 +353,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             payload = content.get("payload", {})
             # Support channel/text inside payload (canonical) or at top level (legacy TS clients)
             ch_name = payload.get("channel") or content.get("channel") or "#general"
+            # Normalize group channel names: ensure # prefix (#326)
+            if not ch_name.startswith("dm:") and not ch_name.startswith("#"):
+                ch_name = "#" + ch_name
             text = (
                 payload.get("content")
                 or payload.get("text")
@@ -692,6 +695,9 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             payload = content.get("payload", {})
             # Support channel/text inside payload (canonical) or at top level (legacy clients)
             ch_name = payload.get("channel") or content.get("channel") or "#general"
+            # Normalize group channel names: ensure # prefix (#326)
+            if not ch_name.startswith("dm:") and not ch_name.startswith("#"):
+                ch_name = "#" + ch_name
             text = (
                 payload.get("content")
                 or payload.get("text")

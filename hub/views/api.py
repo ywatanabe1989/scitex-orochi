@@ -110,6 +110,9 @@ def api_messages(request, slug=None):
     # Support both flat format {text, channel} and nested {payload: {content, channel}}
     payload = body.get("payload", {})
     ch_name = body.get("channel") or payload.get("channel") or "#general"
+    # Normalize group channel names: ensure # prefix to prevent duplicates (#326)
+    if not ch_name.startswith("dm:") and not ch_name.startswith("#"):
+        ch_name = "#" + ch_name
     text = body.get("text") or payload.get("content") or payload.get("text") or ""
     attachments = payload.get("attachments") or body.get("attachments") or []
     metadata = payload.get("metadata") or body.get("metadata") or {}
@@ -220,9 +223,9 @@ def api_history(request, channel_name):
 
 @login_required
 @require_GET
-def api_stats(request):
+def api_stats(request, slug=None):
     """GET /api/stats/ — workspace statistics."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
     channels = Channel.objects.filter(workspace=workspace)
     msg_count = Message.objects.filter(workspace=workspace).count()
     member_count = WorkspaceMember.objects.filter(workspace=workspace).count()
@@ -233,12 +236,13 @@ def api_stats(request):
     agents_online = get_online_count(workspace_id=workspace.id)
 
     # Normalize channel names: ensure # prefix, deduplicate, exclude DM channels
+    # Use kind field when available, fall back to name prefix for safety (#325, #326)
     seen: set[str] = set()
     unique_channels: list[str] = []
     for ch in channels:
-        name = ch.name
-        if name.startswith("dm:"):
+        if ch.kind == Channel.KIND_DM or ch.name.startswith("dm:"):
             continue
+        name = ch.name
         if not name.startswith("#"):
             name = "#" + name
         if name not in seen:

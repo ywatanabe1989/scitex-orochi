@@ -110,8 +110,14 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
   } catch (_) {}
 })();
 
-/* Collapsible sidebar sections */
+/* Collapsible sidebar sections (#321 fix: use data-section for stable keys) */
 (function () {
+  /* Derive a stable key for a collapsible heading.
+   * Prefer data-section attribute; fall back to textContent for legacy compat. */
+  function sectionKey(h2) {
+    return h2.getAttribute("data-section") || h2.textContent.trim();
+  }
+
   /* Restore collapsed state on initial load */
   function applySavedState() {
     var saved = {};
@@ -121,7 +127,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       /* ignore */
     }
     document.querySelectorAll(".collapsible-heading").forEach(function (h2) {
-      var key = h2.textContent.trim();
+      var key = sectionKey(h2);
       var section = h2.nextElementSibling;
       if (saved[key]) {
         h2.classList.add("collapsed");
@@ -130,22 +136,20 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     });
   }
   applySavedState();
-  /* Re-apply when sidebar is re-rendered (e.g. after blocker count update) */
-  if (typeof MutationObserver !== "undefined") {
-    var sidebar = document.getElementById("sidebar");
-    if (sidebar) {
-      new MutationObserver(applySavedState).observe(sidebar, {
-        childList: true,
-        subtree: true,
-      });
-    }
-  }
+  /* The previous implementation used a MutationObserver on the sidebar to
+   * re-apply collapsed state whenever the DOM changed. This caused a bug
+   * (#321) where dynamic count updates in headings changed the textContent
+   * key, making expand/collapse state unreliable. With stable data-section
+   * keys the observer is no longer needed — applySavedState runs once on
+   * load and the click handler manages state from there. */
 
   /* Event delegation: works for dynamically inserted .collapsible-heading */
   document.addEventListener("click", function (e) {
     var h2 = e.target.closest(".collapsible-heading");
     if (!h2) return;
-    var key = h2.textContent.trim();
+    /* Ignore clicks on interactive children (e.g. the new-DM "+" button) */
+    if (e.target.closest("button")) return;
+    var key = sectionKey(h2);
     var section = h2.nextElementSibling;
     var isCollapsed = h2.classList.toggle("collapsed");
     if (section) section.classList.toggle("collapsed", isCollapsed);
