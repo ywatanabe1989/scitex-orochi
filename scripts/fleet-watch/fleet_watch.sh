@@ -7,6 +7,7 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROBE_SCRIPT="$SCRIPT_DIR/probe_remote.sh"
+DRIFT_SCRIPT="$SCRIPT_DIR/drift_check.py"
 OUT_DIR="${FLEET_WATCH_OUT:-$HOME/.scitex/orochi/fleet-watch}"
 LOG_FILE="$OUT_DIR/fleet_watch.log"
 HOSTS=( mba spartan ywata-note-win )
@@ -79,9 +80,28 @@ probe_one() {
         log "ok $host bytes=$(wc -c <"$out_file" | tr -d ' ')"
         diff_one "$host" "$prev_file" "$out_file"
         classify_pane_state "$host" "$out_file" "$prev_file"
+        check_drift "$host"
     else
         rm -f "$tmp_file"
         log "FAIL empty output $host"
+    fi
+}
+
+# Compare orochi-machines.yaml expected_tmux_sessions vs the runtime
+# snapshot. Logs any drift but does not escalate by itself — the
+# DRIFT lines are picked up by mamba-healer-* via the log trail.
+# Idempotent + read-only.
+check_drift() {
+    local host="$1"
+    [ -x "$DRIFT_SCRIPT" ] || return 0
+    command -v python3 >/dev/null 2>&1 || return 0
+    local out
+    out=$(FLEET_WATCH_OUT="$OUT_DIR" "$DRIFT_SCRIPT" "$host" 2>>"$LOG_FILE")
+    if [ -n "$out" ]; then
+        while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            log "$line"
+        done <<<"$out"
     fi
 }
 
@@ -255,6 +275,7 @@ probe_self() {
         mv "${out_file}.tmp" "$out_file"
         diff_one "nas" "$prev_file" "$out_file"
         classify_pane_state "nas" "$out_file" "$prev_file"
+        check_drift "nas"
     else
         rm -f "${out_file}.tmp"
         log "FAIL local probe"
