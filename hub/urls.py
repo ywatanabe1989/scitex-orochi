@@ -128,6 +128,9 @@ urlpatterns = [
     # Fleet reporting
     path("api/fleet/report", views.fleet_report, name="fleet_report"),
     path("api/fleet/state", views.fleet_state, name="fleet_state"),
+    # GitHub API proxy (blockers sidebar + todo tab)
+    path("api/github/issues", views.github_issues, name="api-github-issues"),
+    path("api/github/issue-title/", views.github_issue_title, name="api-github-issue-title"),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
     # GitHub webhook
