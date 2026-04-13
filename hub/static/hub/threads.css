@@ -61,6 +61,7 @@
   right: 0;
   width: 360px;
   height: 100vh;
+  height: 100dvh; /* shrinks when iOS virtual keyboard opens */
   background: #0f0f0f;
   border-left: 1px solid #222;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);

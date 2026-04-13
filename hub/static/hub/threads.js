@@ -5,6 +5,14 @@
 var threadPanel = null;
 var threadPanelParentId = null;
 
+/* Auto-link URLs in already-escaped HTML (applied to thread reply bodies). */
+function _linkifyThreadContent(html) {
+  return html.replace(
+    /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
+    '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
+  );
+}
+
 /* Build a permalink URL for a thread parent message. */
 function threadPermalinkUrl(parentId) {
   return (
@@ -187,6 +195,11 @@ async function openThreadPanel(parentId, opts) {
         sendThreadReply();
       }
     });
+    /* Auto-resize: grow with content up to 120px */
+    ta.addEventListener("input", function () {
+      this.style.height = "auto";
+      this.style.height = Math.min(this.scrollHeight, 120) + "px";
+    });
     /* Enable @mention autocomplete in thread input */
     if (typeof initMentionAutocomplete === "function") {
       initMentionAutocomplete(ta);
@@ -303,7 +316,7 @@ async function loadThreadReplies(parentId) {
           "</span>" +
           "</div>" +
           '<div class="thread-reply-body">' +
-          escapeHtml(r.content).replace(/\n/g, "<br>") +
+          _linkifyThreadContent(escapeHtml(r.content).replace(/\n/g, "<br>")) +
           "</div>" +
           "</div>"
         );
@@ -425,7 +438,7 @@ function _appendReplyToPanel(r) {
     "</span>" +
     "</div>" +
     '<div class="thread-reply-body">' +
-    escapeHtml(r.content || "").replace(/\n/g, "<br>") +
+    _linkifyThreadContent(escapeHtml(r.content || "").replace(/\n/g, "<br>")) +
     "</div>";
   container.appendChild(wrap);
   /* Smooth scroll to newest reply */
