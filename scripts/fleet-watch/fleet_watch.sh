@@ -12,6 +12,15 @@ LOG_FILE="$OUT_DIR/fleet_watch.log"
 HOSTS=( mba spartan ywata-note-win )
 SSH_TIMEOUT=8
 
+# Map host alias → canonical head agent name, used by the
+# scitex-agent-container snapshot --agent <name> --json call. The fallback
+# bash probe (probe_remote.sh) is host-level and doesn't need this.
+declare -A HEAD_AGENT
+HEAD_AGENT[mba]=head-mba
+HEAD_AGENT[spartan]=head-spartan
+HEAD_AGENT[ywata-note-win]=head-ywata-note-win
+HEAD_AGENT[nas]=head-nas
+
 mkdir -p "$OUT_DIR"
 
 log() {
@@ -23,47 +32,47 @@ probe_one() {
     local out_file="$OUT_DIR/${host}.json"
     local prev_file="$OUT_DIR/${host}.prev.json"
     local tmp_file="${out_file}.tmp"
-    local container_file="${out_file}.container"
+    local agent="${HEAD_AGENT[$host]:-head-$host}"
 
     # Rotate previous snapshot for diff comparison.
     if [ -s "$out_file" ]; then
         cp "$out_file" "$prev_file"
     fi
 
+    # Pure-consumer path (todo#286 PR #18 / #21 landed): ask the remote
+    # scitex-agent-container for its self-snapshot directly. This replaces
+    # the legacy bash probe + status --json merge with a single round-trip
+    # to a binary that already collects exactly what we need.
+    local snapshot_rc=1
     timeout "$SSH_TIMEOUT" ssh \
             -o ConnectTimeout=5 \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=accept-new \
             "$host" \
-            "bash -s" <"$PROBE_SCRIPT" >"$tmp_file" 2>>"$LOG_FILE"
-    local rc=$?
-
-    # Validate output looks like JSON; otherwise fall back to unreachable.
-    if [ $rc -ne 0 ] || ! head -c 1 "$tmp_file" 2>/dev/null | grep -q '{'; then
-        log "FAIL ssh probe $host (rc=$rc, $(wc -c <"$tmp_file" 2>/dev/null) bytes)"
-        printf '{"ts":"%s","host":"%s","reachable":false,"rc":%d}\n' \
-            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$host" "$rc" >"$tmp_file"
-    fi
-
-    # Forward-compatible second pass: pull scitex-agent-container status --json
-    # if the host has it. Gracefully degrades when the binary is absent or the
-    # context_management field has not landed yet (head-mba feat/context-manager).
-    timeout "$SSH_TIMEOUT" ssh \
-            -o ConnectTimeout=5 \
-            -o BatchMode=yes \
-            "$host" \
-            'bash -lc "command -v scitex-agent-container >/dev/null 2>&1 && scitex-agent-container status --json 2>/dev/null"' \
-            >"$container_file" 2>>"$LOG_FILE" || true
-
-    # Merge container status into the snapshot if both are valid JSON.
-    if [ -s "$container_file" ] && head -c 1 "$container_file" 2>/dev/null | grep -qE '\{|\['; then
-        if command -v jq >/dev/null 2>&1; then
-            jq -s '.[0] + {container_status: .[1]}' "$tmp_file" "$container_file" \
-                > "${tmp_file}.merged" 2>>"$LOG_FILE" \
-                && mv "${tmp_file}.merged" "$tmp_file"
+            "bash -lc 'scitex-agent-container snapshot --agent $agent --json 2>/dev/null'" \
+            >"$tmp_file" 2>>"$LOG_FILE"
+    snapshot_rc=$?
+    if [ $snapshot_rc -eq 0 ] && head -c 1 "$tmp_file" 2>/dev/null | grep -q '{'; then
+        # Snapshot succeeded — done.
+        :
+    else
+        # Fallback path: probe_remote.sh inline (legacy behavior). Used
+        # when the host doesn't have scitex-agent-container yet, the
+        # snapshot subcommand returned non-JSON, or the agent isn't
+        # registered. Keeps fleet_watch working through the migration.
+        log "fallback probe_remote.sh for $host (snapshot rc=$snapshot_rc)"
+        timeout "$SSH_TIMEOUT" ssh \
+                -o ConnectTimeout=5 \
+                -o BatchMode=yes \
+                "$host" \
+                "bash -s" <"$PROBE_SCRIPT" >"$tmp_file" 2>>"$LOG_FILE"
+        local rc=$?
+        if [ $rc -ne 0 ] || ! head -c 1 "$tmp_file" 2>/dev/null | grep -q '{'; then
+            log "FAIL ssh probe $host (rc=$rc, $(wc -c <"$tmp_file" 2>/dev/null) bytes)"
+            printf '{"ts":"%s","host":"%s","reachable":false,"rc":%d}\n' \
+                "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$host" "$rc" >"$tmp_file"
         fi
     fi
-    rm -f "$container_file"
 
     if [ -s "$tmp_file" ]; then
         mv "$tmp_file" "$out_file"
@@ -85,23 +94,27 @@ diff_one() {
     [ -s "$prev" ] || return 0   # no baseline yet
     command -v jq >/dev/null 2>&1 || return 0
 
+    # tmux_names may be a comma-separated string (legacy probe_remote.sh
+    # output) OR a JSON array (new snapshot --json output). Normalize both
+    # via the `as_array` helper.
     local jq_diff
     jq_diff=$(jq -n \
         --slurpfile p "$prev" \
         --slurpfile c "$curr" \
         '
+        def as_array(v):
+            if v == null then []
+            elif (v | type) == "array" then v
+            elif (v | type) == "string" then (v | split(","))
+            else [] end;
         ($p[0]) as $P | ($c[0]) as $C |
+        (as_array($P.tmux_names)) as $pn |
+        (as_array($C.tmux_names)) as $cn |
         {
             host: ($C.host // "?"),
             tmux_drop: (($P.tmux_count // 0) - ($C.tmux_count // 0)),
-            tmux_lost: (
-                (($P.tmux_names // "") | split(",")) -
-                (($C.tmux_names // "") | split(","))
-            ),
-            tmux_gained: (
-                (($C.tmux_names // "") | split(",")) -
-                (($P.tmux_names // "") | split(","))
-            ),
+            tmux_lost: ($pn - $cn),
+            tmux_gained: ($cn - $pn),
             fork_jump: (($C.fork_pressure_pct // 0) - ($P.fork_pressure_pct // 0)),
             claude_drop: (($P.claude_procs // 0) - ($C.claude_procs // 0)),
             became_unreachable: (($P.reachable // true) and (($C.reachable // true) | not))
