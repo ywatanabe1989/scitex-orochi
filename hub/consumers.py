@@ -10,6 +10,7 @@ from hub.models import (
     Channel,
     DMParticipant,
     Message,
+    MessageThread,
     Workspace,
     WorkspaceMember,
     WorkspaceToken,
@@ -112,6 +113,32 @@ def _resolve_workspace_token(token_str):
             "workspace_name": wt.workspace.name,
         }
     except WorkspaceToken.DoesNotExist:
+        return None
+
+
+@database_sync_to_async
+def _link_thread_reply(workspace_id, reply_msg_id, parent_msg_id):
+    """Create a MessageThread row linking reply to parent, if not already linked.
+
+    Called from both AgentConsumer and DashboardConsumer when a WS message
+    carries metadata.reply_to.  Returns a dict with parent info on success,
+    or None if parent not found or already linked.
+    """
+    try:
+        parent = Message.objects.get(id=parent_msg_id, workspace_id=workspace_id)
+        reply = Message.objects.get(id=reply_msg_id, workspace_id=workspace_id)
+        # get_or_create is idempotent — safe if the row already exists.
+        _, created = MessageThread.objects.get_or_create(parent=parent, reply=reply)
+        return {
+            "parent_id": parent.id,
+            "reply_id": reply.id,
+            "parent_sender": parent.sender,
+            "created": created,
+        }
+    except Message.DoesNotExist:
+        return None
+    except Exception:
+        log.exception("_link_thread_reply failed")
         return None
 
 
@@ -406,6 +433,23 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 metadata=metadata,
             )
 
+            # If this message is a thread reply (metadata.reply_to is set),
+            # create a MessageThread row so the reply is visible to ALL users
+            # when they call loadThreadReplies() — not just the sender.
+            # Also broadcast a thread.reply event so open thread panels update
+            # live for every connected dashboard (Slack-style behaviour).
+            reply_to_id = metadata.get("reply_to")
+            thread_link = None
+            if reply_to_id and msg:
+                try:
+                    thread_link = await _link_thread_reply(
+                        workspace_id=self.workspace_id,
+                        reply_msg_id=msg["id"],
+                        parent_msg_id=int(reply_to_id),
+                    )
+                except (TypeError, ValueError):
+                    pass
+
             # Broadcast to channel group. Use the *merged* metadata
             # (which now includes top-level payload.attachments hoisted
             # in by the normalization above) — NOT payload.metadata,
@@ -452,6 +496,26 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                         "kind": kind,
                         "text": text,
                         "ts": msg["ts"] if msg else None,
+                        "metadata": metadata,
+                    },
+                )
+
+            # Broadcast thread.reply event so all open thread panels update
+            # live (not just the sender's panel). Mirrors the api_threads POST
+            # broadcast so the UX is identical regardless of which code path
+            # the reply arrived on.
+            if thread_link and msg:
+                await self.channel_layer.group_send(
+                    self.workspace_group,
+                    {
+                        "type": "thread.reply",
+                        "parent_id": thread_link["parent_id"],
+                        "reply_id": thread_link["reply_id"],
+                        "sender": self.agent_name,
+                        "sender_type": "agent",
+                        "channel": ch_name,
+                        "text": text,
+                        "ts": msg["ts"],
                         "metadata": metadata,
                     },
                 )
@@ -712,6 +776,21 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 metadata=metadata,
             )
 
+            # If this message is a thread reply (metadata.reply_to is set),
+            # create a MessageThread row so the reply is visible to ALL users
+            # when they call loadThreadReplies() — not just the sender.
+            reply_to_id = metadata.get("reply_to")
+            thread_link = None
+            if reply_to_id and msg:
+                try:
+                    thread_link = await _link_thread_reply(
+                        workspace_id=self.workspace_id,
+                        reply_msg_id=msg["id"],
+                        parent_msg_id=int(reply_to_id),
+                    )
+                except (TypeError, ValueError):
+                    pass
+
             is_dm = ch_name.startswith("dm:")
             kind = "dm" if is_dm else "group"
 
@@ -744,6 +823,24 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                         "kind": kind,
                         "text": text,
                         "ts": msg["ts"] if msg else None,
+                        "metadata": metadata,
+                    },
+                )
+
+            # Broadcast thread.reply event so all open thread panels update
+            # live for every connected dashboard (Slack-style behaviour).
+            if thread_link and msg:
+                await self.channel_layer.group_send(
+                    self.workspace_group,
+                    {
+                        "type": "thread.reply",
+                        "parent_id": thread_link["parent_id"],
+                        "reply_id": thread_link["reply_id"],
+                        "sender": self.user.username,
+                        "sender_type": "human",
+                        "channel": ch_name,
+                        "text": text,
+                        "ts": msg["ts"],
                         "metadata": metadata,
                     },
                 )
