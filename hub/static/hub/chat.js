@@ -983,14 +983,14 @@ function restoreDraftForCurrentChannel() {
     if (saved && !input.value) {
       input.value = saved;
       input.style.height = "auto";
-      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+      input.style.height = Math.min(input.scrollHeight, 200) + "px";
     }
   } catch (_) {}
 }
 window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
 document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = "auto";
-  this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  this.style.height = Math.min(this.scrollHeight, 200) + "px";
   _saveDraft(this.value);
 });
 restoreDraftForCurrentChannel();

@@ -297,7 +297,7 @@ function runFilter() {
   });
   document.querySelectorAll(".todo-item").forEach(function (el) {
     var text = el.textContent;
-    var show = fuzzyMatch(q, text);
+    var show = fuzzyMatchAll(q, text);
     if (show && allTags.length > 0) {
       show = allTags.every(function (tag) {
         var val = tag.value.toLowerCase();
@@ -318,30 +318,37 @@ function runFilter() {
   filterSidebarElements(q, allTags);
 }
 
+/* Word-by-word AND fuzzy match: every space-separated word must match */
+function fuzzyMatchAll(q, text) {
+  if (!q) return true;
+  var words = q.split(/\s+/).filter(Boolean);
+  return words.every(function (w) { return fuzzyMatch(w, text); });
+}
+
 function filterSidebarElements(q, allTags) {
   document.querySelectorAll("#agents .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      fuzzyMatchAll(q, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      fuzzyMatchAll(q, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#resources .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      fuzzyMatchAll(q, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#agents-grid .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      fuzzyMatchAll(q, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#resources-grid .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      fuzzyMatchAll(q, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
 }
