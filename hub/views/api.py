@@ -61,9 +61,9 @@ def api_workspaces(request):
 
 @login_required
 @require_GET
-def api_channels(request):
+def api_channels(request, slug=None):
     """GET /api/channels/ — list channels in current workspace."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
     data = [{"name": ch.name, "description": ch.description} for ch in channels]
     return JsonResponse(data, safe=False)
@@ -84,6 +84,7 @@ def api_messages(request, slug=None):
         msgs = (
             Message.objects.filter(workspace=workspace)
             .exclude(is_thread_reply)
+            .exclude(channel__name__startswith="dm:")
             .select_related("channel")
             .annotate(thread_count=Count("thread_replies"))
             .order_by("-ts")[:limit]
@@ -180,9 +181,9 @@ def api_messages(request, slug=None):
 
 @login_required
 @require_GET
-def api_history(request, channel_name):
+def api_history(request, channel_name, slug=None):
     """GET /api/history/<channel>/ — channel message history."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
     if not channel_name.startswith("#"):
         channel_name = f"#{channel_name}"
 
