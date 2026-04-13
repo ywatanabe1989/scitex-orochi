@@ -57,6 +57,7 @@ var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
 var unreadCount = 0;
+var channelUnread = {}; /* per-channel unread counts (#322) */
 var baseTitle = document.title;
 
 /* User display name -- from Django auth or fallback to localStorage */
@@ -394,6 +395,12 @@ function handleMessage(msg) {
       unreadCount++;
       document.title = "(" + unreadCount + ") " + baseTitle;
     }
+    /* Per-channel unread count (#322) */
+    var msgCh = msg.channel || msg.chat_id || "";
+    if (msgCh && msgCh !== currentChannel) {
+      channelUnread[msgCh] = (channelUnread[msgCh] || 0) + 1;
+      updateChannelUnreadBadges();
+    }
   } else if (msg.type === "system_message") {
     if (typeof appendSystemMessage === "function") {
       appendSystemMessage(msg);
@@ -425,6 +432,26 @@ document.addEventListener("visibilitychange", function () {
     document.title = baseTitle;
   }
 });
+
+/* Per-channel unread badges (#322) */
+function updateChannelUnreadBadges() {
+  document.querySelectorAll("#channels .channel-item").forEach(function (el) {
+    var ch = el.getAttribute("data-channel");
+    var badge = el.querySelector(".unread-badge");
+    var count = channelUnread[ch] || 0;
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "unread-badge";
+        el.appendChild(badge);
+      }
+      badge.textContent = count > 99 ? "99+" : count;
+    } else if (badge) {
+      badge.remove();
+    }
+  });
+}
+window.updateChannelUnreadBadges = updateChannelUnreadBadges;
 
 function connect() {
   var statusEl = document.getElementById("conn-status");
@@ -813,6 +840,9 @@ async function fetchStats() {
           setCurrentChannel(ch);
           loadChannelHistory(ch);
         }
+        /* Clear unread for this channel (#322) */
+        channelUnread[ch] = 0;
+        updateChannelUnreadBadges();
         /* todo#274 Part 1: pure visual highlight, toggle on second click. */
         var items = chContainer.querySelectorAll(".channel-item");
         var wasSelected = el.classList.contains("selected");
@@ -826,6 +856,7 @@ async function fetchStats() {
     });
     var chCountEl = document.getElementById("sidebar-count-channels");
     if (chCountEl) chCountEl.textContent = "(" + displayChannels.length + ")";
+    if (typeof updateChannelUnreadBadges === "function") updateChannelUnreadBadges();
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
       try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
