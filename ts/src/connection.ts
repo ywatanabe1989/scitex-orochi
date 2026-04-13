@@ -27,6 +27,12 @@ const PONG_TIMEOUT_MS = 10_000;
 const MAX_RECONNECT_DELAY = 60_000;
 const CONNECT_TIMEOUT_MS = 15_000;
 const HEARTBEAT_INTERVAL_MS = 30_000;
+// todo#97/#96: watchdog supervises the connection independently of the
+// ping/pong path. Catches edge cases where the WS is wedged in a state
+// that doesn't trigger close (e.g. terminate() silently dropped, host
+// network half-closed, OS suspend/resume) and forces a reconnect.
+const WATCHDOG_INTERVAL_MS = 15_000;
+const WATCHDOG_STALE_MS = 90_000;
 
 export class OrochiConnection {
   state: ConnectionState = "disconnected";
@@ -39,6 +45,7 @@ export class OrochiConnection {
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private pingTimer: ReturnType<typeof setInterval> | null = null;
   private pongTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
   private lastPongAt = 0;
   private isReconnecting = false;
   private onMessage: ((data: string) => void) | null = null;
@@ -73,6 +80,7 @@ export class OrochiConnection {
     this.clearReconnectTimer();
     this.isReconnecting = false;
     this.setState("connecting");
+    this.startWatchdog();
 
     const wsUrl = buildWsUrl();
     const wsOptions: WebSocket.ClientOptions = {};
@@ -209,6 +217,13 @@ export class OrochiConnection {
         try {
           this.ws?.terminate();
         } catch (_) {}
+        // Defense in depth: terminate() should fire the close handler,
+        // but on some platforms it silently no-ops on a half-broken
+        // socket. Force the reconnect path so we never get wedged in
+        // "connected" with a dead socket.
+        this.cleanup();
+        this.setState("disconnected");
+        this.triggerReconnect();
       }, PONG_TIMEOUT_MS);
     }, PING_INTERVAL_MS);
   }
@@ -236,6 +251,54 @@ export class OrochiConnection {
         this.ws.close();
       } catch (_) {}
       this.ws = null;
+    }
+  }
+
+  // todo#96: Watchdog supervises the connection independently of the
+  // ping/pong + close-event path. Runs every WATCHDOG_INTERVAL_MS and
+  // forces a reconnect in two failure modes that would otherwise leave
+  // the agent silently disconnected for the rest of the session:
+  //
+  // 1. state == "connected" but lastPongAt is older than WATCHDOG_STALE_MS
+  //    — the socket thinks it's alive but the peer is unreachable
+  //    (half-open TCP, NAT idle drop, host suspend/resume).
+  // 2. state == "disconnected" with no scheduled reconnect timer — the
+  //    reconnect loop got into a dead state because triggerReconnect()
+  //    raced against itself or terminate() silently dropped the close
+  //    event without firing the close handler.
+  private startWatchdog(): void {
+    if (this.watchdogTimer) return;
+    this.watchdogTimer = setInterval(() => {
+      try {
+        this.runWatchdogTick();
+      } catch (err) {
+        console.error("[orochi] watchdog tick failed:", err);
+      }
+    }, WATCHDOG_INTERVAL_MS);
+  }
+
+  private runWatchdogTick(): void {
+    if (this.state === "connected") {
+      const ageMs = this.lastPongAgeMs;
+      if (ageMs !== null && ageMs > WATCHDOG_STALE_MS) {
+        console.error(
+          `[orochi] watchdog: stale connection (last pong ${ageMs}ms ago > ${WATCHDOG_STALE_MS}ms), forcing reconnect`,
+        );
+        this.cleanup();
+        this.setState("disconnected");
+        this.triggerReconnect();
+      }
+      return;
+    }
+    if (
+      this.state === "disconnected" &&
+      !this.reconnectTimer &&
+      !this.isReconnecting
+    ) {
+      console.error(
+        "[orochi] watchdog: disconnected with no scheduled reconnect, forcing reconnect",
+      );
+      this.triggerReconnect();
     }
   }
 
