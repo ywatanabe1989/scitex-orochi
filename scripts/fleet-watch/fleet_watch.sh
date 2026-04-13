@@ -128,12 +128,95 @@ probe_self() {
     fi
 }
 
+# Connectivity row producer (todo#297 PR B).
+# After per-host probes finish, derive a per-peer connectivity matrix entry
+# for THIS host (NAS) and write it to connectivity.json. Each per-host snapshot
+# already contains a `reachable` field (or omits it on success); we measure
+# RTT separately with a tiny ssh roundtrip per peer.
+#
+# Schema:
+# {
+#   "ts": "...",
+#   "from": "nas",
+#   "from_hostname": "DXP480TPLUS-994",
+#   "to": {
+#     "mba":            { "ok": true,  "rtt_ms": 12,  "route": "direct" },
+#     "spartan":        { "ok": true,  "rtt_ms": 84,  "route": "direct" },
+#     "ywata-note-win": { "ok": false, "rtt_ms": null,"route": "reverse-tunnel-1229", "error": "timeout" }
+#   }
+# }
+#
+# Hub consumption: file is read by mamba-healer-nas / scitex-orochi MCP tool
+# `connectivity_matrix` (todo#297 layer 3). Once #298 fleet_report endpoint
+# lands, this same row will also be POSTed to the hub for cross-host aggregation.
+emit_connectivity_row() {
+    local out_file="$OUT_DIR/connectivity.json"
+    local tmp_file="${out_file}.tmp"
+    local ts
+    ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+    {
+        printf '{"ts":"%s","from":"nas","from_hostname":"%s","to":{' \
+            "$ts" "$(hostname -s 2>/dev/null || hostname)"
+        local first=1
+        for h in "${HOSTS[@]}"; do
+            local route="direct"
+            case "$h" in
+                ywata-note-win) route="reverse-tunnel-1229" ;;
+            esac
+            local start_ns end_ns rc rtt_ms ok err
+            start_ns=$(date +%s%N)
+            timeout "$SSH_TIMEOUT" ssh \
+                    -o ConnectTimeout=5 \
+                    -o BatchMode=yes \
+                    "$h" "true" >/dev/null 2>>"$LOG_FILE"
+            rc=$?
+            end_ns=$(date +%s%N)
+            if [ "$rc" -eq 0 ]; then
+                rtt_ms=$(( (end_ns - start_ns) / 1000000 ))
+                ok=true
+                err=""
+            else
+                rtt_ms=null
+                ok=false
+                if [ "$rc" -eq 124 ]; then
+                    err="timeout"
+                else
+                    err="exit_$rc"
+                fi
+            fi
+            if [ "$first" -eq 1 ]; then
+                first=0
+            else
+                printf ','
+            fi
+            if [ -n "$err" ]; then
+                printf '"%s":{"ok":%s,"rtt_ms":%s,"route":"%s","error":"%s"}' \
+                    "$h" "$ok" "$rtt_ms" "$route" "$err"
+            else
+                printf '"%s":{"ok":%s,"rtt_ms":%s,"route":"%s"}' \
+                    "$h" "$ok" "$rtt_ms" "$route"
+            fi
+        done
+        printf '}}\n'
+    } >"$tmp_file"
+
+    if [ -s "$tmp_file" ]; then
+        mv "$tmp_file" "$out_file"
+        log "ok connectivity row bytes=$(wc -c <"$out_file" | tr -d ' ')"
+    else
+        rm -f "$tmp_file"
+        log "FAIL connectivity row (empty)"
+    fi
+}
+
 main() {
     log "cycle start"
     probe_self
     for h in "${HOSTS[@]}"; do
         probe_one "$h"
     done
+    emit_connectivity_row
     log "cycle end"
 }
 
