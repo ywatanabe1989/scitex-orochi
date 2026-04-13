@@ -684,6 +684,8 @@ async function fetchAgents() {
       msgInput.focus();
       try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
     }
+    /* Re-apply sidebar filter after DOM rebuild so display:none isn't lost */
+    if (typeof runFilter === "function") runFilter();
   } catch (e) {
     /* fetch error */
   }
