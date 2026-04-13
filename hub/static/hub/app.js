@@ -756,6 +756,12 @@ async function fetchStats() {
     var inputHasFocus = msgInput && document.activeElement === msgInput;
     var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
     var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+    /* Preserve Ctrl+Click multi-select state across re-renders (#274 Part 2) */
+    var prevSelected = {};
+    chContainer.querySelectorAll(".channel-item.selected").forEach(function (el) {
+      var ch = el.getAttribute("data-channel");
+      if (ch) prevSelected[ch] = true;
+    });
     /* todo#325: hide dm:* channels from the public Channels list
      * (they still render in the DM tab via its own path).
      * todo#326: normalize "general" -> "#general" and dedupe by
@@ -787,6 +793,9 @@ async function fetchStats() {
       })
       .join("");
     chContainer.querySelectorAll(".channel-item").forEach(function (el) {
+      /* Restore selected state from before re-render */
+      var elCh = el.getAttribute("data-channel");
+      if (elCh && prevSelected[elCh]) el.classList.add("selected");
       el.addEventListener("click", function (ev) {
         var ch = el.getAttribute("data-channel");
         var multi = ev.ctrlKey || ev.metaKey;
