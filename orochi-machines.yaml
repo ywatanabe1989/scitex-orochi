@@ -1,0 +1,261 @@
+# Orochi Fleet Machine Inventory (todo#283 / Task #2)
+#
+# Source-of-truth manifest for the four fleet hosts. Producer/consumer roles:
+#   - Producers (per-host healers, fleet_watch.sh) read this to know what
+#     they're supposed to see (expected sessions, expected resources).
+#   - Consumers (mamba-healer-*, MCP `connectivity_matrix`, future hub UI
+#     Machines tab) read this to render labels and to flag drift.
+#
+# This file is intentionally human-curated, not auto-generated. The drifted
+# values come from runtime probes (probe_remote.sh, scitex-agent-container
+# snapshot --json) and are compared against the declared values here.
+#
+# Naming conventions
+# ------------------
+# - canonical_name: the lower-case short name used in fleet conversations
+#   (`mba`, `nas`, `spartan`, `ywata-note-win`). This MUST match the
+#   `SCITEX_AGENT_LOCAL_HOSTS` entry seeded by host_identity.py (#294).
+# - aliases: every other string this host legitimately answers to. Must
+#   include the OS hostname so is_local_host() auto-detects via seed match.
+# - bastion_hostname: the Cloudflare tunnel public name agreed in msg#8226
+#   (`bastion-<canonical>.scitex-orochi.com`).
+# - autostart: which init system spawns the head agent at boot.
+# - role: head / healer / specialist / etc. (matches metadata.labels.role).
+
+apiVersion: scitex-orochi/v1
+kind: FleetMachineInventory
+metadata:
+  generated_by: head-nas
+  generated_at: "2026-04-13T16:50:00+10:00"
+  rfc: "todo#283"
+
+machines:
+  # ---------------------------------------------------------------------------
+  - canonical_name: mba
+    hostname: Yusukes-MacBook-Air.local
+    aliases:
+      - mba
+      - head-mba
+      - Yusukes-MacBook-Air
+      - Yusukes-MacBook-Air.local
+    os:
+      family: Darwin
+      version: macOS
+    hardware:
+      arch: arm64
+      cpu_cores: 8           # Apple Silicon — confirm exact via `sysctl -n hw.ncpu` on next probe
+      ram_gb: 16
+      storage_gb_total: ~
+      gpu: integrated_apple_silicon
+    runtime:
+      multiplexer: tmux
+      autostart: launchd
+      autostart_path: ~/Library/LaunchAgents/com.scitex.orochi.*.plist
+    fleet_role:
+      role: head
+      backup_of: nas         # NAS is the bastion fallback for hub-side ops
+      tier: 1
+    network:
+      lan_ip: 192.168.11.22
+      preferred_route: direct      # NAS↔MBA on same LAN
+      reverse_tunnel_terminus: ~
+    bastion:
+      tunnel_name: scitex-orochi
+      hostname: bastion-mba.scitex-orochi.com
+      cloudflared_running: true
+    expected_tmux_sessions:
+      - head-mba
+      - mamba-auth-manager-mba
+      - mamba-explorer-mba
+      - mamba-healer-mba
+      - mamba-quality-checker-mba
+      - mamba-skill-manager
+      - mamba-synchronizer-mba
+      - mamba-todo-manager
+      - mamba-verifier-mba
+    process_caps:
+      ulimit_u: 4000         # macOS hard cap (msg#8043 confirmed); raise via launchctl limit maxproc
+      pid_max: ~             # macOS uses kern.maxproc, not /proc/sys/kernel/pid_max
+    notes:
+      - "Hub origin: scitex-orochi.com Cloudflare tunnel terminates here."
+      - "Fork pressure observed at 18.5% (739/4000) during today's session — well under cap but cap is hard."
+      - "All 9 head + mamba sessions auto-start via launchd plist staged in ~/.dotfiles/src/launchd/."
+
+  # ---------------------------------------------------------------------------
+  - canonical_name: nas
+    hostname: DXP480TPLUS-994
+    aliases:
+      - nas
+      - ugreen
+      - DXP480TPLUS-994
+      - nas.local
+    os:
+      family: Linux
+      version: Debian 12
+    hardware:
+      arch: x86_64
+      cpu_cores: 12
+      ram_gb: 62
+      storage_gb_total: 11000   # 11 TB RAID
+      storage_gb_free: 3600     # 3.6 TB free at session start
+      gpu: ~
+    runtime:
+      multiplexer: tmux
+      autostart: systemd_user    # ~/.config/systemd/user/, loginctl enable-linger
+      autostart_path: ~/.dotfiles/src/systemd/user/orochi-*.service
+    fleet_role:
+      role: head
+      backup_of: mba             # NAS is the secondary hub bastion + storage host
+      tier: 1
+      capabilities:
+        - storage
+        - docker_host
+        - cloudflared_tunnel_origin
+        - bastion_secondary
+        - fleet_watch_neutral_observer   # cross-host probe (todo#282)
+    network:
+      lan_ip: 192.168.11.21
+      preferred_route: direct
+      reverse_tunnel_terminus: 1229       # localhost:1229 receives WSL autossh
+    bastion:
+      tunnel_name: bastion-nas
+      tunnel_id: c0c1f31d-8a0c-4dda-a3fc-0770a665ace9
+      hostname: bastion-nas.scitex-orochi.com
+      cloudflared_running: true
+    expected_tmux_sessions:
+      - head-nas
+      - mamba-healer-nas
+    process_caps:
+      ulimit_u: ~              # ulimit -u inherited from systemd, no hard cap observed
+      pid_max: 4194304         # /proc/sys/kernel/pid_max
+    services:
+      - scitex-cloud_docker_compose   # serves scitex.ai
+      - cloudflared_tunnel_scitex_ai  # serves bastion.scitex.ai (separate from bastion-nas)
+      - cloudflared_tunnel_bastion_nas
+      - fleet-watch.timer             # 5min cross-host probe
+    notes:
+      - "Two cloudflared tunnels run side-by-side: scitex.ai (docker stack) and bastion-nas (systemd user)."
+      - "fleet_watch.sh is the canonical NAS producer; scripts live at ~/proj/scitex-orochi/scripts/fleet-watch/."
+      - "ngate hosts ~/.scitex/orochi/scripts/agent_meta.py (per-session context_pct extractor)."
+
+  # ---------------------------------------------------------------------------
+  - canonical_name: spartan
+    hostname: spartan-login1
+    aliases:
+      - spartan
+      - spartan-login1
+      - spartan-login1.hpc.unimelb.edu.au
+    os:
+      family: Linux
+      version: RHEL/CentOS HPC
+    hardware:
+      arch: x86_64
+      cpu_cores: 64           # head-spartan analysis msg#8054
+      ram_gb: 250
+      storage_gb_total: ~     # quota-based, not a fixed disk
+      gpu: shared_via_slurm
+    runtime:
+      multiplexer: tmux
+      autostart: bash_profile_or_salloc_wrapper   # systemd --user not allowed on login1
+      autostart_path: ~
+    fleet_role:
+      role: head
+      backup_of: ~
+      tier: 2                 # secondary, HPC policy may restrict bastion role
+      capabilities:
+        - hpc_login
+        - slurm_dispatch
+        - gpu_via_salloc
+    network:
+      lan_ip: ~                # remote, reached via SSH config alias
+      preferred_route: direct
+      reverse_tunnel_terminus: ~
+    bastion:
+      tunnel_name: bastion-spartan
+      hostname: bastion-spartan.scitex-orochi.com
+      cloudflared_running: false   # tier-2, requires HPC admin policy verification
+    expected_tmux_sessions:
+      - head-spartan
+    process_caps:
+      ulimit_u: ~              # cgroup 1 CPU on login1 per HPC policy
+      pid_max: 303104          # observed at session start (Linux default class)
+    notes:
+      - "Login node has cgroup CPU=1 limit per HPC policy — claude-code idle is fine, workloads must dispatch via salloc/srun."
+      - "GPU partitions: a100 (27 nodes), h100 (12-16), l40s (10), sapphire (104) — all dispatched via SLURM."
+      - "Bastion role is best-effort; cloudflared 1h trial run pending HPC admin verification."
+
+  # ---------------------------------------------------------------------------
+  - canonical_name: ywata-note-win
+    hostname: ywata-note-win    # WSL hostname inside the distribution
+    aliases:
+      - ywata-note-win
+      - ywata-note-win.local
+      - wsl-ywata
+    os:
+      family: Linux
+      version: Ubuntu 22.04 (WSL2 on Windows)
+    hardware:
+      arch: x86_64
+      cpu_cores: 8            # to be confirmed, depends on Windows host
+      ram_gb: 24              # WSL allocation
+      storage_gb_total: ~
+      gpu: ~
+    runtime:
+      multiplexer: tmux
+      autostart: systemd_user_via_default_target_wants
+      autostart_path: ~/.config/systemd/user/scitex-agent-*.service
+    fleet_role:
+      role: head
+      backup_of: ~
+      tier: 3                 # WSL is best-effort due to laptop sleep + WSL stability
+      capabilities:
+        - claude_code_client
+    network:
+      lan_ip: ~                # ephemeral, behind Windows host NAT
+      preferred_route: outbound_only
+      reverse_tunnel_terminus: ~
+      reverse_tunnel_origin:
+        - target: nas
+          terminus: 1229
+        - target: mba
+          terminus: 1229
+    bastion:
+      tunnel_name: bastion-ywata-note-win
+      hostname: bastion-ywata-note-win.scitex-orochi.com
+      cloudflared_running: false   # tier-3, future
+    expected_tmux_sessions:
+      - head-ywata-note-win
+      - mamba-healer-ywata-note-win
+    process_caps:
+      ulimit_u: ~
+      pid_max: 4194304
+    notes:
+      - "Inbound reachability is via reverse autossh tunnels NAS:1229 / MBA:1229 — direct LAN SSH from outside WSL fails (msg#8377)."
+      - "Auto-recovery proven end-to-end this session: Windows reboot → systemd user spawns autossh + scitex-agent-* units → 124-second delta to ONLINE post (msg#8302)."
+      - "mamba-healer-ywata-note-win identity drift fixed via SCITEX_OROCHI_AGENT env (todo#304)."
+
+# ---------------------------------------------------------------------------
+# Fleet-wide preflight thresholds (consumed by mamba-healer-* + fleet_watch.sh)
+# ---------------------------------------------------------------------------
+preflight:
+  fork_pressure_warn_pct: 60
+  fork_pressure_critical_pct: 80
+  context_pressure_warn_pct: 60
+  context_pressure_critical_pct: 70   # default trigger_at_percent (todo#284)
+  fleet_watch_cycle_seconds: 300
+  fleet_watch_neutral_observer: nas
+
+# ---------------------------------------------------------------------------
+# Bastion mesh (#283 + #294)
+# ---------------------------------------------------------------------------
+bastion_mesh:
+  zone: scitex-orochi.com
+  primary: bastion-mba.scitex-orochi.com
+  secondary: bastion-nas.scitex-orochi.com
+  tertiary: bastion-spartan.scitex-orochi.com
+  quaternary: bastion-ywata-note-win.scitex-orochi.com
+  client_fallback_order:
+    - bastion-mba.scitex-orochi.com
+    - bastion-nas.scitex-orochi.com
+    - bastion-spartan.scitex-orochi.com
+    - bastion-ywata-note-win.scitex-orochi.com
