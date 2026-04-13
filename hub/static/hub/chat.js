@@ -1261,7 +1261,6 @@ function cancelEditMessage(msgId) {
 }
 
 function deleteMessage(msgId) {
-  if (!confirm("Delete this message?")) return;
   fetch(apiUrl("/api/messages/" + msgId + "/"), {
     method: "DELETE",
     headers: orochiHeaders(),
