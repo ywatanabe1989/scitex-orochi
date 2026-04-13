@@ -859,7 +859,34 @@ async function fetchStats() {
          * disturbing siblings; plain click keeps legacy single-select. */
         if (multi) {
           el.classList.toggle("selected");
-          if (typeof applyFeedFilter === "function") applyFeedFilter();
+          /* When multi-select is active, the DOM may only have messages from
+           * currentChannel. Switch to all-channel history so messages from
+           * every selected channel are present, then let applyFeedFilter
+           * show the merged subset. (#366) */
+          var _selCount = chContainer.querySelectorAll(
+            ".channel-item.selected[data-channel]",
+          ).length;
+          if (_selCount >= 2) {
+            /* Load all messages; applyFeedFilter handles visible subset */
+            setCurrentChannel(null);
+            var _applyAfter = function () {
+              if (typeof applyFeedFilter === "function") applyFeedFilter();
+            };
+            loadHistory().then
+              ? loadHistory().then(_applyAfter)
+              : (loadHistory(), _applyAfter());
+          } else if (_selCount === 1) {
+            var _onlyCh = chContainer.querySelector(
+              ".channel-item.selected[data-channel]",
+            );
+            if (_onlyCh) {
+              setCurrentChannel(_onlyCh.getAttribute("data-channel"));
+              loadChannelHistory(_onlyCh.getAttribute("data-channel"));
+            }
+          } else {
+            /* All deselected */
+            if (typeof applyFeedFilter === "function") applyFeedFilter();
+          }
           return;
         }
         if (currentChannel === ch) {

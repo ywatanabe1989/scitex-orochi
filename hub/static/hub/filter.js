@@ -295,7 +295,12 @@ function runFilter() {
         });
       }
     }
-    if (show && currentChannel) {
+    /* Skip single-channel filter when multi-select is active (#366):
+     * applyFeedFilter() handles multi-channel visibility in that case. */
+    var _multiActive = document.querySelectorAll(
+      "#channels .channel-item.selected",
+    ).length >= 2;
+    if (show && currentChannel && !_multiActive) {
       show = el.getAttribute("data-channel") === currentChannel;
     }
     el.style.display = show ? "" : "none";
