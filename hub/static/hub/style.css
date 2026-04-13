@@ -305,6 +305,11 @@ body {
   padding: 4px 8px;
   border-radius: 4px;
   transition: background 0.15s;
+  cursor: pointer;
+}
+.agent-card,
+.machine-item {
+  cursor: pointer;
 }
 .channel-item:hover {
   background: #1a1a1a;
