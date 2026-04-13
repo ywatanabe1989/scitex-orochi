@@ -212,6 +212,7 @@ body {
   background: #4ecdc4;
   border-radius: 8px;
   letter-spacing: 0.5px;
+  text-transform: none;
   opacity: 1 !important;
   animation: brand-new-pulse 2s ease-in-out infinite;
   vertical-align: middle;
