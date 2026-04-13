@@ -555,6 +555,15 @@ body {
 }
 
 /* Fold/expand long messages */
+.inline-code {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 0.9em;
+  color: #e06c75;
+}
 .msg-ref-link {
   color: #4ecdc4;
   text-decoration: none;

@@ -255,6 +255,10 @@ function appendMessage(msg) {
     },
   );
   highlightedContent = _highlightBareNames(highlightedContent)
+    /* Inline markdown: **bold**, *italic*, `code` */
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
     .replace(/\n/g, "<br>")
     .replace(
       /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
