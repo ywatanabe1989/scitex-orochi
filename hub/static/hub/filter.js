@@ -2,6 +2,11 @@
 /* globals: fuzzyMatch, escapeHtml, cachedAgentNames, resourceData,
    currentChannel, activeTags */
 
+/* mention.js redefines fuzzyMatch() to return a numeric score where
+ * -1 means no match. In JS -1 is truthy, so all boolean filter checks
+ * would pass regardless of match. _fm() wraps with >= 0 check. */
+var _fm = function (query, text) { return fuzzyMatch(query, text) >= 0; };
+
 var filterInput = document.getElementById("filter-input");
 var filterTagsEl = document.getElementById("filter-tags");
 var filterSuggestEl = document.getElementById("filter-suggest");
@@ -104,18 +109,18 @@ function getTagSuggestions(prefix) {
   var results = [];
   var pLower = prefix.toLowerCase();
   cachedAgentNames.forEach(function (n) {
-    if (fuzzyMatch(pLower, n.toLowerCase())) {
+    if (_fm(pLower, n.toLowerCase())) {
       results.push({ type: "agent", value: n });
     }
   });
   Object.keys(resourceData).forEach(function (h) {
-    if (fuzzyMatch(pLower, h.toLowerCase())) {
+    if (_fm(pLower, h.toLowerCase())) {
       results.push({ type: "host", value: h });
     }
   });
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var ch = el.getAttribute("data-channel") || el.textContent.trim();
-    if (fuzzyMatch(pLower, ch.toLowerCase())) {
+    if (_fm(pLower, ch.toLowerCase())) {
       results.push({ type: "channel", value: ch });
     }
   });
@@ -123,7 +128,7 @@ function getTagSuggestions(prefix) {
     .querySelectorAll(".todo-label[data-label-name]")
     .forEach(function (el) {
       var name = el.getAttribute("data-label-name");
-      if (name && fuzzyMatch(pLower, name.toLowerCase())) {
+      if (name && _fm(pLower, name.toLowerCase())) {
         results.push({ type: "label", value: name });
       }
     });
@@ -243,7 +248,7 @@ function matchesAllTags(tags, text) {
   if (tags.length === 0) return true;
   var lower = text.toLowerCase();
   return tags.every(function (tag) {
-    return fuzzyMatch(tag.value.toLowerCase(), lower);
+    return _fm(tag.value.toLowerCase(), lower);
   });
 }
 
