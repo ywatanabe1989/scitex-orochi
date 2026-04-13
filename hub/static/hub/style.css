@@ -6,11 +6,14 @@
 }
 html,
 body {
-  font-family: "Consolas", "Monaco", monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: #0a0a0a;
   color: #e0e0e0;
   overflow-x: hidden;
   max-width: 100vw;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 .container {
   display: grid;
