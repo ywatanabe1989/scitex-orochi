@@ -72,27 +72,12 @@
                     </section>
                     <section class="settings-section">
                         <h4>Change Password</h4>
-                        <p class="settings-desc">Update your account password.</p>
-                        <form method="post" action="/accounts/password/change/" class="settings-form password-change-form">
-                            {% csrf_token %}
-                            <table class="settings-table">
-                                <tbody>
-                                    <tr>
-                                        <td class="info-label">Current password</td>
-                                        <td><input type="password" name="oldpassword" required autocomplete="current-password"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="info-label">New password</td>
-                                        <td><input type="password" name="password1" required autocomplete="new-password"></td>
-                                    </tr>
-                                    <tr>
-                                        <td class="info-label">Confirm new password</td>
-                                        <td><input type="password" name="password2" required autocomplete="new-password"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <button type="submit" class="btn-small btn-primary" style="margin-top:8px">Change Password</button>
-                        </form>
+                        <p class="settings-desc">Update your account password via the secure password change page.</p>
+                        <a href="/accounts/password/change/"
+                           class="btn-small btn-primary password-change-link"
+                           style="margin-top:4px;display:inline-block">
+                            &#128274; Change Password
+                        </a>
                     </section>
                 </div>
                 <div class="settings-mode-pane" data-mode="workspace" style="display:none">
