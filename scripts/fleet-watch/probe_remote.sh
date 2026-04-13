@@ -76,7 +76,11 @@ if [ "$os" = "Darwin" ]; then
         mem_total=0
     fi
 else
-    read mem_total mem_used <<<"$(free -m 2>/dev/null | awk '/^Mem:/ {print $2, $3}')"
+    # `command free` bypasses any shell alias (the dotfiles ship with
+    # `alias free='watch -d -n 1 free -h'` for interactive use; that alias
+    # would clobber a non-interactive shell-out). Same idea as our /usr/sbin
+    # absolute paths for sysctl on Darwin.
+    read mem_total mem_used <<<"$(command free -m 2>/dev/null | awk '/^Mem:/ {print $2, $3}')"
 fi
 mem_total=${mem_total:-0}
 mem_used=${mem_used:-0}
