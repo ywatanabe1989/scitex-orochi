@@ -2059,6 +2059,12 @@ def api_push_unsubscribe(request, slug=None):
     return JsonResponse({"ok": True})
 
 
+# Fleet report settings
+FLEET_REPORT_MAX_PAYLOAD_KB = 256  # reject payloads > 256KB
+FLEET_REPORT_RETENTION_DAYS = 7    # auto-prune reports older than 7 days
+FLEET_REPORT_GC_PROBABILITY = 0.05 # 5% chance to run GC on each write
+
+
 @csrf_exempt
 def fleet_report(request):
     """POST /api/fleet/report — accept a fleet report from any producer."""
@@ -2069,9 +2075,10 @@ def fleet_report(request):
     except json.JSONDecodeError:
         return JsonResponse({"error": "invalid JSON"}, status=400)
 
-    # Validate token
+    # Validate token and resolve to agent identity
     token = data.get("token") or request.GET.get("token")
-    if not token or not WorkspaceToken.objects.filter(token=token).exists():
+    token_obj = WorkspaceToken.objects.filter(token=token).first() if token else None
+    if not token_obj:
         return JsonResponse({"error": "unauthorized"}, status=401)
 
     entity_type = data.get("entity_type")
@@ -2082,13 +2089,34 @@ def fleet_report(request):
     if not entity_type or not entity_id:
         return JsonResponse({"error": "entity_type and entity_id required"}, status=400)
 
+    # Tenant scoping: source is forced to token label (no impersonation)
+    source = token_obj.label or source
+
+    # Payload size guard
+    import sys
+    payload_size = sys.getsizeof(json.dumps(payload)) if payload else 0
+    if payload_size > FLEET_REPORT_MAX_PAYLOAD_KB * 1024:
+        return JsonResponse(
+            {"error": f"payload too large ({payload_size} bytes, max {FLEET_REPORT_MAX_PAYLOAD_KB}KB)"},
+            status=413,
+        )
+
     report = FleetReport.objects.create(
         entity_type=entity_type,
         entity_id=entity_id,
         payload=payload,
         source=source,
     )
-    return JsonResponse({"ok": True, "id": report.id})
+
+    # Probabilistic GC: prune old reports ~5% of writes
+    import random
+    if random.random() < FLEET_REPORT_GC_PROBABILITY:
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(days=FLEET_REPORT_RETENTION_DAYS)
+        FleetReport.objects.filter(ts__lt=cutoff).delete()
+
+    return JsonResponse({"ok": True, "id": report.id, "source": source})
 
 
 @csrf_exempt
