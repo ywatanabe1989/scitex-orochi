@@ -859,6 +859,32 @@ body {
     opacity: 0.6;
   }
 }
+/* todo#341/#342: wall-clock next to logo for screenshot timestamping */
+.brand-clock {
+  margin-left: 8px;
+  font-size: 11px;
+  font-family: ui-monospace, Menlo, monospace;
+  color: #c0c4cc;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+/* todo#339/#340: red blinking input border while voice recording */
+#msg-input.voice-recording {
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+  animation: input-voice-blink 1s ease-in-out infinite;
+}
+@keyframes input-voice-blink {
+  0%,
+  100% {
+    border-color: #ef4444;
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    border-color: #b91c1c;
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.2);
+  }
+}
 .input-bar-actions #msg-send {
   min-width: 60px;
   padding: 10px 16px;

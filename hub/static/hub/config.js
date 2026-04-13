@@ -17,6 +17,21 @@
         window.__orochiWsUpstream = cfg.ws_upstream;
         window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
       }
+      /* todo#341/#342: live wall-clock next to logo for screenshots */
+      (function _initBrandClock() {
+        var clockEl = document.getElementById("brand-clock");
+        if (!clockEl) return;
+        function _tick() {
+          var now = new Date();
+          var pad = function (n) { return n < 10 ? "0" + n : "" + n; };
+          clockEl.textContent =
+            pad(now.getHours()) + ":" +
+            pad(now.getMinutes()) + ":" +
+            pad(now.getSeconds());
+        }
+        _tick();
+        setInterval(_tick, 1000);
+      })();
       if (cfg.version) {
         window.__orochiVersion = cfg.version;
         window.__orochiDeployedAt = cfg.deployed_at || "";
