@@ -38,18 +38,16 @@
                 <div class="brand-info">
                     <h2 class="workspace-title brand-product-name">
                         SciTeX Orochi <span class="brand-version" id="orochi-version"></span>
-                        <span id="conn-status" class="status conn-down" title="connecting"></span>
                     </h2>
-                    <div class="brand-clock-row">
-                        <span class="brand-clock" id="brand-clock" title="current date/time"></span>
-                    </div>
                     <div class="workspace-selector" id="workspace-selector">
                         <span class="ws-icon" id="ws-icon-slot"></span>
                         <span class="ws-name">{{ workspace.name }}</span>
                         <span class="ws-caret">&#9662;</span>
                     </div>
                 </div>
+                <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
+            <div id="wall-clock" class="wall-clock"></div>
             <div class="filter-bar" style="position:relative">
                 <input type="text"
                        id="filter-input"
