@@ -297,7 +297,7 @@ function runFilter() {
   });
   document.querySelectorAll(".todo-item").forEach(function (el) {
     var text = el.textContent;
-    var show = fuzzyMatch(q, text);
+    var show = qWords.length === 0 || qWords.every(function (w) { return fuzzyMatch(w, text); });
     if (show && allTags.length > 0) {
       show = allTags.every(function (tag) {
         var val = tag.value.toLowerCase();
@@ -315,33 +315,37 @@ function runFilter() {
     }
     el.style.display = show ? "" : "none";
   });
-  filterSidebarElements(q, allTags);
+  filterSidebarElements(qWords, allTags);
 }
 
-function filterSidebarElements(q, allTags) {
+function _matchAllWords(words, text) {
+  return words.length === 0 || words.every(function (w) { return fuzzyMatch(w, text); });
+}
+
+function filterSidebarElements(qWords, allTags) {
   document.querySelectorAll("#agents .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#resources .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#agents-grid .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#resources-grid .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
 }
