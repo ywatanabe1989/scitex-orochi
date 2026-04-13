@@ -14,6 +14,7 @@ from hub.models import (
     Workspace,
     WorkspaceMember,
     WorkspaceToken,
+    normalize_channel_name,
 )
 
 
@@ -43,6 +44,75 @@ class WorkspaceModelTest(TestCase):
         self.assertEqual(msg.sender, "agent-1")
         self.assertEqual(msg.content, "Hello")
         self.assertIsNotNone(msg.ts)
+
+
+class ChannelNameNormalizeTest(TestCase):
+    """Coverage for the todo#326 write-side normalization."""
+
+    def test_normalize_helper_adds_hash(self):
+        self.assertEqual(normalize_channel_name("general"), "#general")
+        self.assertEqual(normalize_channel_name("progress"), "#progress")
+
+    def test_normalize_helper_passthrough_canonical(self):
+        self.assertEqual(normalize_channel_name("#general"), "#general")
+        self.assertEqual(normalize_channel_name("#agent"), "#agent")
+
+    def test_normalize_helper_passthrough_dm(self):
+        self.assertEqual(
+            normalize_channel_name("dm:agent:head|human:ywatanabe"),
+            "dm:agent:head|human:ywatanabe",
+        )
+
+    def test_normalize_helper_strips_whitespace(self):
+        self.assertEqual(normalize_channel_name("  general  "), "#general")
+
+    def test_normalize_helper_rejects_empty(self):
+        with self.assertRaises(ValueError):
+            normalize_channel_name("")
+        with self.assertRaises(ValueError):
+            normalize_channel_name("   ")
+        with self.assertRaises(ValueError):
+            normalize_channel_name(None)
+
+    def test_channel_save_normalizes_bare_name(self):
+        ws = Workspace.objects.create(name="ws-norm")
+        ch = Channel.objects.create(workspace=ws, name="general")
+        ch.refresh_from_db()
+        self.assertEqual(ch.name, "#general")
+
+    def test_channel_save_passes_canonical_through(self):
+        ws = Workspace.objects.create(name="ws-norm-2")
+        ch = Channel.objects.create(workspace=ws, name="#agent")
+        ch.refresh_from_db()
+        self.assertEqual(ch.name, "#agent")
+
+    def test_channel_save_does_not_touch_dm_kind(self):
+        ws = Workspace.objects.create(name="ws-norm-3")
+        # DM channels keep their dm: prefix even on save.
+        ch = Channel.objects.create(
+            workspace=ws,
+            name="dm:agent:head|human:ywatanabe",
+            kind=Channel.KIND_DM,
+        )
+        ch.refresh_from_db()
+        self.assertEqual(ch.name, "dm:agent:head|human:ywatanabe")
+
+    def test_get_or_create_with_bare_then_canonical_collapses(self):
+        """The legacy duplication scenario: an agent posts to ``general``
+        then another posts to ``#general``. With the save() normalizer
+        and call-site normalize_channel_name(), both must converge on
+        the same row."""
+        ws = Workspace.objects.create(name="ws-collapse")
+        a, _ = Channel.objects.get_or_create(
+            workspace=ws, name=normalize_channel_name("general")
+        )
+        b, _ = Channel.objects.get_or_create(
+            workspace=ws, name=normalize_channel_name("#general")
+        )
+        self.assertEqual(a.pk, b.pk)
+        self.assertEqual(
+            Channel.objects.filter(workspace=ws).count(), 1
+        )
 
 
 class AuthTest(TestCase):

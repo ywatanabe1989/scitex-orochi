@@ -460,32 +460,54 @@ export async function handleUploadMedia(args: {
     const filename = basename(args.file_path);
 
     // --- Content-addressable dedup: check hash before uploading ---
+    //
+    // todo#97: a HEAD/GET on /api/media/by-hash/ confirms the blob is
+    // already on the hub, but we MUST also create a Message row so the
+    // file shows up in the channel feed and Files tab. Prior versions
+    // returned the existing URL here without creating a Message, leaving
+    // dedup-hit uploads invisible (orphaned blobs). The fix is to POST
+    // back to the same endpoint with {channel, sender}; the server then
+    // creates the Message row referencing the existing blob without any
+    // bandwidth cost.
     const contentHash = createHash("sha256").update(fileData).digest("hex");
     const hashCheckUrl = `${httpBase}/api/media/by-hash/${contentHash}${tokenParam("?")}`;
+    const targetChannel = args.channel || "#general";
     try {
       const headResp = await fetch(hashCheckUrl, {
         method: "HEAD",
         headers: buildFetchHeaders(),
       });
       if (headResp.ok) {
-        // File already on hub — fetch metadata and return existing URL
-        const getResp = await fetch(hashCheckUrl, { headers: buildFetchHeaders() });
-        if (getResp.ok) {
-          const existing = (await getResp.json()) as { url?: string };
-          const mediaUrl = existing.url
-            ? existing.url.startsWith("http")
-              ? existing.url
-              : `${httpBase}${existing.url}`
+        // Dedup hit — POST to attach the existing blob to the target
+        // channel as a Message row (no upload required).
+        const attachResp = await fetch(hashCheckUrl, {
+          method: "POST",
+          headers: buildFetchHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({
+            channel: targetChannel,
+            sender: OROCHI_AGENT,
+          }),
+        });
+        if (attachResp.ok) {
+          const attached = (await attachResp.json()) as {
+            url?: string;
+            message_id?: number;
+          };
+          const mediaUrl = attached.url
+            ? attached.url.startsWith("http")
+              ? attached.url
+              : `${httpBase}${attached.url}`
             : "unknown";
           return {
             content: [
               {
                 type: "text",
-                text: `Uploaded ${filename} -> ${mediaUrl} (deduplicated, already on hub)`,
+                text: `Uploaded ${filename} -> ${mediaUrl} (deduplicated; attached as message ${attached.message_id ?? "?"})`,
               },
             ],
           };
         }
+        // attach failed — fall through to full upload
       }
     } catch {
       // Dedup check failed — fall through to normal upload

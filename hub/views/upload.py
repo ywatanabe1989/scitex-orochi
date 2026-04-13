@@ -319,12 +319,28 @@ def api_upload_base64(request):
 @csrf_exempt
 @_login_or_token_required
 def api_media_by_hash(request, content_hash: str):
-    """GET /api/media/by-hash/<sha256> — check if content already uploaded.
+    """``/api/media/by-hash/<sha256>`` — content-addressable media probe + attach.
 
-    Returns 200 + metadata if the hash is known, 404 otherwise.
-    HEAD requests can be used for existence checks without downloading metadata.
+    GET / HEAD
+        Existence check. Returns 200 + metadata if the hash is known, 404
+        otherwise. HEAD returns no body.
+
+    POST  (todo#97)
+        Attach an existing blob to a channel without re-uploading. Body::
+
+            { "channel": "#name", "sender": "agent-name" (optional) }
+
+        On success the server creates a ``Message`` row whose
+        ``metadata.attachments[0]`` references the existing blob, then
+        broadcasts the message to live dashboard listeners. This closes
+        the dedup-orphan bug where ``upload_media`` standalone returned
+        the existing URL but never produced a Message row, leaving the
+        file invisible in the Files tab.
+
+    All variants validate the hash format up front so injection probes
+    can't reach the filesystem layer.
     """
-    if request.method not in ("GET", "HEAD"):
+    if request.method not in ("GET", "HEAD", "POST"):
         return JsonResponse({"error": "Method not allowed"}, status=405)
 
     # Validate hash is plausible (64 hex chars for sha256)
@@ -341,4 +357,99 @@ def api_media_by_hash(request, content_hash: str):
         r["X-Content-Hash"] = content_hash
         return r
 
-    return JsonResponse({**existing, "content_hash": content_hash}, status=200)
+    if request.method == "GET":
+        return JsonResponse({**existing, "content_hash": content_hash}, status=200)
+
+    # ---- POST: attach existing blob to a channel as a Message row ----
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    channel_name = (body.get("channel") or "").strip()
+    if not channel_name:
+        return JsonResponse(
+            {"error": "channel field required for POST attach"}, status=400
+        )
+    sender_name = (body.get("sender") or "").strip()
+
+    # Normalize channel names to match the #326 write-path convention so
+    # the attach-by-hash endpoint never creates a duplicate bare-name row.
+    if not channel_name.startswith("dm:") and not channel_name.startswith("#"):
+        channel_name = "#" + channel_name
+
+    try:
+        from hub.models import Channel, Message
+        from hub.views._helpers import get_workspace
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+
+        workspace = get_workspace(request)
+        ch, _ = Channel.objects.get_or_create(
+            workspace=workspace, name=channel_name
+        )
+
+        is_authed_user = (
+            getattr(request, "user", None) is not None
+            and request.user.is_authenticated
+        )
+        sender = sender_name or (
+            request.user.username if is_authed_user else "agent"
+        )
+        sender_type = "human" if is_authed_user else "agent"
+
+        attachment_meta = {
+            "url": existing.get("url"),
+            "filename": existing.get("filename"),
+            "mime_type": existing.get("mime_type"),
+            "size": existing.get("size"),
+            "file_id": existing.get("file_id"),
+            "content_hash": content_hash,
+        }
+        msg = Message.objects.create(
+            workspace=workspace,
+            channel=ch,
+            sender=sender,
+            sender_type=sender_type,
+            content="",
+            metadata={"attachments": [attachment_meta]},
+        )
+
+        # Broadcast to live dashboard listeners (best-effort).
+        try:
+            layer = get_channel_layer()
+            if layer is not None:
+                async_to_sync(layer.group_send)(
+                    f"workspace_{workspace.id}",
+                    {
+                        "type": "chat.message",
+                        "id": msg.id,
+                        "sender": sender,
+                        "sender_type": sender_type,
+                        "channel": channel_name,
+                        "text": "",
+                        "ts": msg.ts.isoformat(),
+                        "metadata": {"attachments": [attachment_meta]},
+                    },
+                )
+        except Exception:
+            log.warning(
+                "[attach-by-hash] live broadcast failed for %s",
+                content_hash[:12],
+            )
+
+        return JsonResponse(
+            {
+                **existing,
+                "content_hash": content_hash,
+                "deduplicated": True,
+                "message_id": msg.id,
+                "channel": channel_name,
+            },
+            status=201,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.exception("[attach-by-hash] failed for %s", content_hash[:12])
+        return JsonResponse(
+            {"error": f"attach failed: {exc}"}, status=500
+        )
