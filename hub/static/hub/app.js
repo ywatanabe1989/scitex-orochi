@@ -908,7 +908,12 @@ async function fetchStats() {
     var inputHasFocus = msgInput && document.activeElement === msgInput;
     var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
     var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
-    chContainer.innerHTML = stats.channels
+    /* todo#325: hide dm:* channels from the public Channels list
+     * (they still render in the DM tab via its own path). */
+    var displayChannels = stats.channels.filter(function (c) {
+      return typeof c === "string" && c.indexOf("dm:") !== 0;
+    });
+    chContainer.innerHTML = displayChannels
       .map(function (c, i) {
         var active = currentChannel === c ? " active" : "";
         var chColor = OROCHI_COLORS[i % OROCHI_COLORS.length];
@@ -946,7 +951,7 @@ async function fetchStats() {
       });
     });
     var chCountEl = document.getElementById("sidebar-count-channels");
-    if (chCountEl) chCountEl.textContent = "(" + stats.channels.length + ")";
+    if (chCountEl) chCountEl.textContent = "(" + displayChannels.length + ")";
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
       try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
