@@ -853,6 +853,10 @@ async function fetchStats() {
           setCurrentChannel(ch);
           loadChannelHistory(ch);
         }
+        /* Auto-switch to Chat tab when channel is clicked (#335) */
+        if (typeof _activateTab === "function" && activeTab !== "chat") {
+          _activateTab("chat");
+        }
         /* Clear unread for this channel (#322) */
         channelUnread[ch] = 0;
         updateChannelUnreadBadges();
