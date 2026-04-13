@@ -60,6 +60,13 @@ function setCurrentChannel(ch) {
   } catch (_) {}
 }
 window.setCurrentChannel = setCurrentChannel;
+/* Sync textarea placeholder with restored channel on page load (#364) */
+if (currentChannel) {
+  try {
+    var _inp = document.getElementById("msg-input");
+    if (_inp) _inp.placeholder = "Message " + currentChannel.replace(/^#/, "#") + "\u2026";
+  } catch (_) {}
+}
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
