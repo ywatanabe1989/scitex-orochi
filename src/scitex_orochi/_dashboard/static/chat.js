@@ -7,6 +7,30 @@ function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
 
+/* Lightweight GFM-subset markdown renderer (#306) */
+function renderMarkdown(text) {
+  /* 1. Escape HTML first */
+  var safe = escapeHtml(text);
+  /* 2. Code fences: ```lang\n...\n``` → <pre><code>...</code></pre> */
+  safe = safe.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    function (_, lang, code) {
+      return '<pre class="md-code-block"><code' +
+        (lang ? ' class="lang-' + lang + '"' : '') +
+        '>' + code.replace(/<br>/g, '\n') + '</code></pre>';
+    }
+  );
+  /* 3. Inline code: `...` → <code>...</code> */
+  safe = safe.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>');
+  /* 4. Bold: **...** → <strong>...</strong> */
+  safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  /* 5. Newlines → <br> (after code blocks are handled) */
+  safe = safe.replace(/\n/g, "<br>");
+  /* 6. @mentions */
+  safe = safe.replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
+  return safe;
+}
+
 /* Auto-scroll only when user is near bottom (preserves text selection) */
 function shouldAutoScroll(container) {
   var threshold = 80;
@@ -49,9 +73,7 @@ function appendMessage(msg) {
     el.setAttribute("data-channel", channel);
   }
   el.style.borderLeftColor = senderColor;
-  var highlightedContent = escapeHtml(content)
-    .replace(/\n/g, "<br>")
-    .replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
+  var highlightedContent = renderMarkdown(content);
   var attachmentsHtml = "";
   var attachments =
     (msg.payload && msg.payload.attachments) || msg.attachments || [];
