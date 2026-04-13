@@ -1329,6 +1329,18 @@ def api_agents_register(request):
             "pane_tail_block": body.get("pane_tail_block", ""),
             "claude_md_head": body.get("claude_md_head", ""),
             "mcp_servers": body.get("mcp_servers") or [],
+            # todo#265: Claude Code OAuth account public metadata
+            # (email, org, subscription state). Strict whitelist —
+            # never accept access/refresh tokens or credentials.
+            "oauth_email": body.get("oauth_email", ""),
+            "oauth_org_name": body.get("oauth_org_name", ""),
+            "oauth_account_uuid": body.get("oauth_account_uuid", ""),
+            "oauth_display_name": body.get("oauth_display_name", ""),
+            "billing_type": body.get("billing_type", ""),
+            "has_available_subscription": body.get("has_available_subscription"),
+            "usage_disabled_reason": body.get("usage_disabled_reason", ""),
+            "has_extra_usage_enabled": body.get("has_extra_usage_enabled"),
+            "subscription_created_at": body.get("subscription_created_at", ""),
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev

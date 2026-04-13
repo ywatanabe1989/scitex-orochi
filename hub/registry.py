@@ -87,6 +87,28 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("mcp_servers"), (list, tuple))
                 else prev.get("mcp_servers") or []
             ),
+            # todo#265: Claude Code OAuth account public metadata pushed
+            # by agent_meta.py --push so the Agents/Activity tab can show
+            # which account each agent is running under, detect
+            # out_of_credits state, and support fleet load-balancing.
+            # Strict whitelist — no tokens, secrets, or credentials.
+            "oauth_email": info.get("oauth_email") or prev.get("oauth_email") or "",
+            "oauth_org_name": info.get("oauth_org_name") or prev.get("oauth_org_name") or "",
+            "oauth_account_uuid": info.get("oauth_account_uuid") or prev.get("oauth_account_uuid") or "",
+            "oauth_display_name": info.get("oauth_display_name") or prev.get("oauth_display_name") or "",
+            "billing_type": info.get("billing_type") or prev.get("billing_type") or "",
+            "has_available_subscription": (
+                info.get("has_available_subscription")
+                if info.get("has_available_subscription") is not None
+                else prev.get("has_available_subscription")
+            ),
+            "usage_disabled_reason": info.get("usage_disabled_reason") or prev.get("usage_disabled_reason") or "",
+            "has_extra_usage_enabled": (
+                info.get("has_extra_usage_enabled")
+                if info.get("has_extra_usage_enabled") is not None
+                else prev.get("has_extra_usage_enabled")
+            ),
+            "subscription_created_at": info.get("subscription_created_at") or prev.get("subscription_created_at") or "",
         }
 
 
@@ -375,6 +397,18 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "pane_tail_block": a.get("pane_tail_block", ""),
                 "claude_md_head": a.get("claude_md_head", ""),
                 "mcp_servers": list(a.get("mcp_servers") or []),
+                # todo#265: OAuth account public metadata. Whitelist
+                # only — no tokens, credentials, or secrets are ever
+                # stored or surfaced.
+                "oauth_email": a.get("oauth_email", ""),
+                "oauth_org_name": a.get("oauth_org_name", ""),
+                "oauth_account_uuid": a.get("oauth_account_uuid", ""),
+                "oauth_display_name": a.get("oauth_display_name", ""),
+                "billing_type": a.get("billing_type", ""),
+                "has_available_subscription": a.get("has_available_subscription"),
+                "usage_disabled_reason": a.get("usage_disabled_reason", ""),
+                "has_extra_usage_enabled": a.get("has_extra_usage_enabled"),
+                "subscription_created_at": a.get("subscription_created_at", ""),
             }
         )
     return result
