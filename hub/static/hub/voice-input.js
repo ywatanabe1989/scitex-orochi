@@ -80,6 +80,8 @@
     /* Persist for next session (msg#6528). */
     try { localStorage.setItem(LANG_KEY, VOICE_LANGS[langIdx].code); } catch (_) {}
   }
+  /* todo#332 v2: expose toggle so chat.js Alt+Enter can trigger it */
+  window.toggleVoiceInput = _toggleVoice;
   btn.addEventListener("click", _toggleVoice);
   /* Right-click on the mic button cycles language without leaving the
    * keyboard shortcut path or needing the separate EN/JA pill button.

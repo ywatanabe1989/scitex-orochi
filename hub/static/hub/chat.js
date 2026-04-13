@@ -165,6 +165,8 @@ function appendMessage(msg) {
   var isAgent = msg.sender_type === "agent" || isKnownAgent(senderName);
   el.className = "msg" + (isAgent ? "" : " msg-human");
   if (msg.id) el.setAttribute("data-msg-id", String(msg.id));
+  /* todo#274 Part 2: tag sender for multi-select AND filter */
+  el.setAttribute("data-sender", senderName);
   var ts = "";
   var fullTs = "";
   if (msg.ts) {
@@ -631,14 +633,44 @@ function appendMessage(msg) {
 }
 
 function filterMessages() {
+  /* todo#274 Part 2: delegate to applyFeedFilter which supports
+   * AND across multiple selected sidebar items. */
+  applyFeedFilter();
+}
+
+function applyFeedFilter() {
+  var selectedChannels = [];
+  var selectedAgents = [];
+  document
+    .querySelectorAll(".sidebar .channel-item.selected[data-channel]")
+    .forEach(function (el) {
+      selectedChannels.push(el.getAttribute("data-channel"));
+    });
+  document
+    .querySelectorAll(".sidebar .agent-card.selected[data-agent-name]")
+    .forEach(function (el) {
+      selectedAgents.push(el.getAttribute("data-agent-name"));
+    });
+  var hasAnySelection =
+    selectedChannels.length > 0 || selectedAgents.length > 0;
   var msgs = document.querySelectorAll(".msg");
   msgs.forEach(function (el) {
-    if (!currentChannel) {
-      el.style.display = "";
-    } else {
-      var ch = el.getAttribute("data-channel");
-      el.style.display = ch === currentChannel ? "" : "none";
+    if (!hasAnySelection) {
+      if (!currentChannel) {
+        el.style.display = "";
+      } else {
+        var ch0 = el.getAttribute("data-channel");
+        el.style.display = ch0 === currentChannel ? "" : "none";
+      }
+      return;
     }
+    var ch = el.getAttribute("data-channel");
+    var sender = el.getAttribute("data-sender");
+    var chOk =
+      selectedChannels.length === 0 || selectedChannels.indexOf(ch) !== -1;
+    var agOk =
+      selectedAgents.length === 0 || selectedAgents.indexOf(sender) !== -1;
+    el.style.display = chOk && agOk ? "" : "none";
   });
 }
 
@@ -1110,8 +1142,16 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
   if (e.key === "Enter") {
     var dd = document.getElementById("mention-dropdown");
     if (dd && dd.classList.contains("visible")) return;
-    /* todo#332: Shift+Enter and Alt+Enter both insert a newline */
-    if (e.shiftKey || e.altKey) return;
+    /* todo#332 v2: Alt+Enter is reserved for voice toggle (see voice-input.js).
+     * Shift+Enter remains the newline shortcut. Plain Enter sends. */
+    if (e.shiftKey) return;
+    if (e.altKey) {
+      e.preventDefault();
+      if (typeof window.toggleVoiceInput === "function") {
+        window.toggleVoiceInput();
+      }
+      return;
+    }
     e.preventDefault();
     sendMessage();
   }
