@@ -1098,8 +1098,11 @@ document.addEventListener("mousedown", function (e) {
   if (formCtrl && formCtrl !== msgInput) return;
   /* Only intercept clicks inside the message feed or thread panel. */
   if (!t.closest("#messages, .msg, .thread-panel")) return;
-  /* Block focus shift only for clickable controls. */
-  if (t.closest("button, a")) {
+  /* Block focus shift only for controls that can receive focus.
+   * tabindex="-1" elements (e.g. msg-fold-btn) cannot steal focus, so skip
+   * them — and on iOS, preventing mousedown on them suppresses the click. */
+  var ctrl = t.closest("button, a");
+  if (ctrl && ctrl.getAttribute("tabindex") !== "-1") {
     e.preventDefault();
   }
 }, true);
