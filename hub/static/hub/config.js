@@ -17,7 +17,7 @@
         window.__orochiWsUpstream = cfg.ws_upstream;
         window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
       }
-      /* todo#341/#342: live wall-clock next to logo for screenshots */
+      /* todo#341/#342/#345: live wall-clock with date next to logo */
       (function _initBrandClock() {
         var clockEl = document.getElementById("brand-clock");
         if (!clockEl) return;
@@ -25,6 +25,9 @@
           var now = new Date();
           var pad = function (n) { return n < 10 ? "0" + n : "" + n; };
           clockEl.textContent =
+            now.getFullYear() + "-" +
+            pad(now.getMonth() + 1) + "-" +
+            pad(now.getDate()) + " " +
             pad(now.getHours()) + ":" +
             pad(now.getMinutes()) + ":" +
             pad(now.getSeconds());
@@ -54,8 +57,8 @@
                 var diff = Math.floor((Date.now() - deployTime) / 1000);
                 if (diff < 0) diff = 0;
                 var txt;
-                if (diff < 60) txt = "Updated " + diff + "s ago";
-                else if (diff < 3600) txt = "Updated " + Math.floor(diff / 60) + "m ago";
+                if (diff < 60) txt = "updated " + diff + " sec ago";
+                else if (diff < 3600) txt = "updated " + Math.floor(diff / 60) + " min ago";
                 else {
                   /* Past 1h — remove the badge */
                   if (badge.parentNode) badge.parentNode.removeChild(badge);
