@@ -288,6 +288,22 @@ function buildAgentRow(a) {
       : timeAgo(a.last_heartbeat)) +
     "</td>" +
     "</tr>" +
+    /* todo#311: pane preview row — inline tail of the agent's tmux pane.
+     * Sourced from agent_meta.pane_tail_block (preferred) or pane_tail. */
+    (function () {
+      var raw = a.pane_tail_block || a.pane_tail || "";
+      if (!raw) return "";
+      var lines = String(raw).split(/\r?\n/);
+      var tail = lines.slice(-10).join("\n");
+      return (
+        '<tr class="agent-pane-row"><td colspan="22">' +
+        '<pre class="agent-pane-preview" title="Last 10 lines of ' +
+        escapeHtml(a.name) +
+        ' tmux pane">' +
+        escapeHtml(tail) +
+        "</pre></td></tr>"
+      );
+    })() +
     (a.claude_md
       ? '<tr class="claude-md-detail" style="display:none"><td colspan="22"><pre class="claude-md-content">' +
         escapeHtml(a.claude_md) +

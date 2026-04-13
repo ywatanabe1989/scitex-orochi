@@ -607,6 +607,25 @@ body {
   opacity: 0.55;
 }
 
+/* todo#311: Agents tab pane preview (inline tmux-pane tail) */
+.agents-tab .agent-pane-preview,
+#agents-grid .agent-pane-preview {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11px;
+  background: #0e1116;
+  color: #c9d1d9;
+  padding: 6px 8px;
+  border-radius: 4px;
+  max-height: 140px;
+  overflow: auto;
+  white-space: pre;
+  margin: 0;
+}
+#agents-grid tr.agent-pane-row > td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #1f2430;
+}
+
 /* Blockers sidebar section */
 .blockers-heading {
   color: #ef4444 !important;
