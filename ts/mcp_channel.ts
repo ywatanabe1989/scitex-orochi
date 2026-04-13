@@ -32,6 +32,7 @@ import {
   handleHealth,
   handleReply,
   handleHistory,
+  handleConnectivityMatrix,
   handleReact,
   handleRsyncMedia,
   handleRsyncStatus,
@@ -579,6 +580,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "rsync_media") return handleRsyncMedia(args as any);
   if (name === "rsync_status") return handleRsyncStatus(args as any);
   if (name === "sidecar_status") return handleSidecarStatus();
+  if (name === "connectivity_matrix") return handleConnectivityMatrix();
   if (name === "self_command") return handleSelfCommand(args as any);
   if (name === "dm_list") return handleDmList(args as any);
   if (name === "dm_open") return handleDmOpen(args as any);

@@ -873,6 +873,100 @@ export async function handleRsyncStatus(args: {
 }
 
 // ---------------------------------------------------------------------------
+// connectivity_matrix — fleet 4×4 reachability matrix (todo#297 layer 3).
+//
+// Reads connectivity rows produced by the per-host fleet-watch producers
+// (PR B, e.g. NAS `scripts/fleet-watch/fleet_watch.sh emit_connectivity_row`)
+// and returns the merged matrix as JSON. Each row is a single host's
+// outbound view; the merged matrix is `{from: row, ...}`.
+//
+// Source resolution priority:
+//   1. SCITEX_OROCHI_CONNECTIVITY_DIR env var (allows tests / overrides)
+//   2. ~/.scitex/orochi/fleet-watch/  (NAS-local cache, default)
+//
+// File names: `connectivity.json` (legacy single-row from #297 PR B initial)
+// AND `connectivity-<host>.json` (multi-host pattern after Phase 2 fleet_report
+// landing). Both are surfaced when present so the tool keeps working through
+// the file → hub-DB migration without breaking consumers.
+//
+// This tool deliberately does NOT call ssh or measure RTT itself — that is
+// PR B's job. This is a thin reader exposed to fleet agents via MCP so they
+// can `mcp__scitex-orochi__connectivity_matrix` and get the latest snapshot
+// without re-running probes.
+// ---------------------------------------------------------------------------
+
+function connectivityCacheDir(): string {
+  const override = process.env.SCITEX_OROCHI_CONNECTIVITY_DIR;
+  if (override && override.trim()) return override.trim();
+  const home = process.env.HOME || "";
+  return pathJoin(home, ".scitex", "orochi", "fleet-watch");
+}
+
+interface ConnectivityRow {
+  ts?: string;
+  from?: string;
+  from_hostname?: string;
+  to?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export async function handleConnectivityMatrix(): Promise<{
+  content: Array<{ type: string; text: string }>;
+}> {
+  const dir = connectivityCacheDir();
+  const rows: Record<string, ConnectivityRow> = {};
+  const errors: string[] = [];
+  const sources: string[] = [];
+
+  let entries: string[] = [];
+  try {
+    if (existsSync(dir)) {
+      const { readdirSync } = await import("fs");
+      entries = readdirSync(dir);
+    }
+  } catch (err) {
+    errors.push(`readdir: ${(err as Error).message}`);
+  }
+
+  // Match: connectivity.json (single legacy row) and connectivity-<host>.json
+  const targets = entries.filter(
+    (n) => n === "connectivity.json" || /^connectivity-[A-Za-z0-9._-]+\.json$/.test(n),
+  );
+
+  for (const name of targets) {
+    const fpath = pathJoin(dir, name);
+    try {
+      const txt = readFileSync(fpath, "utf-8");
+      const parsed = JSON.parse(txt) as ConnectivityRow;
+      const fromKey = (parsed.from || "").trim() || name.replace(/^connectivity-?/, "").replace(/\.json$/, "") || "unknown";
+      // Last writer per `from` wins — usually fine since each host owns its row.
+      rows[fromKey] = parsed;
+      sources.push(name);
+    } catch (err) {
+      errors.push(`${name}: ${(err as Error).message}`);
+    }
+  }
+
+  const payload = {
+    ts: new Date().toISOString(),
+    matrix: rows,
+    sources,
+    errors,
+    cache_dir: dir,
+  };
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(payload),
+      },
+    ],
+  };
+}
+
+
+// ---------------------------------------------------------------------------
 // sidecar_status — Orochi-side sidecar PID visibility (todo#287 Slice A).
 //
 // Returns a JSON snapshot of the long-lived processes that scitex-orochi
