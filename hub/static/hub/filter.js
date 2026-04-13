@@ -251,6 +251,8 @@ function runFilter() {
   var parsed = parseFilterInput(filterInput.value.trim());
   var allTags = activeTags.concat(parsed.tags);
   var q = parsed.text;
+  /* Split free text into space-separated keywords for AND matching (#347) */
+  var qWords = q ? q.split(/\s+/).filter(Boolean) : [];
   document.querySelectorAll(".msg").forEach(function (el) {
     var sender = el.querySelector(".sender");
     var channel = el.querySelector(".channel");
@@ -261,7 +263,10 @@ function runFilter() {
       (channel ? channel.textContent : "") +
       " " +
       (content ? content.textContent : "");
-    var show = fuzzyMatch(q, text);
+    /* Each keyword must match independently (AND logic) */
+    var show = qWords.length === 0 || qWords.every(function (w) {
+      return fuzzyMatch(w, text);
+    });
     if (show && allTags.length > 0) {
       /* Group agent tags for OR (union) logic; other tags stay AND */
       var agentTags = allTags.filter(function (t) { return t.type === "agent"; });
