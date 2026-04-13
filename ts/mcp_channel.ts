@@ -35,6 +35,7 @@ import {
   handleReact,
   handleRsyncMedia,
   handleRsyncStatus,
+  handleSidecarStatus,
   handleStatus,
   handleSelfCommand,
   handleSubagents,
@@ -577,6 +578,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "upload_media") return handleUploadMedia(args as any);
   if (name === "rsync_media") return handleRsyncMedia(args as any);
   if (name === "rsync_status") return handleRsyncStatus(args as any);
+  if (name === "sidecar_status") return handleSidecarStatus();
   if (name === "self_command") return handleSelfCommand(args as any);
   if (name === "dm_list") return handleDmList(args as any);
   if (name === "dm_open") return handleDmOpen(args as any);

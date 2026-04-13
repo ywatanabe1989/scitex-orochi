@@ -31,6 +31,10 @@ interface ConnLike {
 
 const httpBase = buildHttpBase();
 
+// MCP server (this bun process) start time for sidecar_status / uptime.
+// Captured at module load.
+const MCP_SERVER_STARTED_AT = new Date().toISOString();
+
 function tokenParam(prefix: "?" | "&"): string {
   return OROCHI_TOKEN ? `${prefix}token=${OROCHI_TOKEN}` : "";
 }
@@ -863,6 +867,74 @@ export async function handleRsyncStatus(args: {
           exit_code: job.exit_code ?? null,
           log_tail: tail,
         }),
+      },
+    ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// sidecar_status — Orochi-side sidecar PID visibility (todo#287 Slice A).
+//
+// Returns a JSON snapshot of the long-lived processes that scitex-orochi
+// owns from the agent's perspective:
+//   - mcp_server: this bun process itself (the MCP sidecar from Claude's view)
+//   - rsync_jobs: outstanding rsync_media child processes (registry maintained
+//                 in `rsyncJobs` Map above)
+//
+// This is the orochi half of the 3-layer PID model agreed in msg#8120:
+//   layer 1 (claude+tmux)        → scitex-agent-container
+//   layer 2 (container daemons)  → scitex-agent-container `pids.sidecars.*`
+//   layer 3 (orochi comms)       → scitex-orochi (THIS tool)
+//
+// fleet_watch.sh on NAS merges the scitex-agent-container `status --json`
+// `pids.*` block with this tool's output to build the full per-agent PID
+// matrix (msg#8120 dataflow).
+// ---------------------------------------------------------------------------
+
+export async function handleSidecarStatus(): Promise<{
+  content: Array<{ type: string; text: string }>;
+}> {
+  const startedMs = Date.parse(MCP_SERVER_STARTED_AT);
+  const uptimeSeconds = Number.isFinite(startedMs)
+    ? Math.max(0, Math.round((Date.now() - startedMs) / 1000))
+    : null;
+
+  // Active rsync jobs: surface running ones first, then recently-finished
+  // (status != "running") for diagnostic context. We don't filter the map —
+  // callers can post-filter on `status` if they only care about live procs.
+  const rsyncJobsList = Array.from(rsyncJobs.values()).map((j) => ({
+    id: j.id,
+    pid: j.pid ?? null,
+    status: j.status,
+    src_path: j.src_path,
+    dst_host: j.dst_host,
+    dst_path: j.dst_path,
+    channel: j.channel,
+    started_at: j.started_at,
+    finished_at: j.finished_at ?? null,
+    exit_code: j.exit_code ?? null,
+  }));
+
+  const payload = {
+    ts: new Date().toISOString(),
+    mcp_server: {
+      agent: OROCHI_AGENT || null,
+      pid: process.pid,
+      ppid: typeof process.ppid === "number" ? process.ppid : null,
+      started_at: MCP_SERVER_STARTED_AT,
+      uptime_seconds: uptimeSeconds,
+      runtime: typeof Bun !== "undefined" ? "bun" : "node",
+    },
+    sidecars: {
+      rsync_jobs: rsyncJobsList,
+    },
+  };
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(payload),
       },
     ],
   };

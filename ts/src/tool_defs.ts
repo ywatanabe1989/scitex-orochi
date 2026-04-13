@@ -279,6 +279,15 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "sidecar_status",
+    description:
+      "Return the orochi-side sidecar PID registry as JSON (todo#287 Slice A). Surfaces (a) the running scitex-orochi MCP server (this bun process: pid, ppid, started_at, uptime_seconds, runtime, agent name) and (b) the rsync_media child-process registry (each rsync job's pid, status, paths, timestamps). Layer 3 of the 3-layer fleet PID model — Claude/tmux are owned by scitex-agent-container, container daemons by container snapshot, comms sidecars by orochi (this tool). Read-only; does not spawn or mutate anything.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
     name: "self_command",
     description:
       "Send an arbitrary slash command (e.g. /compact, /clear) to the agent's own screen/tmux session. Returns immediately; the command fires after delay_ms when the agent is idle at its prompt. Destructive commands (/clear, /kill, /exit, /quit) require confirm=true.",
