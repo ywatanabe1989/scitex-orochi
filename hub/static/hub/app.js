@@ -302,6 +302,26 @@ function fetchAgentsThrottled() {
 var _fetchStatsTimer = null;
 var _fetchStatsPending = false;
 
+/* fetchResources throttle — prevents Machines tab flicker from burst heartbeats (#337) */
+var _fetchResourcesTimer = null;
+var _fetchResourcesPending = false;
+var FETCH_RESOURCES_THROTTLE_MS = 3000;
+
+function fetchResourcesThrottled() {
+  if (_fetchResourcesTimer) {
+    _fetchResourcesPending = true;
+    return;
+  }
+  if (typeof fetchResources === "function") fetchResources();
+  _fetchResourcesTimer = setTimeout(function () {
+    _fetchResourcesTimer = null;
+    if (_fetchResourcesPending) {
+      _fetchResourcesPending = false;
+      fetchResourcesThrottled();
+    }
+  }, FETCH_RESOURCES_THROTTLE_MS);
+}
+
 function fetchStatsThrottled() {
   if (_fetchStatsTimer) {
     _fetchStatsPending = true;
@@ -413,7 +433,7 @@ function handleMessage(msg) {
   ) {
     fetchAgentsThrottled();
     fetchStatsThrottled();
-    fetchResources();
+    fetchResourcesThrottled();
   } else if (msg.type === "reaction_update") {
     if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
   } else if (msg.type === "thread_reply") {
