@@ -78,10 +78,117 @@ probe_one() {
         mv "$tmp_file" "$out_file"
         log "ok $host bytes=$(wc -c <"$out_file" | tr -d ' ')"
         diff_one "$host" "$prev_file" "$out_file"
+        classify_pane_state "$host" "$out_file" "$prev_file"
     else
         rm -f "$tmp_file"
         log "FAIL empty output $host"
     fi
+}
+
+# Classify an agent's pane state from agent_meta.pane_tail_block.
+# Returns "busy" / "idle" / "stuck" / "unknown" per the canonical decision
+# table in scitex-orochi/_skills/.../agent-health-check.md (#270 / #311).
+#
+# The new fields land in snapshot.agent_meta after PR #25 (cdbe9107).
+# fleet_watch.sh receives them via the per-host snapshot path; the legacy
+# bash probe_remote.sh fallback nests them under agents_meta.<name>.
+#
+# This function is informational — it does not by itself escalate. It logs
+# `STATE host=<h> agent=<a> class=<c> stuck_cycles=N` so mamba-healer-* can
+# read the trail and decide whether to act.
+classify_pane_state() {
+    local host="$1"
+    local curr="$2"
+    local prev="$3"
+    command -v jq >/dev/null 2>&1 || return 0
+    [ -s "$curr" ] || return 0
+
+    # Pull every (agent, pane_tail_block) pair we can find. Both schemas:
+    #   snapshot --json: .agent + .agent_meta.pane_tail_block          (single)
+    #   probe_remote.sh fallback: .agents_meta.<name>.pane_tail_block  (map)
+    local pairs
+    pairs=$(jq -r '
+        def pair($name; $block):
+            if $block == null or $block == "" then empty
+            else "\($name)\t\($block | tostring | @base64)" end;
+        (
+            (if .agent != null and (.agent_meta? // null) != null
+              then pair(.agent; .agent_meta.pane_tail_block)
+              else empty end),
+            (
+                (.agents_meta // {})
+                | to_entries[]
+                | pair(.key; .value.pane_tail_block)
+            )
+        )
+    ' "$curr" 2>/dev/null)
+    [ -z "$pairs" ] && return 0
+
+    local prev_pairs=""
+    if [ -s "$prev" ]; then
+        prev_pairs=$(jq -r '
+            def pair($name; $block):
+                if $block == null or $block == "" then empty
+                else "\($name)\t\($block | tostring | @base64)" end;
+            (
+                (if .agent != null and (.agent_meta? // null) != null
+                  then pair(.agent; .agent_meta.pane_tail_block)
+                  else empty end),
+                (
+                    (.agents_meta // {})
+                    | to_entries[]
+                    | pair(.key; .value.pane_tail_block)
+                )
+            )
+        ' "$prev" 2>/dev/null)
+    fi
+
+    local stuck_state_dir="$OUT_DIR/state"
+    mkdir -p "$stuck_state_dir"
+
+    while IFS=$'\t' read -r agent block_b64; do
+        [ -z "$agent" ] && continue
+        local block
+        block=$(printf '%s' "$block_b64" | base64 -d 2>/dev/null) || continue
+
+        # Classification per agent-health-check.md decision table.
+        local cls="unknown"
+        case "$block" in
+            *"Mulling…"*|*"Mulling..."*) cls="busy" ;;
+            *"Working…"*|*"Working..."*) cls="busy" ;;
+            *"Crunched"*) cls="busy" ;;
+            *"Pondering…"*|*"Pondering..."*) cls="busy" ;;
+            *"Press up to edit queued messages"*) cls="busy" ;;
+            *"idle (ready for input)"*) cls="idle" ;;
+            *"Idle"*) cls="idle" ;;
+        esac
+        # Empty prompt at end with no animation = ambiguous; leave "unknown"
+        # for the cross-check against orochi presence (mamba-healer's role).
+
+        # Stuck-cycle counter: if pane_tail_block matches the prev cycle,
+        # increment a per-(host, agent) counter; otherwise reset.
+        local stuck_file="$stuck_state_dir/${host}__${agent}.stuck"
+        local stuck_n=0
+        if [ -s "$stuck_file" ]; then
+            stuck_n=$(cat "$stuck_file" 2>/dev/null | tr -d ' \n' || echo 0)
+        fi
+        local prev_block_b64
+        prev_block_b64=$(printf '%s\n' "$prev_pairs" | awk -F'\t' -v a="$agent" '$1==a {print $2}' | head -1)
+        if [ -n "$prev_block_b64" ] && [ "$prev_block_b64" = "$block_b64" ]; then
+            stuck_n=$((stuck_n + 1))
+        else
+            stuck_n=0
+        fi
+        printf '%s\n' "$stuck_n" > "$stuck_file"
+
+        log "STATE host=$host agent=$agent class=$cls stuck_cycles=$stuck_n"
+
+        # Anomaly: stuck for >= 3 cycles (~15 min) AND class != busy
+        # → output frozen, agent likely wedged. mamba-healer-* picks this up.
+        if [ "$stuck_n" -ge 3 ] && [ "$cls" != "busy" ]; then
+            log "ANOMALY $host $agent: pane unchanged for $stuck_n cycles, class=$cls (likely stuck)"
+        fi
+    done <<<"$pairs"
 }
 
 # Compare key fields between prev and current snapshots, log anomalies.
@@ -136,8 +243,21 @@ diff_one() {
 # probe self locally too
 probe_self() {
     local out_file="$OUT_DIR/nas.json"
-    if [ -x "$PROBE_SCRIPT" ]; then
-        bash "$PROBE_SCRIPT" >"$out_file" 2>>"$LOG_FILE" || log "FAIL local probe"
+    local prev_file="$OUT_DIR/nas.prev.json"
+    [ -x "$PROBE_SCRIPT" ] || return 0
+
+    # Rotate latest -> prev for diff comparison.
+    if [ -s "$out_file" ]; then
+        cp "$out_file" "$prev_file"
+    fi
+
+    if bash "$PROBE_SCRIPT" >"${out_file}.tmp" 2>>"$LOG_FILE" && [ -s "${out_file}.tmp" ]; then
+        mv "${out_file}.tmp" "$out_file"
+        diff_one "nas" "$prev_file" "$out_file"
+        classify_pane_state "nas" "$out_file" "$prev_file"
+    else
+        rm -f "${out_file}.tmp"
+        log "FAIL local probe"
     fi
 }
 
