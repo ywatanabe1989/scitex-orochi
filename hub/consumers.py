@@ -13,6 +13,7 @@ from hub.models import (
     Workspace,
     WorkspaceMember,
     WorkspaceToken,
+    normalize_channel_name,
 )
 from hub.channel_acl import check_write_allowed
 
@@ -589,7 +590,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         try:
             workspace = Workspace.objects.get(id=self.workspace_id)
             channel, _ = Channel.objects.get_or_create(
-                workspace=workspace, name=channel_name
+                workspace=workspace, name=normalize_channel_name(channel_name)
             )
             msg = Message.objects.create(
                 workspace=workspace,
@@ -958,7 +959,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         try:
             workspace = Workspace.objects.get(id=self.workspace_id)
             channel, _ = Channel.objects.get_or_create(
-                workspace=workspace, name=channel_name
+                workspace=workspace, name=normalize_channel_name(channel_name)
             )
             msg = Message.objects.create(
                 workspace=workspace,

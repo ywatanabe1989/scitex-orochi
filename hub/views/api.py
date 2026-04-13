@@ -29,6 +29,7 @@ from hub.models import (
     Workspace,
     WorkspaceMember,
     WorkspaceToken,
+    normalize_channel_name,
 )
 from hub.views._helpers import get_workspace
 
@@ -110,10 +111,12 @@ def api_messages(request, slug=None):
     body = json.loads(request.body)
     # Support both flat format {text, channel} and nested {payload: {content, channel}}
     payload = body.get("payload", {})
-    ch_name = body.get("channel") or payload.get("channel") or "#general"
-    # Normalize group channel names: ensure # prefix to prevent duplicates (#326)
-    if not ch_name.startswith("dm:") and not ch_name.startswith("#"):
-        ch_name = "#" + ch_name
+    # Normalize via the canonical helper so write-path and read-path
+    # share the same logic. This subsumes the inline 2-line block that
+    # landed on develop in parallel.
+    ch_name = normalize_channel_name(
+        body.get("channel") or payload.get("channel") or "#general"
+    )
     text = body.get("text") or payload.get("content") or payload.get("text") or ""
     attachments = payload.get("attachments") or body.get("attachments") or []
     metadata = payload.get("metadata") or body.get("metadata") or {}
@@ -236,16 +239,17 @@ def api_stats(request, slug=None):
 
     agents_online = get_online_count(workspace_id=workspace.id)
 
-    # Normalize channel names: ensure # prefix, deduplicate, exclude DM channels
-    # Use kind field when available, fall back to name prefix for safety (#325, #326)
+    # Normalize channel names via the canonical helper, deduplicate,
+    # exclude DM channels (they have their own sidebar section).
+    # The write-side fix (Channel.save()) makes new rows always canonical;
+    # this loop handles legacy rows until migration 0015 backfills them.
+    # Use kind field when available, fall back to name prefix as defense.
     seen: set[str] = set()
     unique_channels: list[str] = []
     for ch in channels:
         if ch.kind == Channel.KIND_DM or ch.name.startswith("dm:"):
             continue
-        name = ch.name
-        if not name.startswith("#"):
-            name = "#" + name
+        name = normalize_channel_name(ch.name)
         if name not in seen:
             seen.add(name)
             unique_channels.append(name)
