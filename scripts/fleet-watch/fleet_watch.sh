@@ -217,10 +217,78 @@ emit_connectivity_row() {
     if [ -s "$tmp_file" ]; then
         mv "$tmp_file" "$out_file"
         log "ok connectivity row bytes=$(wc -c <"$out_file" | tr -d ' ')"
+        post_connectivity_to_hub "$out_file"
     else
         rm -f "$tmp_file"
         log "FAIL connectivity row (empty)"
     fi
+}
+
+# POST the latest connectivity row to the Orochi hub fleet_report endpoint
+# (todo#298 / #297 hub side). Best-effort: silent on success, log on failure,
+# never blocks the cycle. Token comes from the same dotfiles source file
+# that other agents use; if neither $SCITEX_OROCHI_TOKEN nor the secrets
+# file is reachable, we skip cleanly.
+post_connectivity_to_hub() {
+    local row_file="$1"
+    [ -s "$row_file" ] || return 0
+    command -v curl >/dev/null 2>&1 || { log "skip hub post (no curl)"; return 0; }
+
+    local token="${SCITEX_OROCHI_TOKEN:-}"
+    if [ -z "$token" ]; then
+        local token_src="$HOME/.dotfiles/src/.bash.d/secrets/010_scitex/01_orochi.src"
+        if [ -r "$token_src" ]; then
+            # shellcheck disable=SC1090
+            . "$token_src" 2>/dev/null || true
+            token="${SCITEX_OROCHI_TOKEN:-}"
+        fi
+    fi
+    if [ -z "$token" ]; then
+        log "skip hub post (no SCITEX_OROCHI_TOKEN)"
+        return 0
+    fi
+
+    local hub_url="${SCITEX_OROCHI_HUB_URL:-https://scitex-orochi.com}"
+    local endpoint="$hub_url/api/fleet/report"
+
+    # Build the wrapper envelope: entity_type=machine, entity_id=nas,
+    # payload = the connectivity row JSON we just wrote.
+    local wrapper_file="${row_file}.wrapper"
+    if command -v jq >/dev/null 2>&1; then
+        jq -n \
+            --arg token "$token" \
+            --arg entity_type "machine" \
+            --arg entity_id "nas" \
+            --arg source "head-nas" \
+            --slurpfile payload "$row_file" \
+            '{token: $token, entity_type: $entity_type, entity_id: $entity_id, source: $source, payload: $payload[0]}' \
+            > "$wrapper_file" 2>>"$LOG_FILE" || { rm -f "$wrapper_file"; return 0; }
+    else
+        log "skip hub post (no jq for envelope)"
+        return 0
+    fi
+
+    local http_code
+    http_code=$(curl -sS -m 8 \
+        -o /dev/null \
+        -w '%{http_code}' \
+        -H 'Content-Type: application/json' \
+        -X POST \
+        --data @"$wrapper_file" \
+        "$endpoint" 2>>"$LOG_FILE")
+    rm -f "$wrapper_file"
+
+    case "$http_code" in
+        200|201|202)
+            log "hub post ok ($http_code)"
+            ;;
+        000)
+            log "hub post FAIL (network)"
+            ;;
+        *)
+            log "hub post FAIL ($http_code)"
+            ;;
+    esac
 }
 
 # Snapshot rotation policy (todo#300 NAS side).
