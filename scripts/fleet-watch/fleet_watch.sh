@@ -210,6 +210,65 @@ emit_connectivity_row() {
     fi
 }
 
+# Snapshot rotation policy (todo#300 NAS side).
+# Cheap rotation that runs at the tail of every fleet_watch cycle:
+#   - .json files older than ROTATE_AGE_HOURS get archived as .<YYYYMMDD>.json.gz
+#   - .gz archives older than RETENTION_DAYS get deleted
+# Live `*.json` (current-cycle snapshots) and `*.prev.json` (1-cycle-old)
+# are NEVER touched — they're kept in place for the diff_one comparator and
+# external consumers (mamba-healer-nas, connectivity_matrix MCP tool).
+#
+# Tunables via env (with sane defaults):
+#   ROTATE_AGE_HOURS  default 24  — archive .json files older than this
+#   RETENTION_DAYS    default 7   — delete .gz archives older than this
+#
+# Skips entirely when find/gzip are unavailable.
+ROTATE_AGE_HOURS="${FLEET_WATCH_ROTATE_AGE_HOURS:-24}"
+RETENTION_DAYS="${FLEET_WATCH_RETENTION_DAYS:-7}"
+
+rotate_snapshots() {
+    command -v find >/dev/null 2>&1 || { log "skip rotate (no find)"; return 0; }
+    command -v gzip >/dev/null 2>&1 || { log "skip rotate (no gzip)"; return 0; }
+
+    local age_minutes=$(( ROTATE_AGE_HOURS * 60 ))
+    local archived=0
+    local pruned=0
+
+    # Archive eligible .json files (skip the 5 hot live names).
+    while IFS= read -r -d '' f; do
+        local base
+        base=$(basename "$f")
+        case "$base" in
+            *.prev.json|*.tmp|*.tmp.merged) continue ;;
+        esac
+        # Skip the live current-cycle snapshots.
+        case "$base" in
+            mba.json|nas.json|spartan.json|ywata-note-win.json|connectivity.json) continue ;;
+        esac
+        local stamp
+        stamp=$(date -u -r "$f" +%Y%m%d 2>/dev/null) || stamp=$(date -u +%Y%m%d)
+        local target="${f%.json}.${stamp}.json.gz"
+        if [ -e "$target" ]; then
+            # Already archived for that day — drop the duplicate raw file.
+            rm -f "$f"
+            continue
+        fi
+        if gzip -c "$f" >"$target" 2>>"$LOG_FILE"; then
+            rm -f "$f"
+            archived=$((archived + 1))
+        fi
+    done < <(find "$OUT_DIR" -maxdepth 1 -type f -name '*.json' -mmin "+$age_minutes" -print0 2>/dev/null)
+
+    # Prune old .gz archives.
+    while IFS= read -r -d '' f; do
+        rm -f "$f" && pruned=$((pruned + 1))
+    done < <(find "$OUT_DIR" -maxdepth 1 -type f -name '*.json.gz' -mtime "+$RETENTION_DAYS" -print0 2>/dev/null)
+
+    if [ "$archived" -gt 0 ] || [ "$pruned" -gt 0 ]; then
+        log "rotate archived=$archived pruned=$pruned"
+    fi
+}
+
 main() {
     log "cycle start"
     probe_self
@@ -217,6 +276,7 @@ main() {
         probe_one "$h"
     done
     emit_connectivity_row
+    rotate_snapshots
     log "cycle end"
 }
 
