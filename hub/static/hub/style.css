@@ -555,6 +555,19 @@ body {
 }
 
 /* Fold/expand long messages */
+.msg-ref-link {
+  color: #4ecdc4;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.msg-ref-link:hover {
+  text-decoration: underline;
+}
+.msg-highlight {
+  background: rgba(78, 205, 196, 0.15) !important;
+  transition: background 0.3s;
+}
 .msg-fold-btn {
   background: none;
   border: 1px solid #333;

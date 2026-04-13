@@ -296,6 +296,11 @@ function appendMessage(msg) {
      * `>` as the char immediately before any line-leading URL), so URLs
      * at the start of a wrapped line never became clickable.
      * todo#239 / msg 5961 / ywatanabe report msg 6058. */
+    /* Auto-link msg#NNN references to scroll to that message */
+    .replace(
+      /\bmsg#(\d+)\b/g,
+      '<a class="msg-ref-link" href="#" data-msg-ref="$1" onclick="event.preventDefault();var el=document.querySelector(\'[data-msg-id=&quot;$1&quot;]\');if(el){el.scrollIntoView({behavior:\'smooth\',block:\'center\'});el.classList.add(\'msg-highlight\');setTimeout(function(){el.classList.remove(\'msg-highlight\')},2000);}">msg#$1</a>',
+    )
     .replace(
       /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
       '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
