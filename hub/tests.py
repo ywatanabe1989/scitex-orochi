@@ -1215,3 +1215,291 @@ class PushFanoutTest(TestCase):
                 )
                 self.assertEqual(n, 0)
                 mock_wp.assert_not_called()
+
+
+class AgentMetaOAuthRegisterTest(TestCase):
+    """todo#265: /api/agents/register/ accepts OAuth public metadata fields.
+
+    The agent_meta.py --push heartbeat surfaces the authenticated
+    Claude Code OAuth account's PUBLIC metadata (email, org,
+    subscription state) so the Agents/Activity tab can show which
+    account each agent is running under and detect out_of_credits.
+
+    Strict security contract: the 9 whitelisted fields are read only
+    from ``~/.claude.json`` via a whitelist extractor. No tokens,
+    refresh tokens, credentials, or secrets are ever read or accepted.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="oauth-test-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="oauth-test"
+        )
+
+    def _post(self, payload):
+        return self.client.post(
+            "/api/agents/register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def test_register_accepts_oauth_fields(self):
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        payload = {
+            "token": self.token.token,
+            "name": "oauth-agent-1",
+            "machine": "MBA",
+            "oauth_email": "alice@example.org",
+            "oauth_org_name": "Acme Research",
+            "oauth_account_uuid": "uuid-111",
+            "oauth_display_name": "Alice",
+            "billing_type": "subscription",
+            "has_available_subscription": True,
+            "usage_disabled_reason": "",
+            "has_extra_usage_enabled": False,
+            "subscription_created_at": "2025-01-01T00:00:00Z",
+        }
+        resp = self._post(payload)
+        self.assertEqual(resp.status_code, 200)
+        agents = get_agents(workspace_id=self.ws.id)
+        match = [a for a in agents if a["name"] == "oauth-agent-1"]
+        self.assertEqual(len(match), 1)
+        a = match[0]
+        self.assertEqual(a["oauth_email"], "alice@example.org")
+        self.assertEqual(a["oauth_org_name"], "Acme Research")
+        self.assertEqual(a["oauth_account_uuid"], "uuid-111")
+        self.assertEqual(a["oauth_display_name"], "Alice")
+        self.assertEqual(a["billing_type"], "subscription")
+        self.assertEqual(a["has_available_subscription"], True)
+        self.assertEqual(a["has_extra_usage_enabled"], False)
+        self.assertEqual(a["subscription_created_at"], "2025-01-01T00:00:00Z")
+
+    def test_register_out_of_credits_flag(self):
+        """usage_disabled_reason='out_of_credits' is persisted for UI."""
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        resp = self._post({
+            "token": self.token.token,
+            "name": "oauth-agent-2",
+            "usage_disabled_reason": "out_of_credits",
+        })
+        self.assertEqual(resp.status_code, 200)
+        a = [x for x in get_agents(workspace_id=self.ws.id)
+             if x["name"] == "oauth-agent-2"][0]
+        self.assertEqual(a["usage_disabled_reason"], "out_of_credits")
+
+    def test_register_missing_oauth_fields_defaults(self):
+        """Legacy agents without oauth fields still register cleanly."""
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        resp = self._post({
+            "token": self.token.token,
+            "name": "legacy-agent",
+        })
+        self.assertEqual(resp.status_code, 200)
+        a = [x for x in get_agents(workspace_id=self.ws.id)
+             if x["name"] == "legacy-agent"][0]
+        self.assertEqual(a["oauth_email"], "")
+        self.assertEqual(a["oauth_org_name"], "")
+        self.assertIsNone(a["has_available_subscription"])
+
+    def test_register_does_not_echo_tokens(self):
+        """Even if a client tries to POST token-like fields under
+        arbitrary keys, the registry's strict whitelist drops them.
+
+        This is the server-side belt to the client-side braces
+        (read_oauth_metadata's whitelist extractor + assert).
+        """
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        resp = self._post({
+            "token": self.token.token,
+            "name": "leak-test",
+            "oauth_email": "bob@example.org",
+            # Hostile fields — must NOT end up in the registry.
+            "accessToken": "sk-ant-oat01-leaked",
+            "refreshToken": "sk-ant-ort01-leaked",
+            "apiKey": "sk-ant-api03-leaked",
+            "claudeAiOauth": {"accessToken": "sk-ant-oat01-leaked"},
+            "credentials": "bearer leaked",
+        })
+        self.assertEqual(resp.status_code, 200)
+        a = [x for x in get_agents(workspace_id=self.ws.id)
+             if x["name"] == "leak-test"][0]
+        flat = json.dumps(a).lower()
+        for forbidden in (
+            "sk-ant-oat01-leaked",
+            "sk-ant-ort01-leaked",
+            "sk-ant-api03-leaked",
+            "bearer leaked",
+        ):
+            self.assertNotIn(forbidden, flat,
+                             f"leaked token material {forbidden!r} in registry entry")
+        # And no forbidden keys in the registry row.
+        for k in a.keys():
+            kl = k.lower()
+            self.assertNotIn("token", kl)
+            self.assertNotIn("secret", kl)
+            self.assertFalse(kl.endswith("key"), f"key-like field: {k}")
+
+
+class ReadOauthMetadataHelperTest(TestCase):
+    """todo#265: unit tests for the read_oauth_metadata() helper.
+
+    The helper lives in the canonical agent_meta.py shipped from
+    ``.dotfiles/src/.scitex/orochi/scripts/agent_meta.py`` (see PR
+    body for dotfiles sync notes). This test imports it directly
+    from that path so the scitex-orochi hub test suite guards the
+    token-leak regression even though the helper lives upstream.
+    """
+
+    DOTFILES_AGENT_META = (
+        "/Users/ywatanabe/.dotfiles/src/.scitex/orochi/scripts/agent_meta.py"
+    )
+
+    def _import_helper(self):
+        import importlib.util
+        import os
+
+        if not os.path.isfile(self.DOTFILES_AGENT_META):
+            self.skipTest("dotfiles agent_meta.py not present on this host")
+        spec = importlib.util.spec_from_file_location(
+            "agent_meta_under_test", self.DOTFILES_AGENT_META
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)  # type: ignore[union-attr]
+        return mod
+
+    def test_missing_file_returns_empty(self):
+        mod = self._import_helper()
+        from pathlib import Path
+        result = mod.read_oauth_metadata(Path("/nonexistent/.claude.json"))
+        self.assertEqual(result, {})
+
+    def test_all_nine_keys_extracted(self):
+        import tempfile
+        from pathlib import Path
+        mod = self._import_helper()
+        doc = {
+            "hasAvailableSubscription": True,
+            "cachedExtraUsageDisabledReason": "out_of_credits",
+            "oauthAccount": {
+                "accountUuid": "uuid-abc",
+                "emailAddress": "alice@example.org",
+                "organizationUuid": "org-uuid",
+                "organizationName": "Acme",
+                "hasExtraUsageEnabled": False,
+                "billingType": "subscription",
+                "accountCreatedAt": "2024-01-01",
+                "subscriptionCreatedAt": "2025-01-01T00:00:00Z",
+                "displayName": "Alice",
+                "organizationRole": "admin",
+                "workspaceRole": "member",
+            },
+            # Hostile fields — must not appear in output.
+            "accessToken": "sk-ant-oat01-should-not-leak",
+            "refreshToken": "sk-ant-ort01-should-not-leak",
+            "claudeAiOauth": {"accessToken": "sk-ant-oat01-nested-leak"},
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as f:
+            json.dump(doc, f)
+            path = Path(f.name)
+        try:
+            result = mod.read_oauth_metadata(path)
+            expected_keys = {
+                "oauth_email",
+                "oauth_org_name",
+                "oauth_account_uuid",
+                "oauth_display_name",
+                "billing_type",
+                "has_available_subscription",
+                "usage_disabled_reason",
+                "has_extra_usage_enabled",
+                "subscription_created_at",
+            }
+            self.assertEqual(set(result.keys()), expected_keys)
+            self.assertEqual(result["oauth_email"], "alice@example.org")
+            self.assertEqual(result["oauth_org_name"], "Acme")
+            self.assertEqual(result["oauth_account_uuid"], "uuid-abc")
+            self.assertEqual(result["oauth_display_name"], "Alice")
+            self.assertEqual(result["billing_type"], "subscription")
+            self.assertEqual(result["has_available_subscription"], True)
+            self.assertEqual(result["usage_disabled_reason"], "out_of_credits")
+            self.assertEqual(result["has_extra_usage_enabled"], False)
+            self.assertEqual(
+                result["subscription_created_at"], "2025-01-01T00:00:00Z"
+            )
+        finally:
+            path.unlink()
+
+    def test_token_leak_regression(self):
+        """CRITICAL: hostile top-level fields must never appear in output.
+
+        This is the primary security invariant for todo#265. If a
+        future edit blacklist-converts the extractor, or adds a new
+        whitelist key, this test catches leakage of any substring
+        that looks like a Claude Code token/credential.
+        """
+        import tempfile
+        from pathlib import Path
+        mod = self._import_helper()
+        hostile = {
+            "oauthAccount": {
+                "emailAddress": "eve@example.org",
+                # Hostile nested field — still must not leak.
+                "accessToken": "sk-ant-oat01-nested-should-not-leak",
+            },
+            "accessToken": "sk-ant-oat01-top-should-not-leak",
+            "refreshToken": "sk-ant-ort01-top-should-not-leak",
+            "apiKey": "sk-ant-api03-top-should-not-leak",
+            "bearer": "Bearer should-not-leak",
+            "credentials": {"apiKey": "sk-ant-api03-inner-should-not-leak"},
+            "claudeAiOauth": {
+                "accessToken": "sk-ant-oat01-claudeai-should-not-leak",
+                "refreshToken": "sk-ant-ort01-claudeai-should-not-leak",
+            },
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as f:
+            json.dump(hostile, f)
+            path = Path(f.name)
+        try:
+            result = mod.read_oauth_metadata(path)
+            # Whitelist: no key name should contain token/secret/key.
+            for k in result.keys():
+                kl = k.lower()
+                self.assertNotIn("token", kl)
+                self.assertNotIn("secret", kl)
+                # "key" substring is too broad (would trip "oauth_email"
+                # if we were sloppy); use endswith instead.
+                self.assertFalse(
+                    kl.endswith("key"), f"forbidden key-like field: {k}"
+                )
+            # And no value should contain the leaked substrings.
+            flat = json.dumps(result).lower()
+            forbidden_substrings = (
+                "sk-ant-oat01",
+                "sk-ant-ort01",
+                "sk-ant-api03",
+                "should-not-leak",
+                "bearer",
+            )
+            for s in forbidden_substrings:
+                self.assertNotIn(
+                    s, flat, f"token material {s!r} leaked into output"
+                )
+        finally:
+            path.unlink()
