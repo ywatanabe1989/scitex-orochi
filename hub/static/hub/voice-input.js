@@ -112,17 +112,16 @@
     isListening = true;
     btn.classList.add("voice-active");
     btn.title = "Stop voice input";
-    /* todo#339/#340: pulse the input border red while recording */
-    var __input = document.getElementById("msg-input");
-    if (__input) __input.classList.add("voice-recording");
+    var input = document.getElementById("msg-input");
+    if (input) input.classList.add("voice-recording");
   });
 
   recognition.addEventListener("end", function () {
     isListening = false;
     btn.classList.remove("voice-active");
     btn.title = "Voice input";
-    var __input = document.getElementById("msg-input");
-    if (__input) __input.classList.remove("voice-recording");
+    var input = document.getElementById("msg-input");
+    if (input) input.classList.remove("voice-recording");
   });
 
   recognition.addEventListener("result", function (e) {

@@ -47,6 +47,13 @@ body {
   border-bottom: 1px solid #333;
   text-align: center;
 }
+.wall-clock {
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+  font-family: "Consolas", "Monaco", monospace;
+  padding: 2px 0 4px;
+}
 .sidebar-brand .header-icon {
   height: 100px;
   width: 100px;
@@ -849,6 +856,14 @@ body {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.15);
   animation: voice-pulse 1.4s ease-in-out infinite;
+}
+#msg-input.voice-recording {
+  border-color: #ef4444;
+  animation: voice-border-blink 0.8s ease-in-out infinite;
+}
+@keyframes voice-border-blink {
+  0%, 100% { border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+  50% { border-color: transparent; box-shadow: none; }
 }
 @keyframes voice-pulse {
   0%,

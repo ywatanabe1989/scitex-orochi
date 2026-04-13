@@ -250,6 +250,9 @@ async function fetchResources() {
     Object.keys(data).forEach(function (agentName) {
       var entry = data[agentName];
       var r = entry.resources || {};
+      /* Don't overwrite richer WS data with empty REST metrics (#337) */
+      var existing = resourceData[agentName];
+      if (existing && !existing._api && (r.mem_used_percent || 0) === 0 && (existing.memory || {}).percent > 0) return;
       resourceData[agentName] = {
         hostname: entry.machine || agentName,
         agent: agentName,
