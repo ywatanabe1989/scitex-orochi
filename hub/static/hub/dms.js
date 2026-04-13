@@ -295,6 +295,18 @@
     }
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") closeModal();
+      /* Focus trap for a11y (#262) */
+      if (e.key === "Tab" && modal && !modal.hidden) {
+        var focusable = modal.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])');
+        if (focusable.length === 0) return;
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault(); last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault(); first.focus();
+        }
+      }
     });
   }
 
