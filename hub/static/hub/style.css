@@ -575,6 +575,38 @@ body {
   opacity: 0.6;
 }
 
+/* todo#320: compact sidebar agent card — name + status dot only */
+.sidebar .agent-card.sidebar-compact {
+  padding: 4px 8px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.sidebar .agent-card.sidebar-compact .agent-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar .agent-card.sidebar-compact .agent-status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+  flex-shrink: 0;
+}
+.sidebar .agent-card.sidebar-compact .agent-status.online {
+  background: #4ecdc4;
+}
+.sidebar .agent-card.sidebar-compact .agent-status.offline {
+  background: #555;
+}
+.sidebar .agent-card.sidebar-compact.inactive .agent-name {
+  opacity: 0.55;
+}
+
 /* Blockers sidebar section */
 .blockers-heading {
   color: #ef4444 !important;
