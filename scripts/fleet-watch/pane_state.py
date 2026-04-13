@@ -265,12 +265,24 @@ def _user_typing(tail: str) -> str | None:
 
 def _extras(text: str) -> dict:
     extras: dict = {}
+    # Context % (first percent before the '|' divider in the status bar).
     m = re.search(r"(\d+)%\s*\|", text)
     if m:
         extras["context_pct"] = int(m.group(1))
+    # Email shown in status bar (after a `|` separator).
     m = re.search(r"\|\s*([\w.+-]+@[\w.-]+)", text)
     if m:
         extras["account_email"] = m.group(1)
+    # 5-hour window: "33% (2h 53m / 5h)" or "33% (53m / 5h)"
+    m = re.search(r"(\d+)%\s*\((\d+h\s*\d*m?|\d+m)\s*/\s*5h\)", text)
+    if m:
+        extras["window_5h_pct"] = int(m.group(1))
+        extras["window_5h_used"] = m.group(2).replace(" ", "")
+    # 7-day window: "4% (6d 20h / 7d)" or "85% (5d / 7d)"
+    m = re.search(r"(\d+)%\s*\((\d+d\s*\d*h?|\d+h)\s*/\s*7d\)", text)
+    if m:
+        extras["window_7d_pct"] = int(m.group(1))
+        extras["window_7d_used"] = m.group(2).replace(" ", "")
     m = re.search(r"(?:Cooked|Crunched|Brewed|Stewed|Baked) for\s*(\d+m\s*\d+s|\d+s)", text)
     if m:
         extras["last_burst_duration"] = m.group(1)
@@ -451,6 +463,10 @@ def _format_human(name: str, c: Classification) -> str:
     bits = []
     if c.extras.get("context_pct") is not None:
         bits.append(f"ctx={c.extras['context_pct']}%")
+    if c.extras.get("window_5h_pct") is not None:
+        bits.append(f"5h={c.extras['window_5h_pct']}%")
+    if c.extras.get("window_7d_pct") is not None:
+        bits.append(f"7d={c.extras['window_7d_pct']}%")
     if c.extras.get("account_email"):
         bits.append(f"acct={c.extras['account_email']}")
     if c.extras.get("queued_paste_lines"):
