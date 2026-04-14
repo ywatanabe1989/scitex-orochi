@@ -40,6 +40,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [fleet-claim-protocol](fleet-claim-protocol.md) — DRAFT: hub-side `Claim` model + atomic `select_for_update` acquire + renewable TTL + realpath-normalized keys + 8 test cases + landing order. Promoted to canonical when the MCP tools land.
 - [resource-hub](resource-hub.md) — Fleet-wide aggregation of per-host `~/.scitex/cache/` via rsync pull into `~/.scitex/fleet-cache/<host>/`, `scitex-resource` reader API, staleness + death detection without Claude Code loops.
 - [close-evidence-gate](close-evidence-gate.md) — Mechanical enforcement against rubber-stamp issue closes: `gh-issue-close-safe` wrapper (commit + screenshot + signature required), 30-min `gh-audit-closes` cron auto-reopens violations, `#audit` channel. Codifies the 2026-04-13 directive "rules ではなく強制 system".
+- [fleet-resurrection-protocol](fleet-resurrection-protocol.md) — 4-layer defense-in-depth recovery: self-probe (in-agent /loop), per-host healer (pane classifier + actuator), cross-host mesh (bastion + compound probe), OS watchdog (systemd/launchd/sbatch). 3 incident walk-throughs + invariants + known gaps.
 
 ## MCP Tools
 

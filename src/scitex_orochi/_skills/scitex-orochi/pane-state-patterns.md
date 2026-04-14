@@ -170,11 +170,35 @@ Healers call this module read-only to **classify**, then consult a per-state act
 | `:dead` | autostart unit | no |
 | `:unknown` | escalate once, do not act | no |
 
-## Upstream: `~/.emacs.d/lisp/emacs-claude-code`
+## Upstream single source of truth (memory: `project_tui_pattern_single_source`)
 
-This catalog mirrors `~/.emacs.d/lisp/emacs-claude-code` (GitHub: `ywatanabe1989/emacs-claude-code`). When a new Claude Code prompt / animation is observed, update that repo first and sync the regex here. Single source of truth.
+This skill is a **mirror**, not a primary. Three sibling catalogs hold the authoritative regex for pane state, and they are kept in sync by humans + mamba-skill-manager, **not** by agents inventing new patterns in this file:
 
-**Do not fork and drift.** If this file and the emacs package disagree, the emacs package wins and this skill gets a PR.
+| Source | Location | Role |
+|---|---|---|
+| **Elisp (upstream)** | `~/.emacs.d/lisp/emacs-claude-code/ecc-state-detection.el` (GitHub `ywatanabe1989/emacs-claude-code`) | ywatanabe's primary TUI observation point. New patterns are observed in Emacs first. |
+| **Python (runtime)** | `scitex-agent-container/src/scitex_agent_container/runtimes/prompts.py` | Used by `scitex-agent-container` watchdog / healer code paths at runtime. |
+| **Markdown (this skill)** | `scitex-orochi/_skills/scitex-orochi/pane-state-patterns.md` | Human-readable catalog that fleet healers, skill writers, and documentation reference when explaining behavior. |
+
+### Sync protocol
+
+When a new Claude Code pane pattern is discovered:
+
+1. **Elisp first.** Add the regex + matcher in `ecc-state-detection.el` during live Emacs observation. This is the place it is first seen, and `emacs-claude-code` has the shortest feedback loop (interactive eval, live buffer).
+2. **Python next.** Port the regex verbatim into `prompts.py`, keeping variable names and matcher semantics aligned. Add a unit test that exercises the new pattern with a captured pane example.
+3. **Markdown last.** Update this skill to reflect the new state. The skill update is always **post-hoc** relative to the Elisp + Python changes — never introduce a state here that does not yet exist upstream.
+4. Commit the three changes with a single rationale in the commit messages, cross-referencing each other and the source msg id where the pattern was observed.
+
+### Drift policy
+
+- **If Elisp and Python disagree**, Elisp wins. File a Python PR to align.
+- **If Python and this skill disagree**, Python wins. Update this skill.
+- **If this skill adds a state that neither Elisp nor Python has**, **revert the skill change and file a PR against Elisp first**. Skill-only states are documentation fiction and must not ship.
+- **Do not fork the regex string.** If a new state's regex needs to vary slightly per upstream (e.g., Emacs handles newlines differently from bash capture-pane), encode the variation in the matcher logic of each language, not by shipping two different regexes.
+
+This mirror discipline is memory rule `project_tui_pattern_single_source`: **the Elisp repo is the canonical observation point, Python is the runtime consumer, Markdown is the documentation mirror**. Agents asking "can I add a new state directly here" should be told **no** — start in Emacs.
+
+See also: head-nas PR #118 (`pane_state.py` reference implementation — may be a fourth alias once landed; same rules apply).
 
 ## Consumers in the fleet
 
