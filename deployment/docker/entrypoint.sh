@@ -20,5 +20,5 @@ else:
 "
 fi
 
-echo "[orochi] Starting Daphne ASGI server on 0.0.0.0:8559 (4 server threads)..."
-exec daphne -b 0.0.0.0 -p 8559 --server-threads 4 orochi.asgi:application
+echo "[orochi] Starting Daphne ASGI server on 0.0.0.0:8559 (http-timeout 120s)..."
+exec daphne -b 0.0.0.0 -p 8559 --http-timeout 120 --websocket-timeout -1 orochi.asgi:application
