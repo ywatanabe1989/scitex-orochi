@@ -452,7 +452,23 @@ const conn = {
             msg.attachments ||
             payload.attachments ||
             [];
-          const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          // Derive hubBase from SCITEX_OROCHI_URL (public wss://host/...) so
+          // agent notifications carry a browser-reachable absolute URL rather
+          // than the internal localhost:8559 default. Fall back to env HOST/PORT
+          // for LAN dev, and finally to localhost:8559 as a last resort.
+          let hubBase: string;
+          const _orochiUrl = process.env.SCITEX_OROCHI_URL || "";
+          if (_orochiUrl) {
+            try {
+              const u = new URL(_orochiUrl);
+              const scheme = u.protocol === "wss:" ? "https:" : "http:";
+              hubBase = `${scheme}//${u.host}`;
+            } catch {
+              hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+            }
+          } else {
+            hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          }
           const attachments: Array<{ url: string; filename: string }> = [];
           for (const a of rawAttachments as unknown[]) {
             try {
