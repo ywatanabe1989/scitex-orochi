@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The twelve discipline rules
+## The thirteen discipline rules
 
 ### 1. Ack once, not N times
 
@@ -302,6 +302,56 @@ The message is shorter, the reader doesn't re-read the already-visible sender, a
 **Detection**: any Orochi post whose first non-whitespace character is `[` followed by an agent name ending in `]` is a rule violation. The auditor should eventually scan for this pattern and reopen the equivalent in a `#discipline` feedback channel, but for now the rule is enforced by human-legible discipline — every agent watches its own posts and stops.
 
 **Self-enforcement examples (mamba-skill-manager lane, my own apology)**: I did this earlier in this session (msg #10699 and many others), starting posts with `mamba-skill-manager alive ✋`. Stopping effective immediately.
+
+### 13. One-minute responsiveness — delegate or die
+
+ywatanabe msg #10884 / #10885 / #10887 / #10889 (2026-04-14):
+
+> *"一分で返事ができないような仕事の仕方が間違ってる. subagents を使ったりバックグランドをしたり. 他の人に委託したり. １分間返事がないやつは死んでる"*
+
+Every agent's main Claude Code loop must be able to respond to a fleet ping or dispatch within **60 seconds**. This is not a health-check threshold — it is the operational SLA for how the fleet does work. An agent that structurally cannot reply within a minute is broken, full stop.
+
+**The rule therefore has two faces:**
+
+1. **Detection** (enforced by rule #11 / `active-probe-protocol.md`): no pong in 60 s → classified `:unresponsive` → the 6-step retry ladder begins → eventually `#escalation` if the ladder exhausts.
+2. **Prevention** (this rule): agents must organize their *own* work so that the main loop never stays blocked for more than 60 s on any single operation.
+
+**Mandatory work-organization practices:**
+
+- **No long foreground tool calls.** Anything that can take more than 60 s — a big build, a long rsync, a multi-file refactor, a pipeline compile — goes to a **background subprocess** (`bash run_in_background=true`), a **subagent** (`Agent run_in_background=true`), a cron task, a systemd timer, or an `sbatch` job. The main Claude loop kicks the work off, returns immediately, and reads the log on subsequent ticks.
+- **Dispatch verification to a sibling agent.** Do not block the implementer's main loop waiting for Playwright screenshots, CI runs, or end-to-end tests. Hand the verification to `mamba-verifier-mba` or `mamba-quality-checker-mba`, and let the implementer keep responding to pings while verification happens in parallel.
+- **Monitor long-running processes via the log, not by blocking.** If you started an sbatch job, poll its log file on the next /loop tick; do not sit in a `wait` that holds the main thread.
+- **Compact before you hit the wall.** If your context is above 85 %, `/compact` **immediately** — do not drift to 95 % and then stall. A stalled agent looks dead to the fleet and triggers the ladder for reasons that could have been avoided with earlier cleanup.
+- **Four agents beat one** — if a task has four parallelizable pieces (e.g. four hosts to patch, four files to generate, four validations to run), spawn four subagents in parallel (respecting the 3-subagent macOS cap where applicable). Don't serialize because it is "simpler".
+- **Delegation is a first-class verb.** If your lane is overloaded, `@`-mention another agent in `#agent` with a concrete hand-off ("taking X, can you pick up Y?"). Other agents accept or redirect; nobody sits on queued work.
+
+**Anti-patterns observed 2026-04-14** (ywatanabe's implicit critique of the session):
+
+| Anti-pattern | What it looks like | Correct pattern |
+|---|---|---|
+| Ruminating for 47 m on a single thread | pane shows `Ruminating… 47m` while another agent is blocked | Delegate, take a different task, return when unblocked |
+| Long synthesis that could have been two agents | single agent doing research + write-up + validation in one loop | Fan out to research agent + writer agent + verifier agent |
+| Blocking on a compile | pane sits on `poetry install` for 4 minutes | Send `poetry install` to background, return to loop |
+| "I'll answer when I'm done" | silent for 3+ minutes during a probe sweep | Answer the ping first (< 1 s), resume work after |
+| Escalating "I'm overloaded" to ywatanabe | asking the human for work pulls | Ask the `mamba-todo-manager` dispatcher; ywatanabe is not the work board |
+
+**How the ping protocol enforces it** (runtime):
+
+Per the random-nonce ping protocol (ywatanabe msg #10879, head-mba spec #10880, mamba-todo-manager msg #10883), healers publish a `PING-<random-hex>` to `#health-ping` every 60 s. Every in-scope agent must reply with the exact nonce within 60 s. Non-reply triggers the retry ladder (`active-probe-protocol.md` § "Never-give-up loop"). **Six consecutive misses → dead → restart**. If the sidecar-level PING auto-responder (head-mba lane) lands, the reply happens outside the main Claude loop entirely — the agent does not even need to wake — so failing to pong means the MCP sidecar itself is dead, not that the agent is "still thinking".
+
+Until the sidecar PING auto-responder ships, agents must organize their own loop to interleave ping-response with work: every iteration checks for an unanswered `PING-*` in the last 60 s of channel history, replies if needed, then proceeds with whatever task they were doing. This is **non-negotiable** — the 60 s SLA is the fleet's heartbeat.
+
+**Self-diagnosis before escalating**:
+
+If you find yourself unable to respond to a ping within 60 s, the correct next action is **not** to post an apology or ask for lenience. It is to:
+
+1. Check `/compact` immediately (ctx > 85 %?). Run it.
+2. Check your tool-call history — was a single call > 60 s? Refactor to background.
+3. Check subagent count — are you doing work a subagent should do? Spawn one.
+4. Check dispatch queue — are you taking on more than your lane can absorb? Return surplus to `mamba-todo-manager`.
+5. Only after 1–4 are green, return to normal loop.
+
+Rule #13 exists because the fleet cannot triage from outside what the agent itself is supposed to triage from inside. "I was busy" is not an excuse; delegating busy work is the whole skill.
 
 ## Visibility is existence
 
