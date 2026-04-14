@@ -170,6 +170,167 @@ env:
 
 Audit after install: the hub's Agents tab (or `mcp__scitex-orochi__status`) must show the agent as its own row, under its own name, with its own connection. A missing row or a row sharing a name with another agent is a hard fail — do not mark autostart complete until fixed.
 
+## Healer actuator — 60-second sweep timer (per-host, never head-nas)
+
+Added 2026-04-14 per ywatanabe msg #10857 / #10860 / #10867 / #10884 and mamba-todo-manager msg #10872 / #10878. Each `mamba-healer-<host>` runs a 60-second sweep that probes agents on **other** hosts, classifies via `pane-state-patterns.md`, auto-unblocks via `active-probe-protocol.md`, and retries on the 6-step ladder before escalating. The daemon is **not** on head-nas — head-nas gets read-only consumer status only.
+
+### systemd user timer (Linux / WSL-with-systemd)
+
+`~/.config/systemd/user/scitex-healer-sweep.service`:
+
+```ini
+[Unit]
+Description=SciTeX mamba-healer active-probe sweep
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -lc 'exec %h/.scitex/orochi/scripts/healer-sweep.sh'
+StandardOutput=append:%h/.scitex/orochi/logs/healer-sweep.log
+StandardError=append:%h/.scitex/orochi/logs/healer-sweep.log
+```
+
+`~/.config/systemd/user/scitex-healer-sweep.timer`:
+
+```ini
+[Unit]
+Description=Run SciTeX healer sweep every 60 seconds
+
+[Timer]
+OnBootSec=60s
+OnUnitActiveSec=60s
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+```
+
+Install:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user enable --now scitex-healer-sweep.timer
+loginctl enable-linger "$USER"   # survives logout
+```
+
+Verify:
+
+```bash
+systemctl --user list-timers | grep scitex-healer
+journalctl --user -u scitex-healer-sweep -n 50 --since '10 min ago'
+```
+
+### launchd (macOS — MBA healer)
+
+`~/Library/LaunchAgents/com.scitex.orochi.healer-sweep.plist` (ships via dotfiles):
+
+```xml
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.scitex.orochi.healer-sweep</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>exec ~/.scitex/orochi/scripts/healer-sweep.sh</string>
+  </array>
+  <key>StartInterval</key><integer>60</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>~/.scitex/orochi/logs/healer-sweep.log</string>
+  <key>StandardErrorPath</key><string>~/.scitex/orochi/logs/healer-sweep.log</string>
+</dict>
+</plist>
+```
+
+Install + load:
+
+```bash
+ln -sf ~/.dotfiles/src/launchd/com.scitex.orochi.healer-sweep.plist \
+       ~/Library/LaunchAgents/com.scitex.orochi.healer-sweep.plist
+launchctl load ~/Library/LaunchAgents/com.scitex.orochi.healer-sweep.plist
+launchctl list | grep com.scitex.orochi.healer-sweep
+```
+
+### WSL fallback — bash background loop (systemd user denied)
+
+Per head-ywata-note-win msg #10874, some WSL distros deny `systemctl --user` entirely. In that case, the healer runs the sweep as a foreground loop inside its own tmux session (launched by `ensure-services.sh` at login):
+
+```bash
+# ~/.scitex/orochi/scripts/healer-sweep-loop.sh  (WSL fallback)
+set -u
+LOG=~/.scitex/orochi/logs/healer-sweep.log
+mkdir -p "$(dirname "$LOG")"
+while true; do
+    {
+        echo "=== $(date -u +%Y-%m-%dT%H:%M:%SZ) ==="
+        ~/.scitex/orochi/scripts/healer-sweep.sh
+    } >> "$LOG" 2>&1
+    sleep 60
+done
+```
+
+Attach via `ensure-services.sh`:
+
+```bash
+if ! tmux has-session -t healer-sweep 2>/dev/null; then
+    tmux new-session -d -s healer-sweep '~/.scitex/orochi/scripts/healer-sweep-loop.sh'
+fi
+```
+
+Windows Task Scheduler triggers `ensure-services.sh` at WSL boot (already configured for autossh tunnels — reuse that path, see `agent-autostart.md` § WSL reverse-tunnel autostart).
+
+### Spartan — login1 foreground tmux (no systemd user, no cron)
+
+Login1 does not allow systemd user sessions (cgroup nproc=1). Sweep runs in `mamba-healer-spartan`'s own tmux window, launched from the agent's `/loop` epilogue:
+
+```
+Every tick, before returning: if the file ~/.scitex/orochi/logs/last-sweep
+is older than 60 s, exec healer-sweep.sh and touch the timestamp file.
+```
+
+This works because `mamba-healer-spartan`'s Claude Code process is already resident and `/loop` fires at least every 60 s on its own cadence. The timestamp file prevents duplicate sweeps if a tick runs faster than 60 s. No system timer required — the agent is its own scheduler.
+
+### Cross-host peer-watch scope matrix
+
+Each healer probes **other** hosts, never itself. Self-probe is a null signal.
+
+| Healer | Probes |
+|---|---|
+| `mamba-healer-mba` | `nas`, `spartan`, `ywata-note-win` (+ other MBA mamba-* siblings) |
+| `mamba-healer-nas` | `mba`, `spartan`, `ywata-note-win` |
+| `mamba-healer-spartan` | `mba`, `nas`, `ywata-note-win` |
+| `mamba-healer-ywata-note-win` | `mba`, `nas`, `spartan` |
+
+Every agent is watched by **three healers** in parallel. Any one failure is a probe miss; two-out-of-three unresponsive is a compound-gate dead signal.
+
+### Dead-in-60s + retry ladder
+
+Per `active-probe-protocol.md` § "Never-give-up loop":
+
+- Probe fires → start 60 s timer
+- No matching-nonce reply within 60 s → classify `:unresponsive`
+- Retry ladder steps 1→6 (Enter → re-probe → sidecar restart → re-probe → full stop/start --continue → final probe → escalate)
+- Between every ladder step the healer re-probes for up to 60 s again
+- Only step 6 emits `#escalation`; steps 1–5 are silent unless state changes
+
+ywatanabe msg #10884 binding: *"一分で返事ができないような仕事の仕方が間違ってる"* — the 60 s budget is not just a health check, it is the operational SLA for the fleet. An agent that structurally cannot reply within 60 s is broken, full stop.
+
+### `healer-sweep.sh` signature
+
+The script itself lives under `~/.scitex/orochi/scripts/healer-sweep.sh` and is owned by the healer lane. Its contract (for this skill's readers — implementation is a separate concern):
+
+- Reads target host list from `~/.scitex/orochi/healer/targets.yaml` (drift-safe: if the file is absent, default to "all fleet minus self").
+- For each target, runs `drift-audit.sh`-style ssh probes using `bash -lc` + the canonical SSH flags.
+- Emits a random-nonce ping via `mcp__scitex-orochi__reply` (see `active-probe-protocol.md` + msg #10879 + msg #10883 for the nonce protocol).
+- Waits up to 60 s for the reply.
+- Runs the retry ladder on failures.
+- Appends every action to `~/.scitex/orochi/fleet-watch/probe.log`.
+- Posts only sweep-deltas to `#agent`; silent on clean sweeps (rule #6).
+- Never asks ywatanabe anything (rule #11 automation invariant).
+
+If the sidecar-level PING auto-responder lands on the MCP side (head-mba lane, todo-manager msg #10883 request), agents do not need to wake Claude for every ping — the sidecar replies with the nonce directly, keeping per-ping latency under 1 s and not burning agent context.
+
 ## Post-install verification (all platforms)
 
 After installing and starting a unit, confirm:
