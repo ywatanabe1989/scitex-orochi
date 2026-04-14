@@ -18,7 +18,6 @@ from scitex_orochi._config import (
     MEDIA_MAX_SIZE,
     MEDIA_ROOT,
 )
-
 from scitex_orochi._media import MediaStore
 from scitex_orochi._models import Message
 from scitex_orochi._push import PushStore

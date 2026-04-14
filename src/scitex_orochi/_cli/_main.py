@@ -1,4 +1,11 @@
-"""Orochi CLI -- thin orchestrator that registers all subcommands."""
+"""Orochi CLI -- thin orchestrator that registers all subcommands.
+
+Subcommand imports must be deferred until after the ``orochi`` click group is
+defined below (each command attaches itself to this group via
+``orochi.add_command``). Ruff's E402 check is suppressed at file level for
+that reason.
+"""
+# ruff: noqa: E402
 
 from __future__ import annotations
 

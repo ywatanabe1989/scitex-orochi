@@ -6,6 +6,10 @@ import json
 import os
 import platform
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scitex_orochi._client import OrochiClient
 
 # ---------------------------------------------------------------------------
 # Safety guards -- must run before any MCP setup
