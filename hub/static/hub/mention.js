@@ -198,6 +198,14 @@ function insertMention(name) {
 }
 
 function handleMentionInput(e) {
+  /* Skip while an IME composition is in progress — `input.value` reflects
+   * the pre-commit buffer and `selectionStart` may point at a position that
+   * doesn't yet contain the composed `@`. We re-run on `compositionend`
+   * (attached in initMentionAutocomplete) so the query is computed against
+   * the finalized text. Fixes todo#383 — JP-mode IME users could not trigger
+   * `@mention` autocomplete because the input listener consumed stale state
+   * during composition. */
+  if (e && e.isComposing) return;
   mentionActiveInput = this;
   var info = getMentionQuery(this);
   if (!info) {
@@ -275,6 +283,11 @@ function handleMentionBlur() {
 /* Attach mention autocomplete to any textarea */
 function initMentionAutocomplete(inputEl) {
   inputEl.addEventListener("input", handleMentionInput);
+  /* Re-run the query once the IME commits its composed text. The
+   * input-listener skips during composition (isComposing guard), so
+   * without this handler the newly-typed `@` would never show the
+   * dropdown in JP IME mode. (todo#383) */
+  inputEl.addEventListener("compositionend", handleMentionInput);
   inputEl.addEventListener("keydown", handleMentionKeydown);
   inputEl.addEventListener("blur", handleMentionBlur);
 }
