@@ -70,9 +70,9 @@ function setCurrentChannel(ch) {
   } catch (_) {}
   /* Update composer target indicator (todo#364) */
   _updateComposerTarget(ch || lastActiveChannel, false);
-  /* Update channel topic banner (todo#402) */
-  if (ch) _updateChannelTopicBanner(ch);
-  else { var b = document.getElementById("channel-topic-banner"); if (b) b.style.display = "none"; }
+  /* Update channel topic banner (todo#402) — show for active channel,
+   * or last active when in all-channels mode */
+  _updateChannelTopicBanner(ch || lastActiveChannel);
 }
 
 function _updateComposerTarget(ch, isReply, replyMsgId) {
@@ -102,6 +102,7 @@ window.setCurrentChannel = setCurrentChannel;
 /* ── Channel topic banner + subscriber list (todo#402) ── */
 var _channelDescriptions = {}; /* cache: channel → description */
 var _agentChannelMap = {};     /* cache: channel → [{name, online}] */
+var _channelPrefs = {};        /* cache: channel → {is_starred, is_muted, is_hidden, notification_level} */
 
 function _updateChannelTopicBanner(ch) {
   var banner = document.getElementById("channel-topic-banner");
@@ -194,20 +195,141 @@ if (currentChannel) {
   });
 }
 
-/* Fetch channel descriptions once on load so the banner is ready */
+/* Fetch channel descriptions + prefs once on load */
 document.addEventListener("DOMContentLoaded", function () {
   fetch(apiUrl("/api/channels/"), { credentials: "same-origin" })
     .then(function (r) { return r.json(); })
     .then(function (list) {
       list.forEach(function (ch) {
-        if (ch.name && ch.description) {
-          _channelDescriptions[ch.name] = ch.description;
+        if (ch.name) {
+          if (ch.description) _channelDescriptions[ch.name] = ch.description;
+          _channelPrefs[ch.name] = {
+            is_starred: ch.is_starred || false,
+            is_muted: ch.is_muted || false,
+            is_hidden: ch.is_hidden || false,
+            notification_level: ch.notification_level || "all",
+          };
         }
       });
       if (currentChannel) _updateChannelTopicBanner(currentChannel);
+      _renderStarredSection();
     })
     .catch(function (_) {});
 });
+
+/* Update a single channel pref on the server and update local cache */
+function _setChannelPref(ch, patch) {
+  Object.assign(_channelPrefs[ch] = _channelPrefs[ch] || {}, patch);
+  fetch(apiUrl("/api/channel-prefs/"), {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: {"Content-Type": "application/json", "X-CSRFToken": getCsrfToken()},
+    body: JSON.stringify(Object.assign({channel: ch}, patch)),
+  }).catch(function (_) {});
+  _renderStarredSection();
+  /* Refresh channel list to show/hide and re-sort */
+  fetchStats();
+}
+
+/* Render the Starred section in the sidebar */
+function _renderStarredSection() {
+  var heading = document.getElementById("starred-heading");
+  var container = document.getElementById("starred-channels");
+  if (!heading || !container) return;
+  var starred = Object.keys(_channelPrefs).filter(function (ch) {
+    return _channelPrefs[ch] && _channelPrefs[ch].is_starred;
+  }).sort();
+  if (starred.length === 0) {
+    heading.style.display = "none";
+    container.style.display = "none";
+    return;
+  }
+  heading.style.display = "";
+  container.style.display = "";
+  var countEl = document.getElementById("sidebar-count-starred");
+  if (countEl) countEl.textContent = starred.length;
+  container.innerHTML = starred.map(function (ch) {
+    var active = currentChannel === ch ? " active" : "";
+    var muted = (_channelPrefs[ch] && _channelPrefs[ch].is_muted) ? " ch-muted" : "";
+    return '<div class="channel-item starred-item' + active + muted + '" data-channel="' + escapeHtml(ch) + '">' +
+      '<span class="ch-star ch-star-on" data-ch="' + escapeHtml(ch) + '" title="Unstar">&#9733;</span>' +
+      escapeHtml(ch) + '</div>';
+  }).join("");
+  container.querySelectorAll(".channel-item").forEach(function (el) {
+    el.addEventListener("click", function (ev) {
+      if (ev.target.classList.contains("ch-star")) return;
+      var ch = el.getAttribute("data-channel");
+      setCurrentChannel(ch);
+      loadChannelHistory(ch);
+      if (typeof applyFeedFilter === "function") applyFeedFilter();
+    });
+    var star = el.querySelector(".ch-star");
+    if (star) star.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var ch = star.getAttribute("data-ch");
+      _setChannelPref(ch, {is_starred: false});
+    });
+    _addChannelContextMenu(el);
+  });
+}
+
+/* Context menu for channel items — right-click shows pref options */
+function _addChannelContextMenu(el) {
+  el.addEventListener("contextmenu", function (ev) {
+    ev.preventDefault();
+    var ch = el.getAttribute("data-channel");
+    _showChannelCtxMenu(ch, ev.clientX, ev.clientY);
+  });
+}
+
+var _ctxMenu = null;
+function _showChannelCtxMenu(ch, x, y) {
+  _hideChannelCtxMenu();
+  var prefs = _channelPrefs[ch] || {};
+  var starred = prefs.is_starred;
+  var muted = prefs.is_muted;
+  var hidden = prefs.is_hidden;
+  var notif = prefs.notification_level || "all";
+
+  var menu = document.createElement("div");
+  menu.className = "ch-ctx-menu";
+  menu.style.cssText = "position:fixed;z-index:9999;left:" + x + "px;top:" + y + "px;";
+  menu.innerHTML = [
+    '<div class="ch-ctx-item" data-action="star">' + (starred ? "&#9733; Unstar" : "&#9734; Star channel") + "</div>",
+    '<div class="ch-ctx-item" data-action="mute">' + (muted ? "&#128276; Unmute" : "&#128263; Mute channel") + "</div>",
+    '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-label">Notifications</div>',
+    '<div class="ch-ctx-item ch-ctx-notif' + (notif==="all"?" ch-ctx-active":"") + '" data-action="notif-all">All messages</div>',
+    '<div class="ch-ctx-item ch-ctx-notif' + (notif==="mentions"?" ch-ctx-active":"") + '" data-action="notif-mentions">@ Mentions only</div>',
+    '<div class="ch-ctx-item ch-ctx-notif' + (notif==="nothing"?" ch-ctx-active":"") + '" data-action="notif-nothing">Nothing</div>',
+    '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' + (hidden ? "Show channel" : "Hide channel") + "</div>",
+  ].join("");
+  document.body.appendChild(menu);
+  _ctxMenu = menu;
+
+  menu.querySelectorAll(".ch-ctx-item").forEach(function (item) {
+    item.addEventListener("click", function () {
+      var action = item.getAttribute("data-action");
+      if (action === "star") _setChannelPref(ch, {is_starred: !starred});
+      else if (action === "mute") _setChannelPref(ch, {is_muted: !muted});
+      else if (action === "notif-all") _setChannelPref(ch, {notification_level: "all"});
+      else if (action === "notif-mentions") _setChannelPref(ch, {notification_level: "mentions"});
+      else if (action === "notif-nothing") _setChannelPref(ch, {notification_level: "nothing"});
+      else if (action === "hide") _setChannelPref(ch, {is_hidden: !hidden});
+      _hideChannelCtxMenu();
+    });
+  });
+
+  /* Close on click outside */
+  setTimeout(function () {
+    document.addEventListener("mousedown", _hideChannelCtxMenu, {once: true});
+  }, 10);
+}
+
+function _hideChannelCtxMenu() {
+  if (_ctxMenu) { _ctxMenu.remove(); _ctxMenu = null; }
+}
 
 var cachedAgentNames = [];
 var historyLoaded = false;
@@ -987,19 +1109,25 @@ async function fetchStats() {
       var norm = c.charAt(0) === "#" ? c : "#" + c;
       if (seenNames[norm]) return;
       seenNames[norm] = true;
+      /* Skip channels hidden by user pref */
+      var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
+      if (pref.is_hidden) return;
       displayChannels.push({ raw: c, norm: norm });
     });
     chContainer.innerHTML = displayChannels
       .map(function (entry, i) {
         var c = entry.raw;
+        var norm = entry.norm;
         var active = currentChannel === c ? " active" : "";
-        var chColor = OROCHI_COLORS[i % OROCHI_COLORS.length];
+        var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
+        var muted = pref.is_muted ? " ch-muted" : "";
+        var starred = pref.is_starred ? " ch-starred-in-list" : "";
+        var starHtml = '<span class="ch-star ' + (pref.is_starred ? "ch-star-on" : "ch-star-off") +
+          '" data-ch="' + escapeHtml(norm) + '" title="' + (pref.is_starred ? "Unstar" : "Star") + '">&#9733;</span>';
         return (
-          '<div class="channel-item' +
-          active +
-          '" data-channel="' +
-          escapeHtml(c) +
-          '">' +
+          '<div class="channel-item' + active + muted + starred +
+          '" data-channel="' + escapeHtml(c) + '">' +
+          starHtml +
           escapeHtml(entry.norm) +
           "</div>"
         );
@@ -1009,7 +1137,20 @@ async function fetchStats() {
       /* Restore selected state from before re-render */
       var elCh = el.getAttribute("data-channel");
       if (elCh && prevSelected[elCh]) el.classList.add("selected");
+      /* Star icon click — toggle star without navigating */
+      var starEl = el.querySelector(".ch-star");
+      if (starEl) {
+        starEl.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          var norm = starEl.getAttribute("data-ch");
+          var curPref = _channelPrefs[norm] || {};
+          _setChannelPref(norm, {is_starred: !curPref.is_starred});
+        });
+      }
+      /* Context menu */
+      _addChannelContextMenu(el);
       el.addEventListener("click", function (ev) {
+        if (ev.target.classList.contains("ch-star")) return;
         var ch = el.getAttribute("data-channel");
         var multi = ev.ctrlKey || ev.metaKey;
         /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select without
@@ -1073,6 +1214,8 @@ async function fetchStats() {
     });
     var chCountEl = document.getElementById("sidebar-count-channels");
     if (chCountEl) chCountEl.textContent = "(" + displayChannels.length + ")";
+    /* Re-render starred section to keep in sync */
+    _renderStarredSection();
     if (typeof updateChannelUnreadBadges === "function") updateChannelUnreadBadges();
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();

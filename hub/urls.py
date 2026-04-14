@@ -57,6 +57,9 @@ urlpatterns = [
         "api/workspace/<slug:slug>/channels/", views.api_channels, name="api-channels"
     ),
     path(
+        "api/workspace/<slug:slug>/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"
+    ),
+    path(
         "api/workspace/<slug:slug>/messages/", views.api_messages, name="api-messages"
     ),
     path(

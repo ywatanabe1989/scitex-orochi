@@ -21,6 +21,7 @@ _server_start_time = time.time()
 from hub.channel_acl import check_write_allowed
 from hub.models import (
     Channel,
+    ChannelPreference,
     DMParticipant,
     FleetReport,
     Message,
@@ -92,7 +93,70 @@ def api_channels(request, slug=None):
         return JsonResponse({"status": "ok", "channel": ch_name, "description": description})
 
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
-    data = [{"name": ch.name, "description": ch.description} for ch in channels]
+    # Annotate with user preferences when authenticated
+    prefs_map = {}
+    if request.user.is_authenticated:
+        for p in ChannelPreference.objects.filter(user=request.user, channel__workspace=workspace):
+            prefs_map[p.channel_id] = p
+    data = []
+    for ch in channels:
+        p = prefs_map.get(ch.id)
+        data.append({
+            "name": ch.name,
+            "description": ch.description,
+            "is_starred": p.is_starred if p else False,
+            "is_muted": p.is_muted if p else False,
+            "is_hidden": p.is_hidden if p else False,
+            "notification_level": p.notification_level if p else "all",
+        })
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+@require_http_methods(["GET", "PATCH"])
+def api_channel_prefs(request, slug=None):
+    """GET /api/channel-prefs/ — list all channel prefs for current user.
+    PATCH /api/channel-prefs/ — update prefs for one channel (todo#391).
+
+    PATCH body: {"channel": "#general", "is_starred": true, ...}
+    """
+    workspace = get_workspace(request, slug=slug)
+
+    if request.method == "PATCH":
+        body = json.loads(request.body)
+        ch_name = normalize_channel_name(body.get("channel", ""))
+        try:
+            ch = Channel.objects.get(workspace=workspace, name=ch_name)
+        except Channel.DoesNotExist:
+            return JsonResponse({"error": "channel not found"}, status=404)
+
+        pref, _ = ChannelPreference.objects.get_or_create(user=request.user, channel=ch)
+        changed_fields = []
+        for field in ("is_starred", "is_muted", "is_hidden", "notification_level"):
+            if field in body:
+                setattr(pref, field, body[field])
+                changed_fields.append(field)
+        if changed_fields:
+            pref.save(update_fields=changed_fields)
+
+        return JsonResponse({
+            "status": "ok",
+            "channel": ch_name,
+            "is_starred": pref.is_starred,
+            "is_muted": pref.is_muted,
+            "is_hidden": pref.is_hidden,
+            "notification_level": pref.notification_level,
+        })
+
+    # GET — return all prefs for current user in this workspace
+    prefs = ChannelPreference.objects.filter(user=request.user, channel__workspace=workspace).select_related("channel")
+    data = [{
+        "channel": p.channel.name,
+        "is_starred": p.is_starred,
+        "is_muted": p.is_muted,
+        "is_hidden": p.is_hidden,
+        "notification_level": p.notification_level,
+    } for p in prefs]
     return JsonResponse(data, safe=False)
 
 

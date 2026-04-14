@@ -184,6 +184,51 @@ class Channel(models.Model):
         super().save(*args, **kwargs)
 
 
+class ChannelPreference(models.Model):
+    """Per-user channel preferences — starred, muted, notifications (todo#391).
+
+    Mirrors Slack's per-member channel settings:
+    - starred: appears in "Starred" section at the top of the sidebar
+    - muted: no notification badge, messages still visible
+    - notification_level: all / mentions / nothing
+    - hidden: channel removed from sidebar (opt-in to re-add)
+    """
+
+    NOTIF_ALL = "all"
+    NOTIF_MENTIONS = "mentions"
+    NOTIF_NOTHING = "nothing"
+    NOTIF_CHOICES = [
+        (NOTIF_ALL, "All messages"),
+        (NOTIF_MENTIONS, "Mentions only"),
+        (NOTIF_NOTHING, "Nothing"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="channel_preferences",
+    )
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name="user_preferences",
+    )
+    is_starred = models.BooleanField(default=False)
+    is_muted = models.BooleanField(default=False)
+    is_hidden = models.BooleanField(default=False)
+    notification_level = models.CharField(
+        max_length=10,
+        choices=NOTIF_CHOICES,
+        default=NOTIF_ALL,
+    )
+
+    class Meta:
+        unique_together = ("user", "channel")
+
+    def __str__(self):
+        return f"{self.user.username} → {self.channel.name}"
+
+
 class DMParticipant(models.Model):
     """Participant row for a direct-message channel (spec v3 §2.2).
 

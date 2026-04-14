@@ -1876,3 +1876,78 @@ a.chat-link:hover {
 .ch-mem-dot.ch-mem-online {
   background: #3cb371;
 }
+
+/* ── Channel star / mute / prefs (todo#391) ── */
+.ch-star {
+  font-size: 12px;
+  margin-right: 4px;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.ch-star-off {
+  color: transparent; /* invisible until hover */
+}
+.channel-item:hover .ch-star-off {
+  color: #556;
+}
+.ch-star-on {
+  color: #f5a623;
+}
+.ch-star:hover {
+  color: #f5a623 !important;
+}
+.ch-muted {
+  opacity: 0.5;
+}
+.ch-muted::after {
+  content: " 🔇";
+  font-size: 10px;
+}
+
+/* Starred section heading */
+#starred-heading {
+  color: #f5a623;
+}
+.starred-item {
+  border-left: 2px solid #f5a623;
+  padding-left: 6px;
+}
+
+/* Channel context menu */
+.ch-ctx-menu {
+  background: #0d1e2e;
+  border: 1px solid #1e3a4a;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.6);
+  min-width: 180px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: #ccc;
+}
+.ch-ctx-item {
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.ch-ctx-item:hover {
+  background: #1a3040;
+  color: #fff;
+}
+.ch-ctx-item.ch-ctx-active {
+  color: #4cf;
+  font-weight: bold;
+}
+.ch-ctx-item.ch-ctx-hide {
+  color: #e88;
+}
+.ch-ctx-sep {
+  border-top: 1px solid #1e3a4a;
+  margin: 4px 0;
+}
+.ch-ctx-label {
+  padding: 4px 14px 2px;
+  font-size: 11px;
+  color: #567;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
