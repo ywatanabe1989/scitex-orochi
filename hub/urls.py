@@ -70,6 +70,11 @@ urlpatterns = [
         views.api_history,
         name="api-history",
     ),
+    path(
+        "api/workspace/<slug:slug>/channels/<str:chat_id>/export/",
+        views.api_channel_export,
+        name="api-channel-export",
+    ),
     path("api/workspace/<slug:slug>/stats/", views.api_stats, name="api-stats"),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),

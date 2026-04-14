@@ -12,6 +12,7 @@ from hub.views.api import (  # noqa: F401
     api_agents_registry,
     api_agents_restart,
     api_channels,
+    api_channel_export,
     api_channel_prefs,
     api_channel_members,
     api_config,

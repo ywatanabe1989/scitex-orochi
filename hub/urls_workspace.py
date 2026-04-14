@@ -48,6 +48,7 @@ urlpatterns = [
     path("agent-login/", views.agent_login_view, name="agent-login"),
     # REST API — no slug needed, workspace from subdomain
     path("api/channels/", views.api_channels, name="api-channels"),
+    path("api/channels/<str:chat_id>/export/", views.api_channel_export, name="api-channel-export"),
     path("api/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"),
     path("api/channel-members/", views.api_channel_members, name="api-channel-members"),
     path("api/messages/", views.api_messages, name="api-messages"),
