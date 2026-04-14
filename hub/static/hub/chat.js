@@ -397,10 +397,55 @@ function appendMessage(msg) {
     return s;
   }
 
+  /* Group mention tokens (@heads, @healers, @mambas, @all, @agents) get a
+   * distinct chip class with a tooltip describing who the group expands to.
+   * Kept in sync with hub/consumers.py GROUP_PATTERNS (todo#421). */
+  var MENTION_GROUP_TOKENS = {
+    heads: "all head-* agents",
+    healers: "all mamba-healer-* agents",
+    mambas: "all mamba-* agents",
+    all: "everyone in the workspace",
+    agents: "all agents in the workspace",
+  };
+
+  /* Return true if the character at index `idx` of `src` sits inside a
+   * single-line `...` inline-code span. Counts backticks from the start
+   * of the current line; odd count == inside. Used to suppress mention
+   * highlighting for @tokens that live inside backticks (todo#421). */
+  function _isInsideInlineCode(src, idx) {
+    var lineStart = src.lastIndexOf("\n", idx - 1) + 1;
+    var ticks = 0;
+    for (var i = lineStart; i < idx; i++) {
+      if (src.charCodeAt(i) === 96 /* ` */) ticks++;
+    }
+    return (ticks % 2) === 1;
+  }
+
   /* Match @ after any non-word char so CJK text like「こんにちは@mamba」highlights (#9958) */
   var highlightedContent = escaped.replace(
     /(^|[^\w])@([\w@.\-]+)/g,
-    function (_match, prefix, name) {
+    function (match, prefix, name, offset, full) {
+      /* Suppress chip/highlight if we are inside an inline `code` span.
+       * Fenced ```blocks``` are already replaced with NUL placeholders
+       * above, so this guard only needs to worry about backticks. */
+      if (_isInsideInlineCode(full, offset + prefix.length)) {
+        return match;
+      }
+      var desc = MENTION_GROUP_TOKENS[name];
+      if (desc) {
+        return (
+          prefix +
+          '<span class="mention-group-chip" data-mention-group="' +
+          name +
+          '" title="@' +
+          name +
+          " - " +
+          desc +
+          '">@' +
+          name +
+          "</span>"
+        );
+      }
       return prefix + '<span class="mention-highlight">@' + name + "</span>";
     },
   );
