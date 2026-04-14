@@ -68,14 +68,42 @@ function setCurrentChannel(ch) {
         : "Type a message\u2026";
     }
   } catch (_) {}
+  /* Update composer target indicator (todo#364) */
+  _updateComposerTarget(ch || lastActiveChannel, false);
 }
+
+function _updateComposerTarget(ch, isReply, replyMsgId) {
+  try {
+    var el = document.getElementById("composer-target");
+    var nameEl = document.getElementById("composer-target-name");
+    if (!el || !nameEl) return;
+    el.classList.remove("is-dm", "is-reply");
+    if (isReply && replyMsgId) {
+      el.classList.add("is-reply");
+      nameEl.textContent = "\u21b3 reply in " + (ch || "#?") + " \u00b7 msg#" + replyMsgId;
+      el.firstChild.nodeValue = "";
+    } else if (ch && ch.startsWith("dm:")) {
+      el.classList.add("is-dm");
+      var parts = ch.replace("dm:", "").split("|");
+      nameEl.textContent = "\u2192 @" + (parts[1] || parts[0]) + " (DM)";
+      el.firstChild.nodeValue = "";
+    } else {
+      nameEl.textContent = ch || "#general";
+      el.firstChild.nodeValue = "\u2192 ";
+    }
+  } catch (_) {}
+}
+window._updateComposerTarget = _updateComposerTarget;
 window.setCurrentChannel = setCurrentChannel;
-/* Sync textarea placeholder with restored channel on page load (#364) */
+/* Sync textarea placeholder + composer target with restored channel on page load (#364) */
 if (currentChannel) {
   try {
     var _inp = document.getElementById("msg-input");
     if (_inp) _inp.placeholder = "Message " + currentChannel.replace(/^#/, "#") + "\u2026";
   } catch (_) {}
+  document.addEventListener("DOMContentLoaded", function () {
+    _updateComposerTarget(currentChannel, false);
+  });
 }
 var cachedAgentNames = [];
 var historyLoaded = false;

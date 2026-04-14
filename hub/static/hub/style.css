@@ -1712,3 +1712,22 @@ a.chat-link:hover {
   color: #4ac;
   margin: 0 2px;
 }
+
+/* Composer target channel indicator (todo#364) */
+.composer-target {
+  font-size: 11px;
+  color: #5a8aa0;
+  padding: 4px 12px 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+  transition: color 0.2s;
+}
+.composer-target #composer-target-name {
+  color: #4ecdc4;
+  font-weight: 500;
+}
+.composer-target.is-dm #composer-target-name { color: #9a7aec; }
+.composer-target.is-reply { color: #7a9ab0; }
+.composer-target.is-reply #composer-target-name { color: #f0a060; }
