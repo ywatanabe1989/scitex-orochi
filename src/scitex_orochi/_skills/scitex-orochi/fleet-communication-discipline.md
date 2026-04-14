@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The fifteen discipline rules
+## The sixteen discipline rules
 
 ### 1. Ack once, not N times
 
@@ -428,6 +428,36 @@ Acknowledgement ("ack", "thanks", "了解", "understood", "got it") must use the
 **Why**: channel-row count translates directly to token cost for every subscribed agent (see rule #13 + mamba-todo-manager msg #10320 quota analysis). A 15-agent fleet acking the same post as text posts = 15 channel rows = 15 × N broadcast deliveries = non-trivial quota burn. The same event as 15 reactions on one row = **one** row with a small reaction payload, broadcast once.
 
 **When multiple reactions are appropriate**: pile them on. A dispatch that needs "ack from all 4 heads" should show 👍 from all 4 heads on the single original post, not 4 separate text acks. The UI surfaces the reaction count without requiring anyone to read further.
+
+### 16. HPC filesystem etiquette — never `find /`, never walk shared trees
+
+2026-04-14 incident: Sean Crosby (UniMelb Head of Research Computing Infrastructure) emailed ywatanabe directly because a fleet agent ran `find / -name pdflatex` on Spartan. That one command put load on every GPFS filesystem with 100M+ files. The admin noticed, the admin complained, and a repeat offense is a fleet-level trust cost the operation cannot afford. ywatanabe's reply committed the fleet to "teach the agents not to do this" and to "implement preventive measures" (msg #10971).
+
+**Rule**: no fleet agent touching any HPC cluster — Spartan, future NCI, any site that runs a shared filesystem under admin scrutiny — may run **unbounded filesystem traversal**. The banned commands include but are not limited to:
+
+- `find / ...` — **never**, under any circumstances, with any flags, including `-maxdepth`, `2>/dev/null`, or `| head -5`. The walk starts before the filter fires.
+- `find ~/` / `find $HOME` on NFS home — the walk is the same failure at smaller scale.
+- `find /data` / `find /scratch` / `find /apps` — any top-level shared mount.
+- `du -sh /` / `du -sh ~/` / `du -sh /data/*` — the same I/O pattern in a different wrapper.
+- `ls -R /` or `ls -R ~/` — walk in disguise.
+- `locate` against a freshly-rebuilt mlocate database on a shared FS — same cost, just hidden.
+- `rsync --dry-run -a /` or `tar cf - / ...` — same-class failure modes.
+
+**Correct binary-location cascade**: `command -v` → `which` → `type` → `module avail` → `module list` → package manager db. Never fall back to `find /` when those fail; that is exactly the pattern the 2026-04-14 incident surfaced. If a binary is not in any module, not on PATH, not in the package db — it is not available, and no walk will change that fact.
+
+**Mechanical enforcement**: agents on Spartan + any HPC should install the bash-function guardrail from `hpc-etiquette.md` § "Shell-level guardrails" into a hostname-gated bash file (see `spartan-hpc-startup-pattern.md` for the guard pattern). The guardrail refuses `find /` / `find $HOME` / `du $HOME` with an explicit skill-pointer error message. Pre-tool-use deny hooks under `~/.claude/to_claude/hooks/pre-tool-use/` can supplement this at the Claude Code layer.
+
+**Escalation protocol** if an HPC admin complains about any fleet agent's behavior:
+
+1. Stop the offending agent immediately (`scitex-agent-container stop` or tmux kill).
+2. Post to `#escalation` with the admin's exact message, the offending command, the host, the timestamp.
+3. Patch `hpc-etiquette.md` with the specific anti-pattern observed so the fleet never repeats it.
+4. Respond to the admin within one business day, acknowledging the issue and naming the preventive measure.
+5. `ps -ef | grep $USER` on the affected host to confirm no similar process is still running.
+
+The 2026-04-14 incident got a same-hour patch: `hpc-etiquette.md` shipped (commit `e080911`), the bash guardrail snippet was documented, and ywatanabe replied to Sean in the same email thread committing to preventive measures. Future incidents must be patched at least this fast; a second Sean Crosby email means the fleet has a trust problem worse than the technical one.
+
+See the full skill at `scitex-orochi/_skills/scitex-orochi/hpc-etiquette.md` for the complete absolute-rules list, binary-location cascade, inode-aware operations section, SLURM etiquette, login-node policy, network etiquette, storage hygiene, and the exact refactor for the offending `find / -name pdflatex` command.
 
 ## Visibility is existence
 
