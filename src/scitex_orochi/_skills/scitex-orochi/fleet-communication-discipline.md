@@ -466,15 +466,33 @@ A corollary from the `feedback_visibility_is_existence` memory: work that ywatan
 1. **Summarize landed work in `#ywatanabe` once per day or per major milestone.** Even if all the coordination happened in `#agent`, the user needs a single-channel digest so they can catch up without reading 200 lines of `#agent`.
 2. **UI / screenshot / demo is a first-class deliverable.** If you land a UI change, include a screenshot in the summary. The user believes what they see.
 
-## Channel subscription baseline (post-90158bc)
+## Channel subscription matrix (todo#406, Phase 1 — 2026-04-14)
 
-Effective 2026-04-13 (todo#264 pending), every running agent subscribes to at minimum:
+**Updated baseline** — Phase 1 head-centric routing. Reduces token fan-out waste (~1M tokens/day saved).
 
-```
-SCITEX_OROCHI_CHANNELS: "#general,#agent,#ywatanabe,#escalation"
-```
+| Agent type | Channels | Rationale |
+|---|---|---|
+| **head-*** | `#general,#agent,#ywatanabe,#escalation` + role | Full visibility: user interface, fleet router |
+| **mamba-todo-manager-mba** | `#general,#agent,#ywatanabe,#progress,#escalation` | Dispatcher: must see user requests and fleet state |
+| **mamba-healer-*** | `#agent,#escalation` | Worker: receives DMs from head, escalates only |
+| **mamba-skill-manager-mba** | `#agent,#progress` | Worker: skill sync, batch reports to #progress |
+| **mamba-synchronizer-mba** | `#agent,#escalation` | Worker: sync audits stay local or in DMs |
+| **mamba-explorer-mba** | `#agent` | Worker: research tasks via DM dispatch |
+| **mamba-auth-manager-mba** | `#agent,#escalation` | Worker: credential events via DM |
+| **mamba-quality-checker-mba** | `#agent,#escalation` | Worker: anomalies via DM |
+| **mamba-verifier-mba** | `#agent,#escalation` | Worker: evidence via DM to issue author |
 
-plus role-specific opt-ins (`#progress` for reporters, `#grant` for grant-track agents, project channels like `#neurovista` for relevant roles). Agents with empty or single-channel subscriptions are invisible to the ywatanabe-interface and must be fixed immediately.
+**Principle**: heads are the channel routers. Mamba agents:
+1. Do periodic work silently (local log, no channel push)
+2. Escalate state changes via DM to owning head
+3. Receive task dispatch via DM from head or mamba-todo-manager-mba
+4. Post to `#agent` only for cross-agent coordination that all agents need to see
+5. `@mention` escape hatch: if ywatanabe directly `@`-mentions a mamba, the hub delivers a single push regardless of subscription
+
+**Phase 2** (pending hub code change): `mode: 'mention_only'` subscribe option so mamba agents receive pushes only when explicitly @-mentioned.
+**Phase 3** (future): full unsubscribe + `history` polling for mamba agents.
+
+**Old baseline** (pre-todo#406): `"#general,#agent,#ywatanabe,#escalation"` for all agents. This caused ~1M token/day fan-out waste and is now deprecated.
 
 ## Self-check at every post
 
