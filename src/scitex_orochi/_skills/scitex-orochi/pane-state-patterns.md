@@ -134,6 +134,23 @@ Do not auto-retry — capture pane, post to `#escalation`, let a human route.
 ```
 Or `tmux capture-pane` returns empty. Claude exited, shell prompt or blank. Action: autostart unit should respawn; if autostart fails, escalate.
 
+## Scrollback false-positive guard — strict last-N-lines window
+
+Added 2026-04-14 after `mamba-healer-mba` msg #10865. Regexes must match against the **last 5 lines** of `tmux capture-pane -p -S -5`, not the full scrollback buffer.
+
+Why: scrollback accumulates every prompt the session has ever seen — a "Press Enter to continue" from 6 hours ago, now scrolled off but still in the buffer, will match a full-buffer regex and trigger a false-positive unblock action. The strict last-5-lines window ensures only the **currently-displayed** prompt is considered.
+
+Implementation contract:
+
+- Capture: `tmux capture-pane -p -S -5 -t <session>` (last 5 lines, joined).
+- All regex matches run against that slice, not against `capture-pane -p` (full scrollback) or `capture-pane -pS -` (entire buffer).
+- The only exception is `:mulling` detection which checks for an `*` animation row — that can appear anywhere in the visible region, so last-10-lines is acceptable for `:mulling` specifically.
+- When a classifier needs to distinguish "live prompt" from "scrollback residue", the rule is **"if it's not in the last 5 lines, it's not a current prompt"**.
+
+Classifiers that ignore this guard will produce spurious `:paste_pending` / `:dev_channels_prompt` / `:permission_prompt` hits on agents that are actually idle at `❯`, and will then send `Enter` or `1` into a live idle prompt — which is a **destructive action** (it submits whatever the agent had been drafting).
+
+Add the last-5-lines check to every new classifier implementation *before* shipping, not as a follow-up fix.
+
 ## Classification algorithm
 
 Priority order (highest wins — exit on first match):
