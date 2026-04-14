@@ -629,6 +629,14 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 content=content_text,
                 metadata=metadata or {},
             )
+            # Create thread association if reply_to is specified
+            reply_to = (metadata or {}).get("reply_to")
+            if reply_to:
+                try:
+                    parent_msg = Message.objects.get(id=int(reply_to))
+                    MessageThread.objects.create(parent=parent_msg, reply=msg)
+                except (Message.DoesNotExist, ValueError, TypeError):
+                    log.warning("reply_to=%s not found, skipping thread", reply_to)
             return {"id": msg.id, "ts": msg.ts.isoformat()}
         except Exception:
             log.exception("Failed to save message")
@@ -1100,6 +1108,14 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 content=content_text,
                 metadata=metadata or {},
             )
+            # Create thread association if reply_to is specified
+            reply_to = (metadata or {}).get("reply_to")
+            if reply_to:
+                try:
+                    parent_msg = Message.objects.get(id=int(reply_to))
+                    MessageThread.objects.create(parent=parent_msg, reply=msg)
+                except (Message.DoesNotExist, ValueError, TypeError):
+                    log.warning("reply_to=%s not found, skipping thread", reply_to)
             return {"id": msg.id, "ts": msg.ts.isoformat()}
         except Exception:
             log.exception("Failed to save message")

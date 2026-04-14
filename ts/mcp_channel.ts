@@ -270,26 +270,15 @@ const conn = {
       console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
       _dbg(`ws open`);
 
-      // Ping/pong heartbeat — detect half-open connections
-      let _lastPong = Date.now();
+      // App-level heartbeat — Daphne does NOT respond to WebSocket
+      // protocol-level ping frames, so we only use app-level heartbeats
+      // for liveness and do NOT terminate on missing pong.
       const _pingInterval = setInterval(() => {
         if (!_ws || _ws.readyState !== WebSocket.OPEN) {
           clearInterval(_pingInterval);
           return;
         }
-        const pongAge = Date.now() - _lastPong;
-        if (pongAge > 10000) {
-          console.error(
-            `[orochi] stale connection (no pong for ${Math.round(pongAge / 1000)}s), forcing reconnect`,
-          );
-          _dbg(`stale: pong age ${pongAge}ms, terminating`);
-          clearInterval(_pingInterval);
-          _ws.terminate();
-          return;
-        }
         try {
-          _ws.ping();
-          // App-level heartbeat for hub registry
           _ws.send(
             JSON.stringify({
               type: "heartbeat",
@@ -298,10 +287,7 @@ const conn = {
             }),
           );
         } catch {}
-      }, 5000);
-      _ws!.on("pong", () => {
-        _lastPong = Date.now();
-      });
+      }, 30000);
       _ws!.on("close", () => clearInterval(_pingInterval));
 
       // Registry heartbeat — fire immediately, then every 30s while connected.

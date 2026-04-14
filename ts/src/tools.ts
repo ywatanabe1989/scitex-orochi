@@ -93,12 +93,13 @@ export async function handleReply(
     }
   }
 
+  const metadata: Record<string, unknown> = args.reply_to ? { reply_to: args.reply_to } : {};
+  if (attachments.length > 0) metadata.attachments = attachments;
   const payload: Record<string, unknown> = {
     channel: args.chat_id,
     text: args.text,
-    metadata: args.reply_to ? { reply_to: args.reply_to } : {},
+    metadata,
   };
-  if (attachments.length > 0) payload.attachments = attachments;
 
   conn.send(JSON.stringify({ type: "message", sender: OROCHI_AGENT, payload }));
   return { content: [{ type: "text", text: "sent" }] };

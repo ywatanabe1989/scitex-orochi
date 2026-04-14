@@ -51,6 +51,7 @@
   var baseText = "";
   var _restartAfterStop = false;
   var _suppressResults = false;
+  var _voiceTarget = null; /* textarea receiving voice transcription */
   /* Generation counter: every new recognition instance gets a generation
    * number. End/error handlers check their captured generation against the
    * current one and no-op if they're stale. This prevents the race condition
@@ -113,7 +114,8 @@
     r.addEventListener("result", function (e) {
       if (myGen !== _generation) return;
       if (_suppressResults) return;
-      var input = document.getElementById("msg-input");
+      /* Write to whichever textarea is active — main or thread reply */
+      var input = _voiceTarget || document.getElementById("msg-input");
       var transcript = "";
       for (var i = 0; i < e.results.length; i++) {
         transcript += e.results[i][0].transcript;
@@ -137,7 +139,11 @@
   }
 
   function _toggleVoice() {
-    var input = document.getElementById("msg-input");
+    /* Determine target textarea: thread reply textarea if focused, else main */
+    var focused = document.activeElement;
+    var threadTextarea = focused && focused.closest && focused.closest(".thread-panel") ? focused : null;
+    var input = (threadTextarea && threadTextarea.tagName === "TEXTAREA") ? threadTextarea : document.getElementById("msg-input");
+
     if (isListening) {
       _userStopped = true;
       /* Bump generation first so any pending end events from this instance
@@ -149,12 +155,14 @@
         try { recognition.abort(); } catch (_) {}
       }
       recognition = null;
+      _voiceTarget = null;
     } else {
       /* Discard old instance (abort is safe even on already-ended instances) */
       if (recognition) {
         try { recognition.abort(); } catch (_) {}
         recognition = null;
       }
+      _voiceTarget = input;
       recognition = _createRecognition();
       _userStopped = false;
       baseText = input ? input.value : "";
@@ -208,10 +216,8 @@
       return;
     }
     if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
-      /* Toggle voice when on chat tab and focus is not inside thread panel */
-      var focused = document.activeElement;
-      var inThread = focused && focused.closest && focused.closest(".thread-panel");
-      if (!inThread && typeof activeTab !== "undefined" && activeTab === "chat") {
+      /* Toggle voice — works in both main textarea and thread panel */
+      if (typeof activeTab !== "undefined" && activeTab === "chat") {
         e.preventDefault();
         _toggleVoice();
       }
