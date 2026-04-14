@@ -64,8 +64,10 @@
     btn.classList.remove("voice-active");
     btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
       " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
+    /* Remove recording indicator from both main and thread textareas */
     var input = document.getElementById("msg-input");
     if (input) input.classList.remove("voice-recording");
+    if (_voiceTarget && _voiceTarget !== input) _voiceTarget.classList.remove("voice-recording");
   }
 
   function _createRecognition() {
@@ -81,8 +83,9 @@
       _userStopped = false;
       btn.classList.add("voice-active");
       btn.title = "Stop voice input";
-      var input = document.getElementById("msg-input");
-      if (input) input.classList.add("voice-recording");
+      /* Apply recording indicator to the target textarea (main or thread) */
+      var target = _voiceTarget || document.getElementById("msg-input");
+      if (target) target.classList.add("voice-recording");
     });
 
     r.addEventListener("end", function () {
