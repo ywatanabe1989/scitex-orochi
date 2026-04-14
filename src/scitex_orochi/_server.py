@@ -57,6 +57,7 @@ class Agent:
     current_task: str = ""
     subagent_count: int = 0
     resources: dict[str, Any] = field(default_factory=dict)
+    credential_email: str = ""
     last_heartbeat: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
     )
@@ -225,6 +226,7 @@ class OrochiServer:
         project = msg.payload.get("project", "")
         multiplexer = msg.payload.get("multiplexer", "")
         current_task = msg.payload.get("current_task", "") or ""
+        credential_email = msg.payload.get("credential_email", "") or ""
         try:
             subagent_count = int(msg.payload.get("subagent_count", 0) or 0)
         except (TypeError, ValueError):
@@ -283,6 +285,7 @@ class OrochiServer:
             status="online",
             current_task=current_task,
             subagent_count=subagent_count,
+            credential_email=credential_email,
             last_heartbeat=now,
             registered_at=now,
         )
@@ -571,6 +574,7 @@ class OrochiServer:
                 "current_task": a.current_task,
                 "subagent_count": a.subagent_count,
                 "resources": a.resources,
+                "credential_email": a.credential_email,
                 "last_heartbeat": a.last_heartbeat,
                 "workspace_id": a.workspace_id,
                 "registered_at": a.registered_at,
