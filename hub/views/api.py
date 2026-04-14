@@ -61,6 +61,7 @@ def api_workspaces(request):
     return JsonResponse(data, safe=False)
 
 
+@csrf_exempt
 @login_required
 @require_http_methods(["GET", "PATCH"])
 def api_channels(request, slug=None):
@@ -112,6 +113,7 @@ def api_channels(request, slug=None):
     return JsonResponse(data, safe=False)
 
 
+@csrf_exempt
 @login_required
 @require_http_methods(["GET", "PATCH"])
 def api_channel_prefs(request, slug=None):
@@ -132,7 +134,7 @@ def api_channel_prefs(request, slug=None):
 
         pref, _ = ChannelPreference.objects.get_or_create(user=request.user, channel=ch)
         changed_fields = []
-        for field in ("is_starred", "is_muted", "is_hidden", "notification_level"):
+        for field in ("is_starred", "is_muted", "is_hidden", "notification_level", "sort_order"):
             if field in body:
                 setattr(pref, field, body[field])
                 changed_fields.append(field)

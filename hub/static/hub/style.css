@@ -1929,8 +1929,15 @@ a.chat-link:hover {
   color: #f5a623;
 }
 .starred-item {
-  /* no left border — star icon conveys state (ywatanabe msg#10393) */
+  /* legacy class, no longer used for section rendering */
   padding-left: 6px;
+}
+/* Starred channel inline highlight in CHANNELS list */
+.ch-starred .ch-name {
+  font-weight: 600;
+}
+.ch-starred {
+  border-left: 2px solid rgba(245, 166, 35, 0.3);
 }
 
 /* Channel context menu */

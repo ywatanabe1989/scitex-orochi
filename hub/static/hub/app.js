@@ -558,6 +558,7 @@ if (!userName) {
   }
 }
 var csrfToken = window.__orochiCsrfToken || "";
+function getCsrfToken() { return window.__orochiCsrfToken || csrfToken || ""; }
 function getAgentColor(name) {
   var s = name || "unknown";
   var sum = 0;

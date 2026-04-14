@@ -47,23 +47,110 @@
     });
   }
 
-  var recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = VOICE_LANGS[langIdx].code;
-
+  var recognition = null; /* created fresh on each start to prevent stale state */
   var isListening = false;
   var _userStopped = false; /* true when the user explicitly clicked stop */
   /* Snapshot of the textarea value when recording started, so interim
    * results can be replaced in-place without accumulating duplicates. */
   var baseText = "";
+  var _restartAfterStop = false;
+  var _suppressResults = false;
+
+  function _createRecognition() {
+    var r = new SpeechRecognition();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = VOICE_LANGS[langIdx].code;
+
+    r.addEventListener("start", function () {
+      isListening = true;
+      _userStopped = false;
+      btn.classList.add("voice-active");
+      btn.title = "Stop voice input";
+      var input = document.getElementById("msg-input");
+      if (input) input.classList.add("voice-recording");
+    });
+
+    r.addEventListener("end", function () {
+      if (_restartAfterStop) {
+        _restartAfterStop = false;
+        _suppressResults = false;
+        recognition = _createRecognition();
+        try { recognition.start(); } catch (_) {}
+        return;
+      }
+      if (isListening && !_userStopped) {
+        /* Unexpected end — recreate instance to recover from stale state */
+        isListening = false; /* reset flag before restart attempt */
+        setTimeout(function () {
+          if (!_userStopped) {
+            recognition = _createRecognition();
+            try { recognition.start(); } catch (_) {
+              /* restart failed — update UI to reflect stopped state */
+              btn.classList.remove("voice-active");
+              btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
+                " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
+              var input = document.getElementById("msg-input");
+              if (input) input.classList.remove("voice-recording");
+            }
+          }
+        }, 150);
+        return;
+      }
+      /* Normal stop: update UI */
+      isListening = false;
+      btn.classList.remove("voice-active");
+      btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
+        " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
+      var input = document.getElementById("msg-input");
+      if (input) input.classList.remove("voice-recording");
+    });
+
+    r.addEventListener("result", function (e) {
+      if (_suppressResults) return;
+      var input = document.getElementById("msg-input");
+      var transcript = "";
+      for (var i = 0; i < e.results.length; i++) {
+        transcript += e.results[i][0].transcript;
+      }
+      var sep = baseText && !baseText.endsWith(" ") && transcript ? " " : "";
+      if (input) {
+        input.value = baseText + sep + transcript;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+
+    r.addEventListener("error", function (e) {
+      if (e.error !== "no-speech" && e.error !== "aborted") {
+        console.warn("Voice input error:", e.error);
+      }
+      isListening = false;
+      btn.classList.remove("voice-active");
+      btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
+        " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
+      var input = document.getElementById("msg-input");
+      if (input) input.classList.remove("voice-recording");
+    });
+
+    return r;
+  }
 
   function _toggleVoice() {
     var input = document.getElementById("msg-input");
     if (isListening) {
       _userStopped = true;
-      recognition.stop();
+      try { recognition.stop(); } catch (_) {
+        /* If stop() throws, forcibly reset state */
+        isListening = false;
+        btn.classList.remove("voice-active");
+        if (input) input.classList.remove("voice-recording");
+      }
     } else {
+      /* Abort any stale instance and start fresh */
+      if (recognition) {
+        try { recognition.abort(); } catch (_) {}
+      }
+      recognition = _createRecognition();
       _userStopped = false;
       baseText = input ? input.value : "";
       try {
@@ -80,7 +167,7 @@
   }
   function _cycleLang() {
     langIdx = (langIdx + 1) % VOICE_LANGS.length;
-    recognition.lang = VOICE_LANGS[langIdx].code;
+    if (recognition) recognition.lang = VOICE_LANGS[langIdx].code;
     if (langBtn) langBtn.textContent = VOICE_LANGS[langIdx].label;
     btn.title =
       (isListening ? "Stop voice input" : "Voice input") +
@@ -130,91 +217,14 @@
     "Voice input · " + VOICE_LANGS[langIdx].label +
     " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
 
-  recognition.addEventListener("start", function () {
-    isListening = true;
-    _userStopped = false;
-    btn.classList.add("voice-active");
-    btn.title = "Stop voice input";
-    var input = document.getElementById("msg-input");
-    if (input) input.classList.add("voice-recording");
-  });
-
-  /* Unified end handler — auto-restarts if the user didn't stop explicitly.
-   * This recovers from browser-side interruptions (DOM mutations, silence
-   * timeout, focus loss) that can terminate the session unexpectedly.
-   * msg#10280 — ywatanabe reports voice drops when feed updates arrive. */
-  recognition.addEventListener("end", function () {
-    if (_restartAfterStop) {
-      /* Deliberate stop-restart cycle (voiceInputResetAfterSend) */
-      _restartAfterStop = false;
-      _suppressResults = false;
-      try { recognition.start(); } catch (_) {}
-      return;
-    }
-    if (isListening && !_userStopped) {
-      /* Unexpected end while user still wants recording — restart after
-       * a 150ms pause to avoid rapid loops on repeated errors. */
-      setTimeout(function () {
-        if (isListening && !_userStopped) {
-          try { recognition.start(); } catch (_) {}
-        }
-      }, 150);
-      return;
-    }
-    /* Normal stop: update UI */
-    isListening = false;
-    btn.classList.remove("voice-active");
-    btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
-      " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
-    var input = document.getElementById("msg-input");
-    if (input) input.classList.remove("voice-recording");
-  });
-
-  var _suppressResults = false;
-
-  recognition.addEventListener("result", function (e) {
-    /* Suppress stale results arriving after send-reset (#343) */
-    if (_suppressResults) return;
-    var input = document.getElementById("msg-input");
-    var transcript = "";
-    for (var i = 0; i < e.results.length; i++) {
-      transcript += e.results[i][0].transcript;
-    }
-    /* Append transcribed text after whatever was already in the textarea */
-    var sep = baseText && !baseText.endsWith(" ") && transcript ? " " : "";
-    input.value = baseText + sep + transcript;
-    /* Trigger auto-resize */
-    input.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-
-  recognition.addEventListener("error", function (e) {
-    /* "no-speech" and "aborted" are normal -- user just stayed silent or
-     * clicked stop before speaking. Other errors: log but don't crash. */
-    if (e.error !== "no-speech" && e.error !== "aborted") {
-      console.warn("Voice input error:", e.error);
-    }
-    isListening = false;
-    btn.classList.remove("voice-active");
-    btn.title = "Voice input";
-  });
-
-  /* Hands-free dictation: when chat.js sendMessage clears the textarea,
-   * the next recognition.result event would otherwise re-render the
-   * cumulative transcript on top of the now-empty input (because
-   * recognition.continuous=true keeps the entire session in e.results
-   * and baseText still points at pre-send text). Reset both baseText
-   * AND the recognition session so the input stays clean and the user
-   * can keep talking without manually clicking the mic between sends.
-   * msg#6497 / msg#6500 — ywatanabe explicitly asks for this so the
-   * mic can stay on continuously. */
+  /* Hands-free dictation: reset baseText + restart recognition after send.
+   * msg#6497/6500 — ywatanabe wants continuous dictation across sends. */
   window.voiceInputResetAfterSend = function () {
     baseText = "";
     _suppressResults = true;
     if (isListening) {
-      _restartAfterStop = true; /* unified end handler will restart */
+      _restartAfterStop = true;
       try { recognition.stop(); } catch (_) {}
     }
   };
-
-  var _restartAfterStop = false;
 })();
