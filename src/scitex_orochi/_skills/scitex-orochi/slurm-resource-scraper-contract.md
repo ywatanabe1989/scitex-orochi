@@ -293,3 +293,94 @@ saturated. A daemon-layer workload that direct-execs on NAS would fight
 these visitor sessions at the kernel scheduler level — one of the
 reasons the fleet daemon-host policy forbids CPU-hot daemons on NAS
 (see #133 daemon-host policy).
+
+## Appendix B: NAS Stability Investigation — Live Pilot Reference
+
+_Recorded by mamba-synchronizer-mba per head-nas msg#11574 GO-criteria checkpoint. 2026-04-14._
+
+### Context
+
+The 2026-04-14 NAS stability investigation (triggered by ywatanabe msg#11554,
+building on #137 / msg#11464 / msg#11499) serves as an unplanned but
+highly informative real-world pilot of the design principles in this
+contract, extended to non-SLURM host metrics.
+
+### Canonical probe reference
+
+**Script**: `scripts/fleet-watch/host-telemetry-probe.sh`
+**Branch**: `feat/nas-stability-probe` (scitex-orochi)
+**Commit**: `3e52c84` (probe script) / `204da9b` (Experiment A doc added)
+**Output**: `~/.scitex/orochi/host-telemetry/host-telemetry-<hostname>.ndjson`
+**Cadence**: 30s, systemd user timer
+**Side-effect budget**: zero (nice=10, IOScheduling best-effort/6, no sudo, no Claude quota)
+
+This probe is the superset "host self-describe" version of the SLURM scraper.
+It covers 7 source categories per sample: `/proc/{loadavg,meminfo,stat,pressure}`,
+`cgroup/user.slice`, SLURM (`sinfo`/`squeue`/`scontrol --json`), docker stats,
+cloudflared journalctl ERR count, systemd failed units, systemd-cgtop.
+
+### Design principle validated
+
+The probe uses **stock CLI wire format** (NDJSON, verbatim outputs) and
+**bash + systemd-timer, no LLM** — the same principles required of the SLURM
+scraper in §§ 3–4 and 10. The probe is the canonical reference for how these
+principles apply to the broader host-self-describe domain.
+
+### Parallel probe infrastructure (2026-04-14T18:02Z)
+
+- **NAS** (`feat/nas-stability-probe`): `host-telemetry-DXP480TPLUS-994.ndjson`, firing 30s
+- **healer-nas** (independent): `~/GITIGNORED/nas-probe/probe.ndjson`, NDJSON 30s,
+  fields: `ts, load_1/5/15, ncpu, mem_total_kb, mem_avail_kb, slurm_running,
+  slurm_pending, slurm_cpu_used, cf_bastion_active, cf_pid, failed_user_units,
+  failed_sys_units, scitex_post_boot`
+- **MBA** (parallel, for relative comparison): `host-telemetry-<mba-hostname>.ndjson`
+
+Both probes merge on `ts` (round to nearest 30s). healer-nas fields are a
+strict subset of head-nas host-telemetry fields — clean union merge.
+
+### Key empirical finding motivating Experiment A
+
+`/sys/fs/cgroup/user.slice/cpu.pressure`: `some avg10=23.11 avg60=13.06`
+— 23% of user tasks delayed waiting for CPU in a 10s window. This is the
+direct empirical basis for Experiment A (cgroup enforcement in
+`scripts/fleet-watch/experiment-a-slurm-cgroup-enforcement.md`, commit `204da9b`).
+
+Root cause: NAS SLURM running with `TaskPlugin=task/none`, `ProctrackType=proctrack/linuxproc`,
+`cgroup.conf` absent — zero kernel-level resource fencing. All 6 visitor jobs
+(12/12 CPUs) + daphne (9.3GB) + docker (7 containers) + fleet agents compete in
+the same unpartitioned kernel scheduler pool.
+
+### Implications for scraper contract
+
+1. **SLURM `scontrol show node --json` `cpu_load` field alone is insufficient**
+   for detecting the pressure state. The `cpu_load` figure (Appendix A: 171 =
+   1.71×) reflects running workload but does not capture scheduling delay.
+   The kernel `cpu.pressure` PSI metric (`/proc/pressure/cpu` or cgroup pressure
+   files) should be considered a companion observable when NAS-style over-commit
+   is the failure mode being monitored.
+
+2. **The scraper's "no side effects" principle is empirically enforced here**:
+   `nice=10 + IOScheduling best-effort/6` means the probe itself does not
+   contribute to cpu.pressure under the observed load conditions. This is the
+   correct posture for any daemon (SLURM scraper, skill-sync, fleet-watch) on
+   NAS.
+
+3. **Dual-probe validation pattern**: running a second independent probe
+   (healer-nas vs head-nas) with a subset-compatible schema enabled cross-check
+   within 1h without coordination overhead. Recommend this pattern for the
+   SLURM scraper's acceptance test: run `head-nas` probe + `head-spartan` probe
+   in parallel, merge on ts, verify field alignment per §7 portability smoke
+   test.
+
+### Experiment A — status and boundary
+
+`scripts/fleet-watch/experiment-a-slurm-cgroup-enforcement.md` (commit `204da9b`)
+contains the full plan: `cgroup.conf` minimal template, `slurm.conf` 4-line
+diff, Option A/B restart, rollback, GO criteria, risk table.
+
+**Status**: `DRAFT-PRE-APPROVAL`. None of the GO criteria are satisfied as of
+2026-04-14T18:04Z. No NAS configuration has been or will be changed without
+ywatanabe explicit GO + sudo access.
+
+This appendix satisfies the mamba-synchronizer-mba GO-criteria checkpoint
+(head-nas msg#11574).
