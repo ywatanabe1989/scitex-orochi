@@ -22,8 +22,7 @@
     { code: "en-US", label: "EN" },
     { code: "ja-JP", label: "JA" },
   ];
-  /* Restore the last-used language across sessions; ywatanabe asked for
-   * this at msg#6528 ("最後に使った言語を記憶してほしい"). Falls back
+  /* Restore the last-used language across sessions. Falls back
    * to the browser locale on first use. */
   var LANG_KEY = "orochi-voice-lang";
   function _resolveInitialLangIdx() {
@@ -42,27 +41,41 @@
     langBtn.textContent = VOICE_LANGS[langIdx].label;
     langBtn.addEventListener("click", function () {
       _cycleLang();
-      /* Hand focus back to the textarea so Enter still sends. */
       try { document.getElementById("msg-input").focus(); } catch (_) {}
     });
   }
 
-  var recognition = null; /* created fresh on each start to prevent stale state */
+  var recognition = null;
   var isListening = false;
-  var _userStopped = false; /* true when the user explicitly clicked stop */
-  /* Snapshot of the textarea value when recording started, so interim
-   * results can be replaced in-place without accumulating duplicates. */
+  var _userStopped = false;
   var baseText = "";
   var _restartAfterStop = false;
   var _suppressResults = false;
+  /* Generation counter: every new recognition instance gets a generation
+   * number. End/error handlers check their captured generation against the
+   * current one and no-op if they're stale. This prevents the race condition
+   * where aborting an old instance fires a late `end` event that corrupts
+   * the new instance's state (msg#10664/10667 root cause). */
+  var _generation = 0;
+
+  function _setStoppedUI() {
+    isListening = false;
+    btn.classList.remove("voice-active");
+    btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
+      " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
+    var input = document.getElementById("msg-input");
+    if (input) input.classList.remove("voice-recording");
+  }
 
   function _createRecognition() {
+    var myGen = ++_generation; /* capture generation at creation time */
     var r = new SpeechRecognition();
     r.continuous = true;
     r.interimResults = true;
     r.lang = VOICE_LANGS[langIdx].code;
 
     r.addEventListener("start", function () {
+      if (myGen !== _generation) return; /* stale instance */
       isListening = true;
       _userStopped = false;
       btn.classList.add("voice-active");
@@ -72,6 +85,7 @@
     });
 
     r.addEventListener("end", function () {
+      if (myGen !== _generation) return; /* stale instance — discard */
       if (_restartAfterStop) {
         _restartAfterStop = false;
         _suppressResults = false;
@@ -80,33 +94,24 @@
         return;
       }
       if (isListening && !_userStopped) {
-        /* Unexpected end — recreate instance to recover from stale state */
-        isListening = false; /* reset flag before restart attempt */
+        /* Unexpected end — recreate instance to recover */
+        isListening = false;
         setTimeout(function () {
+          if (myGen !== _generation) return; /* superseded by a newer toggle */
           if (!_userStopped) {
             recognition = _createRecognition();
             try { recognition.start(); } catch (_) {
-              /* restart failed — update UI to reflect stopped state */
-              btn.classList.remove("voice-active");
-              btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
-                " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
-              var input = document.getElementById("msg-input");
-              if (input) input.classList.remove("voice-recording");
+              _setStoppedUI();
             }
           }
         }, 150);
         return;
       }
-      /* Normal stop: update UI */
-      isListening = false;
-      btn.classList.remove("voice-active");
-      btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
-        " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
-      var input = document.getElementById("msg-input");
-      if (input) input.classList.remove("voice-recording");
+      _setStoppedUI();
     });
 
     r.addEventListener("result", function (e) {
+      if (myGen !== _generation) return;
       if (_suppressResults) return;
       var input = document.getElementById("msg-input");
       var transcript = "";
@@ -121,15 +126,11 @@
     });
 
     r.addEventListener("error", function (e) {
+      if (myGen !== _generation) return;
       if (e.error !== "no-speech" && e.error !== "aborted") {
         console.warn("Voice input error:", e.error);
       }
-      isListening = false;
-      btn.classList.remove("voice-active");
-      btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
-        " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
-      var input = document.getElementById("msg-input");
-      if (input) input.classList.remove("voice-recording");
+      _setStoppedUI();
     });
 
     return r;
@@ -139,32 +140,38 @@
     var input = document.getElementById("msg-input");
     if (isListening) {
       _userStopped = true;
-      try { recognition.stop(); } catch (_) {
-        /* If stop() throws, forcibly reset state */
-        isListening = false;
-        btn.classList.remove("voice-active");
-        if (input) input.classList.remove("voice-recording");
-      }
-    } else {
-      /* Abort any stale instance and start fresh */
+      /* Bump generation first so any pending end events from this instance
+       * are treated as stale. Then stop (which will fire end, but it will
+       * see myGen !== _generation and no-op after our generation bump). */
+      _generation++;
+      _setStoppedUI();
       if (recognition) {
         try { recognition.abort(); } catch (_) {}
+      }
+      recognition = null;
+    } else {
+      /* Discard old instance (abort is safe even on already-ended instances) */
+      if (recognition) {
+        try { recognition.abort(); } catch (_) {}
+        recognition = null;
       }
       recognition = _createRecognition();
       _userStopped = false;
       baseText = input ? input.value : "";
       try {
         recognition.start();
-      } catch (_) {}
+      } catch (_) {
+        /* start() failed synchronously — reset UI */
+        _generation++;
+        _setStoppedUI();
+      }
     }
-    /* Always hand focus back to the textarea so the next Enter goes to
-     * sendMessage and not to a re-click of the mic button. msg#6537 —
-     * ywatanabe pressed Enter expecting send, hit the mic button instead
-     * (it had focus from the previous click). */
+    /* Always hand focus back to the textarea. */
     if (input) {
       try { input.focus(); } catch (_) {}
     }
   }
+
   function _cycleLang() {
     langIdx = (langIdx + 1) % VOICE_LANGS.length;
     if (recognition) recognition.lang = VOICE_LANGS[langIdx].code;
@@ -173,26 +180,17 @@
       (isListening ? "Stop voice input" : "Voice input") +
       " · " + VOICE_LANGS[langIdx].label +
       " · right-click to change language · Ctrl+M to toggle";
-    /* Persist for next session (msg#6528). */
     try { localStorage.setItem(LANG_KEY, VOICE_LANGS[langIdx].code); } catch (_) {}
   }
-  /* todo#332 v2: expose toggle so chat.js Alt+Enter can trigger it */
+
   window.toggleVoiceInput = _toggleVoice;
   btn.addEventListener("click", _toggleVoice);
-  /* Right-click on the mic button cycles language without leaving the
-   * keyboard shortcut path or needing the separate EN/JA pill button.
-   * msg#6515 — ywatanabe wants language switch on right-click. */
   btn.addEventListener("contextmenu", function (e) {
     e.preventDefault();
     _cycleLang();
   });
-  /* Keyboard shortcut: Ctrl+M (or Cmd+M) toggles voice input from
-   * anywhere on the page. msg#6516 — ywatanabe wants no-mouse access.
-   * Cmd+M is reserved by macOS Safari (minimize), so we accept the
-   * Ctrl variant on every platform and the Alt+V backup on macOS. */
-  /* Use capture phase so this fires before bubble-phase handlers on textareas */
+
   document.addEventListener("keydown", function (e) {
-    /* Ctrl+M / Cmd+M or Alt+V toggles voice from anywhere */
     if (
       (e.ctrlKey && (e.key === "m" || e.key === "M")) ||
       (e.altKey && (e.key === "v" || e.key === "V"))
@@ -201,8 +199,6 @@
       _toggleVoice();
       return;
     }
-    /* Ctrl+Enter or Alt+Enter toggles voice when Chat tab is active (msg#9375 / msg#9926).
-     * Skip if focus is inside the thread panel — thread has its own Alt+Enter handler. */
     if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
       var focused = document.activeElement;
       var inThread = focused && focused.closest && focused.closest(".thread-panel");
@@ -211,20 +207,23 @@
         _toggleVoice();
       }
     }
-  }, true /* capture phase — fires reliably before textarea keydown handlers */);
-  /* Initial title with the new shortcut hint. */
+  }, true);
+
   btn.title =
     "Voice input · " + VOICE_LANGS[langIdx].label +
     " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
 
-  /* Hands-free dictation: reset baseText + restart recognition after send.
-   * msg#6497/6500 — ywatanabe wants continuous dictation across sends. */
   window.voiceInputResetAfterSend = function () {
     baseText = "";
     _suppressResults = true;
     if (isListening) {
       _restartAfterStop = true;
-      try { recognition.stop(); } catch (_) {}
+      /* Bump generation so the current instance's end fires but is treated
+       * as the restart-trigger rather than a stale stop. The _restartAfterStop
+       * path in the end handler checks this correctly. */
+      if (recognition) {
+        try { recognition.stop(); } catch (_) {}
+      }
     }
   };
 })();
