@@ -329,8 +329,24 @@ body {
   font-weight: bold;
   padding: 1px 5px;
   border-radius: 8px;
-  min-width: 16px;
+  min-width: 18px;
   text-align: center;
+  flex-shrink: 0;
+  margin-left: auto; /* push to the right edge */
+}
+/* Channel name — fills flex space between star and badge */
+.ch-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* Badge slot — always reserves space to prevent layout shift */
+.ch-badge-slot {
+  min-width: 20px;
+  flex-shrink: 0;
+  text-align: right;
 }
 .agent-card,
 .machine-item {

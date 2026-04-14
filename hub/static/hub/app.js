@@ -295,6 +295,11 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       if (currentChannel) _updateChannelTopicBanner(currentChannel);
       _renderStarredSection();
+      /* Re-render channel list now that prefs are loaded (starred channels need to be filtered out).
+       * Bust the stats cache so fetchStats doesn't skip the re-render. */
+      var chContainer = document.getElementById("channels");
+      if (chContainer) chContainer._lastStatsJson = null;
+      if (typeof fetchStats === "function") fetchStats();
     })
     .catch(function (_) {});
 });
@@ -333,9 +338,15 @@ function _renderStarredSection() {
   container.innerHTML = starred.map(function (ch) {
     var active = currentChannel === ch ? " active" : "";
     var muted = (_channelPrefs[ch] && _channelPrefs[ch].is_muted) ? " ch-muted" : "";
+    var unread = channelUnread[ch] || 0;
+    var badgeHtml = '<span class="ch-badge-slot">' +
+      (unread > 0 ? '<span class="unread-badge">' + (unread > 99 ? "99+" : unread) + '</span>' : '') +
+      '</span>';
     return '<div class="channel-item starred-item' + active + muted + '" data-channel="' + escapeHtml(ch) + '">' +
       '<span class="ch-star ch-star-on" data-ch="' + escapeHtml(ch) + '" title="Unstar">&#9733;</span>' +
-      escapeHtml(ch) + '</div>';
+      '<span class="ch-name">' + escapeHtml(ch) + '</span>' +
+      badgeHtml +
+      '</div>';
   }).join("");
   container.querySelectorAll(".channel-item").forEach(function (el) {
     el.addEventListener("click", function (ev) {
@@ -808,19 +819,37 @@ document.addEventListener("visibilitychange", function () {
 
 /* Per-channel unread badges (#322) */
 function updateChannelUnreadBadges() {
-  document.querySelectorAll("#channels .channel-item").forEach(function (el) {
+  /* Update both #channels and #starred-channels sections */
+  document.querySelectorAll("#channels .channel-item, #starred-channels .channel-item").forEach(function (el) {
     var ch = el.getAttribute("data-channel");
-    var badge = el.querySelector(".unread-badge");
     var count = channelUnread[ch] || 0;
-    if (count > 0) {
-      if (!badge) {
-        badge = document.createElement("span");
-        badge.className = "unread-badge";
-        el.appendChild(badge);
+    var slot = el.querySelector(".ch-badge-slot");
+    if (slot) {
+      /* Preferred: update inside the badge slot (stable layout) */
+      var badge = slot.querySelector(".unread-badge");
+      if (count > 0) {
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "unread-badge";
+          slot.appendChild(badge);
+        }
+        badge.textContent = count > 99 ? "99+" : count;
+      } else if (badge) {
+        badge.remove();
       }
-      badge.textContent = count > 99 ? "99+" : count;
-    } else if (badge) {
-      badge.remove();
+    } else {
+      /* Fallback: legacy DOM structure without slot */
+      var badge2 = el.querySelector(".unread-badge");
+      if (count > 0) {
+        if (!badge2) {
+          badge2 = document.createElement("span");
+          badge2.className = "unread-badge";
+          el.appendChild(badge2);
+        }
+        badge2.textContent = count > 99 ? "99+" : count;
+      } else if (badge2) {
+        badge2.remove();
+      }
     }
   });
 }
@@ -1191,9 +1220,10 @@ async function fetchStats() {
       var norm = c.charAt(0) === "#" ? c : "#" + c;
       if (seenNames[norm]) return;
       seenNames[norm] = true;
-      /* Skip channels hidden by user pref */
+      /* Skip channels hidden or starred (starred appear in Starred section only) */
       var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
       if (pref.is_hidden) return;
+      if (pref.is_starred) return; /* shown in Starred section, not here */
       displayChannels.push({ raw: c, norm: norm });
     });
     chContainer.innerHTML = displayChannels
@@ -1206,11 +1236,16 @@ async function fetchStats() {
         var starred = pref.is_starred ? " ch-starred-in-list" : "";
         var starHtml = '<span class="ch-star ' + (pref.is_starred ? "ch-star-on" : "ch-star-off") +
           '" data-ch="' + escapeHtml(norm) + '" title="' + (pref.is_starred ? "Unstar" : "Star") + '">&#9733;</span>';
+        var unread = channelUnread[c] || channelUnread[norm] || 0;
+        var badgeHtml = '<span class="ch-badge-slot">' +
+          (unread > 0 ? '<span class="unread-badge">' + (unread > 99 ? "99+" : unread) + '</span>' : '') +
+          '</span>';
         return (
           '<div class="channel-item' + active + muted + starred +
           '" data-channel="' + escapeHtml(c) + '">' +
           starHtml +
-          escapeHtml(entry.norm) +
+          '<span class="ch-name">' + escapeHtml(entry.norm) + '</span>' +
+          badgeHtml +
           "</div>"
         );
       })

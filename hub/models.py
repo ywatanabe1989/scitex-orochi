@@ -221,6 +221,8 @@ class ChannelPreference(models.Model):
         choices=NOTIF_CHOICES,
         default=NOTIF_ALL,
     )
+    sort_order = models.IntegerField(default=0, db_index=True,
+                                     help_text="Manual sort order within sidebar section (drag-and-drop)")
 
     class Meta:
         unique_together = ("user", "channel")
