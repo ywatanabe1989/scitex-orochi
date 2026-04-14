@@ -61,3 +61,25 @@
   pointer-events: none;
   user-select: none;
 }
+
+/* Bastion cloud nodes (outer ring) */
+.conn-node-bastion rect {
+  transition: fill 0.15s, stroke 0.15s;
+}
+.conn-node-bastion:hover rect {
+  fill: rgba(78, 205, 196, 0.2);
+}
+.conn-bastion-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  font-weight: 500;
+  fill: #888;
+  pointer-events: none;
+  user-select: none;
+}
+.conn-node-bastion:hover .conn-bastion-label {
+  fill: #4ecdc4;
+}
+
+/* Pending badge pill */
+.conn-pill-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }

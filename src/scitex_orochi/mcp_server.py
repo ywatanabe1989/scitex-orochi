@@ -241,11 +241,17 @@ if _FASTMCP_AVAILABLE:
         elif OROCHI_TOKEN:
             dl_url += f"?token={OROCHI_TOKEN}"
 
+        MAX_BYTES = 50 * 1024 * 1024  # 50 MB safety cap (prevent OOM on large media)
         try:
             resp = await asyncio.get_event_loop().run_in_executor(
                 None, urllib.request.urlopen, dl_url
             )
-            data = resp.read()
+            content_length = resp.headers.get("Content-Length")
+            if content_length and int(content_length) > MAX_BYTES:
+                return json.dumps({"error": f"File too large ({int(content_length) // 1024 // 1024}MB > 50MB limit)"})
+            data = resp.read(MAX_BYTES + 1)
+            if len(data) > MAX_BYTES:
+                return json.dumps({"error": "File too large (> 50MB limit)"})
         except urllib.error.HTTPError as e:
             return json.dumps({"error": f"Download failed ({e.code})"})
 

@@ -111,6 +111,19 @@ document.getElementById("msg-attach").addEventListener("click", function () {
   document.getElementById("file-input").click();
 });
 
+/* Ctrl+U / Cmd+U global shortcut → open file picker (msg#9877) */
+document.addEventListener("keydown", function (e) {
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!((isMac ? e.metaKey : e.ctrlKey) && e.key === "u")) return;
+  var tag = document.activeElement && document.activeElement.tagName;
+  /* Only intercept when focus is on the message composer or not on a text input */
+  var onComposer = document.activeElement && document.activeElement.id === "msg-input";
+  var onOtherInput = (tag === "INPUT" || tag === "TEXTAREA") && !onComposer;
+  if (onOtherInput) return;
+  e.preventDefault();
+  document.getElementById("file-input").click();
+});
+
 document
   .getElementById("file-input")
   .addEventListener("change", async function () {

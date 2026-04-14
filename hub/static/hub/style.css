@@ -356,7 +356,41 @@ body {
   flex: 1;
   width: 100%;
   overflow: hidden;
+  position: relative;
 }
+/* Feed scroll overlay buttons */
+.feed-scroll-btn {
+  position: absolute;
+  right: 20px;
+  z-index: 50;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(30,30,30,0.92);
+  border: 1px solid #444;
+  color: #ccc;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, background 0.15s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  line-height: 1;
+}
+.feed-scroll-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.feed-scroll-btn:hover {
+  background: rgba(78,205,196,0.18);
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+#feed-scroll-top { bottom: calc(48px + 100px + 48px); }
+#feed-scroll-bottom { bottom: calc(48px + 48px); }
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -563,6 +597,52 @@ body {
   font-family: "Consolas", "Monaco", monospace;
   font-size: 0.9em;
   color: #e06c75;
+}
+/* Fenced code block (#375) */
+.code-block-wrap {
+  position: relative;
+  margin: 6px 0;
+}
+pre.code-block {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0;
+  overflow-x: auto;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 0.85em;
+  line-height: 1.5;
+  white-space: pre;
+  color: #c9d1d9;
+}
+/* Language badge (top-right corner of code block) */
+.code-lang-badge {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  font-size: 10px;
+  color: #888;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 1px 6px;
+  pointer-events: none;
+  z-index: 1;
+  text-transform: lowercase;
+}
+/* highlight.js overrides — keep our border/radius */
+pre.code-block.hljs { background: #0d1117; padding: 12px 16px; border-radius: 6px; }
+.code-block-wrap code.hljs { display: block; overflow-x: auto; }
+/* Markdown blockquote: lines starting with `> ` (#9721) */
+blockquote.chat-blockquote {
+  border-left: 4px solid #4a4a5a;
+  margin: 4px 0;
+  padding: 2px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #9e9eb0;
+  font-style: italic;
+  border-radius: 0 3px 3px 0;
 }
 .msg-ref-link {
   color: #4ecdc4;

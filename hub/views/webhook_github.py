@@ -128,6 +128,33 @@ def _format_event(event: str, payload: dict) -> str | None:
             return f"✅ [{repo}] Issue #{number} closed: {title} - {url}"
         return None
 
+    if event == "dependabot_alert":
+        action = payload.get("action")
+        alert = payload.get("alert") or {}
+        number = alert.get("number")
+        severity = (alert.get("security_advisory") or {}).get("severity", "?")
+        pkg = ((alert.get("dependency") or {}).get("package") or {}).get("name", "?")
+        summary = (alert.get("security_advisory") or {}).get("summary", "")
+        url = alert.get("html_url", "")
+        icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵"}.get(
+            severity.lower(), "⚠️"
+        )
+        if action in ("created", "auto_opened"):
+            return f"{icon} [{repo}] Dependabot alert #{number} [{severity}]: {pkg} — {summary} - {url}"
+        if action in ("dismissed", "auto_dismissed", "fixed"):
+            return f"✅ [{repo}] Dependabot alert #{number} {action}: {pkg}"
+        return None
+
+    if event == "security_advisory":
+        advisory = payload.get("security_advisory") or {}
+        severity = advisory.get("severity", "?")
+        summary = advisory.get("summary", "")
+        url = advisory.get("html_url", "")
+        icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵"}.get(
+            severity.lower(), "⚠️"
+        )
+        return f"{icon} [security_advisory] [{severity}]: {summary} - {url}"
+
     return None
 
 

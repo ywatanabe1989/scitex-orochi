@@ -327,16 +327,25 @@
   padding-left: 22px;
 }
 
-/* Thread input row */
+/* Thread input row — wrapper for pending tray + compose row */
 .thread-input-row {
   display: flex;
-  gap: 8px;
-  padding: 12px 16px;
+  flex-direction: column;
+  gap: 0;
+  padding: 10px 14px 12px;
   border-top: 1px solid #222;
   background: #111;
   flex-shrink: 0;
 }
 
+/* Inner row: textarea + action buttons + Send */
+.thread-compose-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.thread-compose-row textarea,
 .thread-input-row textarea {
   flex: 1;
   background: #1a1a1a;
@@ -350,6 +359,7 @@
   line-height: 1.4;
 }
 
+.thread-compose-row textarea:focus,
 .thread-input-row textarea:focus {
   border-color: #4ecdc4;
   outline: none;
@@ -370,6 +380,39 @@
 
 .thread-send-btn:hover {
   background: #3bb3aa;
+}
+
+/* Thread input action buttons (📎 ✏️ 🎤) — match main composer style */
+.thread-input-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.thread-input-actions button {
+  background: #1a1a1a;
+  color: #ccc;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 16px;
+  min-width: 36px;
+  cursor: pointer;
+  transition: border-color 0.1s, color 0.1s;
+}
+.thread-input-actions button:hover {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+
+/* Thread pending attachment tray — matches main composer tray */
+.thread-pending-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 6px 0;
+  min-height: 0;
 }
 
 /* Empty notice in thread */

@@ -5,17 +5,149 @@
 var threadPanel = null;
 var threadPanelParentId = null;
 
-/* Auto-link URLs and msg#NNNN refs in already-escaped HTML (thread reply bodies). */
+/* Thread-local pending attachments (separate from main composer pendingAttachments) */
+var threadPendingAttachments = [];
+var _threadSketchActive = false;
+
+function _renderThreadAttachmentTray() {
+  var tray = document.getElementById("thread-pending-attachments");
+  if (!tray) return;
+  if (!threadPendingAttachments.length) {
+    tray.style.display = "none";
+    tray.innerHTML = "";
+    return;
+  }
+  tray.style.display = "flex";
+  tray.innerHTML = "";
+  threadPendingAttachments.forEach(function (p, idx) {
+    var item = document.createElement("div");
+    item.className = "pending-attachment";
+    var isImage = p.uploaded && p.uploaded.mime_type && p.uploaded.mime_type.indexOf("image/") === 0;
+    var thumb;
+    if (isImage) {
+      thumb = document.createElement("img");
+      thumb.src = p.uploaded.url;
+      thumb.className = "pending-attachment-thumb";
+      thumb.alt = p.uploaded.filename || "image";
+    } else {
+      thumb = document.createElement("span");
+      thumb.className = "pending-attachment-icon";
+      thumb.textContent = "📎";
+    }
+    var label = document.createElement("span");
+    label.className = "pending-attachment-label";
+    label.textContent = (p.uploaded && p.uploaded.filename) || (p.file && p.file.name) || "file";
+    var remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "pending-attachment-remove";
+    remove.textContent = "×";
+    remove.addEventListener("click", function () {
+      threadPendingAttachments.splice(idx, 1);
+      _renderThreadAttachmentTray();
+    });
+    item.appendChild(thumb);
+    item.appendChild(label);
+    item.appendChild(remove);
+    tray.appendChild(item);
+  });
+}
+
+async function _stageThreadFiles(files) {
+  for (var i = 0; i < files.length; i++) {
+    var file = files[i];
+    try {
+      var formData = new FormData();
+      formData.append("file", file);
+      var res = await fetch(apiUrl("/api/upload/"), {
+        method: "POST",
+        credentials: "same-origin",
+        body: formData,
+      });
+      if (res.ok) {
+        var u = await res.json();
+        threadPendingAttachments.push({ file: file, uploaded: u });
+        _renderThreadAttachmentTray();
+      }
+    } catch (e) {
+      console.error("Thread file upload error:", e);
+    }
+  }
+}
+
+/* Format thread reply content: markdown-like rendering matching chat.js (todo#385).
+ * Input is already-escaped HTML (escapeHtml applied before calling this).
+ * Handles: fenced code blocks, inline code, bold, blockquotes, URLs, msg refs. */
 function _linkifyThreadContent(html) {
-  return html
+  /* 1. Extract fenced code blocks before inline processing (same as chat.js #375) */
+  var _codeBlocks = [];
+  html = html.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    function (_, lang, body) {
+      var idx = _codeBlocks.length;
+      var escapedBody = body.replace(/&amp;/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      var langBadge = lang ? '<span class="code-lang-badge">' + escapeHtml(lang) + '</span>' : '';
+      var hljsCls = lang ? ' class="language-' + escapeHtml(lang) + '"' : '';
+      _codeBlocks.push(
+        '<div class="code-block-wrap">' + langBadge +
+        '<pre class="code-block"><code' + hljsCls + '>' + escapedBody + '</code></pre></div>'
+      );
+      return '\x00CODE' + idx + '\x00';
+    }
+  );
+
+  /* 2. Blockquote: lines beginning with &gt; (escaped >) */
+  html = (function _bq(s) {
+    var lines = s.split("\n");
+    var out = [];
+    var i = 0;
+    while (i < lines.length) {
+      if (/^&gt;\s?/.test(lines[i])) {
+        var block = [];
+        while (i < lines.length && /^&gt;\s?/.test(lines[i])) {
+          block.push(lines[i].replace(/^&gt;\s?/, ""));
+          i++;
+        }
+        out.push('<blockquote class="chat-blockquote">' + block.join("<br>") + "</blockquote>");
+      } else {
+        out.push(lines[i]);
+        i++;
+      }
+    }
+    return out.join("\n");
+  })(html);
+
+  /* 3. Inline formatting */
+  html = html
+    /* Inline code: `...` */
+    .replace(/`([^`\n]+)`/g, '<code class="inline-code">$1</code>')
+    /* Bold: **...** */
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    /* Italic: *...* (single, not double) */
+    .replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<em>$1</em>')
+    /* msg#NNN refs */
     .replace(
       /\bmsg#(\d+)\b/g,
       '<a class="msg-ref-link" href="#" data-msg-ref="$1" onclick="event.preventDefault();jumpToMsg(\'$1\')">msg#$1</a>',
     )
+    /* https?:// URLs */
     .replace(
       /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
       '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
+    )
+    /* www. bare URLs */
+    .replace(
+      /(?<!["'=\/])\b(www\.[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}[^\s<>"')\]]*)/g,
+      '<a class="chat-link" href="https://$1" target="_blank" rel="noopener">$1</a>',
     );
+
+  /* 4. Restore fenced code blocks */
+  if (_codeBlocks.length > 0) {
+    html = html.replace(/\x00CODE(\d+)\x00/g, function (_, idx) {
+      return _codeBlocks[parseInt(idx, 10)];
+    });
+  }
+
+  return html;
 }
 
 /* Build a permalink URL for a thread parent message. */
@@ -175,8 +307,17 @@ async function openThreadPanel(parentId, opts) {
     '<div class="thread-divider"><span class="thread-divider-text">Replies</span></div>' +
     '<div class="thread-replies" id="thread-replies"></div>' +
     '<div class="thread-input-row">' +
-    '<textarea id="thread-input" placeholder="Reply in thread..." rows="2"></textarea>' +
+    '<div id="thread-pending-attachments" class="thread-pending-attachments" style="display:none"></div>' +
+    '<div class="thread-compose-row">' +
+    '<textarea id="thread-input" placeholder="Reply in thread…" rows="2"></textarea>' +
+    '<div class="thread-input-actions">' +
+    '<button type="button" id="thread-attach-btn" tabindex="-1" title="Attach file (Ctrl+U)">📎</button>' +
+    '<button type="button" id="thread-sketch-btn" tabindex="-1" title="Draw sketch">✏️</button>' +
+    '<button type="button" id="thread-voice-btn" tabindex="-1" title="Voice input">🎤</button>' +
+    '<input type="file" id="thread-file-input" style="display:none" multiple>' +
+    '</div>' +
     '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
+    '</div>' +
     "</div>";
   document.body.appendChild(threadPanel);
 
@@ -209,6 +350,62 @@ async function openThreadPanel(parentId, opts) {
     if (typeof initMentionAutocomplete === "function") {
       initMentionAutocomplete(ta);
     }
+    /* Ctrl+U → trigger file picker in thread panel */
+    ta.addEventListener("keydown", function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "u") {
+        e.preventDefault();
+        var fi = document.getElementById("thread-file-input");
+        if (fi) fi.click();
+      }
+    });
+  }
+
+  /* Wire thread action buttons */
+  threadPendingAttachments = [];
+  _renderThreadAttachmentTray();
+
+  var attachBtn = document.getElementById("thread-attach-btn");
+  var fileInput = document.getElementById("thread-file-input");
+  var sketchBtn = document.getElementById("thread-sketch-btn");
+  var voiceBtn  = document.getElementById("thread-voice-btn");
+
+  if (attachBtn && fileInput) {
+    attachBtn.addEventListener("click", function () { fileInput.click(); });
+    fileInput.addEventListener("change", function () {
+      _stageThreadFiles(Array.from(fileInput.files || []));
+      fileInput.value = "";
+    });
+  }
+
+  if (sketchBtn) {
+    sketchBtn.addEventListener("click", function () {
+      /* openSketch() sends to currentChannel; we override the callback */
+      if (typeof openSketch === "function") {
+        _threadSketchActive = true;
+        openSketch();
+      }
+    });
+  }
+
+  if (voiceBtn) {
+    /* Toggle voice into the thread textarea */
+    voiceBtn.addEventListener("click", function () {
+      if (typeof window.toggleVoiceInput === "function") {
+        /* Redirect voice output to thread textarea */
+        var orig = document.getElementById("msg-input");
+        var tIn = document.getElementById("thread-input");
+        if (tIn && orig) {
+          /* Temporarily swap focus target; voice.js reads document.getElementById("msg-input") */
+          tIn.id = "msg-input";
+          orig.id = "msg-input-main";
+          window.toggleVoiceInput();
+          tIn.id = "thread-input";
+          orig.id = "msg-input";
+        } else if (tIn) {
+          tIn.focus();
+        }
+      }
+    });
   }
 }
 
@@ -225,7 +422,8 @@ function _buildParentPreview(parentId) {
   var contentEl = parentEl.querySelector(".content");
   var tsEl = parentEl.querySelector(".ts");
   var senderName = senderEl ? senderEl.textContent : "unknown";
-  var content = contentEl ? contentEl.textContent : "";
+  /* Use innerHTML so the already-rendered markdown/code/links are preserved (#385) */
+  var contentHtml = contentEl ? contentEl.innerHTML : "";
   var tsText = tsEl ? tsEl.textContent : "";
   var senderColor =
     typeof getResolvedAgentColor === "function"
@@ -235,11 +433,6 @@ function _buildParentPreview(parentId) {
         : "#aaa";
   var senderIcon =
     typeof getSenderIcon === "function" ? getSenderIcon(senderName, true) : "";
-
-  /* Truncate long parent content */
-  var maxLen = 300;
-  var truncated =
-    content.length > maxLen ? content.slice(0, maxLen) + "..." : content;
 
   return (
     '<div class="thread-parent-header">' +
@@ -260,7 +453,7 @@ function _buildParentPreview(parentId) {
     "</span>" +
     "</div>" +
     '<div class="thread-parent-body">' +
-    escapeHtml(truncated).replace(/\n/g, "<br>") +
+    contentHtml +
     "</div>"
   );
 }
@@ -323,6 +516,11 @@ async function loadThreadReplies(parentId) {
           '<div class="thread-reply-body">' +
           _linkifyThreadContent(escapeHtml(r.content).replace(/\n/g, "<br>")) +
           "</div>" +
+          (typeof buildAttachmentsHtml === "function"
+            ? buildAttachmentsHtml(
+                (r.metadata && r.metadata.attachments) || []
+              )
+            : "") +
           "</div>"
         );
       })
@@ -342,14 +540,25 @@ async function sendThreadReply() {
   var ta = document.getElementById("thread-input");
   if (!ta) return;
   var text = ta.value.trim();
-  if (!text) return;
+  var attachments = threadPendingAttachments
+    .filter(function (p) { return p.uploaded; })
+    .map(function (p) { return p.uploaded; });
+  if (!text && !attachments.length) return;
   ta.value = "";
+  ta.style.height = "auto";
+  /* Clear thread attachment tray */
+  threadPendingAttachments = [];
+  _renderThreadAttachmentTray();
   try {
     var res = await fetch(apiUrl("/api/threads/"), {
       method: "POST",
       headers: orochiHeaders(),
       credentials: "same-origin",
-      body: JSON.stringify({ parent_id: threadPanelParentId, text: text }),
+      body: JSON.stringify({
+        parent_id: threadPanelParentId,
+        text: text,
+        attachments: attachments,
+      }),
     });
     if (!res.ok) {
       console.error("sendThreadReply failed:", res.status);

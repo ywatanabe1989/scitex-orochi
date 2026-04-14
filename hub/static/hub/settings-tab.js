@@ -92,6 +92,8 @@ function _wireSettingsIconPicker(container) {
 function wireSettingsForms(container) {
   wireSettingsModeTabs(container);
   _wireSettingsIconPicker(container);
+  /* Wire push notification toggle (todo#389) */
+  if (typeof initPushUI === "function") initPushUI();
   /* Make all forms in the settings tab submit via AJAX */
   container.querySelectorAll("form").forEach(function (form) {
     form.addEventListener("submit", function (e) {

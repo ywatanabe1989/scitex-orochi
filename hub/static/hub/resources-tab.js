@@ -17,6 +17,15 @@ function healthColor(status) {
 
 function barHtml(label, percent) {
   var p = Math.min(100, Math.max(0, Math.round(percent)));
+  /* 0% is almost always stale/unknown data — show dash instead (#9692) */
+  if (p === 0) {
+    return (
+      '<div class="res-bar-row"><span class="res-bar-label">' +
+      label +
+      '</span><div class="res-bar-track"><div class="res-bar-fill" style="width:0%;background:#444"></div></div>' +
+      '<span class="res-bar-val res-bar-unknown">\u2014</span></div>'
+    );
+  }
   var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   return (
     '<div class="res-bar-row"><span class="res-bar-label">' +
@@ -35,9 +44,22 @@ function barHtml(label, percent) {
 /* Donut (pie-chart) for machine resources — inline SVG, no deps */
 function donutHtml(label, percent) {
   var p = Math.min(100, Math.max(0, Math.round(percent)));
-  var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   var radius = 26;
   var circumference = 2 * Math.PI * radius;
+  /* 0% is almost always stale/unknown data — show dash instead (#9692) */
+  if (p === 0) {
+    return (
+      '<div class="res-donut">' +
+      '<svg class="res-donut-svg" viewBox="0 0 64 64" width="64" height="64">' +
+      '<circle class="res-donut-bg" cx="32" cy="32" r="' + radius + '" ' +
+      'fill="none" stroke="#1f1f1f" stroke-width="8"/>' +
+      '<text x="32" y="36" text-anchor="middle" class="res-donut-text res-donut-unknown">\u2014</text>' +
+      '</svg>' +
+      '<div class="res-donut-label">' + label + '</div>' +
+      '</div>'
+    );
+  }
+  var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   var offset = circumference * (1 - p / 100);
   return (
     '<div class="res-donut">' +

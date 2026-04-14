@@ -406,3 +406,34 @@
   color: #4ecdc4;
   border-color: #4ecdc4;
 }
+
+
+/* Push notification toggle (todo#389) */
+#push-toggle {
+  padding: 6px 14px;
+  border-radius: 4px;
+  border: 1px solid #555;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s, border-color 0.15s;
+  background: #1a1a1a;
+  color: #ccc;
+}
+#push-toggle.push-on {
+  background: #1a3a1a;
+  border-color: #4caf50;
+  color: #4caf50;
+}
+#push-toggle.push-off {
+  background: #1a1a1a;
+  border-color: #555;
+  color: #888;
+}
+#push-toggle:hover:not(:disabled) {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+#push-toggle:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

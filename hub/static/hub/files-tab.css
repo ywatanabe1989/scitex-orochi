@@ -222,3 +222,53 @@
   .pdf-modal-overlay { padding: 24px; }
   .pdf-modal-frame { border-radius: 8px; max-width: 1200px; max-height: 90vh; margin: auto; }
 }
+
+/* Multi-select support (issue #24) */
+.file-card-selected {
+  border-color: #4ecdc4;
+  background: rgba(78,205,196,0.08);
+  position: relative;
+}
+
+.file-check-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #4ecdc4;
+  color: #0a0a0a;
+  font-size: 13px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.files-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(78,205,196,0.10);
+  border-bottom: 1px solid #4ecdc4;
+  font-size: 12px;
+  color: #ccc;
+  grid-column: 1 / -1;
+}
+
+.files-dl-btn, .files-clear-btn {
+  background: #1a1a1a;
+  border: 1px solid #4ecdc4;
+  color: #4ecdc4;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.files-dl-btn:hover { background: rgba(78,205,196,0.15); }
+.files-clear-btn { border-color: #555; color: #888; }
+.files-clear-btn:hover { border-color: #aaa; color: #ccc; }

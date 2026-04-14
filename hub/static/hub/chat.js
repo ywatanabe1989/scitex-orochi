@@ -180,6 +180,87 @@ function jumpToMsg(id) {
   setTimeout(function () { el.classList.remove("msg-highlight"); }, 2000);
 }
 
+/* Shared attachment renderer — used by both the main feed and thread panel.
+ * Returns an HTML string for all attachments in the array. */
+function buildAttachmentsHtml(attachments) {
+  var html = "";
+  if (!attachments || !attachments.length) return html;
+  var imageAttachments = attachments.filter(function (att) {
+    return att.mime_type && att.mime_type.startsWith("image/") && att.url;
+  });
+  var imgCount = imageAttachments.length;
+  var gridClass = imgCount <= 1 ? "count-1" : imgCount === 2 ? "count-2" : imgCount === 3 ? "count-3" : "count-many";
+  var imagesHtml = "";
+  imageAttachments.forEach(function (att) {
+    imagesHtml += '<div class="attachment-img"><a href="' + escapeHtml(att.url) + '" target="_blank">' +
+      '<img src="' + escapeHtml(att.url) + '" alt="' + escapeHtml(att.filename || "image") + '" loading="lazy"></a></div>';
+  });
+  if (imgCount > 0) html += '<div class="attachment-grid ' + gridClass + '">' + imagesHtml + "</div>";
+  attachments.forEach(function (att) {
+    if (!att.url) return;
+    var mime = att.mime_type || "";
+    var fname = att.filename || "attachment";
+    var url = att.url;
+    if (mime.indexOf("image/") === 0) return; /* handled in grid */
+    var sizeStr = att.size ? (att.size > 1024 * 1024 ? (att.size / 1024 / 1024).toFixed(1) + " MB" : (att.size / 1024).toFixed(0) + " KB") : "";
+    var ext = (fname.split(".").pop() || "").toLowerCase();
+    var isMarkdown = mime === "text/markdown" || ext === "md" || ext === "markdown";
+    var isText = mime.indexOf("text/") === 0 || mime === "application/json" ||
+      ext === "txt" || ext === "log" || ext === "py" || ext === "json" ||
+      ext === "yaml" || ext === "yml" || ext === "toml" || ext === "sh";
+    var isPdf = mime === "application/pdf" || ext === "pdf";
+    var isVideo = mime.indexOf("video/") === 0;
+    var isAudio = mime.indexOf("audio/") === 0;
+    if (isVideo) {
+      html += '<div class="attachment-video"><video src="' + escapeHtml(url) + '" controls preload="metadata" style="max-width:100%"></video>' +
+        '<div class="attachment-caption">' + escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") + '</div></div>';
+      return;
+    }
+    if (isAudio) {
+      html += '<div class="attachment-audio"><audio src="' + escapeHtml(url) + '" controls preload="metadata" style="max-width:100%"></audio>' +
+        '<div class="attachment-caption">' + escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") + '</div></div>';
+      return;
+    }
+    if (isPdf) {
+      html += '<div class="attachment-card attachment-card-pdf" onclick="event.preventDefault();event.stopPropagation();' +
+        'if(typeof openPdfViewer===\'function\')openPdfViewer(' + JSON.stringify(url).replace(/"/g, "&quot;") + ',' + JSON.stringify(fname).replace(/"/g, "&quot;") +
+        ');else window.open(' + JSON.stringify(url).replace(/"/g, "&quot;") + ',\'_blank\')">' +
+        '<div class="attachment-card-icon">PDF</div>' +
+        '<div class="attachment-card-meta"><div class="attachment-card-name">' + escapeHtml(fname) + '</div>' +
+        (sizeStr ? '<div class="attachment-card-size">' + escapeHtml(sizeStr) + '</div>' : '') + '</div></div>';
+      return;
+    }
+    if (isMarkdown || isText) {
+      var previewId = "att-prev-" + Math.random().toString(36).slice(2, 10);
+      html += '<div class="attachment-card attachment-card-text' + (isMarkdown ? " attachment-card-md" : "") + '">' +
+        '<div class="attachment-card-header"><a href="' + escapeHtml(url) + '" target="_blank" download class="attachment-card-name">' +
+        escapeHtml(fname) + "</a>" + (sizeStr ? '<span class="attachment-card-size">' + escapeHtml(sizeStr) + '</span>' : '') + '</div>' +
+        '<pre class="attachment-card-preview" id="' + previewId + '">\u2026 loading preview \u2026</pre></div>';
+      setTimeout(function () {
+        var pre = document.getElementById(previewId);
+        if (!pre) return;
+        fetch(url, { credentials: "same-origin" }).then(function (r) {
+          if (!r.ok) throw new Error("preview fetch " + r.status);
+          return r.text();
+        }).then(function (text) {
+          var p = document.getElementById(previewId);
+          if (!p) return;
+          var snippet = (text || "").slice(0, 1200);
+          if (text.length > 1200) snippet += "\n\u2026";
+          p.textContent = snippet;
+        }).catch(function (_) {
+          var p = document.getElementById(previewId);
+          if (p) p.textContent = "(preview unavailable)";
+        });
+      }, 0);
+      return;
+    }
+    html += '<div class="attachment-file"><a href="' + escapeHtml(url) + '" target="_blank" download>' +
+      "\uD83D\uDCCE " + escapeHtml(fname) + (sizeStr ? " (" + escapeHtml(sizeStr) + ")" : "") + "</a></div>";
+  });
+  return html;
+}
+
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
@@ -228,6 +309,48 @@ function appendMessage(msg) {
    * the `(^|[\s])` anchor (since <br> is not whitespace). */
   var escaped = escapeHtml(content);
 
+  /* Fenced code blocks: ```lang\n...\n``` — extract BEFORE inline processing
+   * so the inline-code regex and \n→<br> don't corrupt their content. (#375)
+   * Placeholder: NUL-delimited tokens replaced after all inline processing. */
+  var _codeBlocks = [];
+  escaped = escaped.replace(
+    /```([\w.+-]*)[ \t]*\n([\s\S]*?)```/g,
+    function (_, lang, code) {
+      var trimmed = code.replace(/\n$/, "");
+      var hljsCls = lang ? ' class="language-' + lang + '"' : "";
+      var langBadge = lang
+        ? '<span class="code-lang-badge">' + escapeHtml(lang) + '</span>'
+        : "";
+      var html =
+        '<div class="code-block-wrap">' + langBadge +
+        '<pre class="code-block"><code' + hljsCls + ">" + trimmed + "</code></pre></div>";
+      _codeBlocks.push(html);
+      return "\x00" + (_codeBlocks.length - 1) + "\x00";
+    }
+  );
+
+  /* Blockquote: lines beginning with `> ` (rendered as &gt; after escaping).
+   * Process before inline markup so block structure is resolved first. (#9721) */
+  escaped = (function _blockquote(s) {
+    var lines = s.split("\n");
+    var out = [];
+    var i = 0;
+    while (i < lines.length) {
+      if (/^&gt;\s?/.test(lines[i])) {
+        var block = [];
+        while (i < lines.length && /^&gt;\s?/.test(lines[i])) {
+          block.push(lines[i].replace(/^&gt;\s?/, ""));
+          i++;
+        }
+        out.push('<blockquote class="chat-blockquote">' + block.join("\n") + "</blockquote>");
+      } else {
+        out.push(lines[i]);
+        i++;
+      }
+    }
+    return out.join("\n");
+  })(escaped);
+
   /* Bare-name mentions: highlight the known agent/member names even when
    * they appear without a leading @. Kept conservative by requiring the
    * name to be sourced from cachedAgentNames/cachedMemberNames and by
@@ -269,8 +392,9 @@ function appendMessage(msg) {
     return s;
   }
 
+  /* Match @ after any non-word char so CJK text like「こんにちは@mamba」highlights (#9958) */
   var highlightedContent = escaped.replace(
-    /(^|[\s\r\n])@([\w@.\-]+)/g,
+    /(^|[^\w])@([\w@.\-]+)/g,
     function (_match, prefix, name) {
       return prefix + '<span class="mention-highlight">@' + name + "</span>";
     },
@@ -329,11 +453,37 @@ function appendMessage(msg) {
     .replace(
       /(?<!["'=])(https?:\/\/[^\s<>"')\]]+)/g,
       '<a class="chat-link" href="$1" target="_blank" rel="noopener">$1</a>',
+    )
+    /* Auto-link bare www. URLs (no scheme) — prepend https:// for href.
+     * Must run after the https?:// replacement so we don't double-link.
+     * Skip if already inside an <a> tag (lookbehind for `href="`). */
+    .replace(
+      /(?<!["'=\/])\b(www\.[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}[^\s<>"')\]]*)/g,
+      '<a class="chat-link" href="https://$1" target="_blank" rel="noopener">$1</a>',
     );
-  /* Fold long posts (>10 lines) */
+
+  /* Restore fenced code blocks (placeholders → <pre><code>) (#375) */
+  if (_codeBlocks.length > 0) {
+    highlightedContent = highlightedContent.replace(
+      /\x00(\d+)\x00/g,
+      function (_, idx) { return _codeBlocks[parseInt(idx, 10)]; }
+    );
+  }
+
+  /* Fold long posts (>10 lines).
+   * Count <br> splits AND lines inside <pre> blocks for an accurate total. */
   var MAX_LINES = 10;
+  var _countLines = function (html) {
+    var n = html.split("<br>").length;
+    /* Each <pre> block contributes (newline count) additional visual lines */
+    html.replace(/<pre[\s\S]*?<\/pre>/g, function (pre) {
+      n += (pre.match(/\n/g) || []).length;
+    });
+    return n;
+  };
   var lines = highlightedContent.split("<br>");
-  var isFolded = lines.length > MAX_LINES;
+  var totalLines = _countLines(highlightedContent);
+  var isFolded = totalLines > MAX_LINES;
   if (isFolded) {
     var preview = lines.slice(0, MAX_LINES).join("<br>");
     var full = highlightedContent;
@@ -345,10 +495,10 @@ function appendMessage(msg) {
       full +
       "</div>" +
       "<button class=\"msg-fold-btn\" tabindex=\"-1\" onclick=\"event.preventDefault();this.previousElementSibling.style.display='block';this.previousElementSibling.previousElementSibling.style.display='none';this.textContent='Show less';var b=this;b.onclick=function(){event.preventDefault();b.previousElementSibling.style.display='none';b.previousElementSibling.previousElementSibling.style.display='block';b.textContent='Show more (" +
-      (lines.length - MAX_LINES) +
+      (totalLines - MAX_LINES) +
       " more lines)';b.onclick=arguments.callee}\">" +
       "Show more (" +
-      (lines.length - MAX_LINES) +
+      (totalLines - MAX_LINES) +
       " more lines)</button>";
   }
   /* Inline reply reference — if this message has metadata.reply_to
@@ -386,157 +536,8 @@ function appendMessage(msg) {
       "</div>";
   }
 
-  var attachmentsHtml = "";
   /* attachments already resolved above (for the empty-content guard) */
-  var imageAttachments = attachments.filter(function (att) {
-    return att.mime_type && att.mime_type.startsWith("image/") && att.url;
-  });
-  var imgCount = imageAttachments.length;
-  var gridClass =
-    imgCount <= 1
-      ? "count-1"
-      : imgCount === 2
-        ? "count-2"
-        : imgCount === 3
-          ? "count-3"
-          : "count-many";
-  var imagesHtml = "";
-  imageAttachments.forEach(function (att) {
-    imagesHtml +=
-      '<div class="attachment-img">' +
-      '<a href="' +
-      escapeHtml(att.url) +
-      '" target="_blank">' +
-      '<img src="' +
-      escapeHtml(att.url) +
-      '" alt="' +
-      escapeHtml(att.filename || "image") +
-      '" loading="lazy"></a></div>';
-  });
-  if (imgCount > 0) {
-    attachmentsHtml +=
-      '<div class="attachment-grid ' + gridClass + '">' + imagesHtml + "</div>";
-  }
-  attachments.forEach(function (att) {
-    if (!att.url) return;
-    var mime = att.mime_type || "";
-    var fname = att.filename || "attachment";
-    var url = att.url;
-    if (mime.indexOf("image/") === 0) {
-      /* handled above in grid */
-      return;
-    }
-    var sizeStr = att.size
-      ? (att.size > 1024 * 1024
-          ? (att.size / 1024 / 1024).toFixed(1) + " MB"
-          : (att.size / 1024).toFixed(0) + " KB")
-      : "";
-    var ext = (fname.split(".").pop() || "").toLowerCase();
-    var isMarkdown =
-      mime === "text/markdown" || ext === "md" || ext === "markdown";
-    var isText =
-      mime.indexOf("text/") === 0 ||
-      mime === "application/json" ||
-      ext === "txt" || ext === "log" || ext === "py" || ext === "json" ||
-      ext === "yaml" || ext === "yml" || ext === "toml" || ext === "sh";
-    var isPdf = mime === "application/pdf" || ext === "pdf";
-    var isVideo = mime.indexOf("video/") === 0;
-    var isAudio = mime.indexOf("audio/") === 0;
-    /* Inline video/audio players (controls included) */
-    if (isVideo) {
-      attachmentsHtml +=
-        '<div class="attachment-video">' +
-        '<video src="' + escapeHtml(url) +
-        '" controls preload="metadata" style="max-width:100%"></video>' +
-        '<div class="attachment-caption">' +
-        escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") +
-        '</div></div>';
-      return;
-    }
-    if (isAudio) {
-      attachmentsHtml +=
-        '<div class="attachment-audio">' +
-        '<audio src="' + escapeHtml(url) +
-        '" controls preload="metadata" style="max-width:100%"></audio>' +
-        '<div class="attachment-caption">' +
-        escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") +
-        '</div></div>';
-      return;
-    }
-    /* PDF: card with big "PDF" icon + filename. Click opens the modal
-     * viewer (defined in files-tab.js) so mobile Safari users can close
-     * with the explicit X button (todo#240). */
-    if (isPdf) {
-      attachmentsHtml +=
-        '<div class="attachment-card attachment-card-pdf" ' +
-        'onclick="event.preventDefault();event.stopPropagation();' +
-        'if(typeof openPdfViewer===\'function\')openPdfViewer(' +
-        JSON.stringify(url).replace(/"/g, "&quot;") + ',' +
-        JSON.stringify(fname).replace(/"/g, "&quot;") +
-        ');else window.open(' + JSON.stringify(url).replace(/"/g, "&quot;") +
-        ',\'_blank\')">' +
-        '<div class="attachment-card-icon">PDF</div>' +
-        '<div class="attachment-card-meta">' +
-        '<div class="attachment-card-name">' + escapeHtml(fname) + '</div>' +
-        (sizeStr
-          ? '<div class="attachment-card-size">' + escapeHtml(sizeStr) + '</div>'
-          : "") +
-        '</div></div>';
-      return;
-    }
-    /* Markdown / text: card with first-N-chars inline preview. The
-     * preview is fetched lazily after the message renders so the
-     * attachment shows immediately and the body fills in. */
-    if (isMarkdown || isText) {
-      var previewId =
-        "att-prev-" +
-        Math.random().toString(36).slice(2, 10);
-      attachmentsHtml +=
-        '<div class="attachment-card attachment-card-text' +
-        (isMarkdown ? " attachment-card-md" : "") + '">' +
-        '<div class="attachment-card-header">' +
-        '<a href="' + escapeHtml(url) +
-        '" target="_blank" download class="attachment-card-name">' +
-        escapeHtml(fname) + "</a>" +
-        (sizeStr
-          ? '<span class="attachment-card-size">' + escapeHtml(sizeStr) + '</span>'
-          : "") +
-        '</div>' +
-        '<pre class="attachment-card-preview" id="' + previewId + '">' +
-        '\u2026 loading preview \u2026' +
-        '</pre>' +
-        '</div>';
-      /* Lazy preview fetch (after current renderpass). */
-      setTimeout(function () {
-        var pre = document.getElementById(previewId);
-        if (!pre) return;
-        fetch(url, { credentials: "same-origin" })
-          .then(function (r) {
-            if (!r.ok) throw new Error("preview fetch " + r.status);
-            return r.text();
-          })
-          .then(function (text) {
-            var p = document.getElementById(previewId);
-            if (!p) return;
-            var snippet = (text || "").slice(0, 1200);
-            if (text.length > 1200) snippet += "\n\u2026";
-            p.textContent = snippet;
-          })
-          .catch(function (_) {
-            var p = document.getElementById(previewId);
-            if (p) p.textContent = "(preview unavailable)";
-          });
-      }, 0);
-      return;
-    }
-    /* Fallback: paperclip + filename link, same as before. */
-    attachmentsHtml +=
-      '<div class="attachment-file">' +
-      '<a href="' + escapeHtml(url) + '" target="_blank" download>' +
-      "\uD83D\uDCCE " + escapeHtml(fname) +
-      (sizeStr ? " (" + escapeHtml(sizeStr) + ")" : "") +
-      "</a></div>";
-  });
+  var attachmentsHtml = buildAttachmentsHtml(attachments);
   var roleBadge = "";
   var youTag =
     senderName === userName ? ' <span class="you-tag">(You)</span>' : "";
@@ -932,7 +933,9 @@ function updateChannelSelect() {
 
 function sendMessage() {
   var input = document.getElementById("msg-input");
-  var channel = currentChannel || "#general";
+  /* In multi-select mode currentChannel is null; fall back to lastActiveChannel
+   * so the message goes to the last focused channel (#9694). */
+  var channel = currentChannel || (typeof lastActiveChannel !== "undefined" && lastActiveChannel) || "#general";
   var text = input.value.trim();
 
   /* Pull any attachments the user staged via paste/drop/picker before
@@ -1098,11 +1101,16 @@ document.addEventListener("mousedown", function (e) {
   if (formCtrl && formCtrl !== msgInput) return;
   /* Only intercept clicks inside the message feed or thread panel. */
   if (!t.closest("#messages, .msg, .thread-panel")) return;
-  /* Block focus shift only for controls that can receive focus.
-   * tabindex="-1" elements (e.g. msg-fold-btn) cannot steal focus, so skip
-   * them — and on iOS, preventing mousedown on them suppresses the click. */
+  /* Block focus shift only for UI controls inside the feed.
+   * Exempt: tabindex="-1" elements, and content links (.chat-link,
+   * .msg-ref-link, .issue-link) — preventDefault on those suppresses
+   * navigation/copy on iOS Safari (todo#381 / #neurovista link regression). */
   var ctrl = t.closest("button, a");
-  if (ctrl && ctrl.getAttribute("tabindex") !== "-1") {
+  if (ctrl &&
+      ctrl.getAttribute("tabindex") !== "-1" &&
+      !ctrl.classList.contains("chat-link") &&
+      !ctrl.classList.contains("msg-ref-link") &&
+      !ctrl.classList.contains("issue-link")) {
     e.preventDefault();
   }
 }, true);
@@ -1177,6 +1185,14 @@ document.getElementById("msg-send").addEventListener("click", function (e) {
   document.getElementById("msg-input").focus();
 });
 document.getElementById("msg-input").addEventListener("keydown", function (e) {
+  /* Ctrl+U / Cmd+U → trigger file upload picker (msg#9877) */
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if ((isMac ? e.metaKey : e.ctrlKey) && e.key === "u") {
+    e.preventDefault();
+    var fi = document.getElementById("file-input");
+    if (fi) fi.click();
+    return;
+  }
   if (e.key === "Enter") {
     var dd = document.getElementById("mention-dropdown");
     if (dd && dd.classList.contains("visible")) return;

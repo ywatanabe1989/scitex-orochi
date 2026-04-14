@@ -3,6 +3,7 @@
 
 var filesCache = [];
 var filesFilterMime = "all";
+var filesSelected = new Set(); /* indices into filesCache of selected items */
 
 function formatFileSize(bytes) {
   if (!bytes) return "";
@@ -84,7 +85,18 @@ function renderFilesGrid() {
     }
     return;
   }
-  grid.innerHTML = items.map(function (item) {
+  /* Rebuild selected set using cache indices (filter may have changed) */
+  var selectedHtml = filesSelected.size > 0
+    ? '<div class="files-selection-bar">' +
+      '<span>' + filesSelected.size + ' file' + (filesSelected.size !== 1 ? 's' : '') + ' selected</span>' +
+      '<button type="button" class="files-dl-btn" onclick="filesDownloadSelected()">Download selected</button>' +
+      '<button type="button" class="files-clear-btn" onclick="filesClearSelection()">Clear</button>' +
+      '</div>'
+    : '';
+  grid.innerHTML = selectedHtml + items.map(function (item, _idx) {
+    /* find real index in filesCache for stable selection tracking */
+    var cacheIdx = filesCache.indexOf(item);
+    var isSelected = filesSelected.has(cacheIdx);
     var senderColor = getAgentColor(item.sender);
     var when = timeAgo(item.ts) || "";
     var sizeStr = formatFileSize(item.size);
@@ -93,11 +105,15 @@ function renderFilesGrid() {
     if (sizeStr) meta.push(escapeHtml(sizeStr));
     if (item.mime_type) meta.push(escapeHtml(item.mime_type));
     return (
-      '<div class="file-card">' +
+      '<div class="file-card' + (isSelected ? ' file-card-selected' : '') + '" ' +
+      'data-cache-idx="' + cacheIdx + '" ' +
+      'onclick="filesHandleClick(event, ' + cacheIdx + ')">' +
+      (isSelected ? '<div class="file-check-badge">✓</div>' : '') +
       '<div class="file-preview">' + renderFilePreview(item) + '</div>' +
       '<div class="file-info">' +
       '<div class="file-name">' +
-      '<a href="' + escapeHtml(item.url) + '" target="_blank" download>' +
+      '<a href="' + escapeHtml(item.url) + '" target="_blank" download ' +
+      'onclick="event.stopPropagation()">' +
       escapeHtml(item.filename || "file") +
       '</a>' +
       '</div>' +
@@ -112,10 +128,49 @@ function renderFilesGrid() {
       '</div>'
     );
   }).join("");
+
+  /* Add click delegate for selection */
+  grid.addEventListener("click", function handler(e) {
+    /* handled per-card via filesHandleClick inline */
+    grid.removeEventListener("click", handler);
+  }, { once: true });
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
   }
+}
+
+function filesHandleClick(event, cacheIdx) {
+  /* Ctrl/Cmd+click or touch-hold toggles selection; plain click opens if nothing selected */
+  if (event.ctrlKey || event.metaKey || event.shiftKey || filesSelected.size > 0) {
+    event.preventDefault();
+    if (filesSelected.has(cacheIdx)) {
+      filesSelected.delete(cacheIdx);
+    } else {
+      filesSelected.add(cacheIdx);
+    }
+    renderFilesGrid();
+  }
+  /* else: let default <a> link or media click proceed */
+}
+
+function filesClearSelection() {
+  filesSelected.clear();
+  renderFilesGrid();
+}
+
+function filesDownloadSelected() {
+  filesSelected.forEach(function (idx) {
+    var item = filesCache[idx];
+    if (!item || !item.url) return;
+    var a = document.createElement("a");
+    a.href = item.url;
+    a.download = item.filename || "file";
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  });
 }
 
 async function fetchFiles() {

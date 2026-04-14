@@ -1263,6 +1263,8 @@
   ElementInspector.prototype.deactivate = function () {
     console.log("[ElementInspector] Deactivating...");
     this._isActive = false;
+    /* Clear any directly-applied outline that wasn't in the box map (#381) */
+    this._elementScanner._clearDirectHighlight();
     this._elementScanner.clearElementBoxMap();
     this._overlayMgr.removeOverlay();
   };

@@ -408,20 +408,27 @@ def api_connectivity(request):
     (#145 / #144) lands the live discovery, this endpoint will be
     backed by real ping results from the bastion's connectivity probe.
     """
+    # Machine nodes (inner ring)
     nodes = [
-        {
-            "id": "ywata-note-win",
-            "label": "ywata-note-win",
-            "role": "deployer/coordinator",
-        },
-        {"id": "mba", "label": "mba", "role": "orochi-host"},
-        {"id": "nas", "label": "nas", "role": "data/scitex-cloud"},
-        {"id": "spartan", "label": "spartan", "role": "hpc"},
+        {"id": "ywata-note-win", "label": "ywata-note-win", "role": "deployer/coordinator", "type": "machine"},
+        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "machine"},
+        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "machine"},
+        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "machine"},
+        # Cloudflare bastion nodes (outer ring)
+        {"id": "bastion-win", "label": "bastion-win", "role": "CF tunnel (bastion-win)", "type": "bastion", "host": "ywata-note-win"},
+        {"id": "bastion-mba", "label": "bastion-mba", "role": "CF tunnel (bastion.scitex-orochi.com)", "type": "bastion", "host": "mba"},
+        {"id": "bastion-nas", "label": "bastion-nas", "role": "CF tunnel (bastion.scitex.ai)", "type": "bastion", "host": "nas"},
+        {"id": "bastion-spartan", "label": "bastion-spartan", "role": "CF tunnel (sbatch — in progress)", "type": "bastion", "host": "spartan", "status": "pending"},
     ]
     # Source → list of (destination, status, method)
-    # Updated 2026-04-12: dual bastion (bastion.scitex.ai + bastion.scitex-orochi.com)
+    # Updated 2026-04-14: 3/4 CF bastions live; bastion-spartan in progress
     raw = [
-        # ywata-note-win can reach all
+        # Bastion → host anchors (CF tunnel terminates at machine)
+        ("bastion-mba", "mba", "ok", "cf-tunnel"),
+        ("bastion-nas", "nas", "ok", "cf-tunnel"),
+        ("bastion-win", "ywata-note-win", "ok", "cf-tunnel"),
+        ("bastion-spartan", "spartan", "pending", "cf-tunnel"),
+        # ywata-note-win reaches all
         ("ywata-note-win", "nas", "ok", "bastion"),
         ("ywata-note-win", "spartan", "ok", "direct"),
         ("ywata-note-win", "mba", "ok", "bastion"),
@@ -431,12 +438,12 @@ def api_connectivity(request):
         ("nas", "spartan", "ok", "proxyjump"),
         # MBA reaches all (LAN + bastion + ProxyJump)
         ("mba", "nas", "ok", "lan"),
-        ("mba", "ywata-note-win", "ok", "proxyjump"),
+        ("mba", "ywata-note-win", "ok", "bastion-win"),
         ("mba", "spartan", "ok", "proxyjump"),
-        # Spartan reaches all via bastion (cloudflared)
-        ("spartan", "mba", "ok", "bastion"),
-        ("spartan", "nas", "ok", "bastion"),
-        ("spartan", "ywata-note-win", "ok", "direct"),
+        # Spartan reaches via CF bastions
+        ("spartan", "mba", "ok", "bastion-mba"),
+        ("spartan", "nas", "ok", "bastion-nas"),
+        ("spartan", "ywata-note-win", "ok", "bastion-win"),
     ]
     edges = [
         {"source": s, "target": t, "status": status, "method": method}
@@ -446,7 +453,7 @@ def api_connectivity(request):
         {
             "nodes": nodes,
             "edges": edges,
-            "source": "static",  # updated 2026-04-12 with bastion mesh
+            "source": "static",  # updated 2026-04-14: bastion-win live (3/4 CF mesh)
             "ts": timezone.now().isoformat(),
         }
     )

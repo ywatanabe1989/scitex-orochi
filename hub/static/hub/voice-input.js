@@ -5,6 +5,12 @@
   if (!SpeechRecognition)
     return; /* browser does not support -- button stays hidden */
 
+  /* On iOS/iPadOS, hide custom mic buttons and let the native keyboard mic
+   * handle voice input. The native mic is more reliable and familiar on iOS. */
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (isIOS) return;
+
   var btn = document.getElementById("msg-voice");
   if (!btn) return;
 
@@ -104,8 +110,9 @@
       _toggleVoice();
       return;
     }
-    /* Ctrl+Enter toggles voice when Chat tab is active — msg#9375 */
-    if (e.ctrlKey && e.key === "Enter" &&
+    /* Ctrl+Enter or Alt+Enter toggles voice when Chat tab is active (msg#9375 / msg#9926) */
+    if (e.key === "Enter" &&
+        (e.ctrlKey || e.altKey) &&
         typeof activeTab !== "undefined" && activeTab === "chat") {
       e.preventDefault();
       _toggleVoice();
@@ -114,7 +121,7 @@
   /* Initial title with the new shortcut hint. */
   btn.title =
     "Voice input · " + VOICE_LANGS[langIdx].label +
-    " · right-click to change language · Ctrl+Enter or Ctrl+M to toggle";
+    " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
 
   recognition.addEventListener("start", function () {
     isListening = true;

@@ -66,7 +66,9 @@ function getMentionQuery(input) {
   var val = input.value;
   var pos = input.selectionStart;
   var before = val.substring(0, pos);
-  var match = before.match(/(^|[\s])@([\w@.\-]*)$/);
+  /* Allow @ after any non-word char (space, CJK chars, punctuation, etc.)
+   * so Japanese text like「こんにちは@mamba」triggers the dropdown. (#9958) */
+  var match = before.match(/(^|[^\w])@([\w@.\-]*)$/);
   if (match)
     return {
       query: match[2].toLowerCase(),

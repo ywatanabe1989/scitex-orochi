@@ -352,12 +352,12 @@ function renderSkillsBadge(skills) {
   );
 }
 
-/* Auto-refresh agents tab every 5s when visible (todo#213). */
+/* Auto-refresh agents tab every 1s when visible (todo#386 — ywatanabe msg#10002). */
 function startAgentsTabRefresh() {
   stopAgentsTabRefresh();
   _agentsTabInterval = setInterval(function () {
     if (activeTab === "agents-tab") renderAgentsTab();
-  }, 5000);
+  }, 1000);
 }
 function stopAgentsTabRefresh() {
   if (_agentsTabInterval) {

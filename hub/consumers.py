@@ -769,6 +769,80 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             except Exception:
                 log.exception("push fan-out failed (dashboard path)")
 
+            # @mention auto-reply (issue #98): when a message contains @agentname,
+            # hub immediately posts a brief system status for the mentioned agent
+            # so the sender knows whether it's alive and what it's doing.
+            if "@" in text and not is_dm:
+                await self._maybe_mention_reply(text, ch_name)
+
+    async def _maybe_mention_reply(self, text: str, ch_name: str) -> None:
+        """Post a brief system status reply when an @mention is detected (issue #98).
+
+        Parses all @word tokens from the message. For each token that matches
+        a known agent name in the registry, posts a system message with the
+        agent's last recent_actions (up to 5 lines) and its online/offline status.
+        """
+        import re
+        from hub.registry import get_agents
+
+        mentioned = re.findall(r"@([\w\-\.]+)", text)
+        if not mentioned:
+            return
+
+        agents = {a["name"]: a for a in get_agents(self.workspace_id)}
+        for name in mentioned:
+            info = agents.get(name)
+            if not info:
+                continue
+            status = info.get("status", "unknown")
+            recent = info.get("recent_actions") or []
+            lines = list(recent)[-5:]  # last 5 actions
+            last_seen = info.get("last_seen", "")
+            if lines:
+                activity = "\n".join(f"  {l}" for l in lines)
+            else:
+                activity = "  (no recent activity)"
+            reply_text = (
+                f"[{name}] status: {status}"
+                + (f" | last seen: {last_seen}" if last_seen else "")
+                + f"\nRecent activity:\n{activity}"
+            )
+            mention_msg = await self._save_message(
+                channel_name=ch_name,
+                sender="hub",
+                content_text=reply_text,
+                metadata={"source": "mention_reply", "agent": name},
+            )
+            group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
+            await self.channel_layer.group_send(
+                group,
+                {
+                    "type": "chat.message",
+                    "id": mention_msg["id"] if mention_msg else None,
+                    "sender": "hub",
+                    "sender_type": "system",
+                    "channel": ch_name,
+                    "kind": "group",
+                    "text": reply_text,
+                    "ts": mention_msg["ts"] if mention_msg else None,
+                    "metadata": {"source": "mention_reply", "agent": name},
+                },
+            )
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "chat.message",
+                    "id": mention_msg["id"] if mention_msg else None,
+                    "sender": "hub",
+                    "sender_type": "system",
+                    "channel": ch_name,
+                    "kind": "group",
+                    "text": reply_text,
+                    "ts": mention_msg["ts"] if mention_msg else None,
+                    "metadata": {"source": "mention_reply", "agent": name},
+                },
+            )
+
     async def chat_message(self, event):
         """Forward channel-layer message to dashboard WebSocket.
 

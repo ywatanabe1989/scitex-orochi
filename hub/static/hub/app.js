@@ -40,22 +40,32 @@ var OROCHI_COLORS = [
  * setCurrentChannel(). null = unfiltered (show all channels) which is
  * also persisted as the literal string "__all__". todo#246 / msg 6090. */
 var currentChannel = null;
+/* lastActiveChannel: the most recently single-selected channel.
+ * Used as posting target when multi-select is active (currentChannel=null). */
+var lastActiveChannel = null;
 try {
   var _persistedCh = localStorage.getItem("orochi_active_channel");
   if (_persistedCh && _persistedCh !== "__all__") {
     currentChannel = _persistedCh;
+    lastActiveChannel = _persistedCh;
   }
 } catch (_) {}
 function setCurrentChannel(ch) {
   currentChannel = ch;
+  if (ch) lastActiveChannel = ch;
   try {
     localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
   } catch (_) {}
-  /* Update textarea placeholder to show active channel — msg#9368 */
+  /* Update textarea placeholder to show active channel — msg#9368.
+   * In multi-select mode (ch=null), keep showing the last active channel
+   * so the user knows where their message will be posted (#9694). */
   try {
     var inp = document.getElementById("msg-input");
     if (inp) {
-      inp.placeholder = ch ? "Message #" + ch.replace(/^#/, "") + "…" : "Type a message…";
+      var targetCh = ch || lastActiveChannel;
+      inp.placeholder = targetCh
+        ? "Message #" + targetCh.replace(/^#/, "") + "\u2026"
+        : "Type a message\u2026";
     }
   } catch (_) {}
 }

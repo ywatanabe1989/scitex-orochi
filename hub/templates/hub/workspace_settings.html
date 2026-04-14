@@ -71,6 +71,12 @@
                         <a href="{% url 'signout' %}" class="btn-small btn-danger" style="margin-top:8px;display:inline-block">Sign out</a>
                     </section>
                     <section class="settings-section">
+                        <h4>🔔 Push Notifications</h4>
+                        <p class="settings-desc">Receive mobile push notifications when you are @mentioned or #escalation messages arrive. Works on Chrome and Safari (iOS 16.4+).</p>
+                        <button type="button" id="push-toggle" class="btn-small push-off" onclick="togglePush()">Notifications: OFF</button>
+                        <p class="settings-desc" id="push-status-msg" style="margin-top:6px;font-size:11px;color:#888"></p>
+                    </section>
+                    <section class="settings-section">
                         <h4>Change Password</h4>
                         <p class="settings-desc">Update your account password via the secure password change page.</p>
                         <a href="/accounts/password/change/"
