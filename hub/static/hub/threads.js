@@ -335,18 +335,10 @@ async function openThreadPanel(parentId, opts) {
         e.preventDefault();
         e.stopPropagation(); /* prevent global voice handler from double-firing */
         if (typeof window.toggleVoiceInput === "function") {
-          var orig = document.getElementById("msg-input");
+          /* Focus thread textarea so _toggleVoice captures it as target */
           var tIn = document.getElementById("thread-input");
-          if (tIn && orig) {
-            tIn.id = "msg-input";
-            orig.id = "msg-input-main";
-            window.toggleVoiceInput();
-            /* Restore IDs synchronously */
-            tIn.id = "thread-input";
-            orig.id = "msg-input";
-          } else if (tIn) {
-            tIn.focus();
-          }
+          if (tIn) tIn.focus();
+          window.toggleVoiceInput();
         }
         return;
       }
@@ -412,19 +404,10 @@ async function openThreadPanel(parentId, opts) {
     /* Toggle voice into the thread textarea */
     voiceBtn.addEventListener("click", function () {
       if (typeof window.toggleVoiceInput === "function") {
-        /* Redirect voice output to thread textarea */
-        var orig = document.getElementById("msg-input");
+        /* Focus thread textarea so _toggleVoice captures it as target */
         var tIn = document.getElementById("thread-input");
-        if (tIn && orig) {
-          /* Temporarily swap focus target; voice.js reads document.getElementById("msg-input") */
-          tIn.id = "msg-input";
-          orig.id = "msg-input-main";
-          window.toggleVoiceInput();
-          tIn.id = "thread-input";
-          orig.id = "msg-input";
-        } else if (tIn) {
-          tIn.focus();
-        }
+        if (tIn) tIn.focus();
+        window.toggleVoiceInput();
       }
     });
   }

@@ -62,6 +62,8 @@
   function _setStoppedUI() {
     isListening = false;
     btn.classList.remove("voice-active");
+    var threadBtn = document.getElementById("thread-voice-btn");
+    if (threadBtn) threadBtn.classList.remove("voice-active");
     btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
       " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
     /* Remove recording indicator from both main and thread textareas */
@@ -81,7 +83,16 @@
       if (myGen !== _generation) return; /* stale instance */
       isListening = true;
       _userStopped = false;
-      btn.classList.add("voice-active");
+      /* Activate the correct mic button: thread mic if targeting thread, else main */
+      var inThread = _voiceTarget && _voiceTarget.id === "thread-input";
+      var threadBtn = document.getElementById("thread-voice-btn");
+      if (inThread && threadBtn) {
+        threadBtn.classList.add("voice-active");
+        btn.classList.remove("voice-active");
+      } else {
+        btn.classList.add("voice-active");
+        if (threadBtn) threadBtn.classList.remove("voice-active");
+      }
       btn.title = "Stop voice input";
       /* Apply recording indicator to the target textarea (main or thread) */
       var target = _voiceTarget || document.getElementById("msg-input");
