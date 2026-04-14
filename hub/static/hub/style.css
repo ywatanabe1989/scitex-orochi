@@ -2054,6 +2054,45 @@ a.chat-link:hover {
   color: #567;
   font-size: 12px;
 }
+.ch-mem-remove-btn {
+  background: transparent;
+  border: none;
+  color: #556;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  border-radius: 3px;
+  line-height: 1;
+  vertical-align: middle;
+}
+.ch-mem-remove-btn:hover { color: #e66; background: #2a1111; }
+.ch-mem-add-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+}
+.ch-mem-add-select {
+  flex: 1;
+  background: #0d1117;
+  color: #ccc;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.ch-mem-add-btn {
+  background: #1a3a2a;
+  color: #4ecdc4;
+  border: 1px solid #2a5a4a;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ch-mem-add-btn:hover { background: #1f4a35; border-color: #4ecdc4; }
 
 /* ── Channel drag-and-drop (msg#10370) ── */
 .ch-drag-handle {

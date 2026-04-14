@@ -187,25 +187,74 @@ function openMembersPanel(ch) {
 function _renderMembersPanel(members) {
   var list = document.getElementById("ch-members-list");
   if (!list) return;
-  var rw = members.filter(function (m) { return m.permission === "read-write"; });
-  var ro = members.filter(function (m) { return m.permission === "read-only"; });
+  var ch = currentChannel || lastActiveChannel || "";
+  /* Show explicit members first, then add-member row */
+  var explicit = members.filter(function (m) { return m.explicit; });
+  var available = members.filter(function (m) { return !m.explicit; });
   var html = "";
-  if (rw.length > 0) {
-    html += '<div class="ch-members-section-label">Read & Write (' + rw.length + ')</div>';
-    html += rw.map(function (m) {
+  if (explicit.length > 0) {
+    html += '<div class="ch-members-section-label">Members (' + explicit.length + ')</div>';
+    html += explicit.map(function (m) {
       var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
-      return '<div class="ch-members-row">' + icon + ' ' + escapeHtml(m.username) + '</div>';
+      return '<div class="ch-members-row">' +
+        icon + ' ' + escapeHtml(m.username) +
+        ' <button class="ch-mem-remove-btn" data-username="' + escapeHtml(m.username) +
+        '" data-channel="' + escapeHtml(ch) + '" title="Remove from channel">&#10005;</button>' +
+        '</div>';
     }).join("");
   }
-  if (ro.length > 0) {
-    html += '<div class="ch-members-section-label ch-members-ro-label">Read Only (' + ro.length + ')</div>';
-    html += ro.map(function (m) {
-      var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
-      return '<div class="ch-members-row ch-members-ro">' + icon + ' ' + escapeHtml(m.username) + ' <span class="ch-members-ro-badge">ro</span></div>';
-    }).join("");
+  /* Add member row */
+  if (available.length > 0) {
+    html += '<div class="ch-members-section-label" style="margin-top:8px">Add member</div>';
+    html += '<div class="ch-mem-add-row">' +
+      '<select id="ch-mem-add-select" class="ch-mem-add-select">' +
+      '<option value="">— select agent —</option>' +
+      available.map(function (m) {
+        return '<option value="' + escapeHtml(m.username) + '">' + escapeHtml(m.username) + '</option>';
+      }).join("") +
+      '</select>' +
+      '<button class="ch-mem-add-btn" data-channel="' + escapeHtml(ch) + '">Add</button>' +
+      '</div>';
   }
   if (!html) html = '<div class="ch-members-loading">No members found.</div>';
   list.innerHTML = html;
+  /* Wire remove buttons */
+  list.querySelectorAll(".ch-mem-remove-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var username = btn.getAttribute("data-username");
+      var channel = btn.getAttribute("data-channel");
+      fetch(apiUrl("/api/channel-members/"), {
+        method: "DELETE",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
+        body: JSON.stringify({ channel: channel, username: username }),
+      }).then(function (r) { return r.json(); })
+        .then(function () {
+          delete _membersCache[channel];
+          openMembersPanel(channel);
+        });
+    });
+  });
+  /* Wire add button */
+  var addBtn = list.querySelector(".ch-mem-add-btn");
+  if (addBtn) {
+    addBtn.addEventListener("click", function () {
+      var sel = list.querySelector("#ch-mem-add-select");
+      var username = sel ? sel.value : "";
+      var channel = addBtn.getAttribute("data-channel");
+      if (!username) return;
+      fetch(apiUrl("/api/channel-members/"), {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrfToken() },
+        body: JSON.stringify({ channel: channel, username: username, permission: "read-write" }),
+      }).then(function (r) { return r.json(); })
+        .then(function () {
+          delete _membersCache[channel];
+          openMembersPanel(channel);
+        });
+    });
+  }
 }
 
 function closeMembersPanel() {

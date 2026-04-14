@@ -127,7 +127,13 @@
 
     r.addEventListener("error", function (e) {
       if (myGen !== _generation) return;
-      if (e.error !== "no-speech" && e.error !== "aborted") {
+      if (e.error === "no-speech") {
+        /* no-speech is normal during pauses with continuous=true.
+         * Keep isListening=true so the 'end' event (which always fires
+         * after error) will trigger the auto-restart path. */
+        return;
+      }
+      if (e.error !== "aborted") {
         console.warn("Voice input error:", e.error);
       }
       _setStoppedUI();
