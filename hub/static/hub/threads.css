@@ -379,7 +379,8 @@
   color: #0a0a0a;
   border: none;
   border-radius: 6px;
-  padding: 0 14px;
+  padding: 6px 16px;
+  font-size: 14px;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -391,12 +392,12 @@
   background: #3bb3aa;
 }
 
-/* Thread input action buttons (📎 ✏️ 🎤) — match main composer style */
+/* Thread input action buttons (📎 ✏️ 🎤) — horizontal row beside textarea */
 .thread-input-actions {
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 4px;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 2px;
   flex-shrink: 0;
 }
 .thread-input-actions button {
@@ -404,9 +405,9 @@
   color: #ccc;
   border: 1px solid #333;
   border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 16px;
-  min-width: 36px;
+  padding: 4px 6px;
+  font-size: 13px;
+  min-width: 28px;
   cursor: pointer;
   transition: border-color 0.1s, color 0.1s;
 }

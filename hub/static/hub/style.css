@@ -993,9 +993,17 @@ a.chat-link:hover {
   background: rgba(239, 68, 68, 0.15);
   animation: voice-pulse 1.4s ease-in-out infinite;
 }
-#msg-input.voice-recording {
+#msg-input.voice-recording,
+#thread-input.voice-recording {
   border-color: #ef4444;
   animation: voice-border-blink 0.8s ease-in-out infinite;
+}
+/* Thread mic button active state */
+#thread-voice-btn.voice-active {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  animation: voice-pulse 1.4s ease-in-out infinite;
 }
 @keyframes voice-border-blink {
   0%, 100% { border-color: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }

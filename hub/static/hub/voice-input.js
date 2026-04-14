@@ -230,7 +230,10 @@
       return;
     }
     if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
-      /* Toggle voice — works in both main textarea and thread panel */
+      /* Skip if focus is in thread panel — thread's own keydown handler manages this */
+      var focused = document.activeElement;
+      var inThread = focused && focused.closest && focused.closest(".thread-panel");
+      if (inThread) return;
       if (typeof activeTab !== "undefined" && activeTab === "chat") {
         e.preventDefault();
         _toggleVoice();
