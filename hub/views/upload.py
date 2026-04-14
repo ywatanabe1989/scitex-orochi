@@ -129,15 +129,19 @@ def _save_to_media(data: bytes, filename: str, mime_type: str, dedupe: bool = Tr
     ext = Path(filename).suffix or mimetypes.guess_extension(mime_type) or ""
     file_id = str(uuid.uuid4())
     subdir = datetime.now(timezone.utc).strftime("%Y-%m")
-    # Preserve original filename in disk path for human readability (#350)
-    # Sanitize: keep only safe chars, prepend UUID for uniqueness
+    # Store as <subdir>/<uuid>/<original-filename> so the URL path ends with
+    # the clean original filename — the browser uses the last path component
+    # as the default save name, no Content-Disposition header needed (#397).
     import re as _re
-    safe_name = _re.sub(r'[^\w\-.]', '_', Path(filename).stem)[:60]
-    disk_name = f"{file_id}_{safe_name}{ext}" if safe_name else f"{file_id}{ext}"
-
-    dest_dir = Path(settings.MEDIA_ROOT) / subdir
+    safe_stem = _re.sub(r'[^\w\-.]', '_', Path(filename).stem)[:80]
+    safe_name = f"{safe_stem}{ext}" if safe_stem else f"upload{ext}"
+    dest_dir = Path(settings.MEDIA_ROOT) / subdir / file_id
     dest_dir.mkdir(parents=True, exist_ok=True)
-    dest_file = dest_dir / disk_name
+    dest_file = dest_dir / safe_name
+    # Timestamp suffix if collision (shouldn't happen with UUID dir, but safe)
+    if dest_file.exists():
+        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        dest_file = dest_dir / f"{safe_stem}_{ts}{ext}"
     dest_file.write_bytes(data)
 
     # Build the URL defensively — settings.MEDIA_URL may or may not have
@@ -145,7 +149,7 @@ def _save_to_media(data: bytes, filename: str, mime_type: str, dedupe: bool = Tr
     # exactly one separator slash so we never produce // (protocol-relative
     # URL) or //media (the bug that broke ywatanabe's image paste).
     media_prefix = "/" + settings.MEDIA_URL.strip("/") + "/"
-    url = f"{media_prefix}{subdir}/{disk_name}"
+    url = f"{media_prefix}{subdir}/{file_id}/{dest_file.name}"
     metadata = {
         "file_id": file_id,
         "url": url,
