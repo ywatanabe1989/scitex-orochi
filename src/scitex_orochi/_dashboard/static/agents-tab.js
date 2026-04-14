@@ -59,6 +59,7 @@ async function renderAgentsTab() {
       "<thead><tr>" +
       "<th>Status</th>" +
       "<th>Agent ID</th>" +
+      "<th>Account</th>" +
       "<th>Role</th>" +
       "<th>Host / Machine</th>" +
       "<th>Model</th>" +
@@ -134,6 +135,19 @@ function buildAgentRow(a) {
       );
     })
     .join("");
+  /* Credential account badge: show username part of email (before @) */
+  var credBadgeHtml = "";
+  if (a.credential_email) {
+    var credLabel = a.credential_email.split("@")[0] || a.credential_email;
+    credBadgeHtml =
+      '<span style="display:inline-block;background:#2a3a5a;color:#7ab8f5;' +
+      "border:1px solid #3a5a8a;border-radius:3px;font-size:10px;" +
+      'padding:1px 5px;font-family:monospace">' +
+      escapeHtml(credLabel) +
+      "</span>";
+  } else {
+    credBadgeHtml = '<span style="color:#555;font-size:11px">-</span>';
+  }
   return (
     "<tr" +
     (inactive ? ' style="opacity:0.5"' : "") +
@@ -147,6 +161,9 @@ function buildAgentRow(a) {
     color +
     ';font-weight:600">' +
     escapeHtml(a.agent_id || a.name) +
+    "</td>" +
+    "<td>" +
+    credBadgeHtml +
     "</td>" +
     "<td>" +
     escapeHtml(a.role || "agent") +
