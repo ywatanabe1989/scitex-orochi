@@ -440,6 +440,8 @@ function _showChannelCtxMenu(ch, x, y) {
     '<div class="ch-ctx-item ch-ctx-notif' + (notif==="mentions"?" ch-ctx-active":"") + '" data-action="notif-mentions">@ Mentions only</div>',
     '<div class="ch-ctx-item ch-ctx-notif' + (notif==="nothing"?" ch-ctx-active":"") + '" data-action="notif-nothing">Nothing</div>',
     '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#8681; Export channel\u2026</div>',
+    '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' + (hidden ? "Show channel" : "Hide channel") + "</div>",
   ].join("");
   document.body.appendChild(menu);
@@ -453,6 +455,7 @@ function _showChannelCtxMenu(ch, x, y) {
       else if (action === "notif-all") _setChannelPref(ch, {notification_level: "all"});
       else if (action === "notif-mentions") _setChannelPref(ch, {notification_level: "mentions"});
       else if (action === "notif-nothing") _setChannelPref(ch, {notification_level: "nothing"});
+      else if (action === "export") { _hideChannelCtxMenu(); openChannelExport(ch); return; }
       else if (action === "hide") _setChannelPref(ch, {is_hidden: !hidden});
       _hideChannelCtxMenu();
     });
@@ -469,6 +472,47 @@ function _showChannelCtxMenu(ch, x, y) {
 
 function _hideChannelCtxMenu() {
   if (_ctxMenu) { _ctxMenu.remove(); _ctxMenu = null; }
+}
+
+/* ── Channel export modal ── */
+function openChannelExport(ch) {
+  var modal = document.getElementById("channel-export-modal");
+  if (!modal) return;
+  var today = new Date().toISOString().slice(0, 10);
+  document.getElementById("ch-export-from").value = today;
+  document.getElementById("ch-export-to").value = today;
+  document.getElementById("ch-export-format").value = "json";
+  modal.setAttribute("data-channel", ch || currentChannel || "");
+  document.getElementById("ch-export-title").textContent = "Export " + (ch || currentChannel || "channel");
+  modal.style.display = "flex";
+}
+
+function closeChannelExport() {
+  var modal = document.getElementById("channel-export-modal");
+  if (modal) modal.style.display = "none";
+}
+
+function doChannelExport() {
+  var modal = document.getElementById("channel-export-modal");
+  if (!modal) return;
+  var ch = modal.getAttribute("data-channel");
+  var from = document.getElementById("ch-export-from").value;
+  var to = document.getElementById("ch-export-to").value;
+  var fmt = document.getElementById("ch-export-format").value;
+  if (!ch) { alert("No channel selected."); return; }
+  /* Build URL: /api/channels/<chat_id>/export/?format=...&from=...&to=...&token=... */
+  var chatId = ch.replace(/^#/, "");
+  var url = "/api/channels/" + encodeURIComponent(chatId) + "/export/?format=" + encodeURIComponent(fmt);
+  if (from) url += "&from=" + encodeURIComponent(from);
+  if (to) url += "&to=" + encodeURIComponent(to);
+  if (token) url += "&token=" + encodeURIComponent(token);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = chatId + "-export." + fmt;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  closeChannelExport();
 }
 
 /* ── Drag-and-drop reordering for sidebar channel sections (msg#10370) ──

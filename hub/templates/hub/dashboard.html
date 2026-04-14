@@ -104,6 +104,7 @@
               <span id="channel-topic-text"></span>
               <div id="channel-members" class="channel-members" style="display:none"></div>
               <button type="button" class="channel-members-btn" id="channel-members-btn" title="Show channel members" onclick="toggleMembersPanel()" style="display:none">&#128100; <span id="channel-members-count">0</span></button>
+              <button type="button" class="channel-export-btn" title="Export channel" onclick="openChannelExport()">&#8681;</button>
               <button type="button" class="channel-topic-edit-btn" title="Edit channel topic" onclick="openChannelTopicEdit()">&#9998;</button>
             </div>
             <!-- Channel members panel (todo#407) -->
@@ -279,6 +280,36 @@
     <script src="{% static 'hub/search-palette.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-scroll-btns.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-nav.js' %}?v=3"></script>
+
+    <!-- Channel export modal -->
+    <div id="channel-export-modal" class="ch-export-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Export channel">
+      <div class="ch-export-backdrop" onclick="closeChannelExport()"></div>
+      <div class="ch-export-card">
+        <div class="ch-export-header">
+          <span id="ch-export-title">Export channel</span>
+          <button type="button" class="ch-export-close" onclick="closeChannelExport()">&times;</button>
+        </div>
+        <div class="ch-export-body">
+          <label class="ch-export-label">From
+            <input type="date" id="ch-export-from" class="ch-export-input">
+          </label>
+          <label class="ch-export-label">To
+            <input type="date" id="ch-export-to" class="ch-export-input">
+          </label>
+          <label class="ch-export-label">Format
+            <select id="ch-export-format" class="ch-export-input">
+              <option value="json">JSON</option>
+              <option value="md">Markdown</option>
+              <option value="txt">Plain text</option>
+            </select>
+          </label>
+        </div>
+        <div class="ch-export-footer">
+          <button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
+          <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Channel topic edit modal (todo#402) -->
     <div id="channel-topic-modal" class="ch-topic-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Edit channel topic">
