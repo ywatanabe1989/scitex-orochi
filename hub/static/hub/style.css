@@ -408,8 +408,8 @@ body {
   border-color: #4ecdc4;
   color: #4ecdc4;
 }
-#feed-scroll-top { bottom: calc(48px + 100px + 48px); }
-#feed-scroll-bottom { bottom: calc(48px + 48px); }
+#feed-scroll-top { bottom: calc(48px + 150px + 48px); }
+#feed-scroll-bottom { bottom: calc(48px + 100px); }
 .messages {
   flex: 1;
   overflow-y: auto;
