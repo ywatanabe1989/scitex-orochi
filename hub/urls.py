@@ -137,4 +137,7 @@ urlpatterns = [
     path("webhook/github/", views.github_webhook, name="github-webhook"),
     # Scheduled actions (issue #95)
     path("api/scheduled/", views.api_scheduled, name="api-scheduled"),
+    # Public status page (issue #75)
+    path("status/", views.status_page, name="status"),
+    path("api/status/", views.api_status, name="api-status"),
 ]

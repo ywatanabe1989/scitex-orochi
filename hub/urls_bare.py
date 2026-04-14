@@ -104,4 +104,7 @@ urlpatterns = [
         views.api_push_unsubscribe,
         name="api-push-unsubscribe",
     ),
+    # Public status page (issue #75)
+    path("status/", views.status_page, name="status"),
+    path("api/status/", views.api_status, name="api-status"),
 ]

@@ -65,3 +65,4 @@ from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
     workspace_settings_view,
 )
+from hub.views.status import api_status, status_page  # noqa: F401
