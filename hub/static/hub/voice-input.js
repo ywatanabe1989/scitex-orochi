@@ -109,8 +109,9 @@
         return;
       }
       if (isListening && !_userStopped) {
-        /* Unexpected end — recreate instance to recover */
-        isListening = false;
+        /* Unexpected end (e.g. silence timeout) — recreate instance to recover.
+         * Keep isListening=true and UI red during the brief restart gap
+         * so the user doesn't see a flash back to green. */
         setTimeout(function () {
           if (myGen !== _generation) return; /* superseded by a newer toggle */
           if (!_userStopped) {
