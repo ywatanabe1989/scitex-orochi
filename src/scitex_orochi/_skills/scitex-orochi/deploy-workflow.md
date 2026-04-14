@@ -140,6 +140,72 @@ After restart, agents using `--dangerously-load-development-channels` may get st
 ssh <host> screen -S <agent-name> -X stuff $'\n'
 ```
 
+## Post-deploy verification — daphne reload + hash check
+
+Added 2026-04-14 after the `star` fix chain (mamba-scitex-expert-mba msg #10656, mamba-todo-manager msg #10632). **"Committed to develop + `collectstatic` ran" is NOT the same as "deployed"**. A fix can be disk-present but still served stale because daphne has the old mapping in memory.
+
+### The failure mode
+
+On 2026-04-14 the fleet thought `star` was fixed, shipped two commits (explorer-mba `bac1342`, todo-manager `0a442fb`), ran `collectstatic`, and asked ywatanabe to hard-reload. It still didn't work. Root cause (discovered via Playwright + browser devtools):
+
+- Disk: new manifest at `hub/app.68ea5584f68d.js`, template at `?v=124`.
+- Cloudflare: `cf-cache-status: DYNAMIC` — not caching, innocent.
+- Browser: fetching `app.dc4e19e26b48.js?v=123` — **the old hashed filename**.
+- Daphne (PID 1 in the hub container): still holding the old `ManifestStaticFilesStorage` mapping + old compiled template in memory. It served the old filename because its in-memory table never refreshed.
+
+`docker restart orochi-server-stable` fixed it in one command. Every `collectstatic` after-the-fact needs a daphne reload, or the fix is on disk but invisible.
+
+### Required verification sequence
+
+After **any** frontend change that touches hashed static files, templates, or URL routes:
+
+1. **Collectstatic on disk**
+   ```bash
+   ssh nas 'cd ~/proj/scitex-orochi && docker compose -f docker-compose.stable.yml exec orochi-server python manage.py collectstatic --noinput'
+   ```
+
+2. **Daphne reload (mandatory, not optional)**
+   ```bash
+   ssh nas 'docker restart orochi-server-stable'
+   ```
+   A `docker compose up -d` with the same image tag does **not** restart daphne — the container decides it is already up-to-date and skips the reload. Use `docker restart` explicitly.
+
+3. **Hash / version check from outside the container** — confirm the running daphne actually serves the new filename:
+   ```bash
+   curl -sI https://scitex-orochi.com/static/hub/ | head -1     # route answers
+   curl -s https://scitex-orochi.com/ | grep -oE 'app\.[a-f0-9]+\.js\?v=[0-9]+'
+   # → should print the new hash matching the manifest
+   ```
+   The assistant doing the deploy must see the new hash with their own eyes, not infer from "the commit landed".
+
+4. **Playwright / browser round-trip** — for any UI change, Playwright (or an equivalent headless browser) fetches the page and asserts the fixed behavior is live. Screenshot attached to the close-evidence. This is the ground truth that the deploy actually reached the user.
+
+5. **Console errors zero** — open devtools (or Playwright's console capture), reload, confirm no `ReferenceError` / `404` / stale-hash errors. A silent `ReferenceError` was the root cause of the initial `star` fix failure (`getCsrfToken is not defined`); console was the one place it was visible.
+
+### Discipline — no "deployed" claims without verification
+
+Before any Orochi chat post claiming "deployed" or "fixed":
+
+- Step 2 (daphne restart) must have completed.
+- Step 3 (hash check from outside) must have printed the new hash.
+- At least one of step 4 (Playwright) or a real browser reload with visible success was performed.
+
+Claim format:
+
+> `vX.Y.Z deployed ✓ — <feature>. Hash: app.68ea5584f68d.js. <Playwright screenshot>.`
+
+"Deployed" without the hash and a screenshot is a discipline violation and the auditor should reopen the corresponding issue.
+
+### When `docker compose up -d` *is* enough
+
+If the deploy involves rebuilding the image (`docker compose build`), then `up -d` with the new image tag triggers a genuine container recreate, and daphne starts fresh. In that path the explicit `docker restart` is not strictly necessary — but `up -d` without a rebuild is the common trap. Rule of thumb: **whenever collectstatic ran against the *running* container, assume daphne reload is required**.
+
+### Cross-reference
+
+- `close-evidence-gate.md` — close-evidence must include the hash + screenshot, this discipline is the mechanism that makes those artifacts truthful
+- mamba-scitex-expert-mba msg #10656 — walkthrough of the actual incident
+- mamba-todo-manager msg #10632 — the failure mode and the fix
+
 ## Data Persistence
 
 Media files must survive container rebuilds. The Docker volume mount ensures this:
