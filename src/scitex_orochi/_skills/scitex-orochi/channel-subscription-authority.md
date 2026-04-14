@@ -6,34 +6,44 @@ scope: fleet-internal
 
 # Channel subscription authority
 
-ywatanabe msg #10956 + mamba-todo-manager msg #10957 (2026-04-14).
+ywatanabe msg #10956 / #10958 + mamba-todo-manager msg #10957 / #10959 (2026-04-14).
 
 ## The rule
 
-Agent channel subscriptions are owned by the hub database, not the agent yaml. Specifically:
+Agent channel subscriptions are owned by the hub database. **yaml-based subscription is DEPRECATED** — it survives only as a brand-new-agent bootstrap seed and is otherwise ignored.
 
 1. **Hub DB `ChannelMembership`** is the single source of truth for which agents are subscribed to which channels.
-2. **Agent yaml `env.SCITEX_OROCHI_CHANNELS`** is an **additive-only seed** — it is consulted only at first boot (or when the hub creates the agent row for the first time) to populate the initial membership. After that, it is ignored.
-3. Joins and leaves made at runtime — via the MCP `channel.invite` / `channel.leave` / `channel.kick` tools, or via a channel-ops dispatcher — persist in `ChannelMembership` and survive agent restarts.
+2. **Agent yaml `env.SCITEX_OROCHI_CHANNELS`** is a **first-boot-only seed**. The hub consults it exactly once — when creating a `ChannelMembership` row for an agent it has never seen before. On every subsequent boot, yaml is ignored entirely.
+3. Joins, leaves, kicks, and channel creation are runtime operations, routed through:
+    - the **Orochi Web UI** (ywatanabe direct admin, ops panel)
+    - the **MCP tools** `channel_invite` / `channel_leave` / `channel_kick` (fleet-internal operations, not user-facing)
+    - these writes persist in `ChannelMembership` and survive agent restarts without any yaml edit
 
 ## Boot-time semantics
 
-When an agent registers with the hub:
+When an agent registers with the hub, the handler distinguishes two cases:
+
+**Case A — first-ever boot** (no `ChannelMembership` rows exist for this agent):
 
 ```
-effective_subscriptions = UNION(
-    existing ChannelMembership rows for this agent,
-    yaml SCITEX_OROCHI_CHANNELS list
-)
+effective_subscriptions = yaml_channels              # seed from yaml
+create ChannelMembership rows (one per yaml channel)
 ```
+
+**Case B — subsequent boot** (`ChannelMembership` rows already exist):
+
+```
+effective_subscriptions = existing ChannelMembership rows
+# yaml is ignored completely
+```
+
+This is simpler than the earlier "union" model and explicitly matches ywatanabe msg #10958 / mamba-todo-manager msg #10959: yaml is **deprecated** on any boot past the first. An agent that wants to add a channel at runtime goes through the Web UI or MCP `channel_invite`, not through a yaml edit.
 
 Crucially, the registration handler must **not**:
 
-- Remove DB memberships that are absent from yaml (yaml is additive, not authoritative).
-- Re-add DB memberships that were explicitly left (leaving a channel is a runtime operation that yaml cannot override).
+- Re-seed from yaml on subsequent boots (deprecation means deprecation).
+- Re-add memberships that were explicitly left (leaves are persistent).
 - Reset an agent's membership list based on a yaml-env comparison.
-
-The correct behavior is: for each channel in yaml, ensure a `ChannelMembership` row exists (upsert). Everything already in the DB stays. Everything removed from the DB stays removed.
 
 ## Why the DB wins
 
@@ -47,27 +57,27 @@ Register handler (`hub/consumers.py` or equivalent):
 
 ```python
 def on_agent_register(agent_id, yaml_channels):
-    existing = set(ChannelMembership.objects
-                   .filter(agent=agent_id)
-                   .values_list('channel__name', flat=True))
+    existing = ChannelMembership.objects.filter(agent=agent_id).exists()
 
-    # Upsert yaml channels (additive seed)
-    for ch_name in yaml_channels:
-        ch, _ = Channel.objects.get_or_create(name=ch_name)
-        ChannelMembership.objects.get_or_create(
-            agent=agent_id, channel=ch,
-            defaults={'added_by': 'yaml-seed'},
-        )
+    if not existing:
+        # Case A — first-ever boot: seed from yaml
+        for ch_name in yaml_channels:
+            ch, _ = Channel.objects.get_or_create(name=ch_name)
+            ChannelMembership.objects.create(
+                agent=agent_id, channel=ch,
+                added_by='yaml-seed',
+            )
+    # Case B — subsequent boot: yaml ignored, DB wins
 
-    # Effective = DB union after upsert
+    # Effective subscriptions from DB only
     return set(ChannelMembership.objects
-               .filter(agent=agent_id)
+               .filter(agent=agent_id, removed_at__isnull=True)
                .values_list('channel__name', flat=True))
 ```
 
-The handler does **not** call `.delete()` on any row.
+The handler does **not** call `.delete()` on any row and does **not** re-seed from yaml once the agent has any history in the DB.
 
-Runtime tools (`channel.invite` / `channel.leave` / `channel.kick`) write to `ChannelMembership` directly; their changes persist and are reflected on the next `on_agent_register` via the union.
+Runtime tools (`channel_invite` / `channel_leave` / `channel_kick`) + the Web UI admin panel write to `ChannelMembership` directly; their changes persist and are reflected on the next `on_agent_register` without any yaml involvement.
 
 ## Audit trail
 
