@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The thirteen discipline rules
+## The fourteen discipline rules
 
 ### 1. Ack once, not N times
 
@@ -352,6 +352,46 @@ If you find yourself unable to respond to a ping within 60 s, the correct next a
 5. Only after 1–4 are green, return to normal loop.
 
 Rule #13 exists because the fleet cannot triage from outside what the agent itself is supposed to triage from inside. "I was busy" is not an excuse; delegating busy work is the whole skill.
+
+### 14. Channel-content discipline — no technical details in `#general`
+
+ywatanabe msg #10907 / #10910 (2026-04-14):
+
+> *"技術的なことは エージェント チャンネルでお願いします. 細かいことは興味ないので, 文字が多くても私の方では読まないので. 私が聞いた時だけ細かいこと教えてくれればいい. #general にも細かいことは書かない."*
+
+`#general` is ywatanabe's inbox. Technical details, diagnostics, commit descriptions, and implementation chatter belong in `#agent`, where the fleet coordinates internally. This rule specializes the channel table at the top of this skill; it exists because 2026-04-14 saw a day of long technical status writes to `#general` that ywatanabe explicitly said they would not read.
+
+**Channel-content contract:**
+
+| Channel | What goes here | What does NOT go here |
+|---|---|---|
+| `#general` | 1–3 line ship summaries, status changes, questions **from** ywatanabe, 1-line acks of user-visible events | Long explanations, commit hashes, PR diffs, root-cause analyses, cross-agent dispatch |
+| `#agent` | **All** technical details: root causes, commits, PRs, diagnostics, cross-agent coordination, protocol specs, dispatcher assignments, healer reports | ywatanabe-facing summaries (those go to `#general` after the `#agent` work is done) |
+| `#ywatanabe` | 1-on-1 replies to ywatanabe's direct questions. Concise unless they ask for depth. | Unsolicited technical writeups |
+| `#progress` | Periodic structured rollups (once per session or per major milestone) | Free-form chatter |
+| `#escalation` | Blockers that need human attention after the fleet exhausted automation | Non-blocking info |
+| `#paper-*` | Per-paper lane for drafting + reviews | Fleet-infra chatter |
+| `#audit` | `gh-issue-close-safe` audit output only | Manual discussion |
+
+**Write-once, route-once pattern:**
+
+When an agent finishes a unit of work, it writes at most **two** posts:
+
+1. **`#agent`** — full detail so anyone cross-reading can understand what changed, where, and why. Commit SHAs, file paths, side-effects, next-step implications.
+2. **`#general`** (only if user-visible) — one line, in plain language, answering "did something change ywatanabe can see?".
+
+If the work is *not* user-visible (refactor, internal wiring, skill doc, discipline rule addition), skip step 2 entirely. `#general` is not a progress feed.
+
+**Anti-patterns observed today:**
+
+- 50-line technical breakdowns in `#general` with commit hashes, diffs, and architectural justifications → belongs in `#agent`
+- Asking ywatanabe technical questions in `#general` that the fleet should be answering internally ("is this the right approach?") → DM `mamba-todo-manager` or post to `#agent`
+- Posting every `v0.11.xx deployed ✓` to `#general` with a 10-item changelog → compress to "v0.11.xx shipped with <one feature>" or skip
+- Cross-posting the same content to `#general` and `#agent` for "visibility" → pick one, route there, use `#general` only if ywatanabe must see it
+
+**Pre-post test**: before sending to `#general`, ask *"would ywatanabe want to be interrupted by this?"*. If the answer is "no, but other agents might want to see it," route to `#agent`. If "no, nobody needs to see this," the post is noise.
+
+Self-applicable: my own (mamba-skill-manager) skill-landing summaries from today were repeatedly too long for `#general`. Going forward, full commit lists go to `#agent` when requested, and `#general` sees at most "skills updated, rule count now 14".
 
 ## Visibility is existence
 
