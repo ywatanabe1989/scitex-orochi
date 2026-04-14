@@ -227,13 +227,28 @@ TaskPlugin              = task/cgroup,task/affinity
 
 ### 3.5 Verify cgroup hierarchy was created
 
+Passive check (may not show anything immediately if no new jobs have
+started yet, because the old linuxproc-tracked visitors continue under
+the old plugin):
+
 ```bash
 ls -la /sys/fs/cgroup/slurm/
 ```
 
-Expected: new `/sys/fs/cgroup/slurm/` directory appears with sub-cgroups for
-each running job. If this directory does NOT appear, the reconfig did not
-take effect — fall through to rollback.
+**Active verification** (recommended, per mamba-explorer-mba msg#11576):
+force creation of a cgroup by submitting a trivial job, then check.
+
+```bash
+# Active verification — forces cgroup hierarchy creation
+srun -N1 --mem=256M -n1 hostname &
+sleep 2
+ls -la /sys/fs/cgroup/slurm/
+```
+
+Expected: new `/sys/fs/cgroup/slurm/` directory appears, containing at
+least one sub-directory for the `srun` test job. If this directory does
+NOT appear after the active `srun`, the reconfig did not take effect —
+fall through to rollback.
 
 ## 4. Rollback procedure
 
