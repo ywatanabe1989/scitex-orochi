@@ -263,9 +263,6 @@ function closeThreadPanel(opts) {
   }
   threadPanel = null;
   threadPanelParentId = null;
-  /* Restore main area width */
-  var mainEl = document.querySelector(".main");
-  if (mainEl) mainEl.style.marginRight = "";
   if (!(opts && opts.skipPushState)) {
     _pushThreadUrlState(null);
   }
@@ -319,19 +316,41 @@ async function openThreadPanel(parentId, opts) {
     '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
     '</div>' +
     "</div>";
-  document.body.appendChild(threadPanel);
-
-  /* Shrink main area so thread panel doesn't overlap */
-  var mainEl = document.querySelector(".main");
-  if (mainEl) mainEl.style.marginRight = "360px";
+  /* Append as flex sibling of .main inside .container (Slack-style side-by-side) */
+  var container = document.querySelector(".container");
+  if (container) {
+    container.appendChild(threadPanel);
+  } else {
+    document.body.appendChild(threadPanel);
+  }
 
   await loadThreadReplies(parentId);
   var ta = document.getElementById("thread-input");
   if (ta) {
     ta.focus();
     ta.addEventListener("keydown", function (e) {
-      /* todo#332: Shift+Enter and Alt+Enter both insert a newline */
-      if (e.key === "Enter" && !e.shiftKey && !e.altKey) {
+      /* Alt+Enter / Ctrl+Enter in thread: toggle voice directed at thread textarea */
+      if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
+        e.preventDefault();
+        e.stopPropagation(); /* prevent global voice handler from double-firing */
+        if (typeof window.toggleVoiceInput === "function") {
+          var orig = document.getElementById("msg-input");
+          var tIn = document.getElementById("thread-input");
+          if (tIn && orig) {
+            tIn.id = "msg-input";
+            orig.id = "msg-input-main";
+            window.toggleVoiceInput();
+            /* Restore IDs synchronously */
+            tIn.id = "thread-input";
+            orig.id = "msg-input";
+          } else if (tIn) {
+            tIn.focus();
+          }
+        }
+        return;
+      }
+      /* Plain Enter (no modifier) sends reply */
+      if (e.key === "Enter" && !e.shiftKey) {
         /* Don't send if mention dropdown is open and an item is selected */
         if (typeof mentionDropdown !== "undefined" && mentionDropdown &&
             mentionDropdown.classList.contains("visible") && mentionSelectedIndex >= 0) {

@@ -103,6 +103,7 @@
    * anywhere on the page. msg#6516 — ywatanabe wants no-mouse access.
    * Cmd+M is reserved by macOS Safari (minimize), so we accept the
    * Ctrl variant on every platform and the Alt+V backup on macOS. */
+  /* Use capture phase so this fires before bubble-phase handlers on textareas */
   document.addEventListener("keydown", function (e) {
     /* Ctrl+M / Cmd+M or Alt+V toggles voice from anywhere */
     if (
@@ -113,14 +114,17 @@
       _toggleVoice();
       return;
     }
-    /* Ctrl+Enter or Alt+Enter toggles voice when Chat tab is active (msg#9375 / msg#9926) */
-    if (e.key === "Enter" &&
-        (e.ctrlKey || e.altKey) &&
-        typeof activeTab !== "undefined" && activeTab === "chat") {
-      e.preventDefault();
-      _toggleVoice();
+    /* Ctrl+Enter or Alt+Enter toggles voice when Chat tab is active (msg#9375 / msg#9926).
+     * Skip if focus is inside the thread panel — thread has its own Alt+Enter handler. */
+    if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
+      var focused = document.activeElement;
+      var inThread = focused && focused.closest && focused.closest(".thread-panel");
+      if (!inThread && typeof activeTab !== "undefined" && activeTab === "chat") {
+        e.preventDefault();
+        _toggleVoice();
+      }
     }
-  });
+  }, true /* capture phase — fires reliably before textarea keydown handlers */);
   /* Initial title with the new shortcut hint. */
   btn.title =
     "Voice input · " + VOICE_LANGS[langIdx].label +

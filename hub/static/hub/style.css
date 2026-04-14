@@ -16,8 +16,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 .container {
-  display: grid;
-  grid-template-columns: 280px 1fr;
+  display: flex;
+  flex-direction: row;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
@@ -25,6 +25,8 @@ body {
 }
 /* Sidebar */
 .sidebar {
+  width: 280px;
+  flex-shrink: 0;
   background: #111;
   border-right: 1px solid #333;
   overflow-y: auto;
@@ -370,9 +372,10 @@ body {
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  width: 100%;
+  min-width: 0;
   overflow: hidden;
   position: relative;
+  transition: flex 0.2s ease-out;
 }
 /* Feed scroll overlay buttons */
 .feed-scroll-btn {
@@ -1926,7 +1929,7 @@ a.chat-link:hover {
   color: #f5a623;
 }
 .starred-item {
-  border-left: 2px solid #f5a623;
+  /* no left border — star icon conveys state (ywatanabe msg#10393) */
   padding-left: 6px;
 }
 
@@ -2043,4 +2046,26 @@ a.chat-link:hover {
   padding: 12px;
   color: #567;
   font-size: 12px;
+}
+
+/* ── Channel drag-and-drop (msg#10370) ── */
+.ch-drag-handle {
+  color: #334;
+  cursor: grab;
+  font-size: 14px;
+  padding: 0 3px 0 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.channel-item:hover .ch-drag-handle {
+  opacity: 1;
+}
+.ch-dragging {
+  opacity: 0.4;
+  background: #0d1a28 !important;
+}
+.ch-drop-target {
+  border-top: 2px solid #4af;
 }
