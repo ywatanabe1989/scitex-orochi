@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import os
 import platform
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scitex_orochi._client import OrochiClient
 
 EXAMPLES_HEADER = "\nExamples:\n"
 
