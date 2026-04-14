@@ -208,10 +208,18 @@ journalctl --user -u scitex-agent-<AGENT> -n 50
 Example `.bash_profile` snippet (controller-only, no compute):
 ```bash
 if ! tmux has-session -t head-spartan 2>/dev/null; then
-  tmux new-session -d -s head-spartan \
-    "scitex-agent-container start ~/.dotfiles/src/.scitex/orochi/agents/head-spartan/head-spartan.yaml"
+  tmux new-session -d -s head-spartan bash -lc '
+    module load GCCcore/11.3.0 Python/3.11.3 && \
+    scitex-agent-container start ~/.dotfiles/src/.scitex/orochi/agents/head-spartan/head-spartan.yaml
+  '
 fi
 ```
+
+**Lmod module load is mandatory on Spartan.** `~/.venv/lib/libpython3.11.so.1.0` is absent on Spartan because the user venv was built against the Lmod-provided libpython, and Lmod unloads its modules on logout — so `python` inside `~/.venv` fails at interpreter startup with a shared-object error unless `Python/3.11.3` (plus its `GCCcore/11.3.0` prereq) is loaded first. The `bash -lc` wrapper is required so Lmod's init script runs inside the tmux child, not just in the parent `.bash_profile`.
+
+Canonical module names are case-sensitive: `Python/3.11.3` (capital `P`), not `python/3.11`. Confirm with `module avail Python` if a later Spartan sysadmin refresh moves the pin. The same `module load` wrapper pattern applies verbatim to any future `mamba-*-spartan` session defined in its own `.bash_profile` snippet — replicate the pattern, don't drop the module block.
+
+Root-cause note (2026-04-14 msg#11594 / msg#11602): agents on Spartan were silently dying at startup when the venv `libpython` went missing post-reboot. `head-ywata-note-win` rediscovered this during a fleet-wide unstick pass and `head-spartan` confirmed the canonical module name; this snippet is the runbook fix so the same failure does not recur on the next restart.
 
 ## Agent yaml env block (mandatory)
 
