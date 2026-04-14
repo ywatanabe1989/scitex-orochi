@@ -184,6 +184,8 @@
   }
 
   window.toggleVoiceInput = _toggleVoice;
+  /* Expose lang cycle so thread panel can add its own EN/JA button */
+  window.cycleVoiceLang = _cycleLang;
   btn.addEventListener("click", _toggleVoice);
   btn.addEventListener("contextmenu", function (e) {
     e.preventDefault();

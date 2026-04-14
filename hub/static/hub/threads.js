@@ -311,6 +311,7 @@ async function openThreadPanel(parentId, opts) {
     '<button type="button" id="thread-attach-btn" tabindex="-1" title="Attach file (Ctrl+U)">📎</button>' +
     '<button type="button" id="thread-sketch-btn" tabindex="-1" title="Draw sketch">✏️</button>' +
     '<button type="button" id="thread-voice-btn" tabindex="-1" title="Voice input">🎤</button>' +
+    '<button type="button" id="thread-voice-lang-btn" tabindex="-1" title="Switch language (EN/JA)" style="font-size:11px;padding:2px 5px;opacity:0.7;">EN</button>' +
     '<input type="file" id="thread-file-input" style="display:none" multiple>' +
     '</div>' +
     '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
@@ -387,6 +388,7 @@ async function openThreadPanel(parentId, opts) {
   var fileInput = document.getElementById("thread-file-input");
   var sketchBtn = document.getElementById("thread-sketch-btn");
   var voiceBtn  = document.getElementById("thread-voice-btn");
+  var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
 
   if (attachBtn && fileInput) {
     attachBtn.addEventListener("click", function () { fileInput.click(); });
@@ -423,6 +425,19 @@ async function openThreadPanel(parentId, opts) {
         } else if (tIn) {
           tIn.focus();
         }
+      }
+    });
+  }
+
+  if (voiceLangBtn) {
+    /* Sync button label with voice-input.js current language on open */
+    var mainLangBtn = document.getElementById("msg-voice-lang");
+    if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+    voiceLangBtn.addEventListener("click", function () {
+      if (typeof window.cycleVoiceLang === "function") {
+        window.cycleVoiceLang();
+        /* Sync label from main lang button */
+        if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
       }
     });
   }
