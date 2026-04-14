@@ -43,6 +43,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [fleet-resurrection-protocol](fleet-resurrection-protocol.md) — 4-layer defense-in-depth recovery: self-probe (in-agent /loop), per-host healer (pane classifier + actuator), cross-host mesh (bastion + compound probe), OS watchdog (systemd/launchd/sbatch). 3 incident walk-throughs + invariants + known gaps.
 - [active-probe-protocol](active-probe-protocol.md) — DM ping + 30–60 s wait + structured classification; the ground-truth liveness signal that replaces "pane moved therefore alive" false positives. Healer `/loop` prompt template, scope matrix, post-redeploy grace window, forbidden probe-from-#general anti-pattern. Codifies 2026-04-14 false-positive incident fix (msg #10675).
 - [python-venv-convention](python-venv-convention.md) — Canonical venv chain: `~/.venv-<VER>` real + `~/.venv` symlink + `~/proj/<pkg>/.venv` symlink. Atomic Python version switch via `ln -snf`, inode economy for HPC, safe migration recipe, forbidden patterns, direnv/uv/poetry compatibility.
+- [config-seed](config-seed.md) — Pre-seed `~/.claude/settings.json` via dotfiles symlink so Claude Code does not prompt on every Write/Edit/Bash. Canonical permission allowlist, trusted-directories list, broken-symlink diagnostic, version-specific prompt catalog, 7-step fresh-host bootstrap checklist. Root cause fix for todo#423 MBA stuck-prompt cluster.
 
 ## MCP Tools
 
