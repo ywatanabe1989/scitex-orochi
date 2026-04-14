@@ -270,9 +270,12 @@ const conn = {
       console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
       _dbg(`ws open`);
 
-      // App-level heartbeat — Daphne does NOT respond to WebSocket
-      // protocol-level ping frames, so we only use app-level heartbeats
-      // for liveness and do NOT terminate on missing pong.
+      // App-level heartbeat + liveness alarm.
+      // Daphne does NOT respond to WebSocket protocol-level ping frames,
+      // so we do NOT terminate on missing pong. Instead, if the connection
+      // seems dead (send fails), we emit an alarm for healers.
+      let _lastSendOk = Date.now();
+      let _alarmSent = false;
       const _pingInterval = setInterval(() => {
         if (!_ws || _ws.readyState !== WebSocket.OPEN) {
           clearInterval(_pingInterval);
@@ -286,7 +289,33 @@ const conn = {
               payload: {},
             }),
           );
-        } catch {}
+          _lastSendOk = Date.now();
+          _alarmSent = false;
+        } catch {
+          // Send failed — hub may be unreachable
+          const silentMs = Date.now() - _lastSendOk;
+          if (silentMs > 60000 && !_alarmSent) {
+            _alarmSent = true;
+            console.error(
+              `[orochi] ALARM: hub unreachable for ${Math.round(silentMs / 1000)}s — healer should investigate`,
+            );
+            _dbg(`alarm: hub unreachable ${silentMs}ms`);
+            // Notify Claude Code so it can post to #escalation
+            try {
+              mcp.notification({
+                method: "notifications/claude/channel" as const,
+                params: {
+                  content: `ALARM: Orochi hub unreachable for ${Math.round(silentMs / 1000)}s. WebSocket heartbeat send failing. Healers should check cloudflared and Daphne.`,
+                  meta: {
+                    chat_id: "#escalation",
+                    user: "system",
+                    ts: new Date().toISOString(),
+                  },
+                },
+              });
+            } catch {}
+          }
+        }
       }, 30000);
       _ws!.on("close", () => clearInterval(_pingInterval));
 
