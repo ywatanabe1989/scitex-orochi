@@ -996,7 +996,7 @@ a.chat-link:hover {
 #msg-input.voice-recording,
 #thread-input.voice-recording {
   border-color: #ef4444;
-  animation: voice-border-blink 0.8s ease-in-out infinite;
+  animation: voice-border-blink 1.4s ease-in-out infinite;
 }
 /* Thread mic button active state */
 #thread-voice-btn.voice-active {

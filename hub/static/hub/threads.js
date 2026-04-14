@@ -565,6 +565,10 @@ async function sendThreadReply() {
   if (!text && !attachments.length) return;
   ta.value = "";
   ta.style.height = "auto";
+  /* Reset voice input so it doesn't re-fill the textarea with old text */
+  if (typeof window.voiceInputResetAfterSend === "function") {
+    try { window.voiceInputResetAfterSend(); } catch (_) {}
+  }
   /* Clear thread attachment tray */
   threadPendingAttachments = [];
   _renderThreadAttachmentTray();
