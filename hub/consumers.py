@@ -130,6 +130,35 @@ def _sanitize_group(name: str) -> str:
     return sanitized[:99]
 
 
+# todo#405: auto-status-reply (`[agent] status: online`) belongs in fleet
+# channels only. User-facing channels are the ywatanabe ↔ fleet interface
+# (fleet-communication-discipline.md rule #8). Any channel not in this
+# allowlist — including #general, #ywatanabe, project channels like
+# #neurovista / #paper-*, and DMs — must stay free of fleet heartbeat noise.
+_FLEET_CHANNELS = frozenset({
+    "#agent",
+    "#progress",
+    "#audit",
+    "#escalation",
+    "#fleet",
+    "#system",
+})
+
+
+def _is_fleet_channel(ch_name: str) -> bool:
+    """True if ch_name is a fleet-only coordination channel.
+
+    Fleet channels may receive mention-reply status posts; user channels
+    must not. Unknown channels default to user-facing (fail-closed) to
+    preserve the user experience if someone adds a new channel without
+    updating this allowlist.
+    """
+    if not ch_name:
+        return False
+    name = ch_name if ch_name.startswith("#") else f"#{ch_name}"
+    return name in _FLEET_CHANNELS
+
+
 class AgentConsumer(AsyncJsonWebsocketConsumer):
     """WebSocket consumer for AI agents — authenticates with workspace token."""
 
@@ -772,7 +801,17 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             # @mention auto-reply (issue #98): when a message contains @agentname,
             # hub immediately posts a brief system status for the mentioned agent
             # so the sender knows whether it's alive and what it's doing.
-            if "@" in text and not is_dm:
+            #
+            # todo#405: never auto-post `[agent] status: online / (no recent activity)`
+            # into user-facing channels. User channels are the ywatanabe ↔ fleet
+            # interface (per `fleet-communication-discipline.md` rule #8); status
+            # replies belong in fleet channels only. `@all` from ywatanabe used to
+            # explode into 12+ status replies flooding the feed.
+            if (
+                "@" in text
+                and not is_dm
+                and _is_fleet_channel(ch_name)
+            ):
                 await self._maybe_mention_reply(text, ch_name)
 
     async def _maybe_mention_reply(self, text: str, ch_name: str) -> None:
