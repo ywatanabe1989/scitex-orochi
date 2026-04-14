@@ -789,7 +789,26 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         if not mentioned:
             return
 
-        agents = {a["name"]: a for a in get_agents(self.workspace_id)}
+        all_agents = get_agents(self.workspace_id)
+        agents = {a["name"]: a for a in all_agents}
+        all_names = list(agents.keys())
+
+        # Expand group mentions to individual agent names
+        GROUP_PATTERNS = {
+            "heads": lambda n: n.startswith("head-"),
+            "healers": lambda n: n.startswith("mamba-healer"),
+            "mambas": lambda n: n.startswith("mamba-"),
+            "all": lambda n: True,
+            "agents": lambda n: True,
+        }
+        expanded: list[str] = []
+        for token in mentioned:
+            if token in GROUP_PATTERNS:
+                expanded.extend(n for n in all_names if GROUP_PATTERNS[token](n))
+            else:
+                expanded.append(token)
+        mentioned = list(dict.fromkeys(expanded))  # deduplicate, preserve order
+
         for name in mentioned:
             info = agents.get(name)
             if not info:

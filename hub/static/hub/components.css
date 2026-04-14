@@ -521,3 +521,121 @@
   font-size: 13px;
   font-style: italic;
 }
+
+/* ── Agent sub-tab bar (todo#420) ── */
+.agent-subtab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 10px;
+}
+.agent-subtab {
+  background: transparent;
+  color: #888;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.agent-subtab:hover {
+  background: #222;
+  color: #ccc;
+  border-color: #555;
+}
+.agent-subtab-active {
+  background: #1a2a3a;
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+.agent-subtab-offline {
+  opacity: 0.45;
+}
+.agent-tab-content {
+  overflow-x: auto;
+}
+
+/* ── Per-agent detail view ── */
+.agent-detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.agent-detail-header {
+  font-size: 14px;
+  color: #ddd;
+  padding: 6px 0;
+}
+.agent-detail-meta {
+  font-size: 12px;
+  color: #888;
+  margin-left: 8px;
+}
+.agent-detail-pane-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.agent-detail-pane-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.pane-raw-toggle {
+  background: transparent;
+  color: #666;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 1px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: color 0.12s, border-color 0.12s;
+}
+.pane-raw-toggle:hover {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+.agent-detail-pane-wrap {
+  flex: 1;
+}
+.agent-detail-pane {
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 12px 14px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+  max-height: calc(100vh - 280px);
+  min-height: 200px;
+  border: 1px solid #222;
+}
+.agent-detail-section {
+  margin-top: 4px;
+}
+.agent-detail-claude-md {
+  background: #1a1a2e;
+  color: #ccc;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #333;
+}

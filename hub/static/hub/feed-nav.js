@@ -25,8 +25,8 @@
     _focused = el;
     el.classList.add("msg-nav-focused");
     el.setAttribute("tabindex", "-1");
-    el.focus();
-    /* Scroll into view without hijacking the page position too aggressively */
+    /* Do NOT call el.focus() — stealing DOM focus breaks text selection in the feed.
+     * All keyboard handlers are on document so nav shortcuts work regardless. */
     el.scrollIntoView({ block: "nearest", behavior: "smooth" });
     _showNavHint(el);
   }
@@ -113,6 +113,8 @@
     }
 
     if (e.key === "Enter" || e.key === "r" || e.key === "R") {
+      /* Modifier+Enter is reserved for voice-input (Alt+Enter) and send (Ctrl+Enter) */
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
       e.preventDefault();
       var msgId = _focused.getAttribute("data-msg-id");
       if (msgId) {

@@ -458,9 +458,12 @@ function _showChannelCtxMenu(ch, x, y) {
     });
   });
 
-  /* Close on click outside */
+  /* Close on click outside — use 'click' (not 'mousedown') so the item's
+   * own click handler fires before the menu is removed from the DOM.
+   * Using mousedown removed the menu before click fired, silently eating
+   * all item actions (star, hide, mute, etc.). */
   setTimeout(function () {
-    document.addEventListener("mousedown", _hideChannelCtxMenu, {once: true});
+    document.addEventListener("click", _hideChannelCtxMenu, {once: true});
   }, 10);
 }
 

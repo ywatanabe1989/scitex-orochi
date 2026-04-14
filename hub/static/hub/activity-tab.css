@@ -434,3 +434,13 @@
   color: #4ecdc4;
   border-color: #4ecdc4;
 }
+
+/* ── Per-agent sub-tab bar (todo#420) ── */
+.activity-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 10px;
+}

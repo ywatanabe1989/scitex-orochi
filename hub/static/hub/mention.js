@@ -11,6 +11,9 @@ var SPECIAL_MENTIONS = [
   { name: "all", desc: "notify everyone" },
   { name: "channel", desc: "notify this channel" },
   { name: "agents", desc: "notify all agents" },
+  { name: "heads", desc: "notify all head-* agents" },
+  { name: "healers", desc: "notify all mamba-healer-* agents" },
+  { name: "mambas", desc: "notify all mamba-* agents" },
 ];
 
 /* Fuzzy match: check if all query characters appear in order within text.

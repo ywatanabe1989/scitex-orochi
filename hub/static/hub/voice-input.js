@@ -193,6 +193,12 @@
   });
 
   document.addEventListener("keydown", function (e) {
+    /* Escape always stops voice — emergency exit regardless of focus/thread state */
+    if (e.key === "Escape" && isListening) {
+      /* Don't preventDefault — let other Escape handlers (modal close etc.) also fire */
+      _toggleVoice();
+      return;
+    }
     if (
       (e.ctrlKey && (e.key === "m" || e.key === "M")) ||
       (e.altKey && (e.key === "v" || e.key === "V"))
@@ -202,6 +208,7 @@
       return;
     }
     if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
+      /* Toggle voice when on chat tab and focus is not inside thread panel */
       var focused = document.activeElement;
       var inThread = focused && focused.closest && focused.closest(".thread-panel");
       if (!inThread && typeof activeTab !== "undefined" && activeTab === "chat") {

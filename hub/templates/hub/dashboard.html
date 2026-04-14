@@ -9,7 +9,7 @@
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
     <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=122">
-    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=101">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=117">
+    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=119">
     <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
@@ -142,6 +142,7 @@
                     <span class="activity-title">Agent Activity</span>
                     <span class="activity-summary" id="activity-summary"></span>
                 </div>
+                <div id="activity-subtabs" class="activity-subtabs"></div>
                 <div id="activity-grid" class="activity-grid"></div>
             </div>
             <div id="releases-view" class="todo-view" style="display:none">
@@ -226,28 +227,28 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=99"></script>
-    <script src="{% static 'hub/app.js' %}?v=124"></script>
+    <script src="{% static 'hub/app.js' %}?v=125"></script>
     <script src="{% static 'hub/dms.js' %}?v=1"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/chat.js' %}?v=120"></script>
-    <script src="{% static 'hub/mention.js' %}?v=99"></script>
+    <script src="{% static 'hub/mention.js' %}?v=100"></script>
     <script src="{% static 'hub/settings-tab.js' %}?v=104"></script>
     <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
     <script src="{% static 'hub/filter.js' %}?v=99"></script>
     <script src="{% static 'hub/blockers.js' %}?v=1"></script>
-    <script src="{% static 'hub/agents-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/agents-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=99"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=117"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=119"></script>
     <script src="{% static 'hub/upload.js' %}?v=111"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/reactions.js' %}?v=107"></script>
     <script src="{% static 'hub/threads.js' %}?v=122"></script>
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>
-    <script src="{% static 'hub/voice-input.js' %}?v=124"></script>
+    <script src="{% static 'hub/voice-input.js' %}?v=125"></script>
     <script src="{% static 'hub/tabs.js' %}?v=103"></script>
     <script src="{% static 'hub/init.js' %}?v=99"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
@@ -277,7 +278,7 @@
     <script src="{% static 'hub/element-inspector.js' %}?v=1"></script>
     <script src="{% static 'hub/search-palette.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-scroll-btns.js' %}?v=1"></script>
-    <script src="{% static 'hub/feed-nav.js' %}?v=2"></script>
+    <script src="{% static 'hub/feed-nav.js' %}?v=3"></script>
 
     <!-- Channel topic edit modal (todo#402) -->
     <div id="channel-topic-modal" class="ch-topic-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Edit channel topic">
