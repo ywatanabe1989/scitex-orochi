@@ -142,8 +142,19 @@
                     <button class="files-filter-btn" data-mime="audio">Audio</button>
                     <button class="files-filter-btn" data-mime="application/pdf">PDFs</button>
                     <button class="files-filter-btn" data-mime="other">Other</button>
+                    <span class="files-filter-sep"></span>
+                    <button class="files-view-btn active" id="files-view-grid" title="Grid view" onclick="filesSetView('grid')">&#9641;</button>
+                    <button class="files-view-btn" id="files-view-list" title="List view" onclick="filesSetView('list')">&#9776;</button>
                 </div>
                 <div id="files-grid" class="files-grid"></div>
+            </div>
+            <!-- Image lightbox viewer -->
+            <div id="img-viewer-overlay" class="img-viewer-overlay" style="display:none" onclick="closeImgViewer()">
+                <button class="img-viewer-close" onclick="closeImgViewer()" aria-label="Close">&#x2715;</button>
+                <button class="img-viewer-prev" id="img-viewer-prev" onclick="event.stopPropagation();imgViewerNav(-1)" aria-label="Previous">&#10094;</button>
+                <img id="img-viewer-img" class="img-viewer-img" src="" alt="" onclick="event.stopPropagation()">
+                <button class="img-viewer-next" id="img-viewer-next" onclick="event.stopPropagation();imgViewerNav(1)" aria-label="Next">&#10095;</button>
+                <div id="img-viewer-caption" class="img-viewer-caption"></div>
             </div>
             {% if is_admin %}
                 <div id="settings-view" class="todo-view" style="display:none">
