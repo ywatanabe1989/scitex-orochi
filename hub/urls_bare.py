@@ -67,6 +67,12 @@ urlpatterns = [
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
+    # Per-agent single-screen detail payload (todo#420 MVP).
+    path(
+        "api/agents/<str:name>/detail/",
+        views.api_agent_detail,
+        name="api-agent-detail",
+    ),
     # Bun MCP sidecars POST registry heartbeats here. Must exist on the
     # bare domain because SCITEX_OROCHI_URL defaults to wss://scitex-orochi.com
     # (no subdomain). Without this entry the heartbeat 404s and the

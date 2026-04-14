@@ -4,6 +4,38 @@
 var _agentsTabInterval = null;
 var _selectedAgentTab = "overview"; /* "overview" or agent name */
 var _lastAgentsData = [];           /* cached for sub-tab renders */
+var _agentDetailCache = {};         /* name -> last /detail response */
+var _agentDetailInflight = {};      /* name -> bool (in-flight guard) */
+
+/* Fetch the full per-agent detail payload (todo#420).
+ *
+ * Responses are cached into _agentDetailCache and rendered via
+ * _renderAgentContent. The registry-based fallback in
+ * _renderAgentDetail still runs on first paint so the user never
+ * sees a blank screen while the detail call is in flight. */
+async function _fetchAgentDetail(name) {
+  if (!name || name === "overview") return;
+  if (_agentDetailInflight[name]) return;
+  _agentDetailInflight[name] = true;
+  try {
+    var res = await fetch(apiUrl("/api/agents/" + encodeURIComponent(name) + "/detail/"));
+    if (!res.ok) {
+      console.warn("agent detail fetch failed:", name, res.status);
+      return;
+    }
+    var data = await res.json();
+    _agentDetailCache[name] = data;
+    /* Only re-render if still viewing this agent */
+    if (_selectedAgentTab === name) {
+      var grid = document.getElementById("agents-grid");
+      if (grid) _renderAgentContent(grid);
+    }
+  } catch (e) {
+    console.warn("agent detail fetch error:", name, e);
+  } finally {
+    _agentDetailInflight[name] = false;
+  }
+}
 
 /* ── Sub-tab bar ────────────────────────────────────────────────────── */
 function _renderSubTabBar(agents) {
@@ -40,46 +72,92 @@ function _bindSubTabBar(grid) {
 }
 
 /* ── Per-agent detail view ──────────────────────────────────────────── */
+/* Merges registry row (`a`) with cached /api/agents/<name>/detail/
+ * payload (`d`). The merge is forgiving: either source can be missing
+ * a field, and the view always renders something so the user is never
+ * staring at an empty panel while the detail call is in flight. */
 function _renderAgentDetail(a) {
-  var liveness = a.liveness || (isAgentInactive(a) ? "offline" : "online");
+  var d = _agentDetailCache[a.name] || {};
+  var liveness = d.liveness || a.liveness || (isAgentInactive(a) ? "offline" : "online");
   var statusColor = livenessColor(liveness);
-  var pane = a.pane_tail_block || a.pane_tail || "";
+  var role = d.role || a.role || "agent";
+  var machine = d.machine || a.machine || "?";
+  var model = d.model || a.model || "-";
+  var ctxPct = d.context_pct != null ? d.context_pct : a.context_pct;
+  var currentTask = d.current_task || a.current_task || "";
+  var channels = d.channel_subs || a.channels || [];
+  var claudeMd = d.claude_md || a.claude_md || "";
+  var mcpServers = d.mcp_servers || a.mcp_servers || [];
+  /* pane_text from the detail endpoint is already redacted; the
+   * registry fallback (pane_tail_block / pane_tail) is NOT, so prefer
+   * detail whenever we have it. */
+  var pane = "";
+  var paneSource = "unavailable";
+  if (d.pane_text != null) {
+    pane = d.pane_text;
+    paneSource = d.pane_text_source || (pane ? "cached" : "unavailable");
+  } else {
+    pane = a.pane_tail_block || a.pane_tail || "";
+    paneSource = pane ? "cached" : "unavailable";
+  }
 
   var headerHtml =
     '<div class="agent-detail-header">' +
     '<span class="status-dot-inline" style="background:' + statusColor + '"></span>' +
     '<strong>' + escapeHtml(a.name) + '</strong>' +
     ' <span class="agent-detail-meta">' +
-    escapeHtml(a.role || "agent") + " · " +
-    escapeHtml(a.machine || "?") + " · " +
-    escapeHtml(a.model || "-") +
-    (a.context_pct != null ? " · ctx " + Number(a.context_pct).toFixed(1) + "%" : "") +
-    (a.current_task ? ' · <em>' + escapeHtml(a.current_task) + '</em>' : '') +
+    escapeHtml(role) + " · " +
+    escapeHtml(machine) + " · " +
+    escapeHtml(model) +
+    (ctxPct != null ? " · ctx " + Number(ctxPct).toFixed(1) + "%" : "") +
+    (d.uptime_seconds != null ? " · up " + _fmtDuration(d.uptime_seconds) : "") +
+    (currentTask ? ' · <em>' + escapeHtml(currentTask) + '</em>' : '') +
+    "</span>" +
+    '<span class="agent-detail-actions">' +
+    '<button class="agent-detail-dm-btn" data-dm-name="' + escapeHtml(a.name) + '" ' +
+    'title="Open DM with ' + escapeHtml(a.name) + '">DM</button>' +
     "</span>" +
     "</div>";
 
+  var paneLabel =
+    'Terminal output <span class="agent-detail-pane-source">(' + escapeHtml(paneSource) + ')</span>';
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
-    '<div class="agent-detail-pane-label">Terminal output</div>' +
+    '<div class="agent-detail-pane-label">' + paneLabel + "</div>" +
     '<pre class="agent-detail-pane">' +
-    (pane ? escapeHtml(pane) : '<span class="muted-cell">No terminal output available</span>') +
+    (pane
+      ? escapeHtml(pane)
+      : '<span class="muted-cell">No terminal output available (pane_text_source=' +
+        escapeHtml(paneSource) + ")</span>") +
     "</pre>" +
     "</div>";
 
-  var claudeMdHtml = a.claude_md
+  var claudeMdHtml = claudeMd
     ? '<div class="agent-detail-section">' +
       '<div class="agent-detail-pane-label">CLAUDE.md</div>' +
-      '<pre class="agent-detail-claude-md">' + escapeHtml(a.claude_md) + "</pre>" +
+      '<pre class="agent-detail-claude-md">' + escapeHtml(claudeMd) + "</pre>" +
       "</div>"
     : "";
 
   var channelsHtml = "";
-  if (a.channels && a.channels.length) {
-    var unique = [...new Set(a.channels)];
+  if (channels && channels.length) {
+    var unique = [...new Set(channels)];
     channelsHtml =
       '<div class="agent-detail-section">' +
       '<span class="agent-detail-pane-label">Channels: </span>' +
       unique.map(function(c){ return '<span class="ch-badge">' + escapeHtml(c) + "</span>"; }).join("") +
+      "</div>";
+  }
+
+  var mcpHtml = "";
+  if (mcpServers && mcpServers.length) {
+    mcpHtml =
+      '<div class="agent-detail-section">' +
+      '<span class="agent-detail-pane-label">MCP servers: </span>' +
+      mcpServers.map(function(m) {
+        var label = typeof m === "string" ? m : (m.name || JSON.stringify(m));
+        return '<span class="ch-badge">' + escapeHtml(label) + "</span>";
+      }).join("") +
       "</div>";
   }
 
@@ -88,9 +166,22 @@ function _renderAgentDetail(a) {
     headerHtml +
     paneHtml +
     channelsHtml +
+    mcpHtml +
     claudeMdHtml +
     "</div>"
   );
+}
+
+/* Compact human-friendly seconds formatter used in the detail header. */
+function _fmtDuration(sec) {
+  sec = Number(sec) || 0;
+  if (sec < 60) return sec + "s";
+  var m = Math.floor(sec / 60);
+  if (m < 60) return m + "m";
+  var h = Math.floor(m / 60);
+  if (h < 24) return h + "h " + (m % 60) + "m";
+  var d = Math.floor(h / 24);
+  return d + "d " + (h % 24) + "h";
 }
 
 /* Render only the content area (below tab bar) */
@@ -126,6 +217,31 @@ function _renderAgentContent(grid) {
   /* Scroll pane to bottom so latest output is visible */
   var pre = content.querySelector(".agent-detail-pane");
   if (pre) pre.scrollTop = pre.scrollHeight;
+  /* Kick off an async detail fetch so the next re-render has the
+   * redacted pane_text, MCP servers, uptime, etc. The cache shields
+   * subsequent renders from flicker. */
+  _fetchAgentDetail(agent.name);
+  /* Wire the DM quick-action: reuse the existing DM pipeline by
+   * dispatching a lightweight custom event the dashboard listens for.
+   * Falls back to addTag so even without a global DM opener the user
+   * at least gets the agent pre-filtered into the feed. */
+  var dmBtn = content.querySelector(".agent-detail-dm-btn");
+  if (dmBtn) {
+    dmBtn.addEventListener("click", function(ev) {
+      ev.stopPropagation();
+      var name = dmBtn.getAttribute("data-dm-name");
+      try {
+        if (typeof window.openDmWithAgent === "function") {
+          window.openDmWithAgent(name);
+          return;
+        }
+        document.dispatchEvent(new CustomEvent("orochi:open-dm", {
+          detail: { agent: name },
+        }));
+      } catch (_) {}
+      if (typeof addTag === "function") addTag("agent", name);
+    });
+  }
 }
 
 /* ── Overview HTML builder (extracted from renderAgentsTab) ─────────── */

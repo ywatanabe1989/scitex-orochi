@@ -68,6 +68,12 @@ urlpatterns = [
     path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Per-agent single-screen detail payload (todo#420 MVP).
+    path(
+        "api/agents/<str:name>/detail/",
+        views.api_agent_detail,
+        name="api-agent-detail",
+    ),
     path(
         "api/subagents/update/", views.api_subagents_update, name="api-subagents-update"
     ),
