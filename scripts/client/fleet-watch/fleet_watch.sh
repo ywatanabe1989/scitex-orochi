@@ -123,9 +123,9 @@ classify_orochi_pane_state() {
     command -v jq >/dev/null 2>&1 || return 0
     [ -s "$curr" ] || return 0
 
-    # Pull every (agent, orochi_pane_tail_block) pair we can find. Both schemas:
-    #   snapshot --json: .agent + .agent_meta.orochi_pane_tail_block          (single)
-    #   probe_remote.sh fallback: .agents_meta.<name>.orochi_pane_tail_block  (map)
+    # Pull every (agent, pane_tail_block) pair we can find. Both schemas:
+    #   snapshot --json: .agent + (.agent_meta.pane_tail_block_clean // .agent_meta.pane_tail_block)          (single)
+    #   probe_remote.sh fallback: .agents_meta.<name>.pane_tail_block  (map)
     local pairs
     pairs=$(jq -r '
         def pair($name; $block):
@@ -133,7 +133,7 @@ classify_orochi_pane_state() {
             else "\($name)\t\($block | tostring | @base64)" end;
         (
             (if .agent != null and (.agent_meta? // null) != null
-              then pair(.agent; .agent_meta.orochi_pane_tail_block)
+              then pair(.agent; (.agent_meta.pane_tail_block_clean // .agent_meta.pane_tail_block))
               else empty end),
             (
                 (.agents_meta // {})
@@ -152,7 +152,7 @@ classify_orochi_pane_state() {
                 else "\($name)\t\($block | tostring | @base64)" end;
             (
                 (if .agent != null and (.agent_meta? // null) != null
-                  then pair(.agent; .agent_meta.orochi_pane_tail_block)
+                  then pair(.agent; (.agent_meta.pane_tail_block_clean // .agent_meta.pane_tail_block))
                   else empty end),
                 (
                     (.agents_meta // {})
