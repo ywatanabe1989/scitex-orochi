@@ -1250,10 +1250,8 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
      * Shift+Enter remains the newline shortcut. Plain Enter sends. */
     if (e.shiftKey) return;
     if (e.altKey) {
+      /* Voice toggle handled by voice-input.js global handler — just prevent default */
       e.preventDefault();
-      if (typeof window.toggleVoiceInput === "function") {
-        window.toggleVoiceInput();
-      }
       return;
     }
     e.preventDefault();

@@ -347,16 +347,16 @@
   flex-shrink: 0;
 }
 
-/* Inner row: textarea + action buttons + Send */
+/* Inner row: textarea on top, action buttons + Send below */
 .thread-compose-row {
   display: flex;
-  gap: 6px;
-  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .thread-compose-row textarea,
 .thread-input-row textarea {
-  flex: 1;
+  width: 100%;
   background: #1a1a1a;
   color: #ddd;
   border: 1px solid #2a2a2a;
@@ -392,13 +392,20 @@
   background: #3bb3aa;
 }
 
-/* Thread input action buttons (📎 ✏️ 🎤) — horizontal row beside textarea */
+/* Bottom row: actions + Send side by side */
+.thread-bottom-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+/* Thread input action buttons (📎 ✏️ 🎤) */
 .thread-input-actions {
   display: flex;
   flex-direction: row;
-  align-items: flex-end;
-  gap: 2px;
-  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
 }
 .thread-input-actions button {
   background: #1a1a1a;

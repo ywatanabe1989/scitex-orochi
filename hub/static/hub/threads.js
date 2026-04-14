@@ -307,6 +307,7 @@ async function openThreadPanel(parentId, opts) {
     '<div id="thread-pending-attachments" class="thread-pending-attachments" style="display:none"></div>' +
     '<div class="thread-compose-row">' +
     '<textarea id="thread-input" placeholder="Reply in thread…" rows="2"></textarea>' +
+    '<div class="thread-bottom-row">' +
     '<div class="thread-input-actions">' +
     '<button type="button" id="thread-attach-btn" tabindex="-1" title="Attach file (Ctrl+U)">📎</button>' +
     '<button type="button" id="thread-sketch-btn" tabindex="-1" title="Draw sketch">✏️</button>' +
@@ -315,6 +316,7 @@ async function openThreadPanel(parentId, opts) {
     '<input type="file" id="thread-file-input" style="display:none" multiple>' +
     '</div>' +
     '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
+    '</div>' +
     '</div>' +
     "</div>";
   /* Append as flex sibling of .main inside .container (Slack-style side-by-side) */
