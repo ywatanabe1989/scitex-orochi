@@ -104,12 +104,17 @@
     if (e.key === "Enter" || e.key === "r" || e.key === "R") {
       e.preventDefault();
       var msgId = _focused.getAttribute("data-msg-id");
-      if (msgId && typeof window.openReplyPanel === "function") {
-        window.openReplyPanel(parseInt(msgId, 10));
-      } else {
-        /* Fallback: click the reply button in the focused message */
-        var replyBtn = _focused.querySelector(".reply-btn, .action-reply, [data-action=\"reply\"]");
-        if (replyBtn) replyBtn.click();
+      if (msgId) {
+        /* openThreadForMessage is the canonical thread/reply opener (threads.js) */
+        if (typeof window.openThreadForMessage === "function") {
+          window.openThreadForMessage(parseInt(msgId, 10));
+        } else if (typeof window.openReplyPanel === "function") {
+          window.openReplyPanel(parseInt(msgId, 10));
+        } else {
+          /* Fallback: click the thread reply button in the focused message */
+          var replyBtn = _focused.querySelector(".msg-thread-btn, .reply-btn, .action-reply, [data-action=\"reply\"]");
+          if (replyBtn) replyBtn.click();
+        }
       }
       _clearFocus();
       return;

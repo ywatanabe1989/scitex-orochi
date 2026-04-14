@@ -1844,3 +1844,35 @@ a.chat-link:hover {
   padding: 6px 16px;
 }
 .ch-topic-cancel:hover { background: #1a2a3a; }
+
+/* Channel member pills in topic banner (todo#402 subscriber list) */
+.channel-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 0 1 auto;
+  margin-left: 8px;
+  overflow: hidden;
+}
+.ch-mem-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #0d1f30;
+  border: 1px solid #1e3344;
+  border-radius: 10px;
+  padding: 1px 7px 1px 5px;
+  font-size: 10px;
+  color: #7aacbe;
+  white-space: nowrap;
+}
+.ch-mem-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a4a5a;
+  flex-shrink: 0;
+}
+.ch-mem-dot.ch-mem-online {
+  background: #3cb371;
+}

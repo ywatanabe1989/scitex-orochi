@@ -99,20 +99,53 @@ function _updateComposerTarget(ch, isReply, replyMsgId) {
 window._updateComposerTarget = _updateComposerTarget;
 window.setCurrentChannel = setCurrentChannel;
 
-/* ── Channel topic banner (todo#402) ── */
+/* ── Channel topic banner + subscriber list (todo#402) ── */
 var _channelDescriptions = {}; /* cache: channel → description */
+var _agentChannelMap = {};     /* cache: channel → [{name, online}] */
 
 function _updateChannelTopicBanner(ch) {
   var banner = document.getElementById("channel-topic-banner");
   var textEl = document.getElementById("channel-topic-text");
+  var membersEl = document.getElementById("channel-members");
   if (!banner || !textEl) return;
   var desc = _channelDescriptions[ch] || "";
   if (desc) {
     textEl.textContent = desc;
-    banner.style.display = "";
   } else {
-    banner.style.display = "none";
+    textEl.textContent = "";
   }
+  /* Build member pill list */
+  if (membersEl) {
+    var members = _agentChannelMap[ch] || [];
+    if (members.length > 0) {
+      membersEl.innerHTML = members.map(function (m) {
+        var dot = m.online
+          ? '<span class="ch-mem-dot ch-mem-online"></span>'
+          : '<span class="ch-mem-dot"></span>';
+        return '<span class="ch-mem-pill" title="' + escapeHtml(m.name) + '">' +
+          dot + escapeHtml(cleanAgentName ? cleanAgentName(m.name) : m.name) + '</span>';
+      }).join("");
+      membersEl.style.display = "";
+    } else {
+      membersEl.style.display = "none";
+    }
+  }
+  banner.style.display = (desc || (membersEl && membersEl.children.length > 0)) ? "" : "none";
+}
+
+function _rebuildAgentChannelMap(agents) {
+  var map = {};
+  agents.forEach(function (a) {
+    var chs = a.channels || [];
+    var online = a.status === "online";
+    chs.forEach(function (ch) {
+      var norm = ch.charAt(0) === "#" ? ch : "#" + ch;
+      if (!map[norm]) map[norm] = [];
+      map[norm].push({ name: a.name, online: online });
+    });
+  });
+  _agentChannelMap = map;
+  if (currentChannel) _updateChannelTopicBanner(currentChannel);
 }
 
 function openChannelTopicEdit() {
@@ -683,6 +716,8 @@ async function fetchAgents() {
     var agents = await res.json();
     /* Cache for the Activity tab and other consumers */
     window.__lastAgents = agents;
+    /* Rebuild channel→members map for topic banner subscriber list */
+    _rebuildAgentChannelMap(agents);
     if (typeof renderActivityTab === "function") renderActivityTab();
     var container = document.getElementById("agents");
     /* Focus guard — see todo#225. This path fires on every WS

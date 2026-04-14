@@ -813,23 +813,12 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 content_text=reply_text,
                 metadata={"source": "mention_reply", "agent": name},
             )
+            # Only broadcast to the specific channel group (not workspace-wide).
+            # Workspace-wide broadcast caused all agents to receive mention_reply
+            # messages regardless of channel subscription, wasting tokens (#405).
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_send(
                 group,
-                {
-                    "type": "chat.message",
-                    "id": mention_msg["id"] if mention_msg else None,
-                    "sender": "hub",
-                    "sender_type": "system",
-                    "channel": ch_name,
-                    "kind": "group",
-                    "text": reply_text,
-                    "ts": mention_msg["ts"] if mention_msg else None,
-                    "metadata": {"source": "mention_reply", "agent": name},
-                },
-            )
-            await self.channel_layer.group_send(
-                self.workspace_group,
                 {
                     "type": "chat.message",
                     "id": mention_msg["id"] if mention_msg else None,
