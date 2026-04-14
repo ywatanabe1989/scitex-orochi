@@ -10,6 +10,7 @@ from hub.models import (
     Channel,
     DMParticipant,
     Message,
+    MessageThread,
     Workspace,
     WorkspaceMember,
     WorkspaceToken,
