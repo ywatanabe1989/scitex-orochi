@@ -53,6 +53,7 @@
   recognition.lang = VOICE_LANGS[langIdx].code;
 
   var isListening = false;
+  var _userStopped = false; /* true when the user explicitly clicked stop */
   /* Snapshot of the textarea value when recording started, so interim
    * results can be replaced in-place without accumulating duplicates. */
   var baseText = "";
@@ -60,8 +61,10 @@
   function _toggleVoice() {
     var input = document.getElementById("msg-input");
     if (isListening) {
+      _userStopped = true;
       recognition.stop();
     } else {
+      _userStopped = false;
       baseText = input ? input.value : "";
       try {
         recognition.start();
@@ -125,16 +128,40 @@
 
   recognition.addEventListener("start", function () {
     isListening = true;
+    _userStopped = false;
     btn.classList.add("voice-active");
     btn.title = "Stop voice input";
     var input = document.getElementById("msg-input");
     if (input) input.classList.add("voice-recording");
   });
 
+  /* Unified end handler — auto-restarts if the user didn't stop explicitly.
+   * This recovers from browser-side interruptions (DOM mutations, silence
+   * timeout, focus loss) that can terminate the session unexpectedly.
+   * msg#10280 — ywatanabe reports voice drops when feed updates arrive. */
   recognition.addEventListener("end", function () {
+    if (_restartAfterStop) {
+      /* Deliberate stop-restart cycle (voiceInputResetAfterSend) */
+      _restartAfterStop = false;
+      _suppressResults = false;
+      try { recognition.start(); } catch (_) {}
+      return;
+    }
+    if (isListening && !_userStopped) {
+      /* Unexpected end while user still wants recording — restart after
+       * a 150ms pause to avoid rapid loops on repeated errors. */
+      setTimeout(function () {
+        if (isListening && !_userStopped) {
+          try { recognition.start(); } catch (_) {}
+        }
+      }, 150);
+      return;
+    }
+    /* Normal stop: update UI */
     isListening = false;
     btn.classList.remove("voice-active");
-    btn.title = "Voice input";
+    btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
+      " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
     var input = document.getElementById("msg-input");
     if (input) input.classList.remove("voice-recording");
   });
@@ -180,21 +207,10 @@
     baseText = "";
     _suppressResults = true;
     if (isListening) {
-      try {
-        recognition.stop();
-      } catch (_) {}
-      _restartAfterStop = true;
+      _restartAfterStop = true; /* unified end handler will restart */
+      try { recognition.stop(); } catch (_) {}
     }
   };
 
   var _restartAfterStop = false;
-  recognition.addEventListener("end", function () {
-    if (_restartAfterStop) {
-      _restartAfterStop = false;
-      _suppressResults = false;
-      try {
-        recognition.start();
-      } catch (_) {}
-    }
-  });
 })();
