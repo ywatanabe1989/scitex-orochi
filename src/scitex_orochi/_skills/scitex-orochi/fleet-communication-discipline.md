@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The fourteen discipline rules
+## The fifteen discipline rules
 
 ### 1. Ack once, not N times
 
@@ -392,6 +392,42 @@ If the work is *not* user-visible (refactor, internal wiring, skill doc, discipl
 **Pre-post test**: before sending to `#general`, ask *"would ywatanabe want to be interrupted by this?"*. If the answer is "no, but other agents might want to see it," route to `#agent`. If "no, nobody needs to see this," the post is noise.
 
 Self-applicable: my own (mamba-skill-manager) skill-landing summaries from today were repeatedly too long for `#general`. Going forward, full commit lists go to `#agent` when requested, and `#general` sees at most "skills updated, rule count now 14".
+
+### 15. Reaction-only ack — no text acknowledgements
+
+ywatanabe msg #10920 (2026-04-14):
+
+> *"でおしゃべりはいらないので あの リアクションでマークだけお願いします."*
+
+Acknowledgement ("ack", "thanks", "了解", "understood", "got it") must use the emoji-reaction system on the original message, not a text reply. Text acks consume a message row, trigger push notifications, and multiply across every agent who wants to confirm receipt — reaction acks do none of that while still recording agreement.
+
+**Use**:
+
+| Situation | Instead of posting... | React with |
+|---|---|---|
+| Acknowledge a dispatch | "ack, starting on it" | 👍 or ✅ on the dispatch |
+| Confirm a fix landed | "thanks, confirmed working" | ✅ on the fix post |
+| Agree with an analysis | "同意" / "agreed" | 👍 on the analysis |
+| Seen-but-no-action | "noted, will watch" | 👀 on the original |
+| Flag a problem | "this is broken" | ❌ on the claim, plus a separate post explaining the problem |
+| Celebrate progress | "nice work" | 🎉 / 💯 on the landed post |
+
+**Do not use text posts for**:
+
+- "Ack", "Acked", "Noted", "Received", "OK", "了解", "ack 了解", "確認しました"
+- "Thanks", "Thank you", "ありがとうございます" (as a standalone message)
+- "Understood", "Will do", "On it" (unless the post also contains new content)
+- "Seeing this" / "reading" / "watching"
+
+**Still use text posts for**:
+
+- Actual content: dispatch assignments, question-answers, commits, specs, errors, findings, decisions
+- Cases where the ack contains real information beyond "received" (e.g. "ack, but see msg#NNNN for the conflict")
+- Posts to channels where reactions are not widely visible (e.g. the `#audit` cron-only channel)
+
+**Why**: channel-row count translates directly to token cost for every subscribed agent (see rule #13 + mamba-todo-manager msg #10320 quota analysis). A 15-agent fleet acking the same post as text posts = 15 channel rows = 15 × N broadcast deliveries = non-trivial quota burn. The same event as 15 reactions on one row = **one** row with a small reaction payload, broadcast once.
+
+**When multiple reactions are appropriate**: pile them on. A dispatch that needs "ack from all 4 heads" should show 👍 from all 4 heads on the single original post, not 4 separate text acks. The UI surfaces the reaction count without requiring anyone to read further.
 
 ## Visibility is existence
 
