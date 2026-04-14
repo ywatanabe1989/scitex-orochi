@@ -327,6 +327,24 @@
   padding: 1px 3px;
 }
 
+/* Group mention chip (@heads, @healers, @mambas, @all, @agents) — todo#421.
+ * Visually distinct from individual @<agent> mentions so readers can see
+ * at a glance that a message fanned out to many agents. Hover reveals
+ * a tooltip with the group's expansion rule. */
+.mention-group-chip {
+  display: inline-block;
+  background: rgba(255, 217, 61, 0.18);
+  color: #ffd93d;
+  border: 1px solid rgba(255, 217, 61, 0.45);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-weight: 600;
+  cursor: help;
+}
+.mention-group-chip:hover {
+  background: rgba(255, 217, 61, 0.28);
+}
+
 /* TODO list styles -- see todo-tab.css */
 
 /* Agents Registry Table */
