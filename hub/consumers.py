@@ -941,6 +941,16 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
+    async def channel_description(self, event):
+        """Forward channel description updates to dashboard WebSocket client."""
+        await self.send_json(
+            {
+                "type": "channel_description",
+                "channel": event.get("channel", ""),
+                "description": event.get("description", ""),
+            }
+        )
+
     async def system_message(self, event):
         """Forward system messages to dashboard WebSocket client."""
         import datetime

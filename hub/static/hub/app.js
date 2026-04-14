@@ -70,6 +70,9 @@ function setCurrentChannel(ch) {
   } catch (_) {}
   /* Update composer target indicator (todo#364) */
   _updateComposerTarget(ch || lastActiveChannel, false);
+  /* Update channel topic banner (todo#402) */
+  if (ch) _updateChannelTopicBanner(ch);
+  else { var b = document.getElementById("channel-topic-banner"); if (b) b.style.display = "none"; }
 }
 
 function _updateComposerTarget(ch, isReply, replyMsgId) {
@@ -95,6 +98,58 @@ function _updateComposerTarget(ch, isReply, replyMsgId) {
 }
 window._updateComposerTarget = _updateComposerTarget;
 window.setCurrentChannel = setCurrentChannel;
+
+/* ── Channel topic banner (todo#402) ── */
+var _channelDescriptions = {}; /* cache: channel → description */
+
+function _updateChannelTopicBanner(ch) {
+  var banner = document.getElementById("channel-topic-banner");
+  var textEl = document.getElementById("channel-topic-text");
+  if (!banner || !textEl) return;
+  var desc = _channelDescriptions[ch] || "";
+  if (desc) {
+    textEl.textContent = desc;
+    banner.style.display = "";
+  } else {
+    banner.style.display = "none";
+  }
+}
+
+function openChannelTopicEdit() {
+  var modal = document.getElementById("channel-topic-modal");
+  var inp = document.getElementById("channel-topic-input");
+  if (!modal || !inp) return;
+  inp.value = _channelDescriptions[currentChannel] || "";
+  modal.style.display = "flex";
+  setTimeout(function () { inp.focus(); }, 50);
+}
+window.openChannelTopicEdit = openChannelTopicEdit;
+
+function closeChannelTopicEdit() {
+  var modal = document.getElementById("channel-topic-modal");
+  if (modal) modal.style.display = "none";
+}
+window.closeChannelTopicEdit = closeChannelTopicEdit;
+
+function saveChannelTopic() {
+  var inp = document.getElementById("channel-topic-input");
+  if (!inp || !currentChannel) return;
+  var desc = inp.value.trim();
+  fetch(apiUrl("/api/channels/"), {
+    method: "PATCH",
+    headers: Object.assign({ "Content-Type": "application/json" }, orochiHeaders()),
+    body: JSON.stringify({ name: currentChannel, description: desc }),
+    credentials: "same-origin",
+  })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      _channelDescriptions[currentChannel] = desc;
+      _updateChannelTopicBanner(currentChannel);
+      closeChannelTopicEdit();
+    })
+    .catch(function (e) { console.warn("saveChannelTopic error:", e); });
+}
+window.saveChannelTopic = saveChannelTopic;
 /* Sync textarea placeholder + composer target with restored channel on page load (#364) */
 if (currentChannel) {
   try {
@@ -105,6 +160,22 @@ if (currentChannel) {
     _updateComposerTarget(currentChannel, false);
   });
 }
+
+/* Fetch channel descriptions once on load so the banner is ready */
+document.addEventListener("DOMContentLoaded", function () {
+  fetch(apiUrl("/api/channels/"), { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (list) {
+      list.forEach(function (ch) {
+        if (ch.name && ch.description) {
+          _channelDescriptions[ch.name] = ch.description;
+        }
+      });
+      if (currentChannel) _updateChannelTopicBanner(currentChannel);
+    })
+    .catch(function (_) {});
+});
+
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
@@ -417,6 +488,12 @@ function stopRestPolling() {
 
 function handleMessage(msg) {
   if (msg.type === "message") {
+    /* Filter hub internal status probe messages from the feed (#10315).
+     * These are sent by the hub itself (sender="hub") as presence/status
+     * notifications — they are not user messages and should never appear
+     * in the chat feed. */
+    if ((msg.sender === "hub" || msg.sender === "system") &&
+        (msg.metadata && msg.metadata.type === "status_probe")) return;
     var content = "";
     /* Hub sends flat messages: {type, sender, channel, text, ts, metadata} */
     if (msg.text || msg.channel) {
@@ -474,6 +551,13 @@ function handleMessage(msg) {
     if (typeof handleMessageEdit === "function") handleMessageEdit(msg);
   } else if (msg.type === "message_delete") {
     if (typeof handleMessageDelete === "function") handleMessageDelete(msg);
+  } else if (msg.type === "channel_description") {
+    /* Live update channel topic banner without page reload */
+    var chName = msg.channel;
+    if (chName) {
+      _channelDescriptions[chName] = msg.description || "";
+      if (chName === currentChannel) _updateChannelTopicBanner(chName);
+    }
   }
 }
 

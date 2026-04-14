@@ -61,10 +61,36 @@ def api_workspaces(request):
 
 
 @login_required
-@require_GET
+@require_http_methods(["GET", "PATCH"])
 def api_channels(request, slug=None):
-    """GET /api/channels/ — list channels in current workspace."""
+    """GET /api/channels/ — list channels in current workspace.
+    PATCH /api/channels/?name=<channel> — update channel description (topic).
+    """
     workspace = get_workspace(request, slug=slug)
+
+    if request.method == "PATCH":
+        body = json.loads(request.body)
+        ch_name = normalize_channel_name(body.get("name", ""))
+        description = body.get("description", "")
+        try:
+            ch = Channel.objects.get(workspace=workspace, name=ch_name)
+        except Channel.DoesNotExist:
+            return JsonResponse({"error": "channel not found"}, status=404)
+        ch.description = description
+        ch.save(update_fields=["description"])
+        # Broadcast so all connected clients update their banner
+        layer = get_channel_layer()
+        group = f"workspace_{workspace.id}"
+        async_to_sync(layer.group_send)(
+            group,
+            {
+                "type": "channel.description",
+                "channel": ch_name,
+                "description": description,
+            },
+        )
+        return JsonResponse({"status": "ok", "channel": ch_name, "description": description})
+
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
     data = [{"name": ch.name, "description": ch.description} for ch in channels]
     return JsonResponse(data, safe=False)
@@ -83,7 +109,7 @@ def api_messages(request, slug=None):
         # Exclude messages that are thread replies (they appear in thread panel only)
         is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
         msgs = (
-            Message.objects.filter(workspace=workspace)
+            Message.objects.filter(workspace=workspace, deleted_at__isnull=True)
             .exclude(is_thread_reply)
             .exclude(channel__name__startswith="dm:")
             .select_related("channel")
@@ -198,7 +224,7 @@ def api_history(request, channel_name, slug=None):
     # Exclude thread replies from main channel feed
     is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
     qs = (
-        Message.objects.filter(workspace=workspace, channel__name=channel_name)
+        Message.objects.filter(workspace=workspace, channel__name=channel_name, deleted_at__isnull=True)
         .exclude(is_thread_reply)
         .annotate(thread_count=Count("thread_replies"))
         .order_by("-ts")
@@ -747,7 +773,9 @@ def api_message_detail(request, message_id):
         msg_id = msg.id
         channel_name = msg.channel.name
 
-        msg.delete()
+        # Soft-delete: retain for 30 days, then hard-delete via management command
+        msg.deleted_at = timezone.now()
+        msg.save(update_fields=["deleted_at"])
 
         # Broadcast delete event
         layer = get_channel_layer()

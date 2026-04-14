@@ -262,6 +262,11 @@ function buildAttachmentsHtml(attachments) {
 }
 
 function appendMessage(msg) {
+  /* Filter hub-internal system messages from the feed (msg#10315).
+   * Hub sends mention_reply messages (sender="hub") as status responses
+   * when agents are @mentioned. These are noisy in regular channels. */
+  var _meta = (msg.metadata || {});
+  if (msg.sender === "hub" && _meta.source === "mention_reply") return;
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
   var isAgent = msg.sender_type === "agent" || isKnownAgent(senderName);

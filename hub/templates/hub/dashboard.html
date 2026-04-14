@@ -100,6 +100,10 @@
                 <button class="tab-btn" data-tab="releases">Releases</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
+            <div id="channel-topic-banner" class="channel-topic-banner" style="display:none">
+              <span id="channel-topic-text"></span>
+              <button type="button" class="channel-topic-edit-btn" title="Edit channel topic" onclick="openChannelTopicEdit()">&#9998;</button>
+            </div>
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">
                 <div class="todo-state-filter">
@@ -264,4 +268,20 @@
     <script src="{% static 'hub/search-palette.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-scroll-btns.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-nav.js' %}?v=1"></script>
+
+    <!-- Channel topic edit modal (todo#402) -->
+    <div id="channel-topic-modal" class="ch-topic-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Edit channel topic">
+      <div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
+      <div class="ch-topic-card">
+        <div class="ch-topic-header">
+          <span>Edit channel topic</span>
+          <button type="button" class="ch-topic-close" onclick="closeChannelTopicEdit()">&times;</button>
+        </div>
+        <textarea id="channel-topic-input" class="ch-topic-input" rows="3" placeholder="Describe this channel's purpose..."></textarea>
+        <div class="ch-topic-footer">
+          <button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
+          <button type="button" class="ch-topic-cancel" onclick="closeChannelTopicEdit()">Cancel</button>
+        </div>
+      </div>
+    </div>
 {% endblock %}

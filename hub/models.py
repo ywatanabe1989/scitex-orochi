@@ -250,6 +250,7 @@ class Message(models.Model):
     ts = models.DateTimeField(auto_now_add=True)
     edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
     metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:

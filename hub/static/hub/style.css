@@ -1731,3 +1731,116 @@ a.chat-link:hover {
 .composer-target.is-dm #composer-target-name { color: #9a7aec; }
 .composer-target.is-reply { color: #7a9ab0; }
 .composer-target.is-reply #composer-target-name { color: #f0a060; }
+
+/* Channel topic banner (todo#402) */
+.channel-topic-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: #1a2a3a;
+  border-bottom: 1px solid #1e3040;
+  font-size: 12px;
+  color: #8aacbe;
+  min-height: 26px;
+}
+#channel-topic-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.channel-topic-edit-btn {
+  background: none;
+  border: none;
+  color: #4ac;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.channel-topic-edit-btn:hover { opacity: 1; }
+
+/* Channel topic edit modal (todo#402) */
+.ch-topic-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ch-topic-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+}
+.ch-topic-card {
+  position: relative;
+  background: #1a2634;
+  border: 1px solid #2a4a5a;
+  border-radius: 8px;
+  width: min(480px, 90vw);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1;
+}
+.ch-topic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #cde;
+  font-size: 14px;
+}
+.ch-topic-close {
+  background: none;
+  border: none;
+  color: #8ab;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+}
+.ch-topic-close:hover { color: #fff; }
+.ch-topic-input {
+  background: #0f1d2a;
+  border: 1px solid #2a4a5a;
+  border-radius: 5px;
+  color: #cde;
+  font-size: 13px;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 70px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ch-topic-input:focus { outline: none; border-color: #4ac; }
+.ch-topic-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.ch-topic-save {
+  background: #1a7abf;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 16px;
+}
+.ch-topic-save:hover { background: #228fd8; }
+.ch-topic-cancel {
+  background: none;
+  border: 1px solid #2a4a5a;
+  border-radius: 4px;
+  color: #8ab;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 16px;
+}
+.ch-topic-cancel:hover { background: #1a2a3a; }
