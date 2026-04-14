@@ -1734,14 +1734,7 @@ a.chat-link:hover {
 
 /* Composer target channel indicator (todo#364) */
 .composer-target {
-  font-size: 11px;
-  color: #5a8aa0;
-  padding: 4px 12px 2px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  user-select: none;
-  transition: color 0.2s;
+  display: none;
 }
 .composer-target #composer-target-name {
   color: #4ecdc4;
