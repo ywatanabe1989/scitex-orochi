@@ -48,6 +48,7 @@ from hub.views.auth import (  # noqa: F401
     signout_view,
     signup_view,
 )
+from hub.views.agent_detail import api_agent_detail  # noqa: F401
 from hub.views.avatar import api_agents_avatar  # noqa: F401
 from hub.views.registry import (  # noqa: F401
     api_registry_agent_detail,

@@ -80,6 +80,12 @@ urlpatterns = [
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Per-agent single-screen detail payload (todo#420 MVP).
+    path(
+        "api/agents/<str:name>/detail/",
+        views.api_agent_detail,
+        name="api-agent-detail",
+    ),
     # Central container-agent registry (replaces ~/.scitex/agent-container/registry/)
     path(
         "api/registry/agents/",
