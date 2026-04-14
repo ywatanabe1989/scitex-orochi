@@ -47,6 +47,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [random-nonce-ping-protocol](random-nonce-ping-protocol.md) — 60-second random-nonce liveness ping. Publisher ↔ verifier ring scope matrix, 8-hex nonce format, 60 s hard SLA, MCP sidecar auto-responder target state (PR #122 / todo#424), interim degraded-cadence fallback (5-min `/loop` tick until sidecar lands). Enforces rule #13 mechanically.
 - [channel-subscription-authority](channel-subscription-authority.md) — Hub DB `ChannelMembership` is source of truth; yaml `SCITEX_OROCHI_CHANNELS` is additive-only seed at first boot. Register-handler contract, tombstone rows for leaves, migration recipe from yaml-driven era.
 - [hpc-etiquette](hpc-etiquette.md) — Never `find /`, never walk `$HOME` on NFS, no compute on login nodes, scope every filesystem query, inode-aware outputs, SLURM walltime discipline, shell-level guardrails. Response to 2026-04-14 Sean Crosby (UniMelb HPC admin) complaint about unbounded find on Spartan.
+- [spartan-dashboard](spartan-dashboard.md) — https://dashboard.hpc.unimelb.edu.au/ as the canonical source for Spartan quota / jobs / storage / accounting. Replaces `find` / `du` / `squeue` polling with admin-blessed queries. ywatanabe msg#10984.
 
 ## MCP Tools
 
