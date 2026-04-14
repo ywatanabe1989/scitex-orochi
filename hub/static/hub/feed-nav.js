@@ -77,9 +77,20 @@
     });
   });
 
+  /* ── Click on a message: set as focused so r/Enter shortcuts work ── */
+  document.addEventListener("click", function (e) {
+    var msg = e.target.closest && e.target.closest("#messages .msg");
+    if (!msg) return;
+    /* Skip clicks on action buttons (reply btn, emoji, reactions, etc.) */
+    if (e.target.closest(".msg-actions, .msg-thread-btn, .reply-btn, .emoji-btn, .ch-star, .reaction-btn, .msg-footer")) return;
+    _focusMsg(msg);
+  });
+
   /* ── Global keydown: nav between messages while one is focused ── */
   document.addEventListener("keydown", function (e) {
     if (!_focused) return;
+    /* Skip shortcuts during IME composition (Japanese input, etc.) */
+    if (e.isComposing) return;
 
     if (e.key === "Escape") {
       e.preventDefault();
