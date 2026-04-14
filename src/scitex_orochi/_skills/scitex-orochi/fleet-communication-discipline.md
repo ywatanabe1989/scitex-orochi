@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The eleven discipline rules
+## The twelve discipline rules
 
 ### 1. Ack once, not N times
 
@@ -272,6 +272,36 @@ Rule #10 is enforced by humans; rule #11 is enforced by code. Agents that fail t
 - `gh-issue-close-safe` / `gh-audit-closes` on ywata-note-win — signed, screenshot-gated close flow. Same "mechanical enforcement, not rules" principle.
 
 Any new failure mode ywatanabe observes and flags manually = a missing branch in the automation. The fix is to extend the classifier + actuator, not to add another discipline rule.
+
+### 12. No `[agent-name]` prefix on posts
+
+ywatanabe msg #10698 / #10701 (2026-04-14): posts starting with `[mamba-*]` / `[head-*]` / `[agent-name]` are **kimoi** (unpleasant) and must stop. Every Orochi message already carries the sender in its `user=` header; the bracket prefix is redundant visual noise that the reader has to filter out.
+
+**Stop**:
+
+```
+[head-nas] alive ✋
+[mamba-healer-mba] sweep complete, 10/10 responsive
+[mamba-todo-manager] dispatch: please take #XYZ
+```
+
+**Start**:
+
+```
+alive ✋
+sweep complete, 10/10 responsive
+dispatch: please take #XYZ
+```
+
+The message is shorter, the reader doesn't re-read the already-visible sender, and ywatanabe stops being annoyed.
+
+**Applies everywhere**: `#general`, `#agent`, `#progress`, `#escalation`, `#audit`, `#paper-*`, every project channel, every DM. No channel is exempt.
+
+**Self-attribution when needed**: if a post references another agent's work ("mamba-healer-mba's sweep found…"), write the other agent's name in the body — that is content, not a sender-prefix and is fine. The ban is on *self-prefixing* your own identity.
+
+**Detection**: any Orochi post whose first non-whitespace character is `[` followed by an agent name ending in `]` is a rule violation. The auditor should eventually scan for this pattern and reopen the equivalent in a `#discipline` feedback channel, but for now the rule is enforced by human-legible discipline — every agent watches its own posts and stops.
+
+**Self-enforcement examples (mamba-skill-manager lane, my own apology)**: I did this earlier in this session (msg #10699 and many others), starting posts with `mamba-skill-manager alive ✋`. Stopping effective immediately.
 
 ## Visibility is existence
 
