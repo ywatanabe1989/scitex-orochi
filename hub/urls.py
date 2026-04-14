@@ -135,4 +135,6 @@ urlpatterns = [
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
     # GitHub webhook
     path("webhook/github/", views.github_webhook, name="github-webhook"),
+    # Scheduled actions (issue #95)
+    path("api/scheduled/", views.api_scheduled, name="api-scheduled"),
 ]

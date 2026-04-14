@@ -2187,3 +2187,119 @@ def fleet_state(request):
             })
 
     return JsonResponse({"state": results})
+
+
+# ---------------------------------------------------------------------------
+# Scheduled Actions API (issue #95)
+# ---------------------------------------------------------------------------
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST", "DELETE"])
+def api_scheduled(request, slug=None):
+    """CRUD for scheduled actions.
+
+    GET  /api/scheduled/          — list pending/all actions
+    POST /api/scheduled/          — create a new scheduled action
+    DELETE /api/scheduled/?id=N   — cancel an action by id
+
+    Auth: workspace token (query param or JSON body ``token``).
+    POST body:
+        {
+          "token": "wks_...",
+          "agent": "mamba-explorer-mba",
+          "task": "Investigate X",
+          "channel": "#general",        // optional, default #general
+          "run_at": "2026-04-14T09:00:00Z",  // ISO8601 UTC
+          "cron": "",                   // optional, e.g. "0 9 * * *"
+          "created_by": "ywatanabe"     // optional
+        }
+    """
+    from hub.models import ScheduledAction
+    from django.utils import timezone
+
+    def _auth(req):
+        token = req.GET.get("token") or ""
+        if not token:
+            try:
+                body = json.loads(req.body or b"{}")
+                token = body.get("token", "")
+            except Exception:
+                pass
+        if not token:
+            return None, JsonResponse({"error": "token required"}, status=401)
+        try:
+            ws = WorkspaceToken.objects.select_related("workspace").get(token=token)
+            return ws.workspace, None
+        except WorkspaceToken.DoesNotExist:
+            return None, JsonResponse({"error": "invalid token"}, status=401)
+
+    if request.method == "GET":
+        workspace, err = _auth(request)
+        if err:
+            return err
+        status_filter = request.GET.get("status", ScheduledAction.STATUS_PENDING)
+        qs = ScheduledAction.objects.filter(workspace=workspace)
+        if status_filter != "all":
+            qs = qs.filter(status=status_filter)
+        items = list(qs.values(
+            "id", "agent", "task", "channel", "run_at", "cron",
+            "status", "created_by", "created_at", "fired_at"
+        ))
+        for item in items:
+            for k in ("run_at", "created_at", "fired_at"):
+                if item[k]:
+                    item[k] = item[k].isoformat()
+        return JsonResponse({"scheduled": items})
+
+    if request.method == "POST":
+        workspace, err = _auth(request)
+        if err:
+            return err
+        try:
+            body = json.loads(request.body or b"{}")
+        except Exception:
+            return JsonResponse({"error": "invalid JSON"}, status=400)
+        agent = (body.get("agent") or "").strip()
+        task = (body.get("task") or "").strip()
+        run_at_str = (body.get("run_at") or "").strip()
+        if not agent or not task or not run_at_str:
+            return JsonResponse({"error": "agent, task, run_at required"}, status=400)
+        from django.utils.dateparse import parse_datetime
+        run_at = parse_datetime(run_at_str)
+        if run_at is None:
+            return JsonResponse({"error": "invalid run_at format (use ISO8601)"}, status=400)
+        if run_at.tzinfo is None:
+            import pytz
+            run_at = pytz.utc.localize(run_at)
+        action = ScheduledAction.objects.create(
+            workspace=workspace,
+            agent=agent,
+            task=task,
+            channel=normalize_channel_name(body.get("channel", "general")),
+            run_at=run_at,
+            cron=body.get("cron", ""),
+            created_by=body.get("created_by", ""),
+        )
+        return JsonResponse({
+            "id": action.id,
+            "agent": action.agent,
+            "run_at": action.run_at.isoformat(),
+            "status": action.status,
+        }, status=201)
+
+    if request.method == "DELETE":
+        workspace, err = _auth(request)
+        if err:
+            return err
+        action_id = request.GET.get("id")
+        if not action_id:
+            return JsonResponse({"error": "id required"}, status=400)
+        deleted, _ = ScheduledAction.objects.filter(
+            workspace=workspace, id=action_id
+        ).update(status=ScheduledAction.STATUS_CANCELLED)
+        if not deleted:
+            ScheduledAction.objects.filter(workspace=workspace, id=action_id).update(
+                status=ScheduledAction.STATUS_CANCELLED
+            )
+        return JsonResponse({"status": "cancelled", "id": action_id})

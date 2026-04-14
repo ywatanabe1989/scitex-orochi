@@ -420,6 +420,51 @@ class FleetReport(models.Model):
         return f"{self.entity_type}:{self.entity_id} @ {self.ts}"
 
 
+class ScheduledAction(models.Model):
+    """A time-based action reservation for an agent (issue #95).
+
+    When ``run_at`` is in the past and status=='pending', the hub scheduler
+    posts a task message to ``agent`` in ``channel`` and marks it as fired.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_FIRED = "fired"
+    STATUS_CANCELLED = "cancelled"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_FIRED, "Fired"),
+        (STATUS_CANCELLED, "Cancelled"),
+    ]
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="scheduled_actions"
+    )
+    agent = models.CharField(max_length=128, help_text="Target agent name")
+    task = models.TextField(help_text="Task description to deliver to the agent")
+    channel = models.CharField(
+        max_length=128, default="#general", help_text="Channel to deliver the task in"
+    )
+    run_at = models.DateTimeField(help_text="UTC datetime when the action should fire")
+    cron = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        help_text="Optional cron expression for recurring actions (blank = one-shot)",
+    )
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True
+    )
+    created_by = models.CharField(max_length=128, default="", help_text="Creator name")
+    created_at = models.DateTimeField(auto_now_add=True)
+    fired_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["run_at"]
+
+    def __str__(self):
+        return f"ScheduledAction({self.agent}, {self.run_at}, {self.status})"
+
+
 class WorkspaceInvitation(models.Model):
     """Email invitation to join a workspace."""
 
