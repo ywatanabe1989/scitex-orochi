@@ -41,6 +41,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [resource-hub](resource-hub.md) — Fleet-wide aggregation of per-host `~/.scitex/cache/` via rsync pull into `~/.scitex/fleet-cache/<host>/`, `scitex-resource` reader API, staleness + death detection without Claude Code loops.
 - [close-evidence-gate](close-evidence-gate.md) — Mechanical enforcement against rubber-stamp issue closes: `gh-issue-close-safe` wrapper (commit + screenshot + signature required), 30-min `gh-audit-closes` cron auto-reopens violations, `#audit` channel. Codifies the 2026-04-13 directive "rules ではなく強制 system".
 - [fleet-resurrection-protocol](fleet-resurrection-protocol.md) — 4-layer defense-in-depth recovery: self-probe (in-agent /loop), per-host healer (pane classifier + actuator), cross-host mesh (bastion + compound probe), OS watchdog (systemd/launchd/sbatch). 3 incident walk-throughs + invariants + known gaps.
+- [active-probe-protocol](active-probe-protocol.md) — DM ping + 30–60 s wait + structured classification; the ground-truth liveness signal that replaces "pane moved therefore alive" false positives. Healer `/loop` prompt template, scope matrix, post-redeploy grace window, forbidden probe-from-#general anti-pattern. Codifies 2026-04-14 false-positive incident fix (msg #10675).
 
 ## MCP Tools
 
