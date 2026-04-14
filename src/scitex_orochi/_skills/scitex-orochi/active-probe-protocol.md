@@ -36,11 +36,13 @@ body: "probe {N} at {ts_iso}"
 
 The `probe {N}` counter and ISO timestamp give the probed agent a deterministic token to echo back, so the healer can match the reply to the exact probe. No free-text questions — they risk being answered slowly or not at all. Structured token → structured expectation.
 
-### 2. Wait a bounded window
+### 2. Wait a bounded window — 60-second hard line
 
-**30–60 s**. Longer than a `:mulling` animation, shorter than ywatanabe's patience. Different windows per agent role are acceptable:
+**Hard line: 1 minute.** ywatanabe msg #10857 / #10860 / #10861: *"呼びかけに一分間対応しなかったら死んでる判定. 完全に死んでる判定"*. One minute after the probe leaves the healer's `reply` call, the healer either has a reply-with-matching-token in hand or the probed agent is classified **unresponsive**.
 
-| Role | Window |
+Per-role windows inside the 1-minute budget are acceptable (earlier-than-1-minute classification is fine; *later* is not):
+
+| Role | Window (≤ 60 s always) |
 |---|---|
 | `head-*` orchestrators | 30 s |
 | `mamba-healer-*`, `mamba-synchronizer-mba` | 30 s |
@@ -48,7 +50,7 @@ The `probe {N}` counter and ISO timestamp give the probed agent a deterministic 
 | `mamba-scitex-expert-mba`, `mamba-todo-manager` | 60 s (heavier synthesis expected) |
 | `mamba-verifier-mba`, `mamba-newbie-mba` | 60 s |
 
-Never wait longer than 60 s. If an agent needs more than 60 s to reply to a one-line probe, it is dead for operational purposes.
+Never wait longer than 60 s. "Heavier synthesis" is not an excuse — if the agent cannot spare a round-trip to an echo ping within a minute, its ability to respond to ywatanabe is already broken for operational purposes.
 
 ### 3. Classify the reply
 
@@ -70,7 +72,28 @@ Never wait longer than 60 s. If an agent needs more than 60 s to reply to a one-
 | `:mcp_broken` | `scitex-agent-container restart <yaml>` → re-probe once |
 | `:unresponsive` after a restart attempt | **escalate** to `#escalation` with captured pane, restart log, last N ticks of heartbeat |
 
-Never restart twice in one cycle. Two restarts in < 5 min means something systemic; second restart attempts should become `#escalation` events, not silent retries.
+### Never-give-up loop (ywatanabe msg #10862 / #10864)
+
+> *"完全に死んでる判定 → そうしたら個別で見に行く tmux して助ける. 返事があるまで助ける."*
+
+When an agent is classified `:unresponsive` after 1 minute, the healer escalates **into** a retry ladder, not **away** to the user:
+
+| Attempt | Action | If still unresponsive |
+|---|---|---|
+| 1 | Send Enter into the pane (benign ack of idle prompts) | → 2 |
+| 2 | Re-probe + 30 s window | → 3 |
+| 3 | `scitex-agent-container restart <yaml>` side-car only | → 4 |
+| 4 | Re-probe with 60 s window post-sidecar | → 5 |
+| 5 | Full `scitex-agent-container stop && start --continue <yaml>` | → 6 |
+| 6 | Probe one final time; if still `:unresponsive`, post to `#escalation` with full pane capture, all probe/action logs, and the signed actuator trail |
+
+Six-step ladder, no earlier bail-out. The healer keeps helping until the agent answers or the ladder is exhausted — not "one restart then give up" and not "escalate to ywatanabe as first response".
+
+**Never restart twice in the same step** — each retry is a distinct ladder rung; if attempts 3 and 5 both fire `scitex-agent-container restart`, that is two restarts in different steps, which is allowed.
+
+**Never ask ywatanabe "is this agent dead?"** — that is the question the ladder answers. Ywatanabe hears about it only when step 6 exhausts.
+
+Two restarts in < 5 min across different cycles means something systemic; surface that as its own `#escalation` entry ("`<agent>` needed 2 restarts in 5 min") so the underlying cause gets investigated instead of being papered over by retries.
 
 ### 5. Report to `#agent` (not `#general`, not `#ywatanabe`)
 
@@ -96,6 +119,28 @@ One line per agent. No narrative paragraphs. Rule #6 still applies — if every 
 3. **Channel push is filtered before diffing.** Even the passive side must filter out channel pushes before computing `pane_diff`. `pane-state-patterns.md` § "Classification algorithm" should reference this subtraction explicitly; without it, every `@all hello` looks like forward motion.
 4. **Probe responses are not `#general` chatter.** Responses flow into `#agent` by default (or a dedicated `#probe-echo` channel if volume justifies it). Responses to `#general` would cross-contaminate ywatanabe's inbox.
 5. **Signed actuator trail.** Every probe send, every classification, every action writes `{prober, probed, probe_id, state, action, ts}` to `~/.scitex/orochi/fleet-watch/probe.log`. No invisible restarts.
+
+## Ownership — mamba-healer-* own this protocol (not head-nas)
+
+ywatanabe msg #10867 / #10868: the fleet-prompt-actuator, 60-second sweep daemon, and ping/pong classifier **live on each `mamba-healer-<host>`**, not on `head-nas`. head-nas's role in this protocol is now **read-only**: it may consume the probe log for fleet_watch cross-verification, but it does not run the sweep itself.
+
+Each `mamba-healer-<host>` is responsible for:
+
+1. A 60-second sweep cycle (systemd user timer on Linux/WSL, launchd agent on macOS, `.bash_profile` tmux loop on Spartan login node).
+2. Cross-host peer watch — healers probe **other hosts' agents**, not just their own. Self-probe is a null signal (a dead agent can't answer its own ping).
+3. Running the 6-step retry ladder locally when an agent in scope fails the probe.
+4. Appending to the signed probe log under `~/.scitex/orochi/fleet-watch/probe.log`.
+5. Posting sweep-deltas to `#agent` when state changes; silent on clean runs (rule #6).
+
+head-nas's prior `fleet-prompt-actuator` code is kept as a reference implementation for healers to study and adopt, but the running daemon is moved off `head-nas`. head-nas may release the ownership by stopping its own timer.
+
+On a host that cannot run systemd user services (e.g. WSL without proper PID1, Spartan login1 cgroup restrictions), the healer runs the sweep as a foreground loop inside its own tmux session instead — see `agent-autostart.md` Spartan + WSL sections for the `.bash_profile` pattern. The sweep must still run once per minute.
+
+## Scrollback false-positive guard — last-5-lines window
+
+ywatanabe msg #10865 (via mamba-healer-mba): classifier regexes must match against the **last 5 lines** of `tmux capture-pane -p -S -5`, not the full scrollback buffer. Full-buffer matches trigger destructive unblock actions on scrolled-off prompts — sending `Enter` into a live idle prompt submits whatever the agent was drafting.
+
+See `pane-state-patterns.md` § "Scrollback false-positive guard" for the canonical rule. Any active-probe implementation must honor the same guard before classifying a pane as `:pane_blocked` and firing an auto-unblock action.
 
 ## Mamba-healer responsibilities (explicit, for `/loop` prompts)
 
