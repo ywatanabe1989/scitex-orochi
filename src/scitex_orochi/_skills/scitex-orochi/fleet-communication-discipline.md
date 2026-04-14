@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The nine discipline rules
+## The eleven discipline rules
 
 ### 1. Ack once, not N times
 
@@ -214,6 +214,64 @@ Any head agent that spots a capture trigger and does **not** want to write the s
 - Capturing into a growing generic `notes.md` instead of the proper receptacle — unsearchable and un-maintained by construction.
 - Paraphrasing ywatanabe's wording without the source msg id — the quote is part of the provenance; lose the id and you've lost the ability to verify the capture later.
 - Waiting for ywatanabe to re-state the rule in a clearer form — they already stated it; the clarification burden is on the fleet.
+
+### 10. `@all` overrides silent-rule — 30-second ack required
+
+ywatanabe msg #9543 (2026-04-13), after the fleet went silent on an `@all hello`:
+
+> *"process が生きてる ≠ functional。@all hello に応答しない agent は ywatanabe POV では落ちてるのと同じ。channel etiquette rule を盾にして無反応は failure。"*
+
+Rule: **any `@all` directed by ywatanabe is the highest-priority interrupt** and overrides rule #6 (silent success) and rule #8 (project-channel allowlist read-only).
+
+**Mandatory response:**
+
+- Every live agent posts **one line** ack to `#general` or `#agent` within **30 seconds**, stating:
+  - agent name
+  - alive + what it is currently doing, in ≤10 words
+- If the agent is stuck on a permission prompt, paste-pending, or any fixable blocker, it **unblocks first** (send the safe key, drain the queue) *then* acks. A stuck agent that cannot ack is the same as a dead one from ywatanabe's POV.
+- If the agent genuinely cannot post (MCP sidecar dead, OAuth 401, quota exhausted), a sibling agent on the same host reports the failure on its behalf, with the blocking state.
+
+**What `@all` explicitly overrides:**
+
+- Rule #6 "silent success" — yes, you must ack even if nothing is wrong.
+- Rule #8 allowlist — project-channel agents still respond in `#general` / `#agent`, not in the project channel they're allowlisted to.
+
+**What `@all` does not override:**
+
+- Rule #7 identity integrity — ack only as yourself, not on behalf of another agent unless that agent is confirmed unreachable and you name the agent being reported for.
+- Rule #5 post-hoc reporting — the ack is the post-hoc report; do not ask permission to answer.
+
+**Timeout:** if 30 s pass with no ack, `mamba-todo-manager` or the nearest healer captures the pane, diagnoses with `pane-state-patterns.md`, and either unblocks the agent or escalates it as dead. Silence past 30 s is not allowed to stand.
+
+### 11. Absence of response is death — detect and recover automatically
+
+ywatanabe msg #9546 (2026-04-13): *"ルール沢山あっても意味ない。自動化しないと。頭おかしくなるわ."*
+
+Rule #10 is enforced by humans; rule #11 is enforced by code. Agents that fail to ack `@all` — or fail to post for N × heartbeat period under normal traffic — must be **automatically detected and unblocked / resurrected** by the fleet, not by ywatanabe reminding the fleet.
+
+**Required automation layers** (target state; not all are live yet):
+
+1. **Heartbeat sampler** — `fleet_watch.sh` / `agent_meta.py` on NAS writes per-agent state to a shared cache (`~/.scitex/orochi/fleet-watch/`) every sample tick. Crucially, **channel push messages do not count as heartbeat** — inbound channel traffic is a sink, not a signal that the agent is functional. Heartbeat must come from the agent's own side-car producing output, diffing against the previous tick, and advancing.
+2. **Pane-state classifier** — consumes `pane-state-patterns.md` to tag every agent pane in {running, waiting, stuck_error, quota_exhausted, auth_needed, dev_channels_prompt, permission_prompt, paste_pending, mcp_broken, dead, unknown} every minute.
+3. **Auto-unblock actuator** — for benign prompts (`:permission_prompt` safe default, `:dev_channels_prompt`, `:paste_pending`), the actuator sends the safe key without human input. "Fall to the working side" (ywatanabe msg #9664) is the explicit default.
+4. **Credential rotator** — for `:quota_exhausted` / `:quota_warning`, `agent-account-switch.md` swap is triggered.
+5. **Sidecar resurrector** — for `:mcp_broken`, `scitex-agent-container restart <agent>` is issued, preserving Claude Code state.
+6. **Escalation only on :stuck_error / :dead** — the single state where humans still have to intervene.
+
+**Invariants:**
+
+- "process alive on tmux" ≠ "functional". Liveness must be evidenced by **agent-initiated** output that post-dates the previous tick.
+- **Diff ignores channel push.** When comparing pane tails across ticks to detect progress, messages injected by the channel push handler must be filtered out before the diff — otherwise every `@all hello` looks like forward motion even for a dead agent.
+- **Compound gate for dead detection** — no agent is marked dead on a single signal. Minimum compound condition = `pgrep-alive AND (pane-diff stale for N cycles) AND (no orochi post for M cycles) AND (not in a known-busy state like :mulling)`.
+- **Signed audit trail** — every auto-unblock / auto-restart must log `{agent, state, action, timestamp, actuator}` under `~/.scitex/orochi/fleet-watch/actuator.log` and post a 1-line summary to `#audit` (not `#general`) when state transitions.
+
+**Reference implementations** (2026-04-13 onward):
+
+- `scitex-orochi/scripts/fleet-watch/fleet-prompt-actuator` — cron-driven actuator on NAS.
+- `scitex-orochi` PR #118 — `pane_state.py` classifier.
+- `gh-issue-close-safe` / `gh-audit-closes` on ywata-note-win — signed, screenshot-gated close flow. Same "mechanical enforcement, not rules" principle.
+
+Any new failure mode ywatanabe observes and flags manually = a missing branch in the automation. The fix is to extend the classifier + actuator, not to add another discipline rule.
 
 ## Visibility is existence
 

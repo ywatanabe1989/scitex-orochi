@@ -29,6 +29,17 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [cli-conventions](cli-conventions.md) — CLI design rules: verb-noun, --json, --help-recursive, exit codes, stdout/stderr, SCITEX_<PKG>_* env var convention
 - [newbie-test-protocol](newbie-test-protocol.md) — Operator protocol for mamba-newbie-mba (clueless first-time-user simulation, Hawthorne-avoidance, runbook, metrics). NOT loaded by newbie itself.
 - [orochi-operating-principles](orochi-operating-principles.md) — Fleet-wide rules (mutual aid, ship-next, channel etiquette, deploy protocol, account switching, 3-subagent cap, 2×2 priority matrix). Consolidates decisions from 2026-04-12.
+- [secrets-location](secrets-location.md) — Canonical secrets paths (`~/.dotfiles/src/.bash.d/secrets/` + `~/.password-store/`) and the "ガンガン使って" aggressive-use policy.
+- [connectivity-probe](connectivity-probe.md) — `bash -lc` wrap, SSH flags, cross-OS metric semantics (Darwin vs Linux), alias override guard, compound escalation gate, adoption checklist per host. Records 4 probe false-positive families learned 2026-04-13.
+- [agent-autostart](agent-autostart.md) — launchd (MBA) / systemd user + linger (NAS / WSL) / `.bash_profile` + tmux (Spartan) recipes. Includes `SCITEX_OROCHI_AGENT` yaml env block requirement + `~/.claude.json` gitignore rule.
+- [agent-startup-protocol](agent-startup-protocol.md) — 5-step boot every Orochi agent runs: history backfill → identity verify → one-line presence announce → allowlist-checked subscribe → crash-visibly on failure.
+- [agent-account-switch](agent-account-switch.md) — Credential file naming (`~/.claude/.credentials-<account>.json` + symlink), dotfiles sharing, in-place `/login` swap without kill, quota-threshold triggers, state detection patterns. Keeps agents alive across 5h/7d Anthropic quota windows.
+- [pane-state-patterns](pane-state-patterns.md) — Canonical regex catalog for classifying tmux pane state (`idle`/`working`/`quota_exhausted`/`auth_needed`/`permission_prompt`/`dev_channels_prompt`/`paste_pending`/`stuck`/`dead`). Auto-unblock actions per state. References `emacs-claude-code` as upstream truth.
+- [spartan-hpc-startup-pattern](spartan-hpc-startup-pattern.md) — Lmod module chain, `LD_LIBRARY_PATH` hardening for non-interactive SSH, hostname guards, bash-startup latency budget, login vs compute policy, partition cheatsheet.
+- [scientific-figure-standards](scientific-figure-standards.md) — Sample size disclosure, H₀ mandatory + H₁ when defined, mean±SD shaded per-subject aligned time windows, event annotation (red line at `t=0`), per-subject + grand-summary PDF structure, FDR-floor null-control rule, hard-reject anti-patterns.
+- [fleet-claim-protocol](fleet-claim-protocol.md) — DRAFT: hub-side `Claim` model + atomic `select_for_update` acquire + renewable TTL + realpath-normalized keys + 8 test cases + landing order. Promoted to canonical when the MCP tools land.
+- [resource-hub](resource-hub.md) — Fleet-wide aggregation of per-host `~/.scitex/cache/` via rsync pull into `~/.scitex/fleet-cache/<host>/`, `scitex-resource` reader API, staleness + death detection without Claude Code loops.
+- [close-evidence-gate](close-evidence-gate.md) — Mechanical enforcement against rubber-stamp issue closes: `gh-issue-close-safe` wrapper (commit + screenshot + signature required), 30-min `gh-audit-closes` cron auto-reopens violations, `#audit` channel. Codifies the 2026-04-13 directive "rules ではなく強制 system".
 
 ## MCP Tools
 
