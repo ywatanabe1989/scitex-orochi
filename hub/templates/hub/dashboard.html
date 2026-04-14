@@ -107,7 +107,16 @@
             <div id="channel-topic-banner" class="channel-topic-banner" style="display:none">
               <span id="channel-topic-text"></span>
               <div id="channel-members" class="channel-members" style="display:none"></div>
+              <button type="button" class="channel-members-btn" id="channel-members-btn" title="Show channel members" onclick="toggleMembersPanel()" style="display:none">&#128100; <span id="channel-members-count">0</span></button>
               <button type="button" class="channel-topic-edit-btn" title="Edit channel topic" onclick="openChannelTopicEdit()">&#9998;</button>
+            </div>
+            <!-- Channel members panel (todo#407) -->
+            <div id="channel-members-panel" class="ch-members-panel" style="display:none">
+              <div class="ch-members-panel-header">
+                <span id="ch-members-panel-title">Members</span>
+                <button type="button" class="ch-members-close-btn" onclick="closeMembersPanel()">&#10005;</button>
+              </div>
+              <div id="ch-members-list" class="ch-members-list"></div>
             </div>
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">

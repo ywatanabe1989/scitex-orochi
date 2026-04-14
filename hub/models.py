@@ -229,6 +229,48 @@ class ChannelPreference(models.Model):
         return f"{self.user.username} → {self.channel.name}"
 
 
+class ChannelMembership(models.Model):
+    """Explicit per-member channel permissions (todo#407).
+
+    Stores the access level for a given (user, channel) pair.
+    Default is read-write — only entries that deviate from the default
+    need explicit rows. All agents and humans can post by default;
+    admins can create read-only rows to restrict specific members.
+
+    This model serves humans and agent-synthetic-users equally (spec §2.1).
+    """
+
+    PERM_READ_WRITE = "read-write"
+    PERM_READ_ONLY = "read-only"
+    PERM_CHOICES = [
+        (PERM_READ_WRITE, "Read & Write"),
+        (PERM_READ_ONLY, "Read Only"),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="channel_memberships",
+    )
+    channel = models.ForeignKey(
+        Channel,
+        on_delete=models.CASCADE,
+        related_name="memberships",
+    )
+    permission = models.CharField(
+        max_length=12,
+        choices=PERM_CHOICES,
+        default=PERM_READ_WRITE,
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user", "channel")
+
+    def __str__(self):
+        return f"{self.user.username} → {self.channel.name} ({self.permission})"
+
+
 class DMParticipant(models.Model):
     """Participant row for a direct-message channel (spec v3 §2.2).
 

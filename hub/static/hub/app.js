@@ -131,8 +131,90 @@ function _updateChannelTopicBanner(ch) {
       membersEl.style.display = "none";
     }
   }
-  banner.style.display = (desc || (membersEl && membersEl.children.length > 0)) ? "" : "none";
+  /* Members count button — always show for group channels (click to see full list) */
+  var membersBtn = document.getElementById("channel-members-btn");
+  var membersCountEl = document.getElementById("channel-members-count");
+  if (membersBtn && ch && !ch.startsWith("dm:")) {
+    /* Show agent pill count if available, otherwise show generic icon */
+    var liveCount = membersEl ? membersEl.children.length : 0;
+    if (membersCountEl) membersCountEl.textContent = liveCount > 0 ? liveCount : "";
+    membersBtn.style.display = "";
+  } else if (membersBtn) {
+    membersBtn.style.display = "none";
+  }
+  banner.style.display = (desc || ch) ? "" : "none";
 }
+
+/* Channel members panel (todo#407) */
+var _membersCache = {}; /* channel → [{username, permission, kind}] */
+
+function toggleMembersPanel() {
+  var panel = document.getElementById("channel-members-panel");
+  if (!panel) return;
+  if (panel.style.display === "none") {
+    openMembersPanel(currentChannel || lastActiveChannel);
+  } else {
+    closeMembersPanel();
+  }
+}
+
+function openMembersPanel(ch) {
+  var panel = document.getElementById("channel-members-panel");
+  var list = document.getElementById("ch-members-list");
+  var title = document.getElementById("ch-members-panel-title");
+  if (!panel || !list) return;
+  if (title) title.textContent = (ch || "Channel") + " — Members";
+  list.innerHTML = '<div class="ch-members-loading">Loading...</div>';
+  panel.style.display = "";
+
+  /* Check cache first */
+  if (_membersCache[ch]) {
+    _renderMembersPanel(_membersCache[ch]);
+    return;
+  }
+
+  fetch(apiUrl("/api/channel-members/?channel=" + encodeURIComponent(ch)), { credentials: "same-origin" })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      _membersCache[ch] = data;
+      _renderMembersPanel(data);
+    })
+    .catch(function () {
+      if (list) list.innerHTML = '<div class="ch-members-loading">Failed to load members.</div>';
+    });
+}
+
+function _renderMembersPanel(members) {
+  var list = document.getElementById("ch-members-list");
+  if (!list) return;
+  var rw = members.filter(function (m) { return m.permission === "read-write"; });
+  var ro = members.filter(function (m) { return m.permission === "read-only"; });
+  var html = "";
+  if (rw.length > 0) {
+    html += '<div class="ch-members-section-label">Read & Write (' + rw.length + ')</div>';
+    html += rw.map(function (m) {
+      var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
+      return '<div class="ch-members-row">' + icon + ' ' + escapeHtml(m.username) + '</div>';
+    }).join("");
+  }
+  if (ro.length > 0) {
+    html += '<div class="ch-members-section-label ch-members-ro-label">Read Only (' + ro.length + ')</div>';
+    html += ro.map(function (m) {
+      var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
+      return '<div class="ch-members-row ch-members-ro">' + icon + ' ' + escapeHtml(m.username) + ' <span class="ch-members-ro-badge">ro</span></div>';
+    }).join("");
+  }
+  if (!html) html = '<div class="ch-members-loading">No members found.</div>';
+  list.innerHTML = html;
+}
+
+function closeMembersPanel() {
+  var panel = document.getElementById("channel-members-panel");
+  if (panel) panel.style.display = "none";
+}
+window.toggleMembersPanel = toggleMembersPanel;
+window.openMembersPanel = openMembersPanel;
+window.closeMembersPanel = closeMembersPanel;
 
 function _rebuildAgentChannelMap(agents) {
   var map = {};

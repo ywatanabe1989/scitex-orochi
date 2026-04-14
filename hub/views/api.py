@@ -161,6 +161,66 @@ def api_channel_prefs(request, slug=None):
 
 
 @login_required
+@require_http_methods(["GET", "PATCH"])
+def api_channel_members(request, slug=None):
+    """GET /api/channel-members/?channel=<name> — list members with permission level (todo#407).
+    PATCH /api/channel-members/ — update a member's permission (body: {channel, username, permission}).
+    """
+    from hub.models import ChannelMembership
+    workspace = get_workspace(request, slug=slug)
+
+    if request.method == "PATCH":
+        if not request.user.is_superuser and not request.user.is_staff:
+            return JsonResponse({"error": "permission denied"}, status=403)
+        body = json.loads(request.body)
+        ch_name = normalize_channel_name(body.get("channel", ""))
+        username = body.get("username", "")
+        perm = body.get("permission", "read-write")
+        if perm not in ("read-write", "read-only"):
+            return JsonResponse({"error": "invalid permission"}, status=400)
+        try:
+            ch = Channel.objects.get(workspace=workspace, name=ch_name)
+        except Channel.DoesNotExist:
+            return JsonResponse({"error": "channel not found"}, status=404)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "user not found"}, status=404)
+        m, _ = ChannelMembership.objects.get_or_create(user=user, channel=ch)
+        m.permission = perm
+        m.save(update_fields=["permission"])
+        return JsonResponse({"status": "ok", "username": username, "permission": perm})
+
+    ch_name = request.GET.get("channel", "")
+    if not ch_name:
+        return JsonResponse({"error": "channel param required"}, status=400)
+    ch_name = normalize_channel_name(ch_name)
+    try:
+        ch = Channel.objects.get(workspace=workspace, name=ch_name)
+    except Channel.DoesNotExist:
+        return JsonResponse({"error": "channel not found"}, status=404)
+
+    from hub.models import ChannelMembership
+    # Explicit memberships
+    memberships = {
+        m.user.username: m.permission
+        for m in ChannelMembership.objects.filter(channel=ch).select_related("user")
+    }
+    # All workspace members implicitly belong; annotate with their explicit perm or default
+    all_members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
+    data = []
+    for wm in all_members:
+        uname = wm.user.username
+        perm = memberships.get(uname, "read-write")
+        # Determine if this is an agent user (agent users have username starting with "agent-")
+        kind = "agent" if uname.startswith("agent-") else "human"
+        data.append({"username": uname, "permission": perm, "kind": kind, "role": wm.role})
+    return JsonResponse(data, safe=False)
+
+
+@login_required
 @require_http_methods(["GET", "POST"])
 def api_messages(request, slug=None):
     """GET/POST /api/messages/ — recent messages or send one."""

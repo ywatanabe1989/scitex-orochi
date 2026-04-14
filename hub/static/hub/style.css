@@ -1951,3 +1951,80 @@ a.chat-link:hover {
   text-transform: uppercase;
   letter-spacing: .06em;
 }
+
+/* ── Channel members panel (todo#407) ── */
+.channel-members-btn {
+  background: none;
+  border: 1px solid #1e3a4a;
+  border-radius: 12px;
+  color: #6ad;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.channel-members-btn:hover {
+  background: #1a2a3a;
+  color: #8cf;
+}
+.ch-members-panel {
+  position: absolute;
+  top: 68px; /* below banner */
+  right: 0;
+  width: 260px;
+  background: #0a1828;
+  border: 1px solid #1e3a4a;
+  border-top: none;
+  z-index: 500;
+  max-height: 50vh;
+  overflow-y: auto;
+  box-shadow: -4px 4px 16px rgba(0,0,0,.5);
+}
+.ch-members-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e3a4a;
+  font-size: 12px;
+  font-weight: bold;
+  color: #8cf;
+  background: #0d1e2e;
+}
+.ch-members-close-btn {
+  background: none;
+  border: none;
+  color: #567;
+  cursor: pointer;
+  font-size: 14px;
+}
+.ch-members-close-btn:hover { color: #aaa; }
+.ch-members-section-label {
+  padding: 6px 12px 3px;
+  font-size: 10px;
+  color: #3cb371;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.ch-members-ro-label { color: #e88; }
+.ch-members-row {
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #ccc;
+}
+.ch-members-row:hover { background: #111d2a; }
+.ch-members-ro { opacity: 0.7; }
+.ch-members-ro-badge {
+  background: #3a1a1a;
+  color: #e88;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 10px;
+  margin-left: 4px;
+}
+.ch-members-loading {
+  padding: 12px;
+  color: #567;
+  font-size: 12px;
+}
