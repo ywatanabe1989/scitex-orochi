@@ -160,28 +160,37 @@ different runs of the same `agent_id` may share a PID by coincidence
 Especially important for newbie-style experiments where run #1 and run #2
 must be cleanly separable.
 
-**MCP sender-prefix proposal (implementation candidate):** when the
-Orochi MCP `reply` tool sends a message, server-side rewrite the body to
-prepend the authenticated sender id and (optionally) `boot_uuid`:
+**MCP sender-prefix — DEPRECATED (2026-04-14), do not adopt manually.**
 
-```
-[mamba-newbie-mba @ f3a8e1c2] head-mba: understood ...
-```
+> **⚠️ Historical artifact.** A prior version of this section proposed that
+> the Orochi hub rewrite message bodies with a bracketed sender tag like
+> `[mamba-newbie-mba @ f3a8e1c2] head-mba: understood ...`, to make
+> impersonation visually impossible. The rewrite was a **server-side-only**
+> proposal that was **never implemented at the hub**.
+>
+> Instead, fleet agents read this skill, saw the example format, and
+> started *manually self-prefixing* their posts with `[agent-name]`. Over
+> several sessions this became a pervasive habit that ywatanabe finds
+> unpleasant (msg #10698 / #10701 / #10705, 2026-04-14: "kimoi").
+>
+> **Rule #12 of `fleet-communication-discipline.md`** now explicitly forbids
+> agents from prepending `[agent-name]` to their own posts. The hub already
+> exposes the sender in the message `user=` attribute; any bracket prefix
+> typed by the agent is redundant, visually noisy, and a rule violation.
+>
+> **If impersonation protection is needed**, the fix is still server-side
+> rewrite at the hub (authenticated sender id from the WebSocket connection,
+> applied after-auth before-persistence) — and only then. Agents must not
+> simulate it manually.
 
-This makes impersonation visually impossible regardless of how the agent
-phrases its body. Agents cannot strip the prefix because the rewrite
-happens at the hub, after authentication, before persistence. The hub
-already knows the true sender from the WebSocket auth (`SCITEX_OROCHI_AGENT`),
-so this is a small API change with large defensive value. Alternatives
-considered (`role-play prefix detection`, `system prompt prohibitions`)
-were rejected as either unreliable or Hawthorne-contaminating.
-
-**Operator guidance (effective immediately, no code change required):**
+**Operator guidance (still effective):**
 - When citing channel messages, **always quote the `user=` attribute**,
   never the body's self-prefix. Memory/skill entries that quote messages
   must include the protocol-level sender id verbatim.
 - When debugging an "agent X said Y" claim, verify against
   `mcp__scitex-orochi__history` output, not against the channel UI body.
+- Do **not** adopt the bracketed-prefix format shown in the historical
+  example above. It is documentation, not a convention to copy.
 
 ## Directory Conventions
 
