@@ -1674,3 +1674,41 @@ a.chat-link:hover {
   font-style: italic;
   text-align: center;
 }
+
+/* Feed keyboard navigation (feed-nav.js, msg#10295) */
+.msg-nav-focused {
+  outline: 2px solid #4ecdc4;
+  outline-offset: 2px;
+  border-radius: 4px;
+  background: rgba(78, 205, 196, 0.05) !important;
+}
+.msg-nav-focused:focus { outline: 2px solid #4ecdc4; }
+.feed-nav-hint {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a2a3a;
+  border: 1px solid #2a4a5a;
+  border-radius: 8px 8px 0 0;
+  padding: 6px 16px;
+  font-size: 11px;
+  color: #7a9ab0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 100;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.fnh-keys {
+  display: inline-block;
+  background: #0d1f33;
+  border: 1px solid #2a4a5a;
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 10px;
+  color: #4ac;
+  margin: 0 2px;
+}
