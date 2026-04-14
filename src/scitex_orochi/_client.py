@@ -16,29 +16,6 @@ from scitex_orochi._models import Message
 log = logging.getLogger("orochi.client")
 
 
-def _read_claude_email() -> str:
-    """Safely read the email address from ~/.claude.json -> oauthAccount.emailAddress.
-
-    Returns empty string on any error (missing file, bad JSON, no field).
-    Never raises.
-    """
-    try:
-        import json as _json
-        from pathlib import Path as _Path
-
-        claude_json_path = _Path.home() / ".claude.json"
-        with claude_json_path.open("r", encoding="utf-8") as fh:
-            data = _json.load(fh)
-        oauth = data.get("oauthAccount")
-        if isinstance(oauth, dict):
-            email = oauth.get("emailAddress", "")
-            if isinstance(email, str):
-                return email
-    except Exception:
-        pass
-    return ""
-
-
 class OrochiClient:
     """Async WebSocket client for agent communication.
 
@@ -68,7 +45,6 @@ class OrochiClient:
         agent_id: str = "",
         project: str = "",
         ws_path: str = "",
-        credential_email: str = "",
     ) -> None:
         import platform as _platform
 
@@ -84,8 +60,6 @@ class OrochiClient:
         self._token = token or OROCHI_TOKEN
         self._ws_path = ws_path
         self._django_mode = bool(ws_path)
-        # Resolve credential email: explicit arg > auto-detected from ~/.claude.json
-        self.credential_email = credential_email or _read_claude_email()
 
         # Build URI
         path = ws_path.rstrip("/") + "/" if ws_path else ""
@@ -119,7 +93,6 @@ class OrochiClient:
                             "agent_id": self.agent_id,
                             "project": self.project,
                             "workdir": self.project,
-                            "credential_email": self.credential_email,
                         },
                     }
                 )
@@ -139,7 +112,6 @@ class OrochiClient:
                     "role": self.role,
                     "agent_id": self.agent_id,
                     "project": self.project,
-                    "credential_email": self.credential_email,
                 },
             )
             await self._ws.send(reg.to_json())
