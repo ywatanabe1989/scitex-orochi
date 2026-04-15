@@ -14,8 +14,8 @@ except Exception:
 
 # Deployment build ID — set at container start or read from env.
 # Used by the dashboard to show a "new/updated" badge and verify deploys.
-OROCHI_BUILD_ID = os.environ.get("OROCHI_BUILD_ID", "")
-OROCHI_DEPLOYED_AT = os.environ.get("OROCHI_DEPLOYED_AT", "")
+OROCHI_BUILD_ID = os.environ.get("SCITEX_OROCHI_BUILD_ID", "")
+OROCHI_DEPLOYED_AT = os.environ.get("SCITEX_OROCHI_DEPLOYED_AT", "")
 if not OROCHI_DEPLOYED_AT:
     # Fall back to process start time (ISO-8601 UTC)
     from datetime import datetime as _dt
@@ -52,7 +52,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # Subdomain workspace routing (Slack-style)
-OROCHI_BASE_DOMAIN = os.environ.get("OROCHI_BASE_DOMAIN", "lvh.me:8000")
+OROCHI_BASE_DOMAIN = os.environ.get("SCITEX_OROCHI_BASE_DOMAIN", "lvh.me:8000")
 OROCHI_RESERVED_SUBDOMAINS = {
     "www",
     "api",
@@ -87,7 +87,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.orcid",
     "hub.providers.scitex",
-    "hub",
+    "hub.apps.HubConfig",
 ]
 
 SITE_ID = 1
@@ -234,3 +234,29 @@ SOCIALACCOUNT_PROVIDERS = {
         },
     },
 }
+
+# Upload size limits — bumped for fleet PDF/dataset sharing (2026-04-12).
+# Default Django is 2.5 MB which clamps multi-MB uploads at the request body
+# parser stage before our app code can even handle them. We accept up to 100
+# MB; the per-route MAX_UPLOAD_SIZE in hub/views/upload.py enforces the
+# canonical limit.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024     # 5 MB stream-to-disk threshold
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None              # disable form-field count cap
+
+# ── Web Push (VAPID) — todo#263 ───────────────────────────────────────
+# Generate a keypair with:
+#   python -c "from py_vapid import Vapid01; v=Vapid01(); v.generate_keys(); ..."
+# and inject via the SCITEX_OROCHI_VAPID_* env vars.
+SCITEX_OROCHI_VAPID_PUBLIC = os.environ.get("SCITEX_OROCHI_VAPID_PUBLIC", "")
+SCITEX_OROCHI_VAPID_PRIVATE = os.environ.get("SCITEX_OROCHI_VAPID_PRIVATE", "")
+SCITEX_OROCHI_VAPID_SUBJECT = os.environ.get(
+    "SCITEX_OROCHI_VAPID_SUBJECT", "mailto:noreply@scitex-orochi.com"
+)
+if not SCITEX_OROCHI_VAPID_PUBLIC or not SCITEX_OROCHI_VAPID_PRIVATE:
+    import logging as _logging
+    _logging.getLogger("orochi.push").warning(
+        "VAPID keys not configured — web push notifications disabled. "
+        "Set SCITEX_OROCHI_VAPID_PUBLIC and SCITEX_OROCHI_VAPID_PRIVATE."
+    )
+

@@ -20,6 +20,8 @@
     font-size: 20px;
     line-height: 1;
     cursor: pointer;
+    min-width: 44px;
+    min-height: 44px;
   }
   .sidebar-toggle:hover {
     background: #1a2744;

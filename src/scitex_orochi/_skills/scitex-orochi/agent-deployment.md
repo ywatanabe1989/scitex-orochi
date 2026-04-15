@@ -39,7 +39,7 @@ Model: <model-name> (e.g., claude-opus-4-6, claude-haiku-4-5)
 
 ### Model Identity
 
-Agents register their model name via the `OROCHI_MODEL` environment variable in `mcp-config.json`. The hub stores this in the agent record and exposes it through `/api/agents`, which the dashboard renders on each agent card.
+Agents register their model name via the `SCITEX_OROCHI_MODEL` environment variable in `mcp-config.json`. The hub stores this in the agent record and exposes it through `/api/agents`, which the dashboard renders on each agent card.
 
 ```json
 {

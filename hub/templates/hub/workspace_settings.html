@@ -34,7 +34,7 @@
             <div id="chat-header">
                 <h3>Workspace Settings</h3>
             </div>
-            <div class="settings-content">
+            <div class="settings-content" id="settings-content">
                 {% if messages %}
                     {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
                 {% endif %}
@@ -70,6 +70,21 @@
                         </table>
                         <a href="{% url 'signout' %}" class="btn-small btn-danger" style="margin-top:8px;display:inline-block">Sign out</a>
                     </section>
+                    <section class="settings-section">
+                        <h4>🔔 Push Notifications</h4>
+                        <p class="settings-desc">Receive mobile push notifications when you are @mentioned or #escalation messages arrive. Works on Chrome and Safari (iOS 16.4+).</p>
+                        <button type="button" id="push-toggle" class="btn-small push-off" onclick="togglePush()">Notifications: OFF</button>
+                        <p class="settings-desc" id="push-status-msg" style="margin-top:6px;font-size:11px;color:#888"></p>
+                    </section>
+                    <section class="settings-section">
+                        <h4>Change Password</h4>
+                        <p class="settings-desc">Update your account password via the secure password change page.</p>
+                        <a href="/accounts/password/change/"
+                           class="btn-small btn-primary password-change-link"
+                           style="margin-top:4px;display:inline-block">
+                            &#128274; Change Password
+                        </a>
+                    </section>
                 </div>
                 <div class="settings-mode-pane" data-mode="workspace" style="display:none">
                 <section class="settings-section">
@@ -99,7 +114,8 @@
                     <p class="settings-desc">Click the icon to choose an emoji.</p>
                     <div class="ws-icon-preview ws-icon-clickable"
                          id="ws-icon-preview"
-                         title="Click to change icon"></div>
+                         title="Click to change icon"
+                         style="cursor:pointer;font-size:48px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border-radius:8px">{% if workspace.icon %}{{ workspace.icon }}{% else %}🐍{% endif %}</div>
                     <form method="post" class="settings-form settings-form-icon">
                         {% csrf_token %}
                         <input type="hidden" name="action" value="set_icon">

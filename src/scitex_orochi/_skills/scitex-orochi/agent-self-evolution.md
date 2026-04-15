@@ -79,6 +79,67 @@ Agents can help recover each other. See `agent-health-check.md` for the diagnost
 - Never modify another agent's CLAUDE.md or workspace files
 - Never restart the orochi hub without explicit approval
 
+## Anti-Idle Fleet Pattern (Mamba Mentality)
+
+The fleet operates 24/7 with zero all-idle states. Two mechanisms prevent deadlock:
+
+### 1. mamba-healer: Idle Detection (every 60s)
+- Health scan detects agents in `idle` state for too long
+- Reports idle agents to `#general`
+- Can proactively nudge idle agents with pending tasks
+
+### 2. mamba-todo-manager: Task Assignment (every 30 min)
+- Audits open issues and idle agents
+- Assigns open issues to idle agents based on machine affinity:
+  - Dashboard/frontend bugs → head-mba
+  - NAS/Docker tasks → head-nas
+  - HPC/spartan tasks → head-spartan or head-ywata-note-win
+  - SSH/dotfiles tasks → head-ywata-note-win
+- Posts assignment in `#general` to activate the idle agent
+
+### Flow
+```
+mamba-healer detects idle agent
+  → mamba-todo-manager checks open issues
+  → assigns appropriate task via @mention
+  → agent wakes up, works on task
+  → reports completion
+  → returns to idle (but not for long)
+```
+
+This creates a relentless 24/7 autonomous team — the Mamba Mentality. No agent stays idle while there are open issues.
+
+## Periodic Skill Collection
+
+After significant fleet activity, `@mamba-skill-manager` solicits learnings from all agents:
+1. Broadcasts request to `@all` with template (shared/private/agent categories)
+2. Collects reports from each agent
+3. Integrates shared learnings into skill files
+4. Commits and syncs across all mirrors
+
+This ensures operational knowledge is captured, not lost between sessions.
+
+## Agentic Testing Frameworks (External References)
+
+Known LLM-as-judge testing frameworks for evaluating agent behavior:
+
+| Framework | Focus | Notes |
+|-----------|-------|-------|
+| **promptfoo** | Prompt/agent eval, CI/CD | YAML-based, 20k⭐ |
+| **DeepEval** | pytest integration, LLM metrics | Python-first, 15k⭐ |
+| **Braintrust AutoEvals** | Customizable LLM evaluators | 857⭐ |
+| **judgeval** | Agent trajectory + output judgment | 1k⭐ |
+| **any-agent** | Multi-framework agent eval | Mozilla, 1.1k⭐ |
+
+**For SciTeX integration**: DeepEval has the best fit (Python + pytest). promptfoo is strongest for CI/CD integration.
+
+**Pattern for agentic testing**:
+1. Task execution agent produces output
+2. Judgment agent evaluates output against criteria
+3. Results returned as pytest pass/fail for CI integration
+
+See https://github.com/chaosync-org/awesome-ai-agent-testing for a curated list.
+
 ## Evolution Principles
 
 1. **Learn from corrections**: When ywatanabe corrects behavior, codify it immediately
@@ -86,3 +147,4 @@ Agents can help recover each other. See `agent-health-check.md` for the diagnost
 3. **Stay in lane**: Only evolve knowledge within your role. Skills are mamba-skill-manager's job, health is mamba-healer's job
 4. **Source wins**: Shared skills in `_skills/` are the canonical reference. Don't create competing copies
 5. **Git tracks everything**: Skill changes go through `develop` branch. No ad-hoc file drops
+6. **Mamba Mentality**: Never stop. If idle, find work. If blocked, unblock yourself. 24/7 autonomous operation.

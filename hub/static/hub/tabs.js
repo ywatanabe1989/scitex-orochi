@@ -32,6 +32,20 @@ function _activateTab(tab) {
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
+    /* Always default-focus the compose input when the chat tab is shown.
+     * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
+     * the primary action target on the chat tab, so the user should never
+     * have to click into it manually after switching tabs or reloading.
+     * Defer with rAF so the layout has settled (display:'' just changed). */
+    requestAnimationFrame(function () {
+      var input = document.getElementById("msg-input");
+      if (input) {
+        input.focus();
+        if (typeof restoreDraftForCurrentChannel === "function") {
+          restoreDraftForCurrentChannel();
+        }
+      }
+    });
   } else if (tab === "todo") {
     todoView.style.display = "block";
     todoView.style.flex = "1";
@@ -96,38 +110,62 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
   } catch (_) {}
 })();
 
-/* Collapsible sidebar sections */
+/* Collapsible sidebar sections (#321 fix: use data-section for stable keys) */
 (function () {
-  var saved = {};
-  try {
-    saved = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
-  } catch (e) {
-    /* ignore */
+  /* Derive a stable key for a collapsible heading.
+   * Prefer data-section attribute; fall back to textContent for legacy compat. */
+  function sectionKey(h2) {
+    return h2.getAttribute("data-section") || h2.textContent.trim();
   }
-  document.querySelectorAll(".collapsible-heading").forEach(function (h2) {
-    var key = h2.textContent.trim();
-    var section = h2.nextElementSibling;
-    if (saved[key]) {
-      h2.classList.add("collapsed");
-      if (section) section.classList.add("collapsed");
+
+  /* Restore collapsed state on initial load */
+  function applySavedState() {
+    var saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
+    } catch (e) {
+      /* ignore */
     }
-    h2.addEventListener("click", function () {
-      var isCollapsed = h2.classList.toggle("collapsed");
-      if (section) section.classList.toggle("collapsed", isCollapsed);
-      try {
-        var state = JSON.parse(
-          localStorage.getItem("orochi_collapsed") || "{}",
-        );
-        if (isCollapsed) {
-          state[key] = true;
-        } else {
-          delete state[key];
-        }
-        localStorage.setItem("orochi_collapsed", JSON.stringify(state));
-      } catch (err) {
-        /* ignore */
+    document.querySelectorAll(".collapsible-heading").forEach(function (h2) {
+      var key = sectionKey(h2);
+      var section = h2.nextElementSibling;
+      if (saved[key]) {
+        h2.classList.add("collapsed");
+        if (section) section.classList.add("collapsed");
       }
     });
+  }
+  applySavedState();
+  /* The previous implementation used a MutationObserver on the sidebar to
+   * re-apply collapsed state whenever the DOM changed. This caused a bug
+   * (#321) where dynamic count updates in headings changed the textContent
+   * key, making expand/collapse state unreliable. With stable data-section
+   * keys the observer is no longer needed — applySavedState runs once on
+   * load and the click handler manages state from there. */
+
+  /* Event delegation: works for dynamically inserted .collapsible-heading */
+  document.addEventListener("click", function (e) {
+    var h2 = e.target.closest(".collapsible-heading");
+    if (!h2) return;
+    /* Ignore clicks on interactive children (e.g. the new-DM "+" button) */
+    if (e.target.closest("button")) return;
+    var key = sectionKey(h2);
+    var section = h2.nextElementSibling;
+    var isCollapsed = h2.classList.toggle("collapsed");
+    if (section) section.classList.toggle("collapsed", isCollapsed);
+    try {
+      var state = JSON.parse(
+        localStorage.getItem("orochi_collapsed") || "{}",
+      );
+      if (isCollapsed) {
+        state[key] = true;
+      } else {
+        delete state[key];
+      }
+      localStorage.setItem("orochi_collapsed", JSON.stringify(state));
+    } catch (err) {
+      /* ignore */
+    }
   });
 })();
 
@@ -167,4 +205,40 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       }
     });
   }
+
+  /* Swipe-right from left edge to open sidebar on iPhone — msg#9393 */
+  var _swipeStartX = null;
+  var _swipeStartY = null;
+  document.addEventListener(
+    "touchstart",
+    function (e) {
+      _swipeStartX = e.touches[0].clientX;
+      _swipeStartY = e.touches[0].clientY;
+    },
+    { passive: true },
+  );
+  document.addEventListener(
+    "touchend",
+    function (e) {
+      if (_swipeStartX === null) return;
+      var dx = e.changedTouches[0].clientX - _swipeStartX;
+      var dy = e.changedTouches[0].clientY - _swipeStartY;
+      var absDx = Math.abs(dx);
+      var absDy = Math.abs(dy);
+      /* Only handle horizontal swipes (more x-movement than y) */
+      if (absDx < 40 || absDy > absDx) {
+        _swipeStartX = null;
+        return;
+      }
+      if (dx > 0 && _swipeStartX < 40) {
+        /* Right swipe from left edge → open sidebar */
+        openSidebar();
+      } else if (dx < 0 && sidebar.classList.contains("open")) {
+        /* Left swipe anywhere → close sidebar */
+        closeSidebar();
+      }
+      _swipeStartX = null;
+    },
+    { passive: true },
+  );
 })();

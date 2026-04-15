@@ -6,6 +6,10 @@ import json
 import os
 import platform
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from scitex_orochi._client import OrochiClient
 
 # ---------------------------------------------------------------------------
 # Safety guards -- must run before any MCP setup
@@ -87,13 +91,44 @@ if _FASTMCP_AVAILABLE:
         return json.dumps({"agents": agents, "count": len(agents)})
 
     @mcp.tool()
-    async def orochi_history(channel: str = "#general", limit: int = 50) -> str:
-        """Get message history for an Orochi channel."""
+    async def orochi_history(
+        channel: str = "#general",
+        limit: int = 50,
+        since: str = "",
+        user: str = "",
+        contains: str = "",
+    ) -> str:
+        """Get message history for an Orochi channel with optional filters.
+
+        Args:
+            channel: Channel name (e.g. #general)
+            limit: Max messages to return
+            since: ISO timestamp — only messages after this time
+            user: Filter by sender name
+            contains: Filter by substring in message text
+        """
         async with _make_client(channels=[channel]) as client:
-            history = await client.query_history(channel, limit=limit)
+            history = await client.query_history(
+                channel, since=since or None, limit=limit
+            )
+        # Client-side filters (hub may not support all server-side)
+        if user:
+            history = [m for m in history if m.get("sender", "") == user]
+        if contains:
+            history = [
+                m for m in history
+                if contains.lower() in (m.get("text", "") or "").lower()
+            ]
         return json.dumps(
             {"channel": channel, "messages": history, "count": len(history)}
         )
+
+    @mcp.tool()
+    async def orochi_subscribe(channel: str) -> str:
+        """Subscribe to an Orochi channel at runtime (no restart needed)."""
+        async with _make_client(channels=[channel]) as client:
+            await client.subscribe(channel)
+        return json.dumps({"status": "subscribed", "channel": channel})
 
     @mcp.tool()
     async def orochi_channels() -> str:
@@ -210,11 +245,17 @@ if _FASTMCP_AVAILABLE:
         elif OROCHI_TOKEN:
             dl_url += f"?token={OROCHI_TOKEN}"
 
+        MAX_BYTES = 50 * 1024 * 1024  # 50 MB safety cap (prevent OOM on large media)
         try:
             resp = await asyncio.get_event_loop().run_in_executor(
                 None, urllib.request.urlopen, dl_url
             )
-            data = resp.read()
+            content_length = resp.headers.get("Content-Length")
+            if content_length and int(content_length) > MAX_BYTES:
+                return json.dumps({"error": f"File too large ({int(content_length) // 1024 // 1024}MB > 50MB limit)"})
+            data = resp.read(MAX_BYTES + 1)
+            if len(data) > MAX_BYTES:
+                return json.dumps({"error": "File too large (> 50MB limit)"})
         except urllib.error.HTTPError as e:
             return json.dumps({"error": f"Download failed ({e.code})"})
 
@@ -229,6 +270,154 @@ if _FASTMCP_AVAILABLE:
                 "size": len(data),
             }
         )
+
+
+    @mcp.tool()
+    async def claude_account_status(agent: str = "") -> str:
+        """Get Claude Code account status for local agent or fleet-wide.
+
+        If agent is empty, reads local ~/.claude.json OAuth metadata.
+        If agent is specified, queries hub for that agent's last-reported account state.
+
+        Returns: email, org, billing_type, subscription status, usage_disabled_reason.
+        """
+        from pathlib import Path
+
+        if not agent:
+            # Local: read ~/.claude.json directly
+            claude_json = Path.home() / ".claude.json"
+            if not claude_json.exists():
+                return json.dumps({"error": "~/.claude.json not found"})
+            try:
+                data = json.loads(claude_json.read_text())
+            except (json.JSONDecodeError, OSError) as exc:
+                return json.dumps({"error": str(exc)})
+            # Extract OAuth metadata (safe whitelist, no tokens)
+            oauth = data.get("oauthAccount", {})
+            return json.dumps({
+                "email": oauth.get("emailAddress", ""),
+                "org_name": oauth.get("organizationName", ""),
+                "account_uuid": oauth.get("accountUuid", ""),
+                "display_name": oauth.get("displayName", ""),
+                "billing_type": oauth.get("billingType", ""),
+                "has_subscription": data.get("hasAvailableSubscription", None),
+                "usage_disabled_reason": data.get(
+                    "cachedExtraUsageDisabledReason", ""
+                ),
+                "has_extra_usage": data.get("hasExtraUsageEnabled", None),
+                "source": "local",
+            })
+        else:
+            # Fleet: query hub registry for agent's account metadata
+            import aiohttp
+
+            hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")
+            token = os.getenv("SCITEX_OROCHI_TOKEN", "")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{hub}/api/agents/registry/",
+                    params={"token": token},
+                ) as resp:
+                    if resp.status != 200:
+                        return json.dumps({"error": f"hub returned {resp.status}"})
+                    registry = await resp.json()
+            # Find agent in registry
+            for entry in registry if isinstance(registry, list) else []:
+                if entry.get("name") == agent:
+                    return json.dumps({
+                        k: entry.get(k)
+                        for k in [
+                            "oauth_email", "oauth_org_name",
+                            "billing_type", "has_available_subscription",
+                            "usage_disabled_reason", "has_extra_usage_enabled",
+                        ]
+                        if entry.get(k) is not None
+                    } | {"source": "hub", "agent": agent})
+            return json.dumps({"error": f"agent '{agent}' not found in registry"})
+
+    @mcp.tool()
+    async def quota_status() -> str:
+        """Get Claude Code quota/usage status for the local agent.
+
+        Reads ~/.claude.json for subscription and usage state.
+        Returns a summary indicating whether the agent can operate normally.
+        """
+        from pathlib import Path
+
+        claude_json = Path.home() / ".claude.json"
+        if not claude_json.exists():
+            return json.dumps({"status": "unknown", "reason": "~/.claude.json not found"})
+        try:
+            data = json.loads(claude_json.read_text())
+        except (json.JSONDecodeError, OSError) as exc:
+            return json.dumps({"status": "error", "reason": str(exc)})
+
+        has_sub = data.get("hasAvailableSubscription", False)
+        disabled_reason = data.get("cachedExtraUsageDisabledReason", "")
+        has_extra = data.get("hasExtraUsageEnabled", False)
+
+        # Determine operational status
+        if disabled_reason == "out_of_credits":
+            status = "quota_exhausted"
+        elif not has_sub:
+            status = "no_subscription"
+        elif disabled_reason:
+            status = "limited"
+        else:
+            status = "ok"
+
+        return json.dumps({
+            "status": status,
+            "has_subscription": has_sub,
+            "usage_disabled_reason": disabled_reason or None,
+            "has_extra_usage": has_extra,
+            "agent": os.getenv("SCITEX_OROCHI_AGENT", "unknown"),
+        })
+
+    @mcp.tool()
+    async def fleet_report_tool(
+        entity_type: str, entity_id: str, payload: str, source: str = ""
+    ) -> str:
+        """Report fleet entity state (machine/agent/server/session) to the hub."""
+        import aiohttp
+
+        hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")
+        token = os.getenv("SCITEX_OROCHI_TOKEN", "")
+        source = source or os.getenv("SCITEX_OROCHI_AGENT", "unknown")
+        try:
+            payload_obj = json.loads(payload) if isinstance(payload, str) else payload
+        except json.JSONDecodeError:
+            payload_obj = {"raw": payload}
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{hub}/api/fleet/report",
+                json={
+                    "token": token,
+                    "entity_type": entity_type,
+                    "entity_id": entity_id,
+                    "payload": payload_obj,
+                    "source": source,
+                },
+            ) as resp:
+                return await resp.text()
+
+    @mcp.tool()
+    async def state_query(entity_type: str = "", since: str = "") -> str:
+        """Query latest fleet state. Filter by entity_type (machine/agent/server/session) and since (ISO timestamp)."""
+        import aiohttp
+
+        hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")
+        token = os.getenv("SCITEX_OROCHI_TOKEN", "")
+        params: dict = {"token": token}
+        if entity_type:
+            params["entity_type"] = entity_type
+        if since:
+            params["since"] = since
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                f"{hub}/api/fleet/state", params=params
+            ) as resp:
+                return await resp.text()
 
 
 def main() -> None:

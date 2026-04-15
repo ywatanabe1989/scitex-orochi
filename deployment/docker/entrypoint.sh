@@ -21,4 +21,4 @@ else:
 fi
 
 echo "[orochi] Starting Daphne ASGI server on 0.0.0.0:8559..."
-exec daphne -b 0.0.0.0 -p 8559 orochi.asgi:application
+exec daphne -b 0.0.0.0 -p 8559 -t 120 --ping-interval 20 --ping-timeout 30 orochi.asgi:application

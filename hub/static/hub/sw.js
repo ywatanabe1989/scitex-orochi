@@ -2,7 +2,7 @@
  * activate. The previous v5 served cache-first, which shadowed every JS/CSS
  * fix we shipped today. Do not drop below the highest previously-deployed
  * value or old clients will keep serving stale assets. */
-const CACHE_NAME = "orochi-v201";
+const CACHE_NAME = "orochi-v202";
 const SHELL_ASSETS = ["/"];
 
 self.addEventListener("install", (event) => {
@@ -26,6 +26,14 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Skip non-GET requests entirely — Cache.put() only supports GET, and
+  // POST/PUT/DELETE used to throw the noisy
+  //   "Failed to execute 'put' on 'Cache': Request method 'POST' is unsupported"
+  // every time the dashboard sent a message or registered a heartbeat.
+  if (event.request.method !== "GET") {
+    return; // Let the browser handle it directly, no caching.
+  }
+
   const url = new URL(event.request.url);
 
   // Network-first for API calls and WebSocket upgrades
@@ -91,12 +99,27 @@ self.addEventListener("push", (event) => {
     data: { url: data.url || "/" },
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  /* Increment app icon badge count (Web App Badging API — iOS 16.4+ PWA, Chrome Android) */
+  const badgePromise = self.registration.setAppBadge
+    ? self.registration.setAppBadge((data.badge_count || 1))
+    : Promise.resolve();
+
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      badgePromise,
+    ])
+  );
 });
 
 /* ── Notification click handler ── */
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  /* Clear the badge when user taps the notification */
+  if (self.registration.clearAppBadge) {
+    self.registration.clearAppBadge().catch(() => {});
+  }
 
   const targetUrl =
     (event.notification.data && event.notification.data.url) || "/";
@@ -108,6 +131,7 @@ self.addEventListener("notificationclick", (event) => {
         // Focus existing dashboard tab if open
         for (const client of windowClients) {
           if (client.url.includes(self.location.origin) && "focus" in client) {
+            if (self.registration.clearAppBadge) self.registration.clearAppBadge().catch(() => {});
             return client.focus();
           }
         }

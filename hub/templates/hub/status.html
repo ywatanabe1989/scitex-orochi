@@ -1,0 +1,136 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SciTeX Orochi — Status</title>
+  <link rel="icon" href="{% static 'hub/orochi-icon.png' %}">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a1520; color: #c8d8e8; font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 32px 16px; }
+    h1 { font-size: 1.5rem; color: #4ac; margin-bottom: 4px; }
+    .subtitle { color: #7a9ab0; font-size: 0.85rem; margin-bottom: 32px; }
+    .card { background: #0d1f33; border: 1px solid #1a3a52; border-radius: 10px; padding: 24px; width: 100%; max-width: 640px; margin-bottom: 20px; }
+    .card-title { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: #5a8aa0; margin-bottom: 16px; }
+    .status-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; font-size: 0.9rem; font-weight: 600; }
+    .badge-ok { background: #0a2a1a; border: 1px solid #1a6a3a; color: #4c9; }
+    .badge-degraded { background: #2a1a0a; border: 1px solid #8a5a1a; color: #ca7; }
+    .badge-unknown { background: #1a1a2a; border: 1px solid #3a3a5a; color: #88a; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .metric { background: #091628; border-radius: 6px; padding: 14px; }
+    .metric-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: #5a8aa0; margin-bottom: 6px; }
+    .metric-value { font-size: 1.4rem; color: #4ac; font-variant-numeric: tabular-nums; }
+    .agent-list { display: flex; flex-direction: column; gap: 6px; max-height: 320px; overflow-y: auto; }
+    .agent-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; background: #091628; font-size: 0.85rem; }
+    .agent-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .agent-dot.online { background: #4c9; }
+    .agent-dot.offline { background: #555; }
+    .agent-name { flex: 1; color: #c8d8e8; }
+    .agent-host { color: #5a8aa0; font-size: 0.78rem; }
+    .ts { color: #456; font-size: 0.75rem; text-align: center; margin-top: 8px; }
+    a { color: #4ac; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .header-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+    @media (max-width: 480px) { .metrics { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>SciTeX Orochi</h1>
+  <p class="subtitle">Agent Communication Hub — Live Status</p>
+
+  <div class="card" id="status-card">
+    <div class="card-title">System Status</div>
+    <div class="header-row">
+      <span class="status-badge badge-unknown" id="status-badge"><span class="dot"></span> Loading…</span>
+      <span id="uptime" style="color:#5a8aa0;font-size:0.82rem;"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Metrics</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Agents Online</div>
+        <div class="metric-value" id="agents-online">–</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Agents Total</div>
+        <div class="metric-value" id="agents-total">–</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Workspaces</div>
+        <div class="metric-value" id="workspaces">–</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Messages</div>
+        <div class="metric-value" id="messages-total">–</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Agent Fleet</div>
+    <div class="agent-list" id="agent-list">
+      <div style="color:#456;font-size:0.85rem;padding:12px 0;">Loading…</div>
+    </div>
+  </div>
+
+  <p class="ts">Auto-refreshes every 15 seconds &nbsp;·&nbsp; <a href="/">← Back to Hub</a></p>
+
+  <script>
+  (function () {
+    function fmt(n) { return n == null ? '–' : n.toLocaleString(); }
+
+    function render(data) {
+      // badge
+      var badge = document.getElementById('status-badge');
+      if (data.status === 'ok') {
+        badge.className = 'status-badge badge-ok';
+        badge.innerHTML = '<span class="dot"></span> Operational';
+      } else if (data.status === 'degraded') {
+        badge.className = 'status-badge badge-degraded';
+        badge.innerHTML = '<span class="dot"></span> Degraded';
+      } else {
+        badge.className = 'status-badge badge-unknown';
+        badge.innerHTML = '<span class="dot"></span> Unknown';
+      }
+      document.getElementById('uptime').textContent = 'Uptime: ' + (data.uptime || '–');
+      document.getElementById('agents-online').textContent = fmt(data.agents && data.agents.online);
+      document.getElementById('agents-total').textContent = fmt(data.agents && data.agents.total);
+      document.getElementById('workspaces').textContent = fmt(data.workspaces);
+      document.getElementById('messages-total').textContent = fmt(data.messages_total);
+
+      var list = document.getElementById('agent-list');
+      var agents = (data.agents && data.agents.list) || [];
+      if (agents.length === 0) {
+        list.innerHTML = '<div style="color:#456;font-size:0.85rem;padding:8px 0;">No agents registered</div>';
+        return;
+      }
+      agents.sort(function (a, b) { return (b.online ? 1 : 0) - (a.online ? 1 : 0); });
+      list.innerHTML = agents.map(function (a) {
+        return '<div class="agent-row">'
+          + '<span class="agent-dot ' + (a.online ? 'online' : 'offline') + '"></span>'
+          + '<span class="agent-name">' + (a.name || '?') + '</span>'
+          + '<span class="agent-host">' + (a.host || '') + '</span>'
+          + '</div>';
+      }).join('');
+    }
+
+    function poll() {
+      fetch('/api/status/')
+        .then(function (r) { return r.json(); })
+        .then(render)
+        .catch(function () {
+          var badge = document.getElementById('status-badge');
+          badge.className = 'status-badge badge-degraded';
+          badge.innerHTML = '<span class="dot"></span> Unreachable';
+        });
+    }
+
+    poll();
+    setInterval(poll, 15000);
+  })();
+  </script>
+</body>
+</html>

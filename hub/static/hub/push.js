@@ -116,9 +116,15 @@ function updatePushToggleUI() {
     btn.style.display = "none";
     return;
   }
-  btn.textContent = pushEnabled ? "Notifications: ON" : "Notifications: OFF";
+  btn.textContent = pushEnabled ? "🔔 Notifications: ON" : "🔕 Notifications: OFF";
   btn.classList.toggle("push-on", pushEnabled);
   btn.classList.toggle("push-off", !pushEnabled);
+  var statusEl = document.getElementById("push-status-msg");
+  if (statusEl) {
+    statusEl.textContent = pushEnabled
+      ? "Subscribed — you'll receive push notifications on this device."
+      : "Not subscribed. Click to enable push notifications on this device.";
+  }
 }
 
 /* Check existing push subscription on load */
@@ -140,7 +146,26 @@ async function checkPushState() {
   updatePushToggleUI();
 }
 
-/* Push toggle button removed from sidebar per ywatanabe request.
- * The push subscription state is still tracked silently — re-enable
- * the UI by uncommenting initPushUI() if needed in the future. */
-function initPushUI() { /* no-op */ }
+/* Wire the push toggle button and check current subscription state.
+ * Called from settings-tab.js wireSettingsForms() after settings content loads. */
+function initPushUI() {
+  var btn = document.getElementById("push-toggle");
+  var statusEl = document.getElementById("push-status-msg");
+  if (!pushSupported) {
+    if (btn) {
+      btn.textContent = "Not supported in this browser";
+      btn.disabled = true;
+    }
+    return;
+  }
+  if (statusEl) {
+    statusEl.textContent = "Checking subscription status…";
+  }
+  checkPushState().then(function () {
+    if (statusEl) {
+      statusEl.textContent = pushEnabled
+        ? "Subscribed — you'll receive push notifications on this device."
+        : "Not subscribed. Click to enable push notifications on this device.";
+    }
+  });
+}

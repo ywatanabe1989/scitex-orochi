@@ -7,9 +7,82 @@
   border-radius: 4px;
   margin-top: 4px;
   cursor: pointer;
+  display: block;
 }
 .attachment-img img:hover {
   opacity: 0.85;
+}
+
+/* Multi-image grid layout */
+.attachment-grid {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  max-width: 500px;
+}
+.attachment-grid .attachment-img {
+  margin: 0;
+  min-width: 0;
+}
+.attachment-grid .attachment-img a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* 1 image: natural size */
+.attachment-grid.count-1 {
+  display: block;
+}
+/* 2 images: side by side */
+.attachment-grid.count-2 {
+  grid-template-columns: 1fr 1fr;
+}
+.attachment-grid.count-2 .attachment-img img {
+  width: 100%;
+  height: 180px;
+  max-width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  margin-top: 0;
+}
+/* 3 images: three columns */
+.attachment-grid.count-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.attachment-grid.count-3 .attachment-img img {
+  width: 100%;
+  height: 140px;
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: cover;
+  margin-top: 0;
+}
+/* 4+ images: three-column thumbnail grid */
+.attachment-grid.count-many {
+  grid-template-columns: repeat(3, 1fr);
+}
+.attachment-grid.count-many .attachment-img img {
+  width: 100%;
+  height: 120px;
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: cover;
+  margin-top: 0;
+}
+@media (max-width: 600px) {
+  .attachment-grid {
+    max-width: 100%;
+  }
+  .attachment-grid.count-3,
+  .attachment-grid.count-many {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .attachment-grid.count-2 .attachment-img img,
+  .attachment-grid.count-3 .attachment-img img,
+  .attachment-grid.count-many .attachment-img img {
+    height: 110px;
+    max-height: 110px;
+  }
 }
 .attachment-file a {
   color: #4ecdc4;
@@ -276,4 +349,113 @@
   margin-top: 6px;
   color: #666;
   font-size: 11px;
+}
+
+/* Inline thumbnail cards for non-image attachments — PDF, markdown,
+ * text, video, audio. Replaces the generic paperclip-link fallback for
+ * the common cases (msg#6423). Image attachments still use
+ * .attachment-grid above. */
+.attachment-card {
+  display: flex;
+  align-items: stretch;
+  margin-top: 4px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  overflow: hidden;
+  max-width: 500px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.attachment-card:hover {
+  border-color: #4ecdc4;
+}
+.attachment-card-icon {
+  flex: 0 0 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #2a1a1a;
+  color: #ff6b6b;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 1px;
+}
+.attachment-card-pdf .attachment-card-icon {
+  background: #2a1a1a;
+  color: #ff6b6b;
+}
+.attachment-card-meta {
+  flex: 1 1 auto;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.attachment-card-name {
+  color: #e0e0e0;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  word-break: break-all;
+  display: block;
+}
+.attachment-card-name:hover {
+  color: #4ecdc4;
+}
+.attachment-card-size {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
+}
+.attachment-card-text,
+.attachment-card-md {
+  display: block;
+  cursor: default;
+  padding: 0;
+}
+.attachment-card-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2a2a;
+  background: #181818;
+}
+.attachment-card-md .attachment-card-header {
+  background: #1a2424;
+}
+.attachment-card-preview {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #b0b0b0;
+  background: #141414;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.attachment-video,
+.attachment-audio {
+  margin-top: 4px;
+  max-width: 500px;
+}
+.attachment-video video {
+  width: 100%;
+  max-width: 500px;
+  border-radius: 6px;
+  background: #000;
+}
+.attachment-audio audio {
+  width: 100%;
+  max-width: 500px;
+}
+.attachment-caption {
+  color: #888;
+  font-size: 11px;
+  margin-top: 2px;
 }

@@ -14,24 +14,39 @@ async function fetchConnectivity() {
   }
 }
 
-/* Layout: nodes evenly spaced around a circle */
-function _layoutNodes(nodes, cx, cy, radius) {
+/* Layout: machine nodes on inner ring, bastion nodes on outer ring, aligned to host */
+function _layoutNodes(nodes, cx, cy, innerRadius, outerRadius) {
   var positions = {};
-  var n = nodes.length;
-  if (n === 0) return positions;
-  /* Special-case 1 node: center */
-  if (n === 1) {
-    positions[nodes[0].id] = { x: cx, y: cy };
-    return positions;
-  }
-  /* Otherwise: evenly distribute around the circle, starting at top */
-  for (var i = 0; i < n; i++) {
-    var theta = -Math.PI / 2 + (2 * Math.PI * i) / n;
-    positions[nodes[i].id] = {
-      x: cx + radius * Math.cos(theta),
-      y: cy + radius * Math.sin(theta),
+  if (nodes.length === 0) return positions;
+  var machines = nodes.filter(function (n) { return n.type !== "bastion"; });
+  var bastions = nodes.filter(function (n) { return n.type === "bastion"; });
+  var mCount = machines.length;
+
+  /* Machine nodes: evenly around inner ring */
+  for (var i = 0; i < mCount; i++) {
+    var theta = -Math.PI / 2 + (2 * Math.PI * i) / mCount;
+    positions[machines[i].id] = {
+      x: cx + innerRadius * Math.cos(theta),
+      y: cy + innerRadius * Math.sin(theta),
     };
   }
+  /* Bastion nodes: outer ring, aligned behind their host machine */
+  bastions.forEach(function (b) {
+    var hostPos = positions[b.host];
+    if (hostPos) {
+      /* Push outward from center through the host */
+      var dx = hostPos.x - cx;
+      var dy = hostPos.y - cy;
+      var len = Math.sqrt(dx * dx + dy * dy) || 1;
+      positions[b.id] = {
+        x: cx + (outerRadius * dx) / len,
+        y: cy + (outerRadius * dy) / len,
+      };
+    } else {
+      /* Fallback: place at bottom */
+      positions[b.id] = { x: cx, y: cy + outerRadius };
+    }
+  });
   return positions;
 }
 
@@ -54,21 +69,31 @@ function _edgePath(p1, p2, offsetSign) {
 }
 
 function renderConnectivityMap() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("connectivity-map");
   if (!container) return;
   if (!connectivityCache || !connectivityCache.nodes || connectivityCache.nodes.length === 0) {
     container.innerHTML = '<p class="empty-notice">No connectivity data.</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   var nodes = connectivityCache.nodes;
   var edges = connectivityCache.edges || [];
-  var W = 480;
-  var H = 360;
+  var W = 520;
+  var H = 420;
   var cx = W / 2;
   var cy = H / 2;
-  var radius = 130;
-  var nodeR = 28;
-  var positions = _layoutNodes(nodes, cx, cy, radius);
+  var innerRadius = 100;
+  var outerRadius = 190;
+  var nodeR = 26;
+  var bastionR = 20;
+  var positions = _layoutNodes(nodes, cx, cy, innerRadius, outerRadius);
 
   /* Pair up bidirectional edges so we can offset them */
   var edgeKey = function (e) { return e.source + "→" + e.target; };
@@ -78,21 +103,48 @@ function renderConnectivityMap() {
   svgParts.push(
     '<svg class="connectivity-svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '">'
   );
-  /* Definitions: arrowhead markers in two colors */
+  /* Definitions: arrowhead markers */
   svgParts.push(
     '<defs>' +
     '<marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
     '<path d="M 0 0 L 10 5 L 0 10 z" fill="#4ecdc4"/></marker>' +
     '<marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
     '<path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"/></marker>' +
+    '<marker id="arrow-pending" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+    '<path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b"/></marker>' +
     '</defs>'
   );
-  /* Draw edges first (so nodes paint on top) */
-  edges.forEach(function (e) {
+  /* Separate machine vs bastion nodes */
+  var machineNodes = nodes.filter(function (n) { return n.type !== "bastion"; });
+  var bastionNodes = nodes.filter(function (n) { return n.type === "bastion"; });
+  /* Separate bastion-anchor edges from machine-to-machine edges */
+  var bastionAnchorEdges = edges.filter(function (e) {
+    return e.source.indexOf("bastion") === 0 || e.target.indexOf("bastion") === 0;
+  });
+  var machineEdges = edges.filter(function (e) {
+    return e.source.indexOf("bastion") !== 0 && e.target.indexOf("bastion") !== 0;
+  });
+
+  /* Draw bastion anchor edges (dashed, thin) first */
+  bastionAnchorEdges.forEach(function (e) {
     var p1 = positions[e.source];
     var p2 = positions[e.target];
     if (!p1 || !p2) return;
-    /* Offset bidirectional pairs */
+    var color = e.status === "ok" ? "#4ecdc4" : e.status === "pending" ? "#f59e0b" : "#ef4444";
+    var d = "M " + p1.x + " " + p1.y + " L " + p2.x + " " + p2.y;
+    svgParts.push(
+      '<path d="' + d + '" stroke="' + color + '" stroke-width="1" fill="none" ' +
+      'stroke-dasharray="3 3" opacity="0.5">' +
+      '<title>' + escapeHtml(e.source) + ' ↔ ' + escapeHtml(e.target) + ' (CF tunnel)</title>' +
+      '</path>'
+    );
+  });
+
+  /* Draw machine-to-machine edges */
+  machineEdges.forEach(function (e) {
+    var p1 = positions[e.source];
+    var p2 = positions[e.target];
+    if (!p1 || !p2) return;
     var pair = edgeKey(e);
     var reverse = e.target + "→" + e.source;
     var sign = 0;
@@ -110,8 +162,30 @@ function renderConnectivityMap() {
       '</path>'
     );
   });
-  /* Draw nodes */
-  nodes.forEach(function (n) {
+
+  /* Draw bastion nodes (cloud/diamond shape on outer ring) */
+  bastionNodes.forEach(function (n) {
+    var p = positions[n.id];
+    if (!p) return;
+    var isPending = n.status === "pending";
+    var stroke = isPending ? "#f59e0b" : "#4ecdc4";
+    var fill = isPending ? "rgba(245,158,11,0.12)" : "rgba(78,205,196,0.10)";
+    svgParts.push(
+      '<g class="conn-node conn-node-bastion">' +
+      '<rect x="' + (p.x - bastionR) + '" y="' + (p.y - bastionR * 0.7) + '" ' +
+      'width="' + (bastionR * 2) + '" height="' + (bastionR * 1.4) + '" rx="8" ry="8" ' +
+      'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5" ' +
+      (isPending ? 'stroke-dasharray="4 2"' : '') + '/>' +
+      '<text x="' + p.x + '" y="' + (p.y + 3) + '" text-anchor="middle" ' +
+      'class="conn-node-label conn-bastion-label">' +
+      '☁ ' + escapeHtml(n.label.replace('bastion-', '')) + '</text>' +
+      '<title>' + escapeHtml(n.label) + ' — ' + escapeHtml(n.role || "") + '</title>' +
+      '</g>'
+    );
+  });
+
+  /* Draw machine nodes (inner ring) */
+  machineNodes.forEach(function (n) {
     var p = positions[n.id];
     if (!p) return;
     svgParts.push(
@@ -129,18 +203,29 @@ function renderConnectivityMap() {
   /* Build the legend + summary */
   var okCount = edges.filter(function (e) { return e.status === "ok"; }).length;
   var failCount = edges.filter(function (e) { return e.status === "fail"; }).length;
+  var pendingCount = edges.filter(function (e) { return e.status === "pending"; }).length;
+  var bastionLive = nodes.filter(function (n) { return n.type === "bastion" && n.status !== "pending"; }).length;
+  var bastionTotal = nodes.filter(function (n) { return n.type === "bastion"; }).length;
   var srcLabel = connectivityCache.source === "live" ? "live" : "static";
+  var pendingPill = pendingCount > 0
+    ? '<span class="conn-pill conn-pill-pending">☁ ' + bastionLive + '/' + bastionTotal + ' CF tunnels</span>'
+    : '<span class="conn-pill conn-pill-ok">☁ ' + bastionLive + '/' + bastionTotal + ' CF tunnels</span>';
   var html =
     '<div class="connectivity-header">' +
     '<span class="connectivity-title">SSH mesh</span>' +
     '<span class="connectivity-summary">' +
-    '<span class="conn-pill conn-pill-ok">' + okCount + ' reachable</span>' +
-    '<span class="conn-pill conn-pill-fail">' + failCount + ' blocked</span>' +
+    pendingPill +
+    '<span class="conn-pill conn-pill-ok">' + okCount + ' links ok</span>' +
+    (failCount ? '<span class="conn-pill conn-pill-fail">' + failCount + ' blocked</span>' : '') +
     '<span class="conn-source">(' + escapeHtml(srcLabel) + ')</span>' +
     '</span>' +
     '</div>' +
     svgParts.join("");
   container.innerHTML = html;
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 /* Wire up: refresh when Machines tab opens */

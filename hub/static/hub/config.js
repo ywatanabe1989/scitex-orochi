@@ -17,6 +17,24 @@
         window.__orochiWsUpstream = cfg.ws_upstream;
         window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
       }
+      /* todo#341/#342/#345: live wall-clock with date next to logo */
+      (function _initBrandClock() {
+        var clockEl = document.getElementById("brand-clock");
+        if (!clockEl) return;
+        function _tick() {
+          var now = new Date();
+          var pad = function (n) { return n < 10 ? "0" + n : "" + n; };
+          clockEl.textContent =
+            now.getFullYear() + "-" +
+            pad(now.getMonth() + 1) + "-" +
+            pad(now.getDate()) + " " +
+            pad(now.getHours()) + ":" +
+            pad(now.getMinutes()) + ":" +
+            pad(now.getSeconds());
+        }
+        _tick();
+        setInterval(_tick, 1000);
+      })();
       if (cfg.version) {
         window.__orochiVersion = cfg.version;
         window.__orochiDeployedAt = cfg.deployed_at || "";
@@ -39,8 +57,8 @@
                 var diff = Math.floor((Date.now() - deployTime) / 1000);
                 if (diff < 0) diff = 0;
                 var txt;
-                if (diff < 60) txt = "Updated " + diff + "s ago";
-                else if (diff < 3600) txt = "Updated " + Math.floor(diff / 60) + "m ago";
+                if (diff < 60) txt = "updated " + diff + " sec ago";
+                else if (diff < 3600) txt = "updated " + Math.floor(diff / 60) + " min ago";
                 else {
                   /* Past 1h — remove the badge */
                   if (badge.parentNode) badge.parentNode.removeChild(badge);
@@ -80,7 +98,15 @@
           if (s.external_ip) lines.push('<span class="server-label">IP:</span><span class="server-value">' + s.external_ip + '</span>');
           if (s.version)     lines.push('<span class="server-label">Ver:</span><span class="server-value">v' + s.version + '</span>');
           lines.push('<span class="server-label">Up:</span><span class="server-value">' + uptimeStr + '</span>');
+          var msgInput = document.getElementById("msg-input");
+          var inputHasFocus = msgInput && document.activeElement === msgInput;
+          var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+          var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
           infoEl.innerHTML = lines.join("<br>");
+          if (inputHasFocus && document.activeElement !== msgInput) {
+            msgInput.focus();
+            try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+          }
         }
       }
     }

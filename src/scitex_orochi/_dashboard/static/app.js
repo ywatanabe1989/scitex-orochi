@@ -103,6 +103,26 @@ var wsConnected = false;
 var restPollTimer = null;
 var restPollInterval = 5000;
 
+/* fetchAgents throttle — prevents focus theft on rapid WS events (#225) */
+var _fetchAgentsTimer = null;
+var _fetchAgentsPending = false;
+var FETCH_AGENTS_THROTTLE_MS = 2000;
+
+function fetchAgentsThrottled() {
+  if (_fetchAgentsTimer) {
+    _fetchAgentsPending = true;
+    return;
+  }
+  fetchAgents();
+  _fetchAgentsTimer = setTimeout(function () {
+    _fetchAgentsTimer = null;
+    if (_fetchAgentsPending) {
+      _fetchAgentsPending = false;
+      fetchAgentsThrottled();
+    }
+  }, FETCH_AGENTS_THROTTLE_MS);
+}
+
 function sendOrochiMessage(msgData) {
   fetch((window.__orochiApiUpstream || "") + "/api/messages?token=" + token, {
     method: "POST",
@@ -115,6 +135,24 @@ function sendOrochiMessage(msgData) {
     .catch(function (e) {
       console.error("REST send error:", e);
     });
+}
+
+var _fetchStatsTimer = null;
+var _fetchStatsPending = false;
+
+function fetchStatsThrottled() {
+  if (_fetchStatsTimer) {
+    _fetchStatsPending = true;
+    return;
+  }
+  fetchStats();
+  _fetchStatsTimer = setTimeout(function () {
+    _fetchStatsTimer = null;
+    if (_fetchStatsPending) {
+      _fetchStatsPending = false;
+      fetchStatsThrottled();
+    }
+  }, FETCH_AGENTS_THROTTLE_MS);
 }
 
 function startRestPolling() {
@@ -146,7 +184,7 @@ function startRestPolling() {
     } catch (e) {
       console.warn("REST poll failed:", e);
     }
-    fetchAgents();
+    fetchAgentsThrottled();
     fetchStats();
   }, restPollInterval);
 }
@@ -170,8 +208,8 @@ function handleMessage(msg) {
     knownMessageKeys[key] = true;
     appendMessage(msg);
   } else if (msg.type === "presence_change" || msg.type === "status_update") {
-    fetchAgents();
-    fetchStats();
+    fetchAgentsThrottled();
+    fetchStatsThrottled();
   }
 }
 
@@ -227,6 +265,10 @@ async function fetchAgents() {
       container.innerHTML = '<p id="no-agents">No agents connected</p>';
       return;
     }
+    /* Skip full DOM rebuild if agent data hasn't changed (#225) */
+    var newAgentsJson = JSON.stringify(agents);
+    if (container._lastAgentsJson === newAgentsJson) return;
+    container._lastAgentsJson = newAgentsJson;
     container.innerHTML = agents
       .map(function (a) {
         var color = getAgentColor(a.name);
@@ -293,6 +335,9 @@ async function fetchStats() {
     document.getElementById("stat-observers").textContent =
       stats.observers_connected;
     var chContainer = document.getElementById("channels");
+    var newStatsJson = JSON.stringify(stats.channels);
+    if (chContainer._lastStatsJson === newStatsJson) return;
+    chContainer._lastStatsJson = newStatsJson;
     chContainer.innerHTML = stats.channels
       .map(function (c, i) {
         var active = currentChannel === c ? " active" : "";

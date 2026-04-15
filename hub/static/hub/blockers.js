@@ -6,6 +6,10 @@ var _blockersRefreshTimer = null;
 var _BLOCKERS_POLL_MS = 60 * 1000;
 
 function _renderBlockersSidebar(issues) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("blockers");
   var countEl = document.getElementById("sidebar-count-blockers");
   if (!container) return;
@@ -17,6 +21,10 @@ function _renderBlockersSidebar(issues) {
   if (countEl) countEl.textContent = list.length ? "(" + list.length + ")" : "";
   if (!list.length) {
     container.innerHTML = '<p class="blockers-empty">No blockers</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   container.innerHTML = list
@@ -43,6 +51,10 @@ function _renderBlockersSidebar(issues) {
       );
     })
     .join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 async function fetchBlockers() {

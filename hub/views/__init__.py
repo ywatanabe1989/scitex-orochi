@@ -12,15 +12,27 @@ from hub.views.api import (  # noqa: F401
     api_agents_registry,
     api_agents_restart,
     api_channels,
+    api_channel_export,
+    api_channel_prefs,
+    api_channel_members,
     api_config,
     api_connectivity,
+    api_dms,
     api_event_tool_use,
+    fleet_report,
+    fleet_state,
+    api_scheduled,
     api_history,
     api_media,
     api_members,
+    api_message_detail,
     api_messages,
+    api_push_subscribe,
+    api_push_unsubscribe,
+    api_push_vapid_key,
     api_reactions,
     api_releases,
+    api_repo_changelog,
     api_resources,
     api_stats,
     api_subagents_update,
@@ -37,17 +49,24 @@ from hub.views.auth import (  # noqa: F401
     signout_view,
     signup_view,
 )
+from hub.views.agent_detail import api_agent_detail  # noqa: F401
 from hub.views.avatar import api_agents_avatar  # noqa: F401
+from hub.views.registry import (  # noqa: F401
+    api_registry_agent_detail,
+    api_registry_agents,
+)
 from hub.views.discover import api_discover  # noqa: F401
-from hub.views.github import github_issues  # noqa: F401
+from hub.views.github import github_issue_title, github_issues  # noqa: F401
 from hub.views.landing import (  # noqa: F401
     find_workspace_view,
     landing_page,
     redirect_old_workspace_url,
 )
 from hub.views.telegram import telegram_webhook  # noqa: F401
-from hub.views.upload import api_upload, api_upload_base64  # noqa: F401
+from hub.views.webhook_github import github_webhook  # noqa: F401
+from hub.views.upload import api_upload, api_upload_base64, api_media_by_hash  # noqa: F401
 from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
     workspace_settings_view,
 )
+from hub.views.status import api_status, status_page  # noqa: F401

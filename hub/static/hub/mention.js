@@ -5,11 +5,15 @@ var mentionDropdown = document.getElementById("mention-dropdown");
 var mentionSelectedIndex = -1;
 var cachedAgentObjects = [];
 var cachedMemberNames = [];
+var mentionActiveInput = null;
 
 var SPECIAL_MENTIONS = [
   { name: "all", desc: "notify everyone" },
   { name: "channel", desc: "notify this channel" },
   { name: "agents", desc: "notify all agents" },
+  { name: "heads", desc: "notify all head-* agents" },
+  { name: "healers", desc: "notify all mamba-healer-* agents" },
+  { name: "mambas", desc: "notify all mamba-* agents" },
 ];
 
 /* Fuzzy match: check if all query characters appear in order within text.
@@ -65,7 +69,9 @@ function getMentionQuery(input) {
   var val = input.value;
   var pos = input.selectionStart;
   var before = val.substring(0, pos);
-  var match = before.match(/(^|[\s])@([\w@.\-]*)$/);
+  /* Allow @ after any non-word char (space, CJK chars, punctuation, etc.)
+   * so Japanese text like「こんにちは@mamba」triggers the dropdown. (#9958) */
+  var match = before.match(/(^|[^\w])@([\w@.\-]*)$/);
   if (match)
     return {
       query: match[2].toLowerCase(),
@@ -83,7 +89,28 @@ function isAgentOnline(name) {
   return false;
 }
 
+function positionMentionDropdown(inputEl) {
+  /* Move the dropdown near the active input if it is not the main msg-input */
+  if (inputEl && inputEl.id !== "msg-input") {
+    var rect = inputEl.getBoundingClientRect();
+    mentionDropdown.style.position = "fixed";
+    mentionDropdown.style.bottom = (window.innerHeight - rect.top + 4) + "px";
+    mentionDropdown.style.left = rect.left + "px";
+    mentionDropdown.style.width = rect.width + "px";
+  } else {
+    /* Reset to default positioning inside .input-bar */
+    mentionDropdown.style.position = "";
+    mentionDropdown.style.bottom = "";
+    mentionDropdown.style.left = "";
+    mentionDropdown.style.width = "";
+  }
+}
+
 function showMentionDropdown(specialItems, agentItems) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   mentionSelectedIndex = 0;
   var html = "";
 
@@ -130,16 +157,35 @@ function showMentionDropdown(specialItems, agentItems) {
 
   mentionDropdown.innerHTML = html;
   mentionDropdown.classList.add("visible");
+  positionMentionDropdown(mentionActiveInput);
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function hideMentionDropdown() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   mentionDropdown.classList.remove("visible");
   mentionDropdown.innerHTML = "";
   mentionSelectedIndex = -1;
+  mentionActiveInput = null;
+  /* Reset positioning */
+  mentionDropdown.style.position = "";
+  mentionDropdown.style.bottom = "";
+  mentionDropdown.style.left = "";
+  mentionDropdown.style.width = "";
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function insertMention(name) {
-  var input = document.getElementById("msg-input");
+  var input = mentionActiveInput || document.getElementById("msg-input");
   var info = getMentionQuery(input);
   if (!info) return;
   var before = input.value.substring(0, info.start);
@@ -151,7 +197,16 @@ function insertMention(name) {
   hideMentionDropdown();
 }
 
-document.getElementById("msg-input").addEventListener("input", function () {
+function handleMentionInput(e) {
+  /* Skip while an IME composition is in progress — `input.value` reflects
+   * the pre-commit buffer and `selectionStart` may point at a position that
+   * doesn't yet contain the composed `@`. We re-run on `compositionend`
+   * (attached in initMentionAutocomplete) so the query is computed against
+   * the finalized text. Fixes todo#383 — JP-mode IME users could not trigger
+   * `@mention` autocomplete because the input listener consumed stale state
+   * during composition. */
+  if (e && e.isComposing) return;
+  mentionActiveInput = this;
   var info = getMentionQuery(this);
   if (!info) {
     hideMentionDropdown();
@@ -189,9 +244,9 @@ document.getElementById("msg-input").addEventListener("input", function () {
     return;
   }
   showMentionDropdown(matchedSpecial, matchedAgents);
-});
+}
 
-document.getElementById("msg-input").addEventListener("keydown", function (e) {
+function handleMentionKeydown(e) {
   if (!mentionDropdown || !mentionDropdown.classList.contains("visible")) {
     return;
   }
@@ -219,15 +274,30 @@ document.getElementById("msg-input").addEventListener("keydown", function (e) {
     e.preventDefault();
     hideMentionDropdown();
   }
-});
+}
+
+function handleMentionBlur() {
+  setTimeout(hideMentionDropdown, 150);
+}
+
+/* Attach mention autocomplete to any textarea */
+function initMentionAutocomplete(inputEl) {
+  inputEl.addEventListener("input", handleMentionInput);
+  /* Re-run the query once the IME commits its composed text. The
+   * input-listener skips during composition (isComposing guard), so
+   * without this handler the newly-typed `@` would never show the
+   * dropdown in JP IME mode. (todo#383) */
+  inputEl.addEventListener("compositionend", handleMentionInput);
+  inputEl.addEventListener("keydown", handleMentionKeydown);
+  inputEl.addEventListener("blur", handleMentionBlur);
+}
+
+/* Init for main compose textarea */
+initMentionAutocomplete(document.getElementById("msg-input"));
 
 mentionDropdown.addEventListener("click", function (e) {
   var item = e.target.closest(".mention-item");
   if (item) insertMention(item.getAttribute("data-name"));
-});
-
-document.getElementById("msg-input").addEventListener("blur", function () {
-  setTimeout(hideMentionDropdown, 150);
 });
 
 setInterval(refreshAgentNames, 15000);

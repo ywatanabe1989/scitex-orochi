@@ -36,6 +36,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "machine": info.get("machine", ""),
             "role": info.get("role", ""),
             "model": info.get("model", ""),
+            "multiplexer": info.get("multiplexer", ""),
             "project": info.get("project", ""),
             "workdir": info.get("workdir", ""),
             "channels": info.get("channels", []),
@@ -46,9 +47,68 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_action": prev.get("last_action") or time.time(),
             "last_message_preview": prev.get("last_message_preview", ""),
             "current_task": prev.get("current_task", ""),
+            "subagent_count": prev.get("subagent_count", 0),
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
+            # Extended process/runtime metadata pushed by agent_meta.py --push.
+            # Optional; absent for legacy WS-only agents.
+            "pid": info.get("pid") or prev.get("pid") or 0,
+            "ppid": info.get("ppid") or prev.get("ppid") or 0,
+            "context_pct": (
+                info.get("context_pct")
+                if info.get("context_pct") is not None
+                else prev.get("context_pct")
+            ),
+            "skills_loaded": (
+                list(info.get("skills_loaded"))
+                if isinstance(info.get("skills_loaded"), (list, tuple))
+                else prev.get("skills_loaded") or []
+            ),
+            "started_at": info.get("started_at") or prev.get("started_at") or "",
+            "version": info.get("version") or prev.get("version") or "",
+            "runtime": info.get("runtime") or prev.get("runtime") or "",
+            # v0.11.0 Agents-tab visibility fields. Recent action log
+            # + tmux pane tail + workspace CLAUDE.md head + MCP server
+            # list. The bun sidecar pushes these on every 30s
+            # heartbeat via api_agents_register; the dashboard reads
+            # them from get_agents() to render meaningful cards.
+            # todo#155.
+            "recent_actions": (
+                list(info.get("recent_actions"))
+                if isinstance(info.get("recent_actions"), (list, tuple))
+                else prev.get("recent_actions") or []
+            ),
+            "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
+            "pane_tail_block": info.get("pane_tail_block") or prev.get("pane_tail_block") or "",
+            "claude_md_head": info.get("claude_md_head") or prev.get("claude_md_head") or "",
+            "mcp_servers": (
+                list(info.get("mcp_servers"))
+                if isinstance(info.get("mcp_servers"), (list, tuple))
+                else prev.get("mcp_servers") or []
+            ),
+            # todo#265: Claude Code OAuth account public metadata pushed
+            # by agent_meta.py --push so the Agents/Activity tab can show
+            # which account each agent is running under, detect
+            # out_of_credits state, and support fleet load-balancing.
+            # Strict whitelist — no tokens, secrets, or credentials.
+            "oauth_email": info.get("oauth_email") or prev.get("oauth_email") or "",
+            "oauth_org_name": info.get("oauth_org_name") or prev.get("oauth_org_name") or "",
+            "oauth_account_uuid": info.get("oauth_account_uuid") or prev.get("oauth_account_uuid") or "",
+            "oauth_display_name": info.get("oauth_display_name") or prev.get("oauth_display_name") or "",
+            "billing_type": info.get("billing_type") or prev.get("billing_type") or "",
+            "has_available_subscription": (
+                info.get("has_available_subscription")
+                if info.get("has_available_subscription") is not None
+                else prev.get("has_available_subscription")
+            ),
+            "usage_disabled_reason": info.get("usage_disabled_reason") or prev.get("usage_disabled_reason") or "",
+            "has_extra_usage_enabled": (
+                info.get("has_extra_usage_enabled")
+                if info.get("has_extra_usage_enabled") is not None
+                else prev.get("has_extra_usage_enabled")
+            ),
+            "subscription_created_at": info.get("subscription_created_at") or prev.get("subscription_created_at") or "",
         }
 
 
@@ -61,7 +121,7 @@ def set_subagents(name: str, subagents: list) -> None:
     """
     with _lock:
         if name in _agents:
-            _agents[name]["subagents"] = [
+            normalized = [
                 {
                     "name": str(s.get("name", "")) or "subagent",
                     "task": str(s.get("task", ""))[:200],
@@ -70,6 +130,11 @@ def set_subagents(name: str, subagents: list) -> None:
                 for s in (subagents or [])
                 if isinstance(s, dict)
             ]
+            _agents[name]["subagents"] = normalized
+            # Keep the count in sync so callers that only read
+            # `subagent_count` (sidebar card badge) stay accurate even
+            # when the full list is what was pushed.
+            _agents[name]["subagent_count"] = len(normalized)
 
 
 def mark_activity(name: str, action: str = "") -> None:
@@ -94,6 +159,18 @@ def set_current_task(name: str, task: str) -> None:
     with _lock:
         if name in _agents:
             _agents[name]["current_task"] = task[:120] if task else ""
+
+
+def set_subagent_count(name: str, count: int) -> None:
+    """Explicitly set the agent's subagent count.
+
+    Agents that track subagents out-of-band (without sending the full
+    subagents list) can report just the count via this setter so the
+    dashboard can still show a `N subagents` badge.
+    """
+    with _lock:
+        if name in _agents:
+            _agents[name]["subagent_count"] = max(0, int(count or 0))
 
 
 def set_health(
@@ -271,6 +348,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "machine": a.get("machine", ""),
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
+                "multiplexer": a.get("multiplexer", ""),
                 "project": a.get("project", ""),
                 "workdir": a.get("workdir", ""),
                 "icon": icon_image,
@@ -300,8 +378,37 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "current_task": a.get("current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
+                "subagent_count": int(
+                    a.get("subagent_count") or len(a.get("subagents") or [])
+                ),
                 "health": a.get("health") or {},
                 "claude_md": a.get("claude_md", ""),
+                # Extended metadata from agent_meta.py --push (todo#213)
+                "pid": a.get("pid") or 0,
+                "ppid": a.get("ppid") or 0,
+                "context_pct": a.get("context_pct"),
+                "skills_loaded": list(a.get("skills_loaded") or []),
+                "started_at": a.get("started_at", ""),
+                "version": a.get("version", ""),
+                "runtime": a.get("runtime", ""),
+                # v0.11.0 Agents-tab visibility fields.
+                "recent_actions": list(a.get("recent_actions") or []),
+                "pane_tail": a.get("pane_tail", ""),
+                "pane_tail_block": a.get("pane_tail_block", ""),
+                "claude_md_head": a.get("claude_md_head", ""),
+                "mcp_servers": list(a.get("mcp_servers") or []),
+                # todo#265: OAuth account public metadata. Whitelist
+                # only — no tokens, credentials, or secrets are ever
+                # stored or surfaced.
+                "oauth_email": a.get("oauth_email", ""),
+                "oauth_org_name": a.get("oauth_org_name", ""),
+                "oauth_account_uuid": a.get("oauth_account_uuid", ""),
+                "oauth_display_name": a.get("oauth_display_name", ""),
+                "billing_type": a.get("billing_type", ""),
+                "has_available_subscription": a.get("has_available_subscription"),
+                "usage_disabled_reason": a.get("usage_disabled_reason", ""),
+                "has_extra_usage_enabled": a.get("has_extra_usage_enabled"),
+                "subscription_created_at": a.get("subscription_created_at", ""),
             }
         )
     return result

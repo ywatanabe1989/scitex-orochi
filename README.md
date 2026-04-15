@@ -602,6 +602,27 @@ scitex-orochi is the communication backbone of [**SciTeX**](https://scitex.ai). 
 3. `pytest`
 4. Open a PR
 
+### Agentic Testing (DeepEval / LLM-as-judge)
+
+Behavioral tests for agents use [DeepEval](https://docs.confident-ai.com/docs/getting-started),
+a pytest-integrated framework where another LLM acts as the judge. These
+tests are marked with `@pytest.mark.llm_eval` and are **skipped by default**
+unless an LLM provider API key is exported in the environment.
+
+```bash
+# Run normal tests only (default in CI)
+pytest -m "not llm_eval"
+
+# Run LLM-as-judge tests (requires a provider key)
+export OPENAI_API_KEY=sk-...        # or ANTHROPIC_API_KEY / DEEPEVAL_API_KEY
+pytest -m llm_eval -v
+```
+
+API keys are read from environment variables only — never hard-code them.
+See [`tests/test_agent_eval.py`](tests/test_agent_eval.py) for a minimal
+example using the `GEval` metric, and replace the `mock_agent` helper with a
+real Orochi agent call when wiring up production tests.
+
 ---
 
 ## References

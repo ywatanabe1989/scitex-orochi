@@ -17,6 +17,15 @@ function healthColor(status) {
 
 function barHtml(label, percent) {
   var p = Math.min(100, Math.max(0, Math.round(percent)));
+  /* 0% is almost always stale/unknown data — show dash instead (#9692) */
+  if (p === 0) {
+    return (
+      '<div class="res-bar-row"><span class="res-bar-label">' +
+      label +
+      '</span><div class="res-bar-track"><div class="res-bar-fill" style="width:0%;background:#444"></div></div>' +
+      '<span class="res-bar-val res-bar-unknown">\u2014</span></div>'
+    );
+  }
   var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   return (
     '<div class="res-bar-row"><span class="res-bar-label">' +
@@ -35,9 +44,22 @@ function barHtml(label, percent) {
 /* Donut (pie-chart) for machine resources — inline SVG, no deps */
 function donutHtml(label, percent) {
   var p = Math.min(100, Math.max(0, Math.round(percent)));
-  var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   var radius = 26;
   var circumference = 2 * Math.PI * radius;
+  /* 0% is almost always stale/unknown data — show dash instead (#9692) */
+  if (p === 0) {
+    return (
+      '<div class="res-donut">' +
+      '<svg class="res-donut-svg" viewBox="0 0 64 64" width="64" height="64">' +
+      '<circle class="res-donut-bg" cx="32" cy="32" r="' + radius + '" ' +
+      'fill="none" stroke="#1f1f1f" stroke-width="8"/>' +
+      '<text x="32" y="36" text-anchor="middle" class="res-donut-text res-donut-unknown">\u2014</text>' +
+      '</svg>' +
+      '<div class="res-donut-label">' + label + '</div>' +
+      '</div>'
+    );
+  }
+  var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
   var offset = circumference * (1 - p / 100);
   return (
     '<div class="res-donut">' +
@@ -57,12 +79,20 @@ function donutHtml(label, percent) {
 }
 
 function renderResources() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("resources");
   var keys = Object.keys(resourceData);
   var cEl = document.getElementById("sidebar-count-machines");
   if (cEl) cEl.textContent = keys.length ? "(" + keys.length + ")" : "";
   if (keys.length === 0) {
     container.innerHTML = '<p class="empty-notice">No reports yet</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   container.innerHTML = keys
@@ -111,13 +141,25 @@ function renderResources() {
       return html;
     })
     .join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function renderResourcesTab() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var grid = document.getElementById("resources-grid");
   var keys = Object.keys(resourceData);
   if (keys.length === 0) {
     grid.innerHTML = '<p class="empty-notice">No resource reports yet.</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   grid.innerHTML = keys.map(buildResourceCard).join("");
@@ -126,6 +168,10 @@ function renderResourcesTab() {
       addTag("host", el.getAttribute("data-host-name"));
     });
   });
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function buildResourceCard(k) {
@@ -218,6 +264,19 @@ function buildResourceCard(k) {
   return html;
 }
 
+/* todo#337: friendly canonical names so DXP480TPLUS-994 shows as "nas" etc. */
+var MACHINE_ALIASES = {
+  "DXP480TPLUS-994": "nas",
+  "Yusukes-MacBook-Air.local": "mba",
+  "spartan-login1.hpc.unimelb.edu.au": "spartan",
+  "spartan-login1": "spartan",
+};
+function _friendlyMachine(raw) {
+  if (!raw) return raw;
+  if (MACHINE_ALIASES[raw]) return MACHINE_ALIASES[raw] + " (" + raw + ")";
+  return raw;
+}
+
 async function fetchResources() {
   try {
     var res = await fetch(apiUrl("/api/resources"));
@@ -226,8 +285,11 @@ async function fetchResources() {
     Object.keys(data).forEach(function (agentName) {
       var entry = data[agentName];
       var r = entry.resources || {};
+      /* Don't overwrite richer WS data with empty REST metrics (#337) */
+      var existing = resourceData[agentName];
+      if (existing && !existing._api && (r.mem_used_percent || 0) === 0 && (existing.memory || {}).percent > 0) return;
       resourceData[agentName] = {
-        hostname: entry.machine || agentName,
+        hostname: _friendlyMachine(entry.machine || agentName),
         agent: agentName,
         cpu: {
           percent: Math.round(

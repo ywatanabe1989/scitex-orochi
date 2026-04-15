@@ -194,4 +194,132 @@ export const TOOL_DEFS = [
       required: ["file_path"],
     },
   },
+  {
+    name: "rsync_media",
+    description:
+      "Transfer a large file (>10MB) between fleet hosts via background rsync over the SSH mesh. Returns a job_id immediately; use rsync_status to query progress. On completion, posts a message to the specified channel.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        src_path: {
+          type: "string",
+          description:
+            "Absolute path on the local host (source file or directory).",
+        },
+        dst_host: {
+          type: "string",
+          description:
+            "Destination SSH hostname. One of: mba, nas, ywata-note-win, spartan.",
+        },
+        dst_path: {
+          type: "string",
+          description:
+            "Absolute destination path on dst_host (e.g. ~/orochi-inbox/ or ~/archives/foo/).",
+        },
+        channel: {
+          type: "string",
+          description:
+            "Orochi channel to post progress/completion messages (default: #agent).",
+        },
+      },
+      required: ["src_path", "dst_host", "dst_path"],
+    },
+  },
+  {
+    name: "rsync_status",
+    description: "Query the status of a background rsync transfer job.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        job_id: {
+          type: "string",
+          description: "The job ID returned by rsync_media.",
+        },
+      },
+      required: ["job_id"],
+    },
+  },
+  {
+    name: "dm_list",
+    description:
+      "List 1:1 direct-message channels the current agent participates in (todo#60). Returns rows with name, kind, other_participants, last_message_ts. Read-only — does not send messages.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        workspace: {
+          type: "string",
+          description:
+            "Workspace slug. Defaults to env SCITEX_OROCHI_WORKSPACE if set.",
+        },
+      },
+    },
+  },
+  {
+    name: "dm_open",
+    description:
+      "Get-or-create a 1:1 DM channel between the caller and `recipient` (todo#60). Recipient is a principal key like 'agent:mamba-healer-mba' or 'human:ywatanabe'. Returns the DM row {name, kind, other_participants, ...}; the caller must use the existing `reply` tool with chat_id=<returned name> to actually send a message (the WS reply path is the sole agent write path per spec v3.1 §4.1).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        recipient: {
+          type: "string",
+          description:
+            "Principal key: 'agent:<name>' or 'human:<username>'. Alias: peer.",
+        },
+        peer: {
+          type: "string",
+          description: "Alias for recipient.",
+        },
+        workspace: {
+          type: "string",
+          description:
+            "Workspace slug. Defaults to env SCITEX_OROCHI_WORKSPACE if set.",
+        },
+      },
+    },
+  },
+  {
+    name: "connectivity_matrix",
+    description:
+      "Return the fleet 4×4 reachability matrix as JSON (todo#297 layer 3). Reads connectivity rows produced by the per-host fleet-watch producers (PR B) from $SCITEX_OROCHI_CONNECTIVITY_DIR (default ~/.scitex/orochi/fleet-watch/) and merges them keyed by `from`. Each row is a single host's outbound view: {ts, from, from_hostname, to: {<peer>: {ok, rtt_ms, route, error?}}}. This is a thin read-only aggregator — it does NOT run ssh or measure RTT itself; the per-host producers handle that. Once #298 fleet_report endpoint lands, the same shape will be served from the hub DB without consumer changes.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "sidecar_status",
+    description:
+      "Return the orochi-side sidecar PID registry as JSON (todo#287 Slice A). Surfaces (a) the running scitex-orochi MCP server (this bun process: pid, ppid, started_at, uptime_seconds, runtime, agent name) and (b) the rsync_media child-process registry (each rsync job's pid, status, paths, timestamps). Layer 3 of the 3-layer fleet PID model — Claude/tmux are owned by scitex-agent-container, container daemons by container snapshot, comms sidecars by orochi (this tool). Read-only; does not spawn or mutate anything.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "self_command",
+    description:
+      "Send an arbitrary slash command (e.g. /compact, /clear) to the agent's own screen/tmux session. Returns immediately; the command fires after delay_ms when the agent is idle at its prompt. Destructive commands (/clear, /kill, /exit, /quit) require confirm=true.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        command: {
+          type: "string",
+          description:
+            "Slash command text to send, starting with '/'. May include args, e.g. '/compact' or '/model sonnet'. Must match /^\\/[A-Za-z0-9_-]+( .*)?$/ and must not contain single quotes.",
+        },
+        delay_ms: {
+          type: "number",
+          description:
+            "Delay in ms before sending the command (default: 6000). todo-manager recommends >=6000ms so the MCP response round-trip completes and the agent is idle at its prompt before keys are stuffed.",
+        },
+        confirm: {
+          type: "boolean",
+          description:
+            "Required true for destructive commands (/clear, /kill, /exit, /quit). Ignored for non-destructive commands.",
+        },
+      },
+      required: ["command"],
+    },
+  },
 ];

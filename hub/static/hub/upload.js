@@ -38,11 +38,19 @@ function _ensureAttachmentTray() {
 }
 
 function _renderAttachmentTray() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var tray = _ensureAttachmentTray();
   if (!tray) return;
   if (!pendingAttachments.length) {
     tray.style.display = "none";
     tray.innerHTML = "";
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
   tray.style.display = "flex";
@@ -82,6 +90,10 @@ function _renderAttachmentTray() {
     item.appendChild(remove);
     tray.appendChild(item);
   });
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function clearPendingAttachments() {
@@ -96,6 +108,19 @@ function getPendingAttachments() {
 }
 
 document.getElementById("msg-attach").addEventListener("click", function () {
+  document.getElementById("file-input").click();
+});
+
+/* Ctrl+U / Cmd+U global shortcut → open file picker (msg#9877) */
+document.addEventListener("keydown", function (e) {
+  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  if (!((isMac ? e.metaKey : e.ctrlKey) && e.key === "u")) return;
+  var tag = document.activeElement && document.activeElement.tagName;
+  /* Only intercept when focus is on the message composer or not on a text input */
+  var onComposer = document.activeElement && document.activeElement.id === "msg-input";
+  var onOtherInput = (tag === "INPUT" || tag === "TEXTAREA") && !onComposer;
+  if (onOtherInput) return;
+  e.preventDefault();
   document.getElementById("file-input").click();
 });
 

@@ -293,3 +293,45 @@ body {
 .password-rules li.met::before {
   content: "\2713 ";
 }
+
+/* Mobile auth pages — scale cards for narrow screens */
+@media (max-width: 500px) {
+  body {
+    padding: 16px;
+    align-items: flex-start;
+    padding-top: 10vh;
+  }
+  .auth-card {
+    max-width: 100%;
+    padding: 1.5rem;
+    border-radius: 8px;
+  }
+  .auth-card .logo {
+    width: 64px;
+    height: 64px;
+  }
+  .auth-card h1 {
+    font-size: 1.3rem;
+  }
+  .form-group input {
+    padding: 0.7rem 0.8rem;
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .btn {
+    padding: 0.8rem;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+  .btn-social {
+    padding: 0.7rem;
+    min-height: 44px;
+  }
+  .password-toggle {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

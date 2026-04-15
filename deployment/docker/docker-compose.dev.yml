@@ -15,7 +15,7 @@ services:
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-dev-secret-key}
       - DJANGO_DEBUG=true
-      - DJANGO_ALLOWED_HOSTS=orochi-dev.scitex.ai,localhost
+      - DJANGO_ALLOWED_HOSTS=orochi-dev.scitex.ai,localhost,192.168.11.22,192.168.0.102
       - DJANGO_CSRF_TRUSTED_ORIGINS=https://orochi-dev.scitex.ai
       - SCITEX_OROCHI_SSO_URL=https://scitex.ai
       - SCITEX_OROCHI_SCITEX_CLIENT_ID=lO88A4EuyttAPH4ojhzG0SVeHZCpa23MIuXIllRG

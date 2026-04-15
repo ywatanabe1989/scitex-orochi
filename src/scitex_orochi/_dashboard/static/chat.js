@@ -7,6 +7,36 @@ function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
 
+/* Lightweight GFM-subset markdown renderer (#306) */
+function renderMarkdown(text) {
+  /* 1. Escape HTML first */
+  var safe = escapeHtml(text);
+  /* 2. Code fences: ```lang\n...\n``` → <pre><code>...</code></pre> */
+  safe = safe.replace(
+    /```(\w*)\n([\s\S]*?)```/g,
+    function (_, lang, code) {
+      return '<pre class="md-code-block"><code' +
+        (lang ? ' class="lang-' + lang + '"' : '') +
+        '>' + code.replace(/<br>/g, '\n') + '</code></pre>';
+    }
+  );
+  /* 3. Inline code: `...` → <code>...</code> */
+  safe = safe.replace(/`([^`]+)`/g, '<code class="md-inline-code">$1</code>');
+  /* 4. Bold: **...** → <strong>...</strong> */
+  safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  /* 5. Newlines → <br> (after code blocks are handled) */
+  safe = safe.replace(/\n/g, "<br>");
+  /* 6. @mentions */
+  safe = safe.replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
+  return safe;
+}
+
+/* Auto-scroll only when user is near bottom (preserves text selection) */
+function shouldAutoScroll(container) {
+  var threshold = 80;
+  return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+}
+
 function appendMessage(msg) {
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
@@ -43,9 +73,7 @@ function appendMessage(msg) {
     el.setAttribute("data-channel", channel);
   }
   el.style.borderLeftColor = senderColor;
-  var highlightedContent = escapeHtml(content)
-    .replace(/\n/g, "<br>")
-    .replace(/@([\w-]+)/g, '<span class="mention-highlight">@$1</span>');
+  var highlightedContent = renderMarkdown(content);
   var attachmentsHtml = "";
   var attachments =
     (msg.payload && msg.payload.attachments) || msg.attachments || [];
@@ -108,8 +136,9 @@ function appendMessage(msg) {
     el.style.display = "none";
   }
   var container = document.getElementById("messages");
+  var doScroll = shouldAutoScroll(container);
   container.appendChild(el);
-  container.scrollTop = container.scrollHeight;
+  if (doScroll) container.scrollTop = container.scrollHeight;
 }
 
 function filterMessages() {
@@ -200,13 +229,55 @@ function sendMessage() {
   });
   input.value = "";
   input.style.height = "auto";
+  /* Clear the per-channel draft now that the message has been sent. */
+  try {
+    sessionStorage.removeItem("orochi-draft-" + (currentChannel || "__default__"));
+  } catch (_) {}
+  /* Force scroll to bottom immediately on send (#227) */
+  var msgContainer = document.getElementById("messages");
+  if (msgContainer) {
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+  }
 }
 
-/* Auto-resize textarea as content grows */
+/* Draft persistence — save/restore per channel using sessionStorage */
+function _draftKey() {
+  try {
+    return "orochi-draft-" + (currentChannel || "__default__");
+  } catch (_) {
+    return "orochi-draft-__default__";
+  }
+}
+function _saveDraft(value) {
+  try {
+    if (value && value.length > 0) {
+      sessionStorage.setItem(_draftKey(), value);
+    } else {
+      sessionStorage.removeItem(_draftKey());
+    }
+  } catch (_) { /* sessionStorage may be unavailable in private mode */ }
+}
+function restoreDraftForCurrentChannel() {
+  try {
+    var input = document.getElementById("msg-input");
+    if (!input) return;
+    var saved = sessionStorage.getItem(_draftKey());
+    if (saved && !input.value) {
+      input.value = saved;
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    }
+  } catch (_) {}
+}
+window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
+
+/* Auto-resize textarea as content grows + save draft */
 document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 120) + "px";
+  _saveDraft(this.value);
 });
+restoreDraftForCurrentChannel();
 
 document.getElementById("msg-send").addEventListener("click", sendMessage);
 document.getElementById("msg-input").addEventListener("keydown", function (e) {

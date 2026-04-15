@@ -26,15 +26,106 @@
   padding: 2px 8px;
   border-radius: 10px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+.activity-pill-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .activity-pill-online { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
 .activity-pill-idle { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
 .activity-pill-stale { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 .activity-pill-offline { background: #1a1a1a; color: #555; }
+.activity-legend-hint {
+  font-size: 10px;
+  color: #666;
+  margin-left: 8px;
+  align-self: center;
+  font-style: italic;
+}
+
+/* Recent actions mini-log inside each card. msg#6608 / msg#6615 —
+ * ywatanabe wants the last 10 tool calls with timestamps so the card
+ * has actual content instead of just a single stale "tool name". */
+.activity-recent {
+  list-style: none;
+  margin: 8px 0 0 0;
+  padding: 6px 8px;
+  background: #0d0d0d;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.activity-recent-row {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 6px;
+  padding: 1px 0;
+  color: #b0b0b0;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.activity-recent-ts {
+  color: #666;
+  font-variant-numeric: tabular-nums;
+}
+.activity-recent-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Workspace CLAUDE.md head — one-line role hint above the task. */
+.activity-role-hint {
+  font-size: 11px;
+  color: #777;
+  font-style: italic;
+  margin: 4px 0 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* MCP server chips — what MCP backends this agent has loaded. */
+.activity-mcp-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.activity-mcp-chip {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: #1a2424;
+  color: #4ecdc4;
+  border: 1px solid #2a3a3a;
+}
+
+/* Agent name should NEVER be ellipsized — it's the primary identity
+ * of the card. Allow it to wrap onto a second line instead. msg#6611
+ * / msg#6614 — ywatanabe said truncated names are "意味わからん". */
+.activity-name {
+  white-space: normal;
+  word-break: break-word;
+}
 
 .activity-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  /* Wider min-width so agent names like "mamba-quality-checker-mba"
+   * fit on one line. msg#6611 — name truncation was the loudest
+   * recurring complaint. 360px lets every current agent name fit
+   * comfortably plus the status pill. */
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 12px;
   padding: 16px;
 }
@@ -42,6 +133,11 @@
 .activity-card {
   background: #141414;
   border: 1px solid #222;
+  /* Ease color/opacity changes so heartbeat updates fade instead of
+   * snap-flicker. Layout properties are intentionally NOT in the
+   * transition list — moving the card around is the worst UX.
+   * msg#6575 / msg#6592. */
+  transition: border-color 0.4s ease, background 0.4s ease, opacity 0.4s ease;
   border-left: 3px solid #444;
   border-radius: 4px;
   padding: 10px 12px;
@@ -110,6 +206,8 @@
   padding: 6px 8px;
   word-wrap: break-word;
   line-height: 1.4;
+  margin-top: 6px;
+  overflow: hidden;
 }
 
 .activity-task-empty {
@@ -201,3 +299,148 @@
 .activity-health-dead { border-left-color: #7a1f1f; color: #ef4444; }
 .activity-health-ghost { border-left-color: #6b21a8; color: #c084fc; }
 .activity-health-remediating { border-left-color: #4ecdc4; color: #4ecdc4; animation: activity-pulse 1.4s ease-in-out infinite; }
+
+/* Rich-field chip row added 2026-04-12 (todo#?) — surfaces ctx %, model,
+ * multiplexer, subagent count, skills count, pid as small inline pills on
+ * each agent activity card. Each chip is rendered only when its underlying
+ * field is non-null in the registry payload. */
+.activity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 4px;
+}
+.activity-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.05);
+  color: #b0b0b0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.activity-chip-model { color: #d8b4fe; border-color: rgba(216, 180, 254, 0.3); }
+.activity-chip-mux   { color: #93c5fd; border-color: rgba(147, 197, 253, 0.3); }
+.activity-chip-ctx.ctx-ok   { color: #4ecdc4; border-color: rgba(78, 205, 196, 0.4); }
+.activity-chip-ctx.ctx-warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
+.activity-chip-ctx.ctx-hot  { color: #ef4444; border-color: rgba(239, 68, 68, 0.5); }
+.activity-chip-subs   { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+.activity-chip-subs-active {
+  color: #0b0b0b;
+  background: #fbbf24;
+  border-color: #fbbf24;
+  font-weight: 700;
+}
+.activity-chip-subs-idle {
+  color: #666;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  font-style: italic;
+  padding: 1px 6px;
+  font-size: 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.activity-chip-skills { color: #a3e635; border-color: rgba(163, 230, 53, 0.3); }
+.activity-chip-channels { color: #7dd3fc; border-color: rgba(125, 211, 252, 0.3); }
+.activity-chip-uptime { color: #c4b5fd; border-color: rgba(196, 181, 253, 0.25); }
+.activity-chip-pid    { color: #888; }
+
+/* Hero task row: the main "what is this agent doing right now" line. */
+.activity-task-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.activity-tool-name {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #0b0b0b;
+  background: #d8b4fe;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.activity-tool-arg {
+  flex: 1;
+  min-width: 0;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #e8e8e8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-tool-prose {
+  flex: 1;
+  min-width: 0;
+  font-style: italic;
+  font-size: 11px;
+  color: #cfcfcf;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-task-age {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  background: #0b0b0b;
+}
+
+/* "Stuck" state used to paint a purple gradient + border, but
+ * ywatanabe at msg#6601 said the unexplained purple was confusing
+ * ("なんか紫とかない？いみわからんのだけど"). The status pills
+ * (online/idle/stale/offline) already encode liveness; stuck is just
+ * a more severe form of stale and doesn't need its own color. Keep
+ * the class so the data stays attached to the DOM, but visually
+ * collapse it into the .activity-stale border. */
+.activity-card.activity-stuck {
+  /* Inherits border from .activity-stale; no extra color. */
+}
+.activity-card.activity-stuck .activity-task-age {
+  /* Inherits muted age color. */
+}
+
+/* Per-card copy-to-clipboard button */
+.activity-copy-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.1s, border-color 0.1s;
+}
+.activity-copy-btn:hover {
+  color: #ccc;
+  border-color: #333;
+}
+.activity-copy-btn.activity-copy-ok {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+
+/* ── Per-agent sub-tab bar (todo#420) ── */
+.activity-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 0 8px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 10px;
+}

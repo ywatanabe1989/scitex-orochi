@@ -2,6 +2,11 @@
 /* globals: fuzzyMatch, escapeHtml, cachedAgentNames, resourceData,
    currentChannel, activeTags */
 
+/* mention.js redefines fuzzyMatch() to return a numeric score where
+ * -1 means no match. In JS -1 is truthy, so all boolean filter checks
+ * would pass regardless of match. _fm() wraps with >= 0 check. */
+var _fm = function (query, text) { return fuzzyMatch(query, text) >= 0; };
+
 var filterInput = document.getElementById("filter-input");
 var filterTagsEl = document.getElementById("filter-tags");
 var filterSuggestEl = document.getElementById("filter-suggest");
@@ -75,6 +80,10 @@ function syncFilterVisuals() {
 }
 
 function renderTags() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   filterTagsEl.innerHTML = activeTags
     .map(function (t, i) {
       return (
@@ -90,24 +99,28 @@ function renderTags() {
       );
     })
     .join("");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function getTagSuggestions(prefix) {
   var results = [];
   var pLower = prefix.toLowerCase();
   cachedAgentNames.forEach(function (n) {
-    if (fuzzyMatch(pLower, n.toLowerCase())) {
+    if (_fm(pLower, n.toLowerCase())) {
       results.push({ type: "agent", value: n });
     }
   });
   Object.keys(resourceData).forEach(function (h) {
-    if (fuzzyMatch(pLower, h.toLowerCase())) {
+    if (_fm(pLower, h.toLowerCase())) {
       results.push({ type: "host", value: h });
     }
   });
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var ch = el.getAttribute("data-channel") || el.textContent.trim();
-    if (fuzzyMatch(pLower, ch.toLowerCase())) {
+    if (_fm(pLower, ch.toLowerCase())) {
       results.push({ type: "channel", value: ch });
     }
   });
@@ -115,7 +128,7 @@ function getTagSuggestions(prefix) {
     .querySelectorAll(".todo-label[data-label-name]")
     .forEach(function (el) {
       var name = el.getAttribute("data-label-name");
-      if (name && fuzzyMatch(pLower, name.toLowerCase())) {
+      if (name && _fm(pLower, name.toLowerCase())) {
         results.push({ type: "label", value: name });
       }
     });
@@ -135,6 +148,10 @@ function showSuggestions(items) {
     hideSuggestions();
     return;
   }
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   suggestIndex = 0;
   filterSuggestEl.innerHTML = items
     .map(function (item, i) {
@@ -155,12 +172,24 @@ function showSuggestions(items) {
     })
     .join("");
   filterSuggestEl.classList.add("visible");
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 function hideSuggestions() {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   filterSuggestEl.classList.remove("visible");
   filterSuggestEl.innerHTML = "";
   suggestIndex = -1;
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 filterSuggestEl.addEventListener("click", function (e) {
@@ -219,7 +248,7 @@ function matchesAllTags(tags, text) {
   if (tags.length === 0) return true;
   var lower = text.toLowerCase();
   return tags.every(function (tag) {
-    return fuzzyMatch(tag.value.toLowerCase(), lower);
+    return _fm(tag.value.toLowerCase(), lower);
   });
 }
 
@@ -227,6 +256,8 @@ function runFilter() {
   var parsed = parseFilterInput(filterInput.value.trim());
   var allTags = activeTags.concat(parsed.tags);
   var q = parsed.text;
+  /* Split free text into space-separated keywords for AND matching (#347) */
+  var qWords = q ? q.split(/\s+/).filter(Boolean) : [];
   document.querySelectorAll(".msg").forEach(function (el) {
     var sender = el.querySelector(".sender");
     var channel = el.querySelector(".channel");
@@ -237,33 +268,46 @@ function runFilter() {
       (channel ? channel.textContent : "") +
       " " +
       (content ? content.textContent : "");
-    var show = fuzzyMatch(q, text);
+    /* Each keyword must match independently (AND logic) */
+    var show = qWords.length === 0 || qWords.every(function (w) {
+      return _fm(w, text);
+    });
     if (show && allTags.length > 0) {
-      show = allTags.every(function (tag) {
-        var val = tag.value.toLowerCase();
-        if (tag.type === "agent") {
-          return fuzzyMatch(
-            val,
-            (sender ? sender.textContent : "").toLowerCase(),
-          );
-        }
-        if (tag.type === "channel") {
-          return fuzzyMatch(
-            val,
-            (el.getAttribute("data-channel") || "").toLowerCase(),
-          );
-        }
-        return fuzzyMatch(val, text.toLowerCase());
-      });
+      /* Group agent tags for OR (union) logic; other tags stay AND */
+      var agentTags = allTags.filter(function (t) { return t.type === "agent"; });
+      var otherTags = allTags.filter(function (t) { return t.type !== "agent"; });
+      if (agentTags.length > 0) {
+        var senderText = (sender ? sender.textContent : "").toLowerCase();
+        show = agentTags.some(function (tag) {
+          return _fm(tag.value.toLowerCase(), senderText);
+        });
+      }
+      if (show && otherTags.length > 0) {
+        show = otherTags.every(function (tag) {
+          var val = tag.value.toLowerCase();
+          if (tag.type === "channel") {
+            return _fm(
+              val,
+              (el.getAttribute("data-channel") || "").toLowerCase(),
+            );
+          }
+          return _fm(val, text.toLowerCase());
+        });
+      }
     }
-    if (show && currentChannel) {
+    /* Skip single-channel filter when multi-select is active (#366):
+     * applyFeedFilter() handles multi-channel visibility in that case. */
+    var _multiActive = document.querySelectorAll(
+      "#channels .channel-item.selected",
+    ).length >= 2;
+    if (show && currentChannel && !_multiActive) {
       show = el.getAttribute("data-channel") === currentChannel;
     }
     el.style.display = show ? "" : "none";
   });
   document.querySelectorAll(".todo-item").forEach(function (el) {
     var text = el.textContent;
-    var show = fuzzyMatch(q, text);
+    var show = qWords.length === 0 || qWords.every(function (w) { return _fm(w, text); });
     if (show && allTags.length > 0) {
       show = allTags.every(function (tag) {
         var val = tag.value.toLowerCase();
@@ -272,42 +316,46 @@ function runFilter() {
           if (labels.length === 0) return false;
           var found = false;
           labels.forEach(function (l) {
-            if (fuzzyMatch(val, l.textContent.toLowerCase())) found = true;
+            if (_fm(val, l.textContent.toLowerCase())) found = true;
           });
           return found;
         }
-        return fuzzyMatch(val, text.toLowerCase());
+        return _fm(val, text.toLowerCase());
       });
     }
     el.style.display = show ? "" : "none";
   });
-  filterSidebarElements(q, allTags);
+  filterSidebarElements(qWords, allTags);
 }
 
-function filterSidebarElements(q, allTags) {
+function _matchAllWords(words, text) {
+  return words.length === 0 || words.every(function (w) { return _fm(w, text); });
+}
+
+function filterSidebarElements(qWords, allTags) {
   document.querySelectorAll("#agents .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#resources .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#agents-grid .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
   document.querySelectorAll("#resources-grid .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      fuzzyMatch(q, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
   });
 }

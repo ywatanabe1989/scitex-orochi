@@ -5,6 +5,7 @@ import logging
 import os
 import platform
 import time
+from datetime import datetime, timezone as dt_timezone
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -18,14 +19,19 @@ from django.views.decorators.http import require_GET, require_http_methods
 _server_start_time = time.time()
 
 
+from hub.channel_acl import check_write_allowed
 from hub.models import (
     Channel,
+    ChannelPreference,
+    DMParticipant,
+    FleetReport,
     Message,
     MessageReaction,
     MessageThread,
     Workspace,
     WorkspaceMember,
     WorkspaceToken,
+    normalize_channel_name,
 )
 from hub.views._helpers import get_workspace
 
@@ -56,21 +62,172 @@ def api_workspaces(request):
     return JsonResponse(data, safe=False)
 
 
+@csrf_exempt
 @login_required
-@require_GET
-def api_channels(request):
-    """GET /api/channels/ — list channels in current workspace."""
-    workspace = get_workspace(request)
+@require_http_methods(["GET", "PATCH"])
+def api_channels(request, slug=None):
+    """GET /api/channels/ — list channels in current workspace.
+    PATCH /api/channels/?name=<channel> — update channel description (topic).
+    """
+    workspace = get_workspace(request, slug=slug)
+
+    if request.method == "PATCH":
+        body = json.loads(request.body)
+        ch_name = normalize_channel_name(body.get("name", ""))
+        description = body.get("description", "")
+        try:
+            ch = Channel.objects.get(workspace=workspace, name=ch_name)
+        except Channel.DoesNotExist:
+            return JsonResponse({"error": "channel not found"}, status=404)
+        ch.description = description
+        ch.save(update_fields=["description"])
+        # Broadcast so all connected clients update their banner
+        layer = get_channel_layer()
+        group = f"workspace_{workspace.id}"
+        async_to_sync(layer.group_send)(
+            group,
+            {
+                "type": "channel.description",
+                "channel": ch_name,
+                "description": description,
+            },
+        )
+        return JsonResponse({"status": "ok", "channel": ch_name, "description": description})
+
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
-    data = [{"name": ch.name, "description": ch.description} for ch in channels]
+    # Annotate with user preferences when authenticated
+    prefs_map = {}
+    if request.user.is_authenticated:
+        for p in ChannelPreference.objects.filter(user=request.user, channel__workspace=workspace):
+            prefs_map[p.channel_id] = p
+    data = []
+    for ch in channels:
+        p = prefs_map.get(ch.id)
+        data.append({
+            "name": ch.name,
+            "description": ch.description,
+            "is_starred": p.is_starred if p else False,
+            "is_muted": p.is_muted if p else False,
+            "is_hidden": p.is_hidden if p else False,
+            "notification_level": p.notification_level if p else "all",
+        })
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+@login_required
+@require_http_methods(["GET", "PATCH"])
+def api_channel_prefs(request, slug=None):
+    """GET /api/channel-prefs/ — list all channel prefs for current user.
+    PATCH /api/channel-prefs/ — update prefs for one channel (todo#391).
+
+    PATCH body: {"channel": "#general", "is_starred": true, ...}
+    """
+    workspace = get_workspace(request, slug=slug)
+
+    if request.method == "PATCH":
+        body = json.loads(request.body)
+        ch_name = normalize_channel_name(body.get("channel", ""))
+        try:
+            ch = Channel.objects.get(workspace=workspace, name=ch_name)
+        except Channel.DoesNotExist:
+            return JsonResponse({"error": "channel not found"}, status=404)
+
+        pref, _ = ChannelPreference.objects.get_or_create(user=request.user, channel=ch)
+        changed_fields = []
+        for field in ("is_starred", "is_muted", "is_hidden", "notification_level", "sort_order"):
+            if field in body:
+                setattr(pref, field, body[field])
+                changed_fields.append(field)
+        if changed_fields:
+            pref.save(update_fields=changed_fields)
+
+        return JsonResponse({
+            "status": "ok",
+            "channel": ch_name,
+            "is_starred": pref.is_starred,
+            "is_muted": pref.is_muted,
+            "is_hidden": pref.is_hidden,
+            "notification_level": pref.notification_level,
+        })
+
+    # GET — return all prefs for current user in this workspace
+    prefs = ChannelPreference.objects.filter(user=request.user, channel__workspace=workspace).select_related("channel")
+    data = [{
+        "channel": p.channel.name,
+        "is_starred": p.is_starred,
+        "is_muted": p.is_muted,
+        "is_hidden": p.is_hidden,
+        "notification_level": p.notification_level,
+    } for p in prefs]
+    return JsonResponse(data, safe=False)
+
+
+@login_required
+@require_http_methods(["GET", "PATCH"])
+def api_channel_members(request, slug=None):
+    """GET /api/channel-members/?channel=<name> — list members with permission level (todo#407).
+    PATCH /api/channel-members/ — update a member's permission (body: {channel, username, permission}).
+    """
+    from hub.models import ChannelMembership
+    workspace = get_workspace(request, slug=slug)
+
+    if request.method == "PATCH":
+        if not request.user.is_superuser and not request.user.is_staff:
+            return JsonResponse({"error": "permission denied"}, status=403)
+        body = json.loads(request.body)
+        ch_name = normalize_channel_name(body.get("channel", ""))
+        username = body.get("username", "")
+        perm = body.get("permission", "read-write")
+        if perm not in ("read-write", "read-only"):
+            return JsonResponse({"error": "invalid permission"}, status=400)
+        try:
+            ch = Channel.objects.get(workspace=workspace, name=ch_name)
+        except Channel.DoesNotExist:
+            return JsonResponse({"error": "channel not found"}, status=404)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return JsonResponse({"error": "user not found"}, status=404)
+        m, _ = ChannelMembership.objects.get_or_create(user=user, channel=ch)
+        m.permission = perm
+        m.save(update_fields=["permission"])
+        return JsonResponse({"status": "ok", "username": username, "permission": perm})
+
+    ch_name = request.GET.get("channel", "")
+    if not ch_name:
+        return JsonResponse({"error": "channel param required"}, status=400)
+    ch_name = normalize_channel_name(ch_name)
+    try:
+        ch = Channel.objects.get(workspace=workspace, name=ch_name)
+    except Channel.DoesNotExist:
+        return JsonResponse({"error": "channel not found"}, status=404)
+
+    from hub.models import ChannelMembership
+    # Explicit memberships
+    memberships = {
+        m.user.username: m.permission
+        for m in ChannelMembership.objects.filter(channel=ch).select_related("user")
+    }
+    # All workspace members implicitly belong; annotate with their explicit perm or default
+    all_members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
+    data = []
+    for wm in all_members:
+        uname = wm.user.username
+        perm = memberships.get(uname, "read-write")
+        # Determine if this is an agent user (agent users have username starting with "agent-")
+        kind = "agent" if uname.startswith("agent-") else "human"
+        data.append({"username": uname, "permission": perm, "kind": kind, "role": wm.role})
     return JsonResponse(data, safe=False)
 
 
 @login_required
 @require_http_methods(["GET", "POST"])
-def api_messages(request):
+def api_messages(request, slug=None):
     """GET/POST /api/messages/ — recent messages or send one."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
 
     if request.method == "GET":
         from django.db.models import Count, Exists, OuterRef
@@ -79,8 +236,9 @@ def api_messages(request):
         # Exclude messages that are thread replies (they appear in thread panel only)
         is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
         msgs = (
-            Message.objects.filter(workspace=workspace)
+            Message.objects.filter(workspace=workspace, deleted_at__isnull=True)
             .exclude(is_thread_reply)
+            .exclude(channel__name__startswith="dm:")
             .select_related("channel")
             .annotate(thread_count=Count("thread_replies"))
             .order_by("-ts")[:limit]
@@ -93,6 +251,8 @@ def api_messages(request):
                 "sender_type": m.sender_type,
                 "content": m.content,
                 "ts": m.ts.isoformat(),
+                "edited": m.edited,
+                "edited_at": m.edited_at.isoformat() if m.edited_at else None,
                 "metadata": m.metadata,
                 "thread_count": m.thread_count,
             }
@@ -104,7 +264,12 @@ def api_messages(request):
     body = json.loads(request.body)
     # Support both flat format {text, channel} and nested {payload: {content, channel}}
     payload = body.get("payload", {})
-    ch_name = body.get("channel") or payload.get("channel") or "#general"
+    # Normalize via the canonical helper so write-path and read-path
+    # share the same logic. This subsumes the inline 2-line block that
+    # landed on develop in parallel.
+    ch_name = normalize_channel_name(
+        body.get("channel") or payload.get("channel") or "#general"
+    )
     text = body.get("text") or payload.get("content") or payload.get("text") or ""
     attachments = payload.get("attachments") or body.get("attachments") or []
     metadata = payload.get("metadata") or body.get("metadata") or {}
@@ -112,6 +277,20 @@ def api_messages(request):
         metadata = {**metadata, "attachments": attachments}
     if not text and not attachments:
         return JsonResponse({"error": "text or attachments required"}, status=400)
+
+    # Spec v3 §8 / todo#258: REST POST /messages/ previously bypassed
+    # the channel write-ACL that AgentConsumer.receive_json enforces.
+    # Mirror the same check here so DM confidentiality (and any
+    # channels.yaml ACL) is enforced regardless of transport.
+    sender_identity = request.user.username
+    if not check_write_allowed(
+        sender=sender_identity,
+        channel=ch_name,
+        workspace_id=workspace.id,
+    ):
+        return JsonResponse(
+            {"error": "not allowed to write to this channel"}, status=403
+        )
 
     channel, _ = Channel.objects.get_or_create(workspace=workspace, name=ch_name)
     msg = Message.objects.create(
@@ -139,14 +318,28 @@ def api_messages(request):
         },
     )
 
+    # Web Push fan-out (todo#263). Best-effort; never block the response.
+    try:
+        from hub.push import send_push_to_subscribers_async
+
+        send_push_to_subscribers_async(
+            workspace_id=workspace.id,
+            channel=ch_name,
+            sender=request.user.username,
+            content=text,
+            message_id=msg.id,
+        )
+    except Exception:
+        log.exception("push fan-out failed (REST path)")
+
     return JsonResponse({"status": "ok", "id": msg.id}, status=201)
 
 
 @login_required
 @require_GET
-def api_history(request, channel_name):
+def api_history(request, channel_name, slug=None):
     """GET /api/history/<channel>/ — channel message history."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
     if not channel_name.startswith("#"):
         channel_name = f"#{channel_name}"
 
@@ -158,7 +351,7 @@ def api_history(request, channel_name):
     # Exclude thread replies from main channel feed
     is_thread_reply = Exists(MessageThread.objects.filter(reply_id=OuterRef("pk")))
     qs = (
-        Message.objects.filter(workspace=workspace, channel__name=channel_name)
+        Message.objects.filter(workspace=workspace, channel__name=channel_name, deleted_at__isnull=True)
         .exclude(is_thread_reply)
         .annotate(thread_count=Count("thread_replies"))
         .order_by("-ts")
@@ -175,6 +368,8 @@ def api_history(request, channel_name):
             "sender_type": m.sender_type,
             "content": m.content,
             "ts": m.ts.isoformat(),
+            "edited": m.edited,
+            "edited_at": m.edited_at.isoformat() if m.edited_at else None,
             "metadata": m.metadata,
             "thread_count": m.thread_count,
         }
@@ -183,11 +378,163 @@ def api_history(request, channel_name):
     return JsonResponse(data, safe=False)
 
 
+@csrf_exempt
+@require_GET
+def api_channel_export(request, chat_id, slug=None):
+    """GET /api/channels/<chat_id>/export/ — export channel messages.
+
+    Query params:
+      from    ISO8601 or YYYY-MM-DD, inclusive lower bound (default: beginning)
+      to      ISO8601 or YYYY-MM-DD, inclusive upper bound (default: now)
+      format  json|md|txt (default: json)
+      token   workspace token for auth
+
+    Output formats:
+      json — NDJSON, one message per line
+      md   — markdown with date/time headers
+      txt  — plain text: [date time] sender: text
+    """
+    # --- auth: token or session ---
+    token_str = request.GET.get("token")
+    workspace = None
+    if token_str:
+        try:
+            wks_token = WorkspaceToken.objects.select_related("workspace").get(
+                token=token_str
+            )
+            workspace = wks_token.workspace
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "invalid token"}, status=401)
+    elif request.user and request.user.is_authenticated:
+        workspace = get_workspace(request, slug=slug)
+    else:
+        return JsonResponse({"error": "auth required"}, status=401)
+
+    # --- resolve channel ---
+    channel_name = normalize_channel_name(chat_id)
+    try:
+        channel = Channel.objects.get(workspace=workspace, name=channel_name)
+    except Channel.DoesNotExist:
+        return JsonResponse({"error": "channel not found"}, status=404)
+
+    # --- parse date bounds ---
+    def _parse_dt(s, end_of_day=False):
+        """Parse ISO8601 or YYYY-MM-DD into aware datetime."""
+        if not s:
+            return None
+        # Try YYYY-MM-DD
+        try:
+            d = datetime.strptime(s, "%Y-%m-%d")
+            if end_of_day:
+                d = d.replace(hour=23, minute=59, second=59, microsecond=999999)
+            return d.replace(tzinfo=dt_timezone.utc)
+        except ValueError:
+            pass
+        # Try ISO8601 with or without timezone
+        for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S"):
+            try:
+                dt = datetime.strptime(s, fmt)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=dt_timezone.utc)
+                return dt
+            except ValueError:
+                continue
+        return None
+
+    from_dt = _parse_dt(request.GET.get("from"), end_of_day=False)
+    to_dt = _parse_dt(request.GET.get("to"), end_of_day=True)
+    fmt = request.GET.get("format", "json").lower()
+    if fmt not in ("json", "md", "txt"):
+        return JsonResponse({"error": "format must be json, md, or txt"}, status=400)
+
+    # --- query messages ---
+    qs = (
+        Message.objects.filter(
+            workspace=workspace,
+            channel=channel,
+            deleted_at__isnull=True,
+        )
+        .order_by("ts")
+    )
+    if from_dt:
+        qs = qs.filter(ts__gte=from_dt)
+    if to_dt:
+        qs = qs.filter(ts__lte=to_dt)
+
+    # --- build content ---
+    def _attachments(msg):
+        return msg.metadata.get("attachments", []) if msg.metadata else []
+
+    if fmt == "json":
+        lines = []
+        for m in qs:
+            lines.append(
+                json.dumps(
+                    {
+                        "msg_id": m.id,
+                        "ts": m.ts.isoformat(),
+                        "chat_id": channel_name,
+                        "user": m.sender,
+                        "text": m.content,
+                        "attachments": _attachments(m),
+                    },
+                    ensure_ascii=False,
+                )
+            )
+        body = "\n".join(lines) + ("\n" if lines else "")
+        content_type = "application/x-ndjson"
+
+    elif fmt == "md":
+        sections = {}
+        for m in qs:
+            day = m.ts.strftime("%Y-%m-%d")
+            time_str = m.ts.strftime("%H:%M")
+            entry = f"### {time_str} · {m.sender}\n{m.content}"
+            atts = _attachments(m)
+            if atts:
+                for a in atts:
+                    url = a if isinstance(a, str) else a.get("url", str(a))
+                    entry += f"\n[attachment]({url})"
+            sections.setdefault(day, []).append(entry)
+        parts = []
+        for day in sorted(sections):
+            parts.append(f"## {day}\n")
+            parts.extend(sections[day])
+            parts.append("")
+        body = "\n".join(parts)
+        content_type = "text/markdown; charset=utf-8"
+
+    else:  # txt
+        lines = []
+        for m in qs:
+            ts_str = m.ts.strftime("%Y-%m-%d %H:%M")
+            line = f"[{ts_str}] {m.sender}: {m.content}"
+            atts = _attachments(m)
+            if atts:
+                for a in atts:
+                    url = a if isinstance(a, str) else a.get("url", str(a))
+                    line += f" <{url}>"
+            lines.append(line)
+        body = "\n".join(lines) + ("\n" if lines else "")
+        content_type = "text/plain; charset=utf-8"
+
+    # --- build filename for Content-Disposition ---
+    safe_name = channel_name.lstrip("#").replace("/", "-")
+    date_tag = (from_dt or datetime.now(dt_timezone.utc)).strftime("%Y-%m-%d")
+    filename = f"{safe_name}_{date_tag}.{fmt}"
+
+    from django.http import HttpResponse
+
+    response = HttpResponse(body, content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
 @login_required
 @require_GET
-def api_stats(request):
+def api_stats(request, slug=None):
     """GET /api/stats/ — workspace statistics."""
-    workspace = get_workspace(request)
+    workspace = get_workspace(request, slug=slug)
     channels = Channel.objects.filter(workspace=workspace)
     msg_count = Message.objects.filter(workspace=workspace).count()
     member_count = WorkspaceMember.objects.filter(workspace=workspace).count()
@@ -197,8 +544,20 @@ def api_stats(request):
 
     agents_online = get_online_count(workspace_id=workspace.id)
 
-    # Deduplicate channel names (safety measure)
-    unique_channels = list(dict.fromkeys(ch.name for ch in channels))
+    # Normalize channel names via the canonical helper, deduplicate,
+    # exclude DM channels (they have their own sidebar section).
+    # The write-side fix (Channel.save()) makes new rows always canonical;
+    # this loop handles legacy rows until migration 0015 backfills them.
+    # Use kind field when available, fall back to name prefix as defense.
+    seen: set[str] = set()
+    unique_channels: list[str] = []
+    for ch in channels:
+        if ch.kind == Channel.KIND_DM or ch.name.startswith("dm:"):
+            continue
+        name = normalize_channel_name(ch.name)
+        if name not in seen:
+            seen.add(name)
+            unique_channels.append(name)
 
     return JsonResponse(
         {
@@ -222,8 +581,8 @@ def api_config(request):
     version = getattr(settings, "OROCHI_VERSION", "0.0.0")
     # Server metadata
     uptime_secs = int(time.time() - _server_start_time)
-    hostname = os.environ.get("OROCHI_HOSTNAME", platform.node())
-    external_ip = os.environ.get("OROCHI_EXTERNAL_IP", "")
+    hostname = os.environ.get("SCITEX_OROCHI_HOSTNAME", platform.node())
+    external_ip = os.environ.get("SCITEX_OROCHI_EXTERNAL_IP", "")
 
     data = {
         "workspace": workspace.name,
@@ -354,34 +713,42 @@ def api_connectivity(request):
     (#145 / #144) lands the live discovery, this endpoint will be
     backed by real ping results from the bastion's connectivity probe.
     """
+    # Machine nodes (inner ring)
     nodes = [
-        {
-            "id": "ywata-note-win",
-            "label": "ywata-note-win",
-            "role": "deployer/coordinator",
-        },
-        {"id": "mba", "label": "mba", "role": "orochi-host"},
-        {"id": "nas", "label": "nas", "role": "data/scitex-cloud"},
-        {"id": "spartan", "label": "spartan", "role": "hpc"},
+        {"id": "ywata-note-win", "label": "ywata-note-win", "role": "deployer/coordinator", "type": "machine"},
+        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "machine"},
+        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "machine"},
+        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "machine"},
+        # Cloudflare bastion nodes (outer ring)
+        {"id": "bastion-win", "label": "bastion-win", "role": "CF tunnel (bastion-win)", "type": "bastion", "host": "ywata-note-win"},
+        {"id": "bastion-mba", "label": "bastion-mba", "role": "CF tunnel (bastion.scitex-orochi.com)", "type": "bastion", "host": "mba"},
+        {"id": "bastion-nas", "label": "bastion-nas", "role": "CF tunnel (bastion.scitex.ai)", "type": "bastion", "host": "nas"},
+        {"id": "bastion-spartan", "label": "bastion-spartan", "role": "CF tunnel (sbatch — in progress)", "type": "bastion", "host": "spartan", "status": "pending"},
     ]
     # Source → list of (destination, status, method)
+    # Updated 2026-04-14: 3/4 CF bastions live; bastion-spartan in progress
     raw = [
-        # ywata-note-win can reach all (deployer)
-        ("ywata-note-win", "nas", "ok", "direct"),
+        # Bastion → host anchors (CF tunnel terminates at machine)
+        ("bastion-mba", "mba", "ok", "cf-tunnel"),
+        ("bastion-nas", "nas", "ok", "cf-tunnel"),
+        ("bastion-win", "ywata-note-win", "ok", "cf-tunnel"),
+        ("bastion-spartan", "spartan", "pending", "cf-tunnel"),
+        # ywata-note-win reaches all
+        ("ywata-note-win", "nas", "ok", "bastion"),
         ("ywata-note-win", "spartan", "ok", "direct"),
-        ("ywata-note-win", "mba", "ok", "direct"),
-        # NAS reaches MBA + win (LAN + reverse tunnel)
+        ("ywata-note-win", "mba", "ok", "bastion"),
+        # NAS reaches all (LAN + bastion)
         ("nas", "ywata-note-win", "ok", "tunnel"),
         ("nas", "mba", "ok", "lan"),
-        ("nas", "spartan", "fail", "blocked-firewall"),
-        # MBA reaches NAS + win (LAN + ProxyJump)
+        ("nas", "spartan", "ok", "proxyjump"),
+        # MBA reaches all (LAN + bastion + ProxyJump)
         ("mba", "nas", "ok", "lan"),
-        ("mba", "ywata-note-win", "ok", "proxyjump"),
-        ("mba", "spartan", "fail", "blocked-firewall"),
-        # Spartan blocked outbound (HPC firewall)
-        ("spartan", "mba", "fail", "blocked-firewall"),
-        ("spartan", "nas", "fail", "blocked-firewall"),
-        ("spartan", "ywata-note-win", "fail", "blocked-firewall"),
+        ("mba", "ywata-note-win", "ok", "bastion-win"),
+        ("mba", "spartan", "ok", "proxyjump"),
+        # Spartan reaches via CF bastions
+        ("spartan", "mba", "ok", "bastion-mba"),
+        ("spartan", "nas", "ok", "bastion-nas"),
+        ("spartan", "ywata-note-win", "ok", "bastion-win"),
     ]
     edges = [
         {"source": s, "target": t, "status": status, "method": method}
@@ -391,7 +758,7 @@ def api_connectivity(request):
         {
             "nodes": nodes,
             "edges": edges,
-            "source": "hardcoded",  # will become "live" once basilisk lands
+            "source": "static",  # updated 2026-04-14: bastion-win live (3/4 CF mesh)
             "ts": timezone.now().isoformat(),
         }
     )
@@ -476,6 +843,7 @@ def api_threads(request):
             "reply_id": reply.id,
             "sender": request.user.username,
             "sender_type": "human",
+            "channel": parent.channel.name,
             "text": text,
             "ts": reply.ts.isoformat(),
             "metadata": metadata,
@@ -585,6 +953,124 @@ def api_reactions(request):
     return JsonResponse({"status": "ok", "action": action})
 
 
+@csrf_exempt
+@require_http_methods(["PATCH", "DELETE"])
+def api_message_detail(request, message_id):
+    """PATCH/DELETE /api/messages/<id>/ — edit or delete a single message.
+
+    Supports both session auth (browser) and workspace token auth (agents).
+    Only the original sender can edit. Only the original sender or an admin
+    can delete.
+    """
+    # --- auth: token or session ---
+    token_str = request.GET.get("token") or request.POST.get("token")
+    wks_token = None
+    acting_user = None
+    is_admin = False
+
+    if token_str:
+        try:
+            wks_token = WorkspaceToken.objects.select_related("workspace").get(
+                token=token_str
+            )
+        except WorkspaceToken.DoesNotExist:
+            return JsonResponse({"error": "invalid token"}, status=401)
+    elif not (request.user and request.user.is_authenticated):
+        return JsonResponse({"error": "auth required"}, status=401)
+
+    # --- resolve workspace + acting identity ---
+    if wks_token:
+        workspace = wks_token.workspace
+        # For token auth, the sender identity comes from the request body
+        try:
+            body = json.loads(request.body or b"{}")
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "invalid json"}, status=400)
+        acting_user = body.get("sender") or body.get("agent") or "agent"
+    else:
+        workspace = get_workspace(request)
+        acting_user = request.user.username
+        is_admin = request.user.is_superuser or WorkspaceMember.objects.filter(
+            user=request.user, workspace=workspace, role="admin"
+        ).exists()
+        try:
+            body = json.loads(request.body or b"{}")
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "invalid json"}, status=400)
+
+    # --- fetch message ---
+    try:
+        msg = Message.objects.select_related("channel").get(
+            id=message_id, workspace=workspace
+        )
+    except Message.DoesNotExist:
+        return JsonResponse({"error": "message not found"}, status=404)
+
+    if request.method == "PATCH":
+        # Only the original sender can edit
+        if msg.sender != acting_user:
+            return JsonResponse(
+                {"error": "only the original sender can edit"}, status=403
+            )
+        new_text = body.get("text") or body.get("content")
+        if new_text is None:
+            return JsonResponse({"error": "text required"}, status=400)
+
+        msg.content = new_text
+        msg.edited = True
+        msg.edited_at = timezone.now()
+        msg.save(update_fields=["content", "edited", "edited_at"])
+
+        # Broadcast edit event
+        layer = get_channel_layer()
+        group = f"workspace_{workspace.id}"
+        async_to_sync(layer.group_send)(
+            group,
+            {
+                "type": "message.edit",
+                "message_id": msg.id,
+                "sender": msg.sender,
+                "channel": msg.channel.name,
+                "text": new_text,
+                "edited_at": msg.edited_at.isoformat(),
+            },
+        )
+        return JsonResponse({
+            "status": "ok",
+            "id": msg.id,
+            "edited": True,
+            "edited_at": msg.edited_at.isoformat(),
+        })
+
+    else:  # DELETE
+        # Only the original sender or an admin can delete
+        if msg.sender != acting_user and not is_admin:
+            return JsonResponse(
+                {"error": "only the original sender or admin can delete"},
+                status=403,
+            )
+        msg_id = msg.id
+        channel_name = msg.channel.name
+
+        # Soft-delete: retain for 30 days, then hard-delete via management command
+        msg.deleted_at = timezone.now()
+        msg.save(update_fields=["deleted_at"])
+
+        # Broadcast delete event
+        layer = get_channel_layer()
+        group = f"workspace_{workspace.id}"
+        async_to_sync(layer.group_send)(
+            group,
+            {
+                "type": "message.delete",
+                "message_id": msg_id,
+                "sender": acting_user,
+                "channel": channel_name,
+            },
+        )
+        return JsonResponse({"status": "ok", "id": msg_id, "deleted": True})
+
+
 @login_required
 @require_GET
 def api_releases(request):
@@ -653,6 +1139,99 @@ def api_releases(request):
             }
         )
     return JsonResponse(items, safe=False)
+
+
+_changelog_cache = {}  # key: "owner/repo" -> (expires_ts, payload_dict)
+_CHANGELOG_TTL = 300  # 5 minutes
+_CHANGELOG_ALLOWED = {
+    "ywatanabe1989/scitex-orochi",
+    "ywatanabe1989/scitex-cloud",
+    "ywatanabe1989/scitex-python",
+    "ywatanabe1989/scitex",
+    "ywatanabe1989/scitex-agent-container",
+}
+
+
+@login_required
+@require_GET
+def api_repo_changelog(request, owner, repo):
+    """GET /api/repo/<owner>/<repo>/changelog/ — fetch CHANGELOG.md from a GitHub repo.
+
+    Returns {"content": "<markdown>", "owner": ..., "repo": ...} on success.
+    Cached in-process for 5 minutes per (owner, repo) to avoid GitHub rate limits.
+    Only repos in the allowlist are accessible.
+    """
+    import base64
+    import json
+    import urllib.error
+    import urllib.request
+
+    key = f"{owner}/{repo}"
+    if key not in _CHANGELOG_ALLOWED:
+        return JsonResponse(
+            {"error": f"repo not allowed: {key}", "code": "not_allowed"},
+            status=403,
+        )
+
+    now = time.time()
+    cached = _changelog_cache.get(key)
+    if cached and cached[0] > now:
+        payload = cached[1]
+        status = payload.get("_status", 200)
+        return JsonResponse(
+            {k: v for k, v in payload.items() if not k.startswith("_")},
+            status=status,
+        )
+
+    token = os.environ.get("GITHUB_TOKEN")
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "User-Agent": "Orochi-Dashboard",
+    }
+    if token:
+        headers["Authorization"] = f"token {token}"
+
+    url = f"https://api.github.com/repos/{owner}/{repo}/contents/CHANGELOG.md"
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            raw = json.loads(resp.read())
+        encoded = raw.get("content", "")
+        encoding = raw.get("encoding", "base64")
+        if encoding == "base64":
+            content = base64.b64decode(encoded).decode("utf-8", errors="replace")
+        else:
+            content = encoded
+        payload = {
+            "owner": owner,
+            "repo": repo,
+            "content": content,
+            "html_url": raw.get("html_url", ""),
+            "_status": 200,
+        }
+        _changelog_cache[key] = (now + _CHANGELOG_TTL, payload)
+        return JsonResponse(
+            {k: v for k, v in payload.items() if not k.startswith("_")}
+        )
+    except urllib.error.HTTPError as e:
+        status = 404 if e.code == 404 else 502
+        err = {
+            "error": f"GitHub API returned {e.code}: {e.reason}",
+            "code": "github_error",
+            "owner": owner,
+            "repo": repo,
+            "_status": status,
+        }
+        _changelog_cache[key] = (now + _CHANGELOG_TTL, err)
+        return JsonResponse(
+            {k: v for k, v in err.items() if not k.startswith("_")},
+            status=status,
+        )
+    except Exception as e:
+        return JsonResponse(
+            {"error": str(e), "code": "proxy_error", "owner": owner, "repo": repo},
+            status=502,
+        )
 
 
 @login_required
@@ -761,6 +1340,7 @@ def api_agents(request):
                     "machine": p.machine,
                     "role": p.role,
                     "model": "",
+                    "multiplexer": "",
                     "workdir": "",
                     "icon": "",
                     "icon_emoji": p.icon_emoji,
@@ -777,6 +1357,7 @@ def api_agents(request):
                     "current_task": "",
                     "last_message_preview": "",
                     "subagents": [],
+                    "subagent_count": 0,
                     "health": {},
                     "claude_md": "",
                     "pinned": True,
@@ -1060,8 +1641,48 @@ def api_agents_register(request):
             "model": body.get("model", ""),
             "workdir": body.get("workdir", ""),
             "channels": body.get("channels") or ["#general"],
+            # todo#213: claude-hud-style process/runtime metadata pushed by
+            # mamba-healer-mba's agent_meta.py --push loop.
+            "multiplexer": body.get("multiplexer", ""),
+            "project": body.get("project", ""),
+            "pid": body.get("pid") or 0,
+            "ppid": body.get("ppid") or 0,
+            "context_pct": body.get("context_pct"),
+            "skills_loaded": body.get("skills_loaded") or [],
+            "started_at": body.get("started_at", ""),
+            "version": body.get("version", ""),
+            "runtime": body.get("runtime", ""),
+            "subagent_count": body.get("subagent_count") or 0,
+            # v0.11.0 Agents-tab visibility fields (todo#155). The
+            # heartbeat now carries the recent action log, the live
+            # tmux pane tail, the workspace CLAUDE.md head, and the
+            # MCP server list so the dashboard can render meaningful
+            # cards instead of "no task reported".
+            "recent_actions": body.get("recent_actions") or [],
+            "pane_tail": body.get("pane_tail", ""),
+            "pane_tail_block": body.get("pane_tail_block", ""),
+            "claude_md_head": body.get("claude_md_head", ""),
+            "mcp_servers": body.get("mcp_servers") or [],
+            # todo#265: Claude Code OAuth account public metadata
+            # (email, org, subscription state). Strict whitelist —
+            # never accept access/refresh tokens or credentials.
+            "oauth_email": body.get("oauth_email", ""),
+            "oauth_org_name": body.get("oauth_org_name", ""),
+            "oauth_account_uuid": body.get("oauth_account_uuid", ""),
+            "oauth_display_name": body.get("oauth_display_name", ""),
+            "billing_type": body.get("billing_type", ""),
+            "has_available_subscription": body.get("has_available_subscription"),
+            "usage_disabled_reason": body.get("usage_disabled_reason", ""),
+            "has_extra_usage_enabled": body.get("has_extra_usage_enabled"),
+            "subscription_created_at": body.get("subscription_created_at", ""),
         },
     )
+    # Persist subagent_count separately — register_agent() preserves prev
+    # value if it exists, so we must set it explicitly on every push to
+    # reflect current reality.
+    if body.get("subagent_count") is not None:
+        from hub.registry import set_subagent_count
+        set_subagent_count(name, int(body.get("subagent_count") or 0))
     update_heartbeat(name, metrics=body.get("metrics") or {})
     task = body.get("current_task") or ""
     if task:
@@ -1513,3 +2134,479 @@ def api_resources(request):
                 machines[machine]["last_heartbeat"] = a["last_heartbeat"]
 
     return JsonResponse(machines, safe=False)
+
+
+# ---------------------------------------------------------------------------
+# Direct Messages (spec v3 §4) — todo#60 PR 3
+# ---------------------------------------------------------------------------
+
+
+def _dm_canonical_name(principal_keys):
+    """Return the canonical ``dm:<a>|<b>`` channel name for a sorted pair.
+
+    Spec v3 §2.3: DM channel names are ``dm:`` + ``|``-joined sorted
+    list of ``<type>:<identity>`` principal keys. Sorting makes the
+    name independent of who initiated the DM, so ``get_or_create``
+    is naturally idempotent.
+    """
+    return "dm:" + "|".join(sorted(principal_keys))
+
+
+def _principal_key_for_member(member):
+    """Return ``"agent:<name>"`` or ``"human:<username>"`` for a member."""
+    username = member.user.username or ""
+    if username.startswith("agent-"):
+        return f"agent:{username[len('agent-'):]}"
+    return f"human:{username}"
+
+
+def _resolve_recipient_member(workspace, recipient):
+    """Resolve a ``"agent:<name>"`` or ``"human:<username>"`` recipient
+    string to a :class:`WorkspaceMember`. Returns ``None`` if the
+    recipient is not a member of ``workspace`` or the form is invalid.
+    """
+    if not recipient or ":" not in recipient:
+        return None
+    kind, _, identity = recipient.partition(":")
+    identity = identity.strip()
+    if not identity:
+        return None
+    if kind == "agent":
+        username = f"agent-{identity}"
+    elif kind == "human":
+        username = identity
+    else:
+        return None
+    return (
+        WorkspaceMember.objects.filter(
+            workspace=workspace, user__username=username
+        )
+        .select_related("user")
+        .first()
+    )
+
+
+def _dm_row(channel, current_member):
+    """Build the row dict returned by GET/POST /dms/."""
+    others = []
+    for p in channel.dm_participants.select_related("member__user"):
+        if p.member_id == current_member.id:
+            continue
+        others.append(
+            {"type": p.principal_type, "identity_name": p.identity_name}
+        )
+    last_msg = (
+        Message.objects.filter(channel=channel).order_by("-ts").only("ts").first()
+    )
+    return {
+        "name": channel.name,
+        "kind": channel.kind,
+        "other_participants": others,
+        "last_message_ts": last_msg.ts.isoformat() if last_msg else None,
+    }
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def api_dms(request, slug=None):
+    """GET/POST /api/workspace/<slug>/dms/ — list or create 1:1 DMs.
+
+    Spec v3 §4. The current authenticated principal is resolved via
+    ``WorkspaceMember`` for ``request.user`` in the active workspace.
+    """
+    workspace = get_workspace(request, slug=slug)
+
+    current_member = (
+        WorkspaceMember.objects.filter(workspace=workspace, user=request.user)
+        .select_related("user")
+        .first()
+    )
+    if current_member is None:
+        return JsonResponse(
+            {"error": "not a workspace member"}, status=403
+        )
+
+    if request.method == "GET":
+        my_dm_channel_ids = DMParticipant.objects.filter(
+            member=current_member,
+            channel__workspace=workspace,
+            channel__kind=Channel.KIND_DM,
+        ).values_list("channel_id", flat=True)
+        channels = Channel.objects.filter(id__in=list(my_dm_channel_ids)).order_by(
+            "name"
+        )
+        rows = [_dm_row(ch, current_member) for ch in channels]
+        return JsonResponse({"dms": rows}, safe=False)
+
+    # POST — get-or-create a 1:1 DM
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"error": "invalid json"}, status=400)
+    recipient = (body.get("recipient") or body.get("peer") or "").strip()
+    if not recipient:
+        return JsonResponse({"error": "recipient required"}, status=400)
+
+    other_member = _resolve_recipient_member(workspace, recipient)
+    if other_member is None:
+        return JsonResponse(
+            {"error": f"recipient {recipient!r} is not a workspace member"},
+            status=404,
+        )
+    if other_member.id == current_member.id:
+        return JsonResponse(
+            {"error": "cannot DM yourself"}, status=400
+        )
+
+    me_key = _principal_key_for_member(current_member)
+    other_key = _principal_key_for_member(other_member)
+    canonical_name = _dm_canonical_name([me_key, other_key])
+
+    # Idempotent get-or-create. We do NOT use Channel.objects.get_or_create
+    # because we need full_clean() (PR 1 dm: prefix guard) to run on
+    # the create path.
+    channel = Channel.objects.filter(
+        workspace=workspace, name=canonical_name
+    ).first()
+    if channel is None:
+        channel = Channel(
+            workspace=workspace,
+            name=canonical_name,
+            kind=Channel.KIND_DM,
+        )
+        channel.full_clean()
+        channel.save()
+
+    def _principal_type(member):
+        return (
+            DMParticipant.PRINCIPAL_AGENT
+            if (member.user.username or "").startswith("agent-")
+            else DMParticipant.PRINCIPAL_HUMAN
+        )
+
+    def _identity_name(member):
+        username = member.user.username or ""
+        if username.startswith("agent-"):
+            return username[len("agent-"):]
+        return username
+
+    DMParticipant.objects.get_or_create(
+        channel=channel,
+        member=current_member,
+        defaults={
+            "principal_type": _principal_type(current_member),
+            "identity_name": _identity_name(current_member),
+        },
+    )
+    DMParticipant.objects.get_or_create(
+        channel=channel,
+        member=other_member,
+        defaults={
+            "principal_type": _principal_type(other_member),
+            "identity_name": _identity_name(other_member),
+        },
+    )
+
+    return JsonResponse(_dm_row(channel, current_member), status=200)
+
+
+# ── Web Push (todo#263) ─────────────────────────────────────────────────
+
+@require_GET
+def api_push_vapid_key(request):
+    """GET /api/push/vapid-key — return the configured VAPID public key.
+
+    Public, unauthenticated. The PWA fetches this before calling
+    ``pushManager.subscribe(...)``. Returns an empty string when push
+    is unconfigured so the client can degrade gracefully.
+    """
+    return JsonResponse(
+        {"public_key": getattr(settings, "SCITEX_OROCHI_VAPID_PUBLIC", "")}
+    )
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_push_subscribe(request, slug=None):
+    """POST /api/push/subscribe — register a Web Push subscription.
+
+    Body: ``{endpoint, keys: {p256dh, auth}, channels?: [...]}``.
+    Idempotent on ``endpoint`` (the unique key on the model).
+    """
+    from hub.models import PushSubscription
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    endpoint = body.get("endpoint") or ""
+    keys = body.get("keys") or {}
+    p256dh = keys.get("p256dh") or ""
+    auth = keys.get("auth") or ""
+    channels = body.get("channels") or []
+
+    if not endpoint or not p256dh or not auth:
+        return JsonResponse(
+            {"error": "endpoint, keys.p256dh, keys.auth required"}, status=400
+        )
+
+    workspace = None
+    try:
+        workspace = get_workspace(request, slug=slug)
+    except Exception:
+        workspace = None
+
+    sub, _created = PushSubscription.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={
+            "user": request.user,
+            "workspace": workspace,
+            "p256dh": p256dh,
+            "auth": auth,
+            "channels": channels if isinstance(channels, list) else [],
+        },
+    )
+    return JsonResponse({"ok": True, "id": sub.pk})
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_push_unsubscribe(request, slug=None):
+    """POST /api/push/unsubscribe — drop a subscription by endpoint."""
+    from hub.models import PushSubscription
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid json"}, status=400)
+
+    endpoint = body.get("endpoint") or ""
+    if not endpoint:
+        return JsonResponse({"error": "endpoint required"}, status=400)
+
+    PushSubscription.objects.filter(endpoint=endpoint, user=request.user).delete()
+    return JsonResponse({"ok": True})
+
+
+# Fleet report settings
+FLEET_REPORT_MAX_PAYLOAD_KB = 256  # reject payloads > 256KB
+FLEET_REPORT_RETENTION_DAYS = 7    # auto-prune reports older than 7 days
+FLEET_REPORT_GC_PROBABILITY = 0.05 # 5% chance to run GC on each write
+
+
+@csrf_exempt
+def fleet_report(request):
+    """POST /api/fleet/report — accept a fleet report from any producer."""
+    if request.method != "POST":
+        return JsonResponse({"error": "POST only"}, status=405)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "invalid JSON"}, status=400)
+
+    # Validate token and resolve to agent identity
+    token = data.get("token") or request.GET.get("token")
+    token_obj = WorkspaceToken.objects.filter(token=token).first() if token else None
+    if not token_obj:
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    entity_type = data.get("entity_type")
+    entity_id = data.get("entity_id")
+    payload = data.get("payload", {})
+    source = data.get("source", "unknown")
+
+    if not entity_type or not entity_id:
+        return JsonResponse({"error": "entity_type and entity_id required"}, status=400)
+
+    # Tenant scoping: source is forced to token label (no impersonation)
+    source = token_obj.label or source
+
+    # Payload size guard
+    import sys
+    payload_size = sys.getsizeof(json.dumps(payload)) if payload else 0
+    if payload_size > FLEET_REPORT_MAX_PAYLOAD_KB * 1024:
+        return JsonResponse(
+            {"error": f"payload too large ({payload_size} bytes, max {FLEET_REPORT_MAX_PAYLOAD_KB}KB)"},
+            status=413,
+        )
+
+    report = FleetReport.objects.create(
+        entity_type=entity_type,
+        entity_id=entity_id,
+        payload=payload,
+        source=source,
+    )
+
+    # Probabilistic GC: prune old reports ~5% of writes
+    import random
+    if random.random() < FLEET_REPORT_GC_PROBABILITY:
+        from django.utils import timezone
+        from datetime import timedelta
+        cutoff = timezone.now() - timedelta(days=FLEET_REPORT_RETENTION_DAYS)
+        FleetReport.objects.filter(ts__lt=cutoff).delete()
+
+    return JsonResponse({"ok": True, "id": report.id, "source": source})
+
+
+@csrf_exempt
+def fleet_state(request):
+    """GET /api/fleet/state — query latest state per entity."""
+    token = request.GET.get("token")
+    if not token or not WorkspaceToken.objects.filter(token=token).exists():
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    entity_type = request.GET.get("entity_type")
+    since = request.GET.get("since")  # ISO timestamp filter
+
+    # Get latest report per entity
+    from django.db.models import Max
+
+    qs = FleetReport.objects.all()
+    if entity_type:
+        qs = qs.filter(entity_type=entity_type)
+    if since:
+        from django.utils.dateparse import parse_datetime
+        dt = parse_datetime(since)
+        if dt:
+            qs = qs.filter(ts__gte=dt)
+
+    # Latest per entity
+    latest_ids = (
+        qs.values("entity_type", "entity_id")
+        .annotate(latest_ts=Max("ts"))
+        .values_list("entity_type", "entity_id", "latest_ts")
+    )
+
+    results = []
+    for et, eid, lts in latest_ids:
+        report = qs.filter(entity_type=et, entity_id=eid, ts=lts).first()
+        if report:
+            results.append({
+                "entity_type": report.entity_type,
+                "entity_id": report.entity_id,
+                "ts": report.ts.isoformat(),
+                "payload": report.payload,
+                "source": report.source,
+            })
+
+    return JsonResponse({"state": results})
+
+
+# ---------------------------------------------------------------------------
+# Scheduled Actions API (issue #95)
+# ---------------------------------------------------------------------------
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST", "DELETE"])
+def api_scheduled(request, slug=None):
+    """CRUD for scheduled actions.
+
+    GET  /api/scheduled/          — list pending/all actions
+    POST /api/scheduled/          — create a new scheduled action
+    DELETE /api/scheduled/?id=N   — cancel an action by id
+
+    Auth: workspace token (query param or JSON body ``token``).
+    POST body:
+        {
+          "token": "wks_...",
+          "agent": "mamba-explorer-mba",
+          "task": "Investigate X",
+          "channel": "#general",        // optional, default #general
+          "run_at": "2026-04-14T09:00:00Z",  // ISO8601 UTC
+          "cron": "",                   // optional, e.g. "0 9 * * *"
+          "created_by": "ywatanabe"     // optional
+        }
+    """
+    from hub.models import ScheduledAction
+    from django.utils import timezone
+
+    def _auth(req):
+        token = req.GET.get("token") or ""
+        if not token:
+            try:
+                body = json.loads(req.body or b"{}")
+                token = body.get("token", "")
+            except Exception:
+                pass
+        if not token:
+            return None, JsonResponse({"error": "token required"}, status=401)
+        try:
+            ws = WorkspaceToken.objects.select_related("workspace").get(token=token)
+            return ws.workspace, None
+        except WorkspaceToken.DoesNotExist:
+            return None, JsonResponse({"error": "invalid token"}, status=401)
+
+    if request.method == "GET":
+        workspace, err = _auth(request)
+        if err:
+            return err
+        status_filter = request.GET.get("status", ScheduledAction.STATUS_PENDING)
+        qs = ScheduledAction.objects.filter(workspace=workspace)
+        if status_filter != "all":
+            qs = qs.filter(status=status_filter)
+        items = list(qs.values(
+            "id", "agent", "task", "channel", "run_at", "cron",
+            "status", "created_by", "created_at", "fired_at"
+        ))
+        for item in items:
+            for k in ("run_at", "created_at", "fired_at"):
+                if item[k]:
+                    item[k] = item[k].isoformat()
+        return JsonResponse({"scheduled": items})
+
+    if request.method == "POST":
+        workspace, err = _auth(request)
+        if err:
+            return err
+        try:
+            body = json.loads(request.body or b"{}")
+        except Exception:
+            return JsonResponse({"error": "invalid JSON"}, status=400)
+        agent = (body.get("agent") or "").strip()
+        task = (body.get("task") or "").strip()
+        run_at_str = (body.get("run_at") or "").strip()
+        if not agent or not task or not run_at_str:
+            return JsonResponse({"error": "agent, task, run_at required"}, status=400)
+        from django.utils.dateparse import parse_datetime
+        run_at = parse_datetime(run_at_str)
+        if run_at is None:
+            return JsonResponse({"error": "invalid run_at format (use ISO8601)"}, status=400)
+        if run_at.tzinfo is None:
+            import pytz
+            run_at = pytz.utc.localize(run_at)
+        action = ScheduledAction.objects.create(
+            workspace=workspace,
+            agent=agent,
+            task=task,
+            channel=normalize_channel_name(body.get("channel", "general")),
+            run_at=run_at,
+            cron=body.get("cron", ""),
+            created_by=body.get("created_by", ""),
+        )
+        return JsonResponse({
+            "id": action.id,
+            "agent": action.agent,
+            "run_at": action.run_at.isoformat(),
+            "status": action.status,
+        }, status=201)
+
+    if request.method == "DELETE":
+        workspace, err = _auth(request)
+        if err:
+            return err
+        action_id = request.GET.get("id")
+        if not action_id:
+            return JsonResponse({"error": "id required"}, status=400)
+        deleted, _ = ScheduledAction.objects.filter(
+            workspace=workspace, id=action_id
+        ).update(status=ScheduledAction.STATUS_CANCELLED)
+        if not deleted:
+            ScheduledAction.objects.filter(workspace=workspace, id=action_id).update(
+                status=ScheduledAction.STATUS_CANCELLED
+            )
+        return JsonResponse({"status": "cancelled", "id": action_id})

@@ -70,7 +70,7 @@ def main() -> None:
         await server.workspaces.init_schema()
         ws_token = await server.workspaces.ensure_default_token()
         log.info("Default workspace token: %s", ws_token)
-        ws_server = await websockets.serve(
+        await websockets.serve(
             server._handle_connection,
             server.host,
             server.port,
@@ -86,6 +86,8 @@ def main() -> None:
         site = aio_web.TCPSite(runner, server.host, DASHBOARD_PORT)
         await site.start()
         log.info("Orochi dashboard on http://%s:%d", server.host, DASHBOARD_PORT)
+        # Start the background reaper that removes stale agents
+        server.start_reaper()
         # Telegram bridge (enabled via SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED=true)
         if TELEGRAM_BRIDGE_ENABLED:
             from scitex_orochi._telegram_bridge import setup_telegram_bridge

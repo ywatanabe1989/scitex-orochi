@@ -37,11 +37,9 @@ function formatDate(iso) {
   });
 }
 
-function truncateBody(text, max) {
+function normalizeBody(text) {
   if (!text) return "(no description)";
-  text = text.replace(/\r\n/g, "\n");
-  if (text.length > max) return text.substring(0, max) + "...";
-  return text;
+  return text.replace(/\r\n/g, "\n");
 }
 
 function buildLabelsHtml(labels) {
@@ -67,11 +65,14 @@ function buildLabelsHtml(labels) {
 }
 
 function buildDetailHtml(issue) {
-  var body = truncateBody(issue.body || "", 500);
+  var body = normalizeBody(issue.body || "");
   var assignee =
     issue.assignee && issue.assignee.login
       ? issue.assignee.login
       : "unassigned";
+  var commentsCount = issue.comments || 0;
+  var commentsHtml =
+    "<span>Comments: " + commentsCount + "</span>";
   return (
     '<div class="todo-detail">' +
     '<div class="todo-detail-body">' +
@@ -81,6 +82,7 @@ function buildDetailHtml(issue) {
     "<span>Assignee: " +
     escapeHtml(assignee) +
     "</span>" +
+    commentsHtml +
     "<span>Created: " +
     formatDate(issue.created_at) +
     "</span>" +
@@ -89,8 +91,8 @@ function buildDetailHtml(issue) {
     "</span>" +
     '<a href="' +
     escapeHtml(issue.html_url) +
-    '" target="_blank" rel="noopener" class="todo-detail-link">' +
-    "Open on GitHub" +
+    '" target="_blank" rel="noopener" class="todo-detail-link" title="Open on GitHub">' +
+    "&#x1F517;" +
     "</a>" +
     "</div>" +
     "</div>"
@@ -107,11 +109,14 @@ function buildIssueCard(issue) {
       "</span>";
   }
   var closedClass = issue.state === "closed" ? " closed" : "";
+  var stateClass = issue.state === "open" ? "todo-state-open" : "todo-state-closed";
+  var stateTitle = issue.state === "open" ? "Open" : "Closed";
   return (
     '<div class="todo-item' + closedClass + '" data-issue-number="' +
     issue.number +
     '">' +
     '<div class="todo-item-row">' +
+    '<span class="todo-state-dot ' + stateClass + '" title="' + stateTitle + '"></span>' +
     '<span class="todo-number">#' +
     issue.number +
     "</span>" +
@@ -249,9 +254,17 @@ function _passesGroupFilter(issue) {
 }
 
 function _renderTodoFromCache(issues) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("todo-grid");
   if (!issues || issues.length === 0) {
     container.innerHTML = '<p class="empty-notice">No issues</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
 
@@ -259,6 +272,10 @@ function _renderTodoFromCache(issues) {
   issues = issues.filter(_passesGroupFilter);
   if (issues.length === 0) {
     container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
     return;
   }
 
@@ -291,9 +308,23 @@ function _renderTodoFromCache(issues) {
   }
   container.innerHTML = html;
   attachTodoEvents(container);
+  if (inputHasFocus && document.activeElement !== msgInput) {
+    msgInput.focus();
+    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
 }
 
 async function fetchTodoList(forceRefresh) {
+  var msgInput = document.getElementById("msg-input");
+  var inputHasFocus = msgInput && document.activeElement === msgInput;
+  var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
+  var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  var _restoreFocus = function () {
+    if (inputHasFocus && document.activeElement !== msgInput) {
+      msgInput.focus();
+      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    }
+  };
   var state = _todoBackendState();
   var now = Date.now();
 
@@ -327,6 +358,7 @@ async function fetchTodoList(forceRefresh) {
       }
       document.getElementById("todo-grid").innerHTML =
         '<p class="empty-notice">' + msg + "</p>";
+      _restoreFocus();
       return;
     }
     var issues = await res.json();
@@ -335,6 +367,7 @@ async function fetchTodoList(forceRefresh) {
     var container = document.getElementById("todo-grid");
     if (!issues || issues.length === 0) {
       container.innerHTML = '<p class="empty-notice">No issues</p>';
+      _restoreFocus();
       return;
     }
 
@@ -342,6 +375,7 @@ async function fetchTodoList(forceRefresh) {
     issues = issues.filter(_passesGroupFilter);
     if (issues.length === 0) {
       container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+      _restoreFocus();
       return;
     }
 
@@ -376,6 +410,7 @@ async function fetchTodoList(forceRefresh) {
     container.innerHTML = html;
 
     attachTodoEvents(container);
+    _restoreFocus();
   } catch (e) {
     console.error("TODO list fetch error:", e);
   }

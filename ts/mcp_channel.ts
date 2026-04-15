@@ -21,15 +21,24 @@ import {
   buildWsUrl,
   maskUrl,
 } from "./src/config.js";
+
 import { addMessage } from "./src/message_buffer.js";
+import { spawnSync } from "child_process";
 import {
   handleContext,
+  handleDmList,
+  handleDmOpen,
   handleDownloadMedia,
   handleHealth,
   handleReply,
   handleHistory,
+  handleConnectivityMatrix,
   handleReact,
+  handleRsyncMedia,
+  handleRsyncStatus,
+  handleSidecarStatus,
   handleStatus,
+  handleSelfCommand,
   handleSubagents,
   handleTask,
   handleUploadMedia,
@@ -115,9 +124,115 @@ const _dbg = (s: string) => {
 // Dedup: track recently delivered message IDs to prevent duplicate notifications
 const _deliveredIds = new Set<string | number>();
 
+// ---------------------------------------------------------------------------
+// Registry heartbeat — thin pump.
+//
+// The sidecar shells out to
+//     ~/.scitex/orochi/scripts/agent_meta.py <agent>
+// which reads the live Claude Code session jsonl transcript and emits
+// claude-hud-style metadata (alive, subagents, context_pct, current_tool,
+// last_activity, model, ...) as a single JSON line. The resulting dict is
+// spread into the hub heartbeat payload.
+//
+// Historical note: this used to call `scitex-agent-container status
+// <agent> --json` instead, but most fleet agents are launched directly via
+// tmux + raw `claude` (not via `scitex-agent-container start`), so they are
+// invisible to scitex-agent-container's own registry. The status command
+// returned `{"error": "Agent X not found in registry"}` with rc=1 for every
+// such agent, the spawn was treated as a hard failure, and pushRegistryHeartbeat
+// returned without ever populating the hub's current_task / subagents /
+// context_pct fields. The Activity tab then rendered "no task / 0 subs / no
+// ctx" for everyone — exactly the symptom ywatanabe flagged at msg#6382. The
+// agent_meta.py path bypasses the broken registry lookup entirely (todo#155).
+// ---------------------------------------------------------------------------
+async function pushRegistryHeartbeat(): Promise<void> {
+  if (process.env.SCITEX_OROCHI_REGISTRY_DISABLE === "1") return;
+  if (!OROCHI_TOKEN) {
+    _dbg("heartbeat: no OROCHI_TOKEN, skipping");
+    return;
+  }
+  const agentMetaPath = join(
+    homedir(),
+    ".scitex",
+    "orochi",
+    "scripts",
+    "agent_meta.py",
+  );
+  let meta: Record<string, unknown> = {};
+  try {
+    const result = spawnSync(agentMetaPath, [OROCHI_AGENT], {
+      encoding: "utf-8",
+      timeout: 5000,
+    });
+    if (result.status !== 0) {
+      console.error(
+        `[orochi-heartbeat] agent_meta.py failed: ${(result.stderr || "").slice(0, 200)}`,
+      );
+      _dbg(`heartbeat: agent_meta rc=${result.status}`);
+      return;
+    }
+    meta = JSON.parse(result.stdout);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[orochi-heartbeat] agent_meta spawn failed: ${msg}`);
+    _dbg(`heartbeat: spawn err ${msg}`);
+    return;
+  }
+
+  // agent_meta.py field names → hub /api/agents/register field names.
+  // The hub renderer (activity-tab.js) reads `current_task`,
+  // `subagent_count`, `context_pct`, `model`. agent_meta.py emits
+  // `current_tool`, `subagents`, `context_pct`, `model`. Translate.
+  const currentTool = (meta["current_tool"] as string | undefined) || "";
+  const subagentCount =
+    typeof meta["subagents"] === "number"
+      ? (meta["subagents"] as number)
+      : Array.isArray(meta["subagents"])
+        ? (meta["subagents"] as unknown[]).length
+        : 0;
+  const payload = {
+    // Pass the raw meta through too in case downstream consumers want
+    // the original field names — but the hub-canonical fields below
+    // take precedence in the spread merge.
+    ...meta,
+    current_task: currentTool,
+    subagent_count: subagentCount,
+    token: OROCHI_TOKEN,
+    name: OROCHI_AGENT,
+    agent_id: OROCHI_AGENT,
+    role: process.env.SCITEX_OROCHI_ROLE || "agent",
+    channels: OROCHI_CHANNELS,
+    machine: process.env.SCITEX_OROCHI_MACHINE || hostname() || "",
+    multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
+  };
+
+  const url = `${buildHttpBase().replace(/\/$/, "")}/api/agents/register/`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.error(
+        `[orochi-heartbeat] POST ${url} -> ${res.status}: ${txt.slice(0, 200)}`,
+      );
+      _dbg(`heartbeat failed: ${res.status} ${txt.slice(0, 200)}`);
+    } else {
+      _dbg(`heartbeat ok: ${OROCHI_AGENT} -> ${maskUrl(url)}`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[orochi-heartbeat] fetch error: ${msg}`);
+    _dbg(`heartbeat error: ${msg}`);
+  }
+}
+
 // Lightweight adapter that satisfies the OrochiConnection interface
 // expected by tools.ts (isConnected, state, send, reconnectAttempts, etc.)
 let _ws: WebSocket | null = null;
+let _heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 const conn = {
   state: "disconnected" as string,
   lastConnectedAt: null as Date | null,
@@ -155,26 +270,18 @@ const conn = {
       console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
       _dbg(`ws open`);
 
-      // Ping/pong heartbeat — detect half-open connections
-      let _lastPong = Date.now();
+      // App-level heartbeat + liveness alarm.
+      // Daphne does NOT respond to WebSocket protocol-level ping frames,
+      // so we do NOT terminate on missing pong. Instead, if the connection
+      // seems dead (send fails), we emit an alarm for healers.
+      let _lastSendOk = Date.now();
+      let _alarmSent = false;
       const _pingInterval = setInterval(() => {
         if (!_ws || _ws.readyState !== WebSocket.OPEN) {
           clearInterval(_pingInterval);
           return;
         }
-        const pongAge = Date.now() - _lastPong;
-        if (pongAge > 10000) {
-          console.error(
-            `[orochi] stale connection (no pong for ${Math.round(pongAge / 1000)}s), forcing reconnect`,
-          );
-          _dbg(`stale: pong age ${pongAge}ms, terminating`);
-          clearInterval(_pingInterval);
-          _ws.terminate();
-          return;
-        }
         try {
-          _ws.ping();
-          // App-level heartbeat for hub registry
           _ws.send(
             JSON.stringify({
               type: "heartbeat",
@@ -182,12 +289,46 @@ const conn = {
               payload: {},
             }),
           );
-        } catch {}
-      }, 5000);
-      _ws!.on("pong", () => {
-        _lastPong = Date.now();
-      });
+          _lastSendOk = Date.now();
+          _alarmSent = false;
+        } catch {
+          // Send failed — hub may be unreachable
+          const silentMs = Date.now() - _lastSendOk;
+          if (silentMs > 60000 && !_alarmSent) {
+            _alarmSent = true;
+            console.error(
+              `[orochi] ALARM: hub unreachable for ${Math.round(silentMs / 1000)}s — healer should investigate`,
+            );
+            _dbg(`alarm: hub unreachable ${silentMs}ms`);
+            // Notify Claude Code so it can post to #escalation
+            try {
+              mcp.notification({
+                method: "notifications/claude/channel" as const,
+                params: {
+                  content: `ALARM: Orochi hub unreachable for ${Math.round(silentMs / 1000)}s. WebSocket heartbeat send failing. Healers should check cloudflared and Daphne.`,
+                  meta: {
+                    chat_id: "#escalation",
+                    user: "system",
+                    ts: new Date().toISOString(),
+                  },
+                },
+              });
+            } catch {}
+          }
+        }
+      }, 30000);
       _ws!.on("close", () => clearInterval(_pingInterval));
+
+      // Registry heartbeat — fire immediately, then every 30s while connected.
+      // Stopped in the top-level ws close handler below.
+      if (_heartbeatInterval) {
+        clearInterval(_heartbeatInterval);
+        _heartbeatInterval = null;
+      }
+      pushRegistryHeartbeat().catch(() => {});
+      _heartbeatInterval = setInterval(() => {
+        pushRegistryHeartbeat().catch(() => {});
+      }, 30000);
 
       // Read CLAUDE.md from agent definition dir if available
       let claudeMd = "";
@@ -326,7 +467,23 @@ const conn = {
             msg.attachments ||
             payload.attachments ||
             [];
-          const hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          // Derive hubBase from SCITEX_OROCHI_URL (public wss://host/...) so
+          // agent notifications carry a browser-reachable absolute URL rather
+          // than the internal localhost:8559 default. Fall back to env HOST/PORT
+          // for LAN dev, and finally to localhost:8559 as a last resort.
+          let hubBase: string;
+          const _orochiUrl = process.env.SCITEX_OROCHI_URL || "";
+          if (_orochiUrl) {
+            try {
+              const u = new URL(_orochiUrl);
+              const scheme = u.protocol === "wss:" ? "https:" : "http:";
+              hubBase = `${scheme}//${u.host}`;
+            } catch {
+              hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+            }
+          } else {
+            hubBase = `http://${process.env.SCITEX_OROCHI_HOST || "localhost"}:${process.env.SCITEX_OROCHI_PORT || "8559"}`;
+          }
           const attachments: Array<{ url: string; filename: string }> = [];
           for (const a of rawAttachments as unknown[]) {
             try {
@@ -415,6 +572,10 @@ const conn = {
       _dbg(`ws close code=${code}`);
       conn.state = "disconnected";
       _ws = null;
+      if (_heartbeatInterval) {
+        clearInterval(_heartbeatInterval);
+        _heartbeatInterval = null;
+      }
       // Simple reconnect after 3s
       conn.reconnectAttempts++;
       conn.totalReconnects++;
@@ -447,6 +608,13 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "status") return handleStatus(conn as any);
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
+  if (name === "rsync_media") return handleRsyncMedia(args as any);
+  if (name === "rsync_status") return handleRsyncStatus(args as any);
+  if (name === "sidecar_status") return handleSidecarStatus();
+  if (name === "connectivity_matrix") return handleConnectivityMatrix();
+  if (name === "self_command") return handleSelfCommand(args as any);
+  if (name === "dm_list") return handleDmList(args as any);
+  if (name === "dm_open") return handleDmOpen(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

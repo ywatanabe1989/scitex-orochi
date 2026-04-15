@@ -52,8 +52,10 @@ class Agent:
     agent_id: str = ""
     project: str = ""
     workspace_id: str = ""
+    multiplexer: str = ""
     status: str = "online"
     current_task: str = ""
+    subagent_count: int = 0
     resources: dict[str, Any] = field(default_factory=dict)
     last_heartbeat: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
@@ -65,6 +67,9 @@ class Agent:
 
 class OrochiServer:
     """Main WebSocket server with channel routing and @mention delivery."""
+
+    # Agents not heard from in this many seconds are considered stale.
+    STALE_AGENT_SECONDS = 300  # 5 minutes
 
     def __init__(self, host: str = HOST, port: int = PORT) -> None:
         self.host = host
@@ -83,9 +88,45 @@ class OrochiServer:
         self.telegram_bridge: Any = None
         # Workspace store (initialized after store.open)
         self.workspaces: Any = None
+        # Background reaper task for stale agents
+        self._reaper_task: asyncio.Task | None = None
+
+    def start_reaper(self) -> None:
+        """Start the background task that periodically removes stale agents."""
+        if self._reaper_task is None or self._reaper_task.done():
+            self._reaper_task = asyncio.create_task(self._reap_stale_agents_loop())
+            self._reaper_task.add_done_callback(_log_task_exception)
+
+    async def _reap_stale_agents_loop(self) -> None:
+        """Periodically remove agents whose heartbeat is older than STALE_AGENT_SECONDS."""
+        while True:
+            await asyncio.sleep(60)
+            self._reap_stale_agents()
+
+    def _reap_stale_agents(self) -> None:
+        """Remove agents that have not heartbeated within the staleness window."""
+        now = datetime.now(timezone.utc)
+        stale_names: list[str] = []
+        for name, agent in self.agents.items():
+            try:
+                hb_dt = datetime.fromisoformat(agent.last_heartbeat)
+                delta = (now - hb_dt).total_seconds()
+            except (ValueError, TypeError):
+                delta = float("inf")
+            if delta > self.STALE_AGENT_SECONDS:
+                stale_names.append(name)
+        for name in stale_names:
+            log.info(
+                "Reaping stale agent: %s (no heartbeat for >%ds)",
+                name,
+                self.STALE_AGENT_SECONDS,
+            )
+            self._remove_agent(name)
 
     async def shutdown(self) -> None:
         log.info("Shutting down...")
+        if self._reaper_task and not self._reaper_task.done():
+            self._reaper_task.cancel()
         if self._server:
             self._server.close()
             await self._server.wait_closed()
@@ -182,6 +223,12 @@ class OrochiServer:
         role = msg.payload.get("role", "")
         model = msg.payload.get("model", "")
         project = msg.payload.get("project", "")
+        multiplexer = msg.payload.get("multiplexer", "")
+        current_task = msg.payload.get("current_task", "") or ""
+        try:
+            subagent_count = int(msg.payload.get("subagent_count", 0) or 0)
+        except (TypeError, ValueError):
+            subagent_count = 0
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
             machine_name = machine or platform.node()
@@ -197,6 +244,30 @@ class OrochiServer:
                 await old.ws.close(4000, "Replaced by new connection")
             except Exception:
                 pass
+        # Evict stale agents from the same machine (handles agent renames).
+        # Only remove agents that haven't heartbeated recently.
+        if machine:
+            now = datetime.now(timezone.utc)
+            stale_from_machine: list[str] = []
+            for other_name, other in self.agents.items():
+                if other_name == name:
+                    continue
+                if other.machine == machine:
+                    try:
+                        hb_dt = datetime.fromisoformat(other.last_heartbeat)
+                        delta = (now - hb_dt).total_seconds()
+                    except (ValueError, TypeError):
+                        delta = float("inf")
+                    if delta > self.STALE_AGENT_SECONDS:
+                        stale_from_machine.append(other_name)
+            for stale_name in stale_from_machine:
+                log.info(
+                    "Evicting stale agent %s from machine %s (replaced by %s)",
+                    stale_name,
+                    machine,
+                    name,
+                )
+                self._remove_agent(stale_name)
         now = datetime.now(timezone.utc).isoformat()
         self.agents[name] = Agent(
             name=name,
@@ -207,9 +278,11 @@ class OrochiServer:
             model=model,
             agent_id=agent_id,
             project=project,
+            multiplexer=multiplexer,
             workspace_id=workspace_id,
             status="online",
-            current_task="",
+            current_task=current_task,
+            subagent_count=subagent_count,
             last_heartbeat=now,
             registered_at=now,
         )
@@ -368,15 +441,39 @@ class OrochiServer:
             res = {k: v for k, v in msg.payload.items() if k in self._RESOURCE_KEYS}
             if res:
                 agent.resources = res
+            # Optional narrative fields carried in heartbeat payload so
+            # simple clients do not need to send separate status_update
+            # messages. Absent fields leave existing values untouched.
+            if "current_task" in msg.payload:
+                agent.current_task = str(msg.payload.get("current_task") or "")[:200]
+            if "subagent_count" in msg.payload:
+                try:
+                    agent.subagent_count = int(msg.payload.get("subagent_count") or 0)
+                except (TypeError, ValueError):
+                    pass
             log.debug("Heartbeat from %s", msg.sender)
 
     async def _handle_status_update(self, msg: Message) -> None:
         agent = self.agents.get(msg.sender)
         if not agent:
             return
-        for key in ("status", "current_task", "machine", "role", "project", "agent_id"):
+        for key in (
+            "status",
+            "current_task",
+            "subagent_count",
+            "machine",
+            "role",
+            "project",
+            "agent_id",
+        ):
             if key in msg.payload:
-                setattr(agent, key, msg.payload[key])
+                value = msg.payload[key]
+                if key == "subagent_count":
+                    try:
+                        value = int(value or 0)
+                    except (TypeError, ValueError):
+                        continue
+                setattr(agent, key, value)
         agent.last_heartbeat = datetime.now(timezone.utc).isoformat()
         log.info("Status update from %s: %s", msg.sender, msg.payload)
 
@@ -389,6 +486,7 @@ class OrochiServer:
                     "agent": msg.sender,
                     "status": agent.status,
                     "current_task": agent.current_task,
+                    "subagent_count": agent.subagent_count,
                     "machine": agent.machine,
                     "role": agent.role,
                     "agent_id": agent.agent_id,
@@ -468,8 +566,10 @@ class OrochiServer:
                 "model": a.model,
                 "agent_id": a.agent_id,
                 "project": a.project,
+                "multiplexer": a.multiplexer,
                 "status": a.status,
                 "current_task": a.current_task,
+                "subagent_count": a.subagent_count,
                 "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,
                 "workspace_id": a.workspace_id,

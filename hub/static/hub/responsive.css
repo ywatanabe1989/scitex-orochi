@@ -20,6 +20,8 @@
     font-size: 20px;
     line-height: 1;
     cursor: pointer;
+    min-width: 44px;
+    min-height: 44px;
   }
   .sidebar-toggle:hover {
     background: #2a2a2a;
@@ -74,15 +76,26 @@
     margin-bottom: 6px;
   }
   .agent-card {
-    padding: 6px;
-    margin-bottom: 4px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
+    min-height: 44px;
   }
   .agent-card .name {
     font-size: 12px;
+    white-space: normal;
+    word-break: break-word;
   }
   .agent-card .meta,
   .agent-card .task {
     font-size: 10px;
+  }
+  .agent-card-top .name {
+    white-space: normal;
+    word-break: break-word;
+  }
+  .agent-id-cell {
+    word-break: break-word;
+    white-space: normal;
   }
   .res-card {
     padding: 4px 6px;
@@ -90,81 +103,115 @@
   }
   .channel-item {
     font-size: 11px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     padding: 2px 6px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
   .filter-bar input {
     padding: 6px 8px;
-    font-size: 11px;
+    font-size: 16px;
   }
   /* Tab bar: add left padding for hamburger button */
   .tab-bar {
     padding: 0 8px 0 44px;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar {
+    display: none;
   }
   .tab-btn {
     padding: 8px 12px;
     font-size: 12px;
     white-space: nowrap;
+    min-height: 44px;
+    flex-shrink: 0;
   }
-  /* Messages: full width, no cutoff */
+  /* Messages: full width, compact vertical spacing */
   .messages {
-    padding: 6px;
+    padding: 4px;
   }
   .msg {
-    padding: 6px 8px;
-    margin-bottom: 4px;
+    padding: 4px 6px;
+    margin-bottom: 2px;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
   .msg .msg-header {
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 2px;
+    margin-bottom: 1px;
   }
   .msg .sender {
-    font-size: 12px;
+    font-size: 11px;
   }
   .msg .channel {
     font-size: 10px;
   }
   .msg .content {
     font-size: 13px;
-    line-height: 1.4;
+    line-height: 1.3;
     word-break: break-word;
   }
   .msg .ts {
-    font-size: 9px;
+    font-size: 8px;
+  }
+  .msg .msg-reply-ref {
+    margin-bottom: 2px;
+    padding: 2px 6px;
+    font-size: 10px;
   }
   /* Input bar: single row, compact */
   .input-bar {
-    padding: 6px 8px;
-    gap: 4px;
+    padding: 2px 4px;
+    gap: 2px;
     flex-wrap: nowrap;
-    align-items: flex-end;
+    align-items: stretch;
+    border-top: none;
+  }
+  /* Inner row: textarea + actions side by side */
+  .input-bar-row {
+    gap: 3px;
+  }
+  /* Actions: horizontal on mobile (was column) */
+  .input-bar-actions {
+    flex-direction: row;
+    gap: 3px;
+    align-items: center;
+  }
+  .input-bar-actions #msg-attach,
+  .input-bar-actions #msg-sketch,
+  .input-bar-actions #msg-voice-lang,
+  .input-bar-actions #msg-voice,
+  .input-bar-actions #msg-send {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: 14px;
   }
   .input-bar textarea {
-    min-height: 36px;
-    max-height: 80px;
-    padding: 8px 10px;
-    font-size: 14px;
+    min-height: 32px;
+    max-height: 72px;
+    height: 32px;
+    padding: 5px 8px;
+    font-size: 16px;
     flex: 1;
   }
-  .input-bar button {
-    padding: 8px 12px;
-    font-size: 12px;
-    flex-shrink: 0;
-  }
-  /* Hide Attach/Sketch labels, show icons only */
-  #msg-attach,
-  #msg-sketch {
-    padding: 8px;
-    font-size: 16px;
-    flex-shrink: 0;
+  /* Sticky tab bar — keep visible on scroll */
+  .tab-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #0a0a0a;
   }
   /* Stats bar: minimal + safe area for Safari bottom */
   .stats-bar {
-    padding: 3px 8px;
-    padding-bottom: calc(3px + env(safe-area-inset-bottom, 0px));
+    padding: 1px 8px;
+    padding-bottom: calc(1px + env(safe-area-inset-bottom, 0px));
     font-size: 9px;
     gap: 8px;
     flex-wrap: nowrap;
@@ -173,6 +220,31 @@
     width: 100%;
     min-width: unset;
   }
+  .todo-item-row {
+    flex-wrap: wrap;
+    white-space: normal;
+    overflow: visible;
+  }
+  .todo-title {
+    white-space: normal;
+    word-break: break-word;
+    min-width: 0;
+    flex-basis: calc(100% - 60px);
+    text-overflow: unset;
+  }
+  .todo-labels {
+    flex-wrap: wrap;
+    flex-shrink: 1;
+    margin-left: auto;
+  }
+  .msg.msg-system {
+    padding: 1px 8px;
+    margin: 1px 0;
+  }
+  .agent-card-badges {
+    margin-top: 2px;
+    gap: 2px;
+  }
   .attachment-img img {
     max-width: 100%;
   }
@@ -180,5 +252,205 @@
     width: 95vw;
     max-height: 95vh;
     padding: 0.5rem;
+  }
+  /* Thread panel: full-screen overlay on mobile */
+  .thread-panel {
+    width: 100vw;
+    border-left: none;
+  }
+  .thread-back {
+    display: flex;
+  }
+  /* Close button always visible on mobile too — user can't always swipe out */
+  .thread-close {
+    display: flex !important;
+  }
+  .thread-header {
+    padding: 8px 12px;
+  }
+}
+
+/* iPhone SE and narrow devices (375px and below) */
+@media (max-width: 389px) {
+  .sidebar {
+    width: 240px;
+    padding: 44px 8px 8px;
+  }
+  .sidebar-brand .header-icon {
+    height: 28px;
+    width: 28px;
+  }
+  .sidebar-brand .brand-name {
+    font-size: 13px;
+  }
+  .workspace-title {
+    font-size: 13px;
+  }
+  .agent-card {
+    padding: 5px;
+  }
+  .agent-card .name {
+    font-size: 11px;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .agent-detail-popup {
+    font-size: 10px;
+  }
+  .tab-bar {
+    padding: 0 4px 0 44px;
+  }
+  .tab-btn {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+  .messages {
+    padding: 4px;
+  }
+  .msg {
+    padding: 3px 5px;
+    margin-bottom: 1px;
+  }
+  .msg .content {
+    font-size: 13px;
+  }
+  .input-bar {
+    padding: 2px 4px;
+    gap: 2px;
+  }
+  .input-bar textarea {
+    padding: 4px 6px;
+  }
+  .input-bar-actions #msg-send {
+    min-width: 50px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .pending-attachment {
+    max-width: 160px;
+  }
+  .pending-attachment-label {
+    max-width: 100px;
+  }
+  .sketch-panel {
+    width: 98vw;
+    padding: 0.3rem;
+  }
+}
+
+/* Landscape orientation on mobile — maximize vertical space */
+@media (max-width: 600px) and (orientation: landscape) {
+  .sidebar-brand .header-icon {
+    height: 24px;
+    width: 24px;
+  }
+  .sidebar-brand {
+    flex-direction: row;
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+  .sidebar h2 {
+    margin-bottom: 4px;
+  }
+  .tab-bar {
+    min-height: 36px;
+  }
+  .tab-btn {
+    padding: 6px 12px;
+    min-height: 36px;
+  }
+  .messages {
+    padding: 4px 6px;
+  }
+  .msg {
+    padding: 4px 6px;
+    margin-bottom: 2px;
+  }
+  .input-bar {
+    padding: 2px 4px;
+  }
+  .input-bar textarea {
+    min-height: 28px;
+    max-height: 52px;
+    height: 28px;
+  }
+  .stats-bar {
+    padding: 1px 8px;
+    padding-bottom: calc(1px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* --- Long-press context menu (mobile only) --- */
+.long-press-menu {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse), (max-width: 600px) {
+  .long-press-menu {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    z-index: 10000;
+    min-width: 180px;
+    padding: 6px;
+    background: #1f2329;
+    color: #f0f0f0;
+    border: 1px solid #3a3f47;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    animation: longPressFadeIn 120ms ease-out;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .long-press-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font-size: 15px;
+    text-align: left;
+    border-radius: 6px;
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .long-press-item:active {
+    background: #2c333d;
+  }
+  .long-press-item.danger {
+    color: #ff6b6b;
+  }
+  .long-press-icon {
+    font-size: 18px;
+    width: 22px;
+    text-align: center;
+  }
+  .long-press-label {
+    flex: 1;
+  }
+  /* Disable the iOS long-press text selection / callout on messages so the
+   * custom menu can take over cleanly. */
+  #messages .msg {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  /* Allow selection while editing a message */
+  #messages .msg .msg-edit-container,
+  #messages .msg .msg-edit-input {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+@keyframes longPressFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
