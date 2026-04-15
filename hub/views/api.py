@@ -846,21 +846,30 @@ def api_threads(request):
     MessageThread.objects.create(parent=parent, reply=reply)
 
     layer = get_channel_layer()
-    group = f"workspace_{workspace.id}"
-    async_to_sync(layer.group_send)(
-        group,
-        {
-            "type": "thread.reply",
-            "parent_id": parent.id,
-            "reply_id": reply.id,
-            "sender": request.user.username,
-            "sender_type": "human",
-            "channel": parent.channel.name,
-            "text": text,
-            "ts": reply.ts.isoformat(),
-            "metadata": metadata,
-        },
-    )
+    # Send to channel-specific group, not workspace-wide.
+    # Fixes reply leak: replies were broadcast to ALL agents regardless
+    # of channel subscription (ywatanabe msg#12174/#12176).
+    ch_name = parent.channel.name
+    channel_group = f"channel_{workspace.id}_{ch_name}"
+    # Sanitize for Django Channels group name constraints
+    import re
+    channel_group = re.sub(r"[^a-zA-Z0-9._-]", "_", channel_group)
+    channel_group = re.sub(r"_{3,}", "__", channel_group)
+    event = {
+        "type": "thread.reply",
+        "parent_id": parent.id,
+        "reply_id": reply.id,
+        "sender": request.user.username,
+        "sender_type": "human",
+        "channel": ch_name,
+        "text": text,
+        "ts": reply.ts.isoformat(),
+        "metadata": metadata,
+    }
+    async_to_sync(layer.group_send)(channel_group, event)
+    # Also send to workspace group for dashboard observers
+    ws_group = f"workspace_{workspace.id}"
+    async_to_sync(layer.group_send)(ws_group, event)
     return JsonResponse({"status": "ok", "reply_id": reply.id}, status=201)
 
 
