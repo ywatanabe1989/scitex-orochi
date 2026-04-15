@@ -3,6 +3,16 @@
    currentChannel, knownMessageKeys, messageKey, sendOrochiMessage,
    updateResourcePanel, token, apiUrl */
 
+/* Voice-recording deferred message queue.
+ * When window.isVoiceRecording is true, appendMessage defers the DOM update
+ * here instead of immediately mutating the feed. The voice-input module calls
+ * window._flushVoiceQueue() when recording stops, which drains the queue. */
+var _voiceDeferQueue = [];
+window._flushVoiceQueue = function () {
+  var queued = _voiceDeferQueue.splice(0);
+  queued.forEach(function (msg) { appendMessage(msg); });
+};
+
 function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
@@ -282,6 +292,15 @@ function appendMessage(msg) {
    * when agents are @mentioned. These are noisy in regular channels. */
   var _meta = (msg.metadata || {});
   if (msg.sender === "hub" && _meta.source === "mention_reply") return;
+
+  /* Voice-recording guard: defer the DOM update to avoid interrupting the
+   * Web Speech API SpeechRecognition session. Scroll and layout changes
+   * during active recording can cause the browser to abort recognition.
+   * The queue is flushed by _flushVoiceQueue() when recording stops. */
+  if (window.isVoiceRecording) {
+    _voiceDeferQueue.push(msg);
+    return;
+  }
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
   var isAgent = msg.sender_type === "agent" || isKnownAgent(senderName);
@@ -640,6 +659,7 @@ function appendMessage(msg) {
     '">' +
     ts +
     "</span>" +
+    (msg.id ? '<span class="msg-id-chip" title="Message ID">#' + msg.id + '</span>' : "") +
     (msg.edited
       ? '<span class="msg-edited-tag" title="' +
         escapeHtml(msg.edited_at ? "Edited " + timeAgo(msg.edited_at) : "Edited") +
@@ -715,11 +735,28 @@ function appendMessage(msg) {
    * same path is responsible for todo#55's pending-attachment / input
    * state loss. We snapshot focus before the mutation and restore it
    * afterward, and we skip the auto-scroll entirely while the user is
-   * actively typing so we don't yank their viewport either. */
+   * actively typing so we don't yank their viewport either.
+   *
+   * Voice recording: additionally save/restore the full activeElement +
+   * selection so that DOM mutations during SpeechRecognition don't steal
+   * focus away from the textarea that the speech API is writing into.
+   * (Note: appendMessage already returns early when window.isVoiceRecording
+   * is true — this path is reached only for non-voice DOM updates.) */
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  /* Also capture any other focused element (e.g. thread textarea) */
+  var savedActiveEl = document.activeElement;
+  var savedActiveStart = 0;
+  var savedActiveEnd = 0;
+  if (savedActiveEl && savedActiveEl !== msgInput &&
+      (savedActiveEl.tagName === "TEXTAREA" || savedActiveEl.tagName === "INPUT")) {
+    try {
+      savedActiveStart = savedActiveEl.selectionStart;
+      savedActiveEnd = savedActiveEl.selectionEnd;
+    } catch (_) {}
+  }
   container.appendChild(el);
   /* Render any mermaid diagrams inside the newly appended message */
   _renderMermaidIn(el);
@@ -728,18 +765,25 @@ function appendMessage(msg) {
   if (typeof applyFeedFilter === "function") {
     try { applyFeedFilter(); } catch (_) {}
   }
-  /* ALWAYS auto-scroll when near the bottom — including when the user is
-   * actively typing. Skipping the scroll while focused was too aggressive
-   * and broke the "I just sent a message" case (todo#227): the user's own
-   * outgoing message stayed below the fold because focus was still on
-   * #msg-input. The focus-preserve idiom (save selection → restore after
-   * mutation) is sufficient on its own for the typing-mid-incoming case. */
-  if (nearBottom) {
+  /* Auto-scroll: skip entirely during voice recording to prevent the
+   * scrollTop write from interfering with the SpeechRecognition session.
+   * Outside of voice recording, always scroll when near the bottom. */
+  if (nearBottom && !window.isVoiceRecording) {
     container.scrollTop = container.scrollHeight;
   }
+  /* Restore focus + selection for the main compose textarea */
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+  }
+  /* Restore focus + selection for any other text input (e.g. thread textarea) */
+  if (savedActiveEl && savedActiveEl !== msgInput &&
+      document.activeElement !== savedActiveEl &&
+      (savedActiveEl.tagName === "TEXTAREA" || savedActiveEl.tagName === "INPUT")) {
+    try {
+      savedActiveEl.focus();
+      savedActiveEl.setSelectionRange(savedActiveStart, savedActiveEnd);
+    } catch (_) {}
   }
   applyIssueTitleHints(el);
 }

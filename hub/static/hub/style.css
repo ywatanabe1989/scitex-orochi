@@ -1451,6 +1451,25 @@ a.chat-link:hover {
   font-style: italic;
 }
 
+/* Message ID chip — small, unobtrusive label showing the hub msg ID */
+.msg-id-chip {
+  font-size: 10px;
+  color: #444;
+  margin-left: 6px;
+  font-family: monospace;
+  user-select: text;
+  cursor: text;
+}
+.msg-id-chip:hover {
+  color: #888;
+}
+
+/* Make message body text selectable so users can copy content */
+.msg .content {
+  user-select: text;
+  cursor: text;
+}
+
 .msg-edit-btn,
 .msg-delete-btn {
   position: absolute;
