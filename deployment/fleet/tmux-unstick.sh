@@ -226,26 +226,46 @@ sweep_once() {
     fi
 
     # Safety B: two-sample stability check.
-    # Require same (pattern, tail_hash) across two sweeps at least
-    # STABILITY_SEC seconds apart before firing.
-    local prior_pattern="" prior_hash="" prior_age=0 stable=0
+    #
+    # Require the SAME (pattern, tail_hash) to be observed across two
+    # sweeps at least STABILITY_SEC seconds apart before firing the
+    # recovery action.
+    #
+    # Critical correctness rule: when the current observation matches
+    # the prior stamp (same pattern AND same hash), DO NOT touch the
+    # stamp files — preserve their mtime so the next sweep can compute
+    # an accurate `prior_age`. Only write/replace the stamp files when
+    # transitioning from "no prior" or "different prior" to the
+    # current pattern. Re-writing on every sweep was the v2.0 bug
+    # (scitex-orochi#155): mtime kept resetting, prior_age stayed
+    # ~INTERVAL_SEC, never reached STABILITY_SEC, so first-sighting
+    # never graduated to stable-match — recovery never fired.
+    local prior_pattern="" prior_hash="" prior_age=0 stable=0 same_as_prior=0
     if [[ -f "$stamp_pat" && -f "$stamp_hash" ]]; then
       prior_pattern="$(cat "$stamp_pat" 2>/dev/null || true)"
       prior_hash="$(cat "$stamp_hash" 2>/dev/null || true)"
       prior_age=$(( $(date +%s) - $(stat -c %Y "$stamp_hash" 2>/dev/null || echo 0) ))
-      if [[ "$prior_pattern" == "$pattern" && "$prior_hash" == "$tail_hash" && "$prior_age" -ge "$STABILITY_SEC" ]]; then
-        stable=1
+      if [[ "$prior_pattern" == "$pattern" && "$prior_hash" == "$tail_hash" ]]; then
+        same_as_prior=1
+        if (( prior_age >= STABILITY_SEC )); then
+          stable=1
+        fi
       fi
     fi
 
     if (( stable == 0 )); then
       first_sighting=$(( first_sighting + 1 ))
-      printf '%s' "$pattern" > "$stamp_pat"
-      printf '%s' "$tail_hash" > "$stamp_hash"
+      # Only refresh the stamp files when the observation is NEW or
+      # CHANGED. Preserving mtime on identical observations is what
+      # makes Safety B actually work — see scitex-orochi#155.
+      if (( same_as_prior == 0 )); then
+        printf '%s' "$pattern" > "$stamp_pat"
+        printf '%s' "$tail_hash" > "$stamp_hash"
+      fi
       local snip_json
       snip_json="$(printf '%s' "$tail_txt" | tail -6 | json_escape)"
       emit "first-sighting" "$session_addr" "$pane_id" "false" "true" \
-        "{\"pattern\":$(printf '%s' "$pattern" | json_escape),\"snippet\":$snip_json,\"tail_hash\":$(printf '%s' "$tail_hash" | json_escape),\"stability_sec_required\":$STABILITY_SEC}"
+        "{\"pattern\":$(printf '%s' "$pattern" | json_escape),\"snippet\":$snip_json,\"tail_hash\":$(printf '%s' "$tail_hash" | json_escape),\"stability_sec_required\":$STABILITY_SEC,\"prior_age\":$prior_age,\"same_as_prior\":$same_as_prior}"
       continue
     fi
 
