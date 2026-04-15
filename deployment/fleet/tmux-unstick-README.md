@@ -126,24 +126,95 @@ when a wedge is caught and cleared.
   `subagent-reporting-discipline.md` §4, removing even the need for the
   60 s sweep when hooks can intercept wedge patterns at the source.
 
-## Known limitations (Phase 1)
+## Safety stack
+
+Six safety layers compose on every sweep. Each layer was added in
+response to a specific hot-fix — see `scitex-orochi#153` for the
+post-mortem.
+
+1. **Self-exclusion (`A`)** — never send keys to the pane whose
+   `pane_id` matches `$TMUX_PANE`. The script running inside the
+   very pane it would otherwise "recover" is the self-suicide
+   failure mode that hit head-spartan on 2026-04-15.
+2. **Two-sample stability (`B`)** — `[Pasted text #N +M lines]` is a
+   **normal live-compose state** in Claude Code, not stuck. A single
+   sweep cannot distinguish "user is typing, paused" from "agent is
+   wedged". The script requires the **same tail-hash** to appear on
+   two consecutive sweeps at least `TMUX_UNSTICK_STABILITY_SEC`
+   (default 120 s) apart before firing any recovery key. First
+   sighting is recorded-only; second sighting triggers.
+3. **Safe-start dry-run window (`C`)** — for the first
+   `TMUX_UNSTICK_SAFE_START_SEC` seconds (default 300 = 5 min) after
+   the loop boots, the script runs in `--dry-run` mode even if
+   `DRY_RUN=0`. Detections are logged with `dry_run=true` so the
+   first 5 minutes of production output can be eyeballed for
+   false-positives before real keys start firing.
+4. **Panic switch (`D`)** — if
+   `~/.scitex/orochi/tmux-unstick.PAUSED` exists, the script sleeps
+   without scanning. `touch` the file to halt recovery globally
+   across all hosts; `rm` to resume.
+5. **Per-pane rate limit (`E`)** — after a recovery fires on a pane,
+   that pane is skipped for `TMUX_UNSTICK_COOLDOWN_SEC` seconds
+   (default 120) so we never spam the same pane repeatedly.
+6. **Log-before-act (`F`)** — the detection event is written to
+   NDJSON **before** `send-keys` is called, so a post-mortem can
+   reconstruct what the script believed even if the send-keys call
+   corrupts subsequent state.
+
+## NDJSON schema (v2)
+
+Schema version `scitex-orochi/tmux-unstick/v2`. Each record:
+
+```json
+{
+  "schema": "scitex-orochi/tmux-unstick/v2",
+  "host": "<short>",
+  "ts": "<iso8601Z>",
+  "event": "loop-start|first-sighting|stable-match|fired|fire-failed|sweep-summary|sweep-paused|heartbeat",
+  "session": "<session:window.pane>",
+  "pane_id": "<%N or empty>",
+  "recovered": true | false | null,
+  "dry_run": 0 | 1,
+  "detail": { ... }
+}
+```
+
+Event lifecycle for a genuine wedge:
+
+```
+t0     first-sighting    (records state, does nothing)
+t0+120 stable-match      (second observation, same hash)
+t0+120 fired             (recovery key sent, cooldown begins)
+t0+240 <pane is eligible again once cooldown expires>
+```
+
+For a user-composing false positive:
+
+```
+t0    first-sighting   (records tail hash)
+t60   <tail hash changed because user kept typing>  -> no stable-match
+```
+
+## Known limitations
 
 - **Only catches two wedge patterns.** Extra-usage wedge (1M context)
   still requires a session restart, which is destructive and out of
-  scope for Phase 1. See `permission-prompt-patterns.md` skill for the
+  scope for Phase 1. See `permission-prompt-patterns.md` for the
   pattern catalog.
 - **No nonce handshake** — if a Claude session is alive but not
   responsive to new hub messages (e.g. crashed WS loop), Phase 1 does
   not catch it. Phase 2 nonce handshake does.
-- **Regex false positives** — the `paste-buffer-unsent` regex matches
-  on the full capture (`-S -20`) not just the current prompt line, so
-  scrollback containing a historical paste-buffer tag can trip the
-  match. Mitigated by idempotent recovery (harmless Enter) but
-  production Phase 2 should refine the regex to only the prompt line
-  between separator rules.
 - **No central aggregation in Phase 1** — each host writes its own
-  NDJSON locally. Cross-host dashboard view of "last unstick event per
-  host" lands in Phase 2 when the hub exposes `/api/fleet/unstick/`.
+  NDJSON locally. Cross-host dashboard view of "last unstick event
+  per host" lands in Phase 2 when the hub exposes
+  `/api/fleet/unstick/`.
+- **Wrapper subshell may lose `$TMUX_PANE`** — when the loop wrapper
+  is launched from `.bash_profile` it is not inside a tmux pane, so
+  `$TMUX_PANE` is empty and self-exclusion (`A`) is a no-op. In this
+  case Safety `B` (two-sample stability) is the primary defense
+  against self-hit on a live-typing head pane. When the script is
+  invoked directly from inside a pane (the interim deploy pattern)
+  `A` takes effect and layers with `B`.
 
 ## Related
 
