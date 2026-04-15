@@ -134,6 +134,48 @@ Do not auto-retry — capture pane, post to `#escalation`, let a human route.
 ```
 Or `tmux capture-pane` returns empty. Claude exited, shell prompt or blank. Action: autostart unit should respawn; if autostart fails, escalate.
 
+## Session-existence preflight — `tmux ls`, not `screen -ls`
+
+Added 2026-04-15 after `mamba-healer-mba` msg #12799 false-alarmed
+"MBA fleet down — all 12 agents + screen sessions gone" while all 12
+tmux sessions were in fact alive.
+
+Before any pane-state classification, a healer must first confirm
+the session exists. The session-existence check must use the same
+multiplexer the agents are actually running in:
+
+- scitex-agent-container defaults to `multiplexer: tmux` since v0.7.
+  Session-existence check: **`tmux ls`**.
+- `screen -ls` is only valid on hosts where an agent's YAML explicitly
+  sets `multiplexer: screen`. On all other hosts (MBA included) the
+  screen socket is empty and `screen -ls` reports "No Sockets found",
+  which is **not** evidence that the agents are dead.
+
+Contract for any liveness probe:
+
+1. **Primary signal**: `tmux ls` (or `screen -ls` iff the agent's
+   configured multiplexer is screen). If the expected session name is
+   present, the session exists. Classify pane state from here.
+2. **Secondary signal only**: `scitex-agent-container list` output.
+   Treat an empty list as a **hypothesis** to cross-check with the
+   primary signal, never as ground truth. A stale / crashed
+   scitex-agent-container list command can return an empty list while
+   the underlying sessions are fine.
+3. **Never escalate** a "fleet down" classification on the secondary
+   signal alone. If `tmux ls` shows the session, the session is alive;
+   post-fix the probe code instead of the fleet.
+4. If the probe cannot reach the multiplexer at all (e.g. SSH is
+   down), classify the **host** as unreachable — not the individual
+   sessions as dead. The agents inside an unreachable host cannot be
+   probed, and "can't probe" is distinct from "confirmed dead"
+   (rule #11 absence-of-response still applies for DM-based probes,
+   but the host layer is a separate question).
+
+A healer that short-circuits this preflight will false-alarm ywatanabe
+and the heads, waste fleet attention on a non-incident, and risk
+triggering a destructive "restart everything" response. Always two
+signals, primary-before-secondary, before classifying a host as down.
+
 ## Scrollback false-positive guard — strict last-N-lines window
 
 Added 2026-04-14 after `mamba-healer-mba` msg #10865. Regexes must match against the **last 5 lines** of `tmux capture-pane -p -S -5`, not the full scrollback buffer.
