@@ -211,15 +211,27 @@ def api_channel_members(request, slug=None):
         m.user.username: m.permission
         for m in ChannelMembership.objects.filter(channel=ch).select_related("user")
     }
-    # All workspace members implicitly belong; annotate with their explicit perm or default
-    all_members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
+    # Only return explicitly subscribed members (not all workspace members).
+    # Default policy: agents subscribe to nothing unless explicitly added.
+    # ywatanabe directive msg#11866: "デフォルトですべてのエージェントはどこも購読しない"
     data = []
-    for wm in all_members:
-        uname = wm.user.username
-        perm = memberships.get(uname, "read-write")
-        # Determine if this is an agent user (agent users have username starting with "agent-")
+    for m in ChannelMembership.objects.filter(channel=ch).select_related("user"):
+        uname = m.user.username
         kind = "agent" if uname.startswith("agent-") else "human"
-        data.append({"username": uname, "permission": perm, "kind": kind, "role": wm.role})
+        try:
+            wm = WorkspaceMember.objects.get(workspace=workspace, user=m.user)
+            role = wm.role
+        except WorkspaceMember.DoesNotExist:
+            role = ""
+        data.append({"username": uname, "permission": m.permission, "kind": kind, "role": role})
+    # Always include human workspace members (ywatanabe etc.) for visibility
+    human_members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
+    existing = {d["username"] for d in data}
+    for wm in human_members:
+        uname = wm.user.username
+        if uname not in existing and not uname.startswith("agent-"):
+            perm = memberships.get(uname, "read-write")
+            data.append({"username": uname, "permission": perm, "kind": "human", "role": wm.role})
     return JsonResponse(data, safe=False)
 
 
