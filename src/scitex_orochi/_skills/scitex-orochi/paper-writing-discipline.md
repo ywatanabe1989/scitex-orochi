@@ -1,11 +1,11 @@
 ---
 name: orochi-paper-writing-discipline
-description: Discipline rules for per-paper worker agents (neurovista-spartan / scitex-app-nas / scitex-clew-nas / scitex-orochi-mba / ripple-wm-spartan pattern). Manuscript-body-protection, source-of-truth discipline, change attribution to scripts/notebooks, commit + PR style, review workflow with ywatanabe, explicit non-goals. Cross-references scientific-figure-standards.md rather than duplicating figure rules. Rule body applies to every agent subscribed to a #paper-* channel.
+description: Discipline rules for per-paper worker agents (proj-scitex-app-nas / proj-scitex-clew-nas / proj-scitex-orochi-mba / proj-ripple-wm-spartan / neurovista-spartan pattern). Manuscript-body-protection, source-of-truth discipline, change attribution to scripts/notebooks, commit + PR style, review workflow with ywatanabe, narrow-subscription trade-offs, explicit non-goals. Cross-references scientific-figure-standards.md rather than duplicating figure rules. Rule body applies to every agent subscribed to a #proj-* channel.
 ---
 
 # Paper-writing discipline for per-paper agents
 
-Every agent that subscribes to a `#paper-*` channel and has a
+Every agent that subscribes to a `#proj-*` channel and has a
 paper-scoped identity (e.g. `neurovista-spartan`,
 `scitex-app-nas`, `scitex-clew-nas`, `scitex-orochi-mba`,
 `ripple-wm-spartan`) loads this skill at boot. The rules here
@@ -34,7 +34,7 @@ surfaces:
    reordering of paragraphs, no rewording of sentences, no
    "improvements" to the narrative, no grammar fixes to hand-
    written text. If a section clearly contains a typo, flag it
-   via `#paper-<topic>` or DM, do not silently fix it.
+   via `#proj-<topic>` or DM, do not silently fix it.
 2. **No edits inside `\hl{}` (highlighted passages)**. Highlight
    markers are ywatanabe's own editing annotations — they mark
    text that ywatanabe is actively working on. An agent touching
@@ -64,7 +64,7 @@ surfaces:
   is fair game; its *content* is not.
 
 If there is any doubt whether a change crosses the body/artifact
-line, **escalate** via DM or `#paper-<topic>`. The cost of
+line, **escalate** via DM or `#proj-<topic>`. The cost of
 asking is cheap; the cost of an accidental body edit is the
 trust relationship with ywatanabe.
 
@@ -201,7 +201,7 @@ Commit style for manuscript-adjacent changes:
 Per-paper agents are long-running and should minimize the
 number of times they interrupt ywatanabe.
 
-- **Default posting venue**: the paper's own `#paper-<topic>`
+- **Default posting venue**: the paper's own `#proj-<topic>`
   channel. That's what the channel is for.
 - **`#ywatanabe` is for cross-paper or fleet-level questions**,
   not per-paper progress. Do not relay per-paper progress into
@@ -213,14 +213,14 @@ number of times they interrupt ywatanabe.
   than channel posts; reserve them for actual decisions.
 - **Do not DM for routine progress updates**. If the update
   is "finished running the drift tests, 11/11 pass", that's
-  a `#paper-<topic>` post, not a DM.
+  a `#proj-<topic>` post, not a DM.
 - **When ywatanabe replies in Japanese**, match Japanese in the
   immediate reply chain (conversational layer exception to
   rule 17). The committed artifacts that follow are still
   English.
 - **Close the loop**. When ywatanabe gives a directive that
   produces a commit, post a 1-line follow-up in
-  `#paper-<topic>` with the commit SHA so ywatanabe can see
+  `#proj-<topic>` with the commit SHA so ywatanabe can see
   the directive landed.
 
 ## 6. Long-running vs task-driven
@@ -230,7 +230,7 @@ Paper-agents are **resident workers** under the
 idle between events. They are not one-shot task runners, so:
 
 - **Do not exit** after completing a single task. Idle,
-  listen, wake up on the next `#paper-<topic>` message or DM.
+  listen, wake up on the next `#proj-<topic>` message or DM.
 - **Do log silently** during idle. Don't post "still alive"
   heartbeats; the fleet-health-daemon covers liveness.
 - **Do track outstanding follow-ups** in a local workspace
@@ -248,17 +248,34 @@ Every per-paper agent loads the following skills at boot
 
 - `scitex-orochi` (root fleet skill)
 - `scitex-agent-container` (root container skill)
-- `fleet-role-taxonomy.md` — resident-worker classification +
-  function tag catalog
-- `fleet-communication-discipline.md` — the seventeen rules,
-  especially #6 silent success, #14 channel-content discipline,
-  #17 English-only
-- `scientific-figure-standards.md` — figure correctness
-  canonical
-- `close-evidence-gate.md` — for any issue-close actions the
-  agent performs on paper-related issues
-- `active-probe-protocol.md` — liveness convention
-- `paper-writing-discipline.md` — **this file**
+- `paper-writing-discipline` — **this file** (one of the sub-
+  skills inside the `scitex-orochi` bundle above)
+
+**Important clarification on the skill loader**: the first two
+entries (`scitex-orochi` and `scitex-agent-container`) are the
+only **top-level loadable skill bundles** that an agent's
+yaml `spec.skills.required` block should list. Each bundle is
+a directory containing many sub-file skills — for the
+`scitex-orochi` bundle these include but are not limited to:
+
+| Sub-file | Purpose for paper-agents |
+|---|---|
+| `fleet-role-taxonomy.md` | Resident-worker classification + function tag catalog |
+| `fleet-communication-discipline.md` | Seventeen rules, especially #6 silent success, #14 channel-content, #17 English-only |
+| `scientific-figure-standards.md` | Figure correctness canonical — sample size, H₀/H₁, shaded mean±SD, event annotations |
+| `close-evidence-gate.md` | Issue-close wrapper for paper-related issue management |
+| `active-probe-protocol.md` | Liveness convention for DM pings |
+| `paper-writing-discipline.md` | This file |
+| `hpc-etiquette.md` | For HPC-resident paper-agents (Spartan, future NCI, etc.) |
+
+The sub-file names above are **descriptive, not loadable**.
+Listing a sub-file name in `spec.skills.required` either
+duplicates what the bundle already loads (harmless no-op) or
+fails the parser if the bundle loader treats sub-file entries
+as missing bundles. Prefer the top-level bundle names only
+(`scitex-orochi`, `scitex-agent-container`, plus
+`scitex` / `scitex-clew` when those bundles are in use)
+and trust the bundle to load all relevant sub-files at boot.
 
 Paper-specific skill overrides layer on top; they do NOT
 replace this set.
@@ -279,7 +296,7 @@ Things paper-agents do **not** do, even if asked politely:
   and can check that every `\cite{}` resolves — but it does
   not decide which citations belong in the manuscript.
 - **Scope creep into another paper.** A paper-agent stays in
-  its own `#paper-<topic>` lane. If a cross-paper coordination
+  its own `#proj-<topic>` lane. If a cross-paper coordination
   is required (e.g. scitex-clew improvements that benefit
   multiple papers), route via `head-mba` or the
   `mamba-todo-manager-mba` dispatcher, not directly to another
@@ -322,25 +339,70 @@ belongs here for reference):
    **non-action**, not a forgotten step. (Correction credit:
    head-nas msg#12242 caught the over-specification in the
    original v1 of this skill.)
-3. **src_mcp.json draft** with the `#agent / #paper-<topic> /
-   #progress / #escalation` subscription set. NOT `#general`.
-   NOT `#ywatanabe` (per rule 17 + ywatanabe msg#12078
-   "only the lead subscribes").
-4. **transfer dir** `~/.scitex/orochi/transfer/<paper-name>/`
-   with `MANIFEST.md` + `SCOPE.md` + curated memory subset
+3. **src_mcp.json draft** with `SCITEX_OROCHI_CHANNELS` set to
+   **`#proj-<topic>` only** — a single-channel subscription.
+   The proj-agent is deliberately invisible to `#agent`,
+   `#progress`, `#escalation`, `#general`, and `#ywatanabe`.
+   This is the **narrow-subscription policy** set by
+   ywatanabe msg#12286 and the red-as-red permission model
+   (msg#12290). Cross-fleet coordination for a proj-agent
+   reaches it via DM from `head-mba` / `fleet-lead` or via
+   the one channel it owns; there is no fleet-wide broadcast
+   path.
+4. **transfer dir** `~/.scitex/orochi/transfer/proj-<topic>/`
+   (note: `proj-` prefix, matching the canonical channel
+   and agent naming from ywatanabe msg#12286) with
+   `MANIFEST.md` + `SCOPE.md` + curated memory subset
    (Bucket A global + Bucket B paper-specific, no Bucket C
    host-operational — those stay with the parent head).
 5. **Do NOT launch** until ywatanabe GO. Drafts sit in the
    drafts directory, reviewed by skill-manager (consistency
    check against this skill and `fleet-role-taxonomy.md`).
-6. **Hub-side allowlist update** for the `#paper-<topic>`
+6. **Hub-side allowlist update** for the `#proj-<topic>`
    channel so the new agent can post. Dispatched to
    head-ywata-note-win (hub lane) at launch time.
 7. **Launch via `scitex-agent-container start <agent>`** from
    the owning host. First boot runs the bootstrap hook that
    imports the transfer-dir memory.
-8. **Post-launch announce** in `#agent` + `#paper-<topic>`,
-   then idle for dispatch.
+8. **Post-launch announce** in the agent's own `#proj-<topic>`
+   channel (+ `#heads` if the launch needs to be visible to
+   the fleet coordinator mesh), then idle for dispatch.
+
+### 9a. Known trade-off — narrow-sub agents cannot ack `@all`
+
+A proj-agent that subscribes only to `#proj-<topic>` is
+**invisible to fleet-wide interrupts**. `fleet-communication-
+discipline.md` rule 10 (`@all` 30-second ack required) cannot
+reach it through any channel it is subscribed to. This is a
+deliberate trade-off of the narrow-subscription policy: the
+fleet-wide broadcast surface is traded away for focused
+context, and the proj-agent is reachable instead via DM from
+the fleet coordinators (`head-mba`, `fleet-lead`, the owning
+`head-<host>`) or via the one channel it owns.
+
+Operational implications:
+
+- **No rule 10 exception is needed** at the individual rule
+  level; the proj-agent's non-response to `@all` is not a
+  violation because the broadcast never reached it.
+- **Fleet-coordinator agents** (`head-*`, `fleet-lead`,
+  `mamba-todo-manager-mba`, etc.) **must** maintain at least
+  one shared channel in common with every proj-agent they
+  dispatch to, or a DM path. Broadcast-only dispatch is not
+  viable for narrow-sub agents.
+- **Emergency escalation** (e.g. "all agents stop work
+  immediately") cannot use `@all` for this class. It must go
+  via the coordinator fan-out — coordinator receives the
+  stop directive, then DMs each proj-agent it owns. Plan
+  incident-response runbooks accordingly.
+- **Red-as-red permission model** (ywatanabe msg#12290): a
+  future hub-side 4-level permission API (none / readonly /
+  writable / subscribed) may add `readonly` grants to
+  `#agent` / `#heads` for proj-agents so they see coordinator
+  chatter without being able to post. That would partially
+  close the rule-10 gap at the observation layer without
+  changing the narrow write-surface. Out of scope for this
+  skill; tracked as follow-up under the hub UI lane.
 
 ## 10. Relation to other skills
 
