@@ -1,0 +1,18 @@
+[Unit]
+Description=SciTeX Orochi — tmux paste-buffer / permission-prompt auto-unstick (Phase 1 fleet-health MVP)
+Documentation=https://github.com/ywatanabe1989/scitex-orochi/blob/develop/deployment/fleet/tmux-unstick-README.md
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -lc 'exec %h/proj/scitex-orochi/deployment/fleet/tmux-unstick.sh --once'
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+StandardOutput=append:%h/.scitex/orochi/logs/tmux-unstick.service.out.log
+StandardError=append:%h/.scitex/orochi/logs/tmux-unstick.service.err.log
+Environment=LOG_FILE=%h/.scitex/orochi/logs/tmux-unstick.ndjson
+Environment=LANG=en_US.UTF-8
+
+[Install]
+WantedBy=default.target

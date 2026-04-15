@@ -1,0 +1,12 @@
+[Unit]
+Description=SciTeX Orochi — tmux unstick timer (Phase 1 fleet-health MVP, 60s cadence)
+Documentation=https://github.com/ywatanabe1989/scitex-orochi/blob/develop/deployment/fleet/tmux-unstick-README.md
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=60s
+AccuracySec=5s
+Unit=scitex-orochi-tmux-unstick.service
+
+[Install]
+WantedBy=default.target
