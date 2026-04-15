@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.scitex.orochi.tmux-unstick.plist — Phase 1 fleet-health MVP
+
+  Runs the tmux-unstick-poc (canonical: deployment/fleet/tmux-unstick.sh) every 60 s on macOS.
+  Detects paste-buffer-unsent and permission-prompt wedge patterns in any
+  tmux pane on this host, sends idempotent Enter / "2" keystrokes to
+  unstick them, and logs detection+recovery events as NDJSON.
+
+  ywatanabe msg#11943 mandate: periodic handshake + wakeup for 24h
+  operation. This plist is the MBA-side deployment; NAS / WSL use
+  systemd user timers, Spartan uses a user-space while loop (no sudo
+  available). See deployment/fleet/tmux-unstick-README.md for the full
+  deployment matrix.
+
+  Install (one-time, manual):
+    ln -s ~/proj/scitex-orochi/deployment/fleet/launchd/com.scitex.orochi.tmux-unstick.plist \
+          ~/Library/LaunchAgents/com.scitex.orochi.tmux-unstick.plist
+    launchctl load -w ~/Library/LaunchAgents/com.scitex.orochi.tmux-unstick.plist
+
+  Verify:
+    launchctl list | grep tmux-unstick
+    tail -f ~/.scitex/orochi/logs/tmux-unstick.ndjson
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.scitex.orochi.tmux-unstick</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>exec /Users/ywatanabe/proj/scitex-orochi/deployment/fleet/tmux-unstick.sh --once</string>
+  </array>
+
+  <key>StartInterval</key>
+  <integer>60</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>Nice</key>
+  <integer>10</integer>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/ywatanabe</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/ywatanabe/.scitex/orochi/logs/tmux-unstick.launchd.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/ywatanabe/.scitex/orochi/logs/tmux-unstick.launchd.err.log</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/opt/homebrew/sbin:/usr/sbin:/sbin</string>
+    <key>HOME</key>
+    <string>/Users/ywatanabe</string>
+    <key>LANG</key>
+    <string>en_US.UTF-8</string>
+    <key>LOG_FILE</key>
+    <string>/Users/ywatanabe/.scitex/orochi/logs/tmux-unstick.ndjson</string>
+  </dict>
+</dict>
+</plist>
