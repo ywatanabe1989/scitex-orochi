@@ -261,6 +261,21 @@ function buildAttachmentsHtml(attachments) {
   return html;
 }
 
+/* Render unprocessed mermaid diagrams within a given root element.
+ * Calls mermaid.run() on all .mermaid-rendered divs that haven't been
+ * processed yet (no data-mermaid-processed attribute). */
+function _renderMermaidIn(root) {
+  if (typeof window.mermaid === 'undefined') return;
+  var nodes = (root || document).querySelectorAll('.mermaid-rendered:not([data-mermaid-processed])');
+  if (!nodes.length) return;
+  nodes.forEach(function(n) { n.setAttribute('data-mermaid-processed', '1'); });
+  try {
+    window.mermaid.run({ nodes: nodes });
+  } catch (e) {
+    /* Non-fatal: diagram parse error shows in the rendered div */
+  }
+}
+
 function appendMessage(msg) {
   /* Filter hub-internal system messages from the feed (msg#10315).
    * Hub sends mention_reply messages (sender="hub") as status responses
@@ -322,13 +337,24 @@ function appendMessage(msg) {
     /```([\w.+-]*)[ \t]*\n([\s\S]*?)```/g,
     function (_, lang, code) {
       var trimmed = code.replace(/\n$/, "");
-      var hljsCls = lang ? ' class="language-' + lang + '"' : "";
-      var langBadge = lang
-        ? '<span class="code-lang-badge">' + escapeHtml(lang) + '</span>'
-        : "";
-      var html =
-        '<div class="code-block-wrap">' + langBadge +
-        '<pre class="code-block"><code' + hljsCls + ">" + trimmed + "</code></pre></div>";
+      var html;
+      if (lang && lang.toLowerCase() === 'mermaid') {
+        /* Mermaid diagrams: render as SVG inline with a raw-script toggle */
+        html =
+          '<div class="mermaid-container">' +
+          '<div class="mermaid-rendered">' + trimmed + '</div>' +
+          '<pre class="mermaid-raw" style="display:none"><code>' + trimmed + '</code></pre>' +
+          '<button class="mermaid-toggle">Show raw</button>' +
+          '</div>';
+      } else {
+        var hljsCls = lang ? ' class="language-' + lang + '"' : "";
+        var langBadge = lang
+          ? '<span class="code-lang-badge">' + escapeHtml(lang) + '</span>'
+          : "";
+        html =
+          '<div class="code-block-wrap">' + langBadge +
+          '<pre class="code-block"><code' + hljsCls + ">" + trimmed + "</code></pre></div>";
+      }
       _codeBlocks.push(html);
       return "\x00" + (_codeBlocks.length - 1) + "\x00";
     }
@@ -695,6 +721,8 @@ function appendMessage(msg) {
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   container.appendChild(el);
+  /* Render any mermaid diagrams inside the newly appended message */
+  _renderMermaidIn(el);
   /* todo#274 Part 2: re-apply multi-select feed filter so newly-arrived
    * messages get hidden if they don't match the current selection. */
   if (typeof applyFeedFilter === "function") {
@@ -1180,11 +1208,27 @@ document.addEventListener("click", function (e) {
     fullEl.style.display = "block";
     previewEl.style.display = "none";
     btn.textContent = "Show less";
+    /* Render mermaid diagrams that became visible in the expanded section */
+    _renderMermaidIn(fullEl);
   } else {
     fullEl.style.display = "none";
     previewEl.style.display = "block";
     btn.textContent = "Show more (" + extra + " more lines)";
   }
+});
+
+/* Mermaid raw-script toggle — delegated click handler */
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest(".mermaid-toggle");
+  if (!btn) return;
+  e.preventDefault();
+  var container = btn.closest(".mermaid-container");
+  if (!container) return;
+  var rawEl = container.querySelector(".mermaid-raw");
+  if (!rawEl) return;
+  var isHidden = rawEl.style.display === "none" || rawEl.style.display === "";
+  rawEl.style.display = isHidden ? "block" : "none";
+  btn.textContent = isHidden ? "Hide raw" : "Show raw";
 });
 
 /* Defensive blur watchdog (todo#225 second-order regression).
