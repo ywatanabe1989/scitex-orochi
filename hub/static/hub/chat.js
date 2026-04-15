@@ -537,6 +537,7 @@ function appendMessage(msg) {
   if (isFolded) {
     var preview = lines.slice(0, MAX_LINES).join("<br>");
     var full = highlightedContent;
+    var extraLines = totalLines - MAX_LINES;
     highlightedContent =
       '<div class="msg-preview">' +
       preview +
@@ -544,11 +545,8 @@ function appendMessage(msg) {
       '<div class="msg-full" style="display:none">' +
       full +
       "</div>" +
-      "<button class=\"msg-fold-btn\" tabindex=\"-1\" onclick=\"event.preventDefault();this.previousElementSibling.style.display='block';this.previousElementSibling.previousElementSibling.style.display='none';this.textContent='Show less';var b=this;b.onclick=function(){event.preventDefault();b.previousElementSibling.style.display='none';b.previousElementSibling.previousElementSibling.style.display='block';b.textContent='Show more (" +
-      (totalLines - MAX_LINES) +
-      " more lines)';b.onclick=arguments.callee}\">" +
-      "Show more (" +
-      (totalLines - MAX_LINES) +
+      '<button class="msg-fold-btn" tabindex="-1" data-extra="' + extraLines + '">Show more (' +
+      extraLines +
       " more lines)</button>";
   }
   /* Inline reply reference — if this message has metadata.reply_to
@@ -1164,6 +1162,30 @@ document.addEventListener("mousedown", function (e) {
     e.preventDefault();
   }
 }, true);
+
+/* Show more / Show less toggle for long messages.
+ * Uses delegated click on document to handle dynamically inserted buttons.
+ * Replaces the previous fragile inline onclick with arguments.callee. */
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest(".msg-fold-btn");
+  if (!btn) return;
+  e.preventDefault();
+  var parent = btn.parentElement;
+  if (!parent) return;
+  var previewEl = parent.querySelector(".msg-preview");
+  var fullEl = parent.querySelector(".msg-full");
+  if (!previewEl || !fullEl) return;
+  var extra = btn.getAttribute("data-extra") || "?";
+  if (fullEl.style.display === "none") {
+    fullEl.style.display = "block";
+    previewEl.style.display = "none";
+    btn.textContent = "Show less";
+  } else {
+    fullEl.style.display = "none";
+    previewEl.style.display = "block";
+    btn.textContent = "Show more (" + extra + " more lines)";
+  }
+});
 
 /* Defensive blur watchdog (todo#225 second-order regression).
  * msg#6692: ywatanabe says focus drops *after an idle period when a
