@@ -478,9 +478,11 @@ function _hideChannelCtxMenu() {
 function openChannelExport(ch) {
   var modal = document.getElementById("channel-export-modal");
   if (!modal) return;
-  var today = new Date().toISOString().slice(0, 10);
-  document.getElementById("ch-export-from").value = today;
-  document.getElementById("ch-export-to").value = today;
+  var now = new Date();
+  var todayStart = now.toISOString().slice(0, 10) + "T00:00";
+  var todayNow = now.toISOString().slice(0, 16);
+  document.getElementById("ch-export-from").value = todayStart;
+  document.getElementById("ch-export-to").value = todayNow;
   document.getElementById("ch-export-format").value = "json";
   modal.setAttribute("data-channel", ch || currentChannel || "");
   document.getElementById("ch-export-title").textContent = "Export " + (ch || currentChannel || "channel");
