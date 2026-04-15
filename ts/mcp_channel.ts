@@ -161,7 +161,10 @@ async function pushRegistryHeartbeat(): Promise<void> {
   );
   let meta: Record<string, unknown> = {};
   try {
-    const result = spawnSync(agentMetaPath, [OROCHI_AGENT], {
+    // Use .venv python, not system python (ywatanabe msg#12584)
+    const venvPython = join(homedir(), ".venv", "bin", "python3");
+    const python = existsSync(venvPython) ? venvPython : "python3";
+    const result = spawnSync(python, [agentMetaPath, OROCHI_AGENT], {
       encoding: "utf-8",
       timeout: 5000,
     });
