@@ -1687,6 +1687,13 @@ def api_agents_register(request):
             "usage_disabled_reason": body.get("usage_disabled_reason", ""),
             "has_extra_usage_enabled": body.get("has_extra_usage_enabled"),
             "subscription_created_at": body.get("subscription_created_at", ""),
+            # Quota telemetry from statusline parsing
+            "quota_5h_pct": body.get("quota_5h_pct"),
+            "quota_5h_remaining": body.get("quota_5h_remaining", ""),
+            "quota_weekly_pct": body.get("quota_weekly_pct"),
+            "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
+            "statusline_model": body.get("statusline_model", ""),
+            "account_email": body.get("account_email", ""),
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev
@@ -1695,6 +1702,10 @@ def api_agents_register(request):
     if body.get("subagent_count") is not None:
         from hub.registry import set_subagent_count
         set_subagent_count(name, int(body.get("subagent_count") or 0))
+    # Full subagent list push (Lane B #132/#155)
+    if body.get("subagents") is not None:
+        from hub.registry import set_subagents
+        set_subagents(name, body.get("subagents") or [])
     update_heartbeat(name, metrics=body.get("metrics") or {})
     task = body.get("current_task") or ""
     if task:
