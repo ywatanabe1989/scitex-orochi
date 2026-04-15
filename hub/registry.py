@@ -109,6 +109,21 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 else prev.get("has_extra_usage_enabled")
             ),
             "subscription_created_at": info.get("subscription_created_at") or prev.get("subscription_created_at") or "",
+            # Quota telemetry from statusline parsing
+            "quota_5h_pct": (
+                info.get("quota_5h_pct")
+                if info.get("quota_5h_pct") is not None
+                else prev.get("quota_5h_pct")
+            ),
+            "quota_5h_remaining": info.get("quota_5h_remaining") or prev.get("quota_5h_remaining") or "",
+            "quota_weekly_pct": (
+                info.get("quota_weekly_pct")
+                if info.get("quota_weekly_pct") is not None
+                else prev.get("quota_weekly_pct")
+            ),
+            "quota_weekly_remaining": info.get("quota_weekly_remaining") or prev.get("quota_weekly_remaining") or "",
+            "statusline_model": info.get("statusline_model") or prev.get("statusline_model") or "",
+            "account_email": info.get("account_email") or prev.get("account_email") or "",
         }
 
 
@@ -409,6 +424,13 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "usage_disabled_reason": a.get("usage_disabled_reason", ""),
                 "has_extra_usage_enabled": a.get("has_extra_usage_enabled"),
                 "subscription_created_at": a.get("subscription_created_at", ""),
+                # Quota telemetry from statusline parsing (agent_meta.py)
+                "quota_5h_pct": a.get("quota_5h_pct"),
+                "quota_5h_remaining": a.get("quota_5h_remaining", ""),
+                "quota_weekly_pct": a.get("quota_weekly_pct"),
+                "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
+                "statusline_model": a.get("statusline_model", ""),
+                "account_email": a.get("account_email", ""),
             }
         )
     return result
