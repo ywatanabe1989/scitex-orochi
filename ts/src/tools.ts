@@ -137,10 +137,18 @@ export async function handleHistory(args: {
   }
 
   const formatted = messages
-    .map(
-      (m) =>
-        `[${m.ts}] ${m.sender}${m.id !== null ? ` (msg#${m.id})` : ""}: ${m.content}`,
-    )
+    .map((m) => {
+      let line = `[${m.ts}] ${m.sender}${m.id !== null ? ` (msg#${m.id})` : ""}: ${m.content}`;
+      const attachments = (m.metadata as any)?.attachments;
+      if (Array.isArray(attachments) && attachments.length > 0) {
+        const refs = attachments
+          .map((a: any) => `${a.filename || "file"} -> ${a.url || ""}`)
+          .filter((s: string) => s.includes("->"))
+          .join(", ");
+        if (refs) line += `\n[Attachments: ${refs}]`;
+      }
+      return line;
+    })
     .join("\n");
 
   return {
