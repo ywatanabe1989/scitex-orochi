@@ -5,12 +5,25 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-try:
-    from importlib.metadata import version as _pkg_version
+def _dynamic_version():
+    """Compute version from git commit count (ywatanabe msg#12144)."""
+    import subprocess
+    try:
+        count = subprocess.check_output(
+            ["git", "rev-list", "--count", "HEAD"],
+            cwd=str(BASE_DIR),
+            stderr=subprocess.DEVNULL,
+        ).strip().decode()
+        return f"0.12.{count}"
+    except Exception:
+        pass
+    try:
+        from importlib.metadata import version as _pkg_version
+        return _pkg_version("scitex-orochi")
+    except Exception:
+        return "0.12.0"
 
-    OROCHI_VERSION = _pkg_version("scitex-orochi")
-except Exception:
-    OROCHI_VERSION = "0.6.8"
+OROCHI_VERSION = _dynamic_version()
 
 # Deployment build ID — set at container start or read from env.
 # Used by the dashboard to show a "new/updated" badge and verify deploys.
