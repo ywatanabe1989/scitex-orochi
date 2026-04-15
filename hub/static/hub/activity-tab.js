@@ -384,6 +384,18 @@ function _renderActivityCards(agents, grid) {
       var ctxClass = ctxPct < 50 ? "ctx-ok" : ctxPct < 80 ? "ctx-warn" : "ctx-hot";
       chips.push('<span class="activity-chip activity-chip-ctx ' + ctxClass + '" title="context usage">ctx ' + ctxPct.toFixed(1) + '%</span>');
     }
+    var q5 = a.quota_5h_pct != null ? Number(a.quota_5h_pct) : null;
+    var qw = a.quota_weekly_pct != null ? Number(a.quota_weekly_pct) : null;
+    if (q5 != null) {
+      var q5Class = q5 < 50 ? "ctx-ok" : q5 < 80 ? "ctx-warn" : "ctx-hot";
+      var q5Rem = a.quota_5h_remaining ? " (" + escapeHtml(a.quota_5h_remaining) + ")" : "";
+      chips.push('<span class="activity-chip activity-chip-ctx ' + q5Class + '" title="5h quota">5h ' + q5.toFixed(0) + '%' + q5Rem + '</span>');
+    }
+    if (qw != null) {
+      var qwClass = qw < 50 ? "ctx-ok" : qw < 80 ? "ctx-warn" : "ctx-hot";
+      var qwRem = a.quota_weekly_remaining ? " (" + escapeHtml(a.quota_weekly_remaining) + ")" : "";
+      chips.push('<span class="activity-chip activity-chip-ctx ' + qwClass + '" title="weekly quota">wk ' + qw.toFixed(0) + '%' + qwRem + '</span>');
+    }
     if (model) chips.push('<span class="activity-chip activity-chip-model" title="model">' + model + '</span>');
     if (multiplexer) chips.push('<span class="activity-chip activity-chip-mux" title="multiplexer">' + multiplexer + '</span>');
     if (uptimeStr) {
