@@ -42,6 +42,7 @@ import {
   handleSubagents,
   handleTask,
   handleUploadMedia,
+  handleExportChannel,
 } from "./src/tools.js";
 import { hostname, homedir } from "os";
 import { readFileSync, existsSync } from "fs";
@@ -615,6 +616,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "self_command") return handleSelfCommand(args as any);
   if (name === "dm_list") return handleDmList(args as any);
   if (name === "dm_open") return handleDmOpen(args as any);
+  if (name === "export_channel") return handleExportChannel(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

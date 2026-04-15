@@ -1263,3 +1263,34 @@ export async function handleSelfCommand(args: {
   const delay = args?.delay_ms ?? 6000;
   return scheduleSelfCommand(command, delay, `self_command(${slashName})`);
 }
+
+export async function handleExportChannel(args: {
+  chat_id: string;
+  format?: string;
+  from?: string;
+  to?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const chatId = args.chat_id || "#general";
+  const format = args.format || "txt";
+  const params = new URLSearchParams();
+  params.set("format", format);
+  if (args.from) params.set("from", args.from);
+  if (args.to) params.set("to", args.to);
+  if (OROCHI_TOKEN) params.set("token", OROCHI_TOKEN);
+
+  const url = `${httpBase}/api/channels/${encodeURIComponent(chatId)}/export/?${params.toString()}`;
+  try {
+    const resp = await fetch(url, { headers: buildFetchHeaders() });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [{ type: "text", text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}` }],
+      };
+    }
+    const text = await resp.text();
+    return { content: [{ type: "text", text }] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { content: [{ type: "text", text: `Error: ${msg}` }] };
+  }
+}
