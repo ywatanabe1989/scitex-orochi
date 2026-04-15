@@ -24,7 +24,7 @@ Each of those failures cost ywatanabe's attention, which is the fleet's scarcest
 | `#escalation` | Critical alerts that need human attention when automated resurrect/healing fails. | Agents only; cost of triggering is high. | Minor warnings. |
 | `#neurovista`, `#grant`, etc. | Project-specific. Opt-in via yaml subscription. | Role-matched agents only. | General chatter. |
 
-## The sixteen discipline rules
+## The seventeen discipline rules
 
 ### 1. Ack once, not N times
 
@@ -458,6 +458,56 @@ Acknowledgement ("ack", "thanks", "了解", "understood", "got it") must use the
 The 2026-04-14 incident got a same-hour patch: `hpc-etiquette.md` shipped (commit `e080911`), the bash guardrail snippet was documented, and ywatanabe replied to Sean in the same email thread committing to preventive measures. Future incidents must be patched at least this fast; a second Sean Crosby email means the fleet has a trust problem worse than the technical one.
 
 See the full skill at `scitex-orochi/_skills/scitex-orochi/hpc-etiquette.md` for the complete absolute-rules list, binary-location cascade, inode-aware operations section, SLURM etiquette, login-node policy, network etiquette, storage hygiene, and the exact refactor for the offending `find / -name pdflatex` command.
+
+### 17. English-only for all committed artifacts
+
+2026-04-15 directive (ywatanabe in `#paper-neurovista`, relayed fleet-wide by head-mba msg#12217):
+
+> 研究成果物だけでなく、コードやドキュメントなどは全て英語でお願いします。日本語はここでの私とのやり取りのみで。
+
+Translation: *"Not just research outputs, but all code and documentation must be in English. Japanese is only for our exchanges here."*
+
+**Rule**: every artifact the fleet commits to any repository — code, docs, commit messages, PR titles and bodies, issue titles and bodies, skill files, CLAUDE.md appendices, in-repo memory files, research manuscripts, test assertions, log messages, error strings — must be written in **English**.
+
+Japanese (and any other non-English language) is reserved exclusively for the **conversational layer** with ywatanabe: `#ywatanabe` posts where ywatanabe writes in Japanese, DMs where ywatanabe initiates in Japanese, and voice-transcribed replies where the input is Japanese. The conversational layer is not a committed artifact; it is a human↔fleet interface, and matching ywatanabe's language is correct behavior there.
+
+**Rationale** (why the split is structural, not cosmetic):
+
+1. **Searchability.** English is the lingua franca of the scientific and software-engineering corpus the fleet indexes against. A Japanese commit message or issue body is effectively unsearchable to any external scitex maintainer, partner university, or pharma collaborator who might ingest the repo later. The committed artifact is the long-term memory of the project; the conversational layer is the short-term memory of today's meeting.
+2. **Diff reviewability.** Mixed-language commits force reviewers to code-switch mid-PR, which slows review and increases the chance of accepting a change without understanding it. One-language commits keep the review cognitive load minimal.
+3. **Tool compatibility.** Many static analysis tools (linters, spell-checkers, CI NLP hooks, GitHub Copilot code review) assume English as the lingua franca of source text. Japanese inside code comments / docstrings degrades their signal silently.
+4. **Compliance with external reviewers.** Research manuscripts and compliance docs land in English venues (journals, IRBs, auditors). The committed form of an artifact is its publication form minus polish; starting in English removes the translation step.
+
+**What counts as "committed artifact"** (English-only):
+- Files in `git log` or `git status`, in any repo the fleet controls.
+- Commit messages (subject line, body, `Co-Authored-By` trailers).
+- PR titles and bodies on GitHub / similar.
+- Issue titles and bodies on GitHub / similar.
+- Comments on PRs and issues.
+- Skill files under `_skills/scitex-orochi/`, `_skills/scitex-agent-container/`.
+- `CLAUDE.md` appendices anywhere in the tree.
+- In-repo memory files (`memory/*.md`, `feedback_*.md`, `project_*.md`, etc.).
+- Research manuscripts under any repo (e.g. `proj/neurovista`, `proj/scitex-clew`).
+- Test files, docstrings, in-code comments, error messages, log strings.
+- `README.md` and its siblings in any language-framework subtree.
+
+**What counts as "conversational layer"** (Japanese OK):
+- Posts in `#ywatanabe` when ywatanabe is using Japanese.
+- DMs to or from ywatanabe in Japanese.
+- Voice-transcribed replies where the audio source was Japanese.
+- Ephemeral screen captures / transcripts that are not committed anywhere.
+- **Everything else defaults to English.** If in doubt, English.
+
+**Channels**:
+- `#agent`, `#progress`, `#escalation`, `#audit` — English. These are multi-agent lingua franca.
+- `#general`, `#ywatanabe` — **match ywatanabe's language**. If ywatanabe writes Japanese, Japanese is appropriate for the reply. If ywatanabe writes English, English. Don't impose the committed-artifact rule on the conversational channels.
+- Project channels (`#neurovista`, `#paper-*`) — English by default because they are the audit trail of the research lane, which must be readable by the paper's reviewers and collaborators.
+
+**Migration policy**: existing Japanese artifacts are **not** swept. They get translated opportunistically, as part of normal edits to the files. A dedicated sweep PR is not required and is discouraged — translation without a functional reason is churn. New work is English; old work moves to English when it's edited for another reason.
+
+**Empirical first-adopter**: head-nas msg#12214 caught this rule within minutes of ywatanabe posting it and adjusted `scitex-cloud#143`'s commit message and PR body from Japanese to English before merge. That is the baseline expectation — the rule applies at commit time, not as a cleanup after the fact.
+
+**Escalation**: if an agent is uncertain whether a specific artifact is "conversational layer" or "committed artifact", default to English. The cost of over-English-ing is zero; the cost of a Japanese commit that lands in a public repo is a publicly-visible trust signal that the fleet's discipline is not uniform.
 
 ## Visibility is existence
 
