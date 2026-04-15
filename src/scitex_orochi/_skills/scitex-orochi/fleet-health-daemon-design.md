@@ -452,6 +452,53 @@ recovery, not polling.
 
 ## 7. Phase 4 — Recovery action playbook
 
+### Motivating incident (2026-04-15 02:44 UTC)
+
+`head-nas` was reported as a silent agent in the 02:44 MBA sweep.
+Investigation (head-ywata-note-win msg#11854, head-mba msg#11855)
+found that head-nas was in a **compound failure state**:
+
+1. **False-negative on the dashboard** — the NAS side of
+   `agent_meta.py` had not been pulled to the latest version with
+   the statusline parsing fix (head-ywata-note-win 576ba08f), so
+   the `Agents` tab displayed stale / missing metadata for head-nas
+   regardless of actual liveness.
+2. **True-stuck underneath** — the live tmux pane on NAS was
+   blocked on a Claude Code permission prompt (`Esc to cancel ·
+   Tab to amend`, typical `1. Yes / 2. Yes, always allow / 3. No`
+   menu). Forward motion was genuinely blocked until someone sent
+   `2` + Enter.
+
+Neither symptom alone tells you "this agent is wedged":
+
+- The false-negative alone looks like an agent_meta.py bug
+  (cosmetic, not lethal).
+- The permission prompt alone, without the metadata staleness,
+  would have been immediately obvious in the dashboard and would
+  have been caught by the existing per-host tmux-unstick-poc
+  (head-mba msg#11824).
+
+**The compound of the two is what made head-nas appear "silently
+dead" for long enough to require a manual MBA sweep.** This is
+exactly the failure mode the fleet-health-daemon is meant to
+catch: the Layer 1 daemon on NAS would have emitted per-tick
+`pane_states` showing the permission-prompt match even when its
+own `agent_meta.py` was stale (the daemon is host-local, not
+dashboard-routed), and the Layer 2 ledger on any peer host would
+have seen the missed handshake within one tick. The Phase 4
+recovery playbook below (§7.1) has the exact `tmux send-keys "2"
+Enter` action already specified.
+
+Credit: this incident is the empirical reason §7.1 is scoped
+tightly on the permission-prompt pattern catalog and why §7.7
+(periodic resurrection sweep) reads the Layer 2 ledger rather
+than trusting dashboard-level "inactive" displays. The dashboard
+can lie; the daemon's NDJSON cannot, because it is written
+host-locally with no routing layer between the probe and the
+disk.
+
+### Playbook
+
 Per head-mba msg#11791, this is the canonical recovery playbook
 that the worker layer executes when breadcrumbs fire. It
 integrates the systematic + periodic resurrection that ywatanabe
