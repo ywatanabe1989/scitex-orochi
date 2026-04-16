@@ -118,6 +118,19 @@
   border-color: #4ecdc4;
   color: #4ecdc4;
 }
+#msg-webcam {
+  background: transparent;
+  border: 1px solid #333;
+  color: #999;
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 16px;
+}
+#msg-webcam:hover {
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
 
 /* Sketch Canvas */
 .sketch-overlay {
