@@ -151,6 +151,8 @@ def api_agent_detail(request, name: str):
           "liveness": str,
           "claude_md": str,
           "mcp_json": str,
+          "pane_state": str,
+          "stuck_prompt_text": str,
           "pane_text": str,
           "pane_text_source": "cached" | "unavailable",
           "channel_subs": [str, ...],
@@ -205,6 +207,15 @@ def api_agent_detail(request, name: str):
         # and similar secrets before pushing, but we redact again defense-in-depth
         # so any future push path that forgets still stays safe.
         "mcp_json": redact_secrets(agent.get("mcp_json") or ""),
+        # todo#418: agent decision-transparency for the Agents tab.
+        # `pane_state` is the classifier label agent_meta.py --push
+        # computes (`running` / `compose_pending_unsent` /
+        # `y_n_prompt` / `auth_error` / etc.); `stuck_prompt_text`
+        # is the verbatim prompt the agent is blocked on (empty
+        # when `pane_state == running`). Both are redacted defense-
+        # in-depth.
+        "pane_state": agent.get("pane_state") or "",
+        "stuck_prompt_text": redact_secrets(agent.get("stuck_prompt_text") or ""),
         "pane_text": pane_text,
         "pane_text_source": pane_text_source,
         "channel_subs": sorted({c for c in (agent.get("channels") or []) if c}),
