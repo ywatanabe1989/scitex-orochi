@@ -128,8 +128,8 @@ urlpatterns = [
     ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
-    # TODO stats (scitex-orochi#171)
-    path("api/todo/stats", _todo_stats_view.api_todo_stats, name="api-todo-stats"),
+    # TODO stats (scitex-orochi#171) — trailing slash to match fleet convention
+    path("api/todo/stats/", _todo_stats_view.api_todo_stats, name="api-todo-stats"),
     # Discovery
     path("api/discover/", views.api_discover, name="api-discover"),
     # File upload

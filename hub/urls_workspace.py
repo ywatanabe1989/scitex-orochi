@@ -9,6 +9,7 @@ from django.urls import include, path, re_path
 from django.views.static import serve as _serve_media
 
 from hub import views
+from hub.views import todo_stats as _todo_stats_view
 
 _sw_js_path = os.path.join(os.path.dirname(__file__), "static", "hub", "sw.js")
 
@@ -95,6 +96,7 @@ urlpatterns = [
     ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
+    path("api/todo/stats/", _todo_stats_view.api_todo_stats, name="api-todo-stats"),
     path("api/config/", views.api_config, name="api-config"),
     # Discovery
     path("api/discover/", views.api_discover, name="api-discover"),
