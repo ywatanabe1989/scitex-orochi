@@ -99,6 +99,7 @@ function _applyActivitySubTab(agents) {
   if (!grid) return;
   if (_activitySubTab === "overview") {
     /* Re-render overview cards */
+    grid.classList.remove("activity-grid-detail");
     _renderActivityCards(agents, grid);
     return;
   }
@@ -106,9 +107,11 @@ function _applyActivitySubTab(agents) {
     return a.name === _activitySubTab;
   });
   if (!agent) {
+    grid.classList.remove("activity-grid-detail");
     grid.innerHTML = '<p class="empty-notice">Agent not found.</p>';
     return;
   }
+  grid.classList.add("activity-grid-detail");
   _renderActivityAgentDetail(agent, grid);
 }
 
