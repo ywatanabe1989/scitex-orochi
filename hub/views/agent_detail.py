@@ -150,6 +150,7 @@ def api_agent_detail(request, name: str):
           "last_heartbeat": iso8601 | None,
           "liveness": str,
           "claude_md": str,
+          "mcp_json": str,
           "pane_text": str,
           "pane_text_source": "cached" | "unavailable",
           "channel_subs": [str, ...],
@@ -199,6 +200,11 @@ def api_agent_detail(request, name: str):
         "last_heartbeat": agent.get("last_heartbeat"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
         "claude_md": redact_secrets(agent.get("claude_md") or ""),
+        # todo#460: serve the workspace .mcp.json for the Agents tab viewer.
+        # agent_meta.py --push (dotfiles PR #71) already redacts SCITEX_OROCHI_TOKEN
+        # and similar secrets before pushing, but we redact again defense-in-depth
+        # so any future push path that forgets still stays safe.
+        "mcp_json": redact_secrets(agent.get("mcp_json") or ""),
         "pane_text": pane_text,
         "pane_text_source": pane_text_source,
         "channel_subs": sorted({c for c in (agent.get("channels") or []) if c}),
