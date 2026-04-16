@@ -2,6 +2,20 @@
 
 AgentConsumer writes to this registry on register/heartbeat/disconnect.
 The REST API reads from it for /api/agents and /api/stats.
+
+Active-session tracking (scitex-orochi#144 fix path 4):
+A single ``SCITEX_OROCHI_AGENT=<name>`` identity may have multiple
+WebSocket connections at once (a known race hazard — two Claude Code
+processes booting from the same yaml). The registry tracks the set of
+live connection IDs per agent in ``_connections[name]`` so:
+
+  - the dashboard can render a warning when ``active_sessions > 1``;
+  - ``unregister_agent()`` only marks offline when the LAST connection
+    drops, not when the first of N sibling sessions disconnects.
+
+The connection IDs are opaque strings (Django Channels' ``channel_name``
+attribute, unique per WebSocket); the registry treats them as
+identifiers, not as data.
 """
 
 import logging
@@ -12,6 +26,7 @@ log = logging.getLogger("orochi.registry")
 
 _lock = threading.Lock()
 _agents: dict[str, dict] = {}
+_connections: dict[str, set[str]] = {}
 
 # Agents with no heartbeat for this many seconds are auto-marked offline
 HEARTBEAT_TIMEOUT_S = 60
@@ -109,6 +124,12 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 else prev.get("has_extra_usage_enabled")
             ),
             "subscription_created_at": info.get("subscription_created_at") or prev.get("subscription_created_at") or "",
+            # scitex-orochi#144 fix path 4: how many WebSocket sessions are
+            # currently authenticated under this agent name. > 1 indicates
+            # a concurrent-instance race situation worth surfacing in the
+            # dashboard. The set of connection IDs is held separately in
+            # ``_connections`` and counted on read.
+            "active_sessions": _active_session_count(name),
             # Quota telemetry from statusline parsing
             "quota_5h_pct": (
                 info.get("quota_5h_pct")
@@ -251,12 +272,85 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
                 _agents[name]["metrics"] = metrics
 
 
+def register_connection(name: str, conn_id: str) -> int:
+    """Track a new WebSocket connection for ``name``.
+
+    Returns the resulting active-session count (i.e. how many connections
+    this agent now has, including the one just registered). The caller
+    can use this to detect concurrent-instance race situations
+    (scitex-orochi#144 fix path 4) and emit visibility warnings when
+    the count is > 1.
+
+    Connections are stored as opaque IDs in a per-agent set; passing the
+    same ``conn_id`` twice is a no-op (idempotent).
+    """
+    if not name or not conn_id:
+        return 0
+    with _lock:
+        conns = _connections.setdefault(name, set())
+        conns.add(conn_id)
+        return len(conns)
+
+
+def unregister_connection(name: str, conn_id: str) -> int:
+    """Remove a WebSocket connection for ``name``.
+
+    Returns the resulting active-session count after removal. When the
+    count reaches zero, the agent is marked offline (caller need not
+    invoke ``unregister_agent`` separately). When the count is still
+    >0 (a sibling session is still alive), the agent remains online.
+
+    This is the fix for the symmetric half of scitex-orochi#144: before
+    this change, the first-to-disconnect of N sibling sessions would
+    mark the agent offline even though other sessions were still alive.
+    """
+    if not name or not conn_id:
+        return _active_session_count(name)
+    with _lock:
+        conns = _connections.get(name)
+        if conns:
+            conns.discard(conn_id)
+            if not conns:
+                _connections.pop(name, None)
+        remaining = len(_connections.get(name, ()))
+        if remaining == 0 and name in _agents:
+            _agents[name]["status"] = "offline"
+            _agents[name]["offline_since"] = time.time()
+        return remaining
+
+
+def _active_session_count(name: str) -> int:
+    """Return the active-session count for ``name`` without acquiring the lock.
+
+    Caller must hold ``_lock`` if reading inside another locked region;
+    used internally + by ``get_agents()``.
+    """
+    return len(_connections.get(name, ()))
+
+
+def active_session_count(name: str) -> int:
+    """Public read of the active-session count for ``name`` (lock-acquiring)."""
+    with _lock:
+        return _active_session_count(name)
+
+
 def unregister_agent(name: str) -> None:
-    """Mark agent as offline and record the time it went offline."""
+    """Mark agent as offline and record the time it went offline.
+
+    Compatibility shim: pre-#144, ``AgentConsumer.disconnect()`` called
+    this directly. New flow uses ``unregister_connection(name, conn_id)``
+    which handles the offline transition only when the LAST connection
+    drops. This function preserves the old contract for callers that
+    don't have a connection_id (registry pruning, manual marking, etc.).
+    """
     with _lock:
         if name in _agents:
             _agents[name]["status"] = "offline"
             _agents[name]["offline_since"] = time.time()
+        # Also clear any tracked connections; this is the "force offline"
+        # semantic. If the caller meant a single-session disconnect, they
+        # should use unregister_connection instead.
+        _connections.pop(name, None)
 
 
 def _cleanup_locked() -> None:
@@ -295,6 +389,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
     """
     with _lock:
         _cleanup_locked()
+        # Refresh active_sessions on read so the count reflects the latest
+        # connect/disconnect events, not just the last register call.
+        # scitex-orochi#144 fix path 4.
+        for n, a in _agents.items():
+            a["active_sessions"] = _active_session_count(n)
         agents = list(_agents.values())
     if workspace_id is not None:
         agents = [a for a in agents if a.get("workspace_id") == workspace_id]
@@ -390,6 +489,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     else None
                 ),
                 "metrics": a.get("metrics", {}),
+                # scitex-orochi#144 fix path 4: number of WebSocket
+                # sessions currently authenticated under this name.
+                # >1 indicates a concurrent-instance race situation.
+                "active_sessions": int(a.get("active_sessions", 0) or 0),
                 "current_task": a.get("current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
