@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=123">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=102">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=99">
@@ -190,8 +190,10 @@
                               autocomplete="off"
                               rows="3"></textarea>
                     <input type="file" id="file-input" style="display:none">
+                    <input type="file" id="webcam-capture-input" accept="image/*" capture="environment" style="display:none">
                     <div class="input-bar-actions">
                         <button id="msg-attach" type="button" title="Attach file" aria-label="Attach file">📎</button>
+                        <button id="msg-webcam" type="button" title="Take photo" aria-label="Take photo">📷</button>
                         <button id="msg-sketch" type="button" title="Draw sketch" aria-label="Draw sketch">✏️</button>
                         <span class="voice-split"><button id="msg-voice" class="voice-btn-hidden voice-split-mic" type="button" tabindex="-1" title="Voice input" aria-label="Voice input">🎤</button><button id="msg-voice-lang" class="voice-btn-hidden voice-split-lang" type="button" tabindex="-1" title="Voice language" aria-label="Voice language">EN</button></span>
                         <button id="msg-send" type="button" title="Send message">Send</button>
@@ -249,6 +251,7 @@
     <script src="{% static 'hub/reactions.js' %}?v=107"></script>
     <script src="{% static 'hub/threads.js' %}?v=122"></script>
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>
+    <script src="{% static 'hub/webcam.js' %}?v=1"></script>
     <script src="{% static 'hub/voice-input.js' %}?v=126"></script>
     <script src="{% static 'hub/tabs.js' %}?v=103"></script>
     <script src="{% static 'hub/init.js' %}?v=99"></script>
