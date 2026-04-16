@@ -97,6 +97,11 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
             "pane_tail_block": info.get("pane_tail_block") or prev.get("pane_tail_block") or "",
             "claude_md_head": info.get("claude_md_head") or prev.get("claude_md_head") or "",
+            # todo#460: full .mcp.json content for the Agents tab file viewer.
+            # agent_meta.py --push (dotfiles PR #71) sends a size-capped,
+            # token-redacted copy of the workspace `.mcp.json`. Absent for
+            # legacy WS-only agents; falls through to the empty string.
+            "mcp_json": info.get("mcp_json") or prev.get("mcp_json") or "",
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))
@@ -514,6 +519,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "pane_tail": a.get("pane_tail", ""),
                 "pane_tail_block": a.get("pane_tail_block", ""),
                 "claude_md_head": a.get("claude_md_head", ""),
+                "mcp_json": a.get("mcp_json", ""),
                 "mcp_servers": list(a.get("mcp_servers") or []),
                 # todo#265: OAuth account public metadata. Whitelist
                 # only — no tokens, credentials, or secrets are ever
