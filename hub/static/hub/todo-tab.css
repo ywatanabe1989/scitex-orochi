@@ -188,3 +188,194 @@
 .todo-state-closed {
   background: #8b949e;
 }
+
+/* ==================================================================== */
+/* TODO stats dashboard (#171) — cards / chart / label bars / tables    */
+/* ==================================================================== */
+.todo-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1e1e1e;
+  margin-bottom: 12px;
+}
+.todo-stats-cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.todo-stats-card {
+  flex: 1 1 120px;
+  min-width: 120px;
+  background: #1a1a1a;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 10px 14px;
+  text-align: center;
+}
+.todo-stats-val {
+  font-size: 22px;
+  font-weight: 600;
+  color: #ddd;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.todo-stats-lbl {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+.todo-stats-section {
+  background: #131313;
+  border: 1px solid #1e1e1e;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.todo-stats-h {
+  font-size: 11px;
+  font-weight: 600;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+/* Burn-down chart */
+.todo-chart {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+.todo-chart-axis {
+  font-size: 9px;
+  fill: #666;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.todo-chart-grid {
+  stroke: #1f1f1f;
+  stroke-width: 1;
+}
+.todo-chart-line {
+  fill: none;
+  stroke-width: 1.5;
+}
+.todo-chart-opened-line {
+  stroke: #ef4444;
+}
+.todo-chart-closed-line {
+  stroke: #3fb950;
+}
+.todo-chart-legend {
+  font-size: 10px;
+  color: #888;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+.todo-chart-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.todo-chart-swatch.todo-chart-opened {
+  background: #ef4444;
+}
+.todo-chart-swatch.todo-chart-closed {
+  background: #3fb950;
+}
+/* Label breakdown bar list */
+.todo-label-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.todo-label-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 30%) 1fr 40px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.todo-label-name {
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.todo-label-bar {
+  position: relative;
+  background: #1a1a1a;
+  height: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.todo-label-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4ecdc4, #3fa29b);
+}
+.todo-label-count {
+  font-size: 10px;
+  color: #888;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+/* By-repo + starvation tables */
+.todo-repo-table,
+.todo-starve-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.todo-repo-table th,
+.todo-starve-table th {
+  text-align: left;
+  color: #888;
+  font-weight: 500;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 6px;
+  border-bottom: 1px solid #222;
+}
+.todo-repo-table td,
+.todo-starve-table td {
+  padding: 4px 6px;
+  color: #ccc;
+  border-bottom: 1px solid #1a1a1a;
+  vertical-align: top;
+}
+.todo-repo-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #aaa;
+  white-space: nowrap;
+}
+.todo-starve-table a {
+  color: #4ecdc4;
+  text-decoration: none;
+}
+.todo-starve-table a:hover {
+  text-decoration: underline;
+}
+.todo-starve-table .todo-labels {
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.todo-starve-table .todo-label {
+  background: #222;
+  color: #aaa;
+}
