@@ -86,27 +86,34 @@
 }
 .todo-state-filter {
   display: flex;
-  gap: 8px;
-  padding: 10px 16px;
-  border-bottom: 1px solid #1e1e1e;
+  gap: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid #2a2a2a;
 }
 .todo-state-btn {
-  background: #1a1a1a;
-  color: #aaa;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  padding: 4px 12px;
-  font-size: 11px;
+  background: transparent;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 16px;
+  font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
+  margin-bottom: -1px;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
 }
 .todo-state-btn:hover {
-  background: #222;
-  color: #ddd;
+  color: #ccc;
+  background: #181818;
 }
 .todo-state-btn.active {
-  background: #4ecdc4;
-  color: #0a0a0a;
-  border-color: #4ecdc4;
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+  background: transparent;
   font-weight: 600;
 }
 .todo-item.closed .todo-title {
