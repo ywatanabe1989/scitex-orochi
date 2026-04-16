@@ -3,9 +3,9 @@
    addTag, activeTab, apiUrl */
 var _agentsTabInterval = null;
 var _selectedAgentTab = "overview"; /* "overview" or agent name */
-var _lastAgentsData = [];           /* cached for sub-tab renders */
-var _agentDetailCache = {};         /* name -> last /detail response */
-var _agentDetailInflight = {};      /* name -> bool (in-flight guard) */
+var _lastAgentsData = []; /* cached for sub-tab renders */
+var _agentDetailCache = {}; /* name -> last /detail response */
+var _agentDetailInflight = {}; /* name -> bool (in-flight guard) */
 
 /* Fetch the full per-agent detail payload (todo#420).
  *
@@ -18,7 +18,9 @@ async function _fetchAgentDetail(name) {
   if (_agentDetailInflight[name]) return;
   _agentDetailInflight[name] = true;
   try {
-    var res = await fetch(apiUrl("/api/agents/" + encodeURIComponent(name) + "/detail/"));
+    var res = await fetch(
+      apiUrl("/api/agents/" + encodeURIComponent(name) + "/detail/"),
+    );
     if (!res.ok) {
       console.warn("agent detail fetch failed:", name, res.status);
       return;
@@ -46,12 +48,23 @@ function _renderSubTabBar(agents) {
   var html = '<div class="agent-subtab-bar" id="agent-subtab-bar">';
   tabs.forEach(function (t) {
     var active = t.id === _selectedAgentTab ? " agent-subtab-active" : "";
-    var inactive = t.id !== "overview" && isAgentInactive(
-      agents.find(function(a){ return a.name === t.id; }) || {}
-    ) ? " agent-subtab-offline" : "";
+    var inactive =
+      t.id !== "overview" &&
+      isAgentInactive(
+        agents.find(function (a) {
+          return a.name === t.id;
+        }) || {},
+      )
+        ? " agent-subtab-offline"
+        : "";
     html +=
-      '<button class="agent-subtab' + active + inactive + '" ' +
-      'data-subtab="' + escapeHtml(t.id) + '">' +
+      '<button class="agent-subtab' +
+      active +
+      inactive +
+      '" ' +
+      'data-subtab="' +
+      escapeHtml(t.id) +
+      '">' +
       escapeHtml(t.label) +
       "</button>";
   });
@@ -78,7 +91,8 @@ function _bindSubTabBar(grid) {
  * staring at an empty panel while the detail call is in flight. */
 function _renderAgentDetail(a) {
   var d = _agentDetailCache[a.name] || {};
-  var liveness = d.liveness || a.liveness || (isAgentInactive(a) ? "offline" : "online");
+  var liveness =
+    d.liveness || a.liveness || (isAgentInactive(a) ? "offline" : "online");
   var statusColor = livenessColor(liveness);
   var role = d.role || a.role || "agent";
   var machine = d.machine || a.machine || "?";
@@ -108,39 +122,58 @@ function _renderAgentDetail(a) {
 
   var headerHtml =
     '<div class="agent-detail-header">' +
-    '<span class="status-dot-inline" style="background:' + statusColor + '"></span>' +
-    '<strong>' + escapeHtml(a.name) + '</strong>' +
+    '<span class="status-dot-inline" style="background:' +
+    statusColor +
+    '"></span>' +
+    "<strong>" +
+    escapeHtml(a.name) +
+    "</strong>" +
     ' <span class="agent-detail-meta">' +
-    escapeHtml(role) + " · " +
-    escapeHtml(machine) + " · " +
+    escapeHtml(role) +
+    " · " +
+    escapeHtml(machine) +
+    " · " +
     escapeHtml(model) +
     (ctxPct != null ? " · ctx " + Number(ctxPct).toFixed(1) + "%" : "") +
-    (d.uptime_seconds != null ? " · up " + _fmtDuration(d.uptime_seconds) : "") +
-    (currentTask ? ' · <em>' + escapeHtml(currentTask) + '</em>' : '') +
+    (d.uptime_seconds != null
+      ? " · up " + _fmtDuration(d.uptime_seconds)
+      : "") +
+    (currentTask ? " · <em>" + escapeHtml(currentTask) + "</em>" : "") +
     "</span>" +
     '<span class="agent-detail-actions">' +
-    '<button class="agent-detail-dm-btn" data-dm-name="' + escapeHtml(a.name) + '" ' +
-    'title="Open DM with ' + escapeHtml(a.name) + '">DM</button>' +
+    '<button class="agent-detail-dm-btn" data-dm-name="' +
+    escapeHtml(a.name) +
+    '" ' +
+    'title="Open DM with ' +
+    escapeHtml(a.name) +
+    '">DM</button>' +
     "</span>" +
     "</div>";
 
   var paneLabel =
-    'Terminal output <span class="agent-detail-pane-source">(' + escapeHtml(paneSource) + ')</span>';
+    'Terminal output <span class="agent-detail-pane-source">(' +
+    escapeHtml(paneSource) +
+    ")</span>";
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
-    '<div class="agent-detail-pane-label">' + paneLabel + "</div>" +
+    '<div class="agent-detail-pane-label">' +
+    paneLabel +
+    "</div>" +
     '<pre class="agent-detail-pane">' +
     (pane
       ? escapeHtml(pane)
       : '<span class="muted-cell">No terminal output available (pane_text_source=' +
-        escapeHtml(paneSource) + ")</span>") +
+        escapeHtml(paneSource) +
+        ")</span>") +
     "</pre>" +
     "</div>";
 
   var claudeMdHtml = claudeMd
     ? '<div class="agent-detail-section">' +
       '<div class="agent-detail-pane-label">CLAUDE.md</div>' +
-      '<pre class="agent-detail-claude-md">' + escapeHtml(claudeMd) + "</pre>" +
+      '<pre class="agent-detail-claude-md">' +
+      escapeHtml(claudeMd) +
+      "</pre>" +
       "</div>"
     : "";
 
@@ -159,7 +192,9 @@ function _renderAgentDetail(a) {
     }
   }
   var mcpJsonBodyHtml = mcpJson
-    ? '<pre class="agent-detail-mcp-json">' + escapeHtml(mcpJsonPretty) + "</pre>"
+    ? '<pre class="agent-detail-mcp-json">' +
+      escapeHtml(mcpJsonPretty) +
+      "</pre>"
     : '<div class="agent-detail-mcp-json-empty muted-cell">' +
       "No .mcp.json (agent has not heartbeated with agent_meta.py yet)" +
       "</div>";
@@ -175,25 +210,52 @@ function _renderAgentDetail(a) {
     "</details>" +
     "</div>";
 
-  var channelsHtml = "";
-  if (channels && channels.length) {
-    var unique = [...new Set(channels)];
-    channelsHtml =
-      '<div class="agent-detail-section">' +
-      '<span class="agent-detail-pane-label">Channels: </span>' +
-      unique.map(function(c){ return '<span class="ch-badge">' + escapeHtml(c) + "</span>"; }).join("") +
-      "</div>";
-  }
+  /* todo#channel-refactor — per-agent channel subscription controls.
+   * Admin-only server-side gating (API returns 403 for non-admins); the
+   * UI shows the controls universally and surfaces errors inline. */
+  var uniqueSubs = channels ? [...new Set(channels)] : [];
+  var badgesHtml = uniqueSubs
+    .map(function (c) {
+      return (
+        '<span class="ch-badge ch-badge-interactive" data-channel="' +
+        escapeHtml(c) +
+        '">' +
+        escapeHtml(c) +
+        '<button type="button" class="ch-badge-remove" title="Unsubscribe ' +
+        escapeHtml(c) +
+        '" data-agent="' +
+        escapeHtml(a.name) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '">&times;</button>' +
+        "</span>"
+      );
+    })
+    .join("");
+  var channelsHtml =
+    '<div class="agent-detail-section agent-detail-channels" data-agent="' +
+    escapeHtml(a.name) +
+    '">' +
+    '<span class="agent-detail-pane-label">Channels: </span>' +
+    '<span class="ch-badges">' +
+    badgesHtml +
+    "</span>" +
+    '<button type="button" class="ch-add-btn" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="Subscribe to a channel">+</button>' +
+    "</div>";
 
   var mcpHtml = "";
   if (mcpServers && mcpServers.length) {
     mcpHtml =
       '<div class="agent-detail-section">' +
       '<span class="agent-detail-pane-label">MCP servers: </span>' +
-      mcpServers.map(function(m) {
-        var label = typeof m === "string" ? m : (m.name || JSON.stringify(m));
-        return '<span class="ch-badge">' + escapeHtml(label) + "</span>";
-      }).join("") +
+      mcpServers
+        .map(function (m) {
+          var label = typeof m === "string" ? m : m.name || JSON.stringify(m);
+          return '<span class="ch-badge">' + escapeHtml(label) + "</span>";
+        })
+        .join("") +
       "</div>";
   }
 
@@ -227,27 +289,34 @@ function _renderAgentContent(grid) {
   if (!content) return;
 
   /* Update active state on tab bar */
-  grid.querySelectorAll(".agent-subtab").forEach(function(btn) {
+  grid.querySelectorAll(".agent-subtab").forEach(function (btn) {
     btn.classList.toggle(
       "agent-subtab-active",
-      btn.getAttribute("data-subtab") === _selectedAgentTab
+      btn.getAttribute("data-subtab") === _selectedAgentTab,
     );
   });
 
   if (_selectedAgentTab === "overview") {
     content.innerHTML = _buildOverviewHtml(_lastAgentsData);
     /* Re-bind click-to-filter on the newly rendered rows */
-    content.querySelectorAll(".agent-row[data-agent-name]").forEach(function(el) {
-      el.addEventListener("click", function() {
-        addTag("agent", el.getAttribute("data-agent-name"));
+    content
+      .querySelectorAll(".agent-row[data-agent-name]")
+      .forEach(function (el) {
+        el.addEventListener("click", function () {
+          addTag("agent", el.getAttribute("data-agent-name"));
+        });
       });
-    });
     return;
   }
 
-  var agent = _lastAgentsData.find(function(a){ return a.name === _selectedAgentTab; });
+  var agent = _lastAgentsData.find(function (a) {
+    return a.name === _selectedAgentTab;
+  });
   if (!agent) {
-    content.innerHTML = '<p class="empty-notice">Agent "' + escapeHtml(_selectedAgentTab) + '" not found.</p>';
+    content.innerHTML =
+      '<p class="empty-notice">Agent "' +
+      escapeHtml(_selectedAgentTab) +
+      '" not found.</p>';
     return;
   }
   content.innerHTML = _renderAgentDetail(agent);
@@ -264,7 +333,7 @@ function _renderAgentContent(grid) {
    * at least gets the agent pre-filtered into the feed. */
   var dmBtn = content.querySelector(".agent-detail-dm-btn");
   if (dmBtn) {
-    dmBtn.addEventListener("click", function(ev) {
+    dmBtn.addEventListener("click", function (ev) {
       ev.stopPropagation();
       var name = dmBtn.getAttribute("data-dm-name");
       try {
@@ -272,43 +341,148 @@ function _renderAgentContent(grid) {
           window.openDmWithAgent(name);
           return;
         }
-        document.dispatchEvent(new CustomEvent("orochi:open-dm", {
-          detail: { agent: name },
-        }));
+        document.dispatchEvent(
+          new CustomEvent("orochi:open-dm", {
+            detail: { agent: name },
+          }),
+        );
       } catch (_) {}
       if (typeof addTag === "function") addTag("agent", name);
     });
   }
+
+  _bindChannelControls(content);
+}
+
+/* ── Channel subscription controls (Phase 3) ────────────────────────── */
+async function _channelMembersRequest(method, agent, channel) {
+  var body = {
+    channel: channel,
+    username: "agent-" + agent,
+  };
+  if (method === "POST" || method === "PATCH") {
+    body.permission = "read-write";
+  }
+  var res = await fetch(apiUrl("/api/channel-members/"), {
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": _csrfTokenForChannels(),
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    var txt = await res.text().catch(function () {
+      return "";
+    });
+    throw new Error(res.status + ": " + txt.slice(0, 200));
+  }
+  return res.json();
+}
+
+function _csrfTokenForChannels() {
+  var m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+function _bindChannelControls(content) {
+  content.querySelectorAll(".ch-badge-remove").forEach(function (btn) {
+    btn.addEventListener("click", async function (ev) {
+      ev.stopPropagation();
+      var agent = btn.getAttribute("data-agent");
+      var channel = btn.getAttribute("data-channel");
+      if (!agent || !channel) return;
+      if (!confirm("Unsubscribe " + agent + " from " + channel + "?")) return;
+      try {
+        await _channelMembersRequest("DELETE", agent, channel);
+        _invalidateAgentDetail(agent);
+      } catch (e) {
+        alert("Unsubscribe failed: " + e.message);
+      }
+    });
+  });
+  content.querySelectorAll(".ch-add-btn").forEach(function (btn) {
+    btn.addEventListener("click", async function (ev) {
+      ev.stopPropagation();
+      var agent = btn.getAttribute("data-agent");
+      if (!agent) return;
+      var raw = prompt("Subscribe " + agent + " to which channel?", "#");
+      if (raw == null) return;
+      var channel = raw.trim();
+      if (!channel) return;
+      if (!channel.startsWith("#") && !channel.startsWith("dm:")) {
+        channel = "#" + channel;
+      }
+      try {
+        await _channelMembersRequest("POST", agent, channel);
+        _invalidateAgentDetail(agent);
+      } catch (e) {
+        alert("Subscribe failed: " + e.message);
+      }
+    });
+  });
+}
+
+function _invalidateAgentDetail(name) {
+  delete _agentDetailCache[name];
+  _fetchAgentDetail(name);
 }
 
 /* ── Overview HTML builder (extracted from renderAgentsTab) ─────────── */
 function _buildOverviewHtml(agents) {
   var machineMap = {};
-  agents.forEach(function(a) {
+  agents.forEach(function (a) {
     var m = a.machine || "unknown";
     if (!machineMap[m]) machineMap[m] = [];
     machineMap[m].push(a);
   });
-  var onlineCount = agents.filter(function(a){ return !isAgentInactive(a); }).length;
+  var onlineCount = agents.filter(function (a) {
+    return !isAgentInactive(a);
+  }).length;
   var offlineCount = agents.length - onlineCount;
   var purgeBtn =
     offlineCount > 0
       ? ' <button class="purge-btn" onclick="purgeStaleAgents()" title="Remove all offline agents">Purge offline (' +
-        offlineCount + ")</button>"
+        offlineCount +
+        ")</button>"
       : "";
   var summaryHtml =
     '<div class="agents-summary">' +
     '<span class="agents-count">' +
-    onlineCount + " online, " + offlineCount + " offline across " +
-    Object.keys(machineMap).length + " machine(s)" +
+    onlineCount +
+    " online, " +
+    offlineCount +
+    " offline across " +
+    Object.keys(machineMap).length +
+    " machine(s)" +
     "</span>" +
     purgeBtn +
-    Object.keys(machineMap).map(function(m) {
-      var online = machineMap[m].filter(function(a){ return a.status === "online"; }).length;
-      var total = machineMap[m].length;
-      var cls = online === total ? "machine-ok" : online > 0 ? "machine-warn" : "machine-off";
-      return '<span class="machine-badge ' + cls + '">' + escapeHtml(m) + " (" + online + "/" + total + ")</span>";
-    }).join("") +
+    Object.keys(machineMap)
+      .map(function (m) {
+        var online = machineMap[m].filter(function (a) {
+          return a.status === "online";
+        }).length;
+        var total = machineMap[m].length;
+        var cls =
+          online === total
+            ? "machine-ok"
+            : online > 0
+              ? "machine-warn"
+              : "machine-off";
+        return (
+          '<span class="machine-badge ' +
+          cls +
+          '">' +
+          escapeHtml(m) +
+          " (" +
+          online +
+          "/" +
+          total +
+          ")</span>"
+        );
+      })
+      .join("") +
     "</div>";
   var tableHtml =
     '<table class="agents-registry-table">' +
@@ -316,7 +490,7 @@ function _buildOverviewHtml(agents) {
     "<th>Pin</th><th></th><th>Icon</th><th>Status</th><th>Agent ID</th>" +
     "<th>Role</th><th>Host / Machine</th><th>Model</th><th>Mux</th>" +
     "<th>Ctx</th><th>Skills</th><th>PID</th><th>Channels</th>" +
-    "<th>Project</th><th>Workdir</th><th>Task</th><th>Subagents</th>" +
+    "<th>Project</th><th>Workdir</th><th>Pane</th><th>Task</th><th>Subagents</th>" +
     "<th>Config</th><th>Uptime</th><th>Last Activity</th><th>Last Seen</th>" +
     "</tr></thead><tbody>" +
     agents.map(buildAgentRow).join("") +
@@ -342,7 +516,7 @@ async function renderAgentsTab() {
     }
 
     /* Sort: online first, then offline */
-    agents.sort(function(a, b) {
+    agents.sort(function (a, b) {
       var aOff = isAgentInactive(a) ? 1 : 0;
       var bOff = isAgentInactive(b) ? 1 : 0;
       return aOff - bOff || a.name.localeCompare(b.name);
@@ -350,8 +524,12 @@ async function renderAgentsTab() {
     _lastAgentsData = agents;
 
     /* If selected tab no longer exists (agent departed), revert to overview */
-    if (_selectedAgentTab !== "overview" &&
-        !agents.find(function(a){ return a.name === _selectedAgentTab; })) {
+    if (
+      _selectedAgentTab !== "overview" &&
+      !agents.find(function (a) {
+        return a.name === _selectedAgentTab;
+      })
+    ) {
       _selectedAgentTab = "overview";
     }
 
@@ -378,18 +556,91 @@ async function renderAgentsTab() {
   }
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
 function livenessColor(liveness) {
   switch (liveness) {
-    case "online": return "#4ecdc4";
-    case "idle": return "#ffd93d";
-    case "stale": return "#ff8c42";
-    case "offline": return "#ef4444";
-    default: return "#888";
+    case "online":
+      return "#4ecdc4";
+    case "idle":
+      return "#ffd93d";
+    case "stale":
+      return "#ff8c42";
+    case "offline":
+      return "#ef4444";
+    default:
+      return "#888";
   }
+}
+
+/* todo#418: pane_state badge — maps classifier label to display color+icon.
+ * Labels are defined in pane_state.py (scitex-orochi/hub/utils/pane_state.py).
+ * Stuck states (y_n_prompt, auth_error, mcp_broken, compose_pending) use
+ * amber/red so they visually pop in the Agents tab row. */
+function paneStateColor(ps) {
+  switch (ps) {
+    case "running":
+      return "#4ecdc4";
+    case "waiting":
+      return "#ffd93d";
+    case "y_n_prompt":
+      return "#ff8c42";
+    case "auth_error":
+      return "#ef4444";
+    case "mcp_broken":
+      return "#ef4444";
+    case "compose_pending":
+      return "#ff8c42";
+    case "booting":
+      return "#888";
+    case "ghost":
+      return "#555";
+    case "dead":
+      return "#ef4444";
+    default:
+      return "#888";
+  }
+}
+
+function renderPaneStateBadge(paneState, stuckPromptText) {
+  if (!paneState) return '<span class="muted-cell">-</span>';
+  var color = paneStateColor(paneState);
+  var label = paneState.replace(
+    /_/g,
+    "\u2009",
+  ); /* thin space for readability */
+  var title = stuckPromptText
+    ? "Stuck at: " + stuckPromptText.slice(0, 200)
+    : paneState;
+  var badge =
+    '<span class="pane-state-badge" style="color:' +
+    color +
+    ";border-color:" +
+    color +
+    '" title="' +
+    escapeHtml(title) +
+    '">' +
+    escapeHtml(label) +
+    "</span>";
+  /* For stuck states, show a truncated excerpt of the prompt inline */
+  var promptHtml = "";
+  if (
+    stuckPromptText &&
+    ["y_n_prompt", "auth_error", "compose_pending"].indexOf(paneState) !== -1
+  ) {
+    promptHtml =
+      '<span class="pane-state-prompt muted-cell" title="' +
+      escapeHtml(stuckPromptText) +
+      '">' +
+      escapeHtml(stuckPromptText.slice(0, 60)) +
+      (stuckPromptText.length > 60 ? "\u2026" : "") +
+      "</span>";
+  }
+  return badge + promptHtml;
 }
 
 function formatUptime(isoStr) {
@@ -414,94 +665,182 @@ function buildAgentRow(a) {
   var statusLabel = liveness;
   var agentIcon = getSenderIcon(a.name, true, 24);
   var dotHtml =
-    '<span class="status-dot-inline" style="background:' + statusColor + '"></span>' +
-    '<span class="status-label" style="color:' + statusColor + '">' +
-    statusLabel + "</span>";
+    '<span class="status-dot-inline" style="background:' +
+    statusColor +
+    '"></span>' +
+    '<span class="status-label" style="color:' +
+    statusColor +
+    '">' +
+    statusLabel +
+    "</span>";
   var uniqueChannels = [...new Set(a.channels || [])];
-  var channelsHtml = uniqueChannels.map(function(c) {
-    return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
-  }).join("");
+  var channelsHtml = uniqueChannels
+    .map(function (c) {
+      return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
+    })
+    .join("");
   var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
   var pinTitle = a.pinned ? "Unpin" : "Pin";
   var pinBtnHtml =
-    '<button class="pin-btn' + (a.pinned ? " pinned" : "") +
-    '" data-pin-name="' + escapeHtml(a.name) +
-    '" title="' + pinTitle +
+    '<button class="pin-btn' +
+    (a.pinned ? " pinned" : "") +
+    '" data-pin-name="' +
+    escapeHtml(a.name) +
+    '" title="' +
+    pinTitle +
     '" onclick="event.stopPropagation();togglePinAgent(\'' +
-    escapeHtml(a.name).replace(/'/g, "\\'") + "', " + !a.pinned + ')">' +
-    pinIcon + "</button>";
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', " +
+    !a.pinned +
+    ')">' +
+    pinIcon +
+    "</button>";
   var rowClass =
     "agent-row" +
     (inactive ? " agent-inactive" : "") +
     (a.pinned && inactive ? " pinned-offline" : "");
   return (
-    '<tr class="' + rowClass + '" data-agent-name="' + escapeHtml(a.name) + '">' +
-    "<td>" + pinBtnHtml + "</td>" +
-    '<td><button class="kill-btn" data-kill-name="' + escapeHtml(a.name) +
+    '<tr class="' +
+    rowClass +
+    '" data-agent-name="' +
+    escapeHtml(a.name) +
+    '">' +
+    "<td>" +
+    pinBtnHtml +
+    "</td>" +
+    '<td><button class="kill-btn" data-kill-name="' +
+    escapeHtml(a.name) +
     '" title="Kill agent" onclick="event.stopPropagation();killAgent(\'' +
-    escapeHtml(a.name).replace(/'/g, "\\'") + "', this)\">\u2715</button>" +
-    '<button class="restart-btn" data-restart-name="' + escapeHtml(a.name) +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', this)\">\u2715</button>" +
+    '<button class="restart-btn" data-restart-name="' +
+    escapeHtml(a.name) +
     '" title="Restart agent" onclick="event.stopPropagation();restartAgent(\'' +
-    escapeHtml(a.name).replace(/'/g, "\\'") + "', this)\">\u21BB</button></td>" +
-    '<td class="agent-icon-cell avatar-clickable" data-avatar-agent="' + escapeHtml(a.name) +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "', this)\">\u21BB</button></td>" +
+    '<td class="agent-icon-cell avatar-clickable" data-avatar-agent="' +
+    escapeHtml(a.name) +
     '" title="Click to change avatar" onclick="event.stopPropagation();openAvatarPicker(\'' +
-    escapeHtml(a.name).replace(/'/g, "\\'") + "')\">" + agentIcon + "</td>" +
-    "<td>" + dotHtml + "</td>" +
-    '<td class="agent-id-cell">' + escapeHtml(cleanAgentName(a.agent_id || a.name)) + "</td>" +
-    "<td>" + escapeHtml(a.role || "agent") + "</td>" +
-    '<td class="monospace-cell">' + escapeHtml(a.machine || "unknown") + "</td>" +
-    '<td class="muted-cell">' + escapeHtml(a.model || "-") + "</td>" +
-    '<td class="muted-cell">' + escapeHtml(a.multiplexer || "-") + "</td>" +
-    '<td class="ctx-cell">' + renderContextBadge(a.context_pct) + "</td>" +
-    '<td class="skills-cell">' + renderSkillsBadge(a.skills_loaded) + "</td>" +
-    '<td class="pid-cell muted-cell">' + (a.pid ? String(a.pid) : "-") + "</td>" +
-    '<td class="small-cell">' + channelsHtml + "</td>" +
-    '<td class="muted-cell">' + escapeHtml(a.project || "-") + "</td>" +
-    '<td class="monospace-cell small-cell" title="' + escapeHtml(a.workdir || "") + '">' +
-    escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") + "</td>" +
-    '<td class="task-cell">' + escapeHtml(a.current_task || "-") + "</td>" +
+    escapeHtml(a.name).replace(/'/g, "\\'") +
+    "')\">" +
+    agentIcon +
+    "</td>" +
+    "<td>" +
+    dotHtml +
+    "</td>" +
+    '<td class="agent-id-cell">' +
+    escapeHtml(cleanAgentName(a.agent_id || a.name)) +
+    "</td>" +
+    "<td>" +
+    escapeHtml(a.role || "agent") +
+    "</td>" +
+    '<td class="monospace-cell">' +
+    escapeHtml(a.machine || "unknown") +
+    "</td>" +
+    '<td class="muted-cell">' +
+    escapeHtml(a.model || "-") +
+    "</td>" +
+    '<td class="muted-cell">' +
+    escapeHtml(a.multiplexer || "-") +
+    "</td>" +
+    '<td class="ctx-cell">' +
+    renderContextBadge(a.context_pct) +
+    "</td>" +
+    '<td class="skills-cell">' +
+    renderSkillsBadge(a.skills_loaded) +
+    "</td>" +
+    '<td class="pid-cell muted-cell">' +
+    (a.pid ? String(a.pid) : "-") +
+    "</td>" +
+    '<td class="small-cell">' +
+    channelsHtml +
+    "</td>" +
+    '<td class="muted-cell">' +
+    escapeHtml(a.project || "-") +
+    "</td>" +
+    '<td class="monospace-cell small-cell" title="' +
+    escapeHtml(a.workdir || "") +
+    '">' +
+    escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
+    "</td>" +
+    '<td class="pane-state-cell">' +
+    renderPaneStateBadge(a.pane_state, a.stuck_prompt_text) +
+    "</td>" +
+    '<td class="task-cell">' +
+    escapeHtml(a.current_task || "-") +
+    "</td>" +
     '<td class="small-cell">' +
     (a.subagents && a.subagents.length > 0
-      ? a.subagents.map(function(s) {
-          var sClass = s.status === "done" ? "subagent-done" : "subagent-running";
-          return '<span class="subagent-badge ' + sClass + '" title="' +
-            escapeHtml(s.task || "") + '">' + escapeHtml(s.name || "subagent") + '</span>';
-        }).join(" ")
-      : (a.subagent_count && a.subagent_count > 0
-          ? '<span class="subagent-badge subagent-running" title="' +
-            a.subagent_count + ' subagent(s)">\uD83D\uDD27 ' + a.subagent_count + '</span>'
-          : '<span class="muted-cell">-</span>')) +
+      ? a.subagents
+          .map(function (s) {
+            var sClass =
+              s.status === "done" ? "subagent-done" : "subagent-running";
+            return (
+              '<span class="subagent-badge ' +
+              sClass +
+              '" title="' +
+              escapeHtml(s.task || "") +
+              '">' +
+              escapeHtml(s.name || "subagent") +
+              "</span>"
+            );
+          })
+          .join(" ")
+      : a.subagent_count && a.subagent_count > 0
+        ? '<span class="subagent-badge subagent-running" title="' +
+          a.subagent_count +
+          ' subagent(s)">\uD83D\uDD27 ' +
+          a.subagent_count +
+          "</span>"
+        : '<span class="muted-cell">-</span>') +
     "</td>" +
     "<td>" +
     (a.claude_md
       ? '<button class="claude-md-btn" onclick="event.stopPropagation();toggleClaudeMd(this)" title="View CLAUDE.md">CLAUDE.md</button>'
       : '<span class="muted-cell">-</span>') +
     "</td>" +
-    '<td class="muted-cell" title="Registered: ' + escapeHtml(a.registered_at || "") + '">' +
-    formatUptime(a.registered_at) + "</td>" +
-    '<td class="muted-cell" title="' + escapeHtml(a.last_action || "") + '">' +
+    '<td class="muted-cell" title="Registered: ' +
+    escapeHtml(a.registered_at || "") +
+    '">' +
+    formatUptime(a.registered_at) +
+    "</td>" +
+    '<td class="muted-cell" title="' +
+    escapeHtml(a.last_action || "") +
+    '">' +
     (a.idle_seconds != null
-      ? '<span class="idle-badge idle-' + liveness + '">' + formatUptime(a.last_action) + ' ago</span>'
+      ? '<span class="idle-badge idle-' +
+        liveness +
+        '">' +
+        formatUptime(a.last_action) +
+        " ago</span>"
       : timeAgo(a.last_action)) +
     "</td>" +
-    '<td class="muted-cell" title="' + escapeHtml(a.last_heartbeat || "") + '">' +
-    (typeof relativeAge === "function" ? relativeAge(a.last_heartbeat) : timeAgo(a.last_heartbeat)) +
+    '<td class="muted-cell" title="' +
+    escapeHtml(a.last_heartbeat || "") +
+    '">' +
+    (typeof relativeAge === "function"
+      ? relativeAge(a.last_heartbeat)
+      : timeAgo(a.last_heartbeat)) +
     "</td>" +
     "</tr>" +
-    (function() {
+    (function () {
       var raw = a.pane_tail_block || a.pane_tail || "";
       if (!raw) return "";
       var lines = String(raw).split(/\r?\n/);
       var tail = lines.slice(-10).join("\n");
       return (
         '<tr class="agent-pane-row"><td colspan="22">' +
-        '<pre class="agent-pane-preview" title="Last 10 lines of ' + escapeHtml(a.name) + ' tmux pane">' +
-        escapeHtml(tail) + "</pre></td></tr>"
+        '<pre class="agent-pane-preview" title="Last 10 lines of ' +
+        escapeHtml(a.name) +
+        ' tmux pane">' +
+        escapeHtml(tail) +
+        "</pre></td></tr>"
       );
     })() +
     (a.claude_md
       ? '<tr class="claude-md-detail" style="display:none"><td colspan="22"><pre class="claude-md-content">' +
-        escapeHtml(a.claude_md) + "</pre></td></tr>"
+        escapeHtml(a.claude_md) +
+        "</pre></td></tr>"
       : "")
   );
 }
@@ -527,26 +866,37 @@ function renderContextBadge(pct) {
   else color = "#ef4444";
   return (
     '<span class="ctx-badge" title="Context window used" ' +
-    'style="background:' + color + ';color:#111;padding:1px 6px;' +
+    'style="background:' +
+    color +
+    ";color:#111;padding:1px 6px;" +
     'border-radius:10px;font-size:11px;font-weight:600">ctx ' +
-    n.toFixed(1) + "%</span>"
+    n.toFixed(1) +
+    "%</span>"
   );
 }
 
 function renderSkillsBadge(skills) {
   if (!skills || !skills.length) return '<span class="muted-cell">-</span>';
-  var tip = skills.map(function(s){ return String(s); }).join("\n");
+  var tip = skills
+    .map(function (s) {
+      return String(s);
+    })
+    .join("\n");
   return (
-    '<span class="skills-badge" title="' + escapeHtml(tip) + '" ' +
+    '<span class="skills-badge" title="' +
+    escapeHtml(tip) +
+    '" ' +
     'style="background:#2a3340;color:#9ecbff;padding:1px 6px;' +
-    'border-radius:10px;font-size:11px">skills:' + skills.length + "</span>"
+    'border-radius:10px;font-size:11px">skills:' +
+    skills.length +
+    "</span>"
   );
 }
 
 /* Auto-refresh: 3s when a per-agent tab is active, 1s for overview */
 function startAgentsTabRefresh() {
   stopAgentsTabRefresh();
-  _agentsTabInterval = setInterval(function() {
+  _agentsTabInterval = setInterval(function () {
     if (activeTab === "agents-tab") renderAgentsTab();
   }, 3000);
 }
