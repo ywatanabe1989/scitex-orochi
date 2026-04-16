@@ -25,12 +25,16 @@
   }
 })();
 
-/* Wall clock for screenshot timestamps (#342) */
+/* Wall clock for screenshot timestamps (#342).
+ * Render in the user's browser locale (no hard-coded TZ) per #155:
+ * timestamps are UTC at rest on the hub, displayed in local TZ at the UI.
+ * Pass `undefined` for locale so Intl uses the browser default; omit
+ * timeZone so it falls back to the user's system TZ. */
 (function () {
   var el = document.getElementById("wall-clock");
   if (!el) return;
   function tick() {
-    el.textContent = new Date().toLocaleString("ja-JP", {
+    el.textContent = new Date().toLocaleString(undefined, {
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
     });
