@@ -288,13 +288,22 @@ function _renderAgentDetail(a) {
       "</div>";
   }
 
+  var splitHtml =
+    '<div class="agent-detail-split">' +
+    '<div class="agent-detail-split-col">' +
+    paneHtml +
+    "</div>" +
+    '<div class="agent-detail-split-col">' +
+    claudeMdHtml +
+    "</div>" +
+    "</div>";
+
   return (
     '<div class="agent-detail-view">' +
     headerHtml +
-    paneHtml +
+    splitHtml +
     channelsHtml +
     mcpHtml +
-    claudeMdHtml +
     mcpJsonHtml +
     "</div>"
   );

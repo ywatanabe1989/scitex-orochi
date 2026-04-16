@@ -711,6 +711,34 @@
   color: #4ecdc4;
   border-color: #4ecdc4;
 }
+.agent-detail-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  align-items: stretch;
+}
+.agent-detail-split-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.agent-detail-split-col > .agent-detail-pane-wrap,
+.agent-detail-split-col > .agent-detail-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.agent-detail-split-col .agent-detail-pane,
+.agent-detail-split-col .agent-detail-claude-md {
+  flex: 1 1 auto;
+}
+@media (max-width: 1000px) {
+  .agent-detail-split {
+    grid-template-columns: 1fr;
+  }
+}
 .agent-detail-pane-wrap {
   flex: 1 1 auto;
   width: 100%;
