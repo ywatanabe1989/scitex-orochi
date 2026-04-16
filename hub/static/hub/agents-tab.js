@@ -87,6 +87,11 @@ function _renderAgentDetail(a) {
   var currentTask = d.current_task || a.current_task || "";
   var channels = d.channel_subs || a.channels || [];
   var claudeMd = d.claude_md || a.claude_md || "";
+  /* todo#460: .mcp.json is served by the detail endpoint only (not in the
+   * registry summary row). Empty string = agent has not yet heartbeated
+   * with dotfiles PR#71 agent_meta.py --push; we render an explicit
+   * empty-state so the absence is discoverable rather than invisible. */
+  var mcpJson = d.mcp_json || "";
   var mcpServers = d.mcp_servers || a.mcp_servers || [];
   /* pane_text from the detail endpoint is already redacted; the
    * registry fallback (pane_tail_block / pane_tail) is NOT, so prefer
@@ -139,6 +144,37 @@ function _renderAgentDetail(a) {
       "</div>"
     : "";
 
+  /* todo#460: .mcp.json viewer. Collapsed by default so the per-agent
+   * card stays scannable — users opt in when they actually need to
+   * inspect the agent's MCP wiring. Content is already redacted
+   * server-side (redact_secrets); we pretty-print best-effort but fall
+   * back to the raw string on JSON.parse failure so a future schema
+   * change never blanks the viewer. */
+  var mcpJsonPretty = mcpJson;
+  if (mcpJson) {
+    try {
+      mcpJsonPretty = JSON.stringify(JSON.parse(mcpJson), null, 2);
+    } catch (_e) {
+      mcpJsonPretty = mcpJson;
+    }
+  }
+  var mcpJsonBodyHtml = mcpJson
+    ? '<pre class="agent-detail-mcp-json">' + escapeHtml(mcpJsonPretty) + "</pre>"
+    : '<div class="agent-detail-mcp-json-empty muted-cell">' +
+      "No .mcp.json (agent has not heartbeated with agent_meta.py yet)" +
+      "</div>";
+  var mcpJsonHtml =
+    '<div class="agent-detail-section">' +
+    '<details class="agent-detail-mcp-json-wrap"' +
+    (mcpJson ? "" : " open") +
+    ">" +
+    '<summary class="agent-detail-pane-label agent-detail-mcp-json-summary">' +
+    ".mcp.json" +
+    "</summary>" +
+    mcpJsonBodyHtml +
+    "</details>" +
+    "</div>";
+
   var channelsHtml = "";
   if (channels && channels.length) {
     var unique = [...new Set(channels)];
@@ -168,6 +204,7 @@ function _renderAgentDetail(a) {
     channelsHtml +
     mcpHtml +
     claudeMdHtml +
+    mcpJsonHtml +
     "</div>"
   );
 }

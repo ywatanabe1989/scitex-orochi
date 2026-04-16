@@ -657,6 +657,40 @@
   overflow-y: auto;
   border: 1px solid #333;
 }
+/* todo#460: .mcp.json viewer — sits next to CLAUDE.md in the per-agent
+ * detail view. Collapsible via native <details>/<summary> so it defaults
+ * to hidden when populated (JSON can be long); the summary is styled to
+ * match .agent-detail-pane-label with an added caret affordance. */
+.agent-detail-mcp-json-wrap {
+  margin-top: 4px;
+}
+.agent-detail-mcp-json-summary {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.agent-detail-mcp-json-summary:hover {
+  color: #9ecbff;
+}
+.agent-detail-mcp-json {
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre;
+  font-family: monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid #333;
+  margin-top: 4px;
+}
+.agent-detail-mcp-json-empty {
+  font-size: 12px;
+  padding: 8px 12px;
+  margin-top: 4px;
+}
 /* todo#420: per-agent detail header actions (DM quick-action) + pane source badge */
 .agent-detail-actions {
   float: right;
