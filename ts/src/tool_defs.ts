@@ -154,6 +154,36 @@ export const TOOL_DEFS = [
     inputSchema: { type: "object" as const, properties: {} },
   },
   {
+    name: "subscribe",
+    description:
+      "Subscribe this agent to an Orochi channel. Persists server-side (ChannelMembership row) so the subscription survives reboot.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+      },
+      required: ["channel"],
+    },
+  },
+  {
+    name: "unsubscribe",
+    description:
+      "Unsubscribe this agent from an Orochi channel. Removes the persisted ChannelMembership row.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+      },
+      required: ["channel"],
+    },
+  },
+  {
     name: "download_media",
     description:
       "Download a file from the Orochi hub to local disk. Use this to view screenshots or files posted in chat.",
@@ -345,8 +375,7 @@ export const TOOL_DEFS = [
         },
         to: {
           type: "string",
-          description:
-            "End date (ISO8601 or YYYY-MM-DD). Default: now.",
+          description: "End date (ISO8601 or YYYY-MM-DD). Default: now.",
         },
       },
       required: ["chat_id"],

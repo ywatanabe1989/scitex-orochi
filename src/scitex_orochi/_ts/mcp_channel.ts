@@ -13,7 +13,13 @@ import {
 
 import { OROCHI_AGENT, buildWsUrl, maskUrl } from "./src/config.js";
 import { OrochiConnection } from "./src/connection.js";
-import { handleReply, handleHistory, handleStatus } from "./src/tools.js";
+import {
+  handleReply,
+  handleHistory,
+  handleStatus,
+  handleSubscribe,
+  handleUnsubscribe,
+} from "./src/tools.js";
 
 // Unified truthy check for env var guards
 const TRUTHY = new Set(["true", "1", "yes", "enable", "enabled"]);
@@ -152,6 +158,36 @@ const TOOL_DEFS = [
     description: "Get current Orochi connection status and diagnostics.",
     inputSchema: { type: "object" as const, properties: {} },
   },
+  {
+    name: "subscribe",
+    description:
+      "Subscribe this agent to an Orochi channel. Persists server-side so the subscription survives reboot.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+      },
+      required: ["channel"],
+    },
+  },
+  {
+    name: "unsubscribe",
+    description:
+      "Unsubscribe this agent from an Orochi channel. Removes the persisted subscription row.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+      },
+      required: ["channel"],
+    },
+  },
 ];
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -163,6 +199,8 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "reply") return handleReply(conn, args as any);
   if (name === "history") return handleHistory(args as any);
   if (name === "status") return handleStatus(conn);
+  if (name === "subscribe") return handleSubscribe(conn, args as any);
+  if (name === "unsubscribe") return handleUnsubscribe(conn, args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

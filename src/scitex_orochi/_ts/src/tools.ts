@@ -114,6 +114,63 @@ export async function handleHistory(args: {
   }
 }
 
+function normalizeGroupChannel(name: string): string {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("dm:") || trimmed.startsWith("#")) return trimmed;
+  return `#${trimmed}`;
+}
+
+export async function handleSubscribe(
+  conn: OrochiConnection,
+  args: { channel: string },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  if (!conn.isConnected) {
+    return {
+      content: [
+        { type: "text", text: `Error: not connected (state=${conn.state})` },
+      ],
+    };
+  }
+  conn.send(
+    JSON.stringify({
+      type: "subscribe",
+      sender: OROCHI_AGENT,
+      payload: { channel },
+    }),
+  );
+  return { content: [{ type: "text", text: `subscribed: ${channel}` }] };
+}
+
+export async function handleUnsubscribe(
+  conn: OrochiConnection,
+  args: { channel: string },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  if (!conn.isConnected) {
+    return {
+      content: [
+        { type: "text", text: `Error: not connected (state=${conn.state})` },
+      ],
+    };
+  }
+  conn.send(
+    JSON.stringify({
+      type: "unsubscribe",
+      sender: OROCHI_AGENT,
+      payload: { channel },
+    }),
+  );
+  return { content: [{ type: "text", text: `unsubscribed: ${channel}` }] };
+}
+
 export function handleStatus(conn: OrochiConnection): {
   content: Array<{ type: string; text: string }>;
 } {

@@ -31,6 +31,8 @@ import {
   handleHealth,
   handleReply,
   handleHistory,
+  handleSubscribe,
+  handleUnsubscribe,
   handleConnectivityMatrix,
   handleReact,
   handleRsyncMedia,
@@ -607,6 +609,9 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "health") return handleHealth(args as any);
   if (name === "context") return handleContext(args as any);
   if (name === "status") return handleStatus(conn as any);
+  if (name === "subscribe") return handleSubscribe(conn as any, args as any);
+  if (name === "unsubscribe")
+    return handleUnsubscribe(conn as any, args as any);
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
   if (name === "rsync_media") return handleRsyncMedia(args as any);
