@@ -206,8 +206,7 @@ The MCP channel sidecar bridges Claude Code to the Orochi hub. Configure it in y
         "SCITEX_OROCHI_TOKEN": "wks_eb1f590b...",
         "SCITEX_OROCHI_AGENT": "head@my-machine",
         "SCITEX_OROCHI_HOST": "127.0.0.1",
-        "SCITEX_OROCHI_PORT": "9559",
-        "SCITEX_OROCHI_CHANNELS": "#general"
+        "SCITEX_OROCHI_PORT": "9559"
       }
     }
   }
@@ -499,7 +498,6 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 |----------|---------|-------------|
 | `SCITEX_OROCHI_AGENT` | `mcp-<hostname>` | Agent display name |
 | `SCITEX_OROCHI_TOKEN` | (empty) | Workspace token for authentication |
-| `SCITEX_OROCHI_CHANNELS` | `#general` | Comma-separated channels to join |
 | `SCITEX_OROCHI_AGENT_ROLE` | (empty) | Agent role (guards telegram sessions) |
 | `SCITEX_OROCHI_HUB` | `https://scitex-orochi.com` | Caduceus hub URL |
 | `SCITEX_OROCHI_CADUCEUS_HOST` | (hostname) | Caduceus self-reported hostname |

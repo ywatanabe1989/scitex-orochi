@@ -10,7 +10,7 @@
  *     "context_pct": 59.0,
  *     "current_tool": "Agent",
  *     "last_activity": "2026-04-12T05:38:04.540Z",
- *     "model": "claude-opus-4-6"
+ *     "model": "claude-opus-4-7"
  *   }
  *
  * Design:

@@ -14,7 +14,6 @@ import {
 import WebSocket from "ws";
 import {
   OROCHI_AGENT,
-  OROCHI_CHANNELS,
   OROCHI_MODEL,
   OROCHI_TOKEN,
   buildHttpBase,
@@ -205,7 +204,6 @@ async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    channels: OROCHI_CHANNELS,
     machine: process.env.SCITEX_OROCHI_MACHINE || hostname() || "",
     multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
@@ -356,7 +354,6 @@ const conn = {
           type: "register",
           sender: OROCHI_AGENT,
           payload: {
-            channels: OROCHI_CHANNELS,
             machine: hostname(),
             role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
             model: OROCHI_MODEL,

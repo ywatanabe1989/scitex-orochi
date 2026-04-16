@@ -11,7 +11,9 @@ AGENT_NAME = os.environ.get("SCITEX_OROCHI_AGENT", "poll-agent")
 HOST = os.environ.get("SCITEX_OROCHI_HOST", "127.0.0.1")
 PORT = os.environ.get("SCITEX_OROCHI_PORT", "9559")
 TOKEN = os.environ.get("SCITEX_OROCHI_TOKEN", "")
-CHANNELS = os.environ.get("SCITEX_OROCHI_CHANNELS", "#general").split(",")
+# Channels are server-authoritative. This poll agent reads its subscribed
+# channels from the hub after registering. Override via --channels CLI arg
+# for ad-hoc polling of specific channels.
 POLL_INTERVAL = int(os.environ.get("SCITEX_OROCHI_POLL_INTERVAL", "10"))
 MODEL = os.environ.get("SCITEX_OROCHI_MODEL", "haiku")
 
@@ -24,9 +26,10 @@ async def poll_messages() -> list[dict]:
 
     new_messages = []
     async with OrochiClient(
-        AGENT_NAME, host=HOST, port=int(PORT), token=TOKEN, channels=CHANNELS
+        AGENT_NAME, host=HOST, port=int(PORT), token=TOKEN
     ) as client:
-        for ch in CHANNELS:
+        channels = list(getattr(client, "channels", []) or [])
+        for ch in channels:
             history = await client.query_history(ch, limit=5)
             if not history:
                 continue
@@ -77,7 +80,7 @@ async def respond(channel: str, sender: str, content: str) -> None:
     from scitex_orochi._client import OrochiClient
 
     async with OrochiClient(
-        AGENT_NAME, host=HOST, port=int(PORT), token=TOKEN, channels=[channel]
+        AGENT_NAME, host=HOST, port=int(PORT), token=TOKEN
     ) as client:
         await client.send(channel, reply)
     print(f"[{channel}] {AGENT_NAME}: {reply[:80]}")
@@ -86,7 +89,7 @@ async def respond(channel: str, sender: str, content: str) -> None:
 async def main_loop() -> None:
     print(f"Poll agent '{AGENT_NAME}' starting")
     print(f"  Host: {HOST}:{PORT}")
-    print(f"  Channels: {CHANNELS}")
+    print("  Channels: (from server subscription)")
     print(f"  Model: {MODEL}")
     print(f"  Poll interval: {POLL_INTERVAL}s")
 

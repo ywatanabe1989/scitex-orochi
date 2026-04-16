@@ -110,9 +110,7 @@ class ChannelNameNormalizeTest(TestCase):
             workspace=ws, name=normalize_channel_name("#general")
         )
         self.assertEqual(a.pk, b.pk)
-        self.assertEqual(
-            Channel.objects.filter(workspace=ws).count(), 1
-        )
+        self.assertEqual(Channel.objects.filter(workspace=ws).count(), 1)
 
 
 class AuthTest(TestCase):
@@ -351,9 +349,7 @@ class DMSchemaTest(TestCase):
         self.assertIn("name", cm.exception.message_dict)
 
     def test_dm_channel_accepts_dm_prefix(self):
-        ch = Channel(
-            workspace=self.ws, name="dm:alice|bob", kind=Channel.KIND_DM
-        )
+        ch = Channel(workspace=self.ws, name="dm:alice|bob", kind=Channel.KIND_DM)
         ch.full_clean()  # should not raise
         ch.save()
         self.assertEqual(ch.kind, "dm")
@@ -433,9 +429,7 @@ class DMConsumerRoutingTest(TestCase):
         # Human users
         self.user_alice = User.objects.create_user(username="alice", password="x")
         self.user_bob = User.objects.create_user(username="bob", password="x")
-        self.user_observer = User.objects.create_user(
-            username="observer", password="x"
-        )
+        self.user_observer = User.objects.create_user(username="observer", password="x")
         self.mem_alice = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.user_alice, role="member"
         )
@@ -462,9 +456,7 @@ class DMConsumerRoutingTest(TestCase):
             identity_name="bob",
         )
         # An agent DM channel (agent-skill ↔ alice)
-        self.agent_user = User.objects.create_user(
-            username="agent-skill", password="x"
-        )
+        self.agent_user = User.objects.create_user(username="agent-skill", password="x")
         self.mem_agent = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.agent_user, role="member"
         )
@@ -487,9 +479,7 @@ class DMConsumerRoutingTest(TestCase):
             identity_name="alice",
         )
         # A regular group channel for filter regression
-        self.group_ch = Channel.objects.create(
-            workspace=self.ws, name="#general"
-        )
+        self.group_ch = Channel.objects.create(workspace=self.ws, name="#general")
 
     # ------------------------------------------------------------------
     # _ensure_agent_member
@@ -530,9 +520,7 @@ class DMConsumerRoutingTest(TestCase):
         from hub.channel_acl import check_write_allowed
 
         self.assertFalse(
-            check_write_allowed(
-                "observer", "dm:alice|bob", workspace_id=self.ws.id
-            )
+            check_write_allowed("observer", "dm:alice|bob", workspace_id=self.ws.id)
         )
 
     def test_check_write_allowed_dm_principal_agent(self):
@@ -737,9 +725,7 @@ class DMConsumerRoutingTest(TestCase):
         )
         # Repoint the participant row to the new member before saving
         # — the signal uses the username of the current member.
-        part = DMParticipant.objects.get(
-            channel=self.dm_agent, member=self.mem_agent
-        )
+        part = DMParticipant.objects.get(channel=self.dm_agent, member=self.mem_agent)
         part.member = new_member
         part.save()
         # Now fire the rename signal
@@ -751,9 +737,7 @@ class DMConsumerRoutingTest(TestCase):
         """Renaming a human User updates DMParticipant.identity_name."""
         self.user_alice.username = "alice-renamed"
         self.user_alice.save()
-        part = DMParticipant.objects.get(
-            channel=self.dm, member=self.mem_alice
-        )
+        part = DMParticipant.objects.get(channel=self.dm, member=self.mem_alice)
         self.assertEqual(part.identity_name, "alice-renamed")
 
     # ------------------------------------------------------------------
@@ -807,9 +791,7 @@ class DMConsumerRoutingTest(TestCase):
 
         groups = [g for g, _ in sent]
         self.assertIn(
-            _sanitize_group_name(
-                f"channel_{self.ws.id}_dm:alice|bob"
-            ),
+            _sanitize_group_name(f"channel_{self.ws.id}_dm:alice|bob"),
             groups,
         )
         self.assertNotIn(f"workspace_{self.ws.id}", groups)
@@ -891,9 +873,7 @@ class DmRestApiTest(TestCase):
         self.alice_m = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.alice
         )
-        self.bob_m = WorkspaceMember.objects.create(
-            workspace=self.ws, user=self.bob
-        )
+        self.bob_m = WorkspaceMember.objects.create(workspace=self.ws, user=self.bob)
         self.carol_m = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.carol
         )
@@ -941,7 +921,9 @@ class DmRestApiTest(TestCase):
             ).count(),
             1,
         )
-        self.assertEqual(DMParticipant.objects.filter(channel__name=r1.json()["name"]).count(), 2)
+        self.assertEqual(
+            DMParticipant.objects.filter(channel__name=r1.json()["name"]).count(), 2
+        )
 
     def test_post_dms_rejects_non_member(self):
         self._login(self.alice)
@@ -969,9 +951,7 @@ class DmRestApiTest(TestCase):
         canonical = resp.json()["name"]
         # Now build a group Channel with the same name and confirm
         # full_clean() rejects it (PR 1 guard).
-        bad = Channel(
-            workspace=self.ws, name=canonical, kind=Channel.KIND_GROUP
-        )
+        bad = Channel(workspace=self.ws, name=canonical, kind=Channel.KIND_GROUP)
         with self.assertRaises(ValidationError):
             bad.full_clean()
 
@@ -986,9 +966,7 @@ class DmRestApiTest(TestCase):
         data = resp.json()
         self.assertIn("agent:mamba-foo", data["name"])
         self.assertEqual(data["other_participants"][0]["type"], "agent")
-        self.assertEqual(
-            data["other_participants"][0]["identity_name"], "mamba-foo"
-        )
+        self.assertEqual(data["other_participants"][0]["identity_name"], "mamba-foo")
 
     # ---- GET /dms/ -----------------------------------------------------
 
@@ -1016,9 +994,7 @@ class DmRestApiTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         rows = resp.json()["dms"]
         self.assertEqual(len(rows), 1)
-        self.assertEqual(
-            rows[0]["other_participants"][0]["identity_name"], "bob"
-        )
+        self.assertEqual(rows[0]["other_participants"][0]["identity_name"], "bob")
 
     # ---- /messages/ write-ACL fix (§8 / todo#258) ----------------------
 
@@ -1041,9 +1017,7 @@ class DmRestApiTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 403, resp.content)
-        self.assertEqual(
-            Message.objects.filter(channel__name=dm_name).count(), 0
-        )
+        self.assertEqual(Message.objects.filter(channel__name=dm_name).count(), 0)
 
     def test_messages_post_dm_participant_allowed(self):
         self._login(self.alice)
@@ -1060,9 +1034,7 @@ class DmRestApiTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 201, resp.content)
-        self.assertEqual(
-            Message.objects.filter(channel__name=dm_name).count(), 1
-        )
+        self.assertEqual(Message.objects.filter(channel__name=dm_name).count(), 1)
 
     def test_messages_post_group_channel_unaffected(self):
         Channel.objects.create(workspace=self.ws, name="#general")
@@ -1077,10 +1049,10 @@ class DmRestApiTest(TestCase):
 
 # ── Web Push (todo#263) ─────────────────────────────────────────────────
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from hub.models import PushSubscription
 from hub import push as hub_push
+from hub.models import PushSubscription
 
 
 class PushSubscriptionModelTest(TestCase):
@@ -1266,9 +1238,7 @@ class PushFanoutTest(TestCase):
                 content="bye",
                 message_id=2,
             )
-        self.assertFalse(
-            PushSubscription.objects.filter(pk=self.sub_bob.pk).exists()
-        )
+        self.assertFalse(PushSubscription.objects.filter(pk=self.sub_bob.pk).exists())
 
     def test_skips_when_unconfigured(self):
         from django.test import override_settings
@@ -1354,14 +1324,19 @@ class AgentMetaOAuthRegisterTest(TestCase):
         from hub.registry import get_agents
 
         _reg_agents.clear()
-        resp = self._post({
-            "token": self.token.token,
-            "name": "oauth-agent-2",
-            "usage_disabled_reason": "out_of_credits",
-        })
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "oauth-agent-2",
+                "usage_disabled_reason": "out_of_credits",
+            }
+        )
         self.assertEqual(resp.status_code, 200)
-        a = [x for x in get_agents(workspace_id=self.ws.id)
-             if x["name"] == "oauth-agent-2"][0]
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "oauth-agent-2"
+        ][0]
         self.assertEqual(a["usage_disabled_reason"], "out_of_credits")
 
     def test_register_missing_oauth_fields_defaults(self):
@@ -1370,13 +1345,18 @@ class AgentMetaOAuthRegisterTest(TestCase):
         from hub.registry import get_agents
 
         _reg_agents.clear()
-        resp = self._post({
-            "token": self.token.token,
-            "name": "legacy-agent",
-        })
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "legacy-agent",
+            }
+        )
         self.assertEqual(resp.status_code, 200)
-        a = [x for x in get_agents(workspace_id=self.ws.id)
-             if x["name"] == "legacy-agent"][0]
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "legacy-agent"
+        ][0]
         self.assertEqual(a["oauth_email"], "")
         self.assertEqual(a["oauth_org_name"], "")
         self.assertIsNone(a["has_available_subscription"])
@@ -1392,20 +1372,23 @@ class AgentMetaOAuthRegisterTest(TestCase):
         from hub.registry import get_agents
 
         _reg_agents.clear()
-        resp = self._post({
-            "token": self.token.token,
-            "name": "leak-test",
-            "oauth_email": "bob@example.org",
-            # Hostile fields — must NOT end up in the registry.
-            "accessToken": "sk-ant-oat01-leaked",
-            "refreshToken": "sk-ant-ort01-leaked",
-            "apiKey": "sk-ant-api03-leaked",
-            "claudeAiOauth": {"accessToken": "sk-ant-oat01-leaked"},
-            "credentials": "bearer leaked",
-        })
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "leak-test",
+                "oauth_email": "bob@example.org",
+                # Hostile fields — must NOT end up in the registry.
+                "accessToken": "sk-ant-oat01-leaked",
+                "refreshToken": "sk-ant-ort01-leaked",
+                "apiKey": "sk-ant-api03-leaked",
+                "claudeAiOauth": {"accessToken": "sk-ant-oat01-leaked"},
+                "credentials": "bearer leaked",
+            }
+        )
         self.assertEqual(resp.status_code, 200)
-        a = [x for x in get_agents(workspace_id=self.ws.id)
-             if x["name"] == "leak-test"][0]
+        a = [
+            x for x in get_agents(workspace_id=self.ws.id) if x["name"] == "leak-test"
+        ][0]
         flat = json.dumps(a).lower()
         for forbidden in (
             "sk-ant-oat01-leaked",
@@ -1413,8 +1396,11 @@ class AgentMetaOAuthRegisterTest(TestCase):
             "sk-ant-api03-leaked",
             "bearer leaked",
         ):
-            self.assertNotIn(forbidden, flat,
-                             f"leaked token material {forbidden!r} in registry entry")
+            self.assertNotIn(
+                forbidden,
+                flat,
+                f"leaked token material {forbidden!r} in registry entry",
+            )
         # And no forbidden keys in the registry row.
         for k in a.keys():
             kl = k.lower()
@@ -1453,12 +1439,14 @@ class ReadOauthMetadataHelperTest(TestCase):
     def test_missing_file_returns_empty(self):
         mod = self._import_helper()
         from pathlib import Path
+
         result = mod.read_oauth_metadata(Path("/nonexistent/.claude.json"))
         self.assertEqual(result, {})
 
     def test_all_nine_keys_extracted(self):
         import tempfile
         from pathlib import Path
+
         mod = self._import_helper()
         doc = {
             "hasAvailableSubscription": True,
@@ -1481,9 +1469,7 @@ class ReadOauthMetadataHelperTest(TestCase):
             "refreshToken": "sk-ant-ort01-should-not-leak",
             "claudeAiOauth": {"accessToken": "sk-ant-oat01-nested-leak"},
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(doc, f)
             path = Path(f.name)
         try:
@@ -1508,9 +1494,7 @@ class ReadOauthMetadataHelperTest(TestCase):
             self.assertEqual(result["has_available_subscription"], True)
             self.assertEqual(result["usage_disabled_reason"], "out_of_credits")
             self.assertEqual(result["has_extra_usage_enabled"], False)
-            self.assertEqual(
-                result["subscription_created_at"], "2025-01-01T00:00:00Z"
-            )
+            self.assertEqual(result["subscription_created_at"], "2025-01-01T00:00:00Z")
         finally:
             path.unlink()
 
@@ -1524,6 +1508,7 @@ class ReadOauthMetadataHelperTest(TestCase):
         """
         import tempfile
         from pathlib import Path
+
         mod = self._import_helper()
         hostile = {
             "oauthAccount": {
@@ -1541,9 +1526,7 @@ class ReadOauthMetadataHelperTest(TestCase):
                 "refreshToken": "sk-ant-ort01-claudeai-should-not-leak",
             },
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(hostile, f)
             path = Path(f.name)
         try:
@@ -1555,9 +1538,7 @@ class ReadOauthMetadataHelperTest(TestCase):
                 self.assertNotIn("secret", kl)
                 # "key" substring is too broad (would trip "oauth_email"
                 # if we were sloppy); use endswith instead.
-                self.assertFalse(
-                    kl.endswith("key"), f"forbidden key-like field: {k}"
-                )
+                self.assertFalse(kl.endswith("key"), f"forbidden key-like field: {k}")
             # And no value should contain the leaked substrings.
             flat = json.dumps(result).lower()
             forbidden_substrings = (
@@ -1568,9 +1549,7 @@ class ReadOauthMetadataHelperTest(TestCase):
                 "bearer",
             )
             for s in forbidden_substrings:
-                self.assertNotIn(
-                    s, flat, f"token material {s!r} leaked into output"
-                )
+                self.assertNotIn(s, flat, f"token material {s!r} leaked into output")
         finally:
             path.unlink()
 
@@ -1593,9 +1572,9 @@ class GroupMentionExpansionTest(TestCase):
         """consumers.py still declares all five group tokens."""
         from pathlib import Path
 
-        src = (
-            Path(__file__).resolve().parent / "consumers.py"
-        ).read_text(encoding="utf-8")
+        src = (Path(__file__).resolve().parent / "consumers.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn(
             "GROUP_PATTERNS = {",
             src,
@@ -1613,10 +1592,7 @@ class GroupMentionExpansionTest(TestCase):
         from pathlib import Path
 
         src = (
-            Path(__file__).resolve().parent
-            / "static"
-            / "hub"
-            / "chat.js"
+            Path(__file__).resolve().parent / "static" / "hub" / "chat.js"
         ).read_text(encoding="utf-8")
         self.assertIn(
             "MENTION_GROUP_TOKENS",
@@ -1655,9 +1631,7 @@ class GroupMentionExpansionTest(TestCase):
             out: list[str] = []
             for tok in mentioned:
                 if tok in GROUP_PATTERNS:
-                    out.extend(
-                        n for n in all_names if GROUP_PATTERNS[tok](n)
-                    )
+                    out.extend(n for n in all_names if GROUP_PATTERNS[tok](n))
                 else:
                     out.append(tok)
             return list(dict.fromkeys(out))
@@ -1710,16 +1684,18 @@ class AgentDetailApiTest(TestCase):
         # Wipe the in-memory registry so state does not bleed across
         # tests — the registry is a module-level dict.
         from hub.registry import _agents as _reg_agents
+
         _reg_agents.clear()
 
     def _register(self, **overrides):
         from hub.registry import register_agent, set_current_task
+
         current_task = overrides.pop("current_task", "todo#420")
         info = {
             "agent_id": "alpha",
             "machine": "MBA",
             "role": "head",
-            "model": "claude-opus-4-6",
+            "model": "claude-opus-4-7",
             "channels": ["#general", "#agent"],
             "pane_tail_block": "line1\nline2\n",
             "claude_md": "# CLAUDE.md\n",
@@ -1743,12 +1719,25 @@ class AgentDetailApiTest(TestCase):
         data = resp.json()
         # Canonical fields the frontend pins.
         for key in (
-            "name", "role", "machine", "model",
-            "uptime_seconds", "registered_at", "last_action_ts",
-            "last_heartbeat", "liveness", "claude_md",
-            "pane_text", "pane_text_source",
-            "channel_subs", "mcp_servers", "current_task",
-            "context_pct", "pid", "subagents", "health",
+            "name",
+            "role",
+            "machine",
+            "model",
+            "uptime_seconds",
+            "registered_at",
+            "last_action_ts",
+            "last_heartbeat",
+            "liveness",
+            "claude_md",
+            "pane_text",
+            "pane_text_source",
+            "channel_subs",
+            "mcp_servers",
+            "current_task",
+            "context_pct",
+            "pid",
+            "subagents",
+            "health",
         ):
             self.assertIn(key, data, f"missing key: {key}")
         self.assertEqual(data["name"], "alpha")
@@ -1757,9 +1746,7 @@ class AgentDetailApiTest(TestCase):
         self.assertEqual(data["current_task"], "todo#420")
         self.assertEqual(data["pane_text_source"], "cached")
         self.assertIn("line1", data["pane_text"])
-        self.assertEqual(
-            sorted(data["channel_subs"]), ["#agent", "#general"]
-        )
+        self.assertEqual(sorted(data["channel_subs"]), ["#agent", "#general"])
         self.assertIn("scitex-orochi", data["mcp_servers"])
 
     def test_unavailable_pane_source_when_no_capture(self):
@@ -1791,15 +1778,17 @@ class AgentDetailApiTest(TestCase):
     def test_pane_text_redacts_secrets(self):
         """sk-ant / ghp / JWT / bearer / credentials-file patterns
         must never leak through ``pane_text``."""
-        leak = "\n".join([
-            "normal line 1",
-            "ANTHROPIC_API_KEY=sk-ant-oat01-ABCDEFGHIJKLMNOPQRST",
-            "gh token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-            "id_token: eyJabcdefghij.eyJklmnopqrst.signatureXYZ123",
-            "Authorization: Bearer sk-oat-ABCDEFGHIJKLMNOPQR",
-            "cat ~/.credentials.json",
-            "normal line 2",
-        ])
+        leak = "\n".join(
+            [
+                "normal line 1",
+                "ANTHROPIC_API_KEY=sk-ant-oat01-ABCDEFGHIJKLMNOPQRST",
+                "gh token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                "id_token: eyJabcdefghij.eyJklmnopqrst.signatureXYZ123",
+                "Authorization: Bearer sk-oat-ABCDEFGHIJKLMNOPQR",
+                "cat ~/.credentials.json",
+                "normal line 2",
+            ]
+        )
         self._register(pane_tail_block=leak)
         resp = self._get()
         self.assertEqual(resp.status_code, 200)
@@ -1812,7 +1801,8 @@ class AgentDetailApiTest(TestCase):
             ".credentials.json",
         ):
             self.assertNotIn(
-                forbidden, pane,
+                forbidden,
+                pane,
                 f"unredacted secret {forbidden!r} leaked into pane_text",
             )
         # The non-secret content survives so the UI is still useful.
@@ -1824,6 +1814,7 @@ class AgentDetailApiTest(TestCase):
         """Unit-level pin on :func:`redact_secrets` itself, independent
         of the HTTP layer — cheap regression guard."""
         from hub.views.agent_detail import redact_secrets
+
         src = "prefix sk-ant-api03-ABCDEFGHIJKLMNOPQRST suffix"
         out = redact_secrets(src)
         self.assertNotIn("sk-ant-api03-ABCDEFGHIJKLMNOPQRST", out)
@@ -1845,11 +1836,16 @@ class ActiveSessionCounterTests(TestCase):
     def setUp(self):
         # Reset registry state per test
         from hub.registry import _agents, _connections
+
         _agents.clear()
         _connections.clear()
 
     def test_register_connection_increments_count(self):
-        from hub.registry import register_agent, register_connection, active_session_count
+        from hub.registry import (
+            active_session_count,
+            register_agent,
+            register_connection,
+        )
 
         register_agent("head-spartan", 1, {})
         self.assertEqual(active_session_count("head-spartan"), 0)
@@ -1863,7 +1859,7 @@ class ActiveSessionCounterTests(TestCase):
         self.assertEqual(active_session_count("head-spartan"), 2)
 
     def test_register_connection_idempotent(self):
-        from hub.registry import register_connection, active_session_count
+        from hub.registry import active_session_count, register_connection
 
         register_connection("agent-X", "conn-A")
         register_connection("agent-X", "conn-A")
@@ -1908,9 +1904,9 @@ class ActiveSessionCounterTests(TestCase):
 
     def test_get_agents_exposes_active_sessions(self):
         from hub.registry import (
+            get_agents,
             register_agent,
             register_connection,
-            get_agents,
         )
 
         register_agent("head-spartan", 1, {})
@@ -1924,7 +1920,7 @@ class ActiveSessionCounterTests(TestCase):
         self.assertEqual(found["active_sessions"], 2)
 
     def test_get_agents_active_sessions_zero_when_no_connections(self):
-        from hub.registry import register_agent, get_agents
+        from hub.registry import get_agents, register_agent
 
         register_agent("solo-agent", 1, {})
         agents = get_agents(workspace_id=1)
@@ -1935,11 +1931,11 @@ class ActiveSessionCounterTests(TestCase):
     def test_unregister_agent_force_offline_clears_connections(self):
         """unregister_agent (the legacy/force-offline path) clears connections too."""
         from hub.registry import (
+            _agents,
+            active_session_count,
             register_agent,
             register_connection,
             unregister_agent,
-            active_session_count,
-            _agents,
         )
 
         register_agent("head-spartan", 1, {})
