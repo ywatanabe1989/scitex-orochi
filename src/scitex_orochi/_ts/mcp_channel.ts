@@ -19,6 +19,7 @@ import {
   handleStatus,
   handleSubscribe,
   handleUnsubscribe,
+  handleChannelInfo,
 } from "./src/tools.js";
 
 // Unified truthy check for env var guards
@@ -188,6 +189,21 @@ const TOOL_DEFS = [
       required: ["channel"],
     },
   },
+  {
+    name: "channel_info",
+    description:
+      "Fetch a channel's human-authored description (topic) so the agent understands the channel's purpose. Returns { name, description }.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+      },
+      required: ["channel"],
+    },
+  },
 ];
 
 mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -201,6 +217,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "status") return handleStatus(conn);
   if (name === "subscribe") return handleSubscribe(conn, args as any);
   if (name === "unsubscribe") return handleUnsubscribe(conn, args as any);
+  if (name === "channel_info") return handleChannelInfo(args as any);
   throw new Error(`Unknown tool: ${name}`);
 });
 

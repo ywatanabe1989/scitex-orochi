@@ -33,6 +33,7 @@ import {
   handleHistory,
   handleSubscribe,
   handleUnsubscribe,
+  handleChannelInfo,
   handleConnectivityMatrix,
   handleReact,
   handleRsyncMedia,
@@ -612,6 +613,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "subscribe") return handleSubscribe(conn as any, args as any);
   if (name === "unsubscribe")
     return handleUnsubscribe(conn as any, args as any);
+  if (name === "channel_info") return handleChannelInfo(args as any);
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
   if (name === "rsync_media") return handleRsyncMedia(args as any);

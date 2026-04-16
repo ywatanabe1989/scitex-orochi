@@ -184,6 +184,21 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "channel_info",
+    description:
+      "Fetch a channel's human-authored description (topic) so the agent understands the channel's purpose. Returns { name, description }.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+      },
+      required: ["channel"],
+    },
+  },
+  {
     name: "download_media",
     description:
       "Download a file from the Orochi hub to local disk. Use this to view screenshots or files posted in chat.",

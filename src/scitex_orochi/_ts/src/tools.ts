@@ -171,6 +171,54 @@ export async function handleUnsubscribe(
   return { content: [{ type: "text", text: `unsubscribed: ${channel}` }] };
 }
 
+export async function handleChannelInfo(args: {
+  channel: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  try {
+    const res = await fetch(`${httpBase}/api/channels/${tokenParam("?")}`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) {
+      return {
+        content: [
+          { type: "text", text: `Error: HTTP ${res.status} fetching channels` },
+        ],
+      };
+    }
+    const data = await res.json();
+    const match = Array.isArray(data)
+      ? data.find((c: any) => c && c.name === channel)
+      : null;
+    if (!match) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `(no channel named ${channel} in this workspace)`,
+          },
+        ],
+      };
+    }
+    const desc = (match.description || "").trim();
+    return {
+      content: [
+        {
+          type: "text",
+          text: `channel: ${match.name}\ndescription: ${desc || "(no description set)"}`,
+        },
+      ],
+    };
+  } catch (e) {
+    return {
+      content: [{ type: "text", text: `Error fetching channel info: ${e}` }],
+    };
+  }
+}
+
 export function handleStatus(conn: OrochiConnection): {
   content: Array<{ type: string; text: string }>;
 } {

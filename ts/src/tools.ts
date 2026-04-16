@@ -428,6 +428,64 @@ export async function handleSubscribe(
   return { content: [{ type: "text", text: `subscribed: ${channel}` }] };
 }
 
+export async function handleChannelInfo(args: {
+  channel: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  try {
+    const url =
+      `${httpBase}/api/channels/${tokenParam("?")}` +
+      (tokenParam("?") ? "&" : "?") +
+      "name=" +
+      encodeURIComponent(channel);
+    const res = await fetch(url, {
+      headers: buildFetchHeaders({ Accept: "application/json" }),
+    });
+    if (!res.ok) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${res.status} fetching channel info`,
+          },
+        ],
+      };
+    }
+    const data = await res.json();
+    const match = Array.isArray(data)
+      ? data.find((c: any) => c && c.name === channel)
+      : null;
+    if (!match) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `(no channel named ${channel} in this workspace)`,
+          },
+        ],
+      };
+    }
+    const desc = (match.description || "").trim();
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `channel: ${match.name}\n` +
+            `description: ${desc || "(no description set)"}`,
+        },
+      ],
+    };
+  } catch (e) {
+    return {
+      content: [{ type: "text", text: `Error fetching channel info: ${e}` }],
+    };
+  }
+}
+
 export async function handleUnsubscribe(
   conn: ConnLike,
   args: { channel: string },
