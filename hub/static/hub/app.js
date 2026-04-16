@@ -83,7 +83,8 @@ function _updateComposerTarget(ch, isReply, replyMsgId) {
     el.classList.remove("is-dm", "is-reply");
     if (isReply && replyMsgId) {
       el.classList.add("is-reply");
-      nameEl.textContent = "\u21b3 reply in " + (ch || "#?") + " \u00b7 msg#" + replyMsgId;
+      nameEl.textContent =
+        "\u21b3 reply in " + (ch || "#?") + " \u00b7 msg#" + replyMsgId;
       el.firstChild.nodeValue = "";
     } else if (ch && ch.startsWith("dm:")) {
       el.classList.add("is-dm");
@@ -101,8 +102,9 @@ window.setCurrentChannel = setCurrentChannel;
 
 /* ── Channel topic banner + subscriber list (todo#402) ── */
 var _channelDescriptions = {}; /* cache: channel → description */
-var _agentChannelMap = {};     /* cache: channel → [{name, online}] */
-var _channelPrefs = {};        /* cache: channel → {is_starred, is_muted, is_hidden, notification_level} */
+var _agentChannelMap = {}; /* cache: channel → [{name, online}] */
+var _channelPrefs =
+  {}; /* cache: channel → {is_starred, is_muted, is_hidden, notification_level} */
 
 function _updateChannelTopicBanner(ch) {
   var banner = document.getElementById("channel-topic-banner");
@@ -119,13 +121,21 @@ function _updateChannelTopicBanner(ch) {
   if (membersEl) {
     var members = _agentChannelMap[ch] || [];
     if (members.length > 0) {
-      membersEl.innerHTML = members.map(function (m) {
-        var dot = m.online
-          ? '<span class="ch-mem-dot ch-mem-online"></span>'
-          : '<span class="ch-mem-dot"></span>';
-        return '<span class="ch-mem-pill" title="' + escapeHtml(m.name) + '">' +
-          dot + escapeHtml(cleanAgentName ? cleanAgentName(m.name) : m.name) + '</span>';
-      }).join("");
+      membersEl.innerHTML = members
+        .map(function (m) {
+          var dot = m.online
+            ? '<span class="ch-mem-dot ch-mem-online"></span>'
+            : '<span class="ch-mem-dot"></span>';
+          return (
+            '<span class="ch-mem-pill" title="' +
+            escapeHtml(m.name) +
+            '">' +
+            dot +
+            escapeHtml(cleanAgentName ? cleanAgentName(m.name) : m.name) +
+            "</span>"
+          );
+        })
+        .join("");
       membersEl.style.display = "";
     } else {
       membersEl.style.display = "none";
@@ -137,12 +147,13 @@ function _updateChannelTopicBanner(ch) {
   if (membersBtn && ch && !ch.startsWith("dm:")) {
     /* Show agent pill count if available, otherwise show generic icon */
     var liveCount = membersEl ? membersEl.children.length : 0;
-    if (membersCountEl) membersCountEl.textContent = liveCount > 0 ? liveCount : "";
+    if (membersCountEl)
+      membersCountEl.textContent = liveCount > 0 ? liveCount : "";
     membersBtn.style.display = "";
   } else if (membersBtn) {
     membersBtn.style.display = "none";
   }
-  banner.style.display = (desc || ch) ? "" : "none";
+  banner.style.display = desc || ch ? "" : "none";
 }
 
 /* Channel members panel (todo#407) */
@@ -173,36 +184,68 @@ function openMembersPanel(ch) {
     return;
   }
 
-  fetch(apiUrl("/api/channel-members/?channel=" + encodeURIComponent(ch)), { credentials: "same-origin" })
-    .then(function (r) { return r.json(); })
+  fetch(apiUrl("/api/channel-members/?channel=" + encodeURIComponent(ch)), {
+    credentials: "same-origin",
+  })
+    .then(function (r) {
+      return r.json();
+    })
     .then(function (data) {
       _membersCache[ch] = data;
       _renderMembersPanel(data);
     })
     .catch(function () {
-      if (list) list.innerHTML = '<div class="ch-members-loading">Failed to load members.</div>';
+      if (list)
+        list.innerHTML =
+          '<div class="ch-members-loading">Failed to load members.</div>';
     });
 }
 
 function _renderMembersPanel(members) {
   var list = document.getElementById("ch-members-list");
   if (!list) return;
-  var rw = members.filter(function (m) { return m.permission === "read-write"; });
-  var ro = members.filter(function (m) { return m.permission === "read-only"; });
+  var rw = members.filter(function (m) {
+    return m.permission === "read-write";
+  });
+  var ro = members.filter(function (m) {
+    return m.permission === "read-only";
+  });
   var html = "";
   if (rw.length > 0) {
-    html += '<div class="ch-members-section-label">Read & Write (' + rw.length + ')</div>';
-    html += rw.map(function (m) {
-      var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
-      return '<div class="ch-members-row">' + icon + ' ' + escapeHtml(m.username) + '</div>';
-    }).join("");
+    html +=
+      '<div class="ch-members-section-label">Read & Write (' +
+      rw.length +
+      ")</div>";
+    html += rw
+      .map(function (m) {
+        var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
+        return (
+          '<div class="ch-members-row">' +
+          icon +
+          " " +
+          escapeHtml(m.username) +
+          "</div>"
+        );
+      })
+      .join("");
   }
   if (ro.length > 0) {
-    html += '<div class="ch-members-section-label ch-members-ro-label">Read Only (' + ro.length + ')</div>';
-    html += ro.map(function (m) {
-      var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
-      return '<div class="ch-members-row ch-members-ro">' + icon + ' ' + escapeHtml(m.username) + ' <span class="ch-members-ro-badge">ro</span></div>';
-    }).join("");
+    html +=
+      '<div class="ch-members-section-label ch-members-ro-label">Read Only (' +
+      ro.length +
+      ")</div>";
+    html += ro
+      .map(function (m) {
+        var icon = m.kind === "agent" ? "&#129302;" : "&#128100;";
+        return (
+          '<div class="ch-members-row ch-members-ro">' +
+          icon +
+          " " +
+          escapeHtml(m.username) +
+          ' <span class="ch-members-ro-badge">ro</span></div>'
+        );
+      })
+      .join("");
   }
   if (!html) html = '<div class="ch-members-loading">No members found.</div>';
   list.innerHTML = html;
@@ -237,7 +280,9 @@ function openChannelTopicEdit() {
   if (!modal || !inp) return;
   inp.value = _channelDescriptions[currentChannel] || "";
   modal.style.display = "flex";
-  setTimeout(function () { inp.focus(); }, 50);
+  setTimeout(function () {
+    inp.focus();
+  }, 50);
 }
 window.openChannelTopicEdit = openChannelTopicEdit;
 
@@ -253,24 +298,33 @@ function saveChannelTopic() {
   var desc = inp.value.trim();
   fetch(apiUrl("/api/channels/"), {
     method: "PATCH",
-    headers: Object.assign({ "Content-Type": "application/json" }, orochiHeaders()),
+    headers: Object.assign(
+      { "Content-Type": "application/json" },
+      orochiHeaders(),
+    ),
     body: JSON.stringify({ name: currentChannel, description: desc }),
     credentials: "same-origin",
   })
-    .then(function (r) { return r.json(); })
+    .then(function (r) {
+      return r.json();
+    })
     .then(function () {
       _channelDescriptions[currentChannel] = desc;
       _updateChannelTopicBanner(currentChannel);
       closeChannelTopicEdit();
     })
-    .catch(function (e) { console.warn("saveChannelTopic error:", e); });
+    .catch(function (e) {
+      console.warn("saveChannelTopic error:", e);
+    });
 }
 window.saveChannelTopic = saveChannelTopic;
 /* Sync textarea placeholder + composer target with restored channel on page load (#364) */
 if (currentChannel) {
   try {
     var _inp = document.getElementById("msg-input");
-    if (_inp) _inp.placeholder = "Message " + currentChannel.replace(/^#/, "#") + "\u2026";
+    if (_inp)
+      _inp.placeholder =
+        "Message " + currentChannel.replace(/^#/, "#") + "\u2026";
   } catch (_) {}
   document.addEventListener("DOMContentLoaded", function () {
     _updateComposerTarget(currentChannel, false);
@@ -280,7 +334,9 @@ if (currentChannel) {
 /* Fetch channel descriptions + prefs once on load */
 document.addEventListener("DOMContentLoaded", function () {
   fetch(apiUrl("/api/channels/"), { credentials: "same-origin" })
-    .then(function (r) { return r.json(); })
+    .then(function (r) {
+      return r.json();
+    })
     .then(function (list) {
       list.forEach(function (ch) {
         if (ch.name) {
@@ -308,16 +364,19 @@ function _setChannelPref(ch, patch) {
   /* Normalize channel name so starring via icon (norm "#foo") and via
    * context menu (raw "foo") both hit the same cache entry. */
   var normCh = ch.charAt(0) === "#" ? ch : "#" + ch;
-  Object.assign(_channelPrefs[normCh] = _channelPrefs[normCh] || {}, patch);
+  Object.assign((_channelPrefs[normCh] = _channelPrefs[normCh] || {}), patch);
   if (normCh !== ch) {
     /* mirror for legacy lookups */
-    Object.assign(_channelPrefs[ch] = _channelPrefs[ch] || {}, patch);
+    Object.assign((_channelPrefs[ch] = _channelPrefs[ch] || {}), patch);
   }
   fetch(apiUrl("/api/channel-prefs/"), {
     method: "PATCH",
     credentials: "same-origin",
-    headers: {"Content-Type": "application/json", "X-CSRFToken": getCsrfToken()},
-    body: JSON.stringify(Object.assign({channel: normCh}, patch)),
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify(Object.assign({ channel: normCh }, patch)),
   }).catch(function (_) {});
   /* Optimistic UI: re-render immediately from local cache instead of waiting
    * for a server round-trip (ywatanabe msg#10552/10586 — todo#416 Bug 3).
@@ -354,13 +413,15 @@ function _setChannelPref(ch, patch) {
 /* Render the Starred section in the sidebar */
 /* Sort starred list by sort_order (then alpha as tiebreaker) */
 function _sortedStarred() {
-  return Object.keys(_channelPrefs).filter(function (ch) {
-    return _channelPrefs[ch] && _channelPrefs[ch].is_starred;
-  }).sort(function (a, b) {
-    var oa = _channelPrefs[a] ? (_channelPrefs[a].sort_order || 0) : 0;
-    var ob = _channelPrefs[b] ? (_channelPrefs[b].sort_order || 0) : 0;
-    return oa !== ob ? oa - ob : a.localeCompare(b);
-  });
+  return Object.keys(_channelPrefs)
+    .filter(function (ch) {
+      return _channelPrefs[ch] && _channelPrefs[ch].is_starred;
+    })
+    .sort(function (a, b) {
+      var oa = _channelPrefs[a] ? _channelPrefs[a].sort_order || 0 : 0;
+      var ob = _channelPrefs[b] ? _channelPrefs[b].sort_order || 0 : 0;
+      return oa !== ob ? oa - ob : a.localeCompare(b);
+    });
 }
 
 function _renderStarredSection() {
@@ -377,34 +438,58 @@ function _renderStarredSection() {
   container.style.display = "";
   var countEl = document.getElementById("sidebar-count-starred");
   if (countEl) countEl.textContent = starred.length;
-  container.innerHTML = starred.map(function (ch) {
-    var active = currentChannel === ch ? " active" : "";
-    var muted = (_channelPrefs[ch] && _channelPrefs[ch].is_muted) ? " ch-muted" : "";
-    var unread = channelUnread[ch] || 0;
-    var badgeHtml = '<span class="ch-badge-slot">' +
-      (unread > 0 ? '<span class="unread-badge">' + (unread > 99 ? "99+" : unread) + '</span>' : '') +
-      '</span>';
-    return '<div class="channel-item starred-item' + active + muted + '" data-channel="' + escapeHtml(ch) + '" draggable="true">' +
-      '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
-      '<span class="ch-star ch-star-on" data-ch="' + escapeHtml(ch) + '" title="Unstar">&#9733;</span>' +
-      '<span class="ch-name">' + escapeHtml(ch) + '</span>' +
-      badgeHtml +
-      '</div>';
-  }).join("");
+  container.innerHTML = starred
+    .map(function (ch) {
+      var active = currentChannel === ch ? " active" : "";
+      var muted =
+        _channelPrefs[ch] && _channelPrefs[ch].is_muted ? " ch-muted" : "";
+      var unread = channelUnread[ch] || 0;
+      var badgeHtml =
+        '<span class="ch-badge-slot">' +
+        (unread > 0
+          ? '<span class="unread-badge">' +
+            (unread > 99 ? "99+" : unread) +
+            "</span>"
+          : "") +
+        "</span>";
+      return (
+        '<div class="channel-item starred-item' +
+        active +
+        muted +
+        '" data-channel="' +
+        escapeHtml(ch) +
+        '" draggable="true">' +
+        '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
+        '<span class="ch-star ch-star-on" data-ch="' +
+        escapeHtml(ch) +
+        '" title="Unstar">&#9733;</span>' +
+        '<span class="ch-name">' +
+        escapeHtml(ch) +
+        "</span>" +
+        badgeHtml +
+        "</div>"
+      );
+    })
+    .join("");
   container.querySelectorAll(".channel-item").forEach(function (el) {
     el.addEventListener("click", function (ev) {
-      if (ev.target.classList.contains("ch-star") || ev.target.classList.contains("ch-drag-handle")) return;
+      if (
+        ev.target.classList.contains("ch-star") ||
+        ev.target.classList.contains("ch-drag-handle")
+      )
+        return;
       var ch = el.getAttribute("data-channel");
       setCurrentChannel(ch);
       loadChannelHistory(ch);
       if (typeof applyFeedFilter === "function") applyFeedFilter();
     });
     var star = el.querySelector(".ch-star");
-    if (star) star.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      var ch = star.getAttribute("data-ch");
-      _setChannelPref(ch, {is_starred: false});
-    });
+    if (star)
+      star.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var ch = star.getAttribute("data-ch");
+        _setChannelPref(ch, { is_starred: false });
+      });
     _addChannelContextMenu(el);
   });
   _addDragAndDrop(container, "starred");
@@ -430,19 +515,32 @@ function _showChannelCtxMenu(ch, x, y) {
 
   var menu = document.createElement("div");
   menu.className = "ch-ctx-menu";
-  menu.style.cssText = "position:fixed;z-index:9999;left:" + x + "px;top:" + y + "px;";
+  menu.style.cssText =
+    "position:fixed;z-index:9999;left:" + x + "px;top:" + y + "px;";
   menu.innerHTML = [
-    '<div class="ch-ctx-item" data-action="star">' + (starred ? "&#9733; Unstar" : "&#9734; Star channel") + "</div>",
-    '<div class="ch-ctx-item" data-action="mute">' + (muted ? "&#128276; Unmute" : "&#128263; Mute channel") + "</div>",
+    '<div class="ch-ctx-item" data-action="star">' +
+      (starred ? "&#9733; Unstar" : "&#9734; Star channel") +
+      "</div>",
+    '<div class="ch-ctx-item" data-action="mute">' +
+      (muted ? "&#128276; Unmute" : "&#128263; Mute channel") +
+      "</div>",
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-label">Notifications</div>',
-    '<div class="ch-ctx-item ch-ctx-notif' + (notif==="all"?" ch-ctx-active":"") + '" data-action="notif-all">All messages</div>',
-    '<div class="ch-ctx-item ch-ctx-notif' + (notif==="mentions"?" ch-ctx-active":"") + '" data-action="notif-mentions">@ Mentions only</div>',
-    '<div class="ch-ctx-item ch-ctx-notif' + (notif==="nothing"?" ch-ctx-active":"") + '" data-action="notif-nothing">Nothing</div>',
+    '<div class="ch-ctx-item ch-ctx-notif' +
+      (notif === "all" ? " ch-ctx-active" : "") +
+      '" data-action="notif-all">All messages</div>',
+    '<div class="ch-ctx-item ch-ctx-notif' +
+      (notif === "mentions" ? " ch-ctx-active" : "") +
+      '" data-action="notif-mentions">@ Mentions only</div>',
+    '<div class="ch-ctx-item ch-ctx-notif' +
+      (notif === "nothing" ? " ch-ctx-active" : "") +
+      '" data-action="notif-nothing">Nothing</div>',
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#8681; Export channel\u2026</div>',
     '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' + (hidden ? "Show channel" : "Hide channel") + "</div>",
+    '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
+      (hidden ? "Show channel" : "Hide channel") +
+      "</div>",
   ].join("");
   document.body.appendChild(menu);
   _ctxMenu = menu;
@@ -450,13 +548,19 @@ function _showChannelCtxMenu(ch, x, y) {
   menu.querySelectorAll(".ch-ctx-item").forEach(function (item) {
     item.addEventListener("click", function () {
       var action = item.getAttribute("data-action");
-      if (action === "star") _setChannelPref(ch, {is_starred: !starred});
-      else if (action === "mute") _setChannelPref(ch, {is_muted: !muted});
-      else if (action === "notif-all") _setChannelPref(ch, {notification_level: "all"});
-      else if (action === "notif-mentions") _setChannelPref(ch, {notification_level: "mentions"});
-      else if (action === "notif-nothing") _setChannelPref(ch, {notification_level: "nothing"});
-      else if (action === "export") { _hideChannelCtxMenu(); openChannelExport(ch); return; }
-      else if (action === "hide") _setChannelPref(ch, {is_hidden: !hidden});
+      if (action === "star") _setChannelPref(ch, { is_starred: !starred });
+      else if (action === "mute") _setChannelPref(ch, { is_muted: !muted });
+      else if (action === "notif-all")
+        _setChannelPref(ch, { notification_level: "all" });
+      else if (action === "notif-mentions")
+        _setChannelPref(ch, { notification_level: "mentions" });
+      else if (action === "notif-nothing")
+        _setChannelPref(ch, { notification_level: "nothing" });
+      else if (action === "export") {
+        _hideChannelCtxMenu();
+        openChannelExport(ch);
+        return;
+      } else if (action === "hide") _setChannelPref(ch, { is_hidden: !hidden });
       _hideChannelCtxMenu();
     });
   });
@@ -466,12 +570,15 @@ function _showChannelCtxMenu(ch, x, y) {
    * Using mousedown removed the menu before click fired, silently eating
    * all item actions (star, hide, mute, etc.). */
   setTimeout(function () {
-    document.addEventListener("click", _hideChannelCtxMenu, {once: true});
+    document.addEventListener("click", _hideChannelCtxMenu, { once: true });
   }, 10);
 }
 
 function _hideChannelCtxMenu() {
-  if (_ctxMenu) { _ctxMenu.remove(); _ctxMenu = null; }
+  if (_ctxMenu) {
+    _ctxMenu.remove();
+    _ctxMenu = null;
+  }
 }
 
 /* ── Channel export modal ── */
@@ -485,7 +592,8 @@ function openChannelExport(ch) {
   document.getElementById("ch-export-to").value = todayNow;
   document.getElementById("ch-export-format").value = "json";
   modal.setAttribute("data-channel", ch || currentChannel || "");
-  document.getElementById("ch-export-title").textContent = "Export " + (ch || currentChannel || "channel");
+  document.getElementById("ch-export-title").textContent =
+    "Export " + (ch || currentChannel || "channel");
   modal.style.display = "flex";
 }
 
@@ -501,10 +609,17 @@ function doChannelExport() {
   var from = document.getElementById("ch-export-from").value;
   var to = document.getElementById("ch-export-to").value;
   var fmt = document.getElementById("ch-export-format").value;
-  if (!ch) { alert("No channel selected."); return; }
+  if (!ch) {
+    alert("No channel selected.");
+    return;
+  }
   /* Build URL: /api/channels/<chat_id>/export/?format=...&from=...&to=...&token=... */
   var chatId = ch.replace(/^#/, "");
-  var url = "/api/channels/" + encodeURIComponent(chatId) + "/export/?format=" + encodeURIComponent(fmt);
+  var url =
+    "/api/channels/" +
+    encodeURIComponent(chatId) +
+    "/export/?format=" +
+    encodeURIComponent(fmt);
   if (from) url += "&from=" + encodeURIComponent(from);
   if (to) url += "&to=" + encodeURIComponent(to);
   if (token) url += "&token=" + encodeURIComponent(token);
@@ -527,7 +642,7 @@ var _dndState = null; /* {el, section, origIndex} */
 function _addDragAndDrop(container, section) {
   container.querySelectorAll(".channel-item[draggable]").forEach(function (el) {
     el.addEventListener("dragstart", function (ev) {
-      _dndState = {el: el, section: section};
+      _dndState = { el: el, section: section };
       el.classList.add("ch-dragging");
       ev.dataTransfer.effectAllowed = "move";
       ev.dataTransfer.setData("text/plain", el.getAttribute("data-channel"));
@@ -554,9 +669,12 @@ function _addDragAndDrop(container, section) {
 
     el.addEventListener("drop", function (ev) {
       ev.preventDefault();
-      if (!_dndState || _dndState.section !== section || el === _dndState.el) return;
+      if (!_dndState || _dndState.section !== section || el === _dndState.el)
+        return;
       /* Insert dragged item before drop target */
-      var items = Array.from(container.querySelectorAll(".channel-item[draggable]"));
+      var items = Array.from(
+        container.querySelectorAll(".channel-item[draggable]"),
+      );
       var fromIdx = items.indexOf(_dndState.el);
       var toIdx = items.indexOf(el);
       if (fromIdx === -1 || toIdx === -1) return;
@@ -567,7 +685,9 @@ function _addDragAndDrop(container, section) {
         container.insertBefore(_dndState.el, el);
       }
       /* Persist new order */
-      var reordered = Array.from(container.querySelectorAll(".channel-item[draggable]"));
+      var reordered = Array.from(
+        container.querySelectorAll(".channel-item[draggable]"),
+      );
       reordered.forEach(function (item, idx) {
         var ch = item.getAttribute("data-channel");
         if (ch) {
@@ -578,8 +698,11 @@ function _addDragAndDrop(container, section) {
           fetch(apiUrl("/api/channel-prefs/"), {
             method: "PATCH",
             credentials: "same-origin",
-            headers: {"Content-Type": "application/json", "X-CSRFToken": getCsrfToken()},
-            body: JSON.stringify({channel: ch, sort_order: idx * 10}),
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCsrfToken(),
+            },
+            body: JSON.stringify({ channel: ch, sort_order: idx * 10 }),
           }).catch(function (_) {});
         }
       });
@@ -607,7 +730,9 @@ if (!userName) {
   }
 }
 var csrfToken = window.__orochiCsrfToken || "";
-function getCsrfToken() { return window.__orochiCsrfToken || csrfToken || ""; }
+function getCsrfToken() {
+  return window.__orochiCsrfToken || csrfToken || "";
+}
 function getAgentColor(name) {
   var s = name || "unknown";
   var sum = 0;
@@ -905,8 +1030,12 @@ function handleMessage(msg) {
      * These are sent by the hub itself (sender="hub") as presence/status
      * notifications — they are not user messages and should never appear
      * in the chat feed. */
-    if ((msg.sender === "hub" || msg.sender === "system") &&
-        (msg.metadata && msg.metadata.type === "status_probe")) return;
+    if (
+      (msg.sender === "hub" || msg.sender === "system") &&
+      msg.metadata &&
+      msg.metadata.type === "status_probe"
+    )
+      return;
     var content = "";
     /* Hub sends flat messages: {type, sender, channel, text, ts, metadata} */
     if (msg.text || msg.channel) {
@@ -1131,7 +1260,9 @@ async function fetchAgents() {
       if (cEl) cEl.textContent = "";
       if (inputHasFocus && document.activeElement !== msgInput) {
         msgInput.focus();
-        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
+        try {
+          msgInput.setSelectionRange(savedStart, savedEnd);
+        } catch (e) {}
       }
       return;
     }
@@ -1162,7 +1293,8 @@ async function fetchAgents() {
         var inactive = isAgentInactive(a);
         var liveness = a.liveness || (inactive ? "offline" : "online");
         var statusClassCompact = liveness === "online" ? "online" : "offline";
-        var tooltip = (a.agent_id || a.name) + " (" + (a.machine || "unknown") + ")";
+        var tooltip =
+          (a.agent_id || a.name) + " (" + (a.machine || "unknown") + ")";
         return (
           '<div class="agent-card sidebar-compact' +
           (inactive ? " inactive" : "") +
@@ -1190,7 +1322,8 @@ async function fetchAgents() {
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
           if (ev.target.closest(".kill-btn")) return; /* handled separately */
-          if (ev.target.closest(".restart-btn")) return; /* handled separately */
+          if (ev.target.closest(".restart-btn"))
+            return; /* handled separately */
           if (ev.target.closest(".avatar-clickable"))
             return; /* handled below */
           var multi = ev.ctrlKey || ev.metaKey;
@@ -1199,9 +1332,13 @@ async function fetchAgents() {
             el.classList.toggle("selected");
           } else {
             /* todo#274 Part 1: single-select highlight (toggle on 2nd click). */
-            var cards = container.querySelectorAll(".agent-card[data-agent-name]");
+            var cards = container.querySelectorAll(
+              ".agent-card[data-agent-name]",
+            );
             var wasSelected = el.classList.contains("selected");
-            cards.forEach(function (c) { c.classList.remove("selected"); });
+            cards.forEach(function (c) {
+              c.classList.remove("selected");
+            });
             if (!wasSelected) el.classList.add("selected");
           }
           if (typeof applyFeedFilter === "function") applyFeedFilter();
@@ -1244,7 +1381,9 @@ async function fetchAgents() {
       });
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (e) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (e) {}
     }
     /* Re-apply sidebar filter after DOM rebuild so display:none isn't lost */
     if (typeof runFilter === "function") runFilter();
@@ -1294,7 +1433,14 @@ async function restartAgent(name, btn) {
 }
 
 async function killAgent(name, btn) {
-  if (!confirm("Kill agent " + name + "?\nThis will terminate screen, bun sidecar, and disconnect.")) return;
+  if (
+    !confirm(
+      "Kill agent " +
+        name +
+        "?\nThis will terminate screen, bun sidecar, and disconnect.",
+    )
+  )
+    return;
   var origText = btn.textContent;
   btn.disabled = true;
   btn.textContent = "\u23F3";
@@ -1369,10 +1515,12 @@ async function fetchStats() {
     var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
     /* Preserve Ctrl+Click multi-select state across re-renders (#274 Part 2) */
     var prevSelected = {};
-    chContainer.querySelectorAll(".channel-item.selected").forEach(function (el) {
-      var ch = el.getAttribute("data-channel");
-      if (ch) prevSelected[ch] = true;
-    });
+    chContainer
+      .querySelectorAll(".channel-item.selected")
+      .forEach(function (el) {
+        var ch = el.getAttribute("data-channel");
+        if (ch) prevSelected[ch] = true;
+      });
     /* todo#325: hide dm:* channels from the public Channels list
      * (they still render in the DM tab via its own path).
      * todo#326: normalize "general" -> "#general" and dedupe by
@@ -1408,19 +1556,37 @@ async function fetchStats() {
         var active = currentChannel === c ? " active" : "";
         var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
         var muted = pref.is_muted ? " ch-muted" : "";
-        var starHtml = '<span class="ch-star ' + (pref.is_starred ? "ch-star-on" : "ch-star-off") +
-          '" data-ch="' + escapeHtml(norm) + '" title="' + (pref.is_starred ? "Unstar" : "Star") + '">&#9733;</span>';
+        var starHtml =
+          '<span class="ch-star ' +
+          (pref.is_starred ? "ch-star-on" : "ch-star-off") +
+          '" data-ch="' +
+          escapeHtml(norm) +
+          '" title="' +
+          (pref.is_starred ? "Unstar" : "Star") +
+          '">&#9733;</span>';
         var unread = channelUnread[c] || channelUnread[norm] || 0;
-        var badgeHtml = '<span class="ch-badge-slot">' +
-          (unread > 0 ? '<span class="unread-badge">' + (unread > 99 ? "99+" : unread) + '</span>' : '') +
-          '</span>';
+        var badgeHtml =
+          '<span class="ch-badge-slot">' +
+          (unread > 0
+            ? '<span class="unread-badge">' +
+              (unread > 99 ? "99+" : unread) +
+              "</span>"
+            : "") +
+          "</span>";
         var starred = pref.is_starred ? " ch-starred" : "";
         return (
-          '<div class="channel-item' + active + muted + starred +
-          '" data-channel="' + escapeHtml(c) + '" draggable="true">' +
+          '<div class="channel-item' +
+          active +
+          muted +
+          starred +
+          '" data-channel="' +
+          escapeHtml(c) +
+          '" draggable="true">' +
           '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
           starHtml +
-          '<span class="ch-name">' + escapeHtml(entry.norm) + '</span>' +
+          '<span class="ch-name">' +
+          escapeHtml(entry.norm) +
+          "</span>" +
           badgeHtml +
           "</div>"
         );
@@ -1437,13 +1603,17 @@ async function fetchStats() {
           ev.stopPropagation();
           var norm = starEl.getAttribute("data-ch");
           var curPref = _channelPrefs[norm] || {};
-          _setChannelPref(norm, {is_starred: !curPref.is_starred});
+          _setChannelPref(norm, { is_starred: !curPref.is_starred });
         });
       }
       /* Context menu */
       _addChannelContextMenu(el);
       el.addEventListener("click", function (ev) {
-        if (ev.target.classList.contains("ch-star") || ev.target.classList.contains("ch-drag-handle")) return;
+        if (
+          ev.target.classList.contains("ch-star") ||
+          ev.target.classList.contains("ch-drag-handle")
+        )
+          return;
         var ch = el.getAttribute("data-channel");
         var multi = ev.ctrlKey || ev.metaKey;
         /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select without
@@ -1497,7 +1667,9 @@ async function fetchStats() {
         /* todo#274 Part 1: pure visual highlight, toggle on second click. */
         var items = chContainer.querySelectorAll(".channel-item");
         var wasSelected = el.classList.contains("selected");
-        items.forEach(function (it) { it.classList.remove("selected"); });
+        items.forEach(function (it) {
+          it.classList.remove("selected");
+        });
         if (!wasSelected && currentChannel === ch) {
           el.classList.add("selected");
         }
@@ -1509,10 +1681,13 @@ async function fetchStats() {
     if (chCountEl) chCountEl.textContent = "(" + displayChannels.length + ")";
     /* Add drag-and-drop to channels section */
     _addDragAndDrop(chContainer, "channels");
-    if (typeof updateChannelUnreadBadges === "function") updateChannelUnreadBadges();
+    if (typeof updateChannelUnreadBadges === "function")
+      updateChannelUnreadBadges();
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
   } catch (e) {
     /* fetch error */
@@ -1525,20 +1700,56 @@ document.addEventListener("keydown", function (e) {
   if (e.key !== "Escape") return;
   if (typeof closeEmojiPicker === "function") {
     var emojiOverlay = document.querySelector(".emoji-picker-overlay.visible");
-    if (emojiOverlay) { closeEmojiPicker(); e.preventDefault(); return; }
+    if (emojiOverlay) {
+      closeEmojiPicker();
+      e.preventDefault();
+      return;
+    }
   }
   if (typeof closeThreadPanel === "function") {
     var threadPanel = document.querySelector(".thread-panel.open");
-    if (threadPanel) { closeThreadPanel(); e.preventDefault(); return; }
+    if (threadPanel) {
+      closeThreadPanel();
+      e.preventDefault();
+      return;
+    }
   }
   if (typeof closeSketchPanel === "function") {
     var sketchPanel = document.querySelector(".sketch-panel.open");
-    if (sketchPanel) { closeSketchPanel(); e.preventDefault(); return; }
+    if (sketchPanel) {
+      closeSketchPanel();
+      e.preventDefault();
+      return;
+    }
   }
-  var generic = document.querySelector(".emoji-picker-overlay.visible, .modal.open, .popup.visible, .long-press-menu");
+  var generic = document.querySelector(
+    ".emoji-picker-overlay.visible, .modal.open, .popup.visible, .long-press-menu",
+  );
   if (generic) {
     generic.classList.remove("visible", "open");
     if (generic.classList.contains("long-press-menu")) generic.remove();
     e.preventDefault();
+    return;
+  }
+  /* Inline-style-based modals (display:flex toggled via style) —
+   * channel-topic-modal, channel-export-modal, channel-members-panel,
+   * and any future role="dialog" element that uses this pattern.
+   * Close the top-most visible one. */
+  var styleModals = document.querySelectorAll(
+    '[role="dialog"], .ch-topic-modal, .ch-export-modal, .ch-members-panel, ' +
+      "#channel-topic-modal, #channel-export-modal, #channel-members-panel, " +
+      "#new-dm-modal, .dm-modal",
+  );
+  for (var i = 0; i < styleModals.length; i++) {
+    var m = styleModals[i];
+    var isVisible =
+      m.hidden !== true &&
+      getComputedStyle(m).display !== "none" &&
+      getComputedStyle(m).visibility !== "hidden";
+    if (!isVisible) continue;
+    m.style.display = "none";
+    m.hidden = true;
+    e.preventDefault();
+    return;
   }
 });
