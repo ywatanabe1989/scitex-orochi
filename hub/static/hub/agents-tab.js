@@ -336,12 +336,20 @@ function _renderAgentContent(grid) {
 
   if (_selectedAgentTab === "overview") {
     content.innerHTML = _buildOverviewHtml(_lastAgentsData);
-    /* Re-bind click-to-filter on the newly rendered rows */
+    /* Click an agent card → switch to that agent's sub-tab. Shift-click
+     * (or Ctrl/Cmd-click) preserves the legacy filter-tag behaviour. */
     content
       .querySelectorAll(".agent-row[data-agent-name]")
       .forEach(function (el) {
-        el.addEventListener("click", function () {
-          addTag("agent", el.getAttribute("data-agent-name"));
+        el.style.cursor = "pointer";
+        el.addEventListener("click", function (ev) {
+          var name = el.getAttribute("data-agent-name");
+          if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+            if (typeof addTag === "function") addTag("agent", name);
+            return;
+          }
+          _selectedAgentTab = name;
+          _renderAgentContent(grid);
         });
       });
     return;
