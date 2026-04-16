@@ -344,8 +344,22 @@ function appendMessage(msg) {
   /* Voice-recording guard: defer the DOM update to avoid interrupting the
    * Web Speech API SpeechRecognition session. Scroll and layout changes
    * during active recording can cause the browser to abort recognition.
-   * The queue is flushed by _flushVoiceQueue() when recording stops. */
-  if (window.isVoiceRecording) {
+   * The queue is flushed by _flushVoiceQueue() when recording stops.
+   *
+   * Exception (scitex-orochi#172): render the user's OWN echoed post
+   * immediately even during continuous dictation. Deferring own-posts made
+   * the feed look frozen after Ctrl+Enter-send-while-dictating — ywatanabe's
+   * primary voice workflow (msg#6500/#6504 + msg#13124). Auto-scroll is
+   * already suppressed during recording (see the `!window.isVoiceRecording`
+   * guard in the appendChild block below) and focus is restored after the
+   * DOM write, so the layout shift from rendering one own-post is tolerable
+   * for recognition. Other agents' / other users' messages continue to be
+   * deferred to keep the feed quiet during dictation. */
+  var _ownPostDuringVoice =
+    window.isVoiceRecording &&
+    typeof userName !== "undefined" &&
+    msg.sender === userName;
+  if (window.isVoiceRecording && !_ownPostDuringVoice) {
     _voiceDeferQueue.push(msg);
     return;
   }
