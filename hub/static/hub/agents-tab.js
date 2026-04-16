@@ -120,34 +120,63 @@ function _renderAgentDetail(a) {
     paneSource = pane ? "cached" : "unavailable";
   }
 
+  var workdir = d.workdir || a.workdir || "";
+  var pid = d.pid || a.pid || "";
+  var multiplexer = d.multiplexer || a.multiplexer || "";
+  var idleSec = d.idle_seconds != null ? d.idle_seconds : a.idle_seconds;
+  var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
+  var registeredAt = d.registered_at || a.registered_at || "";
+  var subagentCount =
+    d.subagent_count != null ? d.subagent_count : a.subagent_count;
+  var metaFields = [
+    ["Role", role],
+    ["Machine", machine],
+    ["Model", model],
+    ["Multiplexer", multiplexer || "-"],
+    ["PID", pid || "-"],
+    ["Liveness", liveness],
+    ["Context", ctxPct != null ? Number(ctxPct).toFixed(1) + "%" : "-"],
+    ["Uptime", d.uptime_seconds != null ? _fmtDuration(d.uptime_seconds) : "-"],
+    ["Idle", idleSec != null ? _fmtDuration(idleSec) : "-"],
+    ["Subagents", subagentCount != null ? String(subagentCount) : "-"],
+    ["Workdir", workdir || "-"],
+    ["Registered", registeredAt || "-"],
+    ["Last heartbeat", lastHeartbeat || "-"],
+  ];
+  var metaHtml = metaFields
+    .map(function (f) {
+      return (
+        "<span><strong>" +
+        escapeHtml(f[0]) +
+        ":</strong>" +
+        escapeHtml(String(f[1])) +
+        "</span>"
+      );
+    })
+    .join("");
   var headerHtml =
     '<div class="agent-detail-header">' +
+    '<div class="agent-detail-header-line">' +
     '<span class="status-dot-inline" style="background:' +
     statusColor +
     '"></span>' +
-    "<strong>" +
+    '<span class="agent-detail-header-title">' +
     escapeHtml(a.name) +
-    "</strong>" +
-    ' <span class="agent-detail-meta">' +
-    escapeHtml(role) +
-    " · " +
-    escapeHtml(machine) +
-    " · " +
-    escapeHtml(model) +
-    (ctxPct != null ? " · ctx " + Number(ctxPct).toFixed(1) + "%" : "") +
-    (d.uptime_seconds != null
-      ? " · up " + _fmtDuration(d.uptime_seconds)
-      : "") +
-    (currentTask ? " · <em>" + escapeHtml(currentTask) + "</em>" : "") +
     "</span>" +
+    (currentTask
+      ? '<em class="agent-detail-task">' + escapeHtml(currentTask) + "</em>"
+      : "") +
     '<span class="agent-detail-actions">' +
     '<button class="agent-detail-dm-btn" data-dm-name="' +
     escapeHtml(a.name) +
-    '" ' +
-    'title="Open DM with ' +
+    '" title="Open DM with ' +
     escapeHtml(a.name) +
     '">DM</button>' +
     "</span>" +
+    "</div>" +
+    '<div class="agent-detail-meta-grid">' +
+    metaHtml +
+    "</div>" +
     "</div>";
 
   var paneLabel =
