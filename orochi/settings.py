@@ -6,7 +6,19 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 def _dynamic_version():
-    """Compute version from git commit count (ywatanabe msg#12144)."""
+    """Compute version from git commit count (ywatanabe msg#12144).
+
+    Resolution order:
+    1. SCITEX_OROCHI_VERSION env var (injected at deploy time in containers
+       where git is unavailable — set to 0.12.<commit-count> by the deploy
+       script so the version stays accurate without needing git in the image).
+    2. git rev-list --count HEAD (works on bare host).
+    3. importlib.metadata (installed package version, stale after docker cp).
+    4. Hard-coded fallback.
+    """
+    env_ver = os.environ.get("SCITEX_OROCHI_VERSION", "").strip()
+    if env_ver:
+        return env_ver
     import subprocess
     try:
         count = subprocess.check_output(
