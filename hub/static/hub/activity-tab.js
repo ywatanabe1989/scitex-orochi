@@ -165,8 +165,14 @@ function _renderActivityAgentDetail(a, grid) {
   var statusColor = livenessColors[liveness] || "#888";
   var pane = a.pane_tail_block || a.pane_tail || "";
   var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
+  var q5 = a.quota_5h_used_pct != null ? Number(a.quota_5h_used_pct) : null;
+  var q7 = a.quota_7d_used_pct != null ? Number(a.quota_7d_used_pct) : null;
+  var subCnt = a.subagent_count != null ? Number(a.subagent_count) : null;
   var chips = [];
   if (ctxPct != null) chips.push("ctx " + ctxPct.toFixed(1) + "%");
+  if (q5 != null) chips.push("5h " + q5.toFixed(0) + "%");
+  if (q7 != null) chips.push("7d " + q7.toFixed(0) + "%");
+  if (subCnt != null) chips.push("subagents " + subCnt);
   if (a.model) chips.push(a.model);
   if (a.multiplexer) chips.push(a.multiplexer);
   if (a.pid) chips.push("pid " + a.pid);
@@ -222,6 +228,39 @@ function _renderActivityAgentDetail(a, grid) {
       escapeHtml(claudeMd) +
       "</pre></div>"
     : "";
+  /* Channel subscriptions (with + / x controls, admin-gated server-side). */
+  var uniqueSubs = [...new Set(a.channels || [])];
+  var channelBadgesHtml = uniqueSubs
+    .map(function (c) {
+      return (
+        '<span class="ch-badge ch-badge-interactive" data-channel="' +
+        escapeHtml(c) +
+        '">' +
+        escapeHtml(c) +
+        '<button type="button" class="ch-badge-remove" title="Unsubscribe ' +
+        escapeHtml(c) +
+        '" data-agent="' +
+        escapeHtml(a.name) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '">&times;</button>' +
+        "</span>"
+      );
+    })
+    .join("");
+  var channelsHtml =
+    '<div class="agent-detail-section agent-detail-channels" data-agent="' +
+    escapeHtml(a.name) +
+    '">' +
+    '<span class="agent-detail-pane-label">Channels: </span>' +
+    '<span class="ch-badges">' +
+    channelBadgesHtml +
+    "</span>" +
+    '<button type="button" class="ch-add-btn" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="Subscribe to a channel">+</button>' +
+    "</div>";
+
   var splitHtml =
     '<div class="agent-detail-split">' +
     '<div class="agent-detail-split-col">' +
@@ -235,6 +274,7 @@ function _renderActivityAgentDetail(a, grid) {
     '<div class="agent-detail-view">' +
     headerHtml +
     taskHtml +
+    channelsHtml +
     splitHtml +
     "</div>";
   /* Scroll pane to bottom */
@@ -260,6 +300,71 @@ function _renderActivityAgentDetail(a, grid) {
       }
     });
   }
+  _bindActivityChannelControls(grid, a.name);
+}
+
+async function _activityChannelRequest(method, agent, channel) {
+  var body = { channel: channel, username: "agent-" + agent };
+  if (method === "POST" || method === "PATCH") body.permission = "read-write";
+  var m = document.cookie.match(/csrftoken=([^;]+)/);
+  var res = await fetch(apiUrl("/api/channel-members/"), {
+    method: method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": m ? decodeURIComponent(m[1]) : "",
+    },
+    credentials: "same-origin",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    var txt = await res.text().catch(function () {
+      return "";
+    });
+    throw new Error(res.status + ": " + txt.slice(0, 200));
+  }
+  return res.json();
+}
+
+function _bindActivityChannelControls(grid, agentName) {
+  grid.querySelectorAll(".ch-badge-remove").forEach(function (btn) {
+    btn.addEventListener("click", async function (ev) {
+      ev.stopPropagation();
+      var channel = btn.getAttribute("data-channel");
+      var agent = btn.getAttribute("data-agent");
+      if (!agent || !channel) return;
+      if (!confirm("Unsubscribe " + agent + " from " + channel + "?")) return;
+      try {
+        await _activityChannelRequest("DELETE", agent, channel);
+        delete _activityDetailCache[agent];
+        _fetchActivityDetail(agent);
+        if (typeof fetchAgents === "function") fetchAgents();
+      } catch (e) {
+        alert("Unsubscribe failed: " + e.message);
+      }
+    });
+  });
+  grid.querySelectorAll(".ch-add-btn").forEach(function (btn) {
+    btn.addEventListener("click", async function (ev) {
+      ev.stopPropagation();
+      var agent = btn.getAttribute("data-agent");
+      if (!agent) return;
+      var raw = prompt("Subscribe " + agent + " to which channel?", "#");
+      if (raw == null) return;
+      var channel = raw.trim();
+      if (!channel) return;
+      if (!channel.startsWith("#") && !channel.startsWith("dm:")) {
+        channel = "#" + channel;
+      }
+      try {
+        await _activityChannelRequest("POST", agent, channel);
+        delete _activityDetailCache[agent];
+        _fetchActivityDetail(agent);
+        if (typeof fetchAgents === "function") fetchAgents();
+      } catch (e) {
+        alert("Subscribe failed: " + e.message);
+      }
+    });
+  });
 }
 
 function _formatIdle(seconds) {

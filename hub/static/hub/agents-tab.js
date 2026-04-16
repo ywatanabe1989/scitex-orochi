@@ -128,6 +128,18 @@ function _renderAgentDetail(a) {
   var registeredAt = d.registered_at || a.registered_at || "";
   var subagentCount =
     d.subagent_count != null ? d.subagent_count : a.subagent_count;
+  var q5 =
+    d.quota_5h_used_pct != null ? d.quota_5h_used_pct : a.quota_5h_used_pct;
+  var q7 =
+    d.quota_7d_used_pct != null ? d.quota_7d_used_pct : a.quota_7d_used_pct;
+  var q5Reset = d.quota_5h_reset_at || a.quota_5h_reset_at || "";
+  var q7Reset = d.quota_7d_reset_at || a.quota_7d_reset_at || "";
+  function _fmtQuota(pct, reset) {
+    if (pct == null) return "-";
+    var s = Number(pct).toFixed(0) + "%";
+    if (reset) s += " (resets " + reset + ")";
+    return s;
+  }
   var metaFields = [
     ["Role", role],
     ["Machine", machine],
@@ -136,9 +148,14 @@ function _renderAgentDetail(a) {
     ["PID", pid || "-"],
     ["Liveness", liveness],
     ["Context", ctxPct != null ? Number(ctxPct).toFixed(1) + "%" : "-"],
+    ["5h quota", _fmtQuota(q5, q5Reset)],
+    ["7d quota", _fmtQuota(q7, q7Reset)],
+    [
+      "Subagents (" + (subagentCount != null ? subagentCount : 0) + ")",
+      subagentCount != null ? String(subagentCount) : "-",
+    ],
     ["Uptime", d.uptime_seconds != null ? _fmtDuration(d.uptime_seconds) : "-"],
     ["Idle", idleSec != null ? _fmtDuration(idleSec) : "-"],
-    ["Subagents", subagentCount != null ? String(subagentCount) : "-"],
     ["Workdir", workdir || "-"],
     ["Registered", registeredAt || "-"],
     ["Last heartbeat", lastHeartbeat || "-"],
@@ -301,8 +318,8 @@ function _renderAgentDetail(a) {
   return (
     '<div class="agent-detail-view">' +
     headerHtml +
-    splitHtml +
     channelsHtml +
+    splitHtml +
     mcpHtml +
     mcpJsonHtml +
     "</div>"
