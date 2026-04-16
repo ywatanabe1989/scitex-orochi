@@ -2215,10 +2215,12 @@ a.chat-link:hover {
 .mermaid-container { margin: 8px 0; }
 .mermaid-rendered { background: #1a1a2e; border-radius: 8px; padding: 12px; overflow: hidden; max-height: 280px; cursor: pointer; }
 .mermaid-rendered svg { max-width: 100%; max-height: 260px; height: auto; }
+.mermaid-rendered img.mermaid-img { max-width: 100%; max-height: 260px; height: auto; display: block; }
 .mermaid-rendered:hover { outline: 1px solid #4ecdc4; }
 @media (max-width: 640px) {
   .mermaid-rendered { max-height: 180px; }
   .mermaid-rendered svg { max-height: 160px; }
+  .mermaid-rendered img.mermaid-img { max-height: 160px; }
 }
 .mermaid-toggle { font-size: 11px; color: #4ecdc4; background: none; border: 1px solid #333; border-radius: 4px; padding: 2px 8px; cursor: pointer; margin-top: 4px; }
 .mermaid-toggle:hover { border-color: #4ecdc4; }

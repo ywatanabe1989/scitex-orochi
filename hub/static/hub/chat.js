@@ -272,18 +272,66 @@ function buildAttachmentsHtml(attachments) {
 }
 
 /* Render unprocessed mermaid diagrams within a given root element.
- * Calls mermaid.run() on all .mermaid-rendered divs that haven't been
- * processed yet (no data-mermaid-processed attribute). */
+ * Calls mermaid.run() then wraps each rendered SVG as a blob-URL <img>
+ * so that right-click Save/Copy works natively (scitex-orochi#165). */
 function _renderMermaidIn(root) {
   if (typeof window.mermaid === 'undefined') return;
   var nodes = (root || document).querySelectorAll('.mermaid-rendered:not([data-mermaid-processed])');
   if (!nodes.length) return;
   nodes.forEach(function(n) { n.setAttribute('data-mermaid-processed', '1'); });
+  var promise;
   try {
-    window.mermaid.run({ nodes: nodes });
+    promise = window.mermaid.run({ nodes: nodes });
   } catch (e) {
     /* Non-fatal: diagram parse error shows in the rendered div */
+    return;
   }
+  /* After render completes, convert SVG elements to blob-URL <img> tags
+   * so that right-click "Save image" / "Copy image" works natively. */
+  if (promise && typeof promise.then === 'function') {
+    promise.then(function() {
+      nodes.forEach(function(n) { _mermaidSvgToImg(n); });
+    }).catch(function() { /* parse errors: leave div as-is */ });
+  } else {
+    /* Synchronous fallback (older mermaid builds) */
+    setTimeout(function() {
+      nodes.forEach(function(n) { _mermaidSvgToImg(n); });
+    }, 100);
+  }
+}
+
+/* Serialize the SVG rendered inside a .mermaid-rendered div to a blob URL,
+ * replace the SVG with a responsive <img> (enables native right-click Save/Copy),
+ * and wire click-to-enlarge via the existing files-tab lightbox.
+ * scitex-orochi#165 */
+function _mermaidSvgToImg(container) {
+  var svgEl = container.querySelector('svg');
+  if (!svgEl) return; /* parse error — no SVG was produced */
+
+  /* Ensure the SVG namespace is set so XMLSerializer produces valid SVG */
+  if (!svgEl.getAttribute('xmlns')) {
+    svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+
+  var svgStr = new XMLSerializer().serializeToString(svgEl);
+  var blob = new Blob([svgStr], { type: 'image/svg+xml' });
+  var url = URL.createObjectURL(blob);
+
+  var img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Mermaid diagram';
+  img.className = 'mermaid-img';
+
+  /* Replace inline SVG with <img>; blob URL stays alive so right-click Save works */
+  svgEl.parentNode.replaceChild(img, svgEl);
+
+  /* Click-to-enlarge: open in the existing image lightbox (files-tab.js openImgViewer) */
+  container.addEventListener('click', function(e) {
+    if (e.target.closest('.mermaid-toggle')) return;
+    if (typeof openImgViewer === 'function') {
+      openImgViewer(url, 'mermaid-diagram.svg', [{ url: url, filename: 'mermaid-diagram.svg' }]);
+    }
+  });
 }
 
 function appendMessage(msg) {
