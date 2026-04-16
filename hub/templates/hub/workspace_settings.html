@@ -31,18 +31,13 @@
             </div>
         </nav>
         <main id="chat-area" class="settings-area">
-            <div id="chat-header">
-                <h3>Workspace Settings</h3>
-            </div>
             <div class="settings-content" id="settings-content">
                 {% if messages %}
                     {% for message in messages %}<div class="settings-msg {{ message.tags }}">{{ message }}</div>{% endfor %}
                 {% endif %}
                 <div class="settings-mode-tabs">
                     <button type="button" class="settings-mode-btn active" data-mode="user">User</button>
-                    {% if is_admin %}
-                        <button type="button" class="settings-mode-btn" data-mode="workspace">Workspace</button>
-                    {% endif %}
+                    {% if is_admin %}<button type="button" class="settings-mode-btn" data-mode="workspace">Workspace</button>{% endif %}
                 </div>
                 <div class="settings-mode-pane" data-mode="user">
                     <section class="settings-section">
@@ -52,7 +47,9 @@
                             <tbody>
                                 <tr>
                                     <td class="info-label">Username</td>
-                                    <td><code>{{ request.user.username }}</code></td>
+                                    <td>
+                                        <code>{{ request.user.username }}</code>
+                                    </td>
                                 </tr>
                                 <tr>
                                     <td class="info-label">Email</td>
@@ -68,227 +65,253 @@
                                 </tr>
                             </tbody>
                         </table>
-                        <a href="{% url 'signout' %}" class="btn-small btn-danger" style="margin-top:8px;display:inline-block">Sign out</a>
+                        <a href="{% url 'signout' %}"
+                           class="btn-small btn-danger"
+                           style="margin-top:8px;
+                                  display:inline-block">Sign out</a>
                     </section>
                     <section class="settings-section">
                         <h4>🔔 Push Notifications</h4>
-                        <p class="settings-desc">Receive mobile push notifications when you are @mentioned or #escalation messages arrive. Works on Chrome and Safari (iOS 16.4+).</p>
-                        <button type="button" id="push-toggle" class="btn-small push-off" onclick="togglePush()">Notifications: OFF</button>
-                        <p class="settings-desc" id="push-status-msg" style="margin-top:6px;font-size:11px;color:#888"></p>
+                        <p class="settings-desc">
+                            Receive mobile push notifications when you are @mentioned or #escalation messages arrive. Works on Chrome and Safari (iOS 16.4+).
+                        </p>
+                        <button type="button"
+                                id="push-toggle"
+                                class="btn-small push-off"
+                                onclick="togglePush()">Notifications: OFF</button>
+                        <p class="settings-desc"
+                           id="push-status-msg"
+                           style="margin-top:6px;
+                                  font-size:11px;
+                                  color:#888"></p>
                     </section>
                     <section class="settings-section">
                         <h4>Change Password</h4>
                         <p class="settings-desc">Update your account password via the secure password change page.</p>
                         <a href="/accounts/password/change/"
                            class="btn-small btn-primary password-change-link"
-                           style="margin-top:4px;display:inline-block">
-                            &#128274; Change Password
-                        </a>
+                           style="margin-top:4px;
+                                  display:inline-block">&#128274; Change Password</a>
                     </section>
                 </div>
                 <div class="settings-mode-pane" data-mode="workspace" style="display:none">
-                <section class="settings-section">
-                    <h4>Workspace Info</h4>
-                    <p class="settings-desc">Basic information about this workspace.</p>
-                    <table class="settings-table">
-                        <tbody>
-                            <tr>
-                                <td class="info-label">Name</td>
-                                <td>
-                                    <code>{{ workspace.name }}</code>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Description</td>
-                                <td>{{ workspace.description|default:"No description set." }}</td>
-                            </tr>
-                            <tr>
-                                <td class="info-label">Created</td>
-                                <td>{{ workspace.created_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </section>
-                <section class="settings-section">
-                    <h4>Workspace Icon</h4>
-                    <p class="settings-desc">Click the icon to choose an emoji.</p>
-                    <div class="ws-icon-preview ws-icon-clickable"
-                         id="ws-icon-preview"
-                         title="Click to change icon"
-                         style="cursor:pointer;font-size:48px;width:64px;height:64px;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border-radius:8px">{% if workspace.icon %}{{ workspace.icon }}{% else %}🐍{% endif %}</div>
-                    <form method="post" class="settings-form settings-form-icon">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="set_icon">
-                        <input type="hidden" name="icon" value="" id="icon-input">
-                    </form>
-                </section>
-                <section class="settings-section">
-                    <h4>Agent Tokens</h4>
-                    <p class="settings-desc">Tokens allow AI agents to connect to this workspace via WebSocket.</p>
-                    <table class="settings-table">
-                        <thead>
-                            <tr>
-                                <th>Label</th>
-                                <th>Token</th>
-                                <th>Created</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for t in tokens %}
+                    <section class="settings-section">
+                        <h4>Workspace Info</h4>
+                        <p class="settings-desc">Basic information about this workspace.</p>
+                        <table class="settings-table">
+                            <tbody>
                                 <tr>
-                                    <td>{{ t.label }}</td>
+                                    <td class="info-label">Name</td>
                                     <td>
-                                        <code class="token-masked" data-token="{{ t.token }}">{{ t.token|truncatechars:12 }}...</code>
-                                        <button type="button"
-                                                class="btn-small btn-token-show"
-                                                title="Show/hide token"
-                                                onclick="toggleToken(this)">Show</button>
-                                        <button type="button"
-                                                class="btn-small btn-token-copy"
-                                                title="Copy token"
-                                                onclick="copyToken(this)">Copy</button>
-                                    </td>
-                                    <td>{{ t.created_at|date:"Y-m-d" }}</td>
-                                    <td>
-                                        <form method="post" class="inline-form">
-                                            {% csrf_token %}
-                                            <input type="hidden" name="action" value="revoke_token">
-                                            <input type="hidden" name="token_id" value="{{ t.id }}">
-                                            <button type="submit" class="btn-small btn-danger">Revoke</button>
-                                        </form>
+                                        <code>{{ workspace.name }}</code>
                                     </td>
                                 </tr>
-                            {% empty %}
                                 <tr>
-                                    <td colspan="4">No tokens yet.</td>
+                                    <td class="info-label">Description</td>
+                                    <td>{{ workspace.description|default:"No description set." }}</td>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <form method="post" class="settings-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="create_token">
-                        <input type="text" name="label" placeholder="Token label (e.g. my-agent)">
-                        <button type="submit" class="btn-small btn-primary">Create Token</button>
-                    </form>
-                </section>
-                <section class="settings-section">
-                    <h4>Members</h4>
-                    <p class="settings-desc">Invite users to this workspace.</p>
-                    <table class="settings-table">
-                        <thead>
-                            <tr>
-                                <th>User</th>
-                                <th>Role</th>
-                                <th>Joined</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for m in members %}
                                 <tr>
-                                    <td>{{ m.user.username }}</td>
-                                    <td>{{ m.role }}</td>
-                                    <td>{{ m.joined_at|date:"Y-m-d" }}</td>
+                                    <td class="info-label">Created</td>
+                                    <td>{{ workspace.created_at|date:"Y-m-d H:i" }}</td>
                                 </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    <form method="post" class="settings-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="add_member">
-                        <input type="text" name="username" placeholder="Username to invite" required>
-                        <button type="submit" class="btn-small btn-primary">Invite</button>
-                    </form>
-                </section>
-                <section class="settings-section">
-                    <h4>Email Invitations</h4>
-                    <p class="settings-desc">Invite people by email. They'll get a link to sign up and join this workspace.</p>
-                    {% if invitations %}
+                            </tbody>
+                        </table>
+                    </section>
+                    <section class="settings-section">
+                        <h4>Workspace Icon</h4>
+                        <p class="settings-desc">Click the icon to choose an emoji.</p>
+                        <div class="ws-icon-preview ws-icon-clickable"
+                             id="ws-icon-preview"
+                             title="Click to change icon"
+                             style="cursor:pointer;
+                                    font-size:48px;
+                                    width:64px;
+                                    height:64px;
+                                    display:flex;
+                                    align-items:center;
+                                    justify-content:center;
+                                    background:#1a1a1a;
+                                    border-radius:8px">
+                            {% if workspace.icon %}
+                                {{ workspace.icon }}
+                            {% else %}
+                                🐍
+                            {% endif %}
+                        </div>
+                        <form method="post" class="settings-form settings-form-icon">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="set_icon">
+                            <input type="hidden" name="icon" value="" id="icon-input">
+                        </form>
+                    </section>
+                    <section class="settings-section">
+                        <h4>Agent Tokens</h4>
+                        <p class="settings-desc">Tokens allow AI agents to connect to this workspace via WebSocket.</p>
                         <table class="settings-table">
                             <thead>
                                 <tr>
-                                    <th>Email</th>
-                                    <th>Invited</th>
-                                    <th>Status</th>
+                                    <th>Label</th>
+                                    <th>Token</th>
+                                    <th>Created</th>
+                                    <th></th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for inv in invitations %}
+                                {% for t in tokens %}
                                     <tr>
-                                        <td>{{ inv.email }}</td>
-                                        <td>{{ inv.created_at|date:"Y-m-d" }}</td>
-                                        <td>Pending</td>
+                                        <td>{{ t.label }}</td>
+                                        <td>
+                                            <code class="token-masked" data-token="{{ t.token }}">{{ t.token|truncatechars:12 }}...</code>
+                                            <button type="button"
+                                                    class="btn-small btn-token-show"
+                                                    title="Show/hide token"
+                                                    onclick="toggleToken(this)">Show</button>
+                                            <button type="button"
+                                                    class="btn-small btn-token-copy"
+                                                    title="Copy token"
+                                                    onclick="copyToken(this)">Copy</button>
+                                        </td>
+                                        <td>{{ t.created_at|date:"Y-m-d" }}</td>
+                                        <td>
+                                            <form method="post" class="inline-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="revoke_token">
+                                                <input type="hidden" name="token_id" value="{{ t.id }}">
+                                                <button type="submit" class="btn-small btn-danger">Revoke</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4">No tokens yet.</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
-                    {% endif %}
-                    <form method="post" class="settings-form">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="invite_email">
-                        <input type="email" name="email" placeholder="email@example.com" required>
-                        <button type="submit" class="btn-small btn-primary">Send Invite</button>
-                    </form>
-                </section>
-                <section class="settings-section">
-                    <h4>GitHub Integration</h4>
-                    <p class="settings-desc">GitHub access for issue tracking and repository integration.</p>
-                    <div class="settings-info-box">
-                        <code>GITHUB_TOKEN</code> is configured per-server, not per-user or per-workspace.
-                        It is set as an environment variable on the Orochi server process.
-                        Contact your server administrator to configure or rotate the token.
-                    </div>
-                </section>
-                {% if is_admin %}
-                    <section class="settings-section">
-                        <h4>Rename Workspace</h4>
-                        <p class="settings-desc">Change the workspace URL. This will change the subdomain used to access this workspace.</p>
                         <form method="post" class="settings-form">
                             {% csrf_token %}
-                            <input type="hidden" name="action" value="rename_workspace">
-                            <input type="text"
-                                   name="new_name"
-                                   value="{{ workspace.name }}"
-                                   pattern="[a-z0-9]([a-z0-9\-]*[a-z0-9])?"
-                                   title="Lowercase letters, numbers, and hyphens only"
-                                   required>
-                            <button type="submit" class="btn-small btn-primary">Rename</button>
+                            <input type="hidden" name="action" value="create_token">
+                            <input type="text" name="label" placeholder="Token label (e.g. my-agent)">
+                            <button type="submit" class="btn-small btn-primary">Create Token</button>
                         </form>
-                        <p class="settings-desc settings-note">Note: This will change the workspace URL.</p>
                     </section>
-                    <section class="settings-section danger-zone">
-                        <h4>Danger Zone</h4>
-                        <div class="danger-box">
-                            <div class="danger-box-header">
-                                <strong>Delete this workspace</strong>
-                                <p class="settings-desc">
-                                    Once you delete a workspace, there is no going back. All channels, messages, tokens, and members will be permanently removed.
-                                </p>
-                            </div>
-                            <form method="post" class="danger-form" id="delete-workspace-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="action" value="delete_workspace">
-                                <label class="danger-label" for="confirm-delete-name">
-                                    Type <strong>{{ workspace.name }}</strong> to confirm:
-                                </label>
-                                <div class="danger-form-row">
-                                    <input type="text"
-                                           id="confirm-delete-name"
-                                           name="confirm_name"
-                                           placeholder="{{ workspace.name }}"
-                                           autocomplete="off"
-                                           required>
-                                    <button type="submit"
-                                            id="btn-delete-workspace"
-                                            class="btn-small btn-danger"
-                                            disabled>Delete this workspace</button>
-                                </div>
-                            </form>
+                    <section class="settings-section">
+                        <h4>Members</h4>
+                        <p class="settings-desc">Invite users to this workspace.</p>
+                        <table class="settings-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Role</th>
+                                    <th>Joined</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for m in members %}
+                                    <tr>
+                                        <td>{{ m.user.username }}</td>
+                                        <td>{{ m.role }}</td>
+                                        <td>{{ m.joined_at|date:"Y-m-d" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <form method="post" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="add_member">
+                            <input type="text" name="username" placeholder="Username to invite" required>
+                            <button type="submit" class="btn-small btn-primary">Invite</button>
+                        </form>
+                    </section>
+                    <section class="settings-section">
+                        <h4>Email Invitations</h4>
+                        <p class="settings-desc">Invite people by email. They'll get a link to sign up and join this workspace.</p>
+                        {% if invitations %}
+                            <table class="settings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Invited</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for inv in invitations %}
+                                        <tr>
+                                            <td>{{ inv.email }}</td>
+                                            <td>{{ inv.created_at|date:"Y-m-d" }}</td>
+                                            <td>Pending</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% endif %}
+                        <form method="post" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="invite_email">
+                            <input type="email" name="email" placeholder="email@example.com" required>
+                            <button type="submit" class="btn-small btn-primary">Send Invite</button>
+                        </form>
+                    </section>
+                    <section class="settings-section">
+                        <h4>GitHub Integration</h4>
+                        <p class="settings-desc">GitHub access for issue tracking and repository integration.</p>
+                        <div class="settings-info-box">
+                            <code>GITHUB_TOKEN</code> is configured per-server, not per-user or per-workspace.
+                            It is set as an environment variable on the Orochi server process.
+                            Contact your server administrator to configure or rotate the token.
                         </div>
                     </section>
-                {% endif %}
-                </div><!-- /.settings-mode-pane[workspace] -->
+                    {% if is_admin %}
+                        <section class="settings-section">
+                            <h4>Rename Workspace</h4>
+                            <p class="settings-desc">Change the workspace URL. This will change the subdomain used to access this workspace.</p>
+                            <form method="post" class="settings-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="rename_workspace">
+                                <input type="text"
+                                       name="new_name"
+                                       value="{{ workspace.name }}"
+                                       pattern="[a-z0-9]([a-z0-9\-]*[a-z0-9])?"
+                                       title="Lowercase letters, numbers, and hyphens only"
+                                       required>
+                                <button type="submit" class="btn-small btn-primary">Rename</button>
+                            </form>
+                            <p class="settings-desc settings-note">Note: This will change the workspace URL.</p>
+                        </section>
+                        <section class="settings-section danger-zone">
+                            <h4>Danger Zone</h4>
+                            <div class="danger-box">
+                                <div class="danger-box-header">
+                                    <strong>Delete this workspace</strong>
+                                    <p class="settings-desc">
+                                        Once you delete a workspace, there is no going back. All channels, messages, tokens, and members will be permanently removed.
+                                    </p>
+                                </div>
+                                <form method="post" class="danger-form" id="delete-workspace-form">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete_workspace">
+                                    <label class="danger-label" for="confirm-delete-name">
+                                        Type <strong>{{ workspace.name }}</strong> to confirm:
+                                    </label>
+                                    <div class="danger-form-row">
+                                        <input type="text"
+                                               id="confirm-delete-name"
+                                               name="confirm_name"
+                                               placeholder="{{ workspace.name }}"
+                                               autocomplete="off"
+                                               required>
+                                        <button type="submit"
+                                                id="btn-delete-workspace"
+                                                class="btn-small btn-danger"
+                                                disabled>Delete this workspace</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </section>
+                    {% endif %}
+                </div>
+                <!-- /.settings-mode-pane[workspace] -->
             </div>
         </main>
     </div>
