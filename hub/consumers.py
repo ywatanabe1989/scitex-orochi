@@ -202,19 +202,40 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_add(group, self.channel_name)
 
         await self.accept()
+
+        # scitex-orochi#144 fix path 4: track this WebSocket as one of N
+        # active connections under self.agent_name, so the registry can
+        # surface concurrent-instance situations without altering identity.
+        from hub.registry import register_connection
+
+        active_sessions = register_connection(self.agent_name, self.channel_name)
+
         log.info(
-            "Agent %s connected to workspace %s",
+            "Agent %s connected to workspace %s (active_sessions=%d)",
             self.agent_name,
             self.workspace_name,
+            active_sessions,
         )
+        if active_sessions > 1:
+            log.warning(
+                "Concurrent-instance hazard: %s now has %d active sessions "
+                "(scitex-orochi#144). Dispatch to @%s may race; coordinators "
+                "should prefer DM-routing.",
+                self.agent_name,
+                active_sessions,
+                self.agent_name,
+            )
 
-        # Broadcast presence to dashboard observers
+        # Broadcast presence to dashboard observers, including the new
+        # active_sessions field so the Agents tab can surface a warning
+        # icon when sessions > 1.
         await self.channel_layer.group_send(
             self.workspace_group,
             {
                 "type": "agent.presence",
                 "agent": self.agent_name,
                 "status": "connected",
+                "active_sessions": active_sessions,
             },
         )
 
@@ -223,19 +244,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def disconnect(self, code):
         if hasattr(self, "workspace_group"):
-            # Mark agent offline in registry
-            from hub.registry import unregister_agent
+            # scitex-orochi#144 fix path 4: drop only THIS connection from
+            # the per-agent set, not the whole agent record. The agent only
+            # transitions to offline when its last sibling connection drops.
+            from hub.registry import unregister_connection
 
             agent_name = getattr(self, "agent_name", "?")
-            unregister_agent(agent_name)
+            remaining = unregister_connection(agent_name, self.channel_name)
+            if remaining > 0:
+                log.info(
+                    "Agent %s disconnected one session; %d sibling "
+                    "session(s) still active (scitex-orochi#144).",
+                    agent_name,
+                    remaining,
+                )
 
-            # Broadcast departure before leaving group
+            # Broadcast departure before leaving group, including remaining
+            # session count so the dashboard can update the warning state.
             await self.channel_layer.group_send(
                 self.workspace_group,
                 {
                     "type": "agent.presence",
                     "agent": agent_name,
-                    "status": "disconnected",
+                    "status": "disconnected" if remaining == 0 else "connected",
+                    "active_sessions": remaining,
                 },
             )
 
