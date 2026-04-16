@@ -142,11 +142,34 @@
   padding: 16px;
 }
 
-/* Per-agent detail view: single full-width cell so terminal+CLAUDE.md
- * get the full tab width instead of one 360px auto-fill column. */
+/* Per-agent detail view: switch the grid to a flex column so the
+ * agent-detail-view child can flex-grow and fill remaining viewport
+ * height (not just content height). Single full width — no 360px
+ * auto-fill capping. */
 .activity-grid.activity-grid-detail {
+  display: flex;
+  flex-direction: column;
   grid-template-columns: 1fr;
   padding: 16px;
+  height: 100%;
+  min-height: 0;
+}
+.activity-grid.activity-grid-detail > .agent-detail-view {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.activity-grid.activity-grid-detail .agent-detail-split {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.activity-grid.activity-grid-detail .agent-detail-split-col {
+  min-height: 0;
+}
+.activity-grid.activity-grid-detail .agent-detail-pane,
+.activity-grid.activity-grid-detail .agent-detail-claude-md {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
 }
 
 .activity-card {

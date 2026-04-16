@@ -4,6 +4,35 @@
 var activityRefreshTimer = null;
 var _activitySubTab = "overview"; /* "overview" or agent name */
 var _paneShowRaw = false; /* false = strip ANSI (clean), true = raw */
+/* Cache for /api/agents/<name>/detail/ so the per-agent view can show
+ * fields that the registry summary omits (full CLAUDE.md, full pane
+ * text, redacted MCP). Mirrors _agentDetailCache in agents-tab.js. */
+var _activityDetailCache = {};
+var _activityDetailInflight = {};
+
+async function _fetchActivityDetail(name) {
+  if (!name || name === "overview") return;
+  if (_activityDetailInflight[name]) return;
+  _activityDetailInflight[name] = true;
+  try {
+    var res = await fetch(
+      apiUrl("/api/agents/" + encodeURIComponent(name) + "/detail/"),
+    );
+    if (!res.ok) return;
+    _activityDetailCache[name] = await res.json();
+    if (_activitySubTab === name) {
+      var grid = document.getElementById("activity-grid");
+      var agent = (window.__lastAgents || []).find(function (a) {
+        return a.name === name;
+      });
+      if (grid && agent) _renderActivityAgentDetail(agent, grid);
+    }
+  } catch (_e) {
+    /* ignore; registry fallback still renders */
+  } finally {
+    _activityDetailInflight[name] = false;
+  }
+}
 
 /* Strip ANSI escape sequences for clean terminal display */
 function _stripAnsi(str) {
@@ -113,10 +142,19 @@ function _applyActivitySubTab(agents) {
   }
   grid.classList.add("activity-grid-detail");
   _renderActivityAgentDetail(agent, grid);
+  _fetchActivityDetail(agent.name);
 }
 
 /* Per-agent full detail view */
 function _renderActivityAgentDetail(a, grid) {
+  /* Merge the registry row with any cached /detail/ payload so we
+   * display the full CLAUDE.md and redacted pane_text when available,
+   * while still rendering something immediately from the registry. */
+  var d = _activityDetailCache[a.name] || {};
+  a = Object.assign({}, a, {
+    claude_md: d.claude_md || a.claude_md || a.claude_md_head || "",
+    pane_tail_block: d.pane_text || a.pane_tail_block || a.pane_tail || "",
+  });
   var liveness = a.liveness || a.status || "online";
   var livenessColors = {
     online: "#4ecdc4",
