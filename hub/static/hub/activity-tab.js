@@ -178,24 +178,84 @@ function _renderActivityAgentDetail(a, grid) {
   if (a.pid) chips.push("pid " + a.pid);
   var uniqueCh = [...new Set(a.channels || [])];
   if (uniqueCh.length) chips.push("ch: " + uniqueCh.join(", "));
+  function _fmtPct(v) {
+    return v == null ? "-" : Number(v).toFixed(0) + "%";
+  }
+  function _fmtSec(v) {
+    if (v == null) return "-";
+    v = Number(v);
+    if (v < 60) return Math.round(v) + "s";
+    if (v < 3600) return Math.round(v / 60) + "m";
+    if (v < 86400) {
+      var h = Math.floor(v / 3600);
+      return h + "h " + Math.round((v % 3600) / 60) + "m";
+    }
+    var d = Math.floor(v / 86400);
+    return d + "d " + Math.round((v % 86400) / 3600) + "h";
+  }
+  var metaFields = [
+    ["Role", a.role || "agent"],
+    ["Machine", a.machine || "?"],
+    ["Model", a.model || "-"],
+    ["Multiplexer", a.multiplexer || "-"],
+    ["PID", a.pid || "-"],
+    ["Liveness", liveness],
+    ["Context", ctxPct != null ? ctxPct.toFixed(1) + "%" : "-"],
+    [
+      "5h quota",
+      a.quota_5h_used_pct != null
+        ? _fmtPct(a.quota_5h_used_pct) +
+          (a.quota_5h_reset_at ? " (resets " + a.quota_5h_reset_at + ")" : "")
+        : "-",
+    ],
+    [
+      "7d quota",
+      a.quota_7d_used_pct != null
+        ? _fmtPct(a.quota_7d_used_pct) +
+          (a.quota_7d_reset_at ? " (resets " + a.quota_7d_reset_at + ")" : "")
+        : "-",
+    ],
+    [
+      "Subagents (" + (subCnt != null ? subCnt : 0) + ")",
+      subCnt != null ? String(subCnt) : "-",
+    ],
+    ["Pane state", a.pane_state || "-"],
+    ["Idle", _fmtSec(a.idle_seconds)],
+    ["Workdir", a.workdir || "-"],
+    ["Registered", a.registered_at || "-"],
+    ["Last heartbeat", a.last_heartbeat || "-"],
+  ];
+  var metaGridHtml = metaFields
+    .map(function (f) {
+      return (
+        "<span><strong>" +
+        escapeHtml(f[0]) +
+        ":</strong>" +
+        escapeHtml(String(f[1])) +
+        "</span>"
+      );
+    })
+    .join("");
   var headerHtml =
     '<div class="agent-detail-header">' +
+    '<div class="agent-detail-header-line">' +
     '<span class="status-dot-inline" style="background:' +
     statusColor +
     '"></span>' +
-    '<strong style="color:' +
-    escapeHtml(getAgentColor ? getAgentColor(a.name) : "#ccc") +
+    '<span class="agent-detail-header-title" style="color:' +
+    escapeHtml(getAgentColor ? getAgentColor(a.name) : "#4ecdc4") +
     '">' +
     escapeHtml(
       typeof cleanAgentName === "function" ? cleanAgentName(a.name) : a.name,
     ) +
-    "</strong>" +
-    ' <span class="agent-detail-meta">' +
-    escapeHtml(a.role || "agent") +
-    " · " +
-    escapeHtml(a.machine || "?") +
-    (chips.length ? " · " + escapeHtml(chips.join(" · ")) : "") +
     "</span>" +
+    (a.current_task
+      ? '<em class="agent-detail-task">' + escapeHtml(a.current_task) + "</em>"
+      : "") +
+    "</div>" +
+    '<div class="agent-detail-meta-grid">' +
+    metaGridHtml +
+    "</div>" +
     "</div>";
   /* Task */
   var taskHtml =
