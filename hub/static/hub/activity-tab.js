@@ -370,6 +370,20 @@ function _renderActivityAgentDetail(a, grid) {
           (d.last_mcp_tool_name ? " (" + d.last_mcp_tool_name + ")" : "")
         : "-",
     ],
+    [
+      "Last action",
+      d.last_action_at
+        ? _fmtSec(_secondsSinceIso(d.last_action_at)) +
+          " ago (" +
+          (d.last_action_name || "?") +
+          " " +
+          (d.last_action_outcome || "?") +
+          (d.last_action_elapsed_s != null
+            ? ", " + Number(d.last_action_elapsed_s).toFixed(1) + "s"
+            : "") +
+          ")"
+        : "-",
+    ],
     ["Workdir", a.workdir || "-"],
     ["Registered", a.registered_at || "-"],
     ["Last heartbeat", a.last_heartbeat || "-"],

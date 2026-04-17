@@ -1845,6 +1845,15 @@ def api_agents_register(request):
             "last_tool_name": body.get("last_tool_name") or "",
             "last_mcp_tool_at": body.get("last_mcp_tool_at") or "",
             "last_mcp_tool_name": body.get("last_mcp_tool_name") or "",
+            # PaneAction summary from scitex-agent-container action_store.
+            # Surfaces nonce-probe, compact, etc. outcomes on the
+            # dashboard without orochi needing to query the per-host DB.
+            "last_action_at": body.get("last_action_at") or "",
+            "last_action_name": body.get("last_action_name") or "",
+            "last_action_outcome": body.get("last_action_outcome") or "",
+            "last_action_elapsed_s": body.get("last_action_elapsed_s"),
+            "action_counts": body.get("action_counts") or {},
+            "p95_elapsed_s_by_action": body.get("p95_elapsed_s_by_action") or {},
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev

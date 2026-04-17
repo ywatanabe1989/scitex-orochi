@@ -119,6 +119,15 @@ def _wrap_with_orochi_fields(
         "last_tool_name": status.get("last_tool_name") or "",
         "last_mcp_tool_at": status.get("last_mcp_tool_at") or "",
         "last_mcp_tool_name": status.get("last_mcp_tool_name") or "",
+        # PaneAction summary (from scitex-agent-container action_store).
+        # Empty when actions subsystem is unused; dashboard chips it
+        # as "last probe / compact / ... outcome N ago".
+        "last_action_at": status.get("last_action_at") or "",
+        "last_action_name": status.get("last_action_name") or "",
+        "last_action_outcome": status.get("last_action_outcome") or "",
+        "last_action_elapsed_s": status.get("last_action_elapsed_s"),
+        "action_counts": status.get("action_counts") or {},
+        "p95_elapsed_s_by_action": status.get("p95_elapsed_s_by_action") or {},
         # Accounting.
         "account_email": status.get("account_email") or "",
         "version": status.get("version") or "",

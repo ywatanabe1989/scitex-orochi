@@ -1605,6 +1605,106 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(a["tool_counts"], {})
 
 
+class PaneActionSummaryRegistryTest(TestCase):
+    """Smoke tests for the action-summary fields landed with the
+    scitex-agent-container action subsystem.
+
+    Covers the end-to-end pipe from ``heartbeat-push`` payload keys
+    through registry merge and into ``/api/agents/<name>/detail/``:
+
+      last_action_at / last_action / last_action_outcome /
+      last_action_elapsed_s / action_counts /
+      p95_elapsed_s_by_action
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="action-summary-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="action-test"
+        )
+        from hub.registry import _agents as _reg_agents
+
+        _reg_agents.clear()
+
+    def _post(self, payload):
+        return self.client.post(
+            "/api/agents/register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def _get_detail(self, name):
+        return self.client.get(
+            f"/api/agents/{name}/detail/",
+            data={"token": self.token.token},
+        )
+
+    def _base_payload(self, **overrides):
+        payload = {
+            "token": self.token.token,
+            "name": "act-agent",
+            "machine": "MBA",
+            "role": "head",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_register_persists_action_summary_fields(self):
+        from hub.registry import get_agents
+
+        resp = self._post(
+            self._base_payload(
+                last_action_at="2026-04-17T02:00:00+00:00",
+                last_action_name="nonce-probe",
+                last_action_outcome="success",
+                last_action_elapsed_s=3.2,
+                action_counts={"nonce-probe:success": 42, "compact:success": 4},
+                p95_elapsed_s_by_action={"nonce-probe": 5.9, "compact": 9.0},
+            )
+        )
+        self.assertEqual(resp.status_code, 200)
+        agents = get_agents(workspace_id=self.ws.id)
+        a = next(a for a in agents if a["name"] == "act-agent")
+        self.assertEqual(a["last_action_at"], "2026-04-17T02:00:00+00:00")
+        self.assertEqual(a["last_action_name"], "nonce-probe")
+        self.assertEqual(a["last_action_outcome"], "success")
+        self.assertEqual(a["last_action_elapsed_s"], 3.2)
+        self.assertEqual(a["action_counts"]["nonce-probe:success"], 42)
+        self.assertEqual(a["p95_elapsed_s_by_action"]["compact"], 9.0)
+
+    def test_detail_api_surfaces_action_summary(self):
+        self._post(
+            self._base_payload(
+                last_action_at="2026-04-17T02:05:00+00:00",
+                last_action_name="compact",
+                last_action_outcome="completion_timeout",
+                last_action_elapsed_s=30.0,
+            )
+        )
+        resp = self._get_detail("act-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["last_action_at"], "2026-04-17T02:05:00+00:00")
+        self.assertEqual(data["last_action_name"], "compact")
+        self.assertEqual(data["last_action_outcome"], "completion_timeout")
+        self.assertEqual(data["last_action_elapsed_s"], 30.0)
+
+    def test_missing_action_fields_default_to_empty(self):
+        """Legacy agents that never ran an action still register and
+        the detail endpoint returns well-defined empty defaults."""
+        self._post(self._base_payload())
+        resp = self._get_detail("act-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["last_action_at"], "")
+        self.assertEqual(data["last_action_name"], "")
+        self.assertEqual(data["last_action_outcome"], "")
+        self.assertIsNone(data["last_action_elapsed_s"])
+        self.assertEqual(data["action_counts"], {})
+        self.assertEqual(data["p95_elapsed_s_by_action"], {})
+
+
 class ReadOauthMetadataHelperTest(TestCase):
     """todo#265: unit tests for the read_oauth_metadata() helper.
 

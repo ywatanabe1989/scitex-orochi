@@ -260,5 +260,12 @@ def api_agent_detail(request, name: str):
         "last_tool_name": agent.get("last_tool_name") or "",
         "last_mcp_tool_at": agent.get("last_mcp_tool_at") or "",
         "last_mcp_tool_name": agent.get("last_mcp_tool_name") or "",
+        # PaneAction summary (scitex-agent-container action_store).
+        "last_action_at": agent.get("last_action_at") or "",
+        "last_action_name": agent.get("last_action_name") or "",
+        "last_action_outcome": agent.get("last_action_outcome") or "",
+        "last_action_elapsed_s": agent.get("last_action_elapsed_s"),
+        "action_counts": agent.get("action_counts") or {},
+        "p95_elapsed_s_by_action": agent.get("p95_elapsed_s_by_action") or {},
     }
     return JsonResponse(payload)

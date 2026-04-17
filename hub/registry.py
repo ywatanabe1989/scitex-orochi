@@ -163,6 +163,33 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_mcp_tool_name": info.get("last_mcp_tool_name")
             or prev.get("last_mcp_tool_name")
             or "",
+            # PaneAction summary from scitex-agent-container action_store.
+            # Per-push replace semantics (no merge) — a fresh heartbeat
+            # always reflects the current log state.
+            "last_action_at": info.get("last_action_at")
+            or prev.get("last_action_at")
+            or "",
+            "last_action_name": info.get("last_action_name")
+            or prev.get("last_action_name")
+            or "",
+            "last_action_outcome": info.get("last_action_outcome")
+            or prev.get("last_action_outcome")
+            or "",
+            "last_action_elapsed_s": (
+                info.get("last_action_elapsed_s")
+                if info.get("last_action_elapsed_s") is not None
+                else prev.get("last_action_elapsed_s")
+            ),
+            "action_counts": (
+                dict(info.get("action_counts"))
+                if isinstance(info.get("action_counts"), dict)
+                else prev.get("action_counts") or {}
+            ),
+            "p95_elapsed_s_by_action": (
+                dict(info.get("p95_elapsed_s_by_action"))
+                if isinstance(info.get("p95_elapsed_s_by_action"), dict)
+                else prev.get("p95_elapsed_s_by_action") or {}
+            ),
             # UI-aligned quota keys (long names).
             "quota_5h_used_pct": (
                 info.get("quota_5h_used_pct")
@@ -632,6 +659,17 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "last_tool_name": a.get("last_tool_name", ""),
                 "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
                 "last_mcp_tool_name": a.get("last_mcp_tool_name", ""),
+                # PaneAction summary (scitex-agent-container action_store).
+                # NB: ``last_action_name`` (not ``last_action``) to avoid
+                # collision with the pre-existing ``last_action`` field
+                # which is the unix-time liveness timestamp set by
+                # ``mark_activity``.
+                "last_action_at": a.get("last_action_at", ""),
+                "last_action_name": a.get("last_action_name", ""),
+                "last_action_outcome": a.get("last_action_outcome", ""),
+                "last_action_elapsed_s": a.get("last_action_elapsed_s"),
+                "action_counts": dict(a.get("action_counts") or {}),
+                "p95_elapsed_s_by_action": dict(a.get("p95_elapsed_s_by_action") or {}),
                 # UI-aligned quota keys — long-name variants surfaced so
                 # the Agents-tab meta grid sees them under the names it
                 # reads.
