@@ -133,12 +133,13 @@
 
 .activity-grid {
   display: grid;
-  /* Wider min-width so agent names like "mamba-quality-checker-mba"
-   * fit on one line. msg#6611 — name truncation was the loudest
-   * recurring complaint. 360px lets every current agent name fit
-   * comfortably plus the status pill. */
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 12px;
+  /* Overview: one agent per row (single-column grid). User prefers
+   * row-style cards over tiled auto-fill so every agent's task line
+   * sits at a predictable x-position and long task strings don't get
+   * truncated by a 360-wide column. Detail view overrides to a flex
+   * column further down. */
+  grid-template-columns: 1fr;
+  gap: 8px;
   padding: 16px;
 }
 
