@@ -21,7 +21,7 @@
 
   Verify:
     launchctl list | grep tmux-unstick
-    tail -f ~/.scitex/orochi/logs/tmux-unstick.ndjson
+    tail -f ~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson
 -->
 <plist version="1.0">
 <dict>
@@ -48,10 +48,10 @@
   <string>/Users/ywatanabe</string>
 
   <key>StandardOutPath</key>
-  <string>/Users/ywatanabe/.scitex/orochi/logs/tmux-unstick.launchd.out.log</string>
+  <string>/Users/ywatanabe/.scitex/orochi/runtime/logs/tmux-unstick.launchd.out.log</string>
 
   <key>StandardErrorPath</key>
-  <string>/Users/ywatanabe/.scitex/orochi/logs/tmux-unstick.launchd.err.log</string>
+  <string>/Users/ywatanabe/.scitex/orochi/runtime/logs/tmux-unstick.launchd.err.log</string>
 
   <key>EnvironmentVariables</key>
   <dict>
@@ -62,7 +62,7 @@
     <key>LANG</key>
     <string>en_US.UTF-8</string>
     <key>LOG_FILE</key>
-    <string>/Users/ywatanabe/.scitex/orochi/logs/tmux-unstick.ndjson</string>
+    <string>/Users/ywatanabe/.scitex/orochi/runtime/logs/tmux-unstick.ndjson</string>
   </dict>
 </dict>
 </plist>

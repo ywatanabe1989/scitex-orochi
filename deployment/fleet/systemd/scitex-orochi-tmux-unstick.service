@@ -9,9 +9,9 @@ ExecStart=/bin/bash -lc 'exec %h/proj/scitex-orochi/deployment/fleet/tmux-unstic
 Nice=10
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6
-StandardOutput=append:%h/.scitex/orochi/logs/tmux-unstick.service.out.log
-StandardError=append:%h/.scitex/orochi/logs/tmux-unstick.service.err.log
-Environment=LOG_FILE=%h/.scitex/orochi/logs/tmux-unstick.ndjson
+StandardOutput=append:%h/.scitex/orochi/runtime/logs/tmux-unstick.service.out.log
+StandardError=append:%h/.scitex/orochi/runtime/logs/tmux-unstick.service.err.log
+Environment=LOG_FILE=%h/.scitex/orochi/runtime/logs/tmux-unstick.ndjson
 Environment=LANG=en_US.UTF-8
 
 [Install]

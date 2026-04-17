@@ -12,7 +12,22 @@
 
 set -euo pipefail
 
-AGENT_DIR="${HOME}/.scitex/orochi/agents"
+# Canonical post-68bd1592 agent-definition roots, searched in order:
+#   1. <host>/agents/        (host-specific)
+#   2. shared/agents/        (shared template)
+#   3. agents/               (legacy flat; DEPRECATED)
+# The :- default is what `hostname -s` would give; users who want a short
+# logical name set SCITEX_OROCHI_HOSTNAME in their shell rc.
+HOST_NAME_FOR_AGENTS="${SCITEX_OROCHI_HOSTNAME:-$(hostname -s 2>/dev/null || hostname)}"
+OROCHI_ROOT="${HOME}/.scitex/orochi"
+AGENT_DIRS=(
+  "${OROCHI_ROOT}/${HOST_NAME_FOR_AGENTS}/agents"
+  "${OROCHI_ROOT}/shared/agents"
+  "${OROCHI_ROOT}/agents"
+)
+# Back-compat alias for external callers that source this script and expect
+# AGENT_DIR to be set.
+AGENT_DIR="${OROCHI_ROOT}/agents"
 LOG="/tmp/agent-respawn.log"
 DELAY_BETWEEN=10  # seconds between agent starts to avoid reconnect storm
 
@@ -27,6 +42,21 @@ case "$HOSTNAME" in
   *)               HOST="ywata-note-win" ;;
 esac
 
+# Resolve an agent name's yaml across the canonical roots (host/shared/legacy).
+# Echoes the path on stdout, or nothing if not found.
+_resolve_agent_yaml() {
+  local name="$1"
+  local root yaml
+  for root in "${AGENT_DIRS[@]}"; do
+    yaml="${root}/${name}/${name}.yaml"
+    if [[ -f "$yaml" ]]; then
+      printf '%s\n' "$yaml"
+      return 0
+    fi
+  done
+  return 1
+}
+
 is_running() {
   local name="$1"
   tmux has-session -t "$name" 2>/dev/null
@@ -34,15 +64,16 @@ is_running() {
 
 start_agent() {
   local name="$1"
-  local yaml="${AGENT_DIR}/${name}/${name}.yaml"
-  if [[ ! -f "$yaml" ]]; then
+  local yaml
+  yaml="$(_resolve_agent_yaml "$name" || true)"
+  if [[ -z "$yaml" || ! -f "$yaml" ]]; then
     echo "$(ts) SKIP: no yaml for $name" >> "$LOG"
     return 1
   fi
   if is_running "$name"; then
     return 0  # already running, silent
   fi
-  echo "$(ts) STARTING: $name" >> "$LOG"
+  echo "$(ts) STARTING: $name (yaml=$yaml)" >> "$LOG"
   scitex-agent-container start "$yaml" 2>>"$LOG" || {
     echo "$(ts) FAILED: $name" >> "$LOG"
     return 1
@@ -51,16 +82,36 @@ start_agent() {
   return 0
 }
 
+# List unique agent names across the canonical roots.
+_all_agent_names() {
+  local root sub name
+  declare -A seen=()
+  for root in "${AGENT_DIRS[@]}"; do
+    [[ -d "$root" ]] || continue
+    for sub in "$root"/*/; do
+      [[ -d "$sub" ]] || continue
+      name="$(basename "$sub")"
+      case "$name" in
+        legacy|legacy-agents|_*) continue ;;
+      esac
+      if [[ -z "${seen[$name]+x}" ]]; then
+        seen[$name]=1
+        printf '%s\n' "$name"
+      fi
+    done
+  done
+}
+
 # If --check, just report status
 if [[ "${1:-}" == "--check" ]]; then
-  for dir in "${AGENT_DIR}"/*/; do
-    name=$(basename "$dir")
+  while IFS= read -r name; do
+    [[ -n "$name" ]] || continue
     if is_running "$name"; then
       echo "  RUNNING: $name"
     else
       echo "  STOPPED: $name"
     fi
-  done
+  done < <(_all_agent_names)
   exit 0
 fi
 
@@ -72,10 +123,10 @@ fi
 
 # Otherwise, start all agents for this host with throttling
 started=0
-for dir in "${AGENT_DIR}"/*/; do
-  name=$(basename "$dir")
-  yaml="${dir}/${name}.yaml"
-  [[ -f "$yaml" ]] || continue
+while IFS= read -r name; do
+  [[ -n "$name" ]] || continue
+  yaml="$(_resolve_agent_yaml "$name" || true)"
+  [[ -n "$yaml" && -f "$yaml" ]] || continue
 
   # Check if this agent belongs to this host
   agent_host=$(grep -oP 'machine:\s*\K\S+' "$yaml" 2>/dev/null || echo "")
@@ -91,7 +142,7 @@ for dir in "${AGENT_DIR}"/*/; do
       sleep "$DELAY_BETWEEN"
     fi
   fi
-done
+done < <(_all_agent_names)
 
 if (( started > 0 )); then
   echo "$(ts) Started $started agents on $HOST" >> "$LOG"
