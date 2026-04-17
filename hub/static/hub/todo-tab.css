@@ -190,10 +190,19 @@
 }
 .todo-state-filter {
   display: flex;
+  align-items: center;
   gap: 0;
   padding: 0 16px;
   margin-bottom: 8px;
   border-bottom: 1px solid #2a2a2a;
+}
+.todo-last-updated {
+  margin-left: auto;
+  padding: 0 4px;
+  font-size: 11px;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .todo-state-btn {
   background: transparent;
