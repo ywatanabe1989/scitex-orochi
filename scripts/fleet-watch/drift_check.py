@@ -3,7 +3,7 @@
 
 For one host alias, compares the declared `expected_tmux_sessions` in
 ``orochi-machines.yaml`` against the runtime ``tmux_names`` field from
-the most recent snapshot in ``~/.scitex/orochi/fleet-watch/<host>.json``.
+the most recent snapshot in ``~/.scitex/orochi/runtime/fleet-watch/<host>.json``.
 
 Prints exactly one line per (host, drift_kind) finding to stdout in a
 fleet_watch-friendly shape so the bash wrapper can pipe it straight to
@@ -30,9 +30,11 @@ SCITEX_OROCHI_DIR = Path(os.environ.get(
     os.path.expanduser("~/proj/scitex-orochi"),
 ))
 MACHINES_YAML = SCITEX_OROCHI_DIR / "orochi-machines.yaml"
+# Canonical fleet-watch snapshot dir under runtime/ (dotfiles commit
+# 68bd1592, Orochi fleet restructure Phase A).
 WATCH_DIR = Path(os.environ.get(
     "FLEET_WATCH_OUT",
-    os.path.expanduser("~/.scitex/orochi/fleet-watch"),
+    os.path.expanduser("~/.scitex/orochi/runtime/fleet-watch"),
 ))
 
 

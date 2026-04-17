@@ -11,7 +11,12 @@ Agents in the Orochi fleet learn from operational experience and propagate that 
 
 ### 1. CLAUDE.md Updates
 
-Each agent maintains a `CLAUDE.md` in their definition directory (`~/.scitex/orochi/agents/<agent-name>/CLAUDE.md`). Agents should update this file when they learn something that will be useful across sessions:
+Each agent maintains a `CLAUDE.md` in their definition directory — either
+`~/.scitex/orochi/shared/agents/<agent-name>/src_CLAUDE.md` (shared
+template, copied to `{workdir}/CLAUDE.md` at launch) or
+`~/.scitex/orochi/<host>/agents/<agent-name>/src_CLAUDE.md` (host-specific
+concrete agent). Agents should update this file when they learn something
+that will be useful across sessions:
 
 - New operational patterns (e.g., "media URLs need public hostname, not LAN IP")
 - Role clarifications from the operator
@@ -35,7 +40,11 @@ Knowledge that benefits the whole fleet goes into shared skills at `~/proj/scite
 
 ### 4. Private Skills (Per-Machine)
 
-Knowledge private to the local machine (not shipped) goes into `~/.scitex/orochi/skills/scitex-orochi-private/`. This directory is symlinked to `~/.claude/skills/scitex/scitex-orochi-private/` automatically by `scitex-dev skills export`.
+Knowledge private to the local machine (not shipped) goes into
+`~/.scitex/orochi/shared/skills/scitex-orochi-private/` (post-68bd1592
+canonical location). This directory is symlinked to
+`~/.claude/skills/scitex/scitex-orochi-private/` automatically by
+`scitex-dev skills export`.
 
 Convention for any package:
 ```
@@ -46,7 +55,10 @@ Where `<suffix>` is the package name minus `scitex-` (e.g. `orochi` for `scitex-
 
 ### 5. Workspace-Level Knowledge
 
-Per-agent workspace knowledge goes into `~/.scitex/orochi/agents/<agent-name>/CLAUDE.md`. Not shared fleet-wide.
+Per-agent workspace knowledge goes into the agent's definition dir —
+`~/.scitex/orochi/shared/agents/<agent-name>/src_CLAUDE.md` or
+`~/.scitex/orochi/<host>/agents/<agent-name>/src_CLAUDE.md`.
+Not shared fleet-wide.
 
 ## Self-Improvement Flow
 

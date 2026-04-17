@@ -1,8 +1,8 @@
 /**
  * Agent metadata collection for heartbeat payloads.
  *
- * Shells out to `python3 ~/.scitex/orochi/scripts/agent_meta.py <agent>`
- * which introspects the local Claude Code session and returns JSON like:
+ * Shells out to `python3 ~/.scitex/orochi/shared/scripts/agent_meta.py <agent>`.
+ * The script introspects the local Claude Code session and returns JSON like:
  *   {
  *     "agent": "head-mba",
  *     "alive": true,
@@ -24,7 +24,11 @@ import { homedir } from "os";
 import { join } from "path";
 import { OROCHI_AGENT } from "./config.js";
 
-const SCRIPT_PATH = join(homedir(), ".scitex/orochi/scripts/agent_meta.py");
+// Canonical path (dotfiles commit 68bd1592, Phase A restructure).
+const SCRIPT_PATH = join(
+  homedir(),
+  ".scitex/orochi/shared/scripts/agent_meta.py",
+);
 const EXEC_TIMEOUT_MS = 5_000;
 
 export type AgentMeta = {

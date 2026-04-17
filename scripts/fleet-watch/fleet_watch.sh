@@ -8,7 +8,8 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROBE_SCRIPT="$SCRIPT_DIR/probe_remote.sh"
 DRIFT_SCRIPT="$SCRIPT_DIR/drift_check.py"
-OUT_DIR="${FLEET_WATCH_OUT:-$HOME/.scitex/orochi/fleet-watch}"
+# Canonical out-dir post-68bd1592: runtime/fleet-watch/.
+OUT_DIR="${FLEET_WATCH_OUT:-$HOME/.scitex/orochi/runtime/fleet-watch}"
 LOG_FILE="$OUT_DIR/fleet_watch.log"
 HOSTS=( mba spartan ywata-note-win )
 SSH_TIMEOUT=8

@@ -1044,10 +1044,10 @@ export async function handleRsyncStatus(args: {
 //
 // Source resolution priority:
 //   1. SCITEX_OROCHI_CONNECTIVITY_DIR env var (allows tests / overrides)
-//   2. ~/.scitex/orochi/fleet-watch/  (NAS-local cache, default)
+//   2. ~/.scitex/orochi/runtime/fleet-watch/  (NAS-local cache, canonical)
 //
-// File names: `connectivity.json` (legacy single-row from #297 PR B initial)
-// AND `connectivity-<host>.json` (multi-host pattern after Phase 2 fleet_report
+// File names: `connectivity.json` (single-row from #297 PR B initial) AND
+// `connectivity-<host>.json` (multi-host pattern after Phase 2 fleet_report
 // landing). Both are surfaced when present so the tool keeps working through
 // the file → hub-DB migration without breaking consumers.
 //
@@ -1061,7 +1061,7 @@ function connectivityCacheDir(): string {
   const override = process.env.SCITEX_OROCHI_CONNECTIVITY_DIR;
   if (override && override.trim()) return override.trim();
   const home = process.env.HOME || "";
-  return pathJoin(home, ".scitex", "orochi", "fleet-watch");
+  return pathJoin(home, ".scitex", "orochi", "runtime", "fleet-watch");
 }
 
 interface ConnectivityRow {

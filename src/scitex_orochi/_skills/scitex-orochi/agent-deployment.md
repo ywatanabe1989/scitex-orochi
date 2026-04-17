@@ -175,20 +175,25 @@ After deploying a new dashboard version:
 
 ### Agent Directory Structure (YAML-first)
 
-Agents are defined as YAML + CLAUDE.md in `~/.scitex/orochi/agents/`. Two layouts supported:
+Agents are defined under `~/.scitex/orochi/` in the canonical two-tier
+layout (dotfiles commit `68bd1592`, see `~/.scitex/orochi/README.md`):
 
 ```
-~/.scitex/orochi/agents/
-  master.yaml                    # Flat layout (simple agents)
-  head-general.yaml
-  mamba/                         # Subdirectory layout (agent + CLAUDE.md together)
-    mamba.yaml
-    CLAUDE.md                    # Source of truth
+~/.scitex/orochi/
+├── shared/agents/<name>/        # Shared template (hostname-substituted)
+│   ├── <name>.yaml
+│   ├── src_CLAUDE.md            # copied to {workdir}/CLAUDE.md at launch
+│   └── src_mcp.json
+└── <host>/agents/<name>/        # Host-specific (concrete yaml, no templating)
+    └── ...
 ```
 
-For subdirectory agents, symlink CLAUDE.md into the workdir:
+For an agent that also needs its `CLAUDE.md` visible inside a working
+project directory, symlink the `src_CLAUDE.md` into the project:
+
 ```bash
-ln -s ~/.scitex/orochi/agents/mamba/CLAUDE.md ~/proj/todo/.claude/CLAUDE.md
+ln -s ~/.scitex/orochi/shared/agents/mamba/src_CLAUDE.md \
+      ~/proj/todo/.claude/CLAUDE.md
 ```
 
 ### MCP Config (Auto-Generated)
@@ -227,15 +232,24 @@ spec:
       command: "/loop 30m Scan for stale issues"
 ```
 
-Launch: `scitex-orochi launch head mamba` or `scitex-agent-container start ~/.scitex/orochi/agents/mamba/mamba.yaml`
+Launch: `scitex-orochi launch head mamba` or
+`scitex-agent-container start ~/.scitex/orochi/shared/agents/mamba/mamba.yaml`
+(or `<host>/agents/mamba/mamba.yaml` for a host-specific concrete agent).
 
 ### Resolution Order
 
-`scitex-orochi launch head <name>` resolves YAML by:
-1. `~/.scitex/orochi/agents/<name>.yaml` (flat)
-2. `~/.scitex/orochi/agents/<name>/<name>.yaml` (subdirectory)
-3. `~/.scitex/orochi/agents/head-<name>.yaml`
-4. `./agents/<name>.yaml` (repo fallback)
+`scitex-orochi launch head <name>` searches each of these roots, in order
+(host override wins, then shared template):
+
+- `~/.scitex/orochi/<host>/agents/`
+- `~/.scitex/orochi/shared/agents/`
+
+Within each root, the first hit wins:
+1. `<root>/<name>.yaml` (flat)
+2. `<root>/<name>/<name>.yaml` (dir-per-agent)
+3. `<root>/head-<name>/head-<name>.yaml`
+4. `<root>/<name>-*/<name>-*.yaml` (machine-suffix; exactly one match)
+5. `./agents/<name>.yaml` (repo fallback — `examples/agents/`)
 
 ## Polling Mode (Fallback)
 

@@ -109,14 +109,14 @@ bash/python, no Claude session on either host.
    - `~/proj/scitex-agent-container/src/scitex_agent_container/_skills/scitex-agent-container/` (public, canonical)
    - `~/proj/scitex-orochi/src/scitex_orochi/_skills/scitex-orochi/` (public, canonical)
    - `~/.scitex/agent-container/skills/scitex-agent-container-private/` (private per-machine, symlinked on export)
-   - `~/.scitex/orochi/skills/scitex-orochi-private/` (private per-machine, symlinked on export)
-   - Convention: `~/.scitex/<suffix>/skills/<package>-private/` → `~/.claude/skills/scitex/<package>-private/`
+   - `~/.scitex/orochi/shared/skills/scitex-orochi-private/` (private per-machine, symlinked on export; post-68bd1592 canonical location)
+   - Convention: `~/.scitex/<suffix>/shared/skills/<package>-private/` → `~/.claude/skills/scitex/<package>-private/`
 2. **Git status** of the two shared locations. If dirty (uncommitted
    local edits), skip the export step for that repo and log the
    skip — never clobber in-progress work.
 3. **Run** `scitex-dev skills export --clean` in each clean repo.
    Verify exit 0. On non-zero: write the full stderr to the log
-   and drop a touch-file `~/.scitex/orochi/skill-sync-daemon.fail`
+   and drop a touch-file `~/.scitex/orochi/runtime/skill-sync-daemon.fail`
    so the agent layer's healer-prober notices on next probe.
 4. **Frontmatter integrity scan.** Verify each `*.md` skill file
    in the two shared trees has a frontmatter block with `name:`
@@ -136,7 +136,7 @@ bash/python, no Claude session on either host.
    `~/.dotfiles/...`; both mirrors are equivalent because both
    read from the same canonical upstream repos via `git pull`.
 7. **Write one log line** to host-local
-   `~/.scitex/orochi/logs/skill-sync-daemon.log` with:
+   `~/.scitex/orochi/runtime/logs/skill-sync-daemon.log` with:
    `ISO8601 | host=<mba|nas> | tick=N | exported=<N> | drift-repaired=<N> | dedupe-flags=<N> | mirror-updated=<bool> | wall-time=<sec>`
 8. **No hub post.** Ever. State-change-only reporting is the
    agent layer's job (Track B worker reads the log via host-local
@@ -193,14 +193,14 @@ issues on demand.
 ### Failure handling
 
 - Non-zero exit from `scitex-dev skills export`: drop
-  host-local `~/.scitex/orochi/skill-sync-daemon.fail` touch-file,
+  host-local `~/.scitex/orochi/runtime/skill-sync-daemon.fail` touch-file,
   include full stderr in the log, continue the rest of the tick.
   Do **not** retry — an agent-layer worker should look at it.
 - Rsync failure: same pattern. Don't self-recover.
 - Filesystem scan error: log, skip the affected path, continue.
 
 Each host owns its own `.fail` touch-file in its own
-`~/.scitex/orochi/` so failures on one host don't block the
+`~/.scitex/orochi/runtime/` so failures on one host don't block the
 other. The Track B worker on primary host reads the local `.fail`
 directly and reads standby host's via SSH (or via a hub `fleet_report`
 endpoint if/when the daemon inventory gets aggregated centrally).
@@ -243,7 +243,7 @@ drift/dedupe candidates, curate taxonomy.
   candidate whether to merge (requires the operator or head-<host>
   sign-off), rename, or leave as-is with a note.
 - **Export failures** signaled by
-  `~/.scitex/orochi/skill-sync-daemon.fail` on either host —
+  `~/.scitex/orochi/runtime/skill-sync-daemon.fail` on either host —
   fetch the log, diagnose, clear the touch-file only after the
   root cause is fixed.
 
@@ -252,7 +252,7 @@ drift/dedupe candidates, curate taxonomy.
 Outside of query response, daemon-queue servicing, and the single
 startup announce to `#the operator`, the Track B worker is silent.
 No heartbeat. No "still idling". No "queues empty, nothing to
-do." Those go to `~/.scitex/orochi/logs/skill-manager-worker.log`
+do." Those go to `~/.scitex/orochi/runtime/logs/skill-manager-worker.log`
 (per head-<host> review, msg#11427 — explicit local log path).
 
 ### What Track B worker does **not** do

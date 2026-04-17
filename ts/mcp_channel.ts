@@ -131,8 +131,10 @@ const _deliveredIds = new Set<string | number>();
 // Registry heartbeat — thin pump.
 //
 // The sidecar shells out to
-//     ~/.scitex/orochi/scripts/agent_meta.py <agent>
-// which reads the live Claude Code session jsonl transcript and emits
+//     ~/.scitex/orochi/shared/scripts/agent_meta.py <agent>
+// (see src/agent_meta.ts — legacy flat path is a compat fallback during the
+// dotfiles 68bd1592 rollout) which reads the live Claude Code session jsonl
+// transcript and emits
 // claude-hud-style metadata (alive, subagents, context_pct, current_tool,
 // last_activity, model, ...) as a single JSON line. The resulting dict is
 // spread into the hub heartbeat payload.

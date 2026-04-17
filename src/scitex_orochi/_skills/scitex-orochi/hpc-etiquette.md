@@ -159,7 +159,7 @@ HPC quotas are **per-user inodes**, not just bytes. The 2026-04-14 NeuroVista ba
 - Never submit more than the site's per-user concurrent job limit. `squeue -u $USER` before submitting a batch.
 - Use the correct partition. `long` is for 90-day tunnels and stable services, `sapphire` for GPU work, `physical` for CPU. Misusing `long` for short jobs wastes the partition budget.
 - Release unused allocations via `scancel` when you are done. Do not leave an `salloc` shell open overnight "just in case".
-- `sbatch` jobs that are holders for long-running tunnels are allowed (see `hpc-spartan-startup-pattern.md`), but they must be single-purpose, documented, and tracked in `~/.scitex/orochi/scripts/`.
+- `sbatch` jobs that are holders for long-running tunnels are allowed (see `hpc-spartan-startup-pattern.md`), but they must be single-purpose, documented, and tracked in `~/.scitex/orochi/shared/scripts/` (post-68bd1592 canonical path).
 
 ## Login-node policy (Spartan-specific but generalizable)
 

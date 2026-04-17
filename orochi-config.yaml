@@ -58,10 +58,13 @@ orochi:
       workdir: ~/proj
 
   # Agent Container Integration (recommended)
-  # Agent YAML definitions live in ~/.scitex/orochi/agents/ (per-user).
+  # Agent YAML definitions live under ~/.scitex/orochi/ (per-user):
+  #   ~/.scitex/orochi/shared/agents/<name>/<name>.yaml   (template)
+  #   ~/.scitex/orochi/<host>/agents/<name>/<name>.yaml   (host-specific)
+  # See ~/.scitex/orochi/README.md for the full layout.
   # The repo ships example definitions under examples/agents/ as reference.
   # No --agent-config flag needed -- just run:
-  #   scitex-orochi launch master        # discovers ~/.scitex/orochi/agents/master*.yaml
+  #   scitex-orochi launch master        # discovers ~/.scitex/orochi/.../agents/master*.yaml
   #   scitex-orochi launch head general  # discovers head-general*.yaml
   #   scitex-orochi launch all           # discovers all YAMLs
   #
@@ -70,7 +73,8 @@ orochi:
   # Falls back to the master/heads sections above if agent-container is
   # not installed or no YAML files are found.
   agents:
-    directory: ~/.scitex/orochi/agents   # Per-user agent definitions
+    # The CLI searches ~/.scitex/orochi/<host>/agents/ (host-specific)
+    # then ~/.scitex/orochi/shared/agents/ (shared template).
     examples: ./examples/agents          # Example definitions shipped with repo
     master: master.yaml
     heads:

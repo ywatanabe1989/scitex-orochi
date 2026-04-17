@@ -1,7 +1,10 @@
 """CLI commands: scitex-orochi {launch,restart,stop,status} for agent lifecycle.
 
 Direct agent lifecycle management using agent definitions from
-~/.scitex/orochi/agents/<name>/.  Each agent directory may contain:
+``~/.scitex/orochi/shared/agents/<name>/`` or
+``~/.scitex/orochi/<host>/agents/<name>/`` (see
+``~/.scitex/orochi/README.md``; dotfiles commit 68bd1592).
+Each agent directory may contain:
   - config.yaml  (host, role, channels, etc.)
   - .mcp.json.example  (MCP config template with $HOME etc.)
   - CLAUDE.md  (agent-specific instructions)
@@ -30,29 +33,73 @@ import yaml
 from scitex_orochi._cli._helpers import EXAMPLES_HEADER
 
 # ── Constants ──────────────────────────────────────────────────────
-AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
-WORKSPACES_DIR = Path.home() / ".scitex" / "orochi" / "workspaces"
+# Agent definition lookup roots, in order of precedence (dotfiles 68bd1592):
+#   1. ~/.scitex/orochi/<host>/agents/     (host-specific override)
+#   2. ~/.scitex/orochi/shared/agents/     (shared template)
+_OROCHI_ROOT = Path.home() / ".scitex" / "orochi"
+SHARED_AGENTS_DIR = _OROCHI_ROOT / "shared" / "agents"
+# Deployed per-agent workdir (runtime, gitignored).
+WORKSPACES_DIR = _OROCHI_ROOT / "runtime" / "workspaces"
 SETUP_SCRIPT = Path.home() / "proj" / "scitex-orochi" / "scripts" / "setup-workspace.sh"
 DEV_CHANNEL_CONFIRM_DELAY = 8  # seconds before pressing Enter
+
+
+def _host_agents_dir() -> Path:
+    """Resolve ``<host>/agents/`` using the canonical hostname rule."""
+    import os
+    import socket
+
+    host = os.environ.get("SCITEX_OROCHI_HOSTNAME", "").strip()
+    if not host:
+        try:
+            host = socket.gethostname().split(".")[0]
+        except Exception:
+            host = ""
+    if not host:
+        return _OROCHI_ROOT / "_no_host_"
+    return _OROCHI_ROOT / host / "agents"
+
+
+def _candidate_agents_dirs() -> list[Path]:
+    """Ordered candidate roots for agent-definition lookup."""
+    return [_host_agents_dir(), SHARED_AGENTS_DIR]
+
+
+def _resolve_agent_dir(name: str) -> Path:
+    """Return the first existing agent definition dir for ``name``.
+
+    Falls back to the canonical shared-layout path so callers that then
+    try to open subfiles get a consistent "not found" error pointing to
+    the expected location.
+    """
+    for root in _candidate_agents_dirs():
+        candidate = root / name
+        if candidate.is_dir():
+            return candidate
+    return SHARED_AGENTS_DIR / name
 
 
 # ── Helpers ────────────────────────────────────────────────────────
 
 
 def _list_agent_names() -> list[str]:
-    """Return sorted list of agent names from AGENTS_DIR."""
-    if not AGENTS_DIR.is_dir():
-        return []
-    return sorted(
-        d.name
-        for d in AGENTS_DIR.iterdir()
-        if d.is_dir() and d.name != "legacy" and not d.name.startswith("_")
-    )
+    """Return sorted list of agent names across canonical roots."""
+    names: set[str] = set()
+    for root in _candidate_agents_dirs():
+        if not root.is_dir():
+            continue
+        for d in root.iterdir():
+            if not d.is_dir():
+                continue
+            if d.name in ("legacy", "legacy-agents") or d.name.startswith("_"):
+                continue
+            names.add(d.name)
+    return sorted(names)
 
 
 def _load_agent_config(name: str) -> dict:
     """Load config.yaml for an agent, falling back to derived defaults."""
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     config_file = agent_dir / "config.yaml"
 
     if config_file.exists():
@@ -97,7 +144,10 @@ def _extract_config_from_ac_yaml(yaml_path: Path) -> dict:
         "role": labels.get("role", "head"),
         "screen_name": screen_cfg.get("name", meta.get("name", yaml_path.stem)),
         "model": spec.get("model", "opus[1m]"),
-        "workdir": spec.get("workdir", f"~/.scitex/orochi/workspaces/{yaml_path.stem}"),
+        "workdir": spec.get(
+            "workdir",
+            f"~/.scitex/orochi/runtime/workspaces/{yaml_path.stem}",
+        ),
     }
 
 
@@ -141,7 +191,7 @@ def _derive_config(name: str) -> dict:
         "role": role,
         "screen_name": name,
         "model": "opus[1m]",
-        "workdir": f"~/.scitex/orochi/workspaces/{name}",
+        "workdir": f"~/.scitex/orochi/runtime/workspaces/{name}",
     }
 
 
@@ -247,7 +297,7 @@ def _setup_workspace(name: str, ssh: str | None = None) -> bool:
 
 def _launch_agent(name: str, dry_run: bool = False, force: bool = False) -> bool:
     """Launch a single agent. Returns True on success."""
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     if not agent_dir.is_dir():
         click.echo(f"Error: agent directory not found: {agent_dir}", err=True)
         return False
@@ -282,7 +332,7 @@ def _launch_agent(name: str, dry_run: bool = False, force: bool = False) -> bool
         return False
 
     # Build the launch command
-    workspace = f"~/.scitex/orochi/workspaces/{name}"
+    workspace = f"~/.scitex/orochi/runtime/workspaces/{name}"
     claude_cmd = (
         f"cd {workspace} && "
         f"exec claude "
@@ -453,8 +503,10 @@ def agent_launch(
 ) -> None:
     """Launch an agent by name, or all agents with --all.
 
-    Reads agent definition from ~/.scitex/orochi/agents/<name>/,
-    sets up the workspace, and starts a screen session with claude.
+    Reads agent definition from ~/.scitex/orochi/<host>/agents/<name>/ or
+    ~/.scitex/orochi/shared/agents/<name>/. Creates/uses
+    ~/.scitex/orochi/runtime/workspaces/<name>/ as the workdir and starts a
+    screen session with claude.
     """
     if not launch_all and not name:
         click.echo("Error: provide an agent NAME or use --all.", err=True)
@@ -463,7 +515,10 @@ def agent_launch(
     if launch_all:
         agents = _list_agent_names()
         if not agents:
-            click.echo("No agents found in ~/.scitex/orochi/agents/", err=True)
+            click.echo(
+                "No agents found in ~/.scitex/orochi/{shared,<host>}/agents/.",
+                err=True,
+            )
             sys.exit(1)
 
         click.echo(f"Launching {len(agents)} agent(s)...\n")
@@ -496,7 +551,7 @@ def agent_launch(
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 def agent_restart(name: str, dry_run: bool) -> None:
     """Restart an agent: quit existing screen, then relaunch."""
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     if not agent_dir.is_dir():
         click.echo(f"Error: agent directory not found: {agent_dir}", err=True)
         sys.exit(1)
@@ -561,7 +616,7 @@ def agent_stop(name: str | None, stop_all: bool, force: bool) -> None:
         return
 
     assert name is not None
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     if not agent_dir.is_dir():
         click.echo(f"Error: agent directory not found: {agent_dir}", err=True)
         sys.exit(1)
@@ -585,7 +640,9 @@ def agent_status(as_json: bool) -> None:
         if as_json:
             click.echo(json.dumps([], indent=2))
         else:
-            click.echo("No agents found in ~/.scitex/orochi/agents/")
+            click.echo(
+                "No agents found in ~/.scitex/orochi/{shared,<host>}/agents/."
+            )
         return
 
     rows = []

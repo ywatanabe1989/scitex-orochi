@@ -1,6 +1,7 @@
 """Tests for the Orochi hub Django app."""
 
 import json
+import os
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -1708,25 +1709,42 @@ class PaneActionSummaryRegistryTest(TestCase):
 class ReadOauthMetadataHelperTest(TestCase):
     """todo#265: unit tests for the read_oauth_metadata() helper.
 
-    The helper lives in the canonical agent_meta.py shipped from
-    ``.dotfiles/src/.scitex/orochi/scripts/agent_meta.py`` (see PR
-    body for dotfiles sync notes). This test imports it directly
-    from that path so the scitex-orochi hub test suite guards the
-    token-leak regression even though the helper lives upstream.
+    The helper lives in the canonical agent_meta.py shipped from the
+    dotfiles Orochi tree (post-68bd1592):
+    ``.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py``.
+    This test imports it directly so the scitex-orochi hub test suite
+    guards the token-leak regression even though the helper lives
+    upstream.
     """
 
-    DOTFILES_AGENT_META = (
-        "/Users/ywatanabe/.dotfiles/src/.scitex/orochi/scripts/agent_meta.py"
-    )
+    # Ordered candidate paths — first existing wins. Covers both
+    # macOS and Linux HOMEs since the scitex-orochi hub runs in Docker
+    # on mba in production but can be tested on any host.
+    _CANDIDATE_AGENT_META_PATHS = [
+        os.path.expanduser("~/.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py"),
+        "/Users/ywatanabe/.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py",
+        "/home/ywatanabe/.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py",
+    ]
+
+    @classmethod
+    def _resolve_agent_meta_path(cls) -> str | None:
+        import os as _os
+
+        for candidate in cls._CANDIDATE_AGENT_META_PATHS:
+            if _os.path.isfile(candidate):
+                return candidate
+        return None
+
+    DOTFILES_AGENT_META = _CANDIDATE_AGENT_META_PATHS[0]
 
     def _import_helper(self):
         import importlib.util
-        import os
 
-        if not os.path.isfile(self.DOTFILES_AGENT_META):
+        resolved = self._resolve_agent_meta_path()
+        if resolved is None:
             self.skipTest("dotfiles agent_meta.py not present on this host")
         spec = importlib.util.spec_from_file_location(
-            "agent_meta_under_test", self.DOTFILES_AGENT_META
+            "agent_meta_under_test", resolved
         )
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)  # type: ignore[union-attr]

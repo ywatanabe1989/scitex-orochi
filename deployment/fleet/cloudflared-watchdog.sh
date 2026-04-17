@@ -12,8 +12,10 @@
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-LOG="${HOME}/.scitex/orochi/logs/cloudflared-watchdog.log"
-STATE="${HOME}/.scitex/orochi/logs/watchdog-state"
+# Canonical runtime/ layout (dotfiles commit 68bd1592).
+_OROCHI_LOG_DIR="${HOME}/.scitex/orochi/runtime/logs"
+LOG="${_OROCHI_LOG_DIR}/cloudflared-watchdog.log"
+STATE="${_OROCHI_LOG_DIR}/watchdog-state"
 mkdir -p "$(dirname "$LOG")"
 ts() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 

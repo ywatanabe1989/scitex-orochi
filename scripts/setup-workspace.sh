@@ -10,8 +10,48 @@
 
 set -euo pipefail
 
-AGENTS_DIR="${SCITEX_OROCHI_AGENTS_DIR:-$HOME/.scitex/orochi/agents}"
-WORKSPACES_DIR="${SCITEX_OROCHI_WORKSPACES_DIR:-$HOME/.scitex/orochi/workspaces}"
+# Canonical post-68bd1592 layout:
+#   agent defs  → shared/agents/<name>/ or <host>/agents/<name>/
+#   workspaces  → runtime/workspaces/<name>/
+_OROCHI_ROOT="$HOME/.scitex/orochi"
+# Ordered list of agent-definition roots. Host override wins, shared next.
+# Callers that override via SCITEX_OROCHI_AGENTS_DIR bypass the entire search.
+_HOST_FOR_AGENTS="${SCITEX_OROCHI_HOSTNAME:-$(hostname -s 2>/dev/null || hostname)}"
+_DEFAULT_AGENT_DIRS=(
+    "$_OROCHI_ROOT/$_HOST_FOR_AGENTS/agents"
+    "$_OROCHI_ROOT/shared/agents"
+)
+# AGENTS_DIR is a single path (first usable root). Most consumers just
+# want "one place to start looking".
+_first_existing_agents_dir() {
+    local d
+    for d in "${_DEFAULT_AGENT_DIRS[@]}"; do
+        if [[ -d "$d" ]]; then
+            printf '%s' "$d"
+            return
+        fi
+    done
+    # Fall back to the canonical shared/agents/ path so error messages
+    # point users to the correct, expected location.
+    printf '%s' "$_OROCHI_ROOT/shared/agents"
+}
+AGENTS_DIR="${SCITEX_OROCHI_AGENTS_DIR:-$(_first_existing_agents_dir)}"
+WORKSPACES_DIR="${SCITEX_OROCHI_WORKSPACES_DIR:-$_OROCHI_ROOT/runtime/workspaces}"
+
+# Resolve an agent dir by name across all canonical roots. Echoes the
+# first match on stdout. Falls back to the default AGENTS_DIR/<name> so
+# callers get a consistent "not found" error path.
+_resolve_agent_dir() {
+    local name="$1" d candidate
+    for d in "${_DEFAULT_AGENT_DIRS[@]}"; do
+        candidate="$d/$name"
+        if [[ -d "$candidate" ]]; then
+            printf '%s' "$candidate"
+            return
+        fi
+    done
+    printf '%s' "$AGENTS_DIR/$name"
+}
 
 # ──────────────────────────────────────────
 # Helpers
@@ -47,7 +87,8 @@ expand_env_vars() {
 
 setup_agent() {
     local agent_name="$1"
-    local agent_dir="$AGENTS_DIR/$agent_name"
+    local agent_dir
+    agent_dir="$(_resolve_agent_dir "$agent_name")"
     local workspace_dir="$WORKSPACES_DIR/$agent_name"
     local example="$agent_dir/.mcp.json.example"
 
@@ -89,13 +130,25 @@ fi
 
 if [[ "$1" == "--all" ]]; then
     count=0
-    for agent_dir in "$AGENTS_DIR"/*/; do
-        agent_name="$(basename "$agent_dir")"
-        [[ "$agent_name" == "legacy" ]] && continue
-        if [[ -f "$agent_dir/.mcp.json.example" ]]; then
-            setup_agent "$agent_name"
-            count=$((count + 1))
-        fi
+    declare -A _seen_all=()
+    for root in "${_DEFAULT_AGENT_DIRS[@]}"; do
+        [[ -d "$root" ]] || continue
+        for agent_dir in "$root"/*/; do
+            [[ -d "$agent_dir" ]] || continue
+            agent_name="$(basename "$agent_dir")"
+            case "$agent_name" in
+                legacy|legacy-agents|_*) continue ;;
+            esac
+            # Skip duplicates across roots (host override wins).
+            if [[ -n "${_seen_all[$agent_name]:-}" ]]; then
+                continue
+            fi
+            _seen_all[$agent_name]=1
+            if [[ -f "$agent_dir/.mcp.json.example" ]]; then
+                setup_agent "$agent_name"
+                count=$((count + 1))
+            fi
+        done
     done
     printf "done: %d agent(s) processed\n" "$count"
 else

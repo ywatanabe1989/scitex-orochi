@@ -28,22 +28,25 @@ set -o pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNSTICK_SCRIPT="$SCRIPT_DIR/tmux-unstick.sh"
 INTERVAL="${UNSTICK_INTERVAL:-60}"
-export LOG_FILE="${LOG_FILE:-$HOME/.scitex/orochi/logs/tmux-unstick.ndjson}"
+
+# Canonical runtime/ layout from dotfiles commit 68bd1592.
+_LOGS_DIR="$HOME/.scitex/orochi/runtime/logs"
+export LOG_FILE="${LOG_FILE:-$_LOGS_DIR/tmux-unstick.ndjson}"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # PID file so an external killer (agent-autostart rerun, etc) can cleanly stop us
-PID_FILE="$HOME/.scitex/orochi/logs/tmux-unstick-loop.pid"
+PID_FILE="$_LOGS_DIR/tmux-unstick-loop.pid"
 echo "$$" > "$PID_FILE"
 
 trap 'rm -f "$PID_FILE"; exit 0' EXIT INT TERM
 
 while true; do
   if [[ -x "$UNSTICK_SCRIPT" ]]; then
-    bash "$UNSTICK_SCRIPT" --once >> "$HOME/.scitex/orochi/logs/tmux-unstick.loop.log" 2>&1 || true
+    bash "$UNSTICK_SCRIPT" --once >> "$_LOGS_DIR/tmux-unstick.loop.log" 2>&1 || true
   else
     printf '[%s] unstick script not executable: %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$UNSTICK_SCRIPT" \
-      >> "$HOME/.scitex/orochi/logs/tmux-unstick.loop.log"
+      >> "$_LOGS_DIR/tmux-unstick.loop.log"
   fi
   sleep "$INTERVAL"
 done

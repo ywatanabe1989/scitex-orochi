@@ -16,7 +16,8 @@ HOST=""
 AGENT=""
 STRATEGY=""
 SESSION=""
-LOG_FILE="${COMPACT_ACTUATOR_LOG:-$HOME/.scitex/orochi/fleet-watch/compact_actuator.log}"
+# Canonical post-68bd1592 path: runtime/fleet-watch/.
+LOG_FILE="${COMPACT_ACTUATOR_LOG:-$HOME/.scitex/orochi/runtime/fleet-watch/compact_actuator.log}"
 SELF_AGENT="head-nas"
 
 usage() {

@@ -43,7 +43,7 @@
 #      5 minutes of production output can be eyeballed for
 #      false-positives before real keys start firing.
 #
-#   D. Panic switch — if ~/.scitex/orochi/tmux-unstick.PAUSED exists,
+#   D. Panic switch — if ~/.scitex/orochi/runtime/tmux-unstick.PAUSED exists,
 #      the script sleeps without scanning. `touch` the file to halt
 #      recovery globally; `rm` to resume.
 #
@@ -68,7 +68,7 @@
 # Environment overrides:
 #
 #   TMUX_UNSTICK_LOG              NDJSON log path (default
-#                                  ~/.scitex/orochi/logs/tmux-unstick.ndjson)
+#                                  ~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson)
 #   TMUX_UNSTICK_INTERVAL_SEC     seconds between sweeps in --loop mode
 #                                  (default 60)
 #   TMUX_UNSTICK_STABILITY_SEC    per-pane minimum age of a stable
@@ -79,10 +79,10 @@
 #                                  (default 300 = 5 min)
 #   TMUX_UNSTICK_HEARTBEAT_EVERY  emit a meta heartbeat every N sweeps
 #                                  in --loop mode (default 5)
-#   TMUX_UNSTICK_STATE_DIR        per-pane stability snapshot dir
-#                                  (default ~/.scitex/orochi/tmux-unstick-state/)
+#   TMUX_UNSTICK_STATE_DIR        per-pane stability snapshot dir (default
+#                                  ~/.scitex/orochi/runtime/tmux-unstick-state/)
 #   TMUX_UNSTICK_PAUSE_FILE       panic-switch marker file (default
-#                                  ~/.scitex/orochi/tmux-unstick.PAUSED)
+#                                  ~/.scitex/orochi/runtime/tmux-unstick.PAUSED)
 #   DRY_RUN                       if 1, detect and log but never send
 #                                  keys (default 0; overridden to 1
 #                                  during the safe-start window)
@@ -94,14 +94,15 @@ set -u
 set -o pipefail
 
 SCHEMA="scitex-orochi/tmux-unstick/v2"
-LOG="${TMUX_UNSTICK_LOG:-$HOME/.scitex/orochi/logs/tmux-unstick.ndjson}"
+# Canonical paths live under runtime/ (dotfiles commit 68bd1592).
+LOG="${TMUX_UNSTICK_LOG:-$HOME/.scitex/orochi/runtime/logs/tmux-unstick.ndjson}"
 INTERVAL="${TMUX_UNSTICK_INTERVAL_SEC:-60}"
 STABILITY_SEC="${TMUX_UNSTICK_STABILITY_SEC:-120}"
 COOLDOWN_SEC="${TMUX_UNSTICK_COOLDOWN_SEC:-120}"
 SAFE_START_SEC="${TMUX_UNSTICK_SAFE_START_SEC:-300}"
 HEARTBEAT_EVERY="${TMUX_UNSTICK_HEARTBEAT_EVERY:-5}"
-STATE_DIR="${TMUX_UNSTICK_STATE_DIR:-$HOME/.scitex/orochi/tmux-unstick-state}"
-PAUSE_FILE="${TMUX_UNSTICK_PAUSE_FILE:-$HOME/.scitex/orochi/tmux-unstick.PAUSED}"
+STATE_DIR="${TMUX_UNSTICK_STATE_DIR:-$HOME/.scitex/orochi/runtime/tmux-unstick-state}"
+PAUSE_FILE="${TMUX_UNSTICK_PAUSE_FILE:-$HOME/.scitex/orochi/runtime/tmux-unstick.PAUSED}"
 DRY_RUN_ENV="${DRY_RUN:-0}"
 MODE="${1:---once}"
 # Shorthand promotion

@@ -75,7 +75,7 @@ Counter-pattern: treating "SSH succeeded + tmux returned 0" as "host has no sess
 
 ## Canonical reference implementation
 
-head-<host> owns the canonical implementation at `fleet_watch.sh` + `probe_remote.sh` (see msg#8098, 2026-04-13), producing JSON snapshots under `~/.scitex/orochi/fleet-watch/`. Fields:
+head-<host> owns the canonical implementation at `fleet_watch.sh` + `probe_remote.sh` (see msg#8098, 2026-04-13), producing JSON snapshots under `~/.scitex/orochi/runtime/fleet-watch/` (post-68bd1592 canonical path). Fields:
 
 ```json
 {
@@ -202,7 +202,7 @@ Every fleet healer and fleet_watch-style loop must satisfy all of these before b
 - [ ] **Three-outcome schema**: SSH failure, command error, and command success are all distinguished — never collapse to a single "0" that means "unknown".
 - [ ] **Compound escalation gate**: no host is marked down on a single metric. Minimum compound condition = `ssh=down` **AND** (`claude_procs=0` **OR** `orochi_presence=absent`).
 - [ ] **Silent success**: routine all-green scans are written to a local log file only, never posted to any channel (see `fleet-communication-discipline.md` rule #6).
-- [ ] **Snapshot reuse**: before running a fresh probe, check whether head-<host>'s `fleet_watch.sh` already captured the same data in `~/.scitex/orochi/fleet-watch/`. If yes, read the snapshot instead.
+- [ ] **Snapshot reuse**: before running a fresh probe, check whether head-<host>'s `fleet_watch.sh` already captured the same data in `~/.scitex/orochi/runtime/fleet-watch/`. If yes, read the snapshot instead.
 - [ ] **Host-specific gotchas**:
   - primary workstation: confirm `ssh <host> 'bash -lc "env | grep TMUX"'` shows `TMUX_TMPDIR`.
   - Spartan: probe login1 only, never compute nodes. Respect `project_spartan_login_node` memory.
@@ -217,7 +217,7 @@ Tracked 2026-04-13. Agents responsible for each lane must update this list when 
 |---|---|---|---|
 | host-a (WSL) | worker-healer-<host-a> | ✅ 2026-04-13 (cron job 40c61ea4 / msg#8406) | `bash -lc`, compound gate, silent success verified |
 | host-b (primary workstation) | worker-healer-<host-b> | 🔄 in-progress (2026-04-13) | Owner: head-<host-b>. Canonical /loop prompt drafted by worker-skill-manager; head-<host-b> to apply. |
-| host-c (NAS/storage) | worker-healer-<host-c> | ⏳ pending (depends on fleet_watch snapshot reuse) | Owner: head-<host-c>. Consume `~/.scitex/orochi/fleet-watch/` instead of re-probing. |
+| host-c (NAS/storage) | worker-healer-<host-c> | ⏳ pending (depends on fleet_watch snapshot reuse) | Owner: head-<host-c>. Consume `~/.scitex/orochi/runtime/fleet-watch/` instead of re-probing. |
 | spartan | head-<host> (no mamba-healer yet) | ⏳ feasibility note only | Constraint: login1-only, never compute nodes. Probe must use `bash -lc`. |
 
 ## Per-lane issue templates
@@ -232,7 +232,7 @@ Copy-paste these into #agent / issue tracker when assigning adoption work to a h
 > 2. SSH flags as in skill doc.
 > 3. Compound escalation gate (SSH fail **AND** (claude=0 **OR** orochi absent)).
 > 4. Routine all-green: written to `~/.scitex/healer/last-scan.json`, **not** posted.
-> 5. Consume `~/.scitex/orochi/fleet-watch/` if head-<host> snapshot is available; fall back to own probe otherwise.
+> 5. Consume `~/.scitex/orochi/runtime/fleet-watch/` if head-<host> snapshot is available; fall back to own probe otherwise.
 >
 > **Done signal**: one-line post to #agent: `worker-healer-<host> adoption complete, job <id>`, then mark this row ✅ in `convention-connectivity-probe.md`.
 
@@ -240,7 +240,7 @@ Copy-paste these into #agent / issue tracker when assigning adoption work to a h
 > **Task**: Align `worker-healer-<host>` `/loop` with canonical pattern and switch it to **pure consumer** of its own `fleet_watch.sh` output (no duplicate probes).
 >
 > **Acceptance**:
-> 1. Healer reads `~/.scitex/orochi/fleet-watch/*.json` on every tick; no direct `ssh` calls.
+> 1. Healer reads `~/.scitex/orochi/runtime/fleet-watch/*.json` on every tick; no direct `ssh` calls.
 > 2. Escalation decisions use the same compound gate as the canonical skill.
 > 3. Silent success (no routine posts).
 > 4. If the snapshot is older than 2× `fleet_watch` interval, escalate staleness once and stop probing until fresh.

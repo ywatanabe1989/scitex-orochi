@@ -12,7 +12,10 @@ set -euo pipefail
 TEMPLATE_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE="${TEMPLATE_DIR}/com.scitex.orochi.AGENT_NAME.plist.template"
 INSTALL_DIR="${HOME}/Library/LaunchAgents"
-AGENT_DIR="${HOME}/.dotfiles/src/.scitex/orochi/agents"
+# Canonical post-68bd1592 layout: shared templates live under shared/agents/.
+# ``AGENT_DIR`` is informational only — the template bakes the full path in
+# the plist, so this path is not dereferenced here.
+AGENT_DIR="${HOME}/.dotfiles/src/.scitex/orochi/shared/agents"
 
 # MBA agents only
 MBA_AGENTS=(

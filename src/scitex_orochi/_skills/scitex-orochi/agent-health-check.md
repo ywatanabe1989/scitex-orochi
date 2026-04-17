@@ -139,7 +139,7 @@ This is a known open issue tracked as "Dev channel dialog auto-confirm."
 }
 ```
 
-These take effect on next agent restart. Each agent workspace (`~/.scitex/orochi/workspaces/<agent-name>/`) should have its own `.claude/settings.json`.
+These take effect on next agent restart. Each agent workspace (`~/.scitex/orochi/runtime/workspaces/<agent-name>/` under the post-68bd1592 layout) should have its own `.claude/settings.json`.
 
 **Prevention**: Use `scitex-orochi launch` (reads YAML flags properly) or rely on settings.json allowlists.
 

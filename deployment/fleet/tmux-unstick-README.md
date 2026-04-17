@@ -37,9 +37,9 @@ this deployment.
 
 - **Script**: `deployment/fleet/tmux-unstick.sh`
   (promoted verbatim from head-mba's POC at
-  `~/.scitex/orochi/scripts/tmux-unstick-poc.sh`, msg#11824, MBA live
-  verified).
-- **Log**: `~/.scitex/orochi/logs/tmux-unstick.ndjson`
+  `~/.scitex/orochi/shared/scripts/tmux-unstick-poc.sh` — post-68bd1592
+  canonical path — msg#11824, MBA live verified).
+- **Log**: `~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson`
   (NDJSON, one record per detection + one summary per sweep).
 - **Host-specific wrappers**:
   - macOS (MBA): `deployment/fleet/launchd/com.scitex.orochi.tmux-unstick.plist`
@@ -93,7 +93,7 @@ if ! pgrep -u "$USER" -f 'tmux-unstick-spartan-loop.sh' >/dev/null; then
 fi
 ```
 
-The loop writes its PID to `~/.scitex/orochi/logs/tmux-unstick-loop.pid`
+The loop writes its PID to `~/.scitex/orochi/runtime/logs/tmux-unstick-loop.pid`
 so an external supervisor (agent-autostart rerun, etc) can cleanly stop
 it before restart.
 
@@ -102,7 +102,7 @@ it before restart.
 After install, watch the NDJSON log for the first sweep-summary record:
 
 ```
-tail -f ~/.scitex/orochi/logs/tmux-unstick.ndjson | jq -r '
+tail -f ~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson | jq -r '
   "\(.ts) \(.event) session=\(.session) recovered=\(.recovered)"
 '
 ```
@@ -150,7 +150,7 @@ post-mortem.
    first 5 minutes of production output can be eyeballed for
    false-positives before real keys start firing.
 4. **Panic switch (`D`)** — if
-   `~/.scitex/orochi/tmux-unstick.PAUSED` exists, the script sleeps
+   `~/.scitex/orochi/runtime/tmux-unstick.PAUSED` exists, the script sleeps
    without scanning. `touch` the file to halt recovery globally
    across all hosts; `rm` to resume.
 5. **Per-pane rate limit (`E`)** — after a recovery fires on a pane,
