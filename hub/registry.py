@@ -44,6 +44,29 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
     """
     with _lock:
         prev = _agents.get(name, {}) or {}
+        # Auth-rotation counting. When the OAuth token rotates (Claude
+        # Code refreshes it), its expiresAt jumps. Count a rotation if:
+        # - new heartbeat carries a non-null oauth_expires_at,
+        # - prev also had a non-null oauth_expires_at,
+        # - and they differ.
+        # This is the hub-side mirror of the client NDJSON log and
+        # gives the dashboard an instant "rotated N times" pill without
+        # reading the per-host file. Counter is preserved on reconnect
+        # so the value survives WS drops.
+        _new_exp = info.get("oauth_expires_at")
+        _prev_exp = prev.get("oauth_expires_at")
+        _rotation_count = prev.get("oauth_rotation_count") or 0
+        _last_rotation_at = prev.get("oauth_last_rotation_at") or ""
+        if (
+            isinstance(_new_exp, int)
+            and isinstance(_prev_exp, int)
+            and _new_exp != _prev_exp
+        ):
+            _rotation_count += 1
+            from datetime import datetime
+            from datetime import timezone as _tz
+
+            _last_rotation_at = datetime.now(tz=_tz.utc).isoformat()
         _agents[name] = {
             "name": name,
             "workspace_id": workspace_id,
@@ -272,6 +295,43 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             or "",
             "account_email": info.get("account_email")
             or prev.get("account_email")
+            or "",
+            # Setup-audit fields (sac PR#53). plan_label is the human
+            # plan name derived from rateLimitTier; dashboards prefer
+            # it over the older billing_type field (which is just
+            # payment method). oauth_expires_at is used for rotation
+            # tracking: count how many times the value changed across
+            # heartbeats per account_email.
+            "account_plan_label": info.get("account_plan_label")
+            or prev.get("account_plan_label")
+            or "",
+            "account_subscription_type": info.get("account_subscription_type")
+            or prev.get("account_subscription_type")
+            or "",
+            "account_rate_limit_tier": info.get("account_rate_limit_tier")
+            or prev.get("account_rate_limit_tier")
+            or "",
+            "account_organization_name": info.get("account_organization_name")
+            or prev.get("account_organization_name")
+            or "",
+            "account_uuid": info.get("account_uuid") or prev.get("account_uuid") or "",
+            "oauth_expires_at": (
+                info.get("oauth_expires_at")
+                if info.get("oauth_expires_at") is not None
+                else prev.get("oauth_expires_at")
+            ),
+            # Hub-side mirror of the client rotation log — see the
+            # computation at the top of register_agent for the diff
+            # rule. Preserved across reconnects.
+            "oauth_rotation_count": _rotation_count,
+            "oauth_last_rotation_at": _last_rotation_at,
+            "installed_plugins": (
+                list(info.get("installed_plugins") or [])
+                if info.get("installed_plugins") is not None
+                else list(prev.get("installed_plugins") or [])
+            ),
+            "status_line_command": info.get("status_line_command")
+            or prev.get("status_line_command")
             or "",
         }
 
@@ -697,6 +757,20 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
                 "statusline_model": a.get("statusline_model", ""),
                 "account_email": a.get("account_email", ""),
+                # Setup-audit fields (sac PR#53). Surfaced so the
+                # Agents-tab can render plan label, plugins, MCP setup,
+                # and auth-rotation timestamp without re-querying a
+                # per-host endpoint.
+                "account_plan_label": a.get("account_plan_label", ""),
+                "account_subscription_type": a.get("account_subscription_type", ""),
+                "account_rate_limit_tier": a.get("account_rate_limit_tier", ""),
+                "account_organization_name": a.get("account_organization_name", ""),
+                "account_uuid": a.get("account_uuid", ""),
+                "oauth_expires_at": a.get("oauth_expires_at"),
+                "oauth_rotation_count": a.get("oauth_rotation_count", 0),
+                "oauth_last_rotation_at": a.get("oauth_last_rotation_at", ""),
+                "installed_plugins": list(a.get("installed_plugins") or []),
+                "status_line_command": a.get("status_line_command", ""),
             }
         )
     return result

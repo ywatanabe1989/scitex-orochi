@@ -1822,6 +1822,20 @@ def api_agents_register(request):
             "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
             "statusline_model": body.get("statusline_model", ""),
             "account_email": body.get("account_email", ""),
+            # Setup-audit fields from scitex-agent-container PR#53.
+            # plan_label is the authoritative plan name ("Max 20x" etc.)
+            # derived from rateLimitTier; billing_type only reports payment
+            # method. oauth_expires_at is the unix-ms token expiry — the
+            # hub can diff across heartbeats to count rotations per email.
+            # installed_plugins + mcp_servers power the setup-audit grid.
+            "account_plan_label": body.get("account_plan_label", ""),
+            "account_subscription_type": body.get("account_subscription_type", ""),
+            "account_rate_limit_tier": body.get("account_rate_limit_tier", ""),
+            "account_organization_name": body.get("account_organization_name", ""),
+            "account_uuid": body.get("account_uuid", ""),
+            "oauth_expires_at": body.get("oauth_expires_at"),
+            "installed_plugins": body.get("installed_plugins") or [],
+            "status_line_command": body.get("status_line_command", ""),
             # scitex-agent-container heartbeat-push payload. Long names are
             # preferred by the dashboard; accept the short-name aliases too
             # for backward compat with older pushers.
