@@ -1,8 +1,10 @@
 /**
  * Agent metadata collection for heartbeat payloads.
  *
- * Shells out to `python3 ~/.scitex/orochi/scripts/agent_meta.py <agent>`
- * which introspects the local Claude Code session and returns JSON like:
+ * Shells out to `python3 ~/.scitex/orochi/shared/scripts/agent_meta.py <agent>`
+ * (with a legacy fallback to the old flat `scripts/` path during dotfiles
+ * 68bd1592 rollout — DEPRECATED, remove once every host is migrated.)
+ * The script introspects the local Claude Code session and returns JSON like:
  *   {
  *     "agent": "head-mba",
  *     "alive": true,
@@ -20,11 +22,25 @@
  *     values so the heartbeat shape stays stable.
  */
 import { execFile } from "child_process";
+import { existsSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 import { OROCHI_AGENT } from "./config.js";
 
-const SCRIPT_PATH = join(homedir(), ".scitex/orochi/scripts/agent_meta.py");
+// Canonical path (dotfiles commit 68bd1592, Phase A restructure): agent_meta.py
+// now lives under shared/scripts/. Fall back to the legacy flat path while
+// hosts finish re-bootstrapping. DEPRECATED: drop legacy branch after rollout.
+const _CANONICAL_SCRIPT_PATH = join(
+  homedir(),
+  ".scitex/orochi/shared/scripts/agent_meta.py",
+);
+const _LEGACY_SCRIPT_PATH = join(
+  homedir(),
+  ".scitex/orochi/scripts/agent_meta.py",
+);
+const SCRIPT_PATH = existsSync(_CANONICAL_SCRIPT_PATH)
+  ? _CANONICAL_SCRIPT_PATH
+  : _LEGACY_SCRIPT_PATH;
 const EXEC_TIMEOUT_MS = 5_000;
 
 export type AgentMeta = {

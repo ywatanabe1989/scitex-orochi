@@ -1044,7 +1044,14 @@ export async function handleRsyncStatus(args: {
 //
 // Source resolution priority:
 //   1. SCITEX_OROCHI_CONNECTIVITY_DIR env var (allows tests / overrides)
-//   2. ~/.scitex/orochi/fleet-watch/  (NAS-local cache, default)
+//   2. ~/.scitex/orochi/runtime/fleet-watch/  (NAS-local cache, canonical)
+//   3. ~/.scitex/orochi/fleet-watch/          (legacy flat layout; hosts not
+//                                              yet bootstrapped against the
+//                                              new runtime/ layout from
+//                                              dotfiles 68bd1592)
+//
+// The legacy fallback is DEPRECATED and can be removed once every host has
+// been re-bootstrapped against the runtime/ layout.
 //
 // File names: `connectivity.json` (legacy single-row from #297 PR B initial)
 // AND `connectivity-<host>.json` (multi-host pattern after Phase 2 fleet_report
@@ -1061,7 +1068,17 @@ function connectivityCacheDir(): string {
   const override = process.env.SCITEX_OROCHI_CONNECTIVITY_DIR;
   if (override && override.trim()) return override.trim();
   const home = process.env.HOME || "";
-  return pathJoin(home, ".scitex", "orochi", "fleet-watch");
+  // Prefer the canonical runtime/ layout; fall back to the legacy flat
+  // path if the runtime/ dir isn't present yet on this host (dotfiles
+  // 68bd1592 rollout). DEPRECATED: drop the legacy branch once every
+  // host has been re-bootstrapped.
+  const runtimeDir = pathJoin(home, ".scitex", "orochi", "runtime", "fleet-watch");
+  const legacyDir = pathJoin(home, ".scitex", "orochi", "fleet-watch");
+  if (existsSync(runtimeDir)) return runtimeDir;
+  if (existsSync(legacyDir)) return legacyDir;
+  // Neither exists yet — return the canonical path so errors point to
+  // the correct, expected location.
+  return runtimeDir;
 }
 
 interface ConnectivityRow {

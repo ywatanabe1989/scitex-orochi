@@ -8,7 +8,19 @@ set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROBE_SCRIPT="$SCRIPT_DIR/probe_remote.sh"
 DRIFT_SCRIPT="$SCRIPT_DIR/drift_check.py"
-OUT_DIR="${FLEET_WATCH_OUT:-$HOME/.scitex/orochi/fleet-watch}"
+# Canonical out-dir post-68bd1592: runtime/fleet-watch/. Honour the legacy
+# flat path if runtime/ isn't bootstrapped here yet so operators don't lose
+# their `tail -f` target. DEPRECATED: drop legacy fallback after rollout.
+_default_fleet_watch_out() {
+  if [ -d "$HOME/.scitex/orochi/runtime" ]; then
+    printf '%s' "$HOME/.scitex/orochi/runtime/fleet-watch"
+  elif [ -d "$HOME/.scitex/orochi/fleet-watch" ]; then
+    printf '%s' "$HOME/.scitex/orochi/fleet-watch"
+  else
+    printf '%s' "$HOME/.scitex/orochi/runtime/fleet-watch"
+  fi
+}
+OUT_DIR="${FLEET_WATCH_OUT:-$(_default_fleet_watch_out)}"
 LOG_FILE="$OUT_DIR/fleet_watch.log"
 HOSTS=( mba spartan ywata-note-win )
 SSH_TIMEOUT=8

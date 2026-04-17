@@ -30,9 +30,10 @@ def launch() -> None:
     """Launch orochi agents (master, head, or all).
 
     By default, agents are launched via scitex-agent-container using YAML
-    definitions from ~/.scitex/orochi/agents/ (or examples/agents/ as
-    fallback). If no YAML is found and agent-container is not installed,
-    falls back to legacy orochi-config.yaml.
+    definitions from ~/.scitex/orochi/{shared,<host>}/agents/ (or legacy
+    ~/.scitex/orochi/agents/, or examples/agents/ as fallback). If no YAML
+    is found and agent-container is not installed, falls back to legacy
+    orochi-config.yaml.
     """
 
 
@@ -83,7 +84,8 @@ def launch_master(
 
     Resolution order:
       1. --agent-config (explicit YAML path)
-      2. ~/.scitex/orochi/agents/ or examples/agents/ (auto-discovery)
+      2. ~/.scitex/orochi/{<host>,shared}/agents/ (or legacy
+         ~/.scitex/orochi/agents/), or examples/agents/ (auto-discovery)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
@@ -159,7 +161,8 @@ def launch_head(
 
     Resolution order:
       1. --agent-config (explicit YAML path)
-      2. ~/.scitex/orochi/agents/ or examples/agents/ (auto-discovery)
+      2. ~/.scitex/orochi/{<host>,shared}/agents/ (or legacy
+         ~/.scitex/orochi/agents/), or examples/agents/ (auto-discovery)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_path:
@@ -235,7 +238,9 @@ def launch_all(
 
     Resolution order:
       1. --agent-config-dir (explicit directory, all YAMLs launched)
-      2. ~/.scitex/orochi/agents/ or examples/agents/ (if agent-container installed)
+      2. ~/.scitex/orochi/{<host>,shared}/agents/ (or legacy
+         ~/.scitex/orochi/agents/), or examples/agents/ (if
+         agent-container installed)
       3. orochi-config.yaml (legacy fallback)
     """
     if agent_config_dir:

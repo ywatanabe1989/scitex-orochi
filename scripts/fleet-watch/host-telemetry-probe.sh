@@ -12,7 +12,9 @@
 # Side effects: none. Read-only queries only. No sudo. No Claude quota.
 #
 # Output: one NDJSON line per probe per invocation, appended to
-#   ${OUT_DIR:-$HOME/.scitex/orochi/host-telemetry}/host-telemetry-$(hostname -s).ndjson
+#   ${OUT_DIR:-$HOME/.scitex/orochi/runtime/host-telemetry}/host-telemetry-$(hostname -s).ndjson
+# (or the legacy ~/.scitex/orochi/host-telemetry/ during dotfiles 68bd1592
+#  rollout, if the runtime/ skeleton isn't bootstrapped on this host yet)
 # -----------------------------------------------------------------------------
 
 set -u
@@ -20,7 +22,18 @@ set -o pipefail
 
 HOST="$(hostname -s 2>/dev/null || hostname)"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-OUT_DIR="${HOST_TELEMETRY_OUT_DIR:-$HOME/.scitex/orochi/host-telemetry}"
+# Canonical post-68bd1592: runtime/host-telemetry/. Legacy flat path is
+# honoured while runtime/ is being rolled out. DEPRECATED.
+_default_host_telemetry_dir() {
+  if [ -d "$HOME/.scitex/orochi/runtime" ]; then
+    printf '%s' "$HOME/.scitex/orochi/runtime/host-telemetry"
+  elif [ -d "$HOME/.scitex/orochi/host-telemetry" ]; then
+    printf '%s' "$HOME/.scitex/orochi/host-telemetry"
+  else
+    printf '%s' "$HOME/.scitex/orochi/runtime/host-telemetry"
+  fi
+}
+OUT_DIR="${HOST_TELEMETRY_OUT_DIR:-$(_default_host_telemetry_dir)}"
 OUT_FILE="$OUT_DIR/host-telemetry-${HOST}.ndjson"
 mkdir -p "$OUT_DIR"
 

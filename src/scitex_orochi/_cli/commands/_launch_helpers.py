@@ -27,10 +27,52 @@ except ImportError:
     HAS_AGENT_CONTAINER = False
 
 # Default agents directory (relative to project root / cwd)
-# The repo ships example definitions under examples/agents/; real configs
-# live in ~/.scitex/orochi/agents/ (USER_AGENTS_DIR) and are checked first.
+# The repo ships example definitions under examples/agents/; real agent
+# definitions live under ~/.scitex/orochi/ in one of two canonical places
+# (dotfiles 68bd1592, Phase A restructure):
+#   - shared/agents/<name>/<name>.yaml   (template, hostname-substituted)
+#   - <host>/agents/<name>/<name>.yaml   (host-specific concrete yaml)
+# The legacy flat ~/.scitex/orochi/agents/ is accepted as a fallback until
+# every host has been re-bootstrapped. DEPRECATED: remove the legacy fallback
+# after rollout completes.
 DEFAULT_AGENTS_DIR = Path("examples/agents")
-USER_AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
+_OROCHI_ROOT = Path.home() / ".scitex" / "orochi"
+SHARED_AGENTS_DIR = _OROCHI_ROOT / "shared" / "agents"
+LEGACY_AGENTS_DIR = _OROCHI_ROOT / "agents"
+# Back-compat alias: external callers used USER_AGENTS_DIR.
+USER_AGENTS_DIR = LEGACY_AGENTS_DIR
+
+
+def _host_agents_dir() -> Path:
+    """Resolve the per-host agents dir: ``<host>/agents/``.
+
+    Mirrors the canonical hostname resolution documented in
+    ``~/.scitex/orochi/README.md``:
+    ``${SCITEX_OROCHI_HOSTNAME:-$(hostname -s)}``.
+    """
+    import os
+    import socket
+
+    host = os.environ.get("SCITEX_OROCHI_HOSTNAME", "").strip()
+    if not host:
+        try:
+            host = socket.gethostname().split(".")[0]
+        except Exception:
+            host = ""
+    if not host:
+        # No usable hostname — return a non-existent path so callers simply
+        # skip this search layer.
+        return _OROCHI_ROOT / "_no_host_"
+    return _OROCHI_ROOT / host / "agents"
+
+
+def _candidate_agents_dirs() -> list[Path]:
+    """Ordered list of user-level agent definition roots.
+
+    Host-specific overrides win, then shared templates, then the legacy
+    flat layout (backward compat during dotfiles 68bd1592 rollout).
+    """
+    return [_host_agents_dir(), SHARED_AGENTS_DIR, LEGACY_AGENTS_DIR]
 
 
 def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
@@ -39,30 +81,37 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     Given a short role name like "master", "head", "mamba", or a more
     specific "head-mba", find the agent yaml file to launch.
 
-    Search order (first hit wins):
-      1. ``~/.scitex/orochi/agents/<name>.yaml`` (flat file)
-      2. ``~/.scitex/orochi/agents/<name>/<name>.yaml`` (dir-per-agent)
-      3. ``~/.scitex/orochi/agents/head-<name>/head-<name>.yaml``
-         (dir-per-agent with "head-" prefix, e.g. ``head-mba``)
-      4. ``~/.scitex/orochi/agents/<name>-*/` — machine-suffix convention,
+    Search order (first hit wins), for each of:
+      - ``<host>/agents/``   (host-specific override)
+      - ``shared/agents/``   (shared template)
+      - ``agents/``          (legacy flat layout, DEPRECATED)
+
+    Within each root:
+      1. ``<root>/<name>.yaml`` (flat file — only meaningful for the
+         legacy layout; the new layout is always dir-per-agent)
+      2. ``<root>/<name>/<name>.yaml`` (dir-per-agent)
+      3. ``<root>/head-<name>/head-<name>.yaml`` (with "head-" prefix,
+         e.g. ``head-mba``)
+      4. ``<root>/<name>-*/`` — machine-suffix convention,
          e.g. ``master`` resolves to ``master-ywata-note-win`` if that is
-         the only matching directory. If multiple matches exist, returns
-         None (ambiguous — caller should use --agent-config explicitly).
+         the only matching directory. If multiple matches exist, the
+         search continues to the next root instead of returning None.
       5. Repo fallback: ``examples/agents/{name,head-<name>}.{yaml,yml}``
 
     Returns the resolved Path or None if not found.
     """
-    # Check user config dir first (flat files + subdirectory convention)
-    if USER_AGENTS_DIR.is_dir():
+    for root in _candidate_agents_dirs():
+        if not root.is_dir():
+            continue
         for ext in (".yaml", ".yml"):
             for prefix in ("", "head-"):
                 prefixed = f"{prefix}{name}"
                 for candidate in (
-                    USER_AGENTS_DIR / f"{prefixed}{ext}",
-                    USER_AGENTS_DIR / name / f"{prefixed}{ext}",
+                    root / f"{prefixed}{ext}",
+                    root / name / f"{prefixed}{ext}",
                     # dir-per-agent with prefix applied to both dir and
                     # file, e.g. head-nas/head-nas.yaml
-                    USER_AGENTS_DIR / prefixed / f"{prefixed}{ext}",
+                    root / prefixed / f"{prefixed}{ext}",
                 ):
                     if candidate.exists():
                         return candidate
@@ -70,12 +119,13 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
         # Machine-suffix convention: resolve ``master`` to the
         # unambiguous ``master-*/master-*.yaml``, ``mamba`` to
         # ``mamba-*/mamba-*.yaml``, etc. Only match at the start of the
-        # directory name, and only if exactly one directory matches.
+        # directory name, and only if exactly one directory matches in
+        # this root.
         matches: list[Path] = []
-        for sub in sorted(USER_AGENTS_DIR.iterdir()):
+        for sub in sorted(root.iterdir()):
             if not sub.is_dir():
                 continue
-            if sub.name == "legacy" or sub.name.startswith("_"):
+            if sub.name in ("legacy", "legacy-agents") or sub.name.startswith("_"):
                 continue
             if not (sub.name == name or sub.name.startswith(f"{name}-")):
                 continue
@@ -105,46 +155,57 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
 
 
 def find_all_agent_yamls(agents_dir: Path | None = None) -> list[Path]:
-    """Find all agent YAML files in the agents directory.
+    """Find all agent YAML files across the canonical agent roots.
 
-    Prefers the user config dir (~/.scitex/orochi/agents/) when it exists,
-    otherwise falls back to the repo ``examples/agents/`` directory.
+    Merges results from (in order): ``<host>/agents/``, ``shared/agents/``,
+    and the legacy ``agents/`` dir (backward compat during dotfiles
+    68bd1592 rollout). Duplicates by resolved path are de-duped so the
+    same agent isn't returned twice.
 
     Walks one level deep to support the dir-per-agent layout
     (e.g. ``mamba/mamba.yaml``). Excludes:
       - files whose names start with ``_`` (disabled/template convention)
-      - anything under a ``legacy/`` directory
+      - anything under a ``legacy/`` or ``legacy-agents/`` directory
       - for dir-per-agent entries, only the YAML matching the dir name
         (e.g. ``mamba/mamba.yaml``) is collected, to avoid duplicates when
         an agent dir holds multiple yamls.
     """
     if agents_dir is not None:
-        d = agents_dir.resolve()
-    elif USER_AGENTS_DIR.is_dir():
-        d = USER_AGENTS_DIR.resolve()
+        roots = [agents_dir.resolve()]
     else:
-        d = DEFAULT_AGENTS_DIR.resolve()
-
-    if not d.is_dir():
-        return []
+        roots = [r for r in _candidate_agents_dirs() if r.is_dir()]
+        if not roots:
+            roots = [DEFAULT_AGENTS_DIR.resolve()]
 
     found: list[Path] = []
-
-    # Top-level flat yamls: agents/<name>.yaml
-    for p in sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml")):
-        if p.name.startswith("_"):
+    seen: set[Path] = set()
+    for d in roots:
+        if not d.is_dir():
             continue
-        found.append(p)
 
-    # Dir-per-agent: agents/<name>/<name>.yaml
-    for sub in sorted(p for p in d.iterdir() if p.is_dir()):
-        if sub.name == "legacy" or sub.name.startswith("_"):
-            continue
-        for ext in (".yaml", ".yml"):
-            candidate = sub / f"{sub.name}{ext}"
-            if candidate.exists():
-                found.append(candidate)
-                break
+        # Top-level flat yamls: agents/<name>.yaml
+        for p in sorted(d.glob("*.yaml")) + sorted(d.glob("*.yml")):
+            if p.name.startswith("_"):
+                continue
+            resolved = p.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            found.append(p)
+
+        # Dir-per-agent: agents/<name>/<name>.yaml
+        for sub in sorted(p for p in d.iterdir() if p.is_dir()):
+            if sub.name in ("legacy", "legacy-agents") or sub.name.startswith("_"):
+                continue
+            for ext in (".yaml", ".yml"):
+                candidate = sub / f"{sub.name}{ext}"
+                if candidate.exists():
+                    resolved = candidate.resolve()
+                    if resolved in seen:
+                        break
+                    seen.add(resolved)
+                    found.append(candidate)
+                    break
 
     return found
 
