@@ -44,7 +44,10 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ghp", re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}")),
     # JWTs (three base64url segments separated by dots). Used by OAuth
     # id_tokens, Django session JWTs, etc.
-    ("jwt", re.compile(r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}")),
+    (
+        "jwt",
+        re.compile(r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"),
+    ),
     # OpenAI-style keys.
     ("sk-", re.compile(r"\bsk-[A-Za-z0-9]{20,}")),
     # AWS access-key-id prefixes.
@@ -225,6 +228,32 @@ def api_agent_detail(request, name: str):
         "pid": int(agent.get("pid") or 0),
         "subagents": list(agent.get("subagents") or []),
         "subagent_count": int(agent.get("subagent_count") or 0),
+        # Quota surfaced from agent_meta.py --push heartbeat. The heartbeat
+        # stores `quota_5h_pct` / `quota_5h_remaining`; the UI reads
+        # `quota_5h_used_pct` / `quota_5h_reset_at`. Map both shapes so
+        # legacy payloads and newer fields coexist. Kept here so the
+        # Agents tab meta-grid and Activity header chips can display
+        # "5h X%" / "7d Y%" without a second round-trip.
+        "quota_5h_used_pct": agent.get("quota_5h_used_pct")
+        if agent.get("quota_5h_used_pct") is not None
+        else agent.get("quota_5h_pct"),
+        "quota_7d_used_pct": agent.get("quota_7d_used_pct")
+        if agent.get("quota_7d_used_pct") is not None
+        else agent.get("quota_7d_pct"),
+        "quota_5h_reset_at": agent.get("quota_5h_reset_at")
+        or agent.get("quota_5h_remaining")
+        or "",
+        "quota_7d_reset_at": agent.get("quota_7d_reset_at")
+        or agent.get("quota_7d_remaining")
+        or "",
         "health": agent.get("health") or {},
+        # scitex-agent-container hook-event ring-buffer (PreToolUse /
+        # PostToolUse / UserPromptSubmit). Empty lists when the hook
+        # wiring hasn't been configured for this agent yet.
+        "recent_tools": agent.get("recent_tools") or [],
+        "recent_prompts": agent.get("recent_prompts") or [],
+        "agent_calls": agent.get("agent_calls") or [],
+        "background_tasks": agent.get("background_tasks") or [],
+        "tool_counts": agent.get("tool_counts") or {},
     }
     return JsonResponse(payload)

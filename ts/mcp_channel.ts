@@ -14,7 +14,6 @@ import {
 import WebSocket from "ws";
 import {
   OROCHI_AGENT,
-  OROCHI_CHANNELS,
   OROCHI_MODEL,
   OROCHI_TOKEN,
   buildHttpBase,
@@ -32,6 +31,9 @@ import {
   handleHealth,
   handleReply,
   handleHistory,
+  handleSubscribe,
+  handleUnsubscribe,
+  handleChannelInfo,
   handleConnectivityMatrix,
   handleReact,
   handleRsyncMedia,
@@ -205,7 +207,6 @@ async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    channels: OROCHI_CHANNELS,
     machine: process.env.SCITEX_OROCHI_MACHINE || hostname() || "",
     multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
@@ -356,7 +357,6 @@ const conn = {
           type: "register",
           sender: OROCHI_AGENT,
           payload: {
-            channels: OROCHI_CHANNELS,
             machine: hostname(),
             role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
             model: OROCHI_MODEL,
@@ -610,6 +610,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "health") return handleHealth(args as any);
   if (name === "context") return handleContext(args as any);
   if (name === "status") return handleStatus(conn as any);
+  if (name === "subscribe") return handleSubscribe(conn as any, args as any);
+  if (name === "unsubscribe")
+    return handleUnsubscribe(conn as any, args as any);
+  if (name === "channel_info") return handleChannelInfo(args as any);
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
   if (name === "rsync_media") return handleRsyncMedia(args as any);

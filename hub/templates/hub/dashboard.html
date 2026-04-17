@@ -26,7 +26,8 @@
     <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/search-palette.css' %}?v=1">
     <!-- highlight.js — syntax highlighting for code blocks -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
 <!-- hook-bypass: inline-style -->
@@ -59,7 +60,8 @@
                 <div id="filter-suggest" class="filter-suggest"></div>
                 <div id="filter-tags" class="filter-tags"></div>
             </div>
-            <h2 class="collapsible-heading channels-heading blockers-heading" data-section="blockers">
+            <h2 class="collapsible-heading channels-heading blockers-heading"
+                data-section="blockers">
                 <span class="blocker-flag">⚠</span> Blockers
                 <span class="sidebar-count blockers-count" id="sidebar-count-blockers"></span>
             </h2>
@@ -76,9 +78,13 @@
                 Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
             </h2>
             <div id="channels" class="sidebar-section"></div>
-            <h2 class="collapsible-heading channels-heading dm-heading" data-section="dms">
+            <h2 class="collapsible-heading channels-heading dm-heading"
+                data-section="dms">
                 Direct messages <span class="sidebar-count" id="sidebar-count-dms"></span>
-                <button type="button" id="new-dm-btn" class="new-dm-btn" title="Start a new DM">+</button>
+                <button type="button"
+                        id="new-dm-btn"
+                        class="new-dm-btn"
+                        title="Start a new DM">+</button>
             </h2>
             <div id="dms" class="sidebar-section"></div>
             <h2 class="collapsible-heading channels-heading" data-section="machines">
@@ -98,22 +104,42 @@
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
                 <button class="tab-btn" data-tab="releases">Releases</button>
+                <button class="tab-btn" data-tab="viz">Visualization</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
-            <div id="channel-topic-banner" class="channel-topic-banner" style="display:none">
-              <span id="channel-topic-text"></span>
-              <div id="channel-members" class="channel-members" style="display:none"></div>
-              <button type="button" class="channel-members-btn" id="channel-members-btn" title="Show channel members" onclick="toggleMembersPanel()" style="display:none">&#128100; <span id="channel-members-count">0</span></button>
-              <button type="button" class="channel-export-btn" title="Export channel" onclick="openChannelExport()">&#8681;</button>
-              <button type="button" class="channel-topic-edit-btn" title="Edit channel topic" onclick="openChannelTopicEdit()">&#9998;</button>
+            <div id="channel-topic-banner"
+                 class="channel-topic-banner"
+                 style="display:none">
+                <span id="channel-topic-text"></span>
+                <div id="channel-members" class="channel-members" style="display:none"></div>
+                <button type="button"
+                        class="channel-members-btn"
+                        id="channel-members-btn"
+                        title="Show channel members"
+                        onclick="toggleMembersPanel()"
+                        style="display:none">
+                    &#128100; <span id="channel-members-count">0</span>
+                </button>
+                <button type="button"
+                        class="channel-export-btn"
+                        title="Export channel"
+                        onclick="openChannelExport()">&#8681;</button>
+                <button type="button"
+                        class="channel-topic-edit-btn"
+                        title="Edit channel topic"
+                        onclick="openChannelTopicEdit()">&#9998;</button>
             </div>
             <!-- Channel members panel (todo#407) -->
-            <div id="channel-members-panel" class="ch-members-panel" style="display:none">
-              <div class="ch-members-panel-header">
-                <span id="ch-members-panel-title">Members</span>
-                <button type="button" class="ch-members-close-btn" onclick="closeMembersPanel()">&#10005;</button>
-              </div>
-              <div id="ch-members-list" class="ch-members-list"></div>
+            <div id="channel-members-panel"
+                 class="ch-members-panel"
+                 style="display:none">
+                <div class="ch-members-panel-header">
+                    <span id="ch-members-panel-title">Members</span>
+                    <button type="button"
+                            class="ch-members-close-btn"
+                            onclick="closeMembersPanel()">&#10005;</button>
+                </div>
+                <div id="ch-members-list" class="ch-members-list"></div>
             </div>
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">
@@ -140,16 +166,22 @@
                 <div id="workspaces-grid" class="todo-grid"></div>
             </div>
             <div id="activity-view" class="todo-view" style="display:none">
-                <div class="activity-header">
-                    <span class="activity-title">Agent Activity</span>
-                    <span class="activity-summary" id="activity-summary"></span>
+                <!-- hook-bypass: inline-style -->
+                <div id="activity-subtabs" class="activity-subtabs">
+                    <span class="activity-summary activity-summary-inline"
+                          id="activity-summary"></span>
                 </div>
-                <div id="activity-subtabs" class="activity-subtabs"></div>
                 <div id="activity-grid" class="activity-grid"></div>
             </div>
             <div id="releases-view" class="todo-view" style="display:none">
+                <!-- hook-bypass: inline-style -->
                 <div class="releases-subtabs" id="releases-subtabs"></div>
                 <div id="releases-content" class="releases-content"></div>
+            </div>
+            <div id="viz-view" class="todo-view viz-hidden-initial">
+                <div id="viz-content" class="viz-content">
+                    <p class="empty-notice">Loading visualization…</p>
+                </div>
             </div>
             <div id="files-view" class="todo-view" style="display:none">
                 <div class="files-filter-bar">
@@ -160,17 +192,38 @@
                     <button class="files-filter-btn" data-mime="application/pdf">PDFs</button>
                     <button class="files-filter-btn" data-mime="other">Other</button>
                     <span class="files-filter-sep"></span>
-                    <button class="files-view-btn active" id="files-view-grid" title="Grid view" onclick="filesSetView('grid')">&#9641;</button>
-                    <button class="files-view-btn" id="files-view-list" title="List view" onclick="filesSetView('list')">&#9776;</button>
+                    <button class="files-view-btn active"
+                            id="files-view-grid"
+                            title="Grid view"
+                            onclick="filesSetView('grid')">&#9641;</button>
+                    <button class="files-view-btn"
+                            id="files-view-list"
+                            title="List view"
+                            onclick="filesSetView('list')">&#9776;</button>
                 </div>
                 <div id="files-grid" class="files-grid"></div>
             </div>
             <!-- Image lightbox viewer -->
-            <div id="img-viewer-overlay" class="img-viewer-overlay" style="display:none" onclick="closeImgViewer()">
-                <button class="img-viewer-close" onclick="closeImgViewer()" aria-label="Close">&#x2715;</button>
-                <button class="img-viewer-prev" id="img-viewer-prev" onclick="event.stopPropagation();imgViewerNav(-1)" aria-label="Previous">&#10094;</button>
-                <img id="img-viewer-img" class="img-viewer-img" src="" alt="" onclick="event.stopPropagation()">
-                <button class="img-viewer-next" id="img-viewer-next" onclick="event.stopPropagation();imgViewerNav(1)" aria-label="Next">&#10095;</button>
+            <div id="img-viewer-overlay"
+                 class="img-viewer-overlay"
+                 style="display:none"
+                 onclick="closeImgViewer()">
+                <button class="img-viewer-close"
+                        onclick="closeImgViewer()"
+                        aria-label="Close">&#x2715;</button>
+                <button class="img-viewer-prev"
+                        id="img-viewer-prev"
+                        onclick="event.stopPropagation();imgViewerNav(-1)"
+                        aria-label="Previous">&#10094;</button>
+                <img id="img-viewer-img"
+                     class="img-viewer-img"
+                     src=""
+                     alt=""
+                     onclick="event.stopPropagation()">
+                <button class="img-viewer-next"
+                        id="img-viewer-next"
+                        onclick="event.stopPropagation();imgViewerNav(1)"
+                        aria-label="Next">&#10095;</button>
                 <div id="img-viewer-caption" class="img-viewer-caption"></div>
             </div>
             {% if is_admin %}
@@ -180,10 +233,18 @@
                     </div>
                 </div>
             {% endif %}
-            <button id="feed-scroll-top" class="feed-scroll-btn" title="Jump to top" aria-label="Scroll to top">&#8679;</button>
-            <button id="feed-scroll-bottom" class="feed-scroll-btn" title="Jump to bottom" aria-label="Scroll to bottom">&#8681;</button>
+            <button id="feed-scroll-top"
+                    class="feed-scroll-btn"
+                    title="Jump to top"
+                    aria-label="Scroll to top">&#8679;</button>
+            <button id="feed-scroll-bottom"
+                    class="feed-scroll-btn"
+                    title="Jump to bottom"
+                    aria-label="Scroll to bottom">&#8681;</button>
             <div class="input-bar">
-                <div id="composer-target" class="composer-target">&#8594; <span id="composer-target-name">#general</span></div>
+                <div id="composer-target" class="composer-target">
+                    &#8594; <span id="composer-target-name">#general</span>
+                </div>
                 <div id="mention-dropdown" class="mention-dropdown"></div>
                 <div class="input-bar-row">
                     <textarea id="msg-input"
@@ -191,12 +252,38 @@
                               autocomplete="off"
                               rows="3"></textarea>
                     <input type="file" id="file-input" style="display:none">
-                    <input type="file" id="webcam-capture-input" accept="image/*" capture="environment" style="display:none">
+                    <input type="file"
+                           id="webcam-capture-input"
+                           accept="image/*"
+                           capture="environment"
+                           style="display:none">
                     <div class="input-bar-actions">
-                        <button id="msg-attach" type="button" title="Attach file" aria-label="Attach file">📎</button>
-                        <button id="msg-webcam" type="button" title="Take photo" aria-label="Take photo">📷</button>
-                        <button id="msg-sketch" type="button" title="Draw sketch" aria-label="Draw sketch">✏️</button>
-                        <span class="voice-split"><button id="msg-voice" class="voice-btn-hidden voice-split-mic" type="button" tabindex="-1" title="Voice input" aria-label="Voice input">🎤</button><button id="msg-voice-lang" class="voice-btn-hidden voice-split-lang" type="button" tabindex="-1" title="Voice language" aria-label="Voice language">EN</button></span>
+                        <button id="msg-attach"
+                                type="button"
+                                title="Attach file"
+                                aria-label="Attach file">📎</button>
+                        <button id="msg-webcam"
+                                type="button"
+                                title="Take photo"
+                                aria-label="Take photo">📷</button>
+                        <button id="msg-sketch"
+                                type="button"
+                                title="Draw sketch"
+                                aria-label="Draw sketch">✏️</button>
+                        <span class="voice-split">
+                            <button id="msg-voice"
+                                    class="voice-btn-hidden voice-split-mic"
+                                    type="button"
+                                    tabindex="-1"
+                                    title="Voice input"
+                                    aria-label="Voice input">🎤</button>
+                            <button id="msg-voice-lang"
+                                    class="voice-btn-hidden voice-split-lang"
+                                    type="button"
+                                    tabindex="-1"
+                                    title="Voice language"
+                                    aria-label="Voice language">EN</button>
+                        </span>
                         <button id="msg-send" type="button" title="Send message">Send</button>
                     </div>
                 </div>
@@ -204,16 +291,27 @@
             <div class="stats-bar"></div>
         </div>
     </div>
-    <div id="new-dm-modal" class="dm-modal" hidden role="dialog" aria-modal="true" aria-label="New direct message">
-      <div class="dm-modal-backdrop"></div>
-      <div class="dm-modal-card">
-        <div class="dm-modal-header">
-          <span>New direct message</span>
-          <button type="button" id="new-dm-close" class="dm-modal-close" aria-label="Close">&times;</button>
+    <div id="new-dm-modal"
+         class="dm-modal"
+         hidden
+         role="dialog"
+         aria-modal="true"
+         aria-label="New direct message">
+        <div class="dm-modal-backdrop"></div>
+        <div class="dm-modal-card">
+            <div class="dm-modal-header">
+                <span>New direct message</span>
+                <button type="button"
+                        id="new-dm-close"
+                        class="dm-modal-close"
+                        aria-label="Close">&times;</button>
+            </div>
+            <input type="text"
+                   id="new-dm-search"
+                   placeholder="Search agents and people…"
+                   autocomplete="off">
+            <div id="new-dm-results" class="dm-modal-results"></div>
         </div>
-        <input type="text" id="new-dm-search" placeholder="Search agents and people…" autocomplete="off">
-        <div id="new-dm-results" class="dm-modal-results"></div>
-      </div>
     </div>
 {% endblock %}
 {% block extra_js %}
@@ -246,6 +344,7 @@
     <script src="{% static 'hub/agents-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=99"></script>
     <script src="{% static 'hub/activity-tab.js' %}?v=119"></script>
+    <script src="{% static 'hub/viz-tab.js' %}?v=1"></script>
     <script src="{% static 'hub/upload.js' %}?v=111"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
@@ -287,50 +386,68 @@
     <script src="{% static 'hub/search-palette.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-scroll-btns.js' %}?v=1"></script>
     <script src="{% static 'hub/feed-nav.js' %}?v=3"></script>
-
     <!-- Channel export modal -->
-    <div id="channel-export-modal" class="ch-export-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Export channel">
-      <div class="ch-export-backdrop" onclick="closeChannelExport()"></div>
-      <div class="ch-export-card">
-        <div class="ch-export-header">
-          <span id="ch-export-title">Export channel</span>
-          <button type="button" class="ch-export-close" onclick="closeChannelExport()">&times;</button>
+    <div id="channel-export-modal"
+         class="ch-export-modal"
+         style="display:none"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Export channel">
+        <div class="ch-export-backdrop" onclick="closeChannelExport()"></div>
+        <div class="ch-export-card">
+            <div class="ch-export-header">
+                <span id="ch-export-title">Export channel</span>
+                <button type="button" class="ch-export-close" onclick="closeChannelExport()">&times;</button>
+            </div>
+            <div class="ch-export-body">
+                <label class="ch-export-label">
+                    From
+                    <input type="datetime-local" id="ch-export-from" class="ch-export-input">
+                </label>
+                <label class="ch-export-label">
+                    To
+                    <input type="datetime-local" id="ch-export-to" class="ch-export-input">
+                </label>
+                <label class="ch-export-label">
+                    Format
+                    <select id="ch-export-format" class="ch-export-input">
+                        <option value="json">JSON</option>
+                        <option value="md">Markdown</option>
+                        <option value="txt">Plain text</option>
+                    </select>
+                </label>
+            </div>
+            <div class="ch-export-footer">
+                <button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
+                <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
+            </div>
         </div>
-        <div class="ch-export-body">
-          <label class="ch-export-label">From
-            <input type="datetime-local" id="ch-export-from" class="ch-export-input">
-          </label>
-          <label class="ch-export-label">To
-            <input type="datetime-local" id="ch-export-to" class="ch-export-input">
-          </label>
-          <label class="ch-export-label">Format
-            <select id="ch-export-format" class="ch-export-input">
-              <option value="json">JSON</option>
-              <option value="md">Markdown</option>
-              <option value="txt">Plain text</option>
-            </select>
-          </label>
-        </div>
-        <div class="ch-export-footer">
-          <button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
-          <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
-        </div>
-      </div>
     </div>
-
     <!-- Channel topic edit modal (todo#402) -->
-    <div id="channel-topic-modal" class="ch-topic-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Edit channel topic">
-      <div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
-      <div class="ch-topic-card">
-        <div class="ch-topic-header">
-          <span>Edit channel topic</span>
-          <button type="button" class="ch-topic-close" onclick="closeChannelTopicEdit()">&times;</button>
+    <div id="channel-topic-modal"
+         class="ch-topic-modal"
+         style="display:none"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Edit channel topic">
+        <div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
+        <div class="ch-topic-card">
+            <div class="ch-topic-header">
+                <span>Edit channel topic</span>
+                <button type="button"
+                        class="ch-topic-close"
+                        onclick="closeChannelTopicEdit()">&times;</button>
+            </div>
+            <textarea id="channel-topic-input"
+                      class="ch-topic-input"
+                      rows="3"
+                      placeholder="Describe this channel's purpose..."></textarea>
+            <div class="ch-topic-footer">
+                <button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
+                <button type="button"
+                        class="ch-topic-cancel"
+                        onclick="closeChannelTopicEdit()">Cancel</button>
+            </div>
         </div>
-        <textarea id="channel-topic-input" class="ch-topic-input" rows="3" placeholder="Describe this channel's purpose..."></textarea>
-        <div class="ch-topic-footer">
-          <button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
-          <button type="button" class="ch-topic-cancel" onclick="closeChannelTopicEdit()">Cancel</button>
-        </div>
-      </div>
     </div>
 {% endblock %}

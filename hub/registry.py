@@ -95,8 +95,12 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 else prev.get("recent_actions") or []
             ),
             "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
-            "pane_tail_block": info.get("pane_tail_block") or prev.get("pane_tail_block") or "",
-            "claude_md_head": info.get("claude_md_head") or prev.get("claude_md_head") or "",
+            "pane_tail_block": info.get("pane_tail_block")
+            or prev.get("pane_tail_block")
+            or "",
+            "claude_md_head": info.get("claude_md_head")
+            or prev.get("claude_md_head")
+            or "",
             # todo#460: full .mcp.json content for the Agents tab file viewer.
             # agent_meta.py --push (dotfiles PR #71) sends a size-capped,
             # token-redacted copy of the workspace `.mcp.json`. Absent for
@@ -112,7 +116,56 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # what the agent is blocked on. Both empty when agent_meta can't
             # classify or the agent is a legacy WS-only pusher.
             "pane_state": info.get("pane_state") or prev.get("pane_state") or "",
-            "stuck_prompt_text": info.get("stuck_prompt_text") or prev.get("stuck_prompt_text") or "",
+            "stuck_prompt_text": info.get("stuck_prompt_text")
+            or prev.get("stuck_prompt_text")
+            or "",
+            "pane_text": info.get("pane_text") or prev.get("pane_text") or "",
+            # scitex-agent-container hook-captured tool/prompt events.
+            # Lists replace-on-present so a fresh heartbeat always reflects
+            # the agent's latest ring-buffer state; empty-list pushes wipe
+            # stale data rather than sticking around forever.
+            "recent_tools": (
+                list(info.get("recent_tools"))
+                if isinstance(info.get("recent_tools"), (list, tuple))
+                else prev.get("recent_tools") or []
+            ),
+            "recent_prompts": (
+                list(info.get("recent_prompts"))
+                if isinstance(info.get("recent_prompts"), (list, tuple))
+                else prev.get("recent_prompts") or []
+            ),
+            "agent_calls": (
+                list(info.get("agent_calls"))
+                if isinstance(info.get("agent_calls"), (list, tuple))
+                else prev.get("agent_calls") or []
+            ),
+            "background_tasks": (
+                list(info.get("background_tasks"))
+                if isinstance(info.get("background_tasks"), (list, tuple))
+                else prev.get("background_tasks") or []
+            ),
+            "tool_counts": (
+                dict(info.get("tool_counts"))
+                if isinstance(info.get("tool_counts"), dict)
+                else prev.get("tool_counts") or {}
+            ),
+            # UI-aligned quota keys (long names).
+            "quota_5h_used_pct": (
+                info.get("quota_5h_used_pct")
+                if info.get("quota_5h_used_pct") is not None
+                else prev.get("quota_5h_used_pct")
+            ),
+            "quota_7d_used_pct": (
+                info.get("quota_7d_used_pct")
+                if info.get("quota_7d_used_pct") is not None
+                else prev.get("quota_7d_used_pct")
+            ),
+            "quota_5h_reset_at": info.get("quota_5h_reset_at")
+            or prev.get("quota_5h_reset_at")
+            or "",
+            "quota_7d_reset_at": info.get("quota_7d_reset_at")
+            or prev.get("quota_7d_reset_at")
+            or "",
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))
@@ -124,22 +177,32 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # out_of_credits state, and support fleet load-balancing.
             # Strict whitelist — no tokens, secrets, or credentials.
             "oauth_email": info.get("oauth_email") or prev.get("oauth_email") or "",
-            "oauth_org_name": info.get("oauth_org_name") or prev.get("oauth_org_name") or "",
-            "oauth_account_uuid": info.get("oauth_account_uuid") or prev.get("oauth_account_uuid") or "",
-            "oauth_display_name": info.get("oauth_display_name") or prev.get("oauth_display_name") or "",
+            "oauth_org_name": info.get("oauth_org_name")
+            or prev.get("oauth_org_name")
+            or "",
+            "oauth_account_uuid": info.get("oauth_account_uuid")
+            or prev.get("oauth_account_uuid")
+            or "",
+            "oauth_display_name": info.get("oauth_display_name")
+            or prev.get("oauth_display_name")
+            or "",
             "billing_type": info.get("billing_type") or prev.get("billing_type") or "",
             "has_available_subscription": (
                 info.get("has_available_subscription")
                 if info.get("has_available_subscription") is not None
                 else prev.get("has_available_subscription")
             ),
-            "usage_disabled_reason": info.get("usage_disabled_reason") or prev.get("usage_disabled_reason") or "",
+            "usage_disabled_reason": info.get("usage_disabled_reason")
+            or prev.get("usage_disabled_reason")
+            or "",
             "has_extra_usage_enabled": (
                 info.get("has_extra_usage_enabled")
                 if info.get("has_extra_usage_enabled") is not None
                 else prev.get("has_extra_usage_enabled")
             ),
-            "subscription_created_at": info.get("subscription_created_at") or prev.get("subscription_created_at") or "",
+            "subscription_created_at": info.get("subscription_created_at")
+            or prev.get("subscription_created_at")
+            or "",
             # scitex-orochi#144 fix path 4: how many WebSocket sessions are
             # currently authenticated under this agent name. > 1 indicates
             # a concurrent-instance race situation worth surfacing in the
@@ -152,15 +215,23 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if info.get("quota_5h_pct") is not None
                 else prev.get("quota_5h_pct")
             ),
-            "quota_5h_remaining": info.get("quota_5h_remaining") or prev.get("quota_5h_remaining") or "",
+            "quota_5h_remaining": info.get("quota_5h_remaining")
+            or prev.get("quota_5h_remaining")
+            or "",
             "quota_weekly_pct": (
                 info.get("quota_weekly_pct")
                 if info.get("quota_weekly_pct") is not None
                 else prev.get("quota_weekly_pct")
             ),
-            "quota_weekly_remaining": info.get("quota_weekly_remaining") or prev.get("quota_weekly_remaining") or "",
-            "statusline_model": info.get("statusline_model") or prev.get("statusline_model") or "",
-            "account_email": info.get("account_email") or prev.get("account_email") or "",
+            "quota_weekly_remaining": info.get("quota_weekly_remaining")
+            or prev.get("quota_weekly_remaining")
+            or "",
+            "statusline_model": info.get("statusline_model")
+            or prev.get("statusline_model")
+            or "",
+            "account_email": info.get("account_email")
+            or prev.get("account_email")
+            or "",
         }
 
 
@@ -533,6 +604,21 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "mcp_json": a.get("mcp_json", ""),
                 "pane_state": a.get("pane_state", ""),
                 "stuck_prompt_text": a.get("stuck_prompt_text", ""),
+                "pane_text": a.get("pane_text", ""),
+                # scitex-agent-container hook-captured events — lists
+                # populated by the PreToolUse/PostToolUse hooks.
+                "recent_tools": list(a.get("recent_tools") or []),
+                "recent_prompts": list(a.get("recent_prompts") or []),
+                "agent_calls": list(a.get("agent_calls") or []),
+                "background_tasks": list(a.get("background_tasks") or []),
+                "tool_counts": dict(a.get("tool_counts") or {}),
+                # UI-aligned quota keys — long-name variants surfaced so
+                # the Agents-tab meta grid sees them under the names it
+                # reads.
+                "quota_5h_used_pct": a.get("quota_5h_used_pct"),
+                "quota_7d_used_pct": a.get("quota_7d_used_pct"),
+                "quota_5h_reset_at": a.get("quota_5h_reset_at", ""),
+                "quota_7d_reset_at": a.get("quota_7d_reset_at", ""),
                 "mcp_servers": list(a.get("mcp_servers") or []),
                 # todo#265: OAuth account public metadata. Whitelist
                 # only — no tokens, credentials, or secrets are ever

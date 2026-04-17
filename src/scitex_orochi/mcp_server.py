@@ -116,7 +116,8 @@ if _FASTMCP_AVAILABLE:
             history = [m for m in history if m.get("sender", "") == user]
         if contains:
             history = [
-                m for m in history
+                m
+                for m in history
                 if contains.lower() in (m.get("text", "") or "").lower()
             ]
         return json.dumps(
@@ -125,10 +126,26 @@ if _FASTMCP_AVAILABLE:
 
     @mcp.tool()
     async def orochi_subscribe(channel: str) -> str:
-        """Subscribe to an Orochi channel at runtime (no restart needed)."""
+        """Subscribe to an Orochi channel at runtime (no restart needed).
+
+        The subscription is persisted server-side (ChannelMembership row),
+        so it survives agent reboot. Default permission is read-write;
+        use ``/api/channel-members/`` PATCH to change to read-only.
+        """
         async with _make_client(channels=[channel]) as client:
             await client.subscribe(channel)
         return json.dumps({"status": "subscribed", "channel": channel})
+
+    @mcp.tool()
+    async def orochi_unsubscribe(channel: str) -> str:
+        """Unsubscribe from an Orochi channel at runtime.
+
+        Removes the persisted ChannelMembership row, so the agent will
+        not auto-re-subscribe on reboot.
+        """
+        async with _make_client() as client:
+            await client.unsubscribe(channel)
+        return json.dumps({"status": "unsubscribed", "channel": channel})
 
     @mcp.tool()
     async def orochi_channels() -> str:
@@ -252,7 +269,11 @@ if _FASTMCP_AVAILABLE:
             )
             content_length = resp.headers.get("Content-Length")
             if content_length and int(content_length) > MAX_BYTES:
-                return json.dumps({"error": f"File too large ({int(content_length) // 1024 // 1024}MB > 50MB limit)"})
+                return json.dumps(
+                    {
+                        "error": f"File too large ({int(content_length) // 1024 // 1024}MB > 50MB limit)"
+                    }
+                )
             data = resp.read(MAX_BYTES + 1)
             if len(data) > MAX_BYTES:
                 return json.dumps({"error": "File too large (> 50MB limit)"})
@@ -270,7 +291,6 @@ if _FASTMCP_AVAILABLE:
                 "size": len(data),
             }
         )
-
 
     @mcp.tool()
     async def claude_account_status(agent: str = "") -> str:
@@ -294,19 +314,21 @@ if _FASTMCP_AVAILABLE:
                 return json.dumps({"error": str(exc)})
             # Extract OAuth metadata (safe whitelist, no tokens)
             oauth = data.get("oauthAccount", {})
-            return json.dumps({
-                "email": oauth.get("emailAddress", ""),
-                "org_name": oauth.get("organizationName", ""),
-                "account_uuid": oauth.get("accountUuid", ""),
-                "display_name": oauth.get("displayName", ""),
-                "billing_type": oauth.get("billingType", ""),
-                "has_subscription": data.get("hasAvailableSubscription", None),
-                "usage_disabled_reason": data.get(
-                    "cachedExtraUsageDisabledReason", ""
-                ),
-                "has_extra_usage": data.get("hasExtraUsageEnabled", None),
-                "source": "local",
-            })
+            return json.dumps(
+                {
+                    "email": oauth.get("emailAddress", ""),
+                    "org_name": oauth.get("organizationName", ""),
+                    "account_uuid": oauth.get("accountUuid", ""),
+                    "display_name": oauth.get("displayName", ""),
+                    "billing_type": oauth.get("billingType", ""),
+                    "has_subscription": data.get("hasAvailableSubscription", None),
+                    "usage_disabled_reason": data.get(
+                        "cachedExtraUsageDisabledReason", ""
+                    ),
+                    "has_extra_usage": data.get("hasExtraUsageEnabled", None),
+                    "source": "local",
+                }
+            )
         else:
             # Fleet: query hub registry for agent's account metadata
             import aiohttp
@@ -324,15 +346,21 @@ if _FASTMCP_AVAILABLE:
             # Find agent in registry
             for entry in registry if isinstance(registry, list) else []:
                 if entry.get("name") == agent:
-                    return json.dumps({
-                        k: entry.get(k)
-                        for k in [
-                            "oauth_email", "oauth_org_name",
-                            "billing_type", "has_available_subscription",
-                            "usage_disabled_reason", "has_extra_usage_enabled",
-                        ]
-                        if entry.get(k) is not None
-                    } | {"source": "hub", "agent": agent})
+                    return json.dumps(
+                        {
+                            k: entry.get(k)
+                            for k in [
+                                "oauth_email",
+                                "oauth_org_name",
+                                "billing_type",
+                                "has_available_subscription",
+                                "usage_disabled_reason",
+                                "has_extra_usage_enabled",
+                            ]
+                            if entry.get(k) is not None
+                        }
+                        | {"source": "hub", "agent": agent}
+                    )
             return json.dumps({"error": f"agent '{agent}' not found in registry"})
 
     @mcp.tool()
@@ -346,7 +374,9 @@ if _FASTMCP_AVAILABLE:
 
         claude_json = Path.home() / ".claude.json"
         if not claude_json.exists():
-            return json.dumps({"status": "unknown", "reason": "~/.claude.json not found"})
+            return json.dumps(
+                {"status": "unknown", "reason": "~/.claude.json not found"}
+            )
         try:
             data = json.loads(claude_json.read_text())
         except (json.JSONDecodeError, OSError) as exc:
@@ -366,13 +396,15 @@ if _FASTMCP_AVAILABLE:
         else:
             status = "ok"
 
-        return json.dumps({
-            "status": status,
-            "has_subscription": has_sub,
-            "usage_disabled_reason": disabled_reason or None,
-            "has_extra_usage": has_extra,
-            "agent": os.getenv("SCITEX_OROCHI_AGENT", "unknown"),
-        })
+        return json.dumps(
+            {
+                "status": status,
+                "has_subscription": has_sub,
+                "usage_disabled_reason": disabled_reason or None,
+                "has_extra_usage": has_extra,
+                "agent": os.getenv("SCITEX_OROCHI_AGENT", "unknown"),
+            }
+        )
 
     @mcp.tool()
     async def fleet_report_tool(
@@ -414,9 +446,7 @@ if _FASTMCP_AVAILABLE:
         if since:
             params["since"] = since
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{hub}/api/fleet/state", params=params
-            ) as resp:
+            async with session.get(f"{hub}/api/fleet/state", params=params) as resp:
                 return await resp.text()
 
 

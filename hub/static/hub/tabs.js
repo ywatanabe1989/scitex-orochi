@@ -19,6 +19,7 @@ function _activateTab(tab) {
   var filesView = document.getElementById("files-view");
   var releasesView = document.getElementById("releases-view");
   var settingsView = document.getElementById("settings-view");
+  var vizView = document.getElementById("viz-view");
   messagesEl.style.display = "none";
   inputBar.style.display = "none";
   todoView.style.display = "none";
@@ -29,6 +30,8 @@ function _activateTab(tab) {
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
+  if (vizView) vizView.style.display = "none";
+  if (tab !== "viz" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
@@ -68,7 +71,8 @@ function _activateTab(tab) {
       activityView.style.flex = "1";
     }
     if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
-    if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
+    if (typeof startActivityAutoRefresh === "function")
+      startActivityAutoRefresh();
   } else if (tab === "files") {
     if (filesView) {
       filesView.style.display = "block";
@@ -85,6 +89,12 @@ function _activateTab(tab) {
     settingsView.style.display = "block";
     settingsView.style.flex = "1";
     fetchSettings();
+  } else if (tab === "viz") {
+    if (vizView) {
+      vizView.style.display = "block";
+      vizView.style.flex = "1";
+    }
+    if (typeof renderVizTab === "function") renderVizTab();
   }
   try {
     localStorage.setItem("orochi_active_tab", tab);
@@ -154,9 +164,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     var isCollapsed = h2.classList.toggle("collapsed");
     if (section) section.classList.toggle("collapsed", isCollapsed);
     try {
-      var state = JSON.parse(
-        localStorage.getItem("orochi_collapsed") || "{}",
-      );
+      var state = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
       if (isCollapsed) {
         state[key] = true;
       } else {
