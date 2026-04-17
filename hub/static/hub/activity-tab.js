@@ -145,6 +145,139 @@ function _applyActivitySubTab(agents) {
   _fetchActivityDetail(agent.name);
 }
 
+/* Render the hook-event panels (recent tools, prompts, Agent calls,
+ * background tasks, tool-use counts). All inputs are arrays/objects from
+ * the /api/agents/<name>/detail/ endpoint; empty inputs collapse the
+ * whole section to an empty string so nothing renders when hooks aren't
+ * wired up for this agent. */
+function _renderHookPanels(
+  recentTools,
+  recentPrompts,
+  agentCalls,
+  backgroundTasks,
+  toolCounts,
+) {
+  var hasAny =
+    (recentTools && recentTools.length) ||
+    (recentPrompts && recentPrompts.length) ||
+    (agentCalls && agentCalls.length) ||
+    (backgroundTasks && backgroundTasks.length) ||
+    (toolCounts && Object.keys(toolCounts).length);
+  if (!hasAny) return "";
+  function _hhmmss(ts) {
+    if (!ts || ts.length < 19) return "";
+    return ts.slice(11, 19);
+  }
+  function _list(items, keyFn, emptyLabel) {
+    if (!items || !items.length)
+      return '<li class="hook-empty">' + escapeHtml(emptyLabel) + "</li>";
+    return items
+      .slice()
+      .reverse()
+      .map(function (it) {
+        var ts = _hhmmss(it.ts || "");
+        var txt = keyFn(it);
+        return (
+          '<li class="hook-row">' +
+          '<span class="hook-ts">' +
+          escapeHtml(ts) +
+          "</span>" +
+          '<span class="hook-txt" title="' +
+          escapeHtml(txt) +
+          '">' +
+          escapeHtml(txt) +
+          "</span></li>"
+        );
+      })
+      .join("");
+  }
+  var toolsHtml = _list(
+    recentTools,
+    function (it) {
+      var name = it.tool || it.kind || "?";
+      var prev = it.input_preview || "";
+      return prev ? name + " — " + prev : name;
+    },
+    "no tool calls recorded",
+  );
+  var promptsHtml = _list(
+    recentPrompts,
+    function (it) {
+      return it.prompt_preview || "";
+    },
+    "no prompts recorded",
+  );
+  var agentCallsHtml = _list(
+    agentCalls,
+    function (it) {
+      return it.input_preview || "";
+    },
+    "no Agent tool calls recorded",
+  );
+  var bgHtml = _list(
+    backgroundTasks,
+    function (it) {
+      return it.input_preview || "";
+    },
+    "no background tasks recorded",
+  );
+  var countsHtml = "";
+  if (toolCounts && Object.keys(toolCounts).length) {
+    var pairs = Object.keys(toolCounts)
+      .map(function (k) {
+        return [k, Number(toolCounts[k]) || 0];
+      })
+      .sort(function (a, b) {
+        return b[1] - a[1];
+      });
+    countsHtml = pairs
+      .map(function (p) {
+        return (
+          '<span class="hook-count-chip" title="' +
+          escapeHtml(p[0]) +
+          " used " +
+          p[1] +
+          ' times">' +
+          escapeHtml(p[0]) +
+          " ×" +
+          p[1] +
+          "</span>"
+        );
+      })
+      .join("");
+  }
+  function _panel(title, bodyHtml, extraClass) {
+    return (
+      '<div class="hook-panel ' +
+      (extraClass || "") +
+      '">' +
+      '<div class="hook-panel-title">' +
+      escapeHtml(title) +
+      "</div>" +
+      bodyHtml +
+      "</div>"
+    );
+  }
+  var panels =
+    _panel("Recent tools", '<ul class="hook-list">' + toolsHtml + "</ul>") +
+    _panel("Recent prompts", '<ul class="hook-list">' + promptsHtml + "</ul>") +
+    _panel("Agent calls", '<ul class="hook-list">' + agentCallsHtml + "</ul>") +
+    _panel(
+      "Background tasks (" +
+        (backgroundTasks ? backgroundTasks.length : 0) +
+        ")",
+      '<ul class="hook-list">' + bgHtml + "</ul>",
+    ) +
+    (countsHtml
+      ? _panel(
+          "Tool use counts",
+          '<div class="hook-counts">' + countsHtml + "</div>",
+          "hook-panel-wide",
+        )
+      : "");
+  return '<div class="agent-detail-section hook-panels">' + panels + "</div>";
+}
+
 /* Per-agent full detail view */
 function _renderActivityAgentDetail(a, grid) {
   /* Merge the registry row with any cached /detail/ payload so we
@@ -221,6 +354,22 @@ function _renderActivityAgentDetail(a, grid) {
     ],
     ["Pane state", a.pane_state || "-"],
     ["Idle", _fmtSec(a.idle_seconds)],
+    [
+      "Last tool",
+      d.last_tool_at
+        ? _fmtSec(_secondsSinceIso(d.last_tool_at)) +
+          " ago" +
+          (d.last_tool_name ? " (" + d.last_tool_name + ")" : "")
+        : "-",
+    ],
+    [
+      "Last MCP",
+      d.last_mcp_tool_at
+        ? _fmtSec(_secondsSinceIso(d.last_mcp_tool_at)) +
+          " ago" +
+          (d.last_mcp_tool_name ? " (" + d.last_mcp_tool_name + ")" : "")
+        : "-",
+    ],
     ["Workdir", a.workdir || "-"],
     ["Registered", a.registered_at || "-"],
     ["Last heartbeat", a.last_heartbeat || "-"],
@@ -330,12 +479,23 @@ function _renderActivityAgentDetail(a, grid) {
     claudeMdHtml +
     "</div>" +
     "</div>";
+  /* Hook-event panels — populated from scitex-agent-container ring buffer
+   * (PreToolUse / PostToolUse / UserPromptSubmit). Only visible when the
+   * hooks are wired up for this agent; otherwise the lists are empty. */
+  var hooksHtml = _renderHookPanels(
+    d.recent_tools || [],
+    d.recent_prompts || [],
+    d.agent_calls || [],
+    d.background_tasks || [],
+    d.tool_counts || {},
+  );
   grid.innerHTML =
     '<div class="agent-detail-view">' +
     headerHtml +
     taskHtml +
     channelsHtml +
     splitHtml +
+    hooksHtml +
     "</div>";
   /* Scroll pane to bottom */
   var pre = grid.querySelector(".agent-detail-pane");
@@ -624,6 +784,10 @@ function _renderActivityCards(agents, grid) {
       " offline</span>" +
       '<span class="activity-legend-hint">← border color matches</span>';
   }
+  /* Minimal overview cards: name/liveness/task/machine + a few chips.
+   * Rich per-agent content (CLAUDE.md, pane, subagents, recent tools,
+   * MCP, health, skills, channels, pid, uptime, model) is shown in the
+   * per-agent sub-tab — click any card to open it. */
   grid.innerHTML = agents
     .map(function (a) {
       var color = getAgentColor(a.name);
@@ -633,9 +797,6 @@ function _renderActivityCards(agents, grid) {
       var preview = a.last_message_preview || "";
       var machine = escapeHtml(a.machine || "—");
       var role = escapeHtml(a.role || "agent");
-      var model = a.model ? escapeHtml(a.model) : "";
-      var multiplexer = a.multiplexer ? escapeHtml(a.multiplexer) : "";
-      var pid = a.pid != null && a.pid !== 0 ? a.pid : null;
       var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
       var subagentCount =
         a.subagent_count != null
@@ -643,8 +804,6 @@ function _renderActivityCards(agents, grid) {
           : Array.isArray(a.subagents)
             ? a.subagents.length
             : null;
-      var skillsLoaded = Array.isArray(a.skills_loaded) ? a.skills_loaded : [];
-      var channels = Array.isArray(a.channels) ? a.channels : [];
       var name = escapeHtml(
         typeof hostedAgentName === "function"
           ? hostedAgentName(a)
@@ -661,8 +820,6 @@ function _renderActivityCards(agents, grid) {
         ageSec > 300 &&
         (!subagentCount || subagentCount === 0) &&
         !task;
-      var uptimeSec = _secondsSinceIso(a.started_at);
-      var uptimeStr = uptimeSec != null ? _formatUptime(uptimeSec) : "";
       var chips = [];
       if (subagentCount != null && subagentCount > 0) {
         chips.push(
@@ -673,10 +830,6 @@ function _renderActivityCards(agents, grid) {
             (subagentCount === 1 ? "" : "s") +
             "</span>",
         );
-      } else {
-        chips.push(
-          '<span class="activity-chip activity-chip-subs-idle" title="no subagents running">idle (no subs)</span>',
-        );
       }
       if (ctxPct != null) {
         var ctxClass =
@@ -685,120 +838,25 @@ function _renderActivityCards(agents, grid) {
           '<span class="activity-chip activity-chip-ctx ' +
             ctxClass +
             '" title="context usage">ctx ' +
-            ctxPct.toFixed(1) +
+            ctxPct.toFixed(0) +
             "%</span>",
         );
       }
       var q5 = a.quota_5h_pct != null ? Number(a.quota_5h_pct) : null;
-      var qw = a.quota_weekly_pct != null ? Number(a.quota_weekly_pct) : null;
       if (q5 != null) {
         var q5Class = q5 < 50 ? "ctx-ok" : q5 < 80 ? "ctx-warn" : "ctx-hot";
-        var q5Rem = a.quota_5h_remaining
-          ? " (" + escapeHtml(a.quota_5h_remaining) + ")"
-          : "";
         chips.push(
           '<span class="activity-chip activity-chip-ctx ' +
             q5Class +
             '" title="5h quota">5h ' +
             q5.toFixed(0) +
-            "%" +
-            q5Rem +
-            "</span>",
+            "%</span>",
         );
       }
-      if (qw != null) {
-        var qwClass = qw < 50 ? "ctx-ok" : qw < 80 ? "ctx-warn" : "ctx-hot";
-        var qwRem = a.quota_weekly_remaining
-          ? " (" + escapeHtml(a.quota_weekly_remaining) + ")"
-          : "";
-        chips.push(
-          '<span class="activity-chip activity-chip-ctx ' +
-            qwClass +
-            '" title="weekly quota">wk ' +
-            qw.toFixed(0) +
-            "%" +
-            qwRem +
-            "</span>",
-        );
-      }
-      if (model)
-        chips.push(
-          '<span class="activity-chip activity-chip-model" title="model">' +
-            model +
-            "</span>",
-        );
-      if (multiplexer)
-        chips.push(
-          '<span class="activity-chip activity-chip-mux" title="multiplexer">' +
-            multiplexer +
-            "</span>",
-        );
-      if (uptimeStr) {
-        chips.push(
-          '<span class="activity-chip activity-chip-uptime" title="time since process start: ' +
-            escapeHtml(a.started_at || "") +
-            '">' +
-            escapeHtml(uptimeStr) +
-            "</span>",
-        );
-      }
-      if (skillsLoaded.length > 0) {
-        var skillsTitle = skillsLoaded.join("\n");
-        chips.push(
-          '<span class="activity-chip activity-chip-skills" title="' +
-            escapeHtml(skillsTitle) +
-            '">skills ' +
-            skillsLoaded.length +
-            "</span>",
-        );
-      }
-      if (channels.length > 0) {
-        var chTitle = channels.join("\n");
-        chips.push(
-          '<span class="activity-chip activity-chip-channels" title="' +
-            escapeHtml(chTitle) +
-            '">ch ' +
-            channels.length +
-            "</span>",
-        );
-      }
-      if (pid != null)
-        chips.push(
-          '<span class="activity-chip activity-chip-pid" title="process id">pid ' +
-            pid +
-            "</span>",
-        );
       var chipsHtml =
         chips.length > 0
           ? '<div class="activity-chips">' + chips.join("") + "</div>"
           : "";
-      var subagents = Array.isArray(a.subagents) ? a.subagents : [];
-      var subagentsHtml = "";
-      if (subagents.length > 0) {
-        subagentsHtml =
-          '<ul class="activity-subagents">' +
-          subagents
-            .map(function (s) {
-              var sname = escapeHtml(s.name || "subagent");
-              var stask = _renderTaskField(s.task || "", "", "");
-              var sstatus = escapeHtml(s.status || "running");
-              return (
-                '<li class="activity-subagent activity-subagent-' +
-                sstatus +
-                '">' +
-                '<span class="activity-subagent-branch">└─</span>' +
-                '<span class="activity-subagent-name">' +
-                sname +
-                "</span>" +
-                '<span class="activity-subagent-task">' +
-                stask +
-                "</span>" +
-                "</li>"
-              );
-            })
-            .join("") +
-          "</ul>";
-      }
       var copyPayload = (
         rawName +
         " — " +
@@ -810,60 +868,6 @@ function _renderActivityCards(agents, grid) {
         escapeHtml(copyPayload) +
         '">\uD83D\uDCCB</button>';
       var stuckClass = isStuck ? " activity-stuck" : "";
-      var recentActions = Array.isArray(a.recent_actions)
-        ? a.recent_actions
-        : [];
-      var recentHtml = "";
-      if (recentActions.length > 0) {
-        recentHtml =
-          '<ul class="activity-recent" title="recent tool calls (latest at bottom)">' +
-          recentActions
-            .map(function (act) {
-              var ts = (act && act.ts) || "";
-              var hh = "";
-              if (ts && ts.length >= 19) hh = ts.slice(11, 19);
-              var prev = (act && act.preview) || "";
-              return (
-                '<li class="activity-recent-row">' +
-                '<span class="activity-recent-ts">' +
-                escapeHtml(hh) +
-                "</span>" +
-                '<span class="activity-recent-preview" title="' +
-                escapeHtml(prev) +
-                '">' +
-                escapeHtml(prev) +
-                "</span></li>"
-              );
-            })
-            .join("") +
-          "</ul>";
-      }
-      var paneTailBlock = a.pane_tail_block || a.pane_tail || "";
-      var paneTailHtml =
-        recentActions.length === 0 && paneTailBlock
-          ? '<pre class="activity-pane-tail" title="recent lines from this agent\'s tmux pane">' +
-            escapeHtml(paneTailBlock) +
-            "</pre>"
-          : "";
-      var claudeMdHead = a.claude_md_head || "";
-      var mcpServers = Array.isArray(a.mcp_servers) ? a.mcp_servers : [];
-      var roleLine = claudeMdHead
-        ? '<div class="activity-role-hint" title="from workspace CLAUDE.md">' +
-          escapeHtml(claudeMdHead) +
-          "</div>"
-        : "";
-      var mcpLine =
-        mcpServers.length > 0
-          ? '<div class="activity-mcp-line" title="MCP servers configured for this agent">' +
-            mcpServers
-              .map(function (s) {
-                return (
-                  '<span class="activity-mcp-chip">' + escapeHtml(s) + "</span>"
-                );
-              })
-              .join("") +
-            "</div>"
-          : "";
       return (
         '<div class="activity-card activity-' +
         liveness +
@@ -892,15 +896,10 @@ function _renderActivityCards(agents, grid) {
         " · " +
         role +
         "</div>" +
-        roleLine +
         '<div class="activity-task">' +
         _renderTaskField(task, preview, ageStr) +
         "</div>" +
-        paneTailHtml +
         chipsHtml +
-        mcpLine +
-        _renderHealthField(a.health) +
-        subagentsHtml +
         "</div>"
       );
     })

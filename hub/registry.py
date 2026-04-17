@@ -149,6 +149,20 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("tool_counts"), dict)
                 else prev.get("tool_counts") or {}
             ),
+            # Functional-heartbeat shortcuts derived in agent-container's
+            # event_log.summarize(). last_tool_at is the newest pretool
+            # ts (LLM-level liveness); last_mcp_tool_at is newest for
+            # mcp__* tools (proves the MCP sidecar route works).
+            "last_tool_at": info.get("last_tool_at") or prev.get("last_tool_at") or "",
+            "last_tool_name": info.get("last_tool_name")
+            or prev.get("last_tool_name")
+            or "",
+            "last_mcp_tool_at": info.get("last_mcp_tool_at")
+            or prev.get("last_mcp_tool_at")
+            or "",
+            "last_mcp_tool_name": info.get("last_mcp_tool_name")
+            or prev.get("last_mcp_tool_name")
+            or "",
             # UI-aligned quota keys (long names).
             "quota_5h_used_pct": (
                 info.get("quota_5h_used_pct")
@@ -612,6 +626,12 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "agent_calls": list(a.get("agent_calls") or []),
                 "background_tasks": list(a.get("background_tasks") or []),
                 "tool_counts": dict(a.get("tool_counts") or {}),
+                # Functional-heartbeat shortcuts (derived by
+                # event_log.summarize() in agent-container).
+                "last_tool_at": a.get("last_tool_at", ""),
+                "last_tool_name": a.get("last_tool_name", ""),
+                "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
+                "last_mcp_tool_name": a.get("last_mcp_tool_name", ""),
                 # UI-aligned quota keys — long-name variants surfaced so
                 # the Agents-tab meta grid sees them under the names it
                 # reads.

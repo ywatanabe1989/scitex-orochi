@@ -1839,6 +1839,12 @@ def api_agents_register(request):
             "agent_calls": body.get("agent_calls") or [],
             "background_tasks": body.get("background_tasks") or [],
             "tool_counts": body.get("tool_counts") or {},
+            # Functional-heartbeat shortcuts — last tool use (LLM-level
+            # liveness) + last mcp__* tool (proves MCP sidecar route).
+            "last_tool_at": body.get("last_tool_at") or "",
+            "last_tool_name": body.get("last_tool_name") or "",
+            "last_mcp_tool_at": body.get("last_mcp_tool_at") or "",
+            "last_mcp_tool_name": body.get("last_mcp_tool_name") or "",
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev

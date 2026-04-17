@@ -255,5 +255,10 @@ def api_agent_detail(request, name: str):
         "agent_calls": agent.get("agent_calls") or [],
         "background_tasks": agent.get("background_tasks") or [],
         "tool_counts": agent.get("tool_counts") or {},
+        # Functional-heartbeat shortcuts.
+        "last_tool_at": agent.get("last_tool_at") or "",
+        "last_tool_name": agent.get("last_tool_name") or "",
+        "last_mcp_tool_at": agent.get("last_mcp_tool_at") or "",
+        "last_mcp_tool_name": agent.get("last_mcp_tool_name") or "",
     }
     return JsonResponse(payload)

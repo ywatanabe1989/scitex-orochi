@@ -114,6 +114,11 @@ def _wrap_with_orochi_fields(
         "agent_calls": status.get("agent_calls") or [],
         "background_tasks": status.get("background_tasks") or [],
         "tool_counts": status.get("tool_counts") or {},
+        # Functional-heartbeat shortcuts (derived in agent-container).
+        "last_tool_at": status.get("last_tool_at") or "",
+        "last_tool_name": status.get("last_tool_name") or "",
+        "last_mcp_tool_at": status.get("last_mcp_tool_at") or "",
+        "last_mcp_tool_name": status.get("last_mcp_tool_name") or "",
         # Accounting.
         "account_email": status.get("account_email") or "",
         "version": status.get("version") or "",
