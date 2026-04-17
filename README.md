@@ -277,21 +277,31 @@ You should see `Listening for channel messages from: server:scitex-orochi` in th
 
 ## Agent Definitions
 
-Agent configuration lives in `~/.scitex/orochi/agents/<agent-name>/`, **not** in this repository. This directory is the single source of truth for all agent configuration, shared across machines via dotfiles.
+Agent configuration lives under `~/.scitex/orochi/` in the canonical
+two-tier layout (dotfiles commit `68bd1592`), **not** in this
+repository. `~/.scitex/orochi/` is the single source of truth for all
+agent configuration, shared across machines via dotfiles.
 
 ```
-~/.scitex/orochi/agents/<agent-name>/
-├── <agent-name>.yaml  — Agent definition (apiVersion, kind, metadata, spec)
-├── CLAUDE.md           — Agent instructions (role, behavior, tools)
-└── .mcp.json           — MCP server configuration (orochi hub connection)
+~/.scitex/orochi/
+├── shared/agents/<agent-name>/      # Shared template (hostname-substituted)
+│   ├── <agent-name>.yaml            —  apiVersion, kind, metadata, spec
+│   ├── src_CLAUDE.md                —  copied to {workdir}/CLAUDE.md at launch
+│   └── src_mcp.json                 —  copied to {workdir}/.mcp.json at launch
+└── <host>/agents/<agent-name>/      # Host-specific concrete agents
+    └── ...
 ```
+
+The legacy flat layout `~/.scitex/orochi/agents/<agent-name>/` is still
+accepted as a fallback during the dotfiles 68bd1592 rollout
+(DEPRECATED — will be removed once every host is re-bootstrapped).
 
 The `scitex-orochi` CLI is the **dispatcher** that reads these definitions and launches agents:
 
 1. `scitex-orochi launch <agent-name>` reads the agent definition directory
-2. Creates a workspace at `~/.scitex/orochi/workspaces/<agent-name>/`
-3. Copies `.mcp.json` and `CLAUDE.md` into the workspace
-4. Starts Claude Code in a GNU screen session from the workspace directory
+2. Creates a workspace at `~/.scitex/orochi/runtime/workspaces/<agent-name>/`
+3. Copies `src_mcp.json` and `src_CLAUDE.md` into the workspace
+4. Starts Claude Code in a GNU screen/tmux session from the workspace directory
 
 ### Current Fleet
 
