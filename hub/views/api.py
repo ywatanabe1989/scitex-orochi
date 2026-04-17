@@ -1813,6 +1813,32 @@ def api_agents_register(request):
             "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
             "statusline_model": body.get("statusline_model", ""),
             "account_email": body.get("account_email", ""),
+            # scitex-agent-container heartbeat-push payload. Long names are
+            # preferred by the dashboard; accept the short-name aliases too
+            # for backward compat with older pushers.
+            "quota_5h_used_pct": body.get("quota_5h_used_pct")
+            if body.get("quota_5h_used_pct") is not None
+            else body.get("quota_5h_pct"),
+            "quota_7d_used_pct": body.get("quota_7d_used_pct")
+            if body.get("quota_7d_used_pct") is not None
+            else body.get("quota_weekly_pct"),
+            "quota_5h_reset_at": body.get("quota_5h_reset_at")
+            or body.get("quota_5h_remaining", ""),
+            "quota_7d_reset_at": body.get("quota_7d_reset_at")
+            or body.get("quota_weekly_remaining", ""),
+            # Terminal pane + classified state from agent-container.
+            "pane_state": body.get("pane_state", ""),
+            "stuck_prompt_text": body.get("stuck_prompt_text", ""),
+            "pane_text": body.get("pane_text", ""),
+            # Workspace files (full CLAUDE.md, redacted .mcp.json).
+            "claude_md": body.get("claude_md", ""),
+            "mcp_json": body.get("mcp_json", ""),
+            # Claude Code hook-captured events.
+            "recent_tools": body.get("recent_tools") or [],
+            "recent_prompts": body.get("recent_prompts") or [],
+            "agent_calls": body.get("agent_calls") or [],
+            "background_tasks": body.get("background_tasks") or [],
+            "tool_counts": body.get("tool_counts") or {},
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev

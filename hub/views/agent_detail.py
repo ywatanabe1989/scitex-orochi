@@ -247,5 +247,13 @@ def api_agent_detail(request, name: str):
         or agent.get("quota_7d_remaining")
         or "",
         "health": agent.get("health") or {},
+        # scitex-agent-container hook-event ring-buffer (PreToolUse /
+        # PostToolUse / UserPromptSubmit). Empty lists when the hook
+        # wiring hasn't been configured for this agent yet.
+        "recent_tools": agent.get("recent_tools") or [],
+        "recent_prompts": agent.get("recent_prompts") or [],
+        "agent_calls": agent.get("agent_calls") or [],
+        "background_tasks": agent.get("background_tasks") or [],
+        "tool_counts": agent.get("tool_counts") or {},
     }
     return JsonResponse(payload)
