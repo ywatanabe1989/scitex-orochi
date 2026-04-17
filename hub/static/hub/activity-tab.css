@@ -154,6 +154,12 @@
 #activity-view.todo-view {
   display: flex;
   flex-direction: column;
+  /* Must claim remaining vertical space inside `.main` (itself flex-col).
+   * Without flex: 1 + min-height: 0, the view sizes to content height and
+   * activity-grid's `overflow: auto` never triggers — the grid just grows
+   * past the viewport bottom, making it unscrollable (2026-04-18). */
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   padding: 0;
 }
