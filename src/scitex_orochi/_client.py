@@ -230,11 +230,22 @@ class OrochiClient:
         await self._ws.send(msg.to_json())
 
     async def subscribe(self, channel: str) -> None:
-        """Subscribe to an additional channel."""
+        """Subscribe to an additional channel (persisted server-side)."""
         if not self._ws:
             raise RuntimeError("Not connected")
         msg = Message(
             type="subscribe",
+            sender=self.name,
+            payload={"channel": channel},
+        )
+        await self._ws.send(msg.to_json())
+
+    async def unsubscribe(self, channel: str) -> None:
+        """Unsubscribe from a channel (persisted server-side)."""
+        if not self._ws:
+            raise RuntimeError("Not connected")
+        msg = Message(
+            type="unsubscribe",
             sender=self.name,
             payload={"channel": channel},
         )

@@ -6,6 +6,7 @@ from django.urls import include, path, re_path
 from django.views.static import serve as static_serve
 
 from hub import views
+from hub.views import todo_stats as _todo_stats_view
 
 _media_url = settings.MEDIA_URL.strip("/")
 
@@ -113,4 +114,7 @@ urlpatterns = [
     # Public status page (issue #75)
     path("status/", views.status_page, name="status"),
     path("api/status/", views.api_status, name="api-status"),
+    # TODO stats (scitex-orochi#171) — bare domain mirror so MCP sidecars +
+    # localhost clients can reach the endpoint without subdomain routing.
+    path("api/todo/stats/", _todo_stats_view.api_todo_stats, name="api-todo-stats"),
 ]

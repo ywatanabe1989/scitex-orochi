@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.11.52"
+version = "0.12.0"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -73,10 +73,22 @@ Repository = "https://github.com/ywatanabe1989/scitex-orochi"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scitex_orochi", "hub", "orochi"]
-artifacts = ["_ts/**"]
+# Explicit data-file inclusion. Hatch ships `.py` by default; everything
+# else needs to be listed, or `pip install scitex-orochi` from PyPI ends
+# up without the `_skills/` .md files and without the bundled TypeScript
+# sidecar. todo#450 surfaced the _skills drift (8 files vs 44 in source)
+# — listing `_skills/**` explicitly makes the wheel a faithful copy of
+# the package tree for non-editable installs.
+artifacts = [
+    "_ts/**",
+    "src/scitex_orochi/_skills/**",
+]
 
 [tool.hatch.build.targets.sdist]
-artifacts = ["src/scitex_orochi/_ts/**"]
+artifacts = [
+    "src/scitex_orochi/_ts/**",
+    "src/scitex_orochi/_skills/**",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

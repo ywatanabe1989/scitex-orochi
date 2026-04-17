@@ -8,6 +8,7 @@ from django.urls import path, re_path
 from django.views.static import serve as static_serve
 
 from hub import views
+from hub.views import todo_stats as _todo_stats_view
 
 _sw_js_path = os.path.join(os.path.dirname(__file__), "static", "hub", "sw.js")
 
@@ -127,6 +128,8 @@ urlpatterns = [
     ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
+    # TODO stats (scitex-orochi#171) — trailing slash to match fleet convention
+    path("api/todo/stats/", _todo_stats_view.api_todo_stats, name="api-todo-stats"),
     # Discovery
     path("api/discover/", views.api_discover, name="api-discover"),
     # File upload

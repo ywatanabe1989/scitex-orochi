@@ -110,9 +110,7 @@ class ChannelNameNormalizeTest(TestCase):
             workspace=ws, name=normalize_channel_name("#general")
         )
         self.assertEqual(a.pk, b.pk)
-        self.assertEqual(
-            Channel.objects.filter(workspace=ws).count(), 1
-        )
+        self.assertEqual(Channel.objects.filter(workspace=ws).count(), 1)
 
 
 class AuthTest(TestCase):
@@ -351,9 +349,7 @@ class DMSchemaTest(TestCase):
         self.assertIn("name", cm.exception.message_dict)
 
     def test_dm_channel_accepts_dm_prefix(self):
-        ch = Channel(
-            workspace=self.ws, name="dm:alice|bob", kind=Channel.KIND_DM
-        )
+        ch = Channel(workspace=self.ws, name="dm:alice|bob", kind=Channel.KIND_DM)
         ch.full_clean()  # should not raise
         ch.save()
         self.assertEqual(ch.kind, "dm")
@@ -433,9 +429,7 @@ class DMConsumerRoutingTest(TestCase):
         # Human users
         self.user_alice = User.objects.create_user(username="alice", password="x")
         self.user_bob = User.objects.create_user(username="bob", password="x")
-        self.user_observer = User.objects.create_user(
-            username="observer", password="x"
-        )
+        self.user_observer = User.objects.create_user(username="observer", password="x")
         self.mem_alice = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.user_alice, role="member"
         )
@@ -462,9 +456,7 @@ class DMConsumerRoutingTest(TestCase):
             identity_name="bob",
         )
         # An agent DM channel (agent-skill ↔ alice)
-        self.agent_user = User.objects.create_user(
-            username="agent-skill", password="x"
-        )
+        self.agent_user = User.objects.create_user(username="agent-skill", password="x")
         self.mem_agent = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.agent_user, role="member"
         )
@@ -487,9 +479,7 @@ class DMConsumerRoutingTest(TestCase):
             identity_name="alice",
         )
         # A regular group channel for filter regression
-        self.group_ch = Channel.objects.create(
-            workspace=self.ws, name="#general"
-        )
+        self.group_ch = Channel.objects.create(workspace=self.ws, name="#general")
 
     # ------------------------------------------------------------------
     # _ensure_agent_member
@@ -530,9 +520,7 @@ class DMConsumerRoutingTest(TestCase):
         from hub.channel_acl import check_write_allowed
 
         self.assertFalse(
-            check_write_allowed(
-                "observer", "dm:alice|bob", workspace_id=self.ws.id
-            )
+            check_write_allowed("observer", "dm:alice|bob", workspace_id=self.ws.id)
         )
 
     def test_check_write_allowed_dm_principal_agent(self):
@@ -737,9 +725,7 @@ class DMConsumerRoutingTest(TestCase):
         )
         # Repoint the participant row to the new member before saving
         # — the signal uses the username of the current member.
-        part = DMParticipant.objects.get(
-            channel=self.dm_agent, member=self.mem_agent
-        )
+        part = DMParticipant.objects.get(channel=self.dm_agent, member=self.mem_agent)
         part.member = new_member
         part.save()
         # Now fire the rename signal
@@ -751,9 +737,7 @@ class DMConsumerRoutingTest(TestCase):
         """Renaming a human User updates DMParticipant.identity_name."""
         self.user_alice.username = "alice-renamed"
         self.user_alice.save()
-        part = DMParticipant.objects.get(
-            channel=self.dm, member=self.mem_alice
-        )
+        part = DMParticipant.objects.get(channel=self.dm, member=self.mem_alice)
         self.assertEqual(part.identity_name, "alice-renamed")
 
     # ------------------------------------------------------------------
@@ -807,9 +791,7 @@ class DMConsumerRoutingTest(TestCase):
 
         groups = [g for g, _ in sent]
         self.assertIn(
-            _sanitize_group_name(
-                f"channel_{self.ws.id}_dm:alice|bob"
-            ),
+            _sanitize_group_name(f"channel_{self.ws.id}_dm:alice|bob"),
             groups,
         )
         self.assertNotIn(f"workspace_{self.ws.id}", groups)
@@ -891,9 +873,7 @@ class DmRestApiTest(TestCase):
         self.alice_m = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.alice
         )
-        self.bob_m = WorkspaceMember.objects.create(
-            workspace=self.ws, user=self.bob
-        )
+        self.bob_m = WorkspaceMember.objects.create(workspace=self.ws, user=self.bob)
         self.carol_m = WorkspaceMember.objects.create(
             workspace=self.ws, user=self.carol
         )
@@ -941,7 +921,9 @@ class DmRestApiTest(TestCase):
             ).count(),
             1,
         )
-        self.assertEqual(DMParticipant.objects.filter(channel__name=r1.json()["name"]).count(), 2)
+        self.assertEqual(
+            DMParticipant.objects.filter(channel__name=r1.json()["name"]).count(), 2
+        )
 
     def test_post_dms_rejects_non_member(self):
         self._login(self.alice)
@@ -969,9 +951,7 @@ class DmRestApiTest(TestCase):
         canonical = resp.json()["name"]
         # Now build a group Channel with the same name and confirm
         # full_clean() rejects it (PR 1 guard).
-        bad = Channel(
-            workspace=self.ws, name=canonical, kind=Channel.KIND_GROUP
-        )
+        bad = Channel(workspace=self.ws, name=canonical, kind=Channel.KIND_GROUP)
         with self.assertRaises(ValidationError):
             bad.full_clean()
 
@@ -986,9 +966,7 @@ class DmRestApiTest(TestCase):
         data = resp.json()
         self.assertIn("agent:mamba-foo", data["name"])
         self.assertEqual(data["other_participants"][0]["type"], "agent")
-        self.assertEqual(
-            data["other_participants"][0]["identity_name"], "mamba-foo"
-        )
+        self.assertEqual(data["other_participants"][0]["identity_name"], "mamba-foo")
 
     # ---- GET /dms/ -----------------------------------------------------
 
@@ -1016,9 +994,7 @@ class DmRestApiTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         rows = resp.json()["dms"]
         self.assertEqual(len(rows), 1)
-        self.assertEqual(
-            rows[0]["other_participants"][0]["identity_name"], "bob"
-        )
+        self.assertEqual(rows[0]["other_participants"][0]["identity_name"], "bob")
 
     # ---- /messages/ write-ACL fix (§8 / todo#258) ----------------------
 
@@ -1041,9 +1017,7 @@ class DmRestApiTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 403, resp.content)
-        self.assertEqual(
-            Message.objects.filter(channel__name=dm_name).count(), 0
-        )
+        self.assertEqual(Message.objects.filter(channel__name=dm_name).count(), 0)
 
     def test_messages_post_dm_participant_allowed(self):
         self._login(self.alice)
@@ -1060,9 +1034,7 @@ class DmRestApiTest(TestCase):
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 201, resp.content)
-        self.assertEqual(
-            Message.objects.filter(channel__name=dm_name).count(), 1
-        )
+        self.assertEqual(Message.objects.filter(channel__name=dm_name).count(), 1)
 
     def test_messages_post_group_channel_unaffected(self):
         Channel.objects.create(workspace=self.ws, name="#general")
@@ -1077,10 +1049,10 @@ class DmRestApiTest(TestCase):
 
 # ── Web Push (todo#263) ─────────────────────────────────────────────────
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from hub.models import PushSubscription
 from hub import push as hub_push
+from hub.models import PushSubscription
 
 
 class PushSubscriptionModelTest(TestCase):
@@ -1266,9 +1238,7 @@ class PushFanoutTest(TestCase):
                 content="bye",
                 message_id=2,
             )
-        self.assertFalse(
-            PushSubscription.objects.filter(pk=self.sub_bob.pk).exists()
-        )
+        self.assertFalse(PushSubscription.objects.filter(pk=self.sub_bob.pk).exists())
 
     def test_skips_when_unconfigured(self):
         from django.test import override_settings
@@ -1354,14 +1324,19 @@ class AgentMetaOAuthRegisterTest(TestCase):
         from hub.registry import get_agents
 
         _reg_agents.clear()
-        resp = self._post({
-            "token": self.token.token,
-            "name": "oauth-agent-2",
-            "usage_disabled_reason": "out_of_credits",
-        })
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "oauth-agent-2",
+                "usage_disabled_reason": "out_of_credits",
+            }
+        )
         self.assertEqual(resp.status_code, 200)
-        a = [x for x in get_agents(workspace_id=self.ws.id)
-             if x["name"] == "oauth-agent-2"][0]
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "oauth-agent-2"
+        ][0]
         self.assertEqual(a["usage_disabled_reason"], "out_of_credits")
 
     def test_register_missing_oauth_fields_defaults(self):
@@ -1370,13 +1345,18 @@ class AgentMetaOAuthRegisterTest(TestCase):
         from hub.registry import get_agents
 
         _reg_agents.clear()
-        resp = self._post({
-            "token": self.token.token,
-            "name": "legacy-agent",
-        })
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "legacy-agent",
+            }
+        )
         self.assertEqual(resp.status_code, 200)
-        a = [x for x in get_agents(workspace_id=self.ws.id)
-             if x["name"] == "legacy-agent"][0]
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "legacy-agent"
+        ][0]
         self.assertEqual(a["oauth_email"], "")
         self.assertEqual(a["oauth_org_name"], "")
         self.assertIsNone(a["has_available_subscription"])
@@ -1392,20 +1372,23 @@ class AgentMetaOAuthRegisterTest(TestCase):
         from hub.registry import get_agents
 
         _reg_agents.clear()
-        resp = self._post({
-            "token": self.token.token,
-            "name": "leak-test",
-            "oauth_email": "bob@example.org",
-            # Hostile fields — must NOT end up in the registry.
-            "accessToken": "sk-ant-oat01-leaked",
-            "refreshToken": "sk-ant-ort01-leaked",
-            "apiKey": "sk-ant-api03-leaked",
-            "claudeAiOauth": {"accessToken": "sk-ant-oat01-leaked"},
-            "credentials": "bearer leaked",
-        })
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "leak-test",
+                "oauth_email": "bob@example.org",
+                # Hostile fields — must NOT end up in the registry.
+                "accessToken": "sk-ant-oat01-leaked",
+                "refreshToken": "sk-ant-ort01-leaked",
+                "apiKey": "sk-ant-api03-leaked",
+                "claudeAiOauth": {"accessToken": "sk-ant-oat01-leaked"},
+                "credentials": "bearer leaked",
+            }
+        )
         self.assertEqual(resp.status_code, 200)
-        a = [x for x in get_agents(workspace_id=self.ws.id)
-             if x["name"] == "leak-test"][0]
+        a = [
+            x for x in get_agents(workspace_id=self.ws.id) if x["name"] == "leak-test"
+        ][0]
         flat = json.dumps(a).lower()
         for forbidden in (
             "sk-ant-oat01-leaked",
@@ -1413,14 +1396,313 @@ class AgentMetaOAuthRegisterTest(TestCase):
             "sk-ant-api03-leaked",
             "bearer leaked",
         ):
-            self.assertNotIn(forbidden, flat,
-                             f"leaked token material {forbidden!r} in registry entry")
+            self.assertNotIn(
+                forbidden,
+                flat,
+                f"leaked token material {forbidden!r} in registry entry",
+            )
         # And no forbidden keys in the registry row.
         for k in a.keys():
             kl = k.lower()
             self.assertNotIn("token", kl)
             self.assertNotIn("secret", kl)
             self.assertFalse(kl.endswith("key"), f"key-like field: {k}")
+
+
+class FunctionalHeartbeatAndHookEventsTest(TestCase):
+    """Smoke tests for the functional-heartbeat shortcuts and
+    hook-event passthrough landed with the agent-detail upgrade
+    (feat(hub): agent-detail upgrades commit).
+
+    Ensures the end-to-end pipe
+    ``scitex-agent-container status --json`` ->
+    ``scitex-orochi heartbeat-push`` ->
+    ``POST /api/agents/register/`` -> registry ->
+    ``GET /api/agents/<name>/detail/`` preserves:
+
+      - ``last_tool_at`` / ``last_tool_name``  — LLM liveness signal
+      - ``last_mcp_tool_at`` / ``last_mcp_tool_name`` — MCP sidecar route
+      - ``recent_tools`` / ``recent_prompts`` / ``agent_calls`` /
+        ``background_tasks`` / ``tool_counts`` — hook ring-buffer
+        views rendered in the per-agent detail panels.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="hb-test-ws")
+        self.token = WorkspaceToken.objects.create(workspace=self.ws, label="hb-test")
+        from hub.registry import _agents as _reg_agents
+
+        _reg_agents.clear()
+
+    def _post(self, payload):
+        return self.client.post(
+            "/api/agents/register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def _get_detail(self, name):
+        return self.client.get(
+            f"/api/agents/{name}/detail/",
+            data={"token": self.token.token},
+        )
+
+    def _base_payload(self, **overrides):
+        payload = {
+            "token": self.token.token,
+            "name": "hb-agent",
+            "machine": "MBA",
+            "role": "head",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_register_persists_last_tool_fields(self):
+        from hub.registry import get_agents
+
+        resp = self._post(
+            self._base_payload(
+                last_tool_at="2026-04-17T00:00:00+00:00",
+                last_tool_name="Edit",
+            )
+        )
+        self.assertEqual(resp.status_code, 200)
+        agents = get_agents(workspace_id=self.ws.id)
+        match = [a for a in agents if a["name"] == "hb-agent"]
+        self.assertEqual(len(match), 1)
+        self.assertEqual(match[0]["last_tool_at"], "2026-04-17T00:00:00+00:00")
+        self.assertEqual(match[0]["last_tool_name"], "Edit")
+
+    def test_register_persists_last_mcp_tool_fields(self):
+        from hub.registry import get_agents
+
+        resp = self._post(
+            self._base_payload(
+                last_mcp_tool_at="2026-04-17T00:01:00+00:00",
+                last_mcp_tool_name="mcp__orochi__send_message",
+            )
+        )
+        self.assertEqual(resp.status_code, 200)
+        agents = get_agents(workspace_id=self.ws.id)
+        a = next(a for a in agents if a["name"] == "hb-agent")
+        self.assertEqual(a["last_mcp_tool_at"], "2026-04-17T00:01:00+00:00")
+        self.assertEqual(a["last_mcp_tool_name"], "mcp__orochi__send_message")
+
+    def test_register_persists_hook_event_lists(self):
+        """recent_tools / prompts / agent_calls / background_tasks /
+        tool_counts round-trip into the registry unmodified."""
+        from hub.registry import get_agents
+
+        recent_tools = [
+            {"ts": "2026-04-17T00:00:00Z", "tool": "Edit", "input_preview": "/f.py"},
+            {"ts": "2026-04-17T00:00:05Z", "tool": "Bash", "input_preview": "pytest"},
+        ]
+        recent_prompts = [
+            {"ts": "2026-04-17T00:00:00Z", "prompt_preview": "fix the bug"},
+        ]
+        agent_calls = [
+            {"ts": "2026-04-17T00:00:02Z", "input_preview": "deep-research"},
+        ]
+        background_tasks = [
+            {"ts": "2026-04-17T00:00:03Z", "input_preview": "tail -f log"},
+        ]
+        tool_counts = {"Edit": 1, "Bash": 1, "Agent": 1}
+        resp = self._post(
+            self._base_payload(
+                recent_tools=recent_tools,
+                recent_prompts=recent_prompts,
+                agent_calls=agent_calls,
+                background_tasks=background_tasks,
+                tool_counts=tool_counts,
+            )
+        )
+        self.assertEqual(resp.status_code, 200)
+        agents = get_agents(workspace_id=self.ws.id)
+        a = next(a for a in agents if a["name"] == "hb-agent")
+        self.assertEqual(a["recent_tools"], recent_tools)
+        self.assertEqual(a["recent_prompts"], recent_prompts)
+        self.assertEqual(a["agent_calls"], agent_calls)
+        self.assertEqual(a["background_tasks"], background_tasks)
+        self.assertEqual(a["tool_counts"], tool_counts)
+
+    def test_detail_api_surfaces_last_tool_fields(self):
+        """The four shortcuts must appear in /api/agents/<name>/detail/."""
+        self._post(
+            self._base_payload(
+                last_tool_at="2026-04-17T01:00:00+00:00",
+                last_tool_name="Write",
+                last_mcp_tool_at="2026-04-17T00:59:30+00:00",
+                last_mcp_tool_name="mcp__orochi__channel_info",
+            )
+        )
+        resp = self._get_detail("hb-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["last_tool_at"], "2026-04-17T01:00:00+00:00")
+        self.assertEqual(data["last_tool_name"], "Write")
+        self.assertEqual(data["last_mcp_tool_at"], "2026-04-17T00:59:30+00:00")
+        self.assertEqual(data["last_mcp_tool_name"], "mcp__orochi__channel_info")
+
+    def test_detail_api_surfaces_hook_event_lists(self):
+        self._post(
+            self._base_payload(
+                recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Grep"}],
+                recent_prompts=[{"ts": "2026-04-17T00:00:01Z", "prompt_preview": "?"}],
+                agent_calls=[{"ts": "2026-04-17T00:00:02Z", "input_preview": "x"}],
+                background_tasks=[{"ts": "2026-04-17T00:00:03Z", "input_preview": "y"}],
+                tool_counts={"Grep": 1},
+            )
+        )
+        resp = self._get_detail("hb-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(len(data["recent_tools"]), 1)
+        self.assertEqual(data["recent_tools"][0]["tool"], "Grep")
+        self.assertEqual(len(data["recent_prompts"]), 1)
+        self.assertEqual(len(data["agent_calls"]), 1)
+        self.assertEqual(len(data["background_tasks"]), 1)
+        self.assertEqual(data["tool_counts"], {"Grep": 1})
+
+    def test_missing_hook_fields_default_to_empty(self):
+        """Registering without any hook fields leaves empty defaults —
+        legacy agents that haven't wired hooks still register cleanly."""
+        self._post(self._base_payload())
+        resp = self._get_detail("hb-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["recent_tools"], [])
+        self.assertEqual(data["recent_prompts"], [])
+        self.assertEqual(data["agent_calls"], [])
+        self.assertEqual(data["background_tasks"], [])
+        self.assertEqual(data["tool_counts"], {})
+        self.assertEqual(data["last_tool_at"], "")
+        self.assertEqual(data["last_tool_name"], "")
+        self.assertEqual(data["last_mcp_tool_at"], "")
+        self.assertEqual(data["last_mcp_tool_name"], "")
+
+    def test_subsequent_heartbeat_replaces_hook_lists(self):
+        """A fresh heartbeat must reflect the agent's current ring-buffer
+        state — empty-list pushes wipe stale data (see registry.py
+        comment on replace-on-present semantics)."""
+        from hub.registry import get_agents
+
+        self._post(
+            self._base_payload(
+                recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Edit"}],
+                tool_counts={"Edit": 1},
+            )
+        )
+        self._post(
+            self._base_payload(
+                recent_tools=[],
+                tool_counts={},
+            )
+        )
+        agents = get_agents(workspace_id=self.ws.id)
+        a = next(a for a in agents if a["name"] == "hb-agent")
+        self.assertEqual(a["recent_tools"], [])
+        self.assertEqual(a["tool_counts"], {})
+
+
+class PaneActionSummaryRegistryTest(TestCase):
+    """Smoke tests for the action-summary fields landed with the
+    scitex-agent-container action subsystem.
+
+    Covers the end-to-end pipe from ``heartbeat-push`` payload keys
+    through registry merge and into ``/api/agents/<name>/detail/``:
+
+      last_action_at / last_action / last_action_outcome /
+      last_action_elapsed_s / action_counts /
+      p95_elapsed_s_by_action
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="action-summary-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="action-test"
+        )
+        from hub.registry import _agents as _reg_agents
+
+        _reg_agents.clear()
+
+    def _post(self, payload):
+        return self.client.post(
+            "/api/agents/register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+    def _get_detail(self, name):
+        return self.client.get(
+            f"/api/agents/{name}/detail/",
+            data={"token": self.token.token},
+        )
+
+    def _base_payload(self, **overrides):
+        payload = {
+            "token": self.token.token,
+            "name": "act-agent",
+            "machine": "MBA",
+            "role": "head",
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_register_persists_action_summary_fields(self):
+        from hub.registry import get_agents
+
+        resp = self._post(
+            self._base_payload(
+                last_action_at="2026-04-17T02:00:00+00:00",
+                last_action_name="nonce-probe",
+                last_action_outcome="success",
+                last_action_elapsed_s=3.2,
+                action_counts={"nonce-probe:success": 42, "compact:success": 4},
+                p95_elapsed_s_by_action={"nonce-probe": 5.9, "compact": 9.0},
+            )
+        )
+        self.assertEqual(resp.status_code, 200)
+        agents = get_agents(workspace_id=self.ws.id)
+        a = next(a for a in agents if a["name"] == "act-agent")
+        self.assertEqual(a["last_action_at"], "2026-04-17T02:00:00+00:00")
+        self.assertEqual(a["last_action_name"], "nonce-probe")
+        self.assertEqual(a["last_action_outcome"], "success")
+        self.assertEqual(a["last_action_elapsed_s"], 3.2)
+        self.assertEqual(a["action_counts"]["nonce-probe:success"], 42)
+        self.assertEqual(a["p95_elapsed_s_by_action"]["compact"], 9.0)
+
+    def test_detail_api_surfaces_action_summary(self):
+        self._post(
+            self._base_payload(
+                last_action_at="2026-04-17T02:05:00+00:00",
+                last_action_name="compact",
+                last_action_outcome="completion_timeout",
+                last_action_elapsed_s=30.0,
+            )
+        )
+        resp = self._get_detail("act-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["last_action_at"], "2026-04-17T02:05:00+00:00")
+        self.assertEqual(data["last_action_name"], "compact")
+        self.assertEqual(data["last_action_outcome"], "completion_timeout")
+        self.assertEqual(data["last_action_elapsed_s"], 30.0)
+
+    def test_missing_action_fields_default_to_empty(self):
+        """Legacy agents that never ran an action still register and
+        the detail endpoint returns well-defined empty defaults."""
+        self._post(self._base_payload())
+        resp = self._get_detail("act-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["last_action_at"], "")
+        self.assertEqual(data["last_action_name"], "")
+        self.assertEqual(data["last_action_outcome"], "")
+        self.assertIsNone(data["last_action_elapsed_s"])
+        self.assertEqual(data["action_counts"], {})
+        self.assertEqual(data["p95_elapsed_s_by_action"], {})
 
 
 class ReadOauthMetadataHelperTest(TestCase):
@@ -1453,12 +1735,14 @@ class ReadOauthMetadataHelperTest(TestCase):
     def test_missing_file_returns_empty(self):
         mod = self._import_helper()
         from pathlib import Path
+
         result = mod.read_oauth_metadata(Path("/nonexistent/.claude.json"))
         self.assertEqual(result, {})
 
     def test_all_nine_keys_extracted(self):
         import tempfile
         from pathlib import Path
+
         mod = self._import_helper()
         doc = {
             "hasAvailableSubscription": True,
@@ -1481,9 +1765,7 @@ class ReadOauthMetadataHelperTest(TestCase):
             "refreshToken": "sk-ant-ort01-should-not-leak",
             "claudeAiOauth": {"accessToken": "sk-ant-oat01-nested-leak"},
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(doc, f)
             path = Path(f.name)
         try:
@@ -1508,9 +1790,7 @@ class ReadOauthMetadataHelperTest(TestCase):
             self.assertEqual(result["has_available_subscription"], True)
             self.assertEqual(result["usage_disabled_reason"], "out_of_credits")
             self.assertEqual(result["has_extra_usage_enabled"], False)
-            self.assertEqual(
-                result["subscription_created_at"], "2025-01-01T00:00:00Z"
-            )
+            self.assertEqual(result["subscription_created_at"], "2025-01-01T00:00:00Z")
         finally:
             path.unlink()
 
@@ -1524,6 +1804,7 @@ class ReadOauthMetadataHelperTest(TestCase):
         """
         import tempfile
         from pathlib import Path
+
         mod = self._import_helper()
         hostile = {
             "oauthAccount": {
@@ -1541,9 +1822,7 @@ class ReadOauthMetadataHelperTest(TestCase):
                 "refreshToken": "sk-ant-ort01-claudeai-should-not-leak",
             },
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(hostile, f)
             path = Path(f.name)
         try:
@@ -1555,9 +1834,7 @@ class ReadOauthMetadataHelperTest(TestCase):
                 self.assertNotIn("secret", kl)
                 # "key" substring is too broad (would trip "oauth_email"
                 # if we were sloppy); use endswith instead.
-                self.assertFalse(
-                    kl.endswith("key"), f"forbidden key-like field: {k}"
-                )
+                self.assertFalse(kl.endswith("key"), f"forbidden key-like field: {k}")
             # And no value should contain the leaked substrings.
             flat = json.dumps(result).lower()
             forbidden_substrings = (
@@ -1568,9 +1845,7 @@ class ReadOauthMetadataHelperTest(TestCase):
                 "bearer",
             )
             for s in forbidden_substrings:
-                self.assertNotIn(
-                    s, flat, f"token material {s!r} leaked into output"
-                )
+                self.assertNotIn(s, flat, f"token material {s!r} leaked into output")
         finally:
             path.unlink()
 
@@ -1593,9 +1868,9 @@ class GroupMentionExpansionTest(TestCase):
         """consumers.py still declares all five group tokens."""
         from pathlib import Path
 
-        src = (
-            Path(__file__).resolve().parent / "consumers.py"
-        ).read_text(encoding="utf-8")
+        src = (Path(__file__).resolve().parent / "consumers.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn(
             "GROUP_PATTERNS = {",
             src,
@@ -1613,10 +1888,7 @@ class GroupMentionExpansionTest(TestCase):
         from pathlib import Path
 
         src = (
-            Path(__file__).resolve().parent
-            / "static"
-            / "hub"
-            / "chat.js"
+            Path(__file__).resolve().parent / "static" / "hub" / "chat.js"
         ).read_text(encoding="utf-8")
         self.assertIn(
             "MENTION_GROUP_TOKENS",
@@ -1655,9 +1927,7 @@ class GroupMentionExpansionTest(TestCase):
             out: list[str] = []
             for tok in mentioned:
                 if tok in GROUP_PATTERNS:
-                    out.extend(
-                        n for n in all_names if GROUP_PATTERNS[tok](n)
-                    )
+                    out.extend(n for n in all_names if GROUP_PATTERNS[tok](n))
                 else:
                     out.append(tok)
             return list(dict.fromkeys(out))
@@ -1710,16 +1980,18 @@ class AgentDetailApiTest(TestCase):
         # Wipe the in-memory registry so state does not bleed across
         # tests — the registry is a module-level dict.
         from hub.registry import _agents as _reg_agents
+
         _reg_agents.clear()
 
     def _register(self, **overrides):
         from hub.registry import register_agent, set_current_task
+
         current_task = overrides.pop("current_task", "todo#420")
         info = {
             "agent_id": "alpha",
             "machine": "MBA",
             "role": "head",
-            "model": "claude-opus-4-6",
+            "model": "claude-opus-4-7",
             "channels": ["#general", "#agent"],
             "pane_tail_block": "line1\nline2\n",
             "claude_md": "# CLAUDE.md\n",
@@ -1743,12 +2015,25 @@ class AgentDetailApiTest(TestCase):
         data = resp.json()
         # Canonical fields the frontend pins.
         for key in (
-            "name", "role", "machine", "model",
-            "uptime_seconds", "registered_at", "last_action_ts",
-            "last_heartbeat", "liveness", "claude_md",
-            "pane_text", "pane_text_source",
-            "channel_subs", "mcp_servers", "current_task",
-            "context_pct", "pid", "subagents", "health",
+            "name",
+            "role",
+            "machine",
+            "model",
+            "uptime_seconds",
+            "registered_at",
+            "last_action_ts",
+            "last_heartbeat",
+            "liveness",
+            "claude_md",
+            "pane_text",
+            "pane_text_source",
+            "channel_subs",
+            "mcp_servers",
+            "current_task",
+            "context_pct",
+            "pid",
+            "subagents",
+            "health",
         ):
             self.assertIn(key, data, f"missing key: {key}")
         self.assertEqual(data["name"], "alpha")
@@ -1757,9 +2042,7 @@ class AgentDetailApiTest(TestCase):
         self.assertEqual(data["current_task"], "todo#420")
         self.assertEqual(data["pane_text_source"], "cached")
         self.assertIn("line1", data["pane_text"])
-        self.assertEqual(
-            sorted(data["channel_subs"]), ["#agent", "#general"]
-        )
+        self.assertEqual(sorted(data["channel_subs"]), ["#agent", "#general"])
         self.assertIn("scitex-orochi", data["mcp_servers"])
 
     def test_unavailable_pane_source_when_no_capture(self):
@@ -1791,15 +2074,17 @@ class AgentDetailApiTest(TestCase):
     def test_pane_text_redacts_secrets(self):
         """sk-ant / ghp / JWT / bearer / credentials-file patterns
         must never leak through ``pane_text``."""
-        leak = "\n".join([
-            "normal line 1",
-            "ANTHROPIC_API_KEY=sk-ant-oat01-ABCDEFGHIJKLMNOPQRST",
-            "gh token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-            "id_token: eyJabcdefghij.eyJklmnopqrst.signatureXYZ123",
-            "Authorization: Bearer sk-oat-ABCDEFGHIJKLMNOPQR",
-            "cat ~/.credentials.json",
-            "normal line 2",
-        ])
+        leak = "\n".join(
+            [
+                "normal line 1",
+                "ANTHROPIC_API_KEY=sk-ant-oat01-ABCDEFGHIJKLMNOPQRST",
+                "gh token: ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+                "id_token: eyJabcdefghij.eyJklmnopqrst.signatureXYZ123",
+                "Authorization: Bearer sk-oat-ABCDEFGHIJKLMNOPQR",
+                "cat ~/.credentials.json",
+                "normal line 2",
+            ]
+        )
         self._register(pane_tail_block=leak)
         resp = self._get()
         self.assertEqual(resp.status_code, 200)
@@ -1812,7 +2097,8 @@ class AgentDetailApiTest(TestCase):
             ".credentials.json",
         ):
             self.assertNotIn(
-                forbidden, pane,
+                forbidden,
+                pane,
                 f"unredacted secret {forbidden!r} leaked into pane_text",
             )
         # The non-secret content survives so the UI is still useful.
@@ -1824,8 +2110,341 @@ class AgentDetailApiTest(TestCase):
         """Unit-level pin on :func:`redact_secrets` itself, independent
         of the HTTP layer — cheap regression guard."""
         from hub.views.agent_detail import redact_secrets
+
         src = "prefix sk-ant-api03-ABCDEFGHIJKLMNOPQRST suffix"
         out = redact_secrets(src)
         self.assertNotIn("sk-ant-api03-ABCDEFGHIJKLMNOPQRST", out)
         self.assertIn("[REDACTED]", out)
         self.assertEqual(redact_secrets(""), "")
+
+
+# scitex-orochi#144 fix path 4 — active session counter regression tests
+class ActiveSessionCounterTests(TestCase):
+    """Tests for per-agent active WebSocket session tracking.
+
+    Background: a single SCITEX_OROCHI_AGENT identity may have multiple
+    WebSocket connections at once (today's incident: head-spartan twice).
+    Before #144, the first-to-disconnect of N siblings marked the agent
+    offline, even though other sessions were still alive. After #144,
+    the agent transitions to offline only when the LAST connection drops.
+    """
+
+    def setUp(self):
+        # Reset registry state per test
+        from hub.registry import _agents, _connections
+
+        _agents.clear()
+        _connections.clear()
+
+    def test_register_connection_increments_count(self):
+        from hub.registry import (
+            active_session_count,
+            register_agent,
+            register_connection,
+        )
+
+        register_agent("head-spartan", 1, {})
+        self.assertEqual(active_session_count("head-spartan"), 0)
+
+        n = register_connection("head-spartan", "conn-A")
+        self.assertEqual(n, 1)
+        self.assertEqual(active_session_count("head-spartan"), 1)
+
+        n = register_connection("head-spartan", "conn-B")
+        self.assertEqual(n, 2)
+        self.assertEqual(active_session_count("head-spartan"), 2)
+
+    def test_register_connection_idempotent(self):
+        from hub.registry import active_session_count, register_connection
+
+        register_connection("agent-X", "conn-A")
+        register_connection("agent-X", "conn-A")
+        register_connection("agent-X", "conn-A")
+        self.assertEqual(active_session_count("agent-X"), 1)
+
+    def test_disconnect_one_of_many_keeps_agent_online(self):
+        from hub.registry import (
+            _agents,
+            register_agent,
+            register_connection,
+            unregister_connection,
+        )
+
+        register_agent("head-spartan", 1, {})
+        register_connection("head-spartan", "conn-A")
+        register_connection("head-spartan", "conn-B")
+        self.assertEqual(_agents["head-spartan"]["status"], "online")
+
+        # Disconnect ONE sibling
+        remaining = unregister_connection("head-spartan", "conn-A")
+        self.assertEqual(remaining, 1)
+
+        # Agent must still be online — symmetric pre-#144 bug regression
+        self.assertEqual(_agents["head-spartan"]["status"], "online")
+
+    def test_disconnect_last_marks_offline(self):
+        from hub.registry import (
+            _agents,
+            register_agent,
+            register_connection,
+            unregister_connection,
+        )
+
+        register_agent("head-spartan", 1, {})
+        register_connection("head-spartan", "conn-A")
+
+        remaining = unregister_connection("head-spartan", "conn-A")
+        self.assertEqual(remaining, 0)
+        self.assertEqual(_agents["head-spartan"]["status"], "offline")
+        self.assertIn("offline_since", _agents["head-spartan"])
+
+    def test_get_agents_exposes_active_sessions(self):
+        from hub.registry import (
+            get_agents,
+            register_agent,
+            register_connection,
+        )
+
+        register_agent("head-spartan", 1, {})
+        register_connection("head-spartan", "conn-A")
+        register_connection("head-spartan", "conn-B")
+
+        agents = get_agents(workspace_id=1)
+        # find our agent
+        found = next((a for a in agents if a["name"] == "head-spartan"), None)
+        self.assertIsNotNone(found)
+        self.assertEqual(found["active_sessions"], 2)
+
+    def test_get_agents_active_sessions_zero_when_no_connections(self):
+        from hub.registry import get_agents, register_agent
+
+        register_agent("solo-agent", 1, {})
+        agents = get_agents(workspace_id=1)
+        found = next((a for a in agents if a["name"] == "solo-agent"), None)
+        self.assertIsNotNone(found)
+        self.assertEqual(found["active_sessions"], 0)
+
+    def test_unregister_agent_force_offline_clears_connections(self):
+        """unregister_agent (the legacy/force-offline path) clears connections too."""
+        from hub.registry import (
+            _agents,
+            active_session_count,
+            register_agent,
+            register_connection,
+            unregister_agent,
+        )
+
+        register_agent("head-spartan", 1, {})
+        register_connection("head-spartan", "conn-A")
+        register_connection("head-spartan", "conn-B")
+        self.assertEqual(active_session_count("head-spartan"), 2)
+
+        unregister_agent("head-spartan")
+        self.assertEqual(active_session_count("head-spartan"), 0)
+        self.assertEqual(_agents["head-spartan"]["status"], "offline")
+
+    def test_empty_or_invalid_args_safe(self):
+        from hub.registry import register_connection, unregister_connection
+
+        # Empty/None args do not raise + do not mutate state
+        self.assertEqual(register_connection("", "conn"), 0)
+        self.assertEqual(register_connection("agent", ""), 0)
+        self.assertEqual(register_connection(None, None), 0)  # type: ignore[arg-type]
+        self.assertEqual(unregister_connection("", "conn"), 0)
+        self.assertEqual(unregister_connection("agent", ""), 0)
+
+
+class AgentChannelSubscriptionPersistenceTest(TestCase):
+    """Server-authoritative channel subscription — persist to ChannelMembership
+    and hydrate on register.
+    """
+
+    def setUp(self):
+        from hub.models import Channel, ChannelMembership
+
+        self.ChannelMembership = ChannelMembership
+        self.Channel = Channel
+        self.ws = Workspace.objects.create(name="sub-ws")
+
+    def test_persist_subscribe_creates_membership(self):
+        from asgiref.sync import async_to_sync
+        from django.contrib.auth.models import User
+
+        from hub.consumers import _persist_agent_subscription
+
+        ok = async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-a", "#alpha", True
+        )
+        self.assertTrue(ok)
+        user = User.objects.get(username="agent-worker-a")
+        ch = self.Channel.objects.get(workspace=self.ws, name="#alpha")
+        self.assertTrue(
+            self.ChannelMembership.objects.filter(user=user, channel=ch).exists()
+        )
+
+    def test_persist_unsubscribe_removes_membership(self):
+        from asgiref.sync import async_to_sync
+
+        from hub.consumers import _persist_agent_subscription
+
+        async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-b", "#beta", True
+        )
+        async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-b", "#beta", False
+        )
+        ch = self.Channel.objects.get(workspace=self.ws, name="#beta")
+        self.assertEqual(self.ChannelMembership.objects.filter(channel=ch).count(), 0)
+
+    def test_hydrate_loads_persisted_subs(self):
+        from asgiref.sync import async_to_sync
+
+        from hub.consumers import (
+            _load_agent_channel_subs,
+            _persist_agent_subscription,
+        )
+
+        async_to_sync(_persist_agent_subscription)(self.ws.id, "worker-c", "#x", True)
+        async_to_sync(_persist_agent_subscription)(self.ws.id, "worker-c", "#y", True)
+        subs = async_to_sync(_load_agent_channel_subs)(self.ws.id, "worker-c")
+        self.assertEqual(set(subs), {"#x", "#y"})
+
+    def test_hydrate_returns_empty_for_unknown_agent(self):
+        from asgiref.sync import async_to_sync
+
+        from hub.consumers import _load_agent_channel_subs
+
+        subs = async_to_sync(_load_agent_channel_subs)(self.ws.id, "never-registered")
+        self.assertEqual(subs, [])
+
+    def test_hydrate_scoped_per_workspace(self):
+        from asgiref.sync import async_to_sync
+
+        from hub.consumers import (
+            _load_agent_channel_subs,
+            _persist_agent_subscription,
+        )
+
+        ws2 = Workspace.objects.create(name="other-ws")
+        async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-d", "#self", True
+        )
+        async_to_sync(_persist_agent_subscription)(ws2.id, "worker-d", "#other", True)
+        subs_self = async_to_sync(_load_agent_channel_subs)(self.ws.id, "worker-d")
+        subs_other = async_to_sync(_load_agent_channel_subs)(ws2.id, "worker-d")
+        self.assertEqual(subs_self, ["#self"])
+        self.assertEqual(subs_other, ["#other"])
+
+
+class ChannelMembersAdminApiTest(TestCase):
+    """Phase 3 admin API — POST subscribe, DELETE unsubscribe, PATCH perm."""
+
+    def setUp(self):
+        from hub.models import Channel, ChannelMembership
+
+        self.ChannelMembership = ChannelMembership
+        self.Channel = Channel
+        self.ws = Workspace.objects.create(name="admin-api-ws")
+        # Route to urls_workspace via subdomain host header (middleware
+        # matches <slug>.lvh.me against OROCHI_BASE_DOMAIN=lvh.me:8000).
+        self.host = f"{self.ws.name}.lvh.me"
+        self.admin = User.objects.create_user(
+            username="admin", password="x", is_staff=True, is_superuser=True
+        )
+        self.plain = User.objects.create_user(username="plain", password="x")
+        WorkspaceMember.objects.create(workspace=self.ws, user=self.admin, role="admin")
+        WorkspaceMember.objects.create(
+            workspace=self.ws, user=self.plain, role="member"
+        )
+        self.agent_user = User.objects.create_user(
+            username="agent-worker-x", password=""
+        )
+        WorkspaceMember.objects.create(
+            workspace=self.ws, user=self.agent_user, role="member"
+        )
+
+    def test_post_subscribes_agent_and_creates_channel(self):
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps({"channel": "#phase3", "username": "agent-worker-x"}),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body["status"], "ok")
+        self.assertTrue(body["created"])
+        ch = self.Channel.objects.get(workspace=self.ws, name="#phase3")
+        self.assertTrue(
+            self.ChannelMembership.objects.filter(
+                user=self.agent_user, channel=ch
+            ).exists()
+        )
+
+    def test_post_subscribe_is_idempotent(self):
+        self.client.force_login(self.admin)
+        body = {"channel": "#idem", "username": "agent-worker-x"}
+        r1 = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps(body),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        r2 = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps(body),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(r1.status_code, 200)
+        self.assertEqual(r2.status_code, 200)
+        self.assertTrue(r1.json()["created"])
+        self.assertFalse(r2.json()["created"])
+        self.assertEqual(
+            self.ChannelMembership.objects.filter(user=self.agent_user).count(), 1
+        )
+
+    def test_delete_unsubscribes_agent(self):
+        self.client.force_login(self.admin)
+        ch = self.Channel.objects.create(workspace=self.ws, name="#remove-me")
+        self.ChannelMembership.objects.create(user=self.agent_user, channel=ch)
+        resp = self.client.delete(
+            "/api/channel-members/",
+            data=json.dumps({"channel": "#remove-me", "username": "agent-worker-x"}),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["deleted"], 1)
+        self.assertFalse(
+            self.ChannelMembership.objects.filter(
+                user=self.agent_user, channel=ch
+            ).exists()
+        )
+
+    def test_non_admin_rejected(self):
+        self.client.force_login(self.plain)
+        resp = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps({"channel": "#nope", "username": "agent-worker-x"}),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 403)
+
+    def test_delete_missing_channel_is_idempotent(self):
+        self.client.force_login(self.admin)
+        resp = self.client.delete(
+            "/api/channel-members/",
+            data=json.dumps(
+                {
+                    "channel": "#never-existed",
+                    "username": "agent-worker-x",
+                }
+            ),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["deleted"], 0)

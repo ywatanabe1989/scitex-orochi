@@ -59,8 +59,17 @@
    * the new instance's state (msg#10664/10667 root cause). */
   var _generation = 0;
 
+  /* Expose recording state globally so other modules (e.g. chat.js) can
+   * defer DOM updates that would interrupt the Web Speech API session. */
+  window.isVoiceRecording = false;
+
   function _setStoppedUI() {
     isListening = false;
+    window.isVoiceRecording = false;
+    /* Flush any messages that were deferred during recording */
+    if (typeof window._flushVoiceQueue === "function") {
+      try { window._flushVoiceQueue(); } catch (_) {}
+    }
     btn.classList.remove("voice-active");
     var threadBtn = document.getElementById("thread-voice-btn");
     if (threadBtn) threadBtn.classList.remove("voice-active");
@@ -82,6 +91,7 @@
     r.addEventListener("start", function () {
       if (myGen !== _generation) return; /* stale instance */
       isListening = true;
+      window.isVoiceRecording = true;
       _userStopped = false;
       /* Activate the correct mic button: thread mic if targeting thread, else main */
       var inThread = _voiceTarget && _voiceTarget.id === "thread-input";

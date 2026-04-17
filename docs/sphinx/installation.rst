@@ -21,3 +21,15 @@ Requirements
 ------------
 
 - Python >= 3.11
+- `Bun <https://bun.sh/>`_ >= 1.0 — only if you use the TypeScript MCP
+  channel sidecar (``src/scitex_orochi/_ts/mcp_channel.ts``).
+- `scitex-agent-container <https://github.com/ywatanabe1989/scitex-agent-container>`_
+  — required on any host that runs ``scitex-orochi heartbeat-push``.
+  The hub itself does not need it. scitex-orochi depends on
+  scitex-agent-container in one direction only: the container CLI has
+  no knowledge of Orochi. The container's per-host ``actions.db``
+  additionally supplies the PaneAction summary fields
+  (``last_action_at`` / ``last_action_name`` / ``last_action_outcome``
+  / ``last_action_elapsed_s`` / ``action_counts`` /
+  ``p95_elapsed_s_by_action``) that ``heartbeat-push`` forwards to
+  the hub.

@@ -21,6 +21,10 @@ function _activateTab(tab) {
   var settingsView = document.getElementById("settings-view");
   messagesEl.style.display = "none";
   inputBar.style.display = "none";
+  var topicBanner = document.getElementById("channel-topic-banner");
+  if (topicBanner) topicBanner.style.display = "none";
+  var membersPanel = document.getElementById("channel-members-panel");
+  if (membersPanel) membersPanel.style.display = "none";
   todoView.style.display = "none";
   resourcesView.style.display = "none";
   agentsTabView.style.display = "none";
@@ -29,6 +33,7 @@ function _activateTab(tab) {
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
+  if (tab !== "todo" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
@@ -68,7 +73,8 @@ function _activateTab(tab) {
       activityView.style.flex = "1";
     }
     if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
-    if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
+    if (typeof startActivityAutoRefresh === "function")
+      startActivityAutoRefresh();
   } else if (tab === "files") {
     if (filesView) {
       filesView.style.display = "block";
@@ -154,9 +160,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     var isCollapsed = h2.classList.toggle("collapsed");
     if (section) section.classList.toggle("collapsed", isCollapsed);
     try {
-      var state = JSON.parse(
-        localStorage.getItem("orochi_collapsed") || "{}",
-      );
+      var state = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
       if (isCollapsed) {
         state[key] = true;
       } else {

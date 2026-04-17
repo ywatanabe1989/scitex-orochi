@@ -2,6 +2,20 @@
 
 AgentConsumer writes to this registry on register/heartbeat/disconnect.
 The REST API reads from it for /api/agents and /api/stats.
+
+Active-session tracking (scitex-orochi#144 fix path 4):
+A single ``SCITEX_OROCHI_AGENT=<name>`` identity may have multiple
+WebSocket connections at once (a known race hazard — two Claude Code
+processes booting from the same yaml). The registry tracks the set of
+live connection IDs per agent in ``_connections[name]`` so:
+
+  - the dashboard can render a warning when ``active_sessions > 1``;
+  - ``unregister_agent()`` only marks offline when the LAST connection
+    drops, not when the first of N sibling sessions disconnects.
+
+The connection IDs are opaque strings (Django Channels' ``channel_name``
+attribute, unique per WebSocket); the registry treats them as
+identifiers, not as data.
 """
 
 import logging
@@ -12,6 +26,7 @@ log = logging.getLogger("orochi.registry")
 
 _lock = threading.Lock()
 _agents: dict[str, dict] = {}
+_connections: dict[str, set[str]] = {}
 
 # Agents with no heartbeat for this many seconds are auto-marked offline
 HEARTBEAT_TIMEOUT_S = 60
@@ -80,8 +95,118 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 else prev.get("recent_actions") or []
             ),
             "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
-            "pane_tail_block": info.get("pane_tail_block") or prev.get("pane_tail_block") or "",
-            "claude_md_head": info.get("claude_md_head") or prev.get("claude_md_head") or "",
+            "pane_tail_block": info.get("pane_tail_block")
+            or prev.get("pane_tail_block")
+            or "",
+            "claude_md_head": info.get("claude_md_head")
+            or prev.get("claude_md_head")
+            or "",
+            # todo#460: full .mcp.json content for the Agents tab file viewer.
+            # agent_meta.py --push (dotfiles PR #71) sends a size-capped,
+            # token-redacted copy of the workspace `.mcp.json`. Absent for
+            # legacy WS-only agents; falls through to the empty string.
+            "mcp_json": info.get("mcp_json") or prev.get("mcp_json") or "",
+            # todo#418: agent decision-transparency fields for the Agents tab.
+            # `pane_state` is the classifier label (`running` / `waiting` /
+            # `y_n_prompt` / `compose_pending_unsent` / `auth_error` / etc.)
+            # computed by agent_meta.py --push using the same classifiers
+            # fleet-prompt-actuator uses (scitex_agent_container.runtimes.
+            # prompts + detect_compose_pending). `stuck_prompt_text` carries
+            # the verbatim prompt so ywatanabe / dashboard viewers can see
+            # what the agent is blocked on. Both empty when agent_meta can't
+            # classify or the agent is a legacy WS-only pusher.
+            "pane_state": info.get("pane_state") or prev.get("pane_state") or "",
+            "stuck_prompt_text": info.get("stuck_prompt_text")
+            or prev.get("stuck_prompt_text")
+            or "",
+            "pane_text": info.get("pane_text") or prev.get("pane_text") or "",
+            # scitex-agent-container hook-captured tool/prompt events.
+            # Lists replace-on-present so a fresh heartbeat always reflects
+            # the agent's latest ring-buffer state; empty-list pushes wipe
+            # stale data rather than sticking around forever.
+            "recent_tools": (
+                list(info.get("recent_tools"))
+                if isinstance(info.get("recent_tools"), (list, tuple))
+                else prev.get("recent_tools") or []
+            ),
+            "recent_prompts": (
+                list(info.get("recent_prompts"))
+                if isinstance(info.get("recent_prompts"), (list, tuple))
+                else prev.get("recent_prompts") or []
+            ),
+            "agent_calls": (
+                list(info.get("agent_calls"))
+                if isinstance(info.get("agent_calls"), (list, tuple))
+                else prev.get("agent_calls") or []
+            ),
+            "background_tasks": (
+                list(info.get("background_tasks"))
+                if isinstance(info.get("background_tasks"), (list, tuple))
+                else prev.get("background_tasks") or []
+            ),
+            "tool_counts": (
+                dict(info.get("tool_counts"))
+                if isinstance(info.get("tool_counts"), dict)
+                else prev.get("tool_counts") or {}
+            ),
+            # Functional-heartbeat shortcuts derived in agent-container's
+            # event_log.summarize(). last_tool_at is the newest pretool
+            # ts (LLM-level liveness); last_mcp_tool_at is newest for
+            # mcp__* tools (proves the MCP sidecar route works).
+            "last_tool_at": info.get("last_tool_at") or prev.get("last_tool_at") or "",
+            "last_tool_name": info.get("last_tool_name")
+            or prev.get("last_tool_name")
+            or "",
+            "last_mcp_tool_at": info.get("last_mcp_tool_at")
+            or prev.get("last_mcp_tool_at")
+            or "",
+            "last_mcp_tool_name": info.get("last_mcp_tool_name")
+            or prev.get("last_mcp_tool_name")
+            or "",
+            # PaneAction summary from scitex-agent-container action_store.
+            # Per-push replace semantics (no merge) — a fresh heartbeat
+            # always reflects the current log state.
+            "last_action_at": info.get("last_action_at")
+            or prev.get("last_action_at")
+            or "",
+            "last_action_name": info.get("last_action_name")
+            or prev.get("last_action_name")
+            or "",
+            "last_action_outcome": info.get("last_action_outcome")
+            or prev.get("last_action_outcome")
+            or "",
+            "last_action_elapsed_s": (
+                info.get("last_action_elapsed_s")
+                if info.get("last_action_elapsed_s") is not None
+                else prev.get("last_action_elapsed_s")
+            ),
+            "action_counts": (
+                dict(info.get("action_counts"))
+                if isinstance(info.get("action_counts"), dict)
+                else prev.get("action_counts") or {}
+            ),
+            "p95_elapsed_s_by_action": (
+                dict(info.get("p95_elapsed_s_by_action"))
+                if isinstance(info.get("p95_elapsed_s_by_action"), dict)
+                else prev.get("p95_elapsed_s_by_action") or {}
+            ),
+            # UI-aligned quota keys (long names).
+            "quota_5h_used_pct": (
+                info.get("quota_5h_used_pct")
+                if info.get("quota_5h_used_pct") is not None
+                else prev.get("quota_5h_used_pct")
+            ),
+            "quota_7d_used_pct": (
+                info.get("quota_7d_used_pct")
+                if info.get("quota_7d_used_pct") is not None
+                else prev.get("quota_7d_used_pct")
+            ),
+            "quota_5h_reset_at": info.get("quota_5h_reset_at")
+            or prev.get("quota_5h_reset_at")
+            or "",
+            "quota_7d_reset_at": info.get("quota_7d_reset_at")
+            or prev.get("quota_7d_reset_at")
+            or "",
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))
@@ -93,22 +218,61 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # out_of_credits state, and support fleet load-balancing.
             # Strict whitelist — no tokens, secrets, or credentials.
             "oauth_email": info.get("oauth_email") or prev.get("oauth_email") or "",
-            "oauth_org_name": info.get("oauth_org_name") or prev.get("oauth_org_name") or "",
-            "oauth_account_uuid": info.get("oauth_account_uuid") or prev.get("oauth_account_uuid") or "",
-            "oauth_display_name": info.get("oauth_display_name") or prev.get("oauth_display_name") or "",
+            "oauth_org_name": info.get("oauth_org_name")
+            or prev.get("oauth_org_name")
+            or "",
+            "oauth_account_uuid": info.get("oauth_account_uuid")
+            or prev.get("oauth_account_uuid")
+            or "",
+            "oauth_display_name": info.get("oauth_display_name")
+            or prev.get("oauth_display_name")
+            or "",
             "billing_type": info.get("billing_type") or prev.get("billing_type") or "",
             "has_available_subscription": (
                 info.get("has_available_subscription")
                 if info.get("has_available_subscription") is not None
                 else prev.get("has_available_subscription")
             ),
-            "usage_disabled_reason": info.get("usage_disabled_reason") or prev.get("usage_disabled_reason") or "",
+            "usage_disabled_reason": info.get("usage_disabled_reason")
+            or prev.get("usage_disabled_reason")
+            or "",
             "has_extra_usage_enabled": (
                 info.get("has_extra_usage_enabled")
                 if info.get("has_extra_usage_enabled") is not None
                 else prev.get("has_extra_usage_enabled")
             ),
-            "subscription_created_at": info.get("subscription_created_at") or prev.get("subscription_created_at") or "",
+            "subscription_created_at": info.get("subscription_created_at")
+            or prev.get("subscription_created_at")
+            or "",
+            # scitex-orochi#144 fix path 4: how many WebSocket sessions are
+            # currently authenticated under this agent name. > 1 indicates
+            # a concurrent-instance race situation worth surfacing in the
+            # dashboard. The set of connection IDs is held separately in
+            # ``_connections`` and counted on read.
+            "active_sessions": _active_session_count(name),
+            # Quota telemetry from statusline parsing
+            "quota_5h_pct": (
+                info.get("quota_5h_pct")
+                if info.get("quota_5h_pct") is not None
+                else prev.get("quota_5h_pct")
+            ),
+            "quota_5h_remaining": info.get("quota_5h_remaining")
+            or prev.get("quota_5h_remaining")
+            or "",
+            "quota_weekly_pct": (
+                info.get("quota_weekly_pct")
+                if info.get("quota_weekly_pct") is not None
+                else prev.get("quota_weekly_pct")
+            ),
+            "quota_weekly_remaining": info.get("quota_weekly_remaining")
+            or prev.get("quota_weekly_remaining")
+            or "",
+            "statusline_model": info.get("statusline_model")
+            or prev.get("statusline_model")
+            or "",
+            "account_email": info.get("account_email")
+            or prev.get("account_email")
+            or "",
         }
 
 
@@ -236,12 +400,85 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
                 _agents[name]["metrics"] = metrics
 
 
+def register_connection(name: str, conn_id: str) -> int:
+    """Track a new WebSocket connection for ``name``.
+
+    Returns the resulting active-session count (i.e. how many connections
+    this agent now has, including the one just registered). The caller
+    can use this to detect concurrent-instance race situations
+    (scitex-orochi#144 fix path 4) and emit visibility warnings when
+    the count is > 1.
+
+    Connections are stored as opaque IDs in a per-agent set; passing the
+    same ``conn_id`` twice is a no-op (idempotent).
+    """
+    if not name or not conn_id:
+        return 0
+    with _lock:
+        conns = _connections.setdefault(name, set())
+        conns.add(conn_id)
+        return len(conns)
+
+
+def unregister_connection(name: str, conn_id: str) -> int:
+    """Remove a WebSocket connection for ``name``.
+
+    Returns the resulting active-session count after removal. When the
+    count reaches zero, the agent is marked offline (caller need not
+    invoke ``unregister_agent`` separately). When the count is still
+    >0 (a sibling session is still alive), the agent remains online.
+
+    This is the fix for the symmetric half of scitex-orochi#144: before
+    this change, the first-to-disconnect of N sibling sessions would
+    mark the agent offline even though other sessions were still alive.
+    """
+    if not name or not conn_id:
+        return _active_session_count(name)
+    with _lock:
+        conns = _connections.get(name)
+        if conns:
+            conns.discard(conn_id)
+            if not conns:
+                _connections.pop(name, None)
+        remaining = len(_connections.get(name, ()))
+        if remaining == 0 and name in _agents:
+            _agents[name]["status"] = "offline"
+            _agents[name]["offline_since"] = time.time()
+        return remaining
+
+
+def _active_session_count(name: str) -> int:
+    """Return the active-session count for ``name`` without acquiring the lock.
+
+    Caller must hold ``_lock`` if reading inside another locked region;
+    used internally + by ``get_agents()``.
+    """
+    return len(_connections.get(name, ()))
+
+
+def active_session_count(name: str) -> int:
+    """Public read of the active-session count for ``name`` (lock-acquiring)."""
+    with _lock:
+        return _active_session_count(name)
+
+
 def unregister_agent(name: str) -> None:
-    """Mark agent as offline and record the time it went offline."""
+    """Mark agent as offline and record the time it went offline.
+
+    Compatibility shim: pre-#144, ``AgentConsumer.disconnect()`` called
+    this directly. New flow uses ``unregister_connection(name, conn_id)``
+    which handles the offline transition only when the LAST connection
+    drops. This function preserves the old contract for callers that
+    don't have a connection_id (registry pruning, manual marking, etc.).
+    """
     with _lock:
         if name in _agents:
             _agents[name]["status"] = "offline"
             _agents[name]["offline_since"] = time.time()
+        # Also clear any tracked connections; this is the "force offline"
+        # semantic. If the caller meant a single-session disconnect, they
+        # should use unregister_connection instead.
+        _connections.pop(name, None)
 
 
 def _cleanup_locked() -> None:
@@ -280,6 +517,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
     """
     with _lock:
         _cleanup_locked()
+        # Refresh active_sessions on read so the count reflects the latest
+        # connect/disconnect events, not just the last register call.
+        # scitex-orochi#144 fix path 4.
+        for n, a in _agents.items():
+            a["active_sessions"] = _active_session_count(n)
         agents = list(_agents.values())
     if workspace_id is not None:
         agents = [a for a in agents if a.get("workspace_id") == workspace_id]
@@ -375,6 +617,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     else None
                 ),
                 "metrics": a.get("metrics", {}),
+                # scitex-orochi#144 fix path 4: number of WebSocket
+                # sessions currently authenticated under this name.
+                # >1 indicates a concurrent-instance race situation.
+                "active_sessions": int(a.get("active_sessions", 0) or 0),
                 "current_task": a.get("current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
@@ -396,6 +642,41 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "pane_tail": a.get("pane_tail", ""),
                 "pane_tail_block": a.get("pane_tail_block", ""),
                 "claude_md_head": a.get("claude_md_head", ""),
+                "mcp_json": a.get("mcp_json", ""),
+                "pane_state": a.get("pane_state", ""),
+                "stuck_prompt_text": a.get("stuck_prompt_text", ""),
+                "pane_text": a.get("pane_text", ""),
+                # scitex-agent-container hook-captured events — lists
+                # populated by the PreToolUse/PostToolUse hooks.
+                "recent_tools": list(a.get("recent_tools") or []),
+                "recent_prompts": list(a.get("recent_prompts") or []),
+                "agent_calls": list(a.get("agent_calls") or []),
+                "background_tasks": list(a.get("background_tasks") or []),
+                "tool_counts": dict(a.get("tool_counts") or {}),
+                # Functional-heartbeat shortcuts (derived by
+                # event_log.summarize() in agent-container).
+                "last_tool_at": a.get("last_tool_at", ""),
+                "last_tool_name": a.get("last_tool_name", ""),
+                "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
+                "last_mcp_tool_name": a.get("last_mcp_tool_name", ""),
+                # PaneAction summary (scitex-agent-container action_store).
+                # NB: ``last_action_name`` (not ``last_action``) to avoid
+                # collision with the pre-existing ``last_action`` field
+                # which is the unix-time liveness timestamp set by
+                # ``mark_activity``.
+                "last_action_at": a.get("last_action_at", ""),
+                "last_action_name": a.get("last_action_name", ""),
+                "last_action_outcome": a.get("last_action_outcome", ""),
+                "last_action_elapsed_s": a.get("last_action_elapsed_s"),
+                "action_counts": dict(a.get("action_counts") or {}),
+                "p95_elapsed_s_by_action": dict(a.get("p95_elapsed_s_by_action") or {}),
+                # UI-aligned quota keys — long-name variants surfaced so
+                # the Agents-tab meta grid sees them under the names it
+                # reads.
+                "quota_5h_used_pct": a.get("quota_5h_used_pct"),
+                "quota_7d_used_pct": a.get("quota_7d_used_pct"),
+                "quota_5h_reset_at": a.get("quota_5h_reset_at", ""),
+                "quota_7d_reset_at": a.get("quota_7d_reset_at", ""),
                 "mcp_servers": list(a.get("mcp_servers") or []),
                 # todo#265: OAuth account public metadata. Whitelist
                 # only — no tokens, credentials, or secrets are ever
@@ -409,6 +690,13 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "usage_disabled_reason": a.get("usage_disabled_reason", ""),
                 "has_extra_usage_enabled": a.get("has_extra_usage_enabled"),
                 "subscription_created_at": a.get("subscription_created_at", ""),
+                # Quota telemetry from statusline parsing (agent_meta.py)
+                "quota_5h_pct": a.get("quota_5h_pct"),
+                "quota_5h_remaining": a.get("quota_5h_remaining", ""),
+                "quota_weekly_pct": a.get("quota_weekly_pct"),
+                "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
+                "statusline_model": a.get("statusline_model", ""),
+                "account_email": a.get("account_email", ""),
             }
         )
     return result

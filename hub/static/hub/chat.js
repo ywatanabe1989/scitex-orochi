@@ -3,6 +3,18 @@
    currentChannel, knownMessageKeys, messageKey, sendOrochiMessage,
    updateResourcePanel, token, apiUrl */
 
+/* Voice-recording deferred message queue.
+ * When window.isVoiceRecording is true, appendMessage defers the DOM update
+ * here instead of immediately mutating the feed. The voice-input module calls
+ * window._flushVoiceQueue() when recording stops, which drains the queue. */
+var _voiceDeferQueue = [];
+window._flushVoiceQueue = function () {
+  var queued = _voiceDeferQueue.splice(0);
+  queued.forEach(function (msg) {
+    appendMessage(msg);
+  });
+};
+
 function isKnownAgent(name) {
   return cachedAgentNames.indexOf(name) !== -1;
 }
@@ -32,7 +44,9 @@ function _hydrateIssueLink(a, title) {
   a.dataset.hinted = "1";
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -50,9 +64,9 @@ function _fetchCrossRepoTitle(repo, num, cb) {
    * '?token=', producing a malformed '?token=...?repo=...' URL → 400. */
   var url = apiUrl(
     "/api/github/issue-title?repo=" +
-    encodeURIComponent(repo) +
-    "&number=" +
-    encodeURIComponent(num)
+      encodeURIComponent(repo) +
+      "&number=" +
+      encodeURIComponent(num),
   );
   fetch(url, { credentials: "same-origin" })
     .then(function (r) {
@@ -155,7 +169,9 @@ function appendSystemMessage(msg) {
   }
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -177,7 +193,9 @@ function jumpToMsg(id) {
     container.scrollTop = Math.max(0, top);
   }
   el.classList.add("msg-highlight");
-  setTimeout(function () { el.classList.remove("msg-highlight"); }, 2000);
+  setTimeout(function () {
+    el.classList.remove("msg-highlight");
+  }, 2000);
 }
 
 /* Shared attachment renderer — used by both the main feed and thread panel.
@@ -189,84 +207,261 @@ function buildAttachmentsHtml(attachments) {
     return att.mime_type && att.mime_type.startsWith("image/") && att.url;
   });
   var imgCount = imageAttachments.length;
-  var gridClass = imgCount <= 1 ? "count-1" : imgCount === 2 ? "count-2" : imgCount === 3 ? "count-3" : "count-many";
+  var gridClass =
+    imgCount <= 1
+      ? "count-1"
+      : imgCount === 2
+        ? "count-2"
+        : imgCount === 3
+          ? "count-3"
+          : "count-many";
   var imagesHtml = "";
   imageAttachments.forEach(function (att) {
-    imagesHtml += '<div class="attachment-img"><a href="' + escapeHtml(att.url) + '" target="_blank">' +
-      '<img src="' + escapeHtml(att.url) + '" alt="' + escapeHtml(att.filename || "image") + '" loading="lazy"></a></div>';
+    imagesHtml +=
+      '<div class="attachment-img"><a href="' +
+      escapeHtml(att.url) +
+      '" target="_blank">' +
+      '<img src="' +
+      escapeHtml(att.url) +
+      '" alt="' +
+      escapeHtml(att.filename || "image") +
+      '" loading="lazy"></a></div>';
   });
-  if (imgCount > 0) html += '<div class="attachment-grid ' + gridClass + '">' + imagesHtml + "</div>";
+  if (imgCount > 0)
+    html +=
+      '<div class="attachment-grid ' + gridClass + '">' + imagesHtml + "</div>";
   attachments.forEach(function (att) {
     if (!att.url) return;
     var mime = att.mime_type || "";
     var fname = att.filename || "attachment";
     var url = att.url;
     if (mime.indexOf("image/") === 0) return; /* handled in grid */
-    var sizeStr = att.size ? (att.size > 1024 * 1024 ? (att.size / 1024 / 1024).toFixed(1) + " MB" : (att.size / 1024).toFixed(0) + " KB") : "";
+    var sizeStr = att.size
+      ? att.size > 1024 * 1024
+        ? (att.size / 1024 / 1024).toFixed(1) + " MB"
+        : (att.size / 1024).toFixed(0) + " KB"
+      : "";
     var ext = (fname.split(".").pop() || "").toLowerCase();
-    var isMarkdown = mime === "text/markdown" || ext === "md" || ext === "markdown";
-    var isText = mime.indexOf("text/") === 0 || mime === "application/json" ||
-      ext === "txt" || ext === "log" || ext === "py" || ext === "json" ||
-      ext === "yaml" || ext === "yml" || ext === "toml" || ext === "sh";
+    var isMarkdown =
+      mime === "text/markdown" || ext === "md" || ext === "markdown";
+    var isText =
+      mime.indexOf("text/") === 0 ||
+      mime === "application/json" ||
+      ext === "txt" ||
+      ext === "log" ||
+      ext === "py" ||
+      ext === "json" ||
+      ext === "yaml" ||
+      ext === "yml" ||
+      ext === "toml" ||
+      ext === "sh";
     var isPdf = mime === "application/pdf" || ext === "pdf";
     var isVideo = mime.indexOf("video/") === 0;
     var isAudio = mime.indexOf("audio/") === 0;
     if (isVideo) {
-      html += '<div class="attachment-video"><video src="' + escapeHtml(url) + '" controls preload="metadata" style="max-width:100%"></video>' +
-        '<div class="attachment-caption">' + escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") + '</div></div>';
+      html +=
+        '<div class="attachment-video"><video src="' +
+        escapeHtml(url) +
+        '" controls preload="metadata" style="max-width:100%"></video>' +
+        '<div class="attachment-caption">' +
+        escapeHtml(fname) +
+        (sizeStr ? " · " + escapeHtml(sizeStr) : "") +
+        "</div></div>";
       return;
     }
     if (isAudio) {
-      html += '<div class="attachment-audio"><audio src="' + escapeHtml(url) + '" controls preload="metadata" style="max-width:100%"></audio>' +
-        '<div class="attachment-caption">' + escapeHtml(fname) + (sizeStr ? " · " + escapeHtml(sizeStr) : "") + '</div></div>';
+      html +=
+        '<div class="attachment-audio"><audio src="' +
+        escapeHtml(url) +
+        '" controls preload="metadata" style="max-width:100%"></audio>' +
+        '<div class="attachment-caption">' +
+        escapeHtml(fname) +
+        (sizeStr ? " · " + escapeHtml(sizeStr) : "") +
+        "</div></div>";
       return;
     }
     if (isPdf) {
-      html += '<div class="attachment-card attachment-card-pdf" onclick="event.preventDefault();event.stopPropagation();' +
-        'if(typeof openPdfViewer===\'function\')openPdfViewer(' + JSON.stringify(url).replace(/"/g, "&quot;") + ',' + JSON.stringify(fname).replace(/"/g, "&quot;") +
-        ');else window.open(' + JSON.stringify(url).replace(/"/g, "&quot;") + ',\'_blank\')">' +
+      html +=
+        '<div class="attachment-card attachment-card-pdf" onclick="event.preventDefault();event.stopPropagation();' +
+        "if(typeof openPdfViewer==='function')openPdfViewer(" +
+        JSON.stringify(url).replace(/"/g, "&quot;") +
+        "," +
+        JSON.stringify(fname).replace(/"/g, "&quot;") +
+        ");else window.open(" +
+        JSON.stringify(url).replace(/"/g, "&quot;") +
+        ",'_blank')\">" +
         '<div class="attachment-card-icon">PDF</div>' +
-        '<div class="attachment-card-meta"><div class="attachment-card-name">' + escapeHtml(fname) + '</div>' +
-        (sizeStr ? '<div class="attachment-card-size">' + escapeHtml(sizeStr) + '</div>' : '') + '</div></div>';
+        '<div class="attachment-card-meta"><div class="attachment-card-name">' +
+        escapeHtml(fname) +
+        "</div>" +
+        (sizeStr
+          ? '<div class="attachment-card-size">' +
+            escapeHtml(sizeStr) +
+            "</div>"
+          : "") +
+        "</div></div>";
       return;
     }
     if (isMarkdown || isText) {
       var previewId = "att-prev-" + Math.random().toString(36).slice(2, 10);
-      html += '<div class="attachment-card attachment-card-text' + (isMarkdown ? " attachment-card-md" : "") + '">' +
-        '<div class="attachment-card-header"><a href="' + escapeHtml(url) + '" target="_blank" download class="attachment-card-name">' +
-        escapeHtml(fname) + "</a>" + (sizeStr ? '<span class="attachment-card-size">' + escapeHtml(sizeStr) + '</span>' : '') + '</div>' +
-        '<pre class="attachment-card-preview" id="' + previewId + '">\u2026 loading preview \u2026</pre></div>';
+      html +=
+        '<div class="attachment-card attachment-card-text' +
+        (isMarkdown ? " attachment-card-md" : "") +
+        '">' +
+        '<div class="attachment-card-header"><a href="' +
+        escapeHtml(url) +
+        '" target="_blank" download class="attachment-card-name">' +
+        escapeHtml(fname) +
+        "</a>" +
+        (sizeStr
+          ? '<span class="attachment-card-size">' +
+            escapeHtml(sizeStr) +
+            "</span>"
+          : "") +
+        "</div>" +
+        '<pre class="attachment-card-preview" id="' +
+        previewId +
+        '">\u2026 loading preview \u2026</pre></div>';
       setTimeout(function () {
         var pre = document.getElementById(previewId);
         if (!pre) return;
-        fetch(url, { credentials: "same-origin" }).then(function (r) {
-          if (!r.ok) throw new Error("preview fetch " + r.status);
-          return r.text();
-        }).then(function (text) {
-          var p = document.getElementById(previewId);
-          if (!p) return;
-          var snippet = (text || "").slice(0, 1200);
-          if (text.length > 1200) snippet += "\n\u2026";
-          p.textContent = snippet;
-        }).catch(function (_) {
-          var p = document.getElementById(previewId);
-          if (p) p.textContent = "(preview unavailable)";
-        });
+        fetch(url, { credentials: "same-origin" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("preview fetch " + r.status);
+            return r.text();
+          })
+          .then(function (text) {
+            var p = document.getElementById(previewId);
+            if (!p) return;
+            var snippet = (text || "").slice(0, 1200);
+            if (text.length > 1200) snippet += "\n\u2026";
+            p.textContent = snippet;
+          })
+          .catch(function (_) {
+            var p = document.getElementById(previewId);
+            if (p) p.textContent = "(preview unavailable)";
+          });
       }, 0);
       return;
     }
-    html += '<div class="attachment-file"><a href="' + escapeHtml(url) + '" target="_blank" download>' +
-      "\uD83D\uDCCE " + escapeHtml(fname) + (sizeStr ? " (" + escapeHtml(sizeStr) + ")" : "") + "</a></div>";
+    html +=
+      '<div class="attachment-file"><a href="' +
+      escapeHtml(url) +
+      '" target="_blank" download>' +
+      "\uD83D\uDCCE " +
+      escapeHtml(fname) +
+      (sizeStr ? " (" + escapeHtml(sizeStr) + ")" : "") +
+      "</a></div>";
   });
   return html;
+}
+
+/* Render unprocessed mermaid diagrams within a given root element.
+ * Calls mermaid.run() then wraps each rendered SVG as a blob-URL <img>
+ * so that right-click Save/Copy works natively (scitex-orochi#165). */
+function _renderMermaidIn(root) {
+  if (typeof window.mermaid === "undefined") return;
+  var nodes = (root || document).querySelectorAll(
+    ".mermaid-rendered:not([data-mermaid-processed])",
+  );
+  if (!nodes.length) return;
+  nodes.forEach(function (n) {
+    n.setAttribute("data-mermaid-processed", "1");
+  });
+  var promise;
+  try {
+    promise = window.mermaid.run({ nodes: nodes });
+  } catch (e) {
+    /* Non-fatal: diagram parse error shows in the rendered div */
+    return;
+  }
+  /* After render completes, convert SVG elements to blob-URL <img> tags
+   * so that right-click "Save image" / "Copy image" works natively. */
+  if (promise && typeof promise.then === "function") {
+    promise
+      .then(function () {
+        nodes.forEach(function (n) {
+          _mermaidSvgToImg(n);
+        });
+      })
+      .catch(function () {
+        /* parse errors: leave div as-is */
+      });
+  } else {
+    /* Synchronous fallback (older mermaid builds) */
+    setTimeout(function () {
+      nodes.forEach(function (n) {
+        _mermaidSvgToImg(n);
+      });
+    }, 100);
+  }
+}
+
+/* Serialize the SVG rendered inside a .mermaid-rendered div to a blob URL,
+ * replace the SVG with a responsive <img> (enables native right-click Save/Copy),
+ * and wire click-to-enlarge via the existing files-tab lightbox.
+ * scitex-orochi#165 */
+function _mermaidSvgToImg(container) {
+  var svgEl = container.querySelector("svg");
+  if (!svgEl) return; /* parse error — no SVG was produced */
+
+  /* Ensure the SVG namespace is set so XMLSerializer produces valid SVG */
+  if (!svgEl.getAttribute("xmlns")) {
+    svgEl.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  }
+
+  var svgStr = new XMLSerializer().serializeToString(svgEl);
+  var blob = new Blob([svgStr], { type: "image/svg+xml" });
+  var url = URL.createObjectURL(blob);
+
+  var img = document.createElement("img");
+  img.src = url;
+  img.alt = "Mermaid diagram";
+  img.className = "mermaid-img";
+
+  /* Replace inline SVG with <img>; blob URL stays alive so right-click Save works */
+  svgEl.parentNode.replaceChild(img, svgEl);
+
+  /* Click-to-enlarge: open in the existing image lightbox (files-tab.js openImgViewer) */
+  container.addEventListener("click", function (e) {
+    if (e.target.closest(".mermaid-toggle")) return;
+    if (typeof openImgViewer === "function") {
+      openImgViewer(url, "mermaid-diagram.svg", [
+        { url: url, filename: "mermaid-diagram.svg" },
+      ]);
+    }
+  });
 }
 
 function appendMessage(msg) {
   /* Filter hub-internal system messages from the feed (msg#10315).
    * Hub sends mention_reply messages (sender="hub") as status responses
    * when agents are @mentioned. These are noisy in regular channels. */
-  var _meta = (msg.metadata || {});
+  var _meta = msg.metadata || {};
   if (msg.sender === "hub" && _meta.source === "mention_reply") return;
+
+  /* Voice-recording guard: defer the DOM update to avoid interrupting the
+   * Web Speech API SpeechRecognition session. Scroll and layout changes
+   * during active recording can cause the browser to abort recognition.
+   * The queue is flushed by _flushVoiceQueue() when recording stops.
+   *
+   * Exception (scitex-orochi#172): render the user's OWN echoed post
+   * immediately even during continuous dictation. Deferring own-posts made
+   * the feed look frozen after Ctrl+Enter-send-while-dictating — ywatanabe's
+   * primary voice workflow (msg#6500/#6504 + msg#13124). Auto-scroll is
+   * already suppressed during recording (see the `!window.isVoiceRecording`
+   * guard in the appendChild block below) and focus is restored after the
+   * DOM write, so the layout shift from rendering one own-post is tolerable
+   * for recognition. Other agents' / other users' messages continue to be
+   * deferred to keep the feed quiet during dictation. */
+  var _ownPostDuringVoice =
+    window.isVoiceRecording &&
+    typeof userName !== "undefined" &&
+    msg.sender === userName;
+  if (window.isVoiceRecording && !_ownPostDuringVoice) {
+    _voiceDeferQueue.push(msg);
+    return;
+  }
   var el = document.createElement("div");
   var senderName = msg.sender || "unknown";
   var isAgent = msg.sender_type === "agent" || isKnownAgent(senderName);
@@ -322,16 +517,36 @@ function appendMessage(msg) {
     /```([\w.+-]*)[ \t]*\n([\s\S]*?)```/g,
     function (_, lang, code) {
       var trimmed = code.replace(/\n$/, "");
-      var hljsCls = lang ? ' class="language-' + lang + '"' : "";
-      var langBadge = lang
-        ? '<span class="code-lang-badge">' + escapeHtml(lang) + '</span>'
-        : "";
-      var html =
-        '<div class="code-block-wrap">' + langBadge +
-        '<pre class="code-block"><code' + hljsCls + ">" + trimmed + "</code></pre></div>";
+      var html;
+      if (lang && lang.toLowerCase() === "mermaid") {
+        /* Mermaid diagrams: render as SVG inline with a raw-script toggle */
+        html =
+          '<div class="mermaid-container">' +
+          '<div class="mermaid-rendered">' +
+          trimmed +
+          "</div>" +
+          '<pre class="mermaid-raw" style="display:none"><code>' +
+          trimmed +
+          "</code></pre>" +
+          '<button class="mermaid-toggle">Show raw</button>' +
+          "</div>";
+      } else {
+        var hljsCls = lang ? ' class="language-' + lang + '"' : "";
+        var langBadge = lang
+          ? '<span class="code-lang-badge">' + escapeHtml(lang) + "</span>"
+          : "";
+        html =
+          '<div class="code-block-wrap">' +
+          langBadge +
+          '<pre class="code-block"><code' +
+          hljsCls +
+          ">" +
+          trimmed +
+          "</code></pre></div>";
+      }
       _codeBlocks.push(html);
       return "\x00" + (_codeBlocks.length - 1) + "\x00";
-    }
+    },
   );
 
   /* Blockquote: lines beginning with `> ` (rendered as &gt; after escaping).
@@ -347,7 +562,11 @@ function appendMessage(msg) {
           block.push(lines[i].replace(/^&gt;\s?/, ""));
           i++;
         }
-        out.push('<blockquote class="chat-blockquote">' + block.join("\n") + "</blockquote>");
+        out.push(
+          '<blockquote class="chat-blockquote">' +
+            block.join("\n") +
+            "</blockquote>",
+        );
       } else {
         out.push(lines[i]);
         i++;
@@ -418,7 +637,7 @@ function appendMessage(msg) {
     for (var i = lineStart; i < idx; i++) {
       if (src.charCodeAt(i) === 96 /* ` */) ticks++;
     }
-    return (ticks % 2) === 1;
+    return ticks % 2 === 1;
   }
 
   /* Match @ after any non-word char so CJK text like「こんにちは@mamba」highlights (#9958) */
@@ -451,8 +670,8 @@ function appendMessage(msg) {
   );
   highlightedContent = _highlightBareNames(highlightedContent)
     /* Inline markdown: **bold**, *italic*, `code` */
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>")
     .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
     .replace(/\n/g, "<br>")
     .replace(
@@ -516,7 +735,9 @@ function appendMessage(msg) {
   if (_codeBlocks.length > 0) {
     highlightedContent = highlightedContent.replace(
       /\x00(\d+)\x00/g,
-      function (_, idx) { return _codeBlocks[parseInt(idx, 10)]; }
+      function (_, idx) {
+        return _codeBlocks[parseInt(idx, 10)];
+      },
     );
   }
 
@@ -545,7 +766,9 @@ function appendMessage(msg) {
       '<div class="msg-full" style="display:none">' +
       full +
       "</div>" +
-      '<button class="msg-fold-btn" tabindex="-1" data-extra="' + extraLines + '">Show more (' +
+      '<button class="msg-fold-btn" tabindex="-1" data-extra="' +
+      extraLines +
+      '">Show more (' +
       extraLines +
       " more lines)</button>";
   }
@@ -614,9 +837,14 @@ function appendMessage(msg) {
     '">' +
     ts +
     "</span>" +
+    (msg.id
+      ? '<span class="msg-id-chip" title="Message ID">#' + msg.id + "</span>"
+      : "") +
     (msg.edited
       ? '<span class="msg-edited-tag" title="' +
-        escapeHtml(msg.edited_at ? "Edited " + timeAgo(msg.edited_at) : "Edited") +
+        escapeHtml(
+          msg.edited_at ? "Edited " + timeAgo(msg.edited_at) : "Edited",
+        ) +
         '">(edited)</span>'
       : "") +
     "</div>" +
@@ -689,29 +917,65 @@ function appendMessage(msg) {
    * same path is responsible for todo#55's pending-attachment / input
    * state loss. We snapshot focus before the mutation and restore it
    * afterward, and we skip the auto-scroll entirely while the user is
-   * actively typing so we don't yank their viewport either. */
+   * actively typing so we don't yank their viewport either.
+   *
+   * Voice recording: additionally save/restore the full activeElement +
+   * selection so that DOM mutations during SpeechRecognition don't steal
+   * focus away from the textarea that the speech API is writing into.
+   * (Note: appendMessage already returns early when window.isVoiceRecording
+   * is true — this path is reached only for non-voice DOM updates.) */
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  /* Also capture any other focused element (e.g. thread textarea) */
+  var savedActiveEl = document.activeElement;
+  var savedActiveStart = 0;
+  var savedActiveEnd = 0;
+  if (
+    savedActiveEl &&
+    savedActiveEl !== msgInput &&
+    (savedActiveEl.tagName === "TEXTAREA" || savedActiveEl.tagName === "INPUT")
+  ) {
+    try {
+      savedActiveStart = savedActiveEl.selectionStart;
+      savedActiveEnd = savedActiveEl.selectionEnd;
+    } catch (_) {}
+  }
   container.appendChild(el);
+  /* Render any mermaid diagrams inside the newly appended message */
+  _renderMermaidIn(el);
   /* todo#274 Part 2: re-apply multi-select feed filter so newly-arrived
    * messages get hidden if they don't match the current selection. */
   if (typeof applyFeedFilter === "function") {
-    try { applyFeedFilter(); } catch (_) {}
+    try {
+      applyFeedFilter();
+    } catch (_) {}
   }
-  /* ALWAYS auto-scroll when near the bottom — including when the user is
-   * actively typing. Skipping the scroll while focused was too aggressive
-   * and broke the "I just sent a message" case (todo#227): the user's own
-   * outgoing message stayed below the fold because focus was still on
-   * #msg-input. The focus-preserve idiom (save selection → restore after
-   * mutation) is sufficient on its own for the typing-mid-incoming case. */
-  if (nearBottom) {
+  /* Auto-scroll: skip entirely during voice recording to prevent the
+   * scrollTop write from interfering with the SpeechRecognition session.
+   * Outside of voice recording, always scroll when near the bottom. */
+  if (nearBottom && !window.isVoiceRecording) {
     container.scrollTop = container.scrollHeight;
   }
+  /* Restore focus + selection for the main compose textarea */
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
+  }
+  /* Restore focus + selection for any other text input (e.g. thread textarea) */
+  if (
+    savedActiveEl &&
+    savedActiveEl !== msgInput &&
+    document.activeElement !== savedActiveEl &&
+    (savedActiveEl.tagName === "TEXTAREA" || savedActiveEl.tagName === "INPUT")
+  ) {
+    try {
+      savedActiveEl.focus();
+      savedActiveEl.setSelectionRange(savedActiveStart, savedActiveEnd);
+    } catch (_) {}
   }
   applyIssueTitleHints(el);
 }
@@ -789,7 +1053,10 @@ async function loadHistory() {
     var savedStart = msgInput ? msgInput.selectionStart : 0;
     var savedEnd = msgInput ? msgInput.selectionEnd : 0;
     /* Save pending attachments (uploaded files waiting to be sent) */
-    var savedAttachments = (typeof pendingAttachments !== "undefined") ? pendingAttachments.slice() : [];
+    var savedAttachments =
+      typeof pendingAttachments !== "undefined"
+        ? pendingAttachments.slice()
+        : [];
 
     container.innerHTML = "";
     knownMessageKeys = {};
@@ -821,11 +1088,17 @@ async function loadHistory() {
       msgInput.value = savedValue;
       if (hadFocus) {
         msgInput.focus();
-        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+        try {
+          msgInput.setSelectionRange(savedStart, savedEnd);
+        } catch (_) {}
       }
     }
     /* Restore pending attachments if they were lost */
-    if (savedAttachments.length && typeof pendingAttachments !== "undefined" && !pendingAttachments.length) {
+    if (
+      savedAttachments.length &&
+      typeof pendingAttachments !== "undefined" &&
+      !pendingAttachments.length
+    ) {
       pendingAttachments = savedAttachments;
       if (typeof _renderAttachmentTray === "function") _renderAttachmentTray();
     }
@@ -834,7 +1107,9 @@ async function loadHistory() {
     /* If the page was loaded with ?thread=<id>, auto-open that thread now
      * that the parent message DOM exists (todo#237). */
     if (typeof applyThreadUrlOnLoad === "function") {
-      try { applyThreadUrlOnLoad(); } catch (_) {}
+      try {
+        applyThreadUrlOnLoad();
+      } catch (_) {}
     }
     /* Fetch reactions for all loaded messages */
     if (typeof fetchReactionsForMessages === "function") {
@@ -916,7 +1191,10 @@ async function loadChannelHistory(channel) {
     var hadFocus = msgInput && document.activeElement === msgInput;
     var savedStart = msgInput ? msgInput.selectionStart : 0;
     var savedEnd = msgInput ? msgInput.selectionEnd : 0;
-    var savedAttachments = (typeof pendingAttachments !== "undefined") ? pendingAttachments.slice() : [];
+    var savedAttachments =
+      typeof pendingAttachments !== "undefined"
+        ? pendingAttachments.slice()
+        : [];
 
     container.innerHTML = "";
     knownMessageKeys = {};
@@ -948,11 +1226,17 @@ async function loadChannelHistory(channel) {
       msgInput.value = savedValue;
       if (hadFocus) {
         msgInput.focus();
-        try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+        try {
+          msgInput.setSelectionRange(savedStart, savedEnd);
+        } catch (_) {}
       }
     }
     /* Restore pending attachments */
-    if (savedAttachments.length && typeof pendingAttachments !== "undefined" && !pendingAttachments.length) {
+    if (
+      savedAttachments.length &&
+      typeof pendingAttachments !== "undefined" &&
+      !pendingAttachments.length
+    ) {
       pendingAttachments = savedAttachments;
       if (typeof _renderAttachmentTray === "function") _renderAttachmentTray();
     }
@@ -960,7 +1244,9 @@ async function loadChannelHistory(channel) {
     historyLoaded = true;
     /* If the page was loaded with ?thread=<id>, auto-open that thread now */
     if (typeof applyThreadUrlOnLoad === "function") {
-      try { applyThreadUrlOnLoad(); } catch (_) {}
+      try {
+        applyThreadUrlOnLoad();
+      } catch (_) {}
     }
     if (typeof fetchReactionsForMessages === "function") {
       var ids = messages
@@ -983,7 +1269,10 @@ function sendMessage() {
   var input = document.getElementById("msg-input");
   /* In multi-select mode currentChannel is null; fall back to lastActiveChannel
    * so the message goes to the last focused channel (#9694). */
-  var channel = currentChannel || (typeof lastActiveChannel !== "undefined" && lastActiveChannel) || "#general";
+  var channel =
+    currentChannel ||
+    (typeof lastActiveChannel !== "undefined" && lastActiveChannel) ||
+    "#general";
   var text = input.value.trim();
 
   /* Pull any attachments the user staged via paste/drop/picker before
@@ -1018,7 +1307,7 @@ function sendMessage() {
   /* Clear the per-channel draft now that the message has been sent. */
   try {
     sessionStorage.removeItem(
-      "orochi-draft-" + (currentChannel || "__default__")
+      "orochi-draft-" + (currentChannel || "__default__"),
     );
   } catch (_) {}
   /* Hands-free voice dictation: if the mic is currently listening, the
@@ -1028,7 +1317,9 @@ function sendMessage() {
    * so the input stays clean. ywatanabe wants to leave the mic on for
    * continuous dictation across multiple sends (msg#6500 / msg#6504). */
   if (typeof window.voiceInputResetAfterSend === "function") {
-    try { window.voiceInputResetAfterSend(); } catch (_) {}
+    try {
+      window.voiceInputResetAfterSend();
+    } catch (_) {}
   }
 }
 
@@ -1054,7 +1345,9 @@ function _saveDraft(value) {
     } else {
       sessionStorage.removeItem(_draftKey());
     }
-  } catch (_) { /* sessionStorage may be unavailable in private mode */ }
+  } catch (_) {
+    /* sessionStorage may be unavailable in private mode */
+  }
 }
 function restoreDraftForCurrentChannel() {
   try {
@@ -1096,13 +1389,19 @@ restoreDraftForCurrentChannel();
         t: new Date().toISOString(),
         label: label,
         relatedTarget: rt
-          ? (rt.tagName || "?") + "#" + (rt.id || "") + "." + (rt.className || "")
+          ? (rt.tagName || "?") +
+            "#" +
+            (rt.id || "") +
+            "." +
+            (rt.className || "")
           : null,
         activeAfter: document.activeElement
-          ? document.activeElement.tagName + "#" + (document.activeElement.id || "")
+          ? document.activeElement.tagName +
+            "#" +
+            (document.activeElement.id || "")
           : null,
-        stack: (new Error()).stack
-          ? (new Error()).stack.split("\n").slice(2, 8).join(" | ")
+        stack: new Error().stack
+          ? new Error().stack.split("\n").slice(2, 8).join(" | ")
           : null,
       });
       while (arr.length > 50) arr.shift();
@@ -1122,46 +1421,19 @@ restoreDraftForCurrentChannel();
   window.getBlurLog = function () {
     try {
       return JSON.parse(sessionStorage.getItem("orochi-blurlog") || "[]");
-    } catch (_) { return []; }
+    } catch (_) {
+      return [];
+    }
   };
 })();
 
-/* Systemic focus-theft guard (todo#225 follow-up after blur log analysis at
- * msg#6341): clicking any button or link inside the message feed or thread
- * panel was shifting browser focus away from #msg-input, breaking ywatanabe's
- * mid-typing flow. The previous fix only patched .msg-fold-btn; the blur log
- * exposed five more offenders (.msg-thread-btn, .chat-link, .issue-link,
- * .permalink-btn, .thread-permalink-btn). Rather than chase each one with
- * tabindex / inline onmousedown, we install a single capture-phase mousedown
- * delegate: when #msg-input currently holds focus AND the click target is a
- * <button> or <a> inside .msg / .thread-panel / #messages, preventDefault on
- * mousedown blocks the browser's default focus shift. The click event still
- * fires, so the underlying action (open thread, open URL in new tab, fold,
- * permalink copy, …) runs normally. Form controls (textarea/input/select)
- * are excluded so the user can still tab into #thread-input intentionally. */
-document.addEventListener("mousedown", function (e) {
-  var msgInput = document.getElementById("msg-input");
-  if (!msgInput || document.activeElement !== msgInput) return;
-  var t = e.target;
-  if (!t || !t.closest) return;
-  /* Allow focus shift onto another form control (e.g. thread reply input). */
-  var formCtrl = t.closest("textarea, input, select");
-  if (formCtrl && formCtrl !== msgInput) return;
-  /* Only intercept clicks inside the message feed or thread panel. */
-  if (!t.closest("#messages, .msg, .thread-panel")) return;
-  /* Block focus shift only for UI controls inside the feed.
-   * Exempt: tabindex="-1" elements, and content links (.chat-link,
-   * .msg-ref-link, .issue-link) — preventDefault on those suppresses
-   * navigation/copy on iOS Safari (todo#381 / #neurovista link regression). */
-  var ctrl = t.closest("button, a");
-  if (ctrl &&
-      ctrl.getAttribute("tabindex") !== "-1" &&
-      !ctrl.classList.contains("chat-link") &&
-      !ctrl.classList.contains("msg-ref-link") &&
-      !ctrl.classList.contains("issue-link")) {
-    e.preventDefault();
-  }
-}, true);
+/* Focus-theft guard removed: the capture-phase mousedown delegate that
+ * kept #msg-input focused when the user clicked feed buttons/links felt
+ * too aggressive. Browser default focus behavior is now in effect —
+ * clicks on feed elements shift focus naturally. The save→render→
+ * restore pattern in the render functions still preserves mid-typing
+ * state across polling re-renders; it just no longer fights user
+ * clicks. */
 
 /* Show more / Show less toggle for long messages.
  * Uses delegated click on document to handle dynamically inserted buttons.
@@ -1180,11 +1452,27 @@ document.addEventListener("click", function (e) {
     fullEl.style.display = "block";
     previewEl.style.display = "none";
     btn.textContent = "Show less";
+    /* Render mermaid diagrams that became visible in the expanded section */
+    _renderMermaidIn(fullEl);
   } else {
     fullEl.style.display = "none";
     previewEl.style.display = "block";
     btn.textContent = "Show more (" + extra + " more lines)";
   }
+});
+
+/* Mermaid raw-script toggle — delegated click handler */
+document.addEventListener("click", function (e) {
+  var btn = e.target.closest(".mermaid-toggle");
+  if (!btn) return;
+  e.preventDefault();
+  var container = btn.closest(".mermaid-container");
+  if (!container) return;
+  var rawEl = container.querySelector(".mermaid-raw");
+  if (!rawEl) return;
+  var isHidden = rawEl.style.display === "none" || rawEl.style.display === "";
+  rawEl.style.display = isHidden ? "block" : "none";
+  btn.textContent = isHidden ? "Hide raw" : "Show raw";
 });
 
 /* Defensive blur watchdog (todo#225 second-order regression).
@@ -1233,8 +1521,11 @@ document.addEventListener("click", function (e) {
         if (sel && sel.toString().length > 0) {
           var anchor = sel.anchorNode;
           if (anchor && anchor.nodeType === 3) anchor = anchor.parentElement;
-          if (anchor && anchor.closest &&
-              anchor.closest("#messages, .msg, .thread-panel")) {
+          if (
+            anchor &&
+            anchor.closest &&
+            anchor.closest("#messages, .msg, .thread-panel")
+          ) {
             return;
           }
         }
@@ -1313,7 +1604,9 @@ function startEditMessage(msgId) {
   contentEl.parentNode.insertBefore(editContainer, contentEl.nextSibling);
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 
   var textarea = editContainer.querySelector(".msg-edit-input");
@@ -1424,7 +1717,9 @@ function handleMessageEdit(event) {
   }
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -1514,7 +1809,9 @@ function handleMessageDelete(event) {
     var senderEl = msgEl.querySelector(".sender");
     var sender = senderEl ? senderEl.textContent.trim() : "";
     var contentEl = msgEl.querySelector(".content");
-    var text = contentEl ? contentEl.innerText || contentEl.textContent || "" : "";
+    var text = contentEl
+      ? contentEl.innerText || contentEl.textContent || ""
+      : "";
     var isOwn =
       typeof userName !== "undefined" &&
       sender &&
@@ -1643,7 +1940,9 @@ function handleMessageDelete(event) {
 
     /* Haptic hint where supported */
     if (navigator.vibrate) {
-      try { navigator.vibrate(15); } catch (_) {}
+      try {
+        navigator.vibrate(15);
+      } catch (_) {}
     }
   }
 

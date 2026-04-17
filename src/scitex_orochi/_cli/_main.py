@@ -23,7 +23,39 @@ def _get_version() -> str:
         return "dev"
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+class _HelpRecursiveGroup(click.Group):
+    """Click group that supports ``--help-recursive`` to dump every subcommand."""
+
+    def get_help_recursive(self, ctx: click.Context) -> str:
+        lines = [
+            "=" * 60,
+            "scitex-orochi -- Complete Command Reference",
+            "=" * 60,
+            "",
+            self.get_help(ctx),
+            "",
+        ]
+        for name in sorted(self.list_commands(ctx)):
+            cmd = self.get_command(ctx, name)
+            if cmd is None:
+                continue
+            lines.append("-" * 60)
+            lines.append(f"Command: {name}")
+            lines.append("-" * 60)
+            sub_ctx = click.Context(cmd, info_name=name, parent=ctx)
+            try:
+                lines.append(cmd.get_help(sub_ctx))
+            except Exception as exc:  # pragma: no cover - defensive
+                lines.append(f"<help unavailable: {exc}>")
+            lines.append("")
+        return "\n".join(lines)
+
+
+@click.group(
+    cls=_HelpRecursiveGroup,
+    context_settings={"help_option_names": ["-h", "--help"]},
+    invoke_without_command=True,
+)
 @click.version_option(version=_get_version(), prog_name="scitex-orochi")
 @click.option(
     "--host",
@@ -38,17 +70,45 @@ def _get_version() -> str:
     envvar="SCITEX_OROCHI_PORT",
     help="Server port [$SCITEX_OROCHI_PORT].",
 )
+@click.option(
+    "--help-recursive",
+    "help_recursive",
+    is_flag=True,
+    default=False,
+    help="Show help for all commands recursively, then exit.",
+)
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Emit structured JSON output (propagates to subcommands that honour it).",
+)
 @click.pass_context
-def orochi(ctx: click.Context, host: str | None, port: int | None) -> None:
+def orochi(
+    ctx: click.Context,
+    host: str | None,
+    port: int | None,
+    help_recursive: bool,
+    as_json: bool,
+) -> None:
     """scitex-orochi -- Agent Communication Hub CLI."""
     from scitex_orochi._config import HOST, PORT
 
     ctx.ensure_object(dict)
     ctx.obj["host"] = host or HOST
     ctx.obj["port"] = port or PORT
+    ctx.obj["json"] = as_json
     from scitex_orochi._config import DASHBOARD_PORT
 
     ctx.obj["dashboard_port"] = DASHBOARD_PORT
+
+    if help_recursive:
+        click.echo(ctx.command.get_help_recursive(ctx))  # type: ignore[attr-defined]
+        ctx.exit(0)
+    if ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
 
 
 # ── Register subcommands ────────────────────────────────────────
@@ -128,6 +188,11 @@ orochi.add_command(list_invites)
 
 # Hook-driven liveness reporting (#143)
 orochi.add_command(report)
+
+# Non-agentic heartbeat pusher (consumes scitex-agent-container CLI)
+from scitex_orochi._cli.commands.heartbeat_cmd import heartbeat_push
+
+orochi.add_command(heartbeat_push)
 
 # Integration
 orochi.add_command(docs)

@@ -63,10 +63,17 @@ export async function handleReply(
         const filename = basename(filePath);
         const ext = filename.split(".").pop()?.toLowerCase() || "";
         const MIME: Record<string, string> = {
-          png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-          gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
-          pdf: "application/pdf", txt: "text/plain", md: "text/markdown",
-          json: "application/json", csv: "text/csv",
+          png: "image/png",
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          gif: "image/gif",
+          webp: "image/webp",
+          svg: "image/svg+xml",
+          pdf: "application/pdf",
+          txt: "text/plain",
+          md: "text/markdown",
+          json: "application/json",
+          csv: "text/csv",
         };
         const mime_type = MIME[ext] || "application/octet-stream";
         const resp = await fetch(
@@ -93,7 +100,9 @@ export async function handleReply(
     }
   }
 
-  const metadata: Record<string, unknown> = args.reply_to ? { reply_to: args.reply_to } : {};
+  const metadata: Record<string, unknown> = args.reply_to
+    ? { reply_to: args.reply_to }
+    : {};
   if (attachments.length > 0) metadata.attachments = attachments;
   const payload: Record<string, unknown> = {
     channel: args.chat_id,
@@ -137,10 +146,18 @@ export async function handleHistory(args: {
   }
 
   const formatted = messages
-    .map(
-      (m) =>
-        `[${m.ts}] ${m.sender}${m.id !== null ? ` (msg#${m.id})` : ""}: ${m.content}`,
-    )
+    .map((m) => {
+      let line = `[${m.ts}] ${m.sender}${m.id !== null ? ` (msg#${m.id})` : ""}: ${m.content}`;
+      const attachments = (m.metadata as any)?.attachments;
+      if (Array.isArray(attachments) && attachments.length > 0) {
+        const refs = attachments
+          .map((a: any) => `${a.filename || "file"} -> ${a.url || ""}`)
+          .filter((s: string) => s.includes("->"))
+          .join(", ");
+        if (refs) line += `\n[Attachments: ${refs}]`;
+      }
+      return line;
+    })
     .join("\n");
 
   return {
@@ -379,6 +396,121 @@ export function handleStatus(conn: ConnLike): {
   };
 }
 
+function normalizeGroupChannel(name: string): string {
+  const trimmed = (name || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("dm:") || trimmed.startsWith("#")) return trimmed;
+  return `#${trimmed}`;
+}
+
+export async function handleSubscribe(
+  conn: ConnLike,
+  args: { channel: string },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  if (!conn.isConnected) {
+    return {
+      content: [
+        { type: "text", text: `Error: not connected (state=${conn.state})` },
+      ],
+    };
+  }
+  conn.send(
+    JSON.stringify({
+      type: "subscribe",
+      sender: OROCHI_AGENT,
+      payload: { channel },
+    }),
+  );
+  return { content: [{ type: "text", text: `subscribed: ${channel}` }] };
+}
+
+export async function handleChannelInfo(args: {
+  channel: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  try {
+    const url =
+      `${httpBase}/api/channels/${tokenParam("?")}` +
+      (tokenParam("?") ? "&" : "?") +
+      "name=" +
+      encodeURIComponent(channel);
+    const res = await fetch(url, {
+      headers: buildFetchHeaders({ Accept: "application/json" }),
+    });
+    if (!res.ok) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${res.status} fetching channel info`,
+          },
+        ],
+      };
+    }
+    const data = await res.json();
+    const match = Array.isArray(data)
+      ? data.find((c: any) => c && c.name === channel)
+      : null;
+    if (!match) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `(no channel named ${channel} in this workspace)`,
+          },
+        ],
+      };
+    }
+    const desc = (match.description || "").trim();
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            `channel: ${match.name}\n` +
+            `description: ${desc || "(no description set)"}`,
+        },
+      ],
+    };
+  } catch (e) {
+    return {
+      content: [{ type: "text", text: `Error fetching channel info: ${e}` }],
+    };
+  }
+}
+
+export async function handleUnsubscribe(
+  conn: ConnLike,
+  args: { channel: string },
+): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  if (!conn.isConnected) {
+    return {
+      content: [
+        { type: "text", text: `Error: not connected (state=${conn.state})` },
+      ],
+    };
+  }
+  conn.send(
+    JSON.stringify({
+      type: "unsubscribe",
+      sender: OROCHI_AGENT,
+      payload: { channel },
+    }),
+  );
+  return { content: [{ type: "text", text: `unsubscribed: ${channel}` }] };
+}
+
 const MEDIA_DIR = "/tmp/orochi-media";
 
 export async function handleDownloadMedia(args: {
@@ -517,10 +649,17 @@ export async function handleUploadMedia(args: {
     const b64 = fileData.toString("base64");
     const ext = filename.split(".").pop()?.toLowerCase() || "";
     const MIME: Record<string, string> = {
-      png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
-      gif: "image/gif", webp: "image/webp", svg: "image/svg+xml",
-      pdf: "application/pdf", txt: "text/plain", md: "text/markdown",
-      json: "application/json", csv: "text/csv",
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      gif: "image/gif",
+      webp: "image/webp",
+      svg: "image/svg+xml",
+      pdf: "application/pdf",
+      txt: "text/plain",
+      md: "text/markdown",
+      json: "application/json",
+      csv: "text/csv",
     };
     const mime_type = MIME[ext] || "application/octet-stream";
 
@@ -551,7 +690,11 @@ export async function handleUploadMedia(args: {
       };
     }
 
-    const result = (await resp.json()) as { url?: string; filename?: string; deduplicated?: boolean };
+    const result = (await resp.json()) as {
+      url?: string;
+      filename?: string;
+      deduplicated?: boolean;
+    };
     const mediaUrl = result.url
       ? result.url.startsWith("http")
         ? result.url
@@ -600,8 +743,7 @@ export async function handleDmList(args: {
       content: [
         {
           type: "text",
-          text:
-            "Error: workspace slug required. Pass workspace=<slug> or set SCITEX_OROCHI_WORKSPACE.",
+          text: "Error: workspace slug required. Pass workspace=<slug> or set SCITEX_OROCHI_WORKSPACE.",
         },
       ],
     };
@@ -642,8 +784,7 @@ export async function handleDmOpen(args: {
       content: [
         {
           type: "text",
-          text:
-            "Error: workspace slug required. Pass workspace=<slug> or set SCITEX_OROCHI_WORKSPACE.",
+          text: "Error: workspace slug required. Pass workspace=<slug> or set SCITEX_OROCHI_WORKSPACE.",
         },
       ],
     };
@@ -654,8 +795,7 @@ export async function handleDmOpen(args: {
       content: [
         {
           type: "text",
-          text:
-            "Error: recipient required (e.g. 'agent:mamba-healer-mba' or 'human:ywatanabe').",
+          text: "Error: recipient required (e.g. 'agent:mamba-healer-mba' or 'human:ywatanabe').",
         },
       ],
     };
@@ -757,7 +897,9 @@ export async function handleRsyncMedia(args: {
   // Validate src_path exists locally
   if (!existsSync(src_path)) {
     return {
-      content: [{ type: "text", text: `Error: src_path not found: ${src_path}` }],
+      content: [
+        { type: "text", text: `Error: src_path not found: ${src_path}` },
+      ],
     };
   }
 
@@ -822,9 +964,8 @@ export async function handleRsyncMedia(args: {
         : `${status_emoji} rsync FAILED (exit=${code}): \`${basename(src_path)}\` → ${dst_host}:${dst_path} (job=${jobId})\n\`\`\`\n${job.last_line}\n\`\`\``;
 
     try {
-      const { buildHttpBase, buildFetchHeaders, OROCHI_AGENT } = await import(
-        "./config.js"
-      );
+      const { buildHttpBase, buildFetchHeaders, OROCHI_AGENT } =
+        await import("./config.js");
       const httpBase = buildHttpBase();
       const tokenParam = process.env.SCITEX_OROCHI_TOKEN
         ? `?token=${process.env.SCITEX_OROCHI_TOKEN}`
@@ -867,9 +1008,7 @@ export async function handleRsyncStatus(args: {
   const job = rsyncJobs.get(args.job_id);
   if (!job) {
     return {
-      content: [
-        { type: "text", text: `Error: job not found: ${args.job_id}` },
-      ],
+      content: [{ type: "text", text: `Error: job not found: ${args.job_id}` }],
     };
   }
   const logPath = rsyncLogPath(job.id);
@@ -953,7 +1092,9 @@ export async function handleConnectivityMatrix(): Promise<{
 
   // Match: connectivity.json (single legacy row) and connectivity-<host>.json
   const targets = entries.filter(
-    (n) => n === "connectivity.json" || /^connectivity-[A-Za-z0-9._-]+\.json$/.test(n),
+    (n) =>
+      n === "connectivity.json" ||
+      /^connectivity-[A-Za-z0-9._-]+\.json$/.test(n),
   );
 
   for (const name of targets) {
@@ -961,7 +1102,10 @@ export async function handleConnectivityMatrix(): Promise<{
     try {
       const txt = readFileSync(fpath, "utf-8");
       const parsed = JSON.parse(txt) as ConnectivityRow;
-      const fromKey = (parsed.from || "").trim() || name.replace(/^connectivity-?/, "").replace(/\.json$/, "") || "unknown";
+      const fromKey =
+        (parsed.from || "").trim() ||
+        name.replace(/^connectivity-?/, "").replace(/\.json$/, "") ||
+        "unknown";
       // Last writer per `from` wins — usually fine since each host owns its row.
       rows[fromKey] = parsed;
       sources.push(name);
@@ -987,7 +1131,6 @@ export async function handleConnectivityMatrix(): Promise<{
     ],
   };
 }
-
 
 // ---------------------------------------------------------------------------
 // sidecar_status — Orochi-side sidecar PID visibility (todo#287 Slice A).
@@ -1166,12 +1309,7 @@ function scheduleSelfCommand(
 }
 
 // Destructive slash commands require confirm=true.
-const DESTRUCTIVE_COMMANDS = new Set([
-  "/clear",
-  "/kill",
-  "/exit",
-  "/quit",
-]);
+const DESTRUCTIVE_COMMANDS = new Set(["/clear", "/kill", "/exit", "/quit"]);
 
 // Allowlist of slash commands safe to inject via self_command.
 // Modal-opening commands (/model, /agents, /permissions, /login, /config, ...)
@@ -1262,4 +1400,40 @@ export async function handleSelfCommand(args: {
 
   const delay = args?.delay_ms ?? 6000;
   return scheduleSelfCommand(command, delay, `self_command(${slashName})`);
+}
+
+export async function handleExportChannel(args: {
+  chat_id: string;
+  format?: string;
+  from?: string;
+  to?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const chatId = args.chat_id || "#general";
+  const format = args.format || "txt";
+  const params = new URLSearchParams();
+  params.set("format", format);
+  if (args.from) params.set("from", args.from);
+  if (args.to) params.set("to", args.to);
+  if (OROCHI_TOKEN) params.set("token", OROCHI_TOKEN);
+
+  const url = `${httpBase}/api/channels/${encodeURIComponent(chatId)}/export/?${params.toString()}`;
+  try {
+    const resp = await fetch(url, { headers: buildFetchHeaders() });
+    if (!resp.ok) {
+      const body = await resp.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
+          },
+        ],
+      };
+    }
+    const text = await resp.text();
+    return { content: [{ type: "text", text }] };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { content: [{ type: "text", text: `Error: ${msg}` }] };
+  }
 }

@@ -38,10 +38,22 @@
   border-radius: 50%;
   background: currentColor;
 }
-.activity-pill-online { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
-.activity-pill-idle { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
-.activity-pill-stale { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.activity-pill-offline { background: #1a1a1a; color: #555; }
+.activity-pill-online {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+}
+.activity-pill-idle {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+.activity-pill-stale {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+.activity-pill-offline {
+  background: #1a1a1a;
+  color: #555;
+}
 .activity-legend-hint {
   font-size: 10px;
   color: #666;
@@ -121,13 +133,92 @@
 
 .activity-grid {
   display: grid;
-  /* Wider min-width so agent names like "mamba-quality-checker-mba"
-   * fit on one line. msg#6611 — name truncation was the loudest
-   * recurring complaint. 360px lets every current agent name fit
-   * comfortably plus the status pill. */
-  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-  gap: 12px;
+  /* Overview: one agent per row (single-column grid). User prefers
+   * row-style cards over tiled auto-fill so every agent's task line
+   * sits at a predictable x-position and long task strings don't get
+   * truncated by a 360-wide column. Detail view overrides to a flex
+   * column further down. */
+  grid-template-columns: 1fr;
+  gap: 8px;
   padding: 16px;
+}
+
+/* Activity view layout:
+ *   #activity-view must be a flex column so its two children —
+ *   the sub-tab bar (activity-subtabs) and the grid
+ *   (activity-grid) — share the available vertical space instead
+ *   of stacking in normal flow. Without this, activity-grid's
+ *   `height: 100%` resolved against the view's full height and
+ *   then pushed past the viewport bottom, making the terminal
+ *   pane + CLAUDE.md overflow off-screen. */
+#activity-view.todo-view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+#activity-view .activity-subtabs {
+  flex: 0 0 auto;
+}
+#activity-view .activity-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#activity-view .activity-grid:not(.activity-grid-detail) {
+  overflow: auto;
+}
+
+/* Per-agent detail view: switch the grid to a flex column so the
+ * agent-detail-view child can flex-grow and fill remaining viewport
+ * height (not just content height). Single full width — no 360px
+ * auto-fill capping. */
+.activity-grid.activity-grid-detail {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: 1fr;
+  padding: 16px 16px 24px;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.activity-grid.activity-grid-detail > .agent-detail-view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.activity-grid.activity-grid-detail .agent-detail-header,
+.activity-grid.activity-grid-detail .agent-detail-channels {
+  flex: 0 0 auto;
+}
+.activity-grid.activity-grid-detail .agent-detail-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.activity-grid.activity-grid-detail .agent-detail-split-col {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.activity-grid.activity-grid-detail .agent-detail-pane-wrap,
+.activity-grid.activity-grid-detail
+  .agent-detail-split-col
+  > .agent-detail-section {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.activity-grid.activity-grid-detail .agent-detail-pane,
+.activity-grid.activity-grid-detail .agent-detail-claude-md {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  overflow: auto;
 }
 
 .activity-card {
@@ -137,24 +228,39 @@
    * snap-flicker. Layout properties are intentionally NOT in the
    * transition list — moving the card around is the worst UX.
    * msg#6575 / msg#6592. */
-  transition: border-color 0.4s ease, background 0.4s ease, opacity 0.4s ease;
+  transition:
+    border-color 0.4s ease,
+    background 0.4s ease,
+    opacity 0.4s ease;
   border-left: 3px solid #444;
   border-radius: 4px;
   padding: 10px 12px;
   transition: border-color 0.15s;
 }
 
-.activity-card.activity-online { border-left-color: #4ecdc4; }
-.activity-card.activity-idle { border-left-color: #f59e0b; }
+.activity-card.activity-online {
+  border-left-color: #4ecdc4;
+}
+.activity-card.activity-idle {
+  border-left-color: #f59e0b;
+}
 .activity-card.activity-stale {
   border-left-color: #ef4444;
   animation: activity-pulse 2s ease-in-out infinite;
 }
-.activity-card.activity-offline { border-left-color: #444; opacity: 0.6; }
+.activity-card.activity-offline {
+  border-left-color: #444;
+  opacity: 0.6;
+}
 
 @keyframes activity-pulse {
-  0%, 100% { background: #141414; }
-  50% { background: #1d1212; }
+  0%,
+  100% {
+    background: #141414;
+  }
+  50% {
+    background: #1d1212;
+  }
 }
 
 .activity-card-header {
@@ -170,10 +276,19 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.activity-dot-online { background: #4ecdc4; box-shadow: 0 0 4px #4ecdc4; }
-.activity-dot-idle { background: #f59e0b; }
-.activity-dot-stale { background: #ef4444; }
-.activity-dot-offline { background: #444; }
+.activity-dot-online {
+  background: #4ecdc4;
+  box-shadow: 0 0 4px #4ecdc4;
+}
+.activity-dot-idle {
+  background: #f59e0b;
+}
+.activity-dot-stale {
+  background: #ef4444;
+}
+.activity-dot-offline {
+  background: #444;
+}
 
 .activity-name {
   font-weight: 700;
@@ -266,8 +381,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.activity-subagent-done .activity-subagent-name { color: #4ecdc4; }
-.activity-subagent-failed .activity-subagent-name { color: #ef4444; }
+.activity-subagent-done .activity-subagent-name {
+  color: #4ecdc4;
+}
+.activity-subagent-failed .activity-subagent-name {
+  color: #ef4444;
+}
 
 /* Fallback task display when no structured current_task — shows the
  * last_message_preview in the same slot so cards never look empty. */
@@ -290,15 +409,44 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.activity-health-icon { margin-right: 2px; }
-.activity-health-status { font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; margin-right: 2px; }
-.activity-health-healthy { border-left-color: #4ecdc4; color: #4ecdc4; }
-.activity-health-idle { border-left-color: #f59e0b; }
-.activity-health-stale { border-left-color: #ef4444; color: #ef4444; }
-.activity-health-stuck_prompt { border-left-color: #ef4444; color: #ef4444; animation: activity-pulse 2s ease-in-out infinite; }
-.activity-health-dead { border-left-color: #7a1f1f; color: #ef4444; }
-.activity-health-ghost { border-left-color: #6b21a8; color: #c084fc; }
-.activity-health-remediating { border-left-color: #4ecdc4; color: #4ecdc4; animation: activity-pulse 1.4s ease-in-out infinite; }
+.activity-health-icon {
+  margin-right: 2px;
+}
+.activity-health-status {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-right: 2px;
+}
+.activity-health-healthy {
+  border-left-color: #4ecdc4;
+  color: #4ecdc4;
+}
+.activity-health-idle {
+  border-left-color: #f59e0b;
+}
+.activity-health-stale {
+  border-left-color: #ef4444;
+  color: #ef4444;
+}
+.activity-health-stuck_prompt {
+  border-left-color: #ef4444;
+  color: #ef4444;
+  animation: activity-pulse 2s ease-in-out infinite;
+}
+.activity-health-dead {
+  border-left-color: #7a1f1f;
+  color: #ef4444;
+}
+.activity-health-ghost {
+  border-left-color: #6b21a8;
+  color: #c084fc;
+}
+.activity-health-remediating {
+  border-left-color: #4ecdc4;
+  color: #4ecdc4;
+  animation: activity-pulse 1.4s ease-in-out infinite;
+}
 
 /* Rich-field chip row added 2026-04-12 (todo#?) — surfaces ctx %, model,
  * multiplexer, subagent count, skills count, pid as small inline pills on
@@ -322,12 +470,30 @@
   letter-spacing: 0.2px;
   white-space: nowrap;
 }
-.activity-chip-model { color: #d8b4fe; border-color: rgba(216, 180, 254, 0.3); }
-.activity-chip-mux   { color: #93c5fd; border-color: rgba(147, 197, 253, 0.3); }
-.activity-chip-ctx.ctx-ok   { color: #4ecdc4; border-color: rgba(78, 205, 196, 0.4); }
-.activity-chip-ctx.ctx-warn { color: #f59e0b; border-color: rgba(245, 158, 11, 0.4); }
-.activity-chip-ctx.ctx-hot  { color: #ef4444; border-color: rgba(239, 68, 68, 0.5); }
-.activity-chip-subs   { color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
+.activity-chip-model {
+  color: #d8b4fe;
+  border-color: rgba(216, 180, 254, 0.3);
+}
+.activity-chip-mux {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.3);
+}
+.activity-chip-ctx.ctx-ok {
+  color: #4ecdc4;
+  border-color: rgba(78, 205, 196, 0.4);
+}
+.activity-chip-ctx.ctx-warn {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.activity-chip-ctx.ctx-hot {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.activity-chip-subs {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
 .activity-chip-subs-active {
   color: #0b0b0b;
   background: #fbbf24;
@@ -344,10 +510,21 @@
   border-radius: 3px;
   white-space: nowrap;
 }
-.activity-chip-skills { color: #a3e635; border-color: rgba(163, 230, 53, 0.3); }
-.activity-chip-channels { color: #7dd3fc; border-color: rgba(125, 211, 252, 0.3); }
-.activity-chip-uptime { color: #c4b5fd; border-color: rgba(196, 181, 253, 0.25); }
-.activity-chip-pid    { color: #888; }
+.activity-chip-skills {
+  color: #a3e635;
+  border-color: rgba(163, 230, 53, 0.3);
+}
+.activity-chip-channels {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.3);
+}
+.activity-chip-uptime {
+  color: #c4b5fd;
+  border-color: rgba(196, 181, 253, 0.25);
+}
+.activity-chip-pid {
+  color: #888;
+}
 
 /* Hero task row: the main "what is this agent doing right now" line. */
 .activity-task-row {
@@ -424,7 +601,9 @@
   border-radius: 3px;
   line-height: 1;
   flex-shrink: 0;
-  transition: color 0.1s, border-color 0.1s;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
 }
 .activity-copy-btn:hover {
   color: #ccc;
@@ -439,8 +618,88 @@
 .activity-subtabs {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   padding: 6px 0 8px;
   border-bottom: 1px solid #333;
   margin-bottom: 10px;
+}
+.activity-summary-inline {
+  margin-left: auto;
+  font-size: 12px;
+  color: #888;
+}
+
+/* ── Hook-event panels (recent tools / prompts / agent calls / bg tasks) ── */
+.hook-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.hook-panel {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.hook-panel-wide {
+  grid-column: 1 / -1;
+}
+.hook-panel-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8b949e;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.hook-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  max-height: 160px;
+  overflow: auto;
+}
+.hook-row {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  color: #c9d1d9;
+  line-height: 1.35;
+}
+.hook-ts {
+  color: #6e7681;
+  flex: 0 0 auto;
+  min-width: 58px;
+}
+.hook-txt {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hook-empty {
+  color: #6e7681;
+  font-style: italic;
+  padding: 4px 0;
+}
+.hook-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.hook-count-chip {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }

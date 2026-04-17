@@ -3,13 +3,7 @@
  */
 import WebSocket from "ws";
 import { hostname } from "os";
-import {
-  OROCHI_AGENT,
-  OROCHI_CHANNELS,
-  OROCHI_MODEL,
-  buildWsUrl,
-  maskUrl,
-} from "./config.js";
+import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
 import { getSystemMetrics } from "./metrics.js";
 
 // ---------------------------------------------------------------------------
@@ -161,7 +155,6 @@ export class OrochiConnection {
         type: "register",
         sender: OROCHI_AGENT,
         payload: {
-          channels: OROCHI_CHANNELS,
           machine: hostname(),
           role: "claude-code",
           model: OROCHI_MODEL,
