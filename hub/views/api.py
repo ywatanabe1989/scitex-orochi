@@ -1220,14 +1220,21 @@ def api_releases(request):
     import urllib.error
     import urllib.request
 
-    token = os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("SCITEX_OROCHI_GITHUB_TOKEN") or os.environ.get(
+        "GITHUB_TOKEN"
+    )
     if not token:
         return JsonResponse(
-            {"error": "GITHUB_TOKEN not configured", "code": "missing_token"},
+            {
+                "error": "GitHub token not configured (set SCITEX_OROCHI_GITHUB_TOKEN)",
+                "code": "missing_token",
+            },
             status=503,
         )
 
-    repo = os.environ.get("GITHUB_REPO", "ywatanabe1989/scitex-orochi")
+    repo = os.environ.get("SCITEX_OROCHI_GITHUB_REPO") or os.environ.get(
+        "GITHUB_REPO", "ywatanabe1989/scitex-orochi"
+    )
     limit = min(int(request.GET.get("limit", "100")), 100)
     url = f"https://api.github.com/repos/{repo}/commits?per_page={limit}"
     headers = {
@@ -1316,7 +1323,9 @@ def api_repo_changelog(request, owner, repo):
             status=status,
         )
 
-    token = os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("SCITEX_OROCHI_GITHUB_TOKEN") or os.environ.get(
+        "GITHUB_TOKEN"
+    )
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "Orochi-Dashboard",

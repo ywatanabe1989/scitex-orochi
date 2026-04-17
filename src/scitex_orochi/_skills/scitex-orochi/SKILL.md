@@ -31,6 +31,7 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 
 ### Conventions
 - [cli-conventions](convention-cli.md) — CLI design: verb-noun, --json, exit codes, SCITEX_* env vars
+- [env-vars](convention-env-vars.md) — `SCITEX_OROCHI_*` naming + where values live + how to change safely
 - [python-venv-convention](convention-python-venv.md) — Version-tagged venv chain with symlinks
 - [quality-checks](convention-quality-checks.md) — Fleet-wide quality monitoring and smoke test patterns
 - [connectivity-probe](convention-connectivity-probe.md) — `bash -lc` wrap, SSH flags, cross-OS metric semantics

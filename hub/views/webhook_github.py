@@ -24,8 +24,15 @@ from hub.models import Channel, Message, Workspace
 
 log = logging.getLogger("orochi.github")
 
-_WEBHOOK_SECRET = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
-_TARGET_CHANNEL = os.environ.get("GITHUB_WEBHOOK_CHANNEL", "#progress")
+# Env-var convention: SCITEX_OROCHI_* is the authoritative name. Fall back
+# to the legacy bare names (GITHUB_WEBHOOK_*) during rollout so existing
+# deployments keep working.
+_WEBHOOK_SECRET = os.environ.get(
+    "SCITEX_OROCHI_GITHUB_WEBHOOK_SECRET"
+) or os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+_TARGET_CHANNEL = os.environ.get(
+    "SCITEX_OROCHI_GITHUB_WEBHOOK_CHANNEL"
+) or os.environ.get("GITHUB_WEBHOOK_CHANNEL", "#progress")
 
 
 def _verify_signature(body: bytes, header: str) -> bool:
@@ -111,8 +118,7 @@ def _format_event(event: str, payload: dict) -> str | None:
         url = payload.get("compare", "")
         return (
             f"⬆️ [{repo}] {n} commit{'s' if n != 1 else ''} pushed to "
-            f"{branch} by {user}"
-            + (f" - {url}" if url else "")
+            f"{branch} by {user}" + (f" - {url}" if url else "")
         )
 
     if event == "issues":
@@ -230,7 +236,9 @@ def github_webhook(request):
 
     text = _format_event(event, payload)
     if text is None:
-        log.debug("GitHub webhook: ignoring event=%s action=%s", event, payload.get("action"))
+        log.debug(
+            "GitHub webhook: ignoring event=%s action=%s", event, payload.get("action")
+        )
         return HttpResponse("ok", status=200)
 
     _broadcast(text, event, payload)

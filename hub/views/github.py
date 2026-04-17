@@ -22,7 +22,9 @@ _REPO_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
 
 
 def _fetch_issue_title(repo: str, number: int) -> str | None:
-    token = os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("SCITEX_OROCHI_GITHUB_TOKEN") or os.environ.get(
+        "GITHUB_TOKEN"
+    )
     if not token:
         return None
     url = f"https://api.github.com/repos/{repo}/issues/{number}"
@@ -82,10 +84,15 @@ def github_issue_title(request):
 @require_GET
 def github_issues(request):
     """GET /api/github/issues — proxy to GitHub API for ywatanabe1989/todo issues."""
-    token = os.environ.get("GITHUB_TOKEN")
+    token = os.environ.get("SCITEX_OROCHI_GITHUB_TOKEN") or os.environ.get(
+        "GITHUB_TOKEN"
+    )
     if not token:
         return JsonResponse(
-            {"error": "GITHUB_TOKEN not configured", "code": "missing_token"},
+            {
+                "error": "GitHub token not configured (set SCITEX_OROCHI_GITHUB_TOKEN)",
+                "code": "missing_token",
+            },
             status=503,
         )
 
