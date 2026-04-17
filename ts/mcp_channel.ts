@@ -207,7 +207,12 @@ async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    machine: process.env.SCITEX_OROCHI_MACHINE || hostname() || "",
+    machine:
+      process.env.SCITEX_OROCHI_MACHINE ||
+      process.env.SCITEX_OROCHI_HOSTNAME ||
+      process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
+      hostname() ||
+      "",
     multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 
@@ -352,15 +357,21 @@ const conn = {
       } catch {}
 
       // Register with the hub
+      const _machine =
+        process.env.SCITEX_OROCHI_MACHINE ||
+        process.env.SCITEX_OROCHI_HOSTNAME ||
+        process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
+        hostname() ||
+        "";
       _ws!.send(
         JSON.stringify({
           type: "register",
           sender: OROCHI_AGENT,
           payload: {
-            machine: hostname(),
+            machine: _machine,
             role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
             model: OROCHI_MODEL,
-            agent_id: `${OROCHI_AGENT}@${hostname()}`,
+            agent_id: `${OROCHI_AGENT}@${_machine}`,
             icon: process.env.SCITEX_OROCHI_ICON || "",
             icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
             icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
