@@ -6,6 +6,7 @@ import re
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 from django.http import JsonResponse
@@ -92,11 +93,7 @@ def github_issues(request):
     if state not in ("open", "closed", "all"):
         state = "all"
     labels = request.GET.get("labels", "").strip()
-    label_qs = f"&labels={urllib.request.quote(labels)}" if labels else ""
-    github_url = (
-        "https://api.github.com/repos/ywatanabe1989/todo/issues"
-        f"?state={state}&per_page=100&sort=updated&direction=desc{label_qs}"
-    )
+    label_qs = f"&labels={urllib.parse.quote(labels)}" if labels else ""
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "User-Agent": "Orochi-Dashboard",
@@ -104,10 +101,22 @@ def github_issues(request):
     }
 
     try:
-        req = urllib.request.Request(github_url, headers=headers)
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read())
-            return JsonResponse(data, safe=False)
+        collected: list = []
+        for page in range(1, 11):  # up to 1000 issues
+            github_url = (
+                "https://api.github.com/repos/ywatanabe1989/todo/issues"
+                f"?state={state}&per_page=100&page={page}"
+                f"&sort=updated&direction=desc{label_qs}"
+            )
+            req = urllib.request.Request(github_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                batch = json.loads(resp.read())
+            if not isinstance(batch, list) or not batch:
+                break
+            collected.extend(batch)
+            if len(batch) < 100:
+                break
+        return JsonResponse(collected, safe=False)
     except urllib.error.HTTPError as e:
         return JsonResponse(
             {

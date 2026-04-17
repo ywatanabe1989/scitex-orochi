@@ -19,7 +19,7 @@
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=119">
-    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=103">
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=121">
@@ -182,26 +182,59 @@
                 <div class="releases-subtabs" id="releases-subtabs"></div>
                 <div id="releases-content" class="releases-content"></div>
             </div>
-            <div id="files-view" class="todo-view" style="display:none">
-                <!-- hook-bypass: inline-style -->
-                <div class="files-filter-bar">
-                    <button class="files-filter-btn active" data-mime="all">All</button>
-                    <button class="files-filter-btn" data-mime="image">Images</button>
-                    <button class="files-filter-btn" data-mime="video">Videos</button>
-                    <button class="files-filter-btn" data-mime="audio">Audio</button>
-                    <button class="files-filter-btn" data-mime="application/pdf">PDFs</button>
-                    <button class="files-filter-btn" data-mime="other">Other</button>
-                    <span class="files-filter-sep"></span>
-                    <button class="files-view-btn active"
-                            id="files-view-grid"
-                            title="Grid view"
-                            onclick="filesSetView('grid')">&#9641;</button>
-                    <button class="files-view-btn"
-                            id="files-view-list"
-                            title="List view"
-                            onclick="filesSetView('list')">&#9776;</button>
+            <!-- hook-bypass: inline-style -->
+            <div id="files-view" class="todo-view files-view" style="display:none">
+                <div class="files-toolbar">
+                    <div class="files-filter-bar">
+                        <button class="files-filter-btn active" data-mime="all">All</button>
+                        <button class="files-filter-btn" data-mime="image">Images</button>
+                        <button class="files-filter-btn" data-mime="video">Videos</button>
+                        <button class="files-filter-btn" data-mime="audio">Audio</button>
+                        <button class="files-filter-btn" data-mime="application/pdf">PDFs</button>
+                        <button class="files-filter-btn" data-mime="other">Other</button>
+                    </div>
+                    <div class="files-toolbar-right">
+                        <div class="files-search-wrap">
+                            <span class="files-search-icon">&#128269;</span>
+                            <input type="search"
+                                   id="files-search"
+                                   class="files-search-input"
+                                   placeholder="Fuzzy filter (space = AND)"
+                                   oninput="filesSetQuery(this.value)"
+                                   autocomplete="off">
+                        </div>
+                        <div class="files-view-group" role="tablist" aria-label="View mode">
+                            <button class="files-view-btn active"
+                                    id="files-view-grid"
+                                    title="Icons"
+                                    onclick="filesSetView('grid')">&#9641;</button>
+                            <button class="files-view-btn"
+                                    id="files-view-tiles"
+                                    title="Tiles"
+                                    onclick="filesSetView('tiles')">&#9783;</button>
+                            <button class="files-view-btn"
+                                    id="files-view-list"
+                                    title="List"
+                                    onclick="filesSetView('list')">&#9776;</button>
+                            <button class="files-view-btn"
+                                    id="files-view-details"
+                                    title="Details"
+                                    onclick="filesSetView('details')">&#8801;</button>
+                        </div>
+                        <button class="files-view-btn"
+                                id="files-view-preview"
+                                title="Preview pane"
+                                onclick="filesTogglePreview()">&#9635;</button>
+                    </div>
                 </div>
-                <div id="files-grid" class="files-grid"></div>
+                <div id="files-body" class="files-body">
+                    <div id="files-grid" class="files-grid"></div>
+                    <aside id="files-preview-pane"
+                           class="files-preview-pane files-preview-hidden">
+                        <!-- hook-bypass: inline-style -->
+                        <div class="files-preview-empty">No file selected</div>
+                    </aside>
+                </div>
             </div>
             <!-- Image lightbox viewer -->
             <div id="img-viewer-overlay"
@@ -346,7 +379,7 @@
     <script src="{% static 'hub/activity-tab.js' %}?v=119"></script>
     <script src="{% static 'hub/viz-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/upload.js' %}?v=111"></script>
-    <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/files-tab.js' %}?v=103"></script>
     <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/reactions.js' %}?v=107"></script>
     <script src="{% static 'hub/threads.js' %}?v=122"></script>

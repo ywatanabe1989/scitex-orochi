@@ -121,7 +121,11 @@
   gap: 8px;
   padding: 4px 8px;
   border-left: 3px solid #555;
+  margin-top: 16px;
   margin-bottom: 4px;
+}
+.todo-group:first-child .todo-group-header {
+  margin-top: 0;
 }
 .todo-group-label {
   font-size: 12px;
