@@ -69,7 +69,13 @@ function _activateTab(tab) {
     fetchWorkspaces();
   } else if (tab === "activity") {
     if (activityView) {
-      activityView.style.display = "block";
+      /* Clear the inline display:none set above and let the CSS rule
+       * (#activity-view.todo-view { display: flex }) take effect. An
+       * inline `display: block` here would override the flex container
+       * declaration, which breaks the flex chain and prevents
+       * `.activity-grid` from scrolling (its `overflow: auto` never has
+       * an upper bound to trigger against). See #200 for the CSS side. */
+      activityView.style.display = "";
       activityView.style.flex = "1";
     }
     if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
