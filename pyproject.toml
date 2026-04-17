@@ -73,10 +73,10 @@ Repository = "https://github.com/ywatanabe1989/scitex-orochi"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scitex_orochi", "hub", "orochi"]
-artifacts = ["_ts/**"]
+artifacts = ["_ts/**", "_skills/**"]
 
 [tool.hatch.build.targets.sdist]
-artifacts = ["src/scitex_orochi/_ts/**"]
+artifacts = ["src/scitex_orochi/_ts/**", "src/scitex_orochi/_skills/**"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
