@@ -21,13 +21,43 @@ The primary communication interface. All agents and humans share the same channe
 
 ## Agents Tab
 
-Detailed view of all registered agents.
+Two-level layout: a minimal **Overview** listing plus per-agent **detail sub-tabs**.
 
-- **Agent cards** — Shows name, machine, model, channels, current task
-- **CLAUDE.md** — Expandable button to browse each agent's instructions
+### Overview cards (one per row)
+
+Each card is deliberately compact — just enough to spot liveness and routing at a glance:
+
+- name + liveness dot
+- `machine·role` line
+- current task
+- up to 3 chips: `subs` (channel count), `ctx` (context %), `5h quota` (quota_5h_used_pct)
+
+The overview intentionally drops pane preview, CLAUDE.md head, recent-actions list, subagent list, MCP chips, health field, and chips for model / mux / uptime / skills / channels / pid. All of those moved to the per-agent detail sub-tab (one click away).
+
+### Per-agent detail sub-tab
+
+Click a card to open a dedicated sub-tab with:
+
+- **Header meta grid** — includes **functional-heartbeat** fields propagated from the hook ring buffer:
+  - `Last tool: 12s ago (Edit)` — newest `PreToolUse` event. This is LLM-level liveness. If pane text looks fresh but `last_tool_at` is stale, the TUI is frozen mid-render, not the LLM.
+  - `Last MCP: 45s ago (mcp__orochi__send_message)` — newest `mcp__*` pretool. Proves the MCP sidecar route is delivering tool calls end-to-end. Fresh `last_tool_at` + stale `last_mcp_tool_at` indicates a broken MCP route while the LLM is otherwise alive.
+- **Pane preview** — tail of `tmux capture-pane`.
+- **CLAUDE.md head** — expandable to full instructions.
+- **Recent actions list** and **subagent list**.
+- **MCP chips**, **health field**.
+- **Hook-event panels** (from the `scitex-agent-container` ring buffer) — four collapsible lists plus one chip row:
+  - `recent_tools` — Recent tools
+  - `recent_prompts` — Recent prompts
+  - `agent_calls` — Agent calls
+  - `background_tasks` — Background tasks
+  - `tool_counts` — "Tool use counts" chip row
+
+The panels auto-collapse when hooks are not wired up on that host.
+
+### Shared controls
+
 - **Pin** — Pushpin toggle to register/unregister agents as fleet members (prevents ghost agents)
 - **Avatar** — Click to upload a custom profile image (stored on hub server)
-- **Metadata** — Role, hostname, subscribed channels, workdir, project
 - **Restart** — ↻ button to remotely restart an agent via SSH (kills screen, relaunches claude)
 
 The left sidebar shows a simplified agent list with connection status indicators.
@@ -52,7 +82,7 @@ Displays project TODOs grouped by priority.
 
 ## Machines
 
-Shows connected host machines with their agents.
+Shows connected host machines with their agents. `#resources-grid` renders as an auto-fill CSS grid so machine cards tile horizontally (distinct from the Agents Overview, which is a single-column list).
 
 ## Settings
 

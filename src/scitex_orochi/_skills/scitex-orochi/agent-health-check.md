@@ -57,6 +57,26 @@ curl -s https://scitex-orochi.com/api/agents/ | python3 -m json.tool | grep <age
 
 Or from the dashboard Agents tab — the agent should show as connected.
 
+### 5b. Functional Heartbeat (LLM + MCP liveness)
+
+A WebSocket registration only proves the sidecar is alive. To confirm the **LLM itself** is still executing tool calls, inspect the functional-heartbeat shortcuts on `/api/agents/<name>/detail/`:
+
+```bash
+curl -s https://scitex-orochi.com/api/agents/<agent-name>/detail/ \
+  | python3 -c "import json,sys; d=json.load(sys.stdin); \
+    print('last_tool:   ', d.get('last_tool_at'),    d.get('last_tool_name')); \
+    print('last_mcp:    ', d.get('last_mcp_tool_at'), d.get('last_mcp_tool_name'))"
+```
+
+Interpretation:
+
+- Fresh `last_tool_at` (< 1–2 min): LLM is actively calling tools. Healthy.
+- Stale `last_tool_at`, fresh pane text: TUI is frozen mid-render or LLM is stuck; pane-scraping alone would miss this.
+- Fresh `last_tool_at`, stale `last_mcp_tool_at`: LLM alive but MCP sidecar route is broken — agent cannot receive messages via `mcp__orochi__*`. Restart the sidecar (`scitex-agent-container restart`).
+- Both stale for > 10 min with connected WebSocket: classify as stuck; check pane state (see `agent-pane-state-patterns.md`).
+
+These fields are derived by `scitex-agent-container`'s `event_log.summarize()` from the Claude Code hook ring buffer and propagate end-to-end via `heartbeat-push` -> `/api/agents/register/`. The per-agent detail view renders them in the header meta grid (e.g. "Last tool: 12s ago (Edit)").
+
 ### 6. Dev Channel Dialog Cleared
 
 The agent is not stuck on the "Do you want to proceed?" TUI prompt for `--dangerously-load-development-channels`. This prompt blocks all message processing.

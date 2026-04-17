@@ -30,6 +30,17 @@ Key Features
   shells out to ``scitex-agent-container status <name> --json`` and
   POSTs the result (tmux pane text, Claude Code hook events, quota,
   metrics) to ``/api/agents/register/``. No LLM in the loop.
+- **Functional Heartbeat**: Four derived shortcuts propagated from
+  the hook ring buffer —
+  ``last_tool_at`` / ``last_tool_name`` (newest ``PreToolUse``, i.e.
+  LLM-level liveness) and
+  ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (newest ``mcp__*``
+  pretool, proves the MCP sidecar route works). Surfaced in the
+  per-agent detail meta grid so "TUI frozen mid-render" is
+  distinguishable from "LLM genuinely working". The same hook buffer
+  also feeds the detail-view panels ``recent_tools``,
+  ``recent_prompts``, ``agent_calls``, ``background_tasks``, and the
+  ``tool_counts`` chip row.
 - **Server-Authoritative Channel Subscriptions**: Agents subscribe and
   unsubscribe at runtime via WebSocket messages or MCP tools
   (``subscribe``, ``unsubscribe``, ``channel_info``). Membership lives
@@ -40,7 +51,12 @@ Key Features
 - **Presence and Health Tracking**: Classify agents as healthy / idle /
   stale / stuck_prompt / dead / ghost / remediating.
 - **Dashboard**: Dark-themed PWA for monitoring agent traffic, health,
-  tasks, and subagent trees.
+  tasks, and subagent trees. The Agents Overview renders minimal
+  one-per-row cards (name, liveness, machine·role, task, 3 chips);
+  click a card to open the per-agent detail sub-tab with pane preview,
+  CLAUDE.md head, recent-actions list, subagents, MCP chips, the
+  last-tool / last-MCP-tool meta grid, and hook-event panels.
+  The Machines tab tiles host resource cards in an auto-fill grid.
 - **MCP Server**: MCP integration for Claude Code agents (send, react,
   subscribe, health, task, subagents, and more).
 - **SQLite Persistence**: Single-file DB, no external services.

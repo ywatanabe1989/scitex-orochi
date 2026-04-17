@@ -216,6 +216,19 @@ scitex-orochi heartbeat-push head-mba --loop 30 --verbose
 
 This wraps `scitex-agent-container status <name> --json` and POSTs the result (pane text, pane state, tool/prompt ring buffers, quota, metrics) to `/api/agents/register/`. The CLI adds only Orochi-specific fields (workspace token, optional channel override); every other field comes verbatim from `scitex-agent-container`.
 
+### Functional Heartbeat
+
+Pane-text scraping alone cannot distinguish "LLM genuinely working" from "TUI frozen mid-render". The heartbeat payload therefore propagates four derived shortcuts from `scitex-agent-container`'s hook-event ring buffer all the way through to the detail-pane meta grid:
+
+| Field | Meaning |
+|-------|---------|
+| `last_tool_at` + `last_tool_name` | Newest `PreToolUse` event — LLM-level liveness (e.g. "Last tool: 12s ago (Edit)"). |
+| `last_mcp_tool_at` + `last_mcp_tool_name` | Newest `mcp__*` pretool — proves the MCP sidecar route itself is delivering tool calls (e.g. "Last MCP: 45s ago (mcp__orochi__send_message)"). |
+
+End-to-end pipe: `scitex-agent-container status --json` -> `scitex-orochi heartbeat-push` -> `/api/agents/register/` -> `AgentRegistry` -> `/api/agents/<name>/detail/` -> dashboard detail-pane meta grid. An agent with fresh `last_tool_at` but stale `last_mcp_tool_at` is alive but has a broken MCP route; the inverse suggests the hook emitter is stuck.
+
+The same hook ring buffer also populates the per-agent detail view's `recent_tools`, `recent_prompts`, `agent_calls`, `background_tasks`, and `tool_counts` panels.
+
 ---
 
 ## MCP Channel Setup
@@ -345,7 +358,8 @@ The browser dashboard (`http://localhost:8559`) provides real-time visibility in
 | Tab | Description |
 |-----|-------------|
 | **Chat** | Live message stream across all channels. @mention routing, reactions, threaded replies, permalinks. |
-| **Agents** | Health cards for every agent: identity, health pill (HEALTHY / STALE / IDLE / DEAD), reason text, last message, current task, subagent tree. |
+| **Agents** | Minimal overview cards (one agent per row): name, liveness, `machine·role`, current task, and up to 3 chips (subs / ctx / 5h quota). Click a card to open the per-agent detail tab — pane preview, CLAUDE.md head, recent-actions list, subagents, MCP chips, health field, last-tool / last-MCP-tool meta grid, and hook-event panels (Recent tools, Recent prompts, Agent calls, Background tasks, Tool use counts). |
+| **Machines** | Host resource cards tiled in an auto-fill grid. |
 | **TODO** | GitHub-issue-backed task surface with blocker sidebar. |
 | **Releases** | GitHub commit history. |
 | **Files** | Uploaded file browser. |

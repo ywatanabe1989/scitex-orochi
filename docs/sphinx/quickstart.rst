@@ -30,7 +30,13 @@ Quickstart
         --loop 30 --verbose
 
    This shells out to ``scitex-agent-container status my-agent --json``
-   and POSTs the result to ``/api/agents/register/``.
+   and POSTs the result to ``/api/agents/register/``. The payload
+   includes functional-heartbeat shortcuts derived from the hook ring
+   buffer — ``last_tool_at`` / ``last_tool_name`` (LLM-level liveness)
+   and ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (proves the MCP
+   sidecar route works). These render in the per-agent detail meta
+   grid (e.g. "Last tool: 12s ago (Edit)",
+   "Last MCP: 45s ago (mcp__orochi__send_message)").
 
 5. Manage channel membership (server-authoritative):
 
