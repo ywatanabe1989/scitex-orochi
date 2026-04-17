@@ -5,14 +5,14 @@ description: Canonical way to probe remote host liveness, tmux sessions, and pro
 
 # Connectivity Probe
 
-Every fleet healer, quality checker, and fleet_watch-style agent eventually needs to ask another host "are you alive, and how many claude/tmux/bun processes are running?" This skill codifies the one correct way to do it after repeated false positives (MBA reporting zero tmux sessions from ywata-note-win on 2026-04-13, msg#8283 / #8319).
+Every fleet healer, quality checker, and fleet_watch-style agent eventually needs to ask another host "are you alive, and how many claude/tmux/bun processes are running?" This skill codifies the one correct way to do it after repeated false positives (primary workstation reporting zero tmux sessions from secondary workstation on 2026-04-13, msg#8283 / #8319).
 
 ## The non-interactive shell pitfall
 
 Naive:
 ```bash
-ssh mba 'tmux ls'          # often reports "no sessions"
-ssh mba 'pgrep -f claude'  # often reports 0
+ssh <host> 'tmux ls'          # often reports "no sessions"
+ssh <host> 'pgrep -f claude'  # often reports 0
 ```
 
 Why it fails: `ssh host 'cmd'` runs a **non-interactive, non-login** shell. That shell has not sourced `~/.bashrc` / `~/.profile` / `~/.bash_profile`, so:
@@ -75,15 +75,15 @@ Counter-pattern: treating "SSH succeeded + tmux returned 0" as "host has no sess
 
 ## Canonical reference implementation
 
-head-nas owns the canonical implementation at `fleet_watch.sh` + `probe_remote.sh` (see msg#8098, 2026-04-13), producing JSON snapshots under `~/.scitex/orochi/fleet-watch/`. Fields:
+head-<host> owns the canonical implementation at `fleet_watch.sh` + `probe_remote.sh` (see msg#8098, 2026-04-13), producing JSON snapshots under `~/.scitex/orochi/fleet-watch/`. Fields:
 
 ```json
 {
-  "host": "mba",
+  "host": "<host-a>",
   "ts": "2026-04-13T06:00:00Z",
   "ssh": "up",
   "tmux_count": 9,
-  "tmux_names": ["head-mba", "mamba-healer-mba", ...],
+  "tmux_names": ["head-<host-a>", "worker-healer-<host-a>", ...],
   "claude_procs": 12,
   "bun_procs": 18,
   "load1": 2.34,
@@ -92,14 +92,14 @@ head-nas owns the canonical implementation at `fleet_watch.sh` + `probe_remote.s
 }
 ```
 
-Healers and quality checkers should **read these snapshots** rather than re-running probes themselves (see `resource-hub.md` + rule #6 of `fleet-communication-discipline.md`). Running your own probe is acceptable only when:
+Healers and quality checkers should **read these snapshots** rather than re-running probes themselves (see `infra-resource-hub.md` + rule #6 of `fleet-communication-discipline.md`). Running your own probe is acceptable only when:
 
 - You need a field the canonical snapshot doesn't have, or
-- You are the canonical implementation (head-nas).
+- You are the canonical implementation (head-<host>).
 
 ## Cross-OS semantics — Darwin is not Linux
 
-The same metric name means different things on macOS and Linux. Probes that assume Linux semantics produce false positives on Darwin hosts (MBA). Observed 2026-04-13, msg#8603 — third probe false positive of the session after the tmux-socket and stale-LAN-IP ones.
+The same metric name means different things on macOS and Linux. Probes that assume Linux semantics produce false positives on Darwin hosts (primary workstation). Observed 2026-04-13, msg#8603 — third probe false positive of the session after the tmux-socket and stale-LAN-IP ones.
 
 ### Memory
 
@@ -177,7 +177,7 @@ probe_mem() {
 }
 ```
 
-The canonical `probe_remote.sh` under head-nas's `fleet_watch.sh` owns the cross-OS branching. If you find yourself writing OS-specific parsing outside that script, stop — extend `probe_remote.sh` instead of forking a second implementation.
+The canonical `probe_remote.sh` under head-<host>'s `fleet_watch.sh` owns the cross-OS branching. If you find yourself writing OS-specific parsing outside that script, stop — extend `probe_remote.sh` instead of forking a second implementation.
 
 ## Common mistakes checklist
 
@@ -190,7 +190,7 @@ Before shipping any probe code, verify:
 - [ ] Probe results written to a file, not just printed — rule #6 forbids routine chat posts
 - [ ] Cross-OS metric parsing: every OS-level read (memory, load, disk) branches on `uname -s` of the **target** host, not the probing host. No Linux-only shortcuts (`/proc/loadavg`, `free -m $7`, `vm_stat Pages free` treated as free memory).
 - [ ] Alias override guard: every coreutil invocation uses `command <tool>` / `\<tool>` / absolute path / subprocess list form. Never trust that `free`, `ls`, `df`, `ps`, etc. on a remote host resolve to the OS binary — user dotfiles can alias them to anything.
-- [ ] MBA-specific: `tmux ls` works because `TMUX_TMPDIR` is set in `.bashrc` — confirm with `ssh mba 'bash -lc "env | grep TMUX"'`. Memory probes must use `memory_pressure` / `vm.page_*_count`, never raw `Pages free` (that's always ~100 MB by design; treating it as a critical threshold false-alarms every tick).
+- [ ] primary workstation-specific: `tmux ls` works because `TMUX_TMPDIR` is set in `.bashrc` — confirm with `ssh <host> 'bash -lc "env | grep TMUX"'`. Memory probes must use `memory_pressure` / `vm.page_*_count`, never raw `Pages free` (that's always ~100 MB by design; treating it as a critical threshold false-alarms every tick).
 - [ ] Spartan-specific: login1 has `squeue`/`sinfo`; compute nodes have a different view. Never probe compute nodes via ssh for fleet state.
 
 ## Adoption Checklist
@@ -202,12 +202,12 @@ Every fleet healer and fleet_watch-style loop must satisfy all of these before b
 - [ ] **Three-outcome schema**: SSH failure, command error, and command success are all distinguished — never collapse to a single "0" that means "unknown".
 - [ ] **Compound escalation gate**: no host is marked down on a single metric. Minimum compound condition = `ssh=down` **AND** (`claude_procs=0` **OR** `orochi_presence=absent`).
 - [ ] **Silent success**: routine all-green scans are written to a local log file only, never posted to any channel (see `fleet-communication-discipline.md` rule #6).
-- [ ] **Snapshot reuse**: before running a fresh probe, check whether head-nas's `fleet_watch.sh` already captured the same data in `~/.scitex/orochi/fleet-watch/`. If yes, read the snapshot instead.
+- [ ] **Snapshot reuse**: before running a fresh probe, check whether head-<host>'s `fleet_watch.sh` already captured the same data in `~/.scitex/orochi/fleet-watch/`. If yes, read the snapshot instead.
 - [ ] **Host-specific gotchas**:
-  - MBA: confirm `ssh mba 'bash -lc "env | grep TMUX"'` shows `TMUX_TMPDIR`.
+  - primary workstation: confirm `ssh <host> 'bash -lc "env | grep TMUX"'` shows `TMUX_TMPDIR`.
   - Spartan: probe login1 only, never compute nodes. Respect `project_spartan_login_node` memory.
-  - WSL (ywata-note-win): `nas` alias routes via cloudflared bastion, not LAN IP (see #292/#301 for history).
-  - NAS: `tmux` may run under a different user's socket; confirm before escalating on `tmux_count=0`.
+  - WSL hosts: remote aliases may route via cloudflared bastion, not LAN IP (see #292/#301 for history).
+  - NAS/storage hosts: `tmux` may run under a different user's socket; confirm before escalating on `tmux_count=0`.
 
 ## Per-host adoption status
 
@@ -215,29 +215,29 @@ Tracked 2026-04-13. Agents responsible for each lane must update this list when 
 
 | Host | Healer | Canonical compliant? | Notes |
 |---|---|---|---|
-| ywata-note-win (WSL) | mamba-healer-ywata-note-win | ✅ 2026-04-13 (cron job 40c61ea4 / msg#8406) | `bash -lc`, compound gate, silent success verified |
-| mba | mamba-healer-mba | 🔄 in-progress (2026-04-13, manba-mode dispatch) | Owner: head-mba. Canonical /loop prompt drafted by mamba-skill-manager; head-mba to apply. |
-| nas | mamba-healer-nas | ⏳ pending (depends on fleet_watch snapshot reuse) | Owner: head-nas. Consume `~/.scitex/orochi/fleet-watch/` instead of re-probing. |
-| spartan | head-spartan (no mamba-healer yet) | ⏳ feasibility note only | Constraint: login1-only, never compute nodes. Probe must use `bash -lc`. |
+| host-a (WSL) | worker-healer-<host-a> | ✅ 2026-04-13 (cron job 40c61ea4 / msg#8406) | `bash -lc`, compound gate, silent success verified |
+| host-b (primary workstation) | worker-healer-<host-b> | 🔄 in-progress (2026-04-13) | Owner: head-<host-b>. Canonical /loop prompt drafted by worker-skill-manager; head-<host-b> to apply. |
+| host-c (NAS/storage) | worker-healer-<host-c> | ⏳ pending (depends on fleet_watch snapshot reuse) | Owner: head-<host-c>. Consume `~/.scitex/orochi/fleet-watch/` instead of re-probing. |
+| spartan | head-<host> (no mamba-healer yet) | ⏳ feasibility note only | Constraint: login1-only, never compute nodes. Probe must use `bash -lc`. |
 
 ## Per-lane issue templates
 
 Copy-paste these into #agent / issue tracker when assigning adoption work to a host owner.
 
-### mba lane (owner: head-mba)
-> **Task**: Align `mamba-healer-mba` `/loop` with `connectivity-probe.md` canonical pattern.
+### Primary workstation lane (owner: head-<host>)
+> **Task**: Align `worker-healer-<host>` `/loop` with `convention-connectivity-probe.md` canonical pattern.
 >
 > **Acceptance**:
 > 1. Every remote probe wrapped in `bash -lc`.
 > 2. SSH flags as in skill doc.
 > 3. Compound escalation gate (SSH fail **AND** (claude=0 **OR** orochi absent)).
 > 4. Routine all-green: written to `~/.scitex/healer/last-scan.json`, **not** posted.
-> 5. Consume `~/.scitex/orochi/fleet-watch/` if head-nas snapshot is available; fall back to own probe otherwise.
+> 5. Consume `~/.scitex/orochi/fleet-watch/` if head-<host> snapshot is available; fall back to own probe otherwise.
 >
-> **Done signal**: one-line post to #agent: `mamba-healer-mba adoption complete, job <id>`, then mark this row ✅ in `connectivity-probe.md`.
+> **Done signal**: one-line post to #agent: `worker-healer-<host> adoption complete, job <id>`, then mark this row ✅ in `convention-connectivity-probe.md`.
 
-### nas lane (owner: head-nas)
-> **Task**: Align `mamba-healer-nas` `/loop` with canonical pattern and switch it to **pure consumer** of its own `fleet_watch.sh` output (no duplicate probes).
+### NAS/storage lane (owner: head-<host>)
+> **Task**: Align `worker-healer-<host>` `/loop` with canonical pattern and switch it to **pure consumer** of its own `fleet_watch.sh` output (no duplicate probes).
 >
 > **Acceptance**:
 > 1. Healer reads `~/.scitex/orochi/fleet-watch/*.json` on every tick; no direct `ssh` calls.
@@ -245,10 +245,10 @@ Copy-paste these into #agent / issue tracker when assigning adoption work to a h
 > 3. Silent success (no routine posts).
 > 4. If the snapshot is older than 2× `fleet_watch` interval, escalate staleness once and stop probing until fresh.
 >
-> **Done signal**: same as mba lane.
+> **Done signal**: same as primary workstation lane.
 
-### spartan lane (owner: head-spartan)
-> **Task**: Feasibility note for a future `mamba-healer-spartan`. No implementation until #283 resolved.
+### HPC cluster lane (owner: head-<host>)
+> **Task**: Feasibility note for a future `worker-healer-<host>`. No implementation until #283 resolved.
 >
 > **Acceptance**:
 > 1. Document whether a long-lived probe loop can run on login1 (policy: controller-only is OK, see `project_spartan_login_node` memory).
@@ -259,7 +259,7 @@ Copy-paste these into #agent / issue tracker when assigning adoption work to a h
 
 ## Related
 
-- `resource-hub.md` — the aggregated snapshot store that consumes probe output
+- `infra-resource-hub.md` — the aggregated snapshot store that consumes probe output
 - `fleet-communication-discipline.md` rule #6 — silent success, no routine OK posts
 - `agent-health-check.md` — the 8-step health checklist that depends on these probes
 - memory `project_spartan_login_node.md` — probe Spartan on login1 only

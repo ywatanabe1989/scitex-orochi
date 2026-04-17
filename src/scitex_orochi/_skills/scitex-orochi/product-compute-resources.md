@@ -29,7 +29,7 @@ Runs multiple Claude Code agents in tmux sessions.
 **Rule of thumb**: 4-6 agents per 16 GB RAM. Plan for Opus (larger context) vs Haiku split.
 
 ### Role 2: Docker/CI/Isolation Host
-Runs isolated Docker containers (mamba-newbie, CI, builds).
+Runs isolated Docker containers (worker-newbie, CI, builds).
 
 | Tier | CPU | RAM | SSD | Example |
 |------|-----|-----|-----|---------|
@@ -44,7 +44,7 @@ Hosts independent status pages, uptime monitors.
 | Minimum | 2 cores | 4 GB | 64 GB | Raspberry Pi 5 (8GB) | ~15-20k |
 | Basic | 4 cores (N100) | 8 GB | 128 GB | Intel N100 mini PC | ~30-50k |
 
-**Critical**: This host MUST be on separate infrastructure from scitex.ai (NAS) so it survives primary outages.
+**Critical**: This host MUST be on separate infrastructure from the primary server (NAS/storage host) so it survives primary outages.
 
 ### Role 4: GPU Compute (ML/inference)
 Local LLM, Whisper, image generation, research ML.
@@ -60,8 +60,8 @@ Local LLM, Whisper, image generation, research ML.
 ### Role 5: Storage/Backup
 Redundant storage for data, Docker images, backups.
 
-- Existing NAS (Synology/QNAP) sufficient for most cases
-- For redundancy: second NAS or cold backup drive
+- Existing NAS/storage host sufficient for most cases
+- For redundancy: second NAS/storage or cold backup drive
 - Target: 4+ TB usable, RAID1 minimum
 
 ## Fleet Composition Recommendations
@@ -74,7 +74,7 @@ Redundant storage for data, Docker images, backups.
 
 ### Recommended Next Expansion (~¥150-200k)
 Priority order:
-1. **Mac mini M4 (32GB)** ~130k — dedicated agent cluster, mamba-newbie isolation
+1. **Mac mini M4 (32GB)** ~130k — dedicated agent cluster, worker-newbie isolation
 2. **Raspberry Pi 5** ~15k — independent status page
 
 ### Full Home HPC (¥1.5-2M)
@@ -107,7 +107,7 @@ Agent hosts are cheap to run 24/7; GPU workstations should be on-demand.
 ## Scaling Strategy
 
 1. **Start small**: Current fleet (MBA + NAS + WSL + HPC) is already capable
-2. **Add isolation host first**: Mini PC or Pi for mamba-newbie + status page (~¥50k)
+2. **Add isolation host first**: Mini PC or Pi for worker-newbie + status page (~¥50k)
 3. **Add dedicated agent cluster**: Mac mini when MBA load is too high
 4. **Add GPU last**: Only when spartan queue delays become research bottleneck
 5. **Redundancy**: Always have a backup path — second NAS, external backup drive

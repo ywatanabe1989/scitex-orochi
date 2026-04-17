@@ -1,6 +1,6 @@
 ---
 name: orochi-permission-prompt-patterns
-description: Canonical pattern catalog for Claude Code permission prompts and other interactive "agent is stuck waiting for a keystroke" states. Loaded at boot by mamba-healer-<host> workers so the fleet-health-daemon Phase 4 recovery playbook §7.1 has concrete regex → action mappings. Grows by observation per ywatanabe msg#11779 ("パターンを蓄積することが大事"). Not executed by humans — fed to automation.
+description: Canonical pattern catalog for Claude Code permission prompts and other interactive "agent is stuck waiting for a keystroke" states. Loaded at boot by mamba-healer-<host> workers so the fleet-health-daemon Phase 4 recovery playbook §7.1 has concrete regex → action mappings. Grows by observation per operator msg#11779 ("パターンを蓄積することが大事"). Not executed by humans — fed to automation.
 ---
 
 # Permission-Prompt Patterns
@@ -27,11 +27,11 @@ candidate.
 
 ## Why a catalog, not a catch-all
 
-ywatanabe msg#11779 is explicit: "パターンを蓄積することが大事" —
+operator msg#11779 is explicit: "パターンを蓄積することが大事" —
 pattern accumulation is the important discipline, not a greedy
 "auto-send Enter on anything that looks stuck" heuristic. A
 greedy heuristic race-corrupts agents mid-composition (see
-`fleet-health-daemon-design.md` §7.6, head-mba MBA sweep
+`fleet-health-daemon-design.md` §7.6, head-<host> fleet sweep
 2026-04-15 caught paste-buffer-unsent cases where a blanket-Enter
 would have submitted garbage). A curated catalog with explicit
 regex + action + rationale is the inverse: slow to add a new
@@ -64,7 +64,7 @@ Every entry in this catalog has the same 7 fields:
     ❯ 1. Yes
       2. Yes, and always allow ...
       3. No
-  first-seen: 2026-04-15 msg#11799 (head-mba MBA sweep)
+  first-seen: 2026-04-15 msg#11799 (head-<host> fleet sweep)
   recovery-keystroke: "2"
   rationale: |
     Option 2 is "always allow" — it accepts the action AND adds it
@@ -91,7 +91,7 @@ Every entry in this catalog has the same 7 fields:
     The agent is hovering on a Claude Code permission modal that
     shows the "Esc to cancel · Tab to amend" footer. The actual
     action buttons vary above this footer.
-  first-seen: 2026-04-15 msg#11855 (head-nas compound-failure incident)
+  first-seen: 2026-04-15 msg#11855 (head-<host> compound-failure incident)
   recovery-keystroke: "2"
   rationale: |
     Same as entry #1 — on current Claude Code, the 3-option menu
@@ -146,9 +146,9 @@ Every entry in this catalog has the same 7 fields:
     The prompt area shows a "[Pasted text #N +M lines]" marker
     indicating the agent pasted content into the prompt but
     never submitted it. Observed 2026-04-15 across multiple
-    agents during the MBA sweep (5 agents) and the NAS sweep
-    (mamba-healer-nas, ~2.5 h wedge).
-  first-seen: 2026-04-15 msg#11799 (head-mba MBA sweep, 5 panes)
+    agents during the fleet sweep (5 agents) and a secondary host sweep
+    (worker-healer-<host>, ~2.5 h wedge).
+  first-seen: 2026-04-15 msg#11799 (head-<host> fleet sweep, 5 panes)
   recovery-keystroke: "\n"   # (Enter)
   rationale: |
     The paste is in the agent's own input buffer waiting to be
@@ -236,7 +236,7 @@ workflow is:
 
 The catalog is a **living document**. Every new prompt variant
 Claude Code ships (new wording, new option ordering, new modal
-style) becomes a new entry here. ywatanabe msg#11779 frames this
+style) becomes a new entry here. operator msg#11779 frames this
 as "pattern accumulation matters more than the automation rush"
 — stay slow and safe on additions, fast on escalation when
 nothing matches.
@@ -285,12 +285,12 @@ not a regex.
 - `fleet-health-daemon-design.md` — §7.1 (permission prompt
   recovery) and §7.6 (paste-buffer-unsent recovery) cite this
   catalog as the source of truth for regex + keystroke.
-- `pane-state-patterns.md` — the broader tmux pane state regex
+- `agent-pane-state-patterns.md` — the broader tmux pane state regex
   catalog (idle / working / permission_prompt / stuck). This
   catalog is the permission_prompt sub-classifier.
 - `fleet-communication-discipline.md` — rule #6 silent-success
   governs when the worker posts after a successful recovery.
-- `close-evidence-gate.md` — if a recovery closes an issue
+- `fleet-close-evidence-gate.md` — if a recovery closes an issue
   (e.g. "stuck agent unblocked → close reproducer issue"), the
   worker uses the gh-issue-close-safe wrapper, not bare
   `gh issue close`.
@@ -301,18 +301,18 @@ Every incident that motivated a new entry or exposed a gap in
 this catalog is recorded here for audit. Short, dated, with a
 message ID pointer.
 
-- **2026-04-15 msg#11799** — MBA sweep caught 5 paste-buffer-
+- **2026-04-15 msg#11799** — fleet sweep caught 5 paste-buffer-
   unsent agents. Catalog gains entry #4, paste-buffer-unsent.
-- **2026-04-15 msg#11855** — head-nas 2.5 h compound-failure
+- **2026-04-15 msg#11855** — head-<host> 2.5 h compound-failure
   (stale agent_meta.py + Claude Code Esc/Tab modal). Catalog
   gains entry #2, claude-esc-cancel-tab-amend. Motivates the
   fleet-health-daemon §10A probe-liveness vs agent-responsiveness
   divergence section.
-- **2026-04-15 msg#11907** — mamba-healer-nas ghost-alive case
+- **2026-04-15 msg#11907** — worker-healer-<host> ghost-alive case
   (probe NDJSON fresh but Claude session wedged). No new catalog
   entry but confirmed the loading order above (paste-buffer
   first, then modal).
-- **2026-04-14 earlier** — head-mba concurrent-instance incident
+- **2026-04-14 earlier** — head-<host> concurrent-instance incident
   (scitex-orochi#144). Not a permission prompt, but informs the
   "never auto-kill duplicate Claude sessions" anti-pattern in
   the fleet-health-daemon design.

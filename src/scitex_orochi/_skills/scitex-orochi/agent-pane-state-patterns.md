@@ -11,7 +11,7 @@ Every fleet healer, watchdog, and auto-unblock loop needs one shared way to answ
 
 2026-04-13 the fleet hit every failure mode in a single session: dev-channels prompts that blocked for 5 hours, quota exhaustion banners that looked like idle cursors, permission prompts that nobody answered, `--continue` conflicts manifesting as startup hangs, mcp-channel zombies that left the pane silent, and a classifier that mistook "busy" for "dead" because it only looked at Orochi post timestamps.
 
-ywatanabe's directive was consistent (msgs #9438 / #9442 / #9550 / #9674 / #10210):
+The operator's directive was consistent (msgs #9438 / #9442 / #9550 / #9674 / #10210):
 
 1. Collect the patterns, don't invent them on each observation.
 2. Classify by state, not by guess.
@@ -30,7 +30,7 @@ A pane is in **exactly one** of the states below per classification call:
 | `:paste_pending` | `Press up to edit queued messages` or similar; input already queued | green | send `Enter` once |
 | `:permission_prompt` | Generic "Do you want to proceed? (y/n)" or numbered choices | yellow | send the **safe** option (`2`/`n`) by default |
 | `:dev_channels_prompt` | First-run "I am using this for local development" 1/2 prompt | yellow | send `1` Enter (dev acceptance) |
-| `:auth_needed` | `/login` flow, OAuth URL visible, awaiting code paste | yellow | post URL to `#ywatanabe`, wait for code |
+| `:auth_needed` | `/login` flow, OAuth URL visible, awaiting code paste | yellow | post URL to `#operator`, wait for code |
 | `:quota_exhausted` | "out of extra usage · resets …" | red | swap credential per `agent-account-switch.md` |
 | `:quota_warning` | `\d\d% \| Limit reach` (≥ 80%) | yellow | pre-emptive swap if alternate account < 70% |
 | `:mcp_broken` | `.mcp.json` missing or sidecar died; hub heartbeat stopped while pane looks fine | red | `scitex-agent-container restart` |
@@ -38,7 +38,7 @@ A pane is in **exactly one** of the states below per classification call:
 | `:dead` | Claude exited; pane shows shell prompt or empty | red | autostart unit should respawn; else escalate |
 | `:unknown` | Nothing matched | neutral | log + alert, never guess |
 
-**`:running` and `:mulling` are not idle.** Healers that escalate on "silent for N seconds" without checking the animation row produce false positives. This was the 2026-04-13 head-spartan incident.
+**`:running` and `:mulling` are not idle.** Healers that escalate on "silent for N seconds" without checking the animation row produce false positives. This was the 2026-04-13 head-<host> incident.
 
 ## Regexes
 
@@ -76,7 +76,7 @@ Action: pair with context. Commonly `2` = safe "exit / cancel", `1` = "proceed i
 ```
 I am using this for local development
 ```
-Full prompt (from the 2026-04-13 head-spartan incident):
+Full prompt (from the 2026-04-13 head-<host> incident):
 ```
 ❯ 1. I am using this for local development
   2. Exit
@@ -91,7 +91,7 @@ Or:
 ```
 (?i)Paste your login code here
 ```
-Action: extract the URL, post to `#ywatanabe` (as file or chat), wait for the code. Do not attempt to auto-complete OAuth — the code comes from the human.
+Action: extract the URL, post to `#operator` (as file or chat), wait for the code. Do not attempt to auto-complete OAuth — the code comes from the human.
 
 ### `:quota_exhausted`
 ```
@@ -136,8 +136,8 @@ Or `tmux capture-pane` returns empty. Claude exited, shell prompt or blank. Acti
 
 ## Session-existence preflight — `tmux ls`, not `screen -ls`
 
-Added 2026-04-15 after `mamba-healer-mba` msg #12799 false-alarmed
-"MBA fleet down — all 12 agents + screen sessions gone" while all 12
+Added 2026-04-15 after `worker-healer-<host>` msg #12799 false-alarmed
+"fleet down — all 12 agents + screen sessions gone" while all 12
 tmux sessions were in fact alive.
 
 Before any pane-state classification, a healer must first confirm
@@ -147,7 +147,7 @@ multiplexer the agents are actually running in:
 - scitex-agent-container defaults to `multiplexer: tmux` since v0.7.
   Session-existence check: **`tmux ls`**.
 - `screen -ls` is only valid on hosts where an agent's YAML explicitly
-  sets `multiplexer: screen`. On all other hosts (MBA included) the
+  sets `multiplexer: screen`. On all other hosts (primary workstation included) the
   screen socket is empty and `screen -ls` reports "No Sockets found",
   which is **not** evidence that the agents are dead.
 
@@ -171,14 +171,14 @@ Contract for any liveness probe:
    (rule #11 absence-of-response still applies for DM-based probes,
    but the host layer is a separate question).
 
-A healer that short-circuits this preflight will false-alarm ywatanabe
+A healer that short-circuits this preflight will false-alarm the operator
 and the heads, waste fleet attention on a non-incident, and risk
 triggering a destructive "restart everything" response. Always two
 signals, primary-before-secondary, before classifying a host as down.
 
 ## Scrollback false-positive guard — strict last-N-lines window
 
-Added 2026-04-14 after `mamba-healer-mba` msg #10865. Regexes must match against the **last 5 lines** of `tmux capture-pane -p -S -5`, not the full scrollback buffer.
+Added 2026-04-14 after `worker-healer-<host>` msg #10865. Regexes must match against the **last 5 lines** of `tmux capture-pane -p -S -5`, not the full scrollback buffer.
 
 Why: scrollback accumulates every prompt the session has ever seen — a "Press Enter to continue" from 6 hours ago, now scrolled off but still in the buffer, will match a full-buffer regex and trigger a false-positive unblock action. The strict last-5-lines window ensures only the **currently-displayed** prompt is considered.
 
@@ -221,7 +221,7 @@ Healers call this module read-only to **classify**, then consult a per-state act
 | `:paste_pending` | `Enter` | no |
 | `:permission_prompt` (safe) | `n` / `2` | no |
 | `:dev_channels_prompt` | `1` + Enter | no |
-| `:auth_needed` | post URL to `#ywatanabe` | no |
+| `:auth_needed` | post URL to `#operator` | no |
 | `:quota_exhausted` | credential swap | no, if alternate < 70% |
 | `:quota_warning` | pre-swap | yes (log warn first) |
 | `:mcp_broken` | `scitex-agent-container restart` | yes, escalate if repeated |
@@ -231,13 +231,13 @@ Healers call this module read-only to **classify**, then consult a per-state act
 
 ## Upstream single source of truth (memory: `project_tui_pattern_single_source`)
 
-This skill is a **mirror**, not a primary. Three sibling catalogs hold the authoritative regex for pane state, and they are kept in sync by humans + mamba-skill-manager, **not** by agents inventing new patterns in this file:
+This skill is a **mirror**, not a primary. Three sibling catalogs hold the authoritative regex for pane state, and they are kept in sync by humans + worker-skill-manager, **not** by agents inventing new patterns in this file:
 
 | Source | Location | Role |
 |---|---|---|
-| **Elisp (upstream)** | `~/.emacs.d/lisp/emacs-claude-code/ecc-state-detection.el` (GitHub `ywatanabe1989/emacs-claude-code`) | ywatanabe's primary TUI observation point. New patterns are observed in Emacs first. |
+| **Elisp (upstream)** | `~/.emacs.d/lisp/emacs-claude-code/ecc-state-detection.el` (GitHub `the operator1989/emacs-claude-code`) | the operator's primary TUI observation point. New patterns are observed in Emacs first. |
 | **Python (runtime)** | `scitex-agent-container/src/scitex_agent_container/runtimes/prompts.py` | Used by `scitex-agent-container` watchdog / healer code paths at runtime. |
-| **Markdown (this skill)** | `scitex-orochi/_skills/scitex-orochi/pane-state-patterns.md` | Human-readable catalog that fleet healers, skill writers, and documentation reference when explaining behavior. |
+| **Markdown (this skill)** | `scitex-orochi/_skills/scitex-orochi/agent-pane-state-patterns.md` | Human-readable catalog that fleet healers, skill writers, and documentation reference when explaining behavior. |
 
 ### Sync protocol
 
@@ -257,13 +257,13 @@ When a new Claude Code pane pattern is discovered:
 
 This mirror discipline is memory rule `project_tui_pattern_single_source`: **the Elisp repo is the canonical observation point, Python is the runtime consumer, Markdown is the documentation mirror**. Agents asking "can I add a new state directly here" should be told **no** — start in Emacs.
 
-See also: head-nas PR #118 (`pane_state.py` reference implementation — may be a fourth alias once landed; same rules apply).
+See also: head-<host> PR #118 (`pane_state.py` reference implementation — may be a fourth alias once landed; same rules apply).
 
 ## Consumers in the fleet
 
 - `scitex-orochi/scripts/pane_state.py` (PR #118) — Python implementation reading the catalog.
-- `scripts/fleet-watch/fleet-prompt-actuator` (head-nas, running on NAS cron) — auto-unblock healer loop.
-- `mamba-healer-*` `/loop` prompts — future adoption layer, codifies per-host action tables.
+- `scripts/fleet-watch/fleet-prompt-actuator` (head-<host>, running on NAS cron) — auto-unblock healer loop.
+- `worker-healer-*` `/loop` prompts — future adoption layer, codifies per-host action tables.
 - `pane_state` field in hub `/api/agents/` — planned surface for the Agents tab (PR series TBD).
 
 ## What this skill does NOT cover
@@ -276,12 +276,12 @@ See also: head-nas PR #118 (`pane_state.py` reference implementation — may be 
 
 - `agent-account-switch.md` — the action taken on `:quota_exhausted` / `:quota_warning`
 - `agent-health-check.md` — the 8-step health checklist that calls this classifier
-- `connectivity-probe.md` — how to distinguish remote pane state safely
+- `convention-connectivity-probe.md` — how to distinguish remote pane state safely
 - `fleet-communication-discipline.md` rule #6 — silent success
 - memory `project_permission_prompt_blockers.md` — why `--dangerously-skip-permissions` is insufficient
 - Upstream: `~/.emacs.d/lisp/emacs-claude-code` (single source of truth for Claude pane regex)
-- head-nas PR #118 — Python reference implementation
+- head-<host> PR #118 — Python reference implementation
 
 ## Change log
 
-- **2026-04-14 (initial)**: Drafted from 2026-04-13 fleet pattern observations (msgs #8670 / #9438 / #9442 / #9537 / #9670 / #9674 / #10210 / #10216). States, regexes, priority order, and action table consolidated from head-nas PR #118 + emacs-claude-code upstream. Author: mamba-skill-manager.
+- **2026-04-14 (initial)**: Drafted from 2026-04-13 fleet pattern observations (msgs #8670 / #9438 / #9442 / #9537 / #9670 / #9674 / #10210 / #10216). States, regexes, priority order, and action table consolidated from head-<host> PR #118 + emacs-claude-code upstream. Author: worker-skill-manager.

@@ -1,6 +1,6 @@
 ---
 name: orochi-spartan-hpc-startup-pattern
-description: Canonical startup pattern for Spartan (and other Lmod/module-based HPC clusters) — module load chain, LD_LIBRARY_PATH hardening for non-interactive SSH, login-node vs compute-node divergence, and avoiding multi-second bash-startup latency. Codified from 2026-04-13 head-spartan fixes (todo#307).
+description: Canonical startup pattern for Spartan (and other Lmod/module-based HPC clusters) — module load chain, LD_LIBRARY_PATH hardening for non-interactive SSH, login-node vs compute-node divergence, and avoiding multi-second bash-startup latency. Codified from 2026-04-13 head-<host> fixes (todo#307).
 ---
 
 # Spartan / HPC Startup Pattern
@@ -21,7 +21,7 @@ Unlike a normal Linux host, an HPC login node gives you almost nothing by defaul
 Pragmatically this means an HPC startup has three phases:
 
 1. **Detect whether we're on the cluster at all** (hostname check).
-2. **Load modules and export shared-lib paths** — but only if we're actually on login node / compute node, never on MBA/NAS/WSL that happen to source the same dotfiles.
+2. **Load modules and export shared-lib paths** — but only if we're actually on login node / compute node, never on non-HPC hosts that happen to source the same dotfiles.
 3. **Decide login vs compute semantics** — login1 is controller-only (see `project_spartan_login_node` memory); compute nodes do the actual work.
 
 ## Canonical dotfiles snippet
@@ -67,7 +67,7 @@ unset _SPARTAN_PY311_LIB
 
 Three invariants this snippet enforces:
 
-1. **Hostname guard** (`[[ $(hostname) == *spartan* ]]`) prevents non-Spartan hosts (MBA / NAS / WSL) that sync the same dotfiles from accidentally exporting a Linux-only library path.
+1. **Hostname guard** (`[[ $(hostname) == *spartan* ]]`) prevents non-Spartan hosts (non-HPC hosts) that sync the same dotfiles from accidentally exporting a Linux-only library path.
 2. **Directory guard** (`[ -d "$_SPARTAN_PY311_LIB" ]`) tolerates the path being moved by a future EasyBuild upgrade — the snippet simply no-ops instead of breaking.
 3. **LD_LIBRARY_PATH is exported unconditionally on Spartan**, not gated on `has_module_command`, because non-interactive SSH sessions (where `module` is not available) are exactly the case where `pip3.11` needs the hardcoded fallback.
 
@@ -78,7 +78,7 @@ Everything in `~/.bashrc` that depends on the `module` function is invisible to 
 - `ssh spartan 'which python'` → `/usr/bin/python` (system 2.7), not the module Python.
 - `ssh spartan 'pip3.11 install foo'` → `libpython3.11.so.1.0: cannot open shared object file`.
 - `ssh spartan 'squeue -u $USER'` → `squeue: command not found` if `slurm/` module isn't pre-loaded.
-- Fleet connectivity probes that wrap in `bash -lc` (from `connectivity-probe.md`) **do** work for the Lmod parts, but still fail if `spartan_load_modules` hasn't been called in the login shell session.
+- Fleet connectivity probes that wrap in `bash -lc` (from `convention-connectivity-probe.md`) **do** work for the Lmod parts, but still fail if `spartan_load_modules` hasn't been called in the login shell session.
 
 **Defenses**, in order of preference:
 
@@ -103,17 +103,17 @@ After the fix: `time ssh spartan 'bash -lc "true"'` should be well under 1 s; `t
 Hard-coded fleet rule (memory: `project_spartan_login_node.md`):
 
 - **login1 is controller-only.** Agents on login1 may plan, communicate, orchestrate, and call `salloc`/`sbatch` — but they must not run model training, inference, notebooks, or anything that holds CPU/GPU for more than a few seconds.
-- **Compute nodes are where work happens.** Acquire with `salloc --time=HH:MM:SS --partition=<name> --gres=gpu:<n>` and attach with `srun --jobid=$SLURM_JOB_ID --pty bash`. The Claude Code process itself becomes the allocation holder (see `#7935` thread in `#ywatanabe` 2026-04-13 for the reasoning).
+- **Compute nodes are where work happens.** Acquire with `salloc --time=HH:MM:SS --partition=<name> --gres=gpu:<n>` and attach with `srun --jobid=$SLURM_JOB_ID --pty bash`. The Claude Code process itself becomes the allocation holder (see `#7935` thread in `#operator` 2026-04-13 for the reasoning).
 - **Always set `--time`.** If the agent crashes, the allocation auto-releases at the wall-clock deadline.
-- **Never autostart agent workloads on login1 via systemd**. Use the `.bash_profile` + tmux pattern from `agent-autostart.md` §"Spartan (HPC login node)" instead — starts the agent *when ywatanabe ssh-es in*, which is the correct semantic on a shared login node.
+- **Never autostart agent workloads on login1 via systemd**. Use the `.bash_profile` + tmux pattern from `agent-autostart.md` §"Spartan (HPC login node)" instead — starts the agent *when the operator ssh-es in*, which is the correct semantic on a shared login node.
 
 ## Partition cheatsheet (Spartan, 2026-04-13)
 
 | Partition | Use | Notes |
 |---|---|---|
 | `physical` | General CPU work | Default for non-GPU jobs. |
-| `sapphire` | GPU A100 | Preferred for training runs. head-spartan reports availability here. |
-| `gpu-a100` | GPU A100 (legacy name) | mamba-todo-manager bridges jobs here when `sapphire` is queued. |
+| `sapphire` | GPU A100 | Preferred for training runs. head-<host> reports availability here. |
+| `gpu-a100` | GPU A100 (legacy name) | worker-todo-manager bridges jobs here when `sapphire` is queued. |
 
 Modules to load inside an `salloc` on a compute node: usually a subset of the login-node chain. For Python 3.11 + CUDA jobs, load `GCCcore/11.3.0`, `Python/3.11.3`, `CUDA/<version>` explicitly, and `module list` in the job script to log which versions were actually picked up — Lmod substitutions silently move the toolchain under your feet.
 
@@ -121,7 +121,7 @@ Modules to load inside an `salloc` on a compute node: usually a subset of the lo
 
 Verify before shipping any Spartan-bound code or probe:
 
-- [ ] Hostname guard wraps any Spartan-only env export so MBA/NAS/WSL don't execute it.
+- [ ] Hostname guard wraps any Spartan-only env export so non-HPC hosts don't execute it.
 - [ ] Directory existence check guards any hardcoded `/apps/easybuild-*` path.
 - [ ] Non-interactive path: `ssh spartan 'pip3.11 --version'` works **without** `bash -lc`.
 - [ ] Interactive path: `time ssh spartan 'bash -lc "true"'` is under 1 s after the fix.
@@ -136,10 +136,10 @@ Verify before shipping any Spartan-bound code or probe:
 
 - memory `project_spartan_login_node.md` — login1 controller-only rule
 - `agent-autostart.md` §"Spartan (HPC login node)" — tmux-based startup pattern
-- `connectivity-probe.md` — `bash -lc` wrap, cross-OS semantics, compound escalation
+- `convention-connectivity-probe.md` — `bash -lc` wrap, cross-OS semantics, compound escalation
 - `resource-management.md` (scitex-resource) — the future unified SLURM acquisition API
 - scitex-python / scitex-agent-container commit `6900afdf` (2026-04-13): `fix(spartan): export LD_LIBRARY_PATH for Python 3.11 shared libs`
 
 ## Change log
 
-- **2026-04-13**: Initial capture from head-spartan bash-load incident (2.73 s interactive startup), Python 3.11 shared-lib fix (commit 6900afdf), and reconstruction of the Lmod / hostname-guard / directory-guard pattern in `999_unimelb_spartan.src`. Trigger: mamba-todo-manager dispatch msg#8829 (manba-mode), todo#307. Author: mamba-skill-manager.
+- **2026-04-13**: Initial capture from head-<host> bash-load incident (2.73 s interactive startup), Python 3.11 shared-lib fix (commit 6900afdf), and reconstruction of the Lmod / hostname-guard / directory-guard pattern in `999_unimelb_spartan.src`. Trigger: worker-todo-manager dispatch msg#8829 (manba-mode), todo#307. Author: worker-skill-manager.

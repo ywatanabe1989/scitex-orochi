@@ -81,7 +81,7 @@ Every command's `--help` must include:
 | `AGENT_CONTAINER_*` | `SCITEX_AGENT_CONTAINER_*` |
 | `SCHOLAR_*` | `SCITEX_SCHOLAR_*` |
 
-Reason (ywatanabe 2026-04-12): bare prefixes collide with other tools'
+Reason (operator directive 2026-04-12): bare prefixes collide with other tools'
 env vars and pollute the global namespace. The `SCITEX_` namespace makes
 ownership unambiguous and lets users `env | grep SCITEX_` to see all
 SciTeX-related state at once.
@@ -128,7 +128,7 @@ DATABASES = {
 
 This keeps the operator-facing env namespace clean (`SCITEX_CLOUD_*` only)
 while letting Django still receive the values it needs internally.
-ywatanabe 2026-04-12 explicitly requested this pattern for scitex-cloud:
+The operator (2026-04-12) explicitly requested this pattern for scitex-cloud:
 "DJANGO で認識されるようにしないといけないのもあるかも。その場合は
 settings.py で書きなおす". Apply the same pattern to Vite, Postgres
 client libs, etc., when feasible.
@@ -149,7 +149,7 @@ Rules:
   re-import / re-export from the same `01_orochi.src` file so all hosts
   pick up the new name on next shell init.
 - Secrets stay in this directory (gitignored from the main dotfiles repo;
-  see ywatanabe's secret-dotfiles convention) — never inline secrets in
+  see the operator's secret-dotfiles convention) — never inline secrets in
   package code or YAML.
 
 ## MCP Tool Parity
@@ -207,4 +207,4 @@ When auditing a SciTeX package's CLI for compliance:
 - [ ] Env var prefix correct (`SCITEX_<PKG>_*`)
 - [ ] MCP tool parity (if applicable)
 
-Failing items should be filed as `cli-audit` issues in `ywatanabe1989/todo`.
+Failing items should be filed as `cli-audit` issues in `the project's issue tracker`.

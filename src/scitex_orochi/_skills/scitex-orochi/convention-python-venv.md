@@ -5,7 +5,7 @@ description: Canonical Python venv layout across the fleet — version-tagged re
 
 # Python venv convention
 
-One venv, many projects, one fleet-wide standard. This is the canonical layout ywatanabe specified in 2026-04-14 msgs #10278 / #10269 / #10287 and the follow-up todo#400.
+One venv, many projects, one fleet-wide standard. This is the canonical layout the operator specified in 2026-04-14 msgs #10278 / #10269 / #10287 and the follow-up todo#400.
 
 ## The layout
 
@@ -30,15 +30,15 @@ From the user's perspective, every project "has its own venv at `.venv`". From d
 - **Version in the real path** (`~/.venv-3.11`): multiple Python versions can coexist (`~/.venv-3.11` and `~/.venv-3.12` side by side). No rename is required when a host gets a new Python.
 - **`~/.venv` as the active pointer**: switching Python versions for the whole host is a single `ln -snf` operation. No per-project edits, no activate-script rewrites.
 - **Per-project `.venv` symlink to `~/.venv`**: preserves the `.venv/bin/activate` habit that tools like `direnv`, `pyright`, `vscode`, `ruff`, and most IDEs assume. No tooling gets confused, no `cwd`-relative activate breaks, no separate per-project venv consumes disk or inodes.
-- **Inode economy**: a venv has ~2000 files (depending on installed packages). One real venv + N symlinks = ~2000 inodes, not `N × 2000`. On HPC systems where inode quotas are real constraints (Spartan `/data/gpfs` was at 72 free during the 2026-04-13 NeuroVista backfill — see `spartan-hpc-startup-pattern.md`), this is not a theoretical concern.
+- **Inode economy**: a venv has ~2000 files (depending on installed packages). One real venv + N symlinks = ~2000 inodes, not `N × 2000`. On HPC systems where inode quotas are real constraints (Spartan `/data/gpfs` was at 72 free during the 2026-04-13 NeuroVista backfill — see `hpc-spartan-startup-pattern.md`), this is not a theoretical concern.
 - **Atomic version switch**: `ln -snf ~/.venv-3.12 ~/.venv` flips the entire host from 3.11 to 3.12 in a single syscall. All projects pick it up on the next `source .venv/bin/activate`.
 
 ## Who owns this
 
-**`mamba-scitex-expert-mba`** is the canonical owner (msg #10269). The fleet-wide adoption, per-host sync, drift detection, and conflict-safe migration are part of its scitex-ecosystem-management mission. Other agents should:
+**`worker-scitex-expert-<host>`** is the canonical owner (msg #10269). The fleet-wide adoption, per-host sync, drift detection, and conflict-safe migration are part of its scitex-ecosystem-management mission. Other agents should:
 
 - Read this skill before touching a host's venv.
-- Ask `mamba-scitex-expert-mba` via DM if they need to create a new real venv on a host.
+- Ask `worker-scitex-expert-<host>` via DM if they need to create a new real venv on a host.
 - Never create a loose `venv/` or `env/` or `.venv-foo/` — all venvs follow the layout above or they get deleted.
 
 ## Creating the layout on a fresh host
@@ -59,7 +59,7 @@ ln -snf ~/.venv .venv
 # 4. Verify
 source .venv/bin/activate
 python -c "import sys; print(sys.executable)"
-# → /home/ywatanabe/.venv-3.11/bin/python (not /home/ywatanabe/proj/<package>/.venv/bin/python)
+# → /home/the operator/.venv-3.11/bin/python (not /home/the operator/proj/<package>/.venv/bin/python)
 ```
 
 Never write step 3 as `rm -rf .venv && ln -snf ...` in a script. The `[ -e .venv ]` guard is mandatory — blowing away someone's half-working venv is a destructive operation.
@@ -94,9 +94,9 @@ Common "before" states on fleet hosts (2026-04-14 snapshot):
 
 | Host | Before | After |
 |---|---|---|
-| Spartan | `~/.venv-3.11` only, no `~/.venv` symlink | `~/.venv → .venv-3.11` |
-| NAS | `~/.venv-3.11` + `~/.venv-3.10`, no symlink | pick one as active, `ln -snf` |
-| MBA | homebrew-site-packages, no venv | create `~/.venv-3.11`, adopt |
+| HPC cluster | `~/.venv-3.11` only, no `~/.venv` symlink | `~/.venv → .venv-3.11` |
+| NAS/storage host | `~/.venv-3.11` + `~/.venv-3.10`, no symlink | pick one as active, `ln -snf` |
+| Primary workstation | homebrew-site-packages, no venv | create `~/.venv-3.11`, adopt |
 | ywata-note-win | unclear | audit + adopt |
 
 **Safe migration recipe**:
@@ -128,21 +128,21 @@ Common "before" states on fleet hosts (2026-04-14 snapshot):
 
 | Host | Real venv | Active symlink | Per-project symlinks |
 |---|---|---|---|
-| Spartan | `~/.venv-3.11` ✅ | ❌ | ⏳ partial |
-| NAS | `~/.venv-3.11` ✅ | ❌ | ⏳ partial |
-| MBA | homebrew-site only | ❌ | ❌ |
+| HPC cluster | `~/.venv-3.11` ✅ | ❌ | ⏳ partial |
+| NAS/storage host | `~/.venv-3.11` ✅ | ❌ | ⏳ partial |
+| Primary workstation | homebrew-site only | ❌ | ❌ |
 | ywata-note-win | unclear | ❌ | ❌ |
 
-`mamba-scitex-expert-mba` owns the cross-host convergence work. This skill is the contract it implements against.
+`worker-scitex-expert-<host>` owns the cross-host convergence work. This skill is the contract it implements against.
 
 ## Related
 
-- `spartan-hpc-startup-pattern.md` — inode economy is a real constraint on Spartan; this layout is a prerequisite
+- `hpc-spartan-startup-pattern.md` — inode economy is a real constraint on Spartan; this layout is a prerequisite
 - `agent-autostart.md` principle #6 — per-agent process isolation is orthogonal, but venv sharing is fleet-wide
 - todo #400 — scitex-dev ecosystem sync (implementation side of this skill)
 - memory `project_scitex_layering.md` — downward-only dependency rule that the shared venv supports
-- ywatanabe msg #10278 / #10269 / #10287 / #10305 (2026-04-14) — source directives
+- the operator msg #10278 / #10269 / #10287 / #10305 (2026-04-14) — source directives
 
 ## Change log
 
-- **2026-04-14 (initial)**: Codified from ywatanabe msg #10278 (layout spec), #10269 / #10287 (ownership), todo#400 requirements, and mamba-todo-manager msg #10288 / #10291 dispatch. Author: mamba-skill-manager.
+- **2026-04-14 (initial)**: Codified from the operator msg #10278 (layout spec), #10269 / #10287 (ownership), todo#400 requirements, and worker-todo-manager msg #10288 / #10291 dispatch. Author: worker-skill-manager.

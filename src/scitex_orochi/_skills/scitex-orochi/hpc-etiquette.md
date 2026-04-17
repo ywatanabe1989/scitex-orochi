@@ -8,7 +8,7 @@ scope: fleet-internal
 
 Shared HPC filesystems have hundreds of millions of files and are watched by admins who can and will revoke access. A single agent scripting `find / -name X` across `/data/gpfs` hits the filesystem as hard as any real workload and is indistinguishable from a denial-of-service from the storage layer's perspective.
 
-This skill is the fleet's rulebook for being a good HPC guest, written specifically after the 2026-04-14 incident where Sean Crosby (Head of Research Computing Infrastructure, UniMelb) emailed ywatanabe to stop running `find / -name pdflatex` on Spartan (msg #10971). That `find` was started by an agent trying to locate a binary — the kind of operation that is free on a laptop and catastrophic on a shared cluster.
+This skill is the fleet's rulebook for being a good HPC guest, written specifically after the 2026-04-14 incident where Sean Crosby (Head of Research Computing Infrastructure, UniMelb) emailed the operator to stop running `find / -name pdflatex` on Spartan (msg #10971). That `find` was started by an agent trying to locate a binary — the kind of operation that is free on a laptop and catastrophic on a shared cluster.
 
 ## General HPC rules (apply to every cluster the fleet touches — Spartan, NCI, future sites)
 
@@ -21,7 +21,7 @@ Before the Spartan-specific section below, the general rules every agent must fo
 - **Always set `--time=HH:MM:SS`** (or PBS `walltime=`, LSF `-W`, etc.). Unbounded jobs are caught by admin sweeps and cancelled with prejudice. 24:00:00 is not "unbounded" — it is 24 hours and the scheduler decides when it ends.
 - **Respect fair-share quotas and walltime limits.** Check the site docs for max concurrent jobs, max wall time per partition, max GPUs per user. Submitting 500 jobs at once when the quota is 50 is a policy violation even if the jobs are small.
 - **Clean up after yourself**: `scancel` stale / abandoned jobs before submitting new ones (`squeue -u $USER -t CD,F,CA,TO,NF` for already-terminated rows to purge via `sacctmgr` if needed). Leaving a stuck `PENDING` queue behind is visible to admins.
-- **Do not poll `sinfo` / `squeue` / `sacct` in tight loops.** Every site's scheduler database is shared; hammering it affects everyone. Minimum interval for polling queues is 60 s; prefer 5 min. Reference cached output where possible (the spartan dashboard for instance, see `spartan-dashboard.md`).
+- **Do not poll `sinfo` / `squeue` / `sacct` in tight loops.** Every site's scheduler database is shared; hammering it affects everyone. Minimum interval for polling queues is 60 s; prefer 5 min. Reference cached output where possible (the spartan dashboard for instance, see `infra-spartan-dashboard.md`).
 
 ### Filesystems + metadata
 
@@ -46,7 +46,7 @@ Before the Spartan-specific section below, the general rules every agent must fo
 - **Always use the site module system** (Lmod / Environment Modules / Spack / TCL modules) to load compilers, Python, CUDA, MPI, etc. Do not manually edit `$PATH` / `$LD_LIBRARY_PATH` with hard-coded absolute paths to `/apps/...` — the paths change between upgrades and your script will silently break.
 - **Prefer `module load <pkg>/<version>`** with an explicit version over `module load <pkg>` without one. Sites change the default version without notice.
 - **`module list`** before and after your job runs confirms the toolchain picked up what you expected. Log it in job output.
-- **Do not `source` `/etc/profile` or `~/.bashrc` inside a script** as a way to "make modules work". Use `module load` directly or run the wrapper in an interactive shell that already sourced its profile. Calling `source /etc/profile` in a scripted context is a smell for a deeper `bash -lc` problem; see `connectivity-probe.md` for the proper wrap.
+- **Do not `source` `/etc/profile` or `~/.bashrc` inside a script** as a way to "make modules work". Use `module load` directly or run the wrapper in an interactive shell that already sourced its profile. Calling `source /etc/profile` in a scripted context is a smell for a deeper `bash -lc` problem; see `convention-connectivity-probe.md` for the proper wrap.
 
 ### Network + SSH
 
@@ -58,7 +58,7 @@ Before the Spartan-specific section below, the general rules every agent must fo
 ### Process + billing hygiene
 
 - **`ps -ef | grep $USER`** on the login node before leaving, to confirm no stray processes are running. An agent that leaves behind a zombie `python` on login1 gets that process killed and the agent flagged.
-- **Charge the right project.** `sbatch --account=punim2354` (or your site equivalent) so compute is billed against the allocated project, not the user default. Wrong-account billing creates admin work.
+- **Charge the right project.** `sbatch --account=<project-id>` (or your site equivalent) so compute is billed against the allocated project, not the user default. Wrong-account billing creates admin work.
 - **Respect submission rate limits.** Some sites throttle `sbatch`; spamming 50 jobs in 10 seconds gets your submission rights rate-limited or revoked temporarily.
 
 ### Documentation + first contact
@@ -76,7 +76,7 @@ Defensive rules of thumb:
 - Does it run more than 60 s on a login node? → unsafe, move to `sbatch`
 - Does it re-run every cycle in a polling loop faster than 60 s? → unsafe, cache
 - Is there a site dashboard page / CLI that gives the same answer? → use that
-- Would Sean Crosby email ywatanabe if he saw this in `ps -ef`? → if yes, don't run it
+- Would Sean Crosby email the operator if he saw this in `ps -ef`? → if yes, don't run it
 
 The last one is the canonical test.
 
@@ -86,7 +86,7 @@ The last one is the canonical test.
 
 2. **Never walk the full home directory recursively on NFS.** `find ~/` / `du -sh ~/` / `ls -R ~/` on a GPFS or Lustre home is the same failure mode at a smaller scale. Use specific subpaths.
 
-3. **Never run compute on the login node.** Policy-mandated on most HPC sites (Spartan's `cgroup nproc=1` on login1 enforces this by killing long-running processes). Controllers only; compute goes in `sbatch` / `srun` / `salloc`. See `spartan-hpc-startup-pattern.md` + memory `project_spartan_login_node.md`.
+3. **Never run compute on the login node.** Policy-mandated on most HPC sites (Spartan's `cgroup nproc=1` on login1 enforces this by killing long-running processes). Controllers only; compute goes in `sbatch` / `srun` / `salloc`. See `hpc-spartan-startup-pattern.md` + memory `project_spartan_login_node.md`.
 
 4. **Never run background `sleep inf` loops to hold allocations.** Use `sbatch --time=...` with a real walltime. Indefinite holds look exactly like orphaned jobs to schedulers and draw admin attention.
 
@@ -146,7 +146,7 @@ Every `find` / `du` / `ls -R` invocation should answer "is the scope I am about 
 
 ## Inode-aware operations
 
-HPC quotas are **per-user inodes**, not just bytes. The 2026-04-14 NeuroVista backfill hit `/data/gpfs/projects/punim2354` with 72 free inodes (#372) because the PAC pipeline created one file per small artifact. Rules:
+HPC quotas are **per-user inodes**, not just bytes. The 2026-04-14 NeuroVista backfill hit a project directory with 72 free inodes (#372) because the PAC pipeline created one file per small artifact. Rules:
 
 - **Consolidate small artifacts into SQLite / Parquet / tarballs** rather than thousands of per-item files. `scitex.archive` + `scitex.db` exist specifically for this.
 - **Use `scitex.session` + `scitex.archive`** for pipeline outputs so session dirs become one SQLite, not `_out/` trees.
@@ -159,14 +159,14 @@ HPC quotas are **per-user inodes**, not just bytes. The 2026-04-14 NeuroVista ba
 - Never submit more than the site's per-user concurrent job limit. `squeue -u $USER` before submitting a batch.
 - Use the correct partition. `long` is for 90-day tunnels and stable services, `sapphire` for GPU work, `physical` for CPU. Misusing `long` for short jobs wastes the partition budget.
 - Release unused allocations via `scancel` when you are done. Do not leave an `salloc` shell open overnight "just in case".
-- `sbatch` jobs that are holders for long-running tunnels are allowed (see `spartan-hpc-startup-pattern.md`), but they must be single-purpose, documented, and tracked in `~/.scitex/orochi/scripts/`.
+- `sbatch` jobs that are holders for long-running tunnels are allowed (see `hpc-spartan-startup-pattern.md`), but they must be single-purpose, documented, and tracked in `~/.scitex/orochi/scripts/`.
 
 ## Login-node policy (Spartan-specific but generalizable)
 
 - `login1` / `login2` are **controller-only** nodes. No inference, no training, no `pip install` of heavy wheels (`torch`, `tensorflow`, etc.), no heavy compile, no background loops that stay resident past your ssh session.
 - `cgroup nproc=1` on Spartan login1 auto-kills long-running processes. Do not fight it.
 - Interactive work needs `srun --pty bash -i` on a compute node, not a login-node screen session.
-- `tmux` / `screen` on login1 is OK for short-lived agent coordinators, not for compute. The `mamba-healer-spartan` agent runs on login1 as a coordinator; it does not run inference or training.
+- `tmux` / `screen` on login1 is OK for short-lived agent coordinators, not for compute. The `worker-healer-<host>` agent runs on login1 as a coordinator; it does not run inference or training.
 
 See also the canonical UniMelb policy section below — the fleet's own login-node rule is a summary, the canonical source is the authority.
 
@@ -182,8 +182,8 @@ truth**, not the fleet paraphrase.
 **Canonical source**:
 <https://dashboard.hpc.unimelb.edu.au/policies/>
 
-Captured 2026-04-15 via ywatanabe msg#12411 (relayed to the
-fleet in msg#12418 by head-ywata-note-win with explicit
+Captured 2026-04-15 via the operator msg#12411 (relayed to the
+fleet in msg#12418 by head-<host> with explicit
 directive to fold into this skill) and msg#12414 link drop.
 Re-fetch the canonical page whenever there is a policy
 question — upstream is allowed to change without notifying
@@ -205,7 +205,7 @@ the fleet.
 
 Fleet implications:
 
-- `tmux` coordinators for `head-spartan` and healer-style
+- `tmux` coordinators for `head-<host>` and healer-style
   agents are OK on login1 because they are not compute
   workloads — they are bash-level state machines. The
   `cgroup nproc=1` limit is the enforcement that will kill
@@ -290,17 +290,16 @@ Fleet implications:
 - **Always-on fleet services do not belong on Spartan.**
   The scitex-orochi hub, dashboards, cloudflared tunnels,
   and any other persistent web-exposed service live on
-  NAS / MBA / Melbourne Research Cloud, not on Spartan.
-- `head-spartan` + `proj-ripple-wm-spartan` +
-  `neurovista-spartan` etc. are **ssh-triggered**, not
-  always-on. They come up when ywatanabe ssh-es in, do
+  NAS / primary workstation / Melbourne Research Cloud, not on Spartan.
+- HPC head agents and project-specific agents are **ssh-triggered**, not
+  always-on. They come up when the operator ssh-es in, do
   their batch work, and exit. The unstick loop is the one
   exception, and it is explicitly bash-only with a tiny
   wall-budget per sweep; it does not expose any port or
   web surface.
 - If a future fleet need requires a persistent web service
   that is tied to Spartan data (e.g. a live paper rendering
-  service per ywatanabe msg#12289), the service host is
+  service per the operator msg#12289), the service host is
   **Melbourne Research Cloud**, and the service reads
   Spartan data via a scheduled data-movement job, not a
   direct bind.
@@ -323,17 +322,17 @@ Fleet implications:
 
 Fleet implications:
 
-- `ywatanabe` is the fleet's canonical Spartan account
-  holder. Keeping `ywatanabe`'s UniMelb institutional email
+- `the operator` is the fleet's canonical Spartan account
+  holder. Keeping `the operator`'s UniMelb institutional email
   live and bounce-free is a load-bearing condition for
   every Spartan agent the fleet operates.
-- If `ywatanabe` changes email or the account information
+- If `the operator` changes email or the account information
   needs to be updated (supervisor transition, department
   change), the update happens through Karaage (the UniMelb
   account self-service portal), **not** via a support
   ticket to HPC admins. Agents do not touch this.
 - **Email bounce → lock → 6-month home-dir delete** is a
-  hard timeline. If ywatanabe is away for extended periods,
+  hard timeline. If the operator is away for extended periods,
   the fleet's health-daemon should flag account-inactivity
   risk before the lock threshold is reached.
 
@@ -359,16 +358,12 @@ Fleet implications:
 
 Fleet implications:
 
-- `punim0264` (shared, 9584 GB / 10001 GB, 95% disk, read-
-  only for head-spartan per `project_punim0264_expiry.md`
-  memory + head-mba msg#11651 fleet awareness) is the
-  immediate concern. The renewal is owned by the project
-  leader (Pip Karoly, NeuroVista PI), not by the fleet.
-  The fleet's role is **observation only** — detect if
-  the project expires and alert.
-- `punim2354` (ywatanabe-only, 5885 GB / 8002 GB, 73%
-  disk, 57% inodes) is ywatanabe's own project and stays
-  active as long as the ywatanabe account does.
+- Shared projects (near-full disk, read-only for some agents)
+  are the immediate concern. Renewal is owned by the project
+  leader, not by the fleet. The fleet's role is **observation
+  only** -- detect if a project expires and alert.
+- The operator's own project stays active as long as the
+  operator's account does.
 - **"Computational data only, move critical stuff to
   Mediaflux"** is the canonical storage-tier advice the
   fleet should honor. Critical paper data (manuscripts,
@@ -409,13 +404,13 @@ Fleet implications:
   filesystem walk is logged at the storage layer** and
   act accordingly.
 - **A single project-owner suspension affects every
-  collaborator.** Because ywatanabe is the project owner
-  for `punim2354` and a collaborator on `punim0264`, a
+  collaborator.** Because the operator is the project owner
+  for one project and a collaborator on another, a
   suspension would cascade into the fleet's entire
   NeuroVista and gPAC research pipeline. The blast
   radius of a single bad command is huge.
 - **Escalation on first complaint** — if any HPC admin
-  contacts ywatanabe about fleet behavior, the fleet
+  contacts the operator about fleet behavior, the fleet
   stops the offending pattern immediately, patches the
   anti-pattern catalog in this file, and drafts the
   apology reply in the same hour. See the "Fleet
@@ -436,7 +431,7 @@ Fleet implications:
 
 ## Shell-level guardrails
 
-Every agent that runs shell commands on HPC should have these aliases available (source from a host-gated bash file, see `spartan-hpc-startup-pattern.md` for the hostname guard pattern):
+Every agent that runs shell commands on HPC should have these aliases available (source from a host-gated bash file, see `hpc-spartan-startup-pattern.md` for the hostname guard pattern):
 
 ```bash
 # Refuse unbounded find
@@ -498,16 +493,16 @@ If an HPC admin complains about any fleet agent's behavior:
 4. **Respond to the admin** within one business day, acknowledging the issue + naming the preventive measure.
 5. **Verify with `ps -ef | grep $USER` on the affected host** that no similar process is still running.
 
-The 2026-04-14 incident was handled by ywatanabe replying directly to Sean; the preventive measure is this skill. Future incidents: patch first, reply second, verify third.
+The 2026-04-14 incident was handled by the operator replying directly to Sean; the preventive measure is this skill. Future incidents: patch first, reply second, verify third.
 
 ## Related
 
-- `spartan-hpc-startup-pattern.md` — Lmod module chain, `bash -lc` wrap, login-vs-compute policy, partition cheatsheet
-- `connectivity-probe.md` — non-interactive SSH `bash -lc` wrap pattern that the `which pdflatex` fix relies on
+- `hpc-spartan-startup-pattern.md` — Lmod module chain, `bash -lc` wrap, login-vs-compute policy, partition cheatsheet
+- `convention-connectivity-probe.md` — non-interactive SSH `bash -lc` wrap pattern that the `which pdflatex` fix relies on
 - `orochi-bastion-mesh` skill — how to run persistent services on HPC via long-walltime sbatch, not on login1
 - memory `project_spartan_login_node.md` — login1 is controller-only
-- ywatanabe email exchange with Sean Crosby, 2026-04-14 (relayed via msg #10971)
+- the operator email exchange with Sean Crosby, 2026-04-14 (relayed via msg #10971)
 
 ## Change log
 
-- **2026-04-14 (initial)**: Drafted immediately after the Sean Crosby email (msg #10971). Centers the `find /` anti-pattern but generalizes to filesystem walks, inode management, SLURM etiquette, login-node policy, storage hygiene, network etiquette, and shell-level guardrails. Includes the exact refactor for the offending `find / -name pdflatex` command. Author: mamba-skill-manager (knowledge-manager lane).
+- **2026-04-14 (initial)**: Drafted immediately after the Sean Crosby email (msg #10971). Centers the `find /` anti-pattern but generalizes to filesystem walks, inode management, SLURM etiquette, login-node policy, storage hygiene, network etiquette, and shell-level guardrails. Includes the exact refactor for the offending `find / -name pdflatex` command. Author: worker-skill-manager (knowledge-manager lane).

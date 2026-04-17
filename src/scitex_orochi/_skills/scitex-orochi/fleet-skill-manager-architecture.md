@@ -1,6 +1,6 @@
 ---
 name: orochi-skill-manager-architecture
-description: Two-layer architecture for fleet skill lifecycle. Splits `mamba-skill-manager-mba` (agent-layer worker, LLM-backed, on-demand queries) from `skill-sync-daemon` (process-layer daemon, no LLM, periodic rollup loop on MBA launchd primary + NAS systemd warm-standby via idempotent dual-run). First pilot of the hybrid-worker split pattern. Ratified 2026-04-14 msg#11475.
+description: Two-layer architecture for fleet skill lifecycle. Splits `worker-skill-manager-<host>` (agent-layer worker, LLM-backed, on-demand queries) from `skill-sync-daemon` (process-layer daemon, no LLM, periodic rollup loop on primary host launchd primary + standby host systemd warm-standby via idempotent dual-run). First pilot of the hybrid-worker split pattern. Ratified 2026-04-14 msg#11475.
 ---
 
 # Skill-Manager Architecture
@@ -16,31 +16,31 @@ drift detection) has two halves with opposite requirements:
    changes?". Requires LLM judgment. Belongs in the **agent layer**.
 
 Before 2026-04-14 both halves lived inside a single Claude Code
-session (`mamba-skill-manager-mba`), which meant the fleet was
+session (`worker-skill-manager-<host>`), which meant the fleet was
 burning Claude quota to run a deterministic filesystem scan every
 rollup tick. The fix is to split them.
 
 ## Origin
 
-See `fleet-role-taxonomy.md` for the taxonomy that makes this split
+See `00-agent-types.md` for the taxonomy that makes this split
 the natural default (defining axis: "LLM-in-loop?"). The
 skill-manager is intentionally the **first** hybrid agent to split,
 so the same pattern can be applied immediately to
-`mamba-todo-manager-mba` (parallel pilot `todo-sweep-daemon`), and
-subsequently to `mamba-synchronizer-mba`, `mamba-auth-manager-mba`,
+`worker-todo-manager-<host>` (parallel pilot `todo-sweep-daemon`), and
+subsequently to `worker-synchronizer-<host>`, `worker-auth-manager-<host>`,
 and others.
 
 The host choice evolved across two phases (see
-`fleet-role-taxonomy.md` Origin for the full arc):
+`00-agent-types.md` Origin for the full arc):
 
-- **Phase 1** (msg#11438–#11448): NAS proposed as the sole daemon
+- **Phase 1** (msg#11438–#11448): standby host proposed as the sole daemon
   host because it's 24/7 on and systemd-native.
-- **Phase 2** (msg#11464, #11483–#11502): empirical NAS load from
+- **Phase 2** (msg#11464, #11483–#11502): empirical standby host load from
   `scitex-cloud` SLURM visitor sessions (6 concurrent jobs, 12/12
-  CPU, 24GB allocated) plus MBA's better stability per ywatanabe's
-  assessment → pilot moves to **MBA primary + NAS warm-standby**
-  via idempotent dual-run (head-nas option (d), msg#11499).
-- **Ratification**: msg#11475 ywatanabe "final check before GO".
+  CPU, 24GB allocated) plus primary host's better stability per the operator's
+  assessment → pilot moves to **primary host primary + standby host warm-standby**
+  via idempotent dual-run (head-<host> option (d), msg#11499).
+- **Ratification**: msg#11475 the operator "final check before GO".
 
 ## The split
 
@@ -48,9 +48,9 @@ The host choice evolved across two phases (see
 ╔═══════════════════════════════════════════════════════════════╗
 ║  AGENT LAYER (LLM-backed, quota-consuming)                    ║
 ║                                                               ║
-║    mamba-skill-manager-mba                                    ║
+║    worker-skill-manager-<host>                                    ║
 ║    role=worker  function=[skill-sync, taxonomy-curator]       ║
-║    host=MBA (Claude Code session)                             ║
+║    host=primary host (Claude Code session)                             ║
 ║    job=Track B (on-demand queries)                            ║
 ║                                                               ║
 ║    Reads skill files, answers "where is X", drafts new        ║
@@ -61,8 +61,8 @@ The host choice evolved across two phases (see
 ║                                                               ║
 ║    skill-sync-daemon                                          ║
 ║    role=daemon  function=[skill-sync]                         ║
-║    host=MBA launchd (primary)                                 ║
-║         + NAS systemd (warm-standby, idempotent dual-run)     ║
+║    host=primary host launchd (primary)                                 ║
+║         + standby host systemd (warm-standby, idempotent dual-run)     ║
 ║    cadence=30 min on both hosts                               ║
 ║    job=Track A (periodic rollup)                              ║
 ║                                                               ║
@@ -74,10 +74,10 @@ The host choice evolved across two phases (see
 ╚═══════════════════════════════════════════════════════════════╝
 ```
 
-## Track A — `skill-sync-daemon` (process layer, MBA primary + NAS warm-standby)
+## Track A — `skill-sync-daemon` (process layer, primary host primary + standby host warm-standby)
 
-A launchd job on MBA (primary) running the same bash/python script
-as a systemd user timer on NAS (warm-standby). Pure
+A launchd job on primary host (primary) running the same bash/python script
+as a systemd user timer on standby host (warm-standby). Pure
 bash/python, no Claude session on either host.
 
 ### Cadence
@@ -85,31 +85,32 @@ bash/python, no Claude session on either host.
 - **Default**: every 30 minutes on **both** hosts.
 - **No lease election required.** The output is idempotent: same
   input (two shared skill repos at a given HEAD commit) → same
-  dotfiles mirror state. If MBA primary runs at `T+0` and writes
-  the mirror, NAS standby running at `T+0:30` finds the same
+  dotfiles mirror state. If primary host primary runs at `T+0` and writes
+  the mirror, standby host standby running at `T+0:30` finds the same
   inputs and writes the same mirror (or an updated mirror if HEAD
   moved during the interval). Both mirrors live on their own host
   and are equivalent because the inputs are canonical. This is
-  head-nas option (d) from msg#11499 — idempotent dual-run, no
+  head-<host> option (d) from msg#11499 — idempotent dual-run, no
   shared lease store required.
 - **Adjustable live**: if the skill library churns fast enough
   that 30 min backs up drift, drop to 15 min; if ticks keep
   finding nothing, stretch to 60 min. The cadence knob lives in
-  the launchd plist on MBA and the systemd unit on NAS; either
+  the launchd plist on primary host and the systemd unit on standby host; either
   host's own head can adjust without cross-host coordination.
-- **Miss-backfill property**: if MBA primary misses an interval
-  (launchd not loaded, host sleeping, etc.), the next NAS tick
+- **Miss-backfill property**: if primary host primary misses an interval
+  (launchd not loaded, host sleeping, etc.), the next standby host tick
   within 30 minutes catches the drift. Worst-case drift window
-  is bounded by `max(MBA cadence, NAS cadence)`, not by any
+  is bounded by `max(primary host cadence, standby host cadence)`, not by any
   single host's uptime.
 
 ### Per-tick procedure (in order)
 
-1. **Scan the four skill locations:**
-   - `~/proj/scitex-agent-container/src/scitex_agent_container/_skills/scitex-agent-container/` (shared, canonical)
-   - `~/proj/scitex-orochi/src/scitex_orochi/_skills/scitex-orochi/` (shared, canonical)
-   - `~/.scitex/agent-container/skills/` (private per-machine — local copy on the host running this tick)
-   - `~/.scitex/orochi/skills/` (private per-machine — local copy on the host running this tick)
+1. **Scan the skill locations (public + private):**
+   - `~/proj/scitex-agent-container/src/scitex_agent_container/_skills/scitex-agent-container/` (public, canonical)
+   - `~/proj/scitex-orochi/src/scitex_orochi/_skills/scitex-orochi/` (public, canonical)
+   - `~/.scitex/agent-container/skills/scitex-agent-container-private/` (private per-machine, symlinked on export)
+   - `~/.scitex/orochi/skills/scitex-orochi-private/` (private per-machine, symlinked on export)
+   - Convention: `~/.scitex/<suffix>/skills/<package>-private/` → `~/.claude/skills/scitex/<package>-private/`
 2. **Git status** of the two shared locations. If dirty (uncommitted
    local edits), skip the export step for that repo and log the
    skip — never clobber in-progress work.
@@ -130,8 +131,8 @@ bash/python, no Claude session on either host.
    changed since this host's previous tick, rsync the tree into
    `~/.dotfiles/src/.claude/skills/` so new agent hosts inherit
    the update. Use `rsync --delete` within the target subtree to
-   keep the mirror exact. **Host-local**: MBA writes to
-   `/Users/ywatanabe/.dotfiles/...`, NAS writes to its own
+   keep the mirror exact. **Host-local**: primary host writes to
+   `~/.dotfiles/...`, standby host writes to its own
    `~/.dotfiles/...`; both mirrors are equivalent because both
    read from the same canonical upstream repos via `git pull`.
 7. **Write one log line** to host-local
@@ -139,33 +140,33 @@ bash/python, no Claude session on either host.
    `ISO8601 | host=<mba|nas> | tick=N | exported=<N> | drift-repaired=<N> | dedupe-flags=<N> | mirror-updated=<bool> | wall-time=<sec>`
 8. **No hub post.** Ever. State-change-only reporting is the
    agent layer's job (Track B worker reads the log via host-local
-   file access on MBA, or via SSH on NAS, when asked).
+   file access on primary host, or via SSH on standby host, when asked).
 
-### Why MBA primary, NAS warm-standby
+### Why primary host primary, standby host warm-standby
 
-1. **Empirical stability** (ywatanabe msg#11464) — MBA is
+1. **Empirical stability** (the operator msg#11464) — primary host is
    currently the most stable agent host, and the skill-sync pilot
    benefits from the least-risky landing pad.
-2. **NAS SLURM traffic is real** (head-nas msg#11492/#11493) —
+2. **standby host SLURM traffic is real** (head-<host> msg#11492/#11493) —
    `scitex-cloud` visitor sessions run 6 concurrent SLURM jobs
    (12/12 CPU, 24GB allocated, 59-min walltime caps,
    `scitex-alloc-<hash>.sh` allocation scripts). A CPU-hot direct-
-   exec systemd timer on NAS would step on visitor allocations via
+   exec systemd timer on standby host would step on visitor allocations via
    the kernel scheduler even without going through SLURM.
    `scitex-dev skills export --clean` is fast but non-trivial; it
-   should not be a first-class MBA→NAS offload target.
-3. **NAS is the right warm-standby** because it's 24/7 on and
+   should not be a first-class primary host→standby host offload target.
+3. **standby host is the right warm-standby** because it's 24/7 on and
    systemd-native. The standby's cost is one idempotent bash
    script per 30 minutes — I/O-light and CPU-cheap, which is
-   exactly what the "NAS accepts" column of the daemon host
-   policy table (`fleet-role-taxonomy.md`) calls out as fine.
+   exactly what the "standby host accepts" column of the daemon host
+   policy table (`00-agent-types.md`) calls out as fine.
 4. **Escape hatch**: if a future heavy-compute phase is needed
    (e.g. bulk embedding over all skills, semantic deduplication),
-   submit as `sbatch` on NAS rather than direct systemd-timer
-   exec. NAS's SLURM queue alongside visitor traffic is the right
+   submit as `sbatch` on standby host rather than direct systemd-timer
+   exec. standby host's SLURM queue alongside visitor traffic is the right
    path, not a direct launchd-style CPU burst.
 
-### Auto-repair threshold (per head-mba review, msg#11427)
+### Auto-repair threshold (per head-<host> review, msg#11427)
 
 The daemon is **only** allowed to auto-repair frontmatter issues
 that are mechanical, reversible, and carry zero semantic risk:
@@ -186,7 +187,7 @@ The daemon **must not** auto-edit:
 
 Anything outside the auto-repair whitelist → log the finding and
 open a `gh issue` under label `skill-drift` tagged
-`@mamba-skill-manager-mba`. The agent-layer worker reviews those
+`@worker-skill-manager-<host>`. The agent-layer worker reviews those
 issues on demand.
 
 ### Failure handling
@@ -200,15 +201,15 @@ issues on demand.
 
 Each host owns its own `.fail` touch-file in its own
 `~/.scitex/orochi/` so failures on one host don't block the
-other. The Track B worker on MBA reads the local `.fail`
-directly and reads NAS's via SSH (or via a hub `fleet_report`
+other. The Track B worker on primary host reads the local `.fail`
+directly and reads standby host's via SSH (or via a hub `fleet_report`
 endpoint if/when the daemon inventory gets aggregated centrally).
 
 The daemon never escalates. The healer-prober notices the
 `.fail` touch-file or the stale log timestamp on its next probe
 and spins up an agent-layer worker to triage.
 
-## Track B — `mamba-skill-manager-mba` (agent layer, MBA)
+## Track B — `worker-skill-manager-<host>` (agent layer, primary host)
 
 The existing Claude Code session, but with Track A responsibility
 removed. After the split, Track B's job is purely on-demand:
@@ -221,8 +222,8 @@ drift/dedupe candidates, curate taxonomy.
 |---------------------|----------------|---------------------------------------------------|
 | DM from any agent   | ≤ 60 s         | miss → #escalation after 5 min                    |
 | #agent @mention     | ≤ 60 s         | same                                              |
-| #ywatanabe direct   | ≤ 30 s         | miss → TTS escalation                             |
-| #ywatanabe fleet    | only if skills expertise is the blocker; otherwise silent (ywatanabe thread is DM-ish, not fleet broadcast) |
+| #the operator direct   | ≤ 30 s         | miss → TTS escalation                             |
+| #the operator fleet    | only if skills expertise is the blocker; otherwise silent (the operator thread is DM-ish, not fleet broadcast) |
 
 ### Response format (terse, in order)
 
@@ -239,7 +240,7 @@ drift/dedupe candidates, curate taxonomy.
   `skill-drift` — review and close or escalate, do not let them
   accumulate.
 - **Dedupe candidates** logged by the daemon — decide per
-  candidate whether to merge (requires ywatanabe or head-mba
+  candidate whether to merge (requires the operator or head-<host>
   sign-off), rename, or leave as-is with a note.
 - **Export failures** signaled by
   `~/.scitex/orochi/skill-sync-daemon.fail` on either host —
@@ -249,10 +250,10 @@ drift/dedupe candidates, curate taxonomy.
 ### Silent-otherwise discipline
 
 Outside of query response, daemon-queue servicing, and the single
-startup announce to `#ywatanabe`, the Track B worker is silent.
+startup announce to `#the operator`, the Track B worker is silent.
 No heartbeat. No "still idling". No "queues empty, nothing to
 do." Those go to `~/.scitex/orochi/logs/skill-manager-worker.log`
-(per head-mba review, msg#11427 — explicit local log path).
+(per head-<host> review, msg#11427 — explicit local log path).
 
 ### What Track B worker does **not** do
 
@@ -263,17 +264,17 @@ do." Those go to `~/.scitex/orochi/logs/skill-manager-worker.log`
 - Does **not** close issues. `gh-issue-close-safe` + the
   close-evidence-gate auditor own that.
 - Does **not** edit other agents' workspace files. Only the two
-  shared skill trees + the dotfiles mirror (on MBA; NAS is
+  shared skill trees + the dotfiles mirror (on primary host; standby host is
   idempotent-equivalent).
 - Does **not** post heartbeat / keep-alive pings. Healer prober
   owns liveness.
 - Does **not** decide merges unprompted. Flagged dedupe
-  candidates require human or head-mba sign-off before any merge.
+  candidates require human or head-<host> sign-off before any merge.
 
 ## Parallel pilot #2 — `todo-sweep-daemon`
 
-`mamba-todo-manager-mba` Track A is being daemonized
-simultaneously on **MBA launchd** as a redundancy stress-test.
+`worker-todo-manager-<host>` Track A is being daemonized
+simultaneously on **primary host launchd** as a redundancy stress-test.
 Same scaffolding as `skill-sync-daemon`, different input
 interface (`gh issue` sweep + cross-ref index refresh + close-
 evidence audit of the todo-repo mirror) instead of skill-tree
@@ -285,18 +286,18 @@ split pattern landing in the same ratification commit so the
 pattern is proven on more than one concrete case before it
 becomes the default recommendation.
 
-See `mamba-todo-manager-mba`'s own architecture doc (when
+See `worker-todo-manager-<host>`'s own architecture doc (when
 drafted) for the per-tick procedure on that side.
 
 ## Parallel pilot #3 — `slurm-resource-scraper`
 
 A third pilot lands alongside this one in the same ratification PR:
-`slurm-resource-scraper` on Spartan + NAS + WSL, drafted by
-head-nas under the "external-tool-compat" design principle (use
+`slurm-resource-scraper` on Spartan + standby host + secondary host, drafted by
+head-<host> under the "external-tool-compat" design principle (use
 stock SLURM CLI output — `sinfo`, `squeue`, `sacct`,
 `scontrol --json`, `sreport` — as canonical wire format, emit
 NDJSON with SLURM long-form column names, bash + systemd-timer,
-no custom schema). See `slurm-resource-scraper-contract.md` for
+no custom schema). See `infra-slurm-resource-scraper-contract.md` for
 the full contract — it is the canonical example of the
 external-tool-compat design principle for *all* metrics-collector
 daemons in the fleet.
@@ -313,33 +314,33 @@ should copy this pattern.
 
 | Concern                      | Before (single session)                         | After (split)                                                     |
 |------------------------------|-------------------------------------------------|-------------------------------------------------------------------|
-| Quota cost of rollup loop    | 1 Claude session running 24/7 just to walk dirs | Zero — launchd on MBA + systemd on NAS, both quota-free           |
+| Quota cost of rollup loop    | 1 Claude session running 24/7 just to walk dirs | Zero — launchd on primary host + systemd on standby host, both quota-free           |
 | Response latency for queries | Depends on whether the tick loop was mid-`export` | Always fast — worker session is idle between queries              |
 | Failure isolation            | Rollup failure took down the query responder   | Daemon failure is signaled to the worker, worker stays up         |
 | Single point of failure      | One host, one session                           | Two hosts, idempotent dual-run, miss-backfill within one cadence  |
 | Observability                | Mixed chatter + real findings                   | Daemon log is machine-parseable; worker posts only when asked     |
-| Host locality                | MBA (same as everything)                        | MBA primary (stability) + NAS warm-standby (24/7); host-diverse   |
-| NAS visitor SLURM collision  | N/A (rollup was on MBA)                         | Avoided — standby is I/O-light, CPU-hot stays on MBA              |
+| Host locality                | primary host (same as everything)                        | primary host primary (stability) + standby host warm-standby (24/7); host-diverse   |
+| standby host visitor SLURM collision  | N/A (rollup was on primary host)                         | Avoided — standby is I/O-light, CPU-hot stays on primary host              |
 
 ## Related skills
 
-- `fleet-role-taxonomy.md` — the 2-layer + role × function model
+- `00-agent-types.md` — the 2-layer + role × function model
   that makes this split the default shape for hybrid agents.
-- `slurm-resource-scraper-contract.md` — parallel pilot #3 and
+- `infra-slurm-resource-scraper-contract.md` — parallel pilot #3 and
   canonical example of external-tool-compat design principle for
   metrics-collector daemons.
 - `silent-success.md` — rule #6 discipline that governs the
   worker's posting behavior.
-- `fleet-communication-discipline.md` — #ywatanabe vs #agent vs
+- `fleet-communication-discipline.md` — #the operator vs #agent vs
   #progress rules the worker follows.
 - `agent-startup-protocol.md` — 5-step boot sequence the Track B
   worker runs before entering its idle-respond loop.
-- `close-evidence-gate.md` — the evidence standard the worker
+- `fleet-close-evidence-gate.md` — the evidence standard the worker
   cites when asked "how do I close a skill-related issue
   properly?".
-- `deploy-workflow.md` — deployment distinctions (launchd
-  reload on MBA / systemd reload on NAS for the daemon vs pane
+- `infra-deploy-workflow.md` — deployment distinctions (launchd
+  reload on primary host / systemd reload on standby host for the daemon vs pane
   restart for the worker).
-- `hpc-etiquette.md` — if the NAS-side standby ever needs to be
+- `hpc-etiquette.md` — if the standby host-side standby ever needs to be
   rerouted through `sbatch`, this skill's login-node / SLURM
   discipline applies.
