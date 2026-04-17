@@ -38,9 +38,10 @@ The overview intentionally drops pane preview, CLAUDE.md head, recent-actions li
 
 Click a card to open a dedicated sub-tab with:
 
-- **Header meta grid** — includes **functional-heartbeat** fields propagated from the hook ring buffer:
+- **Header meta grid** — includes **functional-heartbeat** fields propagated from the hook ring buffer and the container's per-host `actions.db`:
   - `Last tool: 12s ago (Edit)` — newest `PreToolUse` event. This is LLM-level liveness. If pane text looks fresh but `last_tool_at` is stale, the TUI is frozen mid-render, not the LLM.
   - `Last MCP: 45s ago (mcp__orochi__send_message)` — newest `mcp__*` pretool. Proves the MCP sidecar route is delivering tool calls end-to-end. Fresh `last_tool_at` + stale `last_mcp_tool_at` indicates a broken MCP route while the LLM is otherwise alive.
+  - `Last action: 12s ago (nonce-probe success, 3.2s)` — newest PaneAction from `actions.db`. Combines `last_action_at`, `last_action_name` (e.g. `nonce-probe`, `compact`), `last_action_outcome` (`success` / `completion_timeout` / `precondition_fail` / `send_error` / `skipped_by_policy`), and `last_action_elapsed_s`. Also backed by `action_counts` and `p95_elapsed_s_by_action` rollups. Fresh tool/MCP but stale `last_action_at` means the container-side action loop has stopped firing. Note: `last_action_name` is the PaneAction label and is distinct from the pre-existing `last_action` unix-time liveness timestamp.
 - **Pane preview** — tail of `tmux capture-pane`.
 - **CLAUDE.md head** — expandable to full instructions.
 - **Recent actions list** and **subagent list**.

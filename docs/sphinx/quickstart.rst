@@ -34,9 +34,18 @@ Quickstart
    includes functional-heartbeat shortcuts derived from the hook ring
    buffer — ``last_tool_at`` / ``last_tool_name`` (LLM-level liveness)
    and ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (proves the MCP
-   sidecar route works). These render in the per-agent detail meta
-   grid (e.g. "Last tool: 12s ago (Edit)",
-   "Last MCP: 45s ago (mcp__orochi__send_message)").
+   sidecar route works) — plus a PaneAction summary from the
+   container's per-host ``actions.db``: ``last_action_at``,
+   ``last_action_name`` (e.g. ``nonce-probe`` / ``compact``),
+   ``last_action_outcome`` (``success`` / ``completion_timeout`` /
+   ``precondition_fail`` / ``send_error`` / ``skipped_by_policy``),
+   ``last_action_elapsed_s``, plus ``action_counts`` and
+   ``p95_elapsed_s_by_action`` rollups. All render in the per-agent
+   detail meta grid (e.g. "Last tool: 12s ago (Edit)", "Last MCP:
+   45s ago (mcp__orochi__send_message)", "Last action: 12s ago
+   (nonce-probe success, 3.2s)"). Note: ``last_action_name`` is the
+   PaneAction label from ``actions.db`` and must not be confused
+   with the pre-existing ``last_action`` unix-time liveness field.
 
 5. Manage channel membership (server-authoritative):
 
