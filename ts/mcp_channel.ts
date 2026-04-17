@@ -371,6 +371,7 @@ const conn = {
             machine: _machine,
             role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
             model: OROCHI_MODEL,
+            multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
             agent_id: `${OROCHI_AGENT}@${_machine}`,
             icon: process.env.SCITEX_OROCHI_ICON || "",
             icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
