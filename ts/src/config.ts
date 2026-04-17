@@ -12,7 +12,14 @@ export const OROCHI_AGENT =
 // MCP tools, REST API, or web UI. Agents register with no channels and
 // pick up their memberships from the server. No env var.
 export const OROCHI_TOKEN = process.env.SCITEX_OROCHI_TOKEN || "";
-export const OROCHI_MODEL = process.env.SCITEX_OROCHI_MODEL || "unknown";
+// Model label: prefer orochi-namespaced var, fall back to sac's namespace
+// (which is what the generic scitex-agent-container auto-injects since the
+// orochi-agnostic refactor). Either should be set by the agent's YAML or
+// pre_agent hook.
+export const OROCHI_MODEL =
+  process.env.SCITEX_OROCHI_MODEL ||
+  process.env.SCITEX_AGENT_CONTAINER_MODEL ||
+  "unknown";
 
 // WSS support: SCITEX_OROCHI_URL overrides host/port with a full URL (ws:// or wss://)
 // Examples:
