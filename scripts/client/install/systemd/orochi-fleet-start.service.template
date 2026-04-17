@@ -1,0 +1,25 @@
+[Unit]
+# Canonical on-boot launcher for every applicable Orochi agent on this host.
+# Installed by bootstrap-host.sh with @VENV@ / @SAC@ / @CANONICAL_HOST@ substituted.
+# Idempotent: sac start --all walks <host>/agents/ > shared/agents/, applies
+# scheduling.mode rules (per-host / singleton + preferred-host), and skips
+# anything already running.
+Description=Orochi fleet — start all applicable agents on boot (canonical)
+Documentation=https://github.com/ywatanabe1989/scitex-agent-container
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-%h/.config/systemd/user/orochi.env
+# bash -lc so bash.d PATH + belt-and-braces in .bash_profile applies.
+# .bash.d/secrets/010_scitex/01_orochi.src bridges the canonical hostname
+# + YAML search dirs into sac's own env namespace before sac runs.
+ExecStart=/bin/bash -lc 'SCITEX_AGENT_CONTAINER_HOSTNAME="@CANONICAL_HOST@" @SAC@ start --all'
+ExecStop=/bin/bash -lc 'SCITEX_AGENT_CONTAINER_HOSTNAME="@CANONICAL_HOST@" @SAC@ stop --all --force'
+TimeoutStartSec=120
+Nice=5
+
+[Install]
+WantedBy=default.target

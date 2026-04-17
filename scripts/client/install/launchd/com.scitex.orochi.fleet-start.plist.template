@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Canonical fleet-start LaunchAgent for macOS (mba). Boots all Orochi
+  agents listed in ~/.scitex/orochi/<host>/agents/ (via sac), parallel
+  to orochi-fleet-start.service on Linux hosts.
+
+  bootstrap-host.sh renders this by substituting the tokens below and
+  installs the result under ~/Library/LaunchAgents/.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.scitex.orochi.fleet-start</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>-lc</string>
+    <string>SCITEX_AGENT_CONTAINER_HOSTNAME="@CANONICAL_HOST@" @SAC@ start --all</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>@HOME@/.scitex/agent-container/logs/orochi-fleet-start.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>@HOME@/.scitex/agent-container/logs/orochi-fleet-start.err.log</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>HOME</key>
+    <string>@HOME@</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/opt/homebrew/sbin:/usr/sbin:/sbin</string>
+    <key>LANG</key>
+    <string>en_US.UTF-8</string>
+  </dict>
+</dict>
+</plist>

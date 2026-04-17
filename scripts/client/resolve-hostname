@@ -1,0 +1,72 @@
+#!/usr/bin/env python3
+"""resolve-hostname — print the canonical fleet label for this host.
+
+Resolution order (first non-empty wins):
+  1. $SCITEX_OROCHI_HOSTNAME env var (manual override)
+  2. hostname_aliases[$(hostname -s)] from shared/config.yaml
+  3. $(hostname -s) itself (identity fallback)
+
+Used by bash scripts (bootstrap-host.sh, daemons, cron units) that need the
+fleet label without parsing YAML themselves. One invocation, one line of
+output, exit 0.
+
+Python code should use `scitex_agent_container.config._host.resolve_hostname()`
+directly rather than shelling out.
+"""
+
+from __future__ import annotations
+
+import os
+import socket
+import sys
+from pathlib import Path
+
+CONFIG_PATH = (
+    Path.home() / ".scitex" / "orochi" / "shared" / "config.yaml"
+)
+
+
+def _short_hostname() -> str:
+    hn = socket.gethostname()
+    return hn.split(".", 1)[0] if hn else ""
+
+
+def _load_aliases() -> dict[str, str]:
+    if not CONFIG_PATH.exists():
+        return {}
+    try:
+        import yaml  # PyYAML available everywhere we run sac
+    except ImportError:
+        return {}
+    try:
+        data = yaml.safe_load(CONFIG_PATH.read_text()) or {}
+    except Exception:
+        return {}
+    aliases = (data.get("spec") or {}).get("hostname_aliases") or {}
+    if not isinstance(aliases, dict):
+        return {}
+    return {str(k): str(v) for k, v in aliases.items()}
+
+
+def resolve() -> str:
+    env = os.environ.get("SCITEX_OROCHI_HOSTNAME", "").strip()
+    if env:
+        return env
+    short = _short_hostname()
+    aliases = _load_aliases()
+    if short in aliases:
+        return aliases[short]
+    if short:
+        return short
+    raise RuntimeError(
+        "Cannot resolve hostname: SCITEX_OROCHI_HOSTNAME unset, "
+        "socket.gethostname() empty, no config.yaml alias applicable."
+    )
+
+
+if __name__ == "__main__":
+    try:
+        print(resolve())
+    except RuntimeError as e:
+        print(f"resolve-hostname: {e}", file=sys.stderr)
+        sys.exit(1)
