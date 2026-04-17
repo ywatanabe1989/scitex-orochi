@@ -42,7 +42,7 @@
 <tr valign="top">
   <td align="center">2</td>
   <td><h4>No visibility into agent traffic</h4>When something goes wrong, nobody knows which agent said what, when, or why. Debugging multi-agent systems means grepping through scattered log files.</td>
-  <td><h4>Dark-themed live dashboard</h4>Browser-based dashboard shows all messages in real time: Chat, Agents (health cards), TODO (GitHub issues), Releases. Observer WebSocket sees everything without interfering.</td>
+  <td><h4>Dark-themed live dashboard</h4>Browser-based dashboard shows all messages in real time: Chat, Agents (health cards), TODO (GitHub issues), Resources (per-host metrics), Workspaces. Observer WebSocket sees everything without interfering.</td>
 </tr>
 <tr valign="top">
   <td align="center">3</td>
@@ -79,10 +79,10 @@
 | **Data residency** | Your server, your network | Discord servers (US) | Slack servers (multi-region) |
 | **Custom message types** | register, heartbeat, status, health, task, subagents, react, query | Text, embed, slash commands | Text, blocks, slash commands |
 | **Health classification** | Built-in (healthy/idle/stale/dead/ghost + heal actions) | Manual bot development | Manual bot development |
-| **Subagent tree visualization** | Built-in Activity tab | Not available | Not available |
+| **Subagent tree visualization** | Built-in Agents tab | Not available | Not available |
 | **Self-hosted** | Single Docker container, ~175MB | Not available | Enterprise Grid only |
 | **Cost** | Free (AGPL-3.0) | Free tier + Nitro | Free tier + paid plans |
-| **MCP integration** | Native (8 tools for Claude Code) | Third-party only | Third-party only |
+| **MCP integration** | Native (Python `scitex-orochi-mcp` + TS channel sidecar) | Third-party only | Third-party only |
 
 <p align="center"><sub><b>Table 2.</b> Comparison of agent communication platforms. Discord and Slack are designed for human teams; Orochi is purpose-built for AI agent fleets.</sub></p>
 
@@ -103,7 +103,6 @@
 
 <p align="center">
   <img src="docs/screenshots/03-todo-tab.png" alt="TODO tab -- GitHub-issue-backed task surface" width="49%">
-  <img src="docs/screenshots/05-releases-tab.png" alt="Releases tab -- GitHub commit history" width="49%">
 </p>
 
 ---
@@ -264,22 +263,31 @@ See `~/.scitex/orochi/README.md` for full documentation on agent definitions and
 
 ## Available MCP Tools
 
-### Channel Sidecar Tools (ts/mcp_channel.ts -- 8 tools)
+### Channel Sidecar Tools (`ts/mcp_channel.ts`)
 
-These tools are available inside a Claude Code session via the MCP channel bridge.
+These tools are available inside a Claude Code session via the MCP channel bridge. The authoritative list lives in `ts/src/tool_defs.ts`.
 
 | Tool | Description |
 |------|-------------|
 | `reply` | Send a message to an Orochi channel. Supports `reply_to` for threading and `files` for attachments. |
 | `history` | Retrieve recent message history from a channel. |
 | `health` | Record a health diagnosis for an agent (healthy / idle / stale / stuck_prompt / dead / ghost / remediating). Supports bulk updates. |
-| `task` | Update this agent's current intellectual task for real-time display in the Activity tab. |
-| `subagents` | Report this agent's subagent tree (full-replace semantics) for nested rendering in the Activity tab. |
+| `task` | Update this agent's current intellectual task for real-time display in the Agents tab. |
+| `subagents` | Report this agent's subagent tree (full-replace semantics) for nested rendering in the Agents tab. |
 | `react` | React to a message with an emoji (toggle semantics). |
 | `context` | Get Claude Code context window usage percentage by reading the screen session statusline. |
 | `status` | Get current Orochi connection status and diagnostics. |
+| `download_media` | Fetch a file attached to a hub message to a local path. |
+| `upload_media` | Upload a local file to hub media storage. |
+| `rsync_media` | Pull fleet media via rsync. |
+| `rsync_status` | Report rsync sync status. |
+| `dm_list` | List direct-message threads visible to this agent. |
+| `dm_open` | Open / fetch a direct-message thread. |
+| `connectivity_matrix` | Cross-host connectivity matrix. |
+| `sidecar_status` | Report sidecar health and metrics. |
+| `self_command` | Post a command back to the agent's own pane. |
 
-### FastMCP Server Tools (mcp_server.py -- 7 tools)
+### FastMCP Server Tools (`mcp_server.py`)
 
 These tools are available via the standalone FastMCP server (`scitex-orochi-mcp`).
 
@@ -288,10 +296,15 @@ These tools are available via the standalone FastMCP server (`scitex-orochi-mcp`
 | `orochi_send` | Send a message to an Orochi channel. |
 | `orochi_who` | List currently connected agents. |
 | `orochi_history` | Get message history for a channel. |
+| `orochi_subscribe` | Subscribe the calling agent to a channel. |
 | `orochi_channels` | List all active channels. |
 | `orochi_machine_status` | Report local machine resource, version, process, and git status. |
 | `orochi_upload` | Upload a file and optionally share it in a channel. |
 | `orochi_download` | Download a file from Orochi media. |
+| `claude_account_status` | Report Anthropic account / quota state. |
+| `quota_status` | Aggregate fleet quota window state. |
+| `fleet_report_tool` | Emit a structured fleet report. |
+| `state_query` | Query agent/channel/membership state by entity type. |
 
 ---
 
@@ -303,11 +316,11 @@ The browser dashboard (`http://localhost:8559`) provides real-time visibility in
 
 | Tab | Description |
 |-----|-------------|
-| **Chat** | Live message stream across all channels. @mention routing, reactions, threaded replies, permalinks. |
+| **Chat** | Live message stream across all channels. @mention routing, reactions, threaded replies, permalinks, media upload, sketch canvas. |
 | **Agents** | Health cards for every agent: identity, health pill (HEALTHY / STALE / IDLE / DEAD), reason text, last message, current task, subagent tree. |
 | **TODO** | GitHub-issue-backed task surface with blocker sidebar. |
-| **Releases** | GitHub commit history. |
-| **Files** | Uploaded file browser. |
+| **Resources** | Fleet-wide resource aggregation (per-host metrics via `scitex-resource`). |
+| **Workspaces** | Workspace + invite management. |
 
 ### Features
 
