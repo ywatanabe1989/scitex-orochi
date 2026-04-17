@@ -16,18 +16,8 @@ HOST=""
 AGENT=""
 STRATEGY=""
 SESSION=""
-# Canonical post-68bd1592 path: runtime/fleet-watch/. Honour the legacy flat
-# path if that's where the existing log lives so operators don't lose tail.
-# DEPRECATED: drop legacy fallback after rollout.
-_default_compact_log() {
-  if [ -f "$HOME/.scitex/orochi/fleet-watch/compact_actuator.log" ] \
-     && [ ! -f "$HOME/.scitex/orochi/runtime/fleet-watch/compact_actuator.log" ]; then
-    printf '%s' "$HOME/.scitex/orochi/fleet-watch/compact_actuator.log"
-  else
-    printf '%s' "$HOME/.scitex/orochi/runtime/fleet-watch/compact_actuator.log"
-  fi
-}
-LOG_FILE="${COMPACT_ACTUATOR_LOG:-$(_default_compact_log)}"
+# Canonical post-68bd1592 path: runtime/fleet-watch/.
+LOG_FILE="${COMPACT_ACTUATOR_LOG:-$HOME/.scitex/orochi/runtime/fleet-watch/compact_actuator.log}"
 SELF_AGENT="head-nas"
 
 usage() {

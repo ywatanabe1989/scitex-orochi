@@ -13,21 +13,16 @@ set -euo pipefail
 # Canonical post-68bd1592 layout:
 #   agent defs  → shared/agents/<name>/ or <host>/agents/<name>/
 #   workspaces  → runtime/workspaces/<name>/
-# Legacy flat ~/.scitex/orochi/{agents,workspaces}/ are honoured as a
-# fallback when the runtime/ skeleton hasn't been bootstrapped yet.
-# DEPRECATED: drop the legacy fallbacks after rollout.
 _OROCHI_ROOT="$HOME/.scitex/orochi"
-# Ordered list of agent-definition roots. Host override wins, shared next,
-# legacy last. Callers that override via SCITEX_OROCHI_AGENTS_DIR bypass
-# the entire search.
+# Ordered list of agent-definition roots. Host override wins, shared next.
+# Callers that override via SCITEX_OROCHI_AGENTS_DIR bypass the entire search.
 _HOST_FOR_AGENTS="${SCITEX_OROCHI_HOSTNAME:-$(hostname -s 2>/dev/null || hostname)}"
 _DEFAULT_AGENT_DIRS=(
     "$_OROCHI_ROOT/$_HOST_FOR_AGENTS/agents"
     "$_OROCHI_ROOT/shared/agents"
-    "$_OROCHI_ROOT/agents"
 )
-# Back-compat: AGENTS_DIR is still a single path (first usable root). Most
-# consumers just want "one place to start looking".
+# AGENTS_DIR is a single path (first usable root). Most consumers just
+# want "one place to start looking".
 _first_existing_agents_dir() {
     local d
     for d in "${_DEFAULT_AGENT_DIRS[@]}"; do
@@ -41,16 +36,7 @@ _first_existing_agents_dir() {
     printf '%s' "$_OROCHI_ROOT/shared/agents"
 }
 AGENTS_DIR="${SCITEX_OROCHI_AGENTS_DIR:-$(_first_existing_agents_dir)}"
-_default_workspaces_dir() {
-    if [[ -d "$_OROCHI_ROOT/runtime" ]]; then
-        printf '%s' "$_OROCHI_ROOT/runtime/workspaces"
-    elif [[ -d "$_OROCHI_ROOT/workspaces" ]]; then
-        printf '%s' "$_OROCHI_ROOT/workspaces"
-    else
-        printf '%s' "$_OROCHI_ROOT/runtime/workspaces"
-    fi
-}
-WORKSPACES_DIR="${SCITEX_OROCHI_WORKSPACES_DIR:-$(_default_workspaces_dir)}"
+WORKSPACES_DIR="${SCITEX_OROCHI_WORKSPACES_DIR:-$_OROCHI_ROOT/runtime/workspaces}"
 
 # Resolve an agent dir by name across all canonical roots. Echoes the
 # first match on stdout. Falls back to the default AGENTS_DIR/<name> so

@@ -92,10 +92,8 @@ is agent-only territory. Use that freedom:
 
 - `worker-verifier-<host>` keeps a **persistent headed Chromium** session
   with a dedicated user profile at
-  `~/.scitex/orochi/runtime/verifier/chrome-profile/` (post-68bd1592;
-  legacy `~/.scitex/orochi/verifier/chrome-profile/` still accepted) so
-  OAuth, mic, clipboard,
-  and notification permissions persist across runs.
+  `~/.scitex/orochi/runtime/verifier/chrome-profile/` (post-68bd1592) so
+  OAuth, mic, clipboard, and notification permissions persist across runs.
 - The browser window stays open 24/7 pointed at the production hub,
   acting as a live "human-eye" observer that watches for blur events,
   WS disconnects, focus theft, and regression screenshots — without any
@@ -104,7 +102,7 @@ is agent-only territory. Use that freedom:
   on page load and kept warm; verifier reads them on demand instead of
   asking the operator to paste anything.
 - Periodic screenshots (every ~5 minutes) are taken automatically and
-  archived in `~/.scitex/orochi/runtime/verifier/screenshots/` (legacy `~/.scitex/orochi/verifier/screenshots/` still accepted) plus uploaded to
+  archived in `~/.scitex/orochi/runtime/verifier/screenshots/` plus uploaded to
   `#operator` as visual pulse snapshots when something changes
   meaningfully — not every heartbeat.
 - Other macOS affordances are also fair game when they help fleet work:

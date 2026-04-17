@@ -11,10 +11,6 @@ directly by `scitex-orochi launch` -- operational configs live under
 └── <host>/agents/<name>/<name>.yaml     # host-specific concrete yaml
 ```
 
-The legacy flat `~/.scitex/orochi/agents/` layout is still accepted as a
-fallback while hosts finish bootstrapping against the new layout
-(DEPRECATED — will be removed once rollout is complete).
-
 ## Usage
 
 Copy an example into the appropriate canonical location and customize:

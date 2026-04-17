@@ -2065,10 +2065,8 @@ def api_agents_restart(request):
     host = _derive_host(name)
     is_local = host in ("localhost", "127.0.0.1", "::1", "")
     screen_name = name
-    # Canonical workspace path under the new runtime/ layout (dotfiles
-    # commit 68bd1592). Old flat path ~/.scitex/orochi/workspaces/<n>/
-    # is deprecated and will be removed once every host has been
-    # bootstrapped against the new layout.
+    # Canonical workspace path under the runtime/ layout (dotfiles
+    # commit 68bd1592).
     workspace = f"~/.scitex/orochi/runtime/workspaces/{name}"
 
     ssh_prefix = None

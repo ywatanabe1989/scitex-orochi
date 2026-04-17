@@ -15,7 +15,6 @@ set -euo pipefail
 # Canonical post-68bd1592 agent-definition roots, searched in order:
 #   1. <host>/agents/        (host-specific)
 #   2. shared/agents/        (shared template)
-#   3. agents/               (legacy flat; DEPRECATED)
 # The :- default is what `hostname -s` would give; users who want a short
 # logical name set SCITEX_OROCHI_HOSTNAME in their shell rc.
 HOST_NAME_FOR_AGENTS="${SCITEX_OROCHI_HOSTNAME:-$(hostname -s 2>/dev/null || hostname)}"
@@ -23,11 +22,7 @@ OROCHI_ROOT="${HOME}/.scitex/orochi"
 AGENT_DIRS=(
   "${OROCHI_ROOT}/${HOST_NAME_FOR_AGENTS}/agents"
   "${OROCHI_ROOT}/shared/agents"
-  "${OROCHI_ROOT}/agents"
 )
-# Back-compat alias for external callers that source this script and expect
-# AGENT_DIR to be set.
-AGENT_DIR="${OROCHI_ROOT}/agents"
 LOG="/tmp/agent-respawn.log"
 DELAY_BETWEEN=10  # seconds between agent starts to avoid reconnect storm
 
@@ -42,7 +37,7 @@ case "$HOSTNAME" in
   *)               HOST="ywata-note-win" ;;
 esac
 
-# Resolve an agent name's yaml across the canonical roots (host/shared/legacy).
+# Resolve an agent name's yaml across the canonical roots (host, then shared).
 # Echoes the path on stdout, or nothing if not found.
 _resolve_agent_yaml() {
   local name="$1"

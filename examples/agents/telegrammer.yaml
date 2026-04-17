@@ -1,8 +1,6 @@
 # Template: copy to ~/.scitex/orochi/shared/agents/<name>/<name>.yaml
 #           or ~/.scitex/orochi/<host>/agents/<name>/<name>.yaml
 #           (see ~/.scitex/orochi/README.md; dotfiles 68bd1592).
-#           The legacy flat ~/.scitex/orochi/agents/ path is still accepted
-#           as a fallback but is DEPRECATED.
 # Orochi Telegrammer Agent -- agent-container definition
 #
 # IMPORTANT: This agent runs SEPARATELY from the Orochi launch system.

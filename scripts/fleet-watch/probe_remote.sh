@@ -102,13 +102,8 @@ fi
 # agent_meta.py reads the live Claude Code session jsonl and emits
 # {agent, alive, context_pct, current_tool, last_activity, model, subagents}.
 # We call it for each tmux session name and aggregate into agents_meta JSON.
-# Canonical post-68bd1592 path: shared/scripts/agent_meta.py. Fall back to
-# the legacy flat scripts/ path until every host is re-bootstrapped.
-# DEPRECATED: drop legacy branch after rollout.
+# Canonical post-68bd1592 path: shared/scripts/agent_meta.py.
 agent_meta_script="$HOME/.scitex/orochi/shared/scripts/agent_meta.py"
-if [ ! -x "$agent_meta_script" ]; then
-    agent_meta_script="$HOME/.scitex/orochi/scripts/agent_meta.py"
-fi
 agents_meta="{}"
 if [ -x "$agent_meta_script" ] && [ -n "$tmux_names" ]; then
     parts=""

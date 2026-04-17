@@ -1,4 +1,4 @@
-"""Helper functions for launch commands: resolution, legacy fallback."""
+"""Helper functions for launch commands: yaml resolution, container dispatch."""
 
 from __future__ import annotations
 
@@ -32,15 +32,9 @@ except ImportError:
 # (dotfiles 68bd1592, Phase A restructure):
 #   - shared/agents/<name>/<name>.yaml   (template, hostname-substituted)
 #   - <host>/agents/<name>/<name>.yaml   (host-specific concrete yaml)
-# The legacy flat ~/.scitex/orochi/agents/ is accepted as a fallback until
-# every host has been re-bootstrapped. DEPRECATED: remove the legacy fallback
-# after rollout completes.
 DEFAULT_AGENTS_DIR = Path("examples/agents")
 _OROCHI_ROOT = Path.home() / ".scitex" / "orochi"
 SHARED_AGENTS_DIR = _OROCHI_ROOT / "shared" / "agents"
-LEGACY_AGENTS_DIR = _OROCHI_ROOT / "agents"
-# Back-compat alias: external callers used USER_AGENTS_DIR.
-USER_AGENTS_DIR = LEGACY_AGENTS_DIR
 
 
 def _host_agents_dir() -> Path:
@@ -69,10 +63,9 @@ def _host_agents_dir() -> Path:
 def _candidate_agents_dirs() -> list[Path]:
     """Ordered list of user-level agent definition roots.
 
-    Host-specific overrides win, then shared templates, then the legacy
-    flat layout (backward compat during dotfiles 68bd1592 rollout).
+    Host-specific overrides win, then shared templates.
     """
-    return [_host_agents_dir(), SHARED_AGENTS_DIR, LEGACY_AGENTS_DIR]
+    return [_host_agents_dir(), SHARED_AGENTS_DIR]
 
 
 def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
@@ -84,11 +77,9 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
     Search order (first hit wins), for each of:
       - ``<host>/agents/``   (host-specific override)
       - ``shared/agents/``   (shared template)
-      - ``agents/``          (legacy flat layout, DEPRECATED)
 
     Within each root:
-      1. ``<root>/<name>.yaml`` (flat file — only meaningful for the
-         legacy layout; the new layout is always dir-per-agent)
+      1. ``<root>/<name>.yaml`` (flat file)
       2. ``<root>/<name>/<name>.yaml`` (dir-per-agent)
       3. ``<root>/head-<name>/head-<name>.yaml`` (with "head-" prefix,
          e.g. ``head-mba``)
@@ -157,9 +148,8 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
 def find_all_agent_yamls(agents_dir: Path | None = None) -> list[Path]:
     """Find all agent YAML files across the canonical agent roots.
 
-    Merges results from (in order): ``<host>/agents/``, ``shared/agents/``,
-    and the legacy ``agents/`` dir (backward compat during dotfiles
-    68bd1592 rollout). Duplicates by resolved path are de-duped so the
+    Merges results from (in order): ``<host>/agents/`` and
+    ``shared/agents/``. Duplicates by resolved path are de-duped so the
     same agent isn't returned twice.
 
     Walks one level deep to support the dir-per-agent layout

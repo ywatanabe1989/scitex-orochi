@@ -4,8 +4,6 @@ Direct agent lifecycle management using agent definitions from
 ``~/.scitex/orochi/shared/agents/<name>/`` or
 ``~/.scitex/orochi/<host>/agents/<name>/`` (see
 ``~/.scitex/orochi/README.md``; dotfiles commit 68bd1592).
-The legacy flat ``~/.scitex/orochi/agents/<name>/`` layout is accepted
-as a fallback until every host is re-bootstrapped. DEPRECATED.
 Each agent directory may contain:
   - config.yaml  (host, role, channels, etc.)
   - .mcp.json.example  (MCP config template with $HOME etc.)
@@ -38,14 +36,8 @@ from scitex_orochi._cli._helpers import EXAMPLES_HEADER
 # Agent definition lookup roots, in order of precedence (dotfiles 68bd1592):
 #   1. ~/.scitex/orochi/<host>/agents/     (host-specific override)
 #   2. ~/.scitex/orochi/shared/agents/     (shared template)
-#   3. ~/.scitex/orochi/agents/            (legacy flat layout; DEPRECATED)
 _OROCHI_ROOT = Path.home() / ".scitex" / "orochi"
 SHARED_AGENTS_DIR = _OROCHI_ROOT / "shared" / "agents"
-LEGACY_AGENTS_DIR = _OROCHI_ROOT / "agents"
-# Kept as an alias for backward compatibility with external callers /
-# scripts that import AGENTS_DIR expecting a single path. Prefer
-# :func:`_candidate_agents_dirs` for new code.
-AGENTS_DIR = LEGACY_AGENTS_DIR
 # Deployed per-agent workdir (runtime, gitignored).
 WORKSPACES_DIR = _OROCHI_ROOT / "runtime" / "workspaces"
 SETUP_SCRIPT = Path.home() / "proj" / "scitex-orochi" / "scripts" / "setup-workspace.sh"
@@ -70,21 +62,21 @@ def _host_agents_dir() -> Path:
 
 def _candidate_agents_dirs() -> list[Path]:
     """Ordered candidate roots for agent-definition lookup."""
-    return [_host_agents_dir(), SHARED_AGENTS_DIR, LEGACY_AGENTS_DIR]
+    return [_host_agents_dir(), SHARED_AGENTS_DIR]
 
 
 def _resolve_agent_dir(name: str) -> Path:
     """Return the first existing agent definition dir for ``name``.
 
-    Falls back to the legacy layout path so callers that then try to
-    open subfiles get a consistent "not found" error referring to the
-    canonical location.
+    Falls back to the canonical shared-layout path so callers that then
+    try to open subfiles get a consistent "not found" error pointing to
+    the expected location.
     """
     for root in _candidate_agents_dirs():
         candidate = root / name
         if candidate.is_dir():
             return candidate
-    return LEGACY_AGENTS_DIR / name
+    return SHARED_AGENTS_DIR / name
 
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -305,7 +297,7 @@ def _setup_workspace(name: str, ssh: str | None = None) -> bool:
 
 def _launch_agent(name: str, dry_run: bool = False, force: bool = False) -> bool:
     """Launch a single agent. Returns True on success."""
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     if not agent_dir.is_dir():
         click.echo(f"Error: agent directory not found: {agent_dir}", err=True)
         return False
@@ -512,8 +504,7 @@ def agent_launch(
     """Launch an agent by name, or all agents with --all.
 
     Reads agent definition from ~/.scitex/orochi/<host>/agents/<name>/ or
-    ~/.scitex/orochi/shared/agents/<name>/ (legacy ~/.scitex/orochi/agents/
-    accepted as fallback). Creates/uses
+    ~/.scitex/orochi/shared/agents/<name>/. Creates/uses
     ~/.scitex/orochi/runtime/workspaces/<name>/ as the workdir and starts a
     screen session with claude.
     """
@@ -525,8 +516,7 @@ def agent_launch(
         agents = _list_agent_names()
         if not agents:
             click.echo(
-                "No agents found in ~/.scitex/orochi/{shared,<host>}/agents/"
-                " (or legacy ~/.scitex/orochi/agents/).",
+                "No agents found in ~/.scitex/orochi/{shared,<host>}/agents/.",
                 err=True,
             )
             sys.exit(1)
@@ -561,7 +551,7 @@ def agent_launch(
 @click.option("--dry-run", is_flag=True, help="Print commands without executing.")
 def agent_restart(name: str, dry_run: bool) -> None:
     """Restart an agent: quit existing screen, then relaunch."""
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     if not agent_dir.is_dir():
         click.echo(f"Error: agent directory not found: {agent_dir}", err=True)
         sys.exit(1)
@@ -626,7 +616,7 @@ def agent_stop(name: str | None, stop_all: bool, force: bool) -> None:
         return
 
     assert name is not None
-    agent_dir = AGENTS_DIR / name
+    agent_dir = _resolve_agent_dir(name)
     if not agent_dir.is_dir():
         click.echo(f"Error: agent directory not found: {agent_dir}", err=True)
         sys.exit(1)
@@ -651,8 +641,7 @@ def agent_status(as_json: bool) -> None:
             click.echo(json.dumps([], indent=2))
         else:
             click.echo(
-                "No agents found in ~/.scitex/orochi/{shared,<host>}/agents/"
-                " (or legacy ~/.scitex/orochi/agents/)."
+                "No agents found in ~/.scitex/orochi/{shared,<host>}/agents/."
             )
         return
 

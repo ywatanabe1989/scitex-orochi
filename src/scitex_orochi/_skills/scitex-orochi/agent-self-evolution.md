@@ -15,10 +15,8 @@ Each agent maintains a `CLAUDE.md` in their definition directory — either
 `~/.scitex/orochi/shared/agents/<agent-name>/src_CLAUDE.md` (shared
 template, copied to `{workdir}/CLAUDE.md` at launch) or
 `~/.scitex/orochi/<host>/agents/<agent-name>/src_CLAUDE.md` (host-specific
-concrete agent). The legacy flat `~/.scitex/orochi/agents/<agent-name>/CLAUDE.md`
-layout is DEPRECATED but still accepted as a fallback. Agents should
-update this file when they learn something that will be useful across
-sessions:
+concrete agent). Agents should update this file when they learn something
+that will be useful across sessions:
 
 - New operational patterns (e.g., "media URLs need public hostname, not LAN IP")
 - Role clarifications from the operator
@@ -44,8 +42,7 @@ Knowledge that benefits the whole fleet goes into shared skills at `~/proj/scite
 
 Knowledge private to the local machine (not shipped) goes into
 `~/.scitex/orochi/shared/skills/scitex-orochi-private/` (post-68bd1592
-canonical location; legacy `~/.scitex/orochi/skills/scitex-orochi-private/`
-still accepted). This directory is symlinked to
+canonical location). This directory is symlinked to
 `~/.claude/skills/scitex/scitex-orochi-private/` automatically by
 `scitex-dev skills export`.
 
@@ -60,8 +57,7 @@ Where `<suffix>` is the package name minus `scitex-` (e.g. `orochi` for `scitex-
 
 Per-agent workspace knowledge goes into the agent's definition dir —
 `~/.scitex/orochi/shared/agents/<agent-name>/src_CLAUDE.md` or
-`~/.scitex/orochi/<host>/agents/<agent-name>/src_CLAUDE.md` (or, during
-68bd1592 rollout, the legacy `~/.scitex/orochi/agents/<agent-name>/CLAUDE.md`).
+`~/.scitex/orochi/<host>/agents/<agent-name>/src_CLAUDE.md`.
 Not shared fleet-wide.
 
 ## Self-Improvement Flow

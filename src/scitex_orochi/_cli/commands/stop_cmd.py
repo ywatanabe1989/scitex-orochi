@@ -10,9 +10,8 @@ Design notes:
   agents because scitex-agent-container's SSHRemote runtime handles
   the dispatch.
 - ``stop --all`` walks every yaml discovered under
-  ``~/.scitex/orochi/{<host>,shared}/agents/`` (or the legacy
-  ``~/.scitex/orochi/agents/`` during dotfiles 68bd1592 rollout) and
-  stops each. Telegrammer agents are skipped (same exclusion logic as
+  ``~/.scitex/orochi/{<host>,shared}/agents/`` and stops each.
+  Telegrammer agents are skipped (same exclusion logic as
   ``launch all``) — they run independently.
 - ``--force`` is passed through to the underlying ``agent_stop`` so
   stale registry entries, ghost screens, and hook failures don't
@@ -96,8 +95,7 @@ def _call_agent_stop(yaml_path: Path, force: bool) -> tuple[bool, str]:
     default=False,
     help=(
         "Stop every fleet agent discovered in "
-        "~/.scitex/orochi/{<host>,shared}/agents/ (or legacy "
-        "~/.scitex/orochi/agents/)."
+        "~/.scitex/orochi/{<host>,shared}/agents/."
     ),
 )
 @click.option(
@@ -112,8 +110,7 @@ def stop(name: str | None, stop_all: bool, force: bool) -> None:
 
     Resolution for a single NAME follows the same rules as
     ``launch head <name>``: searches
-    ``~/.scitex/orochi/{<host>,shared}/agents/<name>{,.yaml}``
-    (then the legacy ``~/.scitex/orochi/agents/...``) with
+    ``~/.scitex/orochi/{<host>,shared}/agents/<name>{,.yaml}`` with
     ``head-<name>`` fallbacks.
     """
     if not stop_all and not name:
@@ -167,7 +164,7 @@ def stop(name: str | None, stop_all: bool, force: bool) -> None:
     if yaml_path is None:
         click.echo(
             f"Error: no yaml found for '{name}'.\n"
-            f"  Searched: ~/.scitex/orochi/{{<host>,shared,}}/agents/"
+            f"  Searched: ~/.scitex/orochi/{{<host>,shared}}/agents/"
             f"{{{name},{name}/{name},head-{name}}}.yaml",
             err=True,
         )

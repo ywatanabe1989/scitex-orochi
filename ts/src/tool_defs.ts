@@ -326,7 +326,7 @@ export const TOOL_DEFS = [
   {
     name: "connectivity_matrix",
     description:
-      "Return the fleet 4×4 reachability matrix as JSON (todo#297 layer 3). Reads connectivity rows produced by the per-host fleet-watch producers (PR B) from $SCITEX_OROCHI_CONNECTIVITY_DIR (default ~/.scitex/orochi/runtime/fleet-watch/; falls back to the legacy ~/.scitex/orochi/fleet-watch/ during dotfiles 68bd1592 rollout) and merges them keyed by `from`. Each row is a single host's outbound view: {ts, from, from_hostname, to: {<peer>: {ok, rtt_ms, route, error?}}}. This is a thin read-only aggregator — it does NOT run ssh or measure RTT itself; the per-host producers handle that. Once #298 fleet_report endpoint lands, the same shape will be served from the hub DB without consumer changes.",
+      "Return the fleet 4×4 reachability matrix as JSON (todo#297 layer 3). Reads connectivity rows produced by the per-host fleet-watch producers (PR B) from $SCITEX_OROCHI_CONNECTIVITY_DIR (default ~/.scitex/orochi/runtime/fleet-watch/) and merges them keyed by `from`. Each row is a single host's outbound view: {ts, from, from_hostname, to: {<peer>: {ok, rtt_ms, route, error?}}}. This is a thin read-only aggregator — it does NOT run ssh or measure RTT itself; the per-host producers handle that. Once #298 fleet_report endpoint lands, the same shape will be served from the hub DB without consumer changes.",
     inputSchema: {
       type: "object" as const,
       properties: {},

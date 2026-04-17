@@ -292,10 +292,6 @@ agent configuration, shared across machines via dotfiles.
     └── ...
 ```
 
-The legacy flat layout `~/.scitex/orochi/agents/<agent-name>/` is still
-accepted as a fallback during the dotfiles 68bd1592 rollout
-(DEPRECATED — will be removed once every host is re-bootstrapped).
-
 The `scitex-orochi` CLI is the **dispatcher** that reads these definitions and launches agents:
 
 1. `scitex-orochi launch <agent-name>` reads the agent definition directory

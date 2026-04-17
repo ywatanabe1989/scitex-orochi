@@ -109,7 +109,7 @@ bash/python, no Claude session on either host.
    - `~/proj/scitex-agent-container/src/scitex_agent_container/_skills/scitex-agent-container/` (public, canonical)
    - `~/proj/scitex-orochi/src/scitex_orochi/_skills/scitex-orochi/` (public, canonical)
    - `~/.scitex/agent-container/skills/scitex-agent-container-private/` (private per-machine, symlinked on export)
-   - `~/.scitex/orochi/shared/skills/scitex-orochi-private/` (private per-machine, symlinked on export; post-68bd1592 canonical location — legacy `~/.scitex/orochi/skills/` still read as fallback)
+   - `~/.scitex/orochi/shared/skills/scitex-orochi-private/` (private per-machine, symlinked on export; post-68bd1592 canonical location)
    - Convention: `~/.scitex/<suffix>/shared/skills/<package>-private/` → `~/.claude/skills/scitex/<package>-private/`
 2. **Git status** of the two shared locations. If dirty (uncommitted
    local edits), skip the export step for that repo and log the

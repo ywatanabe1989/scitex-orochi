@@ -1710,13 +1710,11 @@ class ReadOauthMetadataHelperTest(TestCase):
     """todo#265: unit tests for the read_oauth_metadata() helper.
 
     The helper lives in the canonical agent_meta.py shipped from the
-    dotfiles Orochi tree. Post-68bd1592 it is at
-    ``.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py``; the
-    legacy flat ``.dotfiles/src/.scitex/orochi/scripts/agent_meta.py``
-    path is still probed for hosts that haven't been re-bootstrapped.
-    This test imports it directly from whichever path exists so the
-    scitex-orochi hub test suite guards the token-leak regression even
-    though the helper lives upstream.
+    dotfiles Orochi tree (post-68bd1592):
+    ``.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py``.
+    This test imports it directly so the scitex-orochi hub test suite
+    guards the token-leak regression even though the helper lives
+    upstream.
     """
 
     # Ordered candidate paths — first existing wins. Covers both
@@ -1724,11 +1722,8 @@ class ReadOauthMetadataHelperTest(TestCase):
     # on mba in production but can be tested on any host.
     _CANDIDATE_AGENT_META_PATHS = [
         os.path.expanduser("~/.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py"),
-        os.path.expanduser("~/.dotfiles/src/.scitex/orochi/scripts/agent_meta.py"),
         "/Users/ywatanabe/.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py",
-        "/Users/ywatanabe/.dotfiles/src/.scitex/orochi/scripts/agent_meta.py",
         "/home/ywatanabe/.dotfiles/src/.scitex/orochi/shared/scripts/agent_meta.py",
-        "/home/ywatanabe/.dotfiles/src/.scitex/orochi/scripts/agent_meta.py",
     ]
 
     @classmethod
@@ -1740,8 +1735,6 @@ class ReadOauthMetadataHelperTest(TestCase):
                 return candidate
         return None
 
-    # Kept for backward-compat with any external subclasses; prefer
-    # ``_resolve_agent_meta_path`` in new tests.
     DOTFILES_AGENT_META = _CANDIDATE_AGENT_META_PATHS[0]
 
     def _import_helper(self):

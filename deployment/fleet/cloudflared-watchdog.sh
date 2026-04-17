@@ -12,17 +12,8 @@
 set -euo pipefail
 export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 
-# Canonical runtime/ layout (dotfiles commit 68bd1592). Fall back to the
-# legacy flat logs/ dir if the runtime/ skeleton hasn't been bootstrapped
-# here yet so existing operators' `tail -f` keeps following the same file.
-# DEPRECATED: drop the legacy branch after rollout completes.
-if [[ -d "${HOME}/.scitex/orochi/runtime" ]]; then
-  _OROCHI_LOG_DIR="${HOME}/.scitex/orochi/runtime/logs"
-elif [[ -d "${HOME}/.scitex/orochi/logs" ]]; then
-  _OROCHI_LOG_DIR="${HOME}/.scitex/orochi/logs"
-else
-  _OROCHI_LOG_DIR="${HOME}/.scitex/orochi/runtime/logs"
-fi
+# Canonical runtime/ layout (dotfiles commit 68bd1592).
+_OROCHI_LOG_DIR="${HOME}/.scitex/orochi/runtime/logs"
 LOG="${_OROCHI_LOG_DIR}/cloudflared-watchdog.log"
 STATE="${_OROCHI_LOG_DIR}/watchdog-state"
 mkdir -p "$(dirname "$LOG")"

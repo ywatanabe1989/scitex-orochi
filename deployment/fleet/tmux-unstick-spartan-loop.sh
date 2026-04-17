@@ -29,20 +29,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNSTICK_SCRIPT="$SCRIPT_DIR/tmux-unstick.sh"
 INTERVAL="${UNSTICK_INTERVAL:-60}"
 
-# Canonical runtime/ layout from dotfiles commit 68bd1592 — but keep honoring
-# the legacy flat ~/.scitex/orochi/logs/ path while hosts finish migrating so
-# the operator's `tail -f` keeps following the same file.
-# DEPRECATED: drop legacy branch after rollout.
-_orochi_logs_dir() {
-  if [ -d "$HOME/.scitex/orochi/runtime" ]; then
-    printf '%s' "$HOME/.scitex/orochi/runtime/logs"
-  elif [ -d "$HOME/.scitex/orochi/logs" ]; then
-    printf '%s' "$HOME/.scitex/orochi/logs"
-  else
-    printf '%s' "$HOME/.scitex/orochi/runtime/logs"
-  fi
-}
-_LOGS_DIR="$(_orochi_logs_dir)"
+# Canonical runtime/ layout from dotfiles commit 68bd1592.
+_LOGS_DIR="$HOME/.scitex/orochi/runtime/logs"
 export LOG_FILE="${LOG_FILE:-$_LOGS_DIR/tmux-unstick.ndjson}"
 
 mkdir -p "$(dirname "$LOG_FILE")"

@@ -3,9 +3,7 @@
 
 For one host alias, compares the declared `expected_tmux_sessions` in
 ``orochi-machines.yaml`` against the runtime ``tmux_names`` field from
-the most recent snapshot in ``~/.scitex/orochi/runtime/fleet-watch/<host>.json``
-(or the legacy ``~/.scitex/orochi/fleet-watch/<host>.json`` path; see
-backward-compat note in :func:`_runtime_sessions`).
+the most recent snapshot in ``~/.scitex/orochi/runtime/fleet-watch/<host>.json``.
 
 Prints exactly one line per (host, drift_kind) finding to stdout in a
 fleet_watch-friendly shape so the bash wrapper can pipe it straight to
@@ -32,17 +30,12 @@ SCITEX_OROCHI_DIR = Path(os.environ.get(
     os.path.expanduser("~/proj/scitex-orochi"),
 ))
 MACHINES_YAML = SCITEX_OROCHI_DIR / "orochi-machines.yaml"
-# Canonical fleet-watch snapshot dir moved under runtime/ in dotfiles
-# commit 68bd1592 (Orochi fleet restructure Phase A). The legacy flat
-# path is accepted as a fallback so mixed-host fleets (some bootstrapped
-# against the new layout, some not) keep working during rollout.
-# DEPRECATED: remove the legacy fallback once every host has been
-# re-bootstrapped — estimate Q3 2026.
+# Canonical fleet-watch snapshot dir under runtime/ (dotfiles commit
+# 68bd1592, Orochi fleet restructure Phase A).
 WATCH_DIR = Path(os.environ.get(
     "FLEET_WATCH_OUT",
     os.path.expanduser("~/.scitex/orochi/runtime/fleet-watch"),
 ))
-_LEGACY_WATCH_DIR = Path(os.path.expanduser("~/.scitex/orochi/fleet-watch"))
 
 
 def _load_machines_yaml() -> list[dict]:
@@ -72,16 +65,9 @@ def _expected_sessions(host: str) -> set[str]:
 
 
 def _runtime_sessions(host: str) -> set[str] | None:
-    # Prefer the canonical runtime/ path; fall back to the legacy flat
-    # path if the runtime/ snapshot isn't there yet (backward compat
-    # during dotfiles 68bd1592 rollout).
     snap_path = WATCH_DIR / f"{host}.json"
     if not snap_path.exists():
-        legacy = _LEGACY_WATCH_DIR / f"{host}.json"
-        if legacy.exists():
-            snap_path = legacy
-        else:
-            return None
+        return None
     try:
         with open(snap_path) as f:
             snap = json.load(f)

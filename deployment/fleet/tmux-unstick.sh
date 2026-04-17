@@ -43,9 +43,7 @@
 #      5 minutes of production output can be eyeballed for
 #      false-positives before real keys start firing.
 #
-#   D. Panic switch — if ~/.scitex/orochi/runtime/tmux-unstick.PAUSED exists
-#      (or the legacy ~/.scitex/orochi/tmux-unstick.PAUSED during 68bd1592
-#      rollout),
+#   D. Panic switch — if ~/.scitex/orochi/runtime/tmux-unstick.PAUSED exists,
 #      the script sleeps without scanning. `touch` the file to halt
 #      recovery globally; `rm` to resume.
 #
@@ -70,10 +68,7 @@
 # Environment overrides:
 #
 #   TMUX_UNSTICK_LOG              NDJSON log path (default
-#                                  ~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson;
-#                                  falls back to legacy ~/.scitex/orochi/logs/
-#                                  during 68bd1592 rollout if runtime/ is
-#                                  missing)
+#                                  ~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson)
 #   TMUX_UNSTICK_INTERVAL_SEC     seconds between sweeps in --loop mode
 #                                  (default 60)
 #   TMUX_UNSTICK_STABILITY_SEC    per-pane minimum age of a stable
@@ -85,13 +80,9 @@
 #   TMUX_UNSTICK_HEARTBEAT_EVERY  emit a meta heartbeat every N sweeps
 #                                  in --loop mode (default 5)
 #   TMUX_UNSTICK_STATE_DIR        per-pane stability snapshot dir (default
-#                                  ~/.scitex/orochi/runtime/tmux-unstick-state/;
-#                                  legacy ~/.scitex/orochi/tmux-unstick-state/
-#                                  still honored during 68bd1592 rollout)
+#                                  ~/.scitex/orochi/runtime/tmux-unstick-state/)
 #   TMUX_UNSTICK_PAUSE_FILE       panic-switch marker file (default
-#                                  ~/.scitex/orochi/runtime/tmux-unstick.PAUSED;
-#                                  legacy ~/.scitex/orochi/tmux-unstick.PAUSED
-#                                  still honored during 68bd1592 rollout)
+#                                  ~/.scitex/orochi/runtime/tmux-unstick.PAUSED)
 #   DRY_RUN                       if 1, detect and log but never send
 #                                  keys (default 0; overridden to 1
 #                                  during the safe-start window)
@@ -103,30 +94,15 @@ set -u
 set -o pipefail
 
 SCHEMA="scitex-orochi/tmux-unstick/v2"
-# Canonical paths live under runtime/ (dotfiles commit 68bd1592). When the
-# legacy flat path is present on a not-yet-migrated host, honour it instead
-# so the daemon keeps writing to the same file the operator is tailing.
-# DEPRECATED: remove the legacy fallbacks after every host is re-bootstrapped.
-_pick_path() {
-  # _pick_path <canonical> <legacy>
-  # Returns $canonical unless only $legacy's parent dir already exists.
-  local canonical="$1" legacy="$2"
-  if [ -e "$canonical" ]; then
-    printf '%s' "$canonical"
-  elif [ -e "$legacy" ] || [ -d "$(dirname "$legacy")" ] && ! [ -d "$(dirname "$canonical")" ]; then
-    printf '%s' "$legacy"
-  else
-    printf '%s' "$canonical"
-  fi
-}
-LOG="${TMUX_UNSTICK_LOG:-$(_pick_path "$HOME/.scitex/orochi/runtime/logs/tmux-unstick.ndjson" "$HOME/.scitex/orochi/logs/tmux-unstick.ndjson")}"
+# Canonical paths live under runtime/ (dotfiles commit 68bd1592).
+LOG="${TMUX_UNSTICK_LOG:-$HOME/.scitex/orochi/runtime/logs/tmux-unstick.ndjson}"
 INTERVAL="${TMUX_UNSTICK_INTERVAL_SEC:-60}"
 STABILITY_SEC="${TMUX_UNSTICK_STABILITY_SEC:-120}"
 COOLDOWN_SEC="${TMUX_UNSTICK_COOLDOWN_SEC:-120}"
 SAFE_START_SEC="${TMUX_UNSTICK_SAFE_START_SEC:-300}"
 HEARTBEAT_EVERY="${TMUX_UNSTICK_HEARTBEAT_EVERY:-5}"
-STATE_DIR="${TMUX_UNSTICK_STATE_DIR:-$(_pick_path "$HOME/.scitex/orochi/runtime/tmux-unstick-state" "$HOME/.scitex/orochi/tmux-unstick-state")}"
-PAUSE_FILE="${TMUX_UNSTICK_PAUSE_FILE:-$(_pick_path "$HOME/.scitex/orochi/runtime/tmux-unstick.PAUSED" "$HOME/.scitex/orochi/tmux-unstick.PAUSED")}"
+STATE_DIR="${TMUX_UNSTICK_STATE_DIR:-$HOME/.scitex/orochi/runtime/tmux-unstick-state}"
+PAUSE_FILE="${TMUX_UNSTICK_PAUSE_FILE:-$HOME/.scitex/orochi/runtime/tmux-unstick.PAUSED}"
 DRY_RUN_ENV="${DRY_RUN:-0}"
 MODE="${1:---once}"
 # Shorthand promotion

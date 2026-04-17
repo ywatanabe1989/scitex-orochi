@@ -188,9 +188,6 @@ layout (dotfiles commit `68bd1592`, see `~/.scitex/orochi/README.md`):
     └── ...
 ```
 
-The legacy flat `~/.scitex/orochi/agents/` layout is accepted as a
-fallback while hosts finish re-bootstrapping (DEPRECATED).
-
 For an agent that also needs its `CLAUDE.md` visible inside a working
 project directory, symlink the `src_CLAUDE.md` into the project:
 
@@ -242,14 +239,13 @@ Launch: `scitex-orochi launch head mamba` or
 ### Resolution Order
 
 `scitex-orochi launch head <name>` searches each of these roots, in order
-(host override wins, then shared template, then legacy fallback):
+(host override wins, then shared template):
 
 - `~/.scitex/orochi/<host>/agents/`
 - `~/.scitex/orochi/shared/agents/`
-- `~/.scitex/orochi/agents/` (legacy; DEPRECATED)
 
 Within each root, the first hit wins:
-1. `<root>/<name>.yaml` (flat — mainly for legacy layout)
+1. `<root>/<name>.yaml` (flat)
 2. `<root>/<name>/<name>.yaml` (dir-per-agent)
 3. `<root>/head-<name>/head-<name>.yaml`
 4. `<root>/<name>-*/<name>-*.yaml` (machine-suffix; exactly one match)

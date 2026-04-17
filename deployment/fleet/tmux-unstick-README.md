@@ -38,12 +38,9 @@ this deployment.
 - **Script**: `deployment/fleet/tmux-unstick.sh`
   (promoted verbatim from head-mba's POC at
   `~/.scitex/orochi/shared/scripts/tmux-unstick-poc.sh` — post-68bd1592
-  canonical path; legacy `~/.scitex/orochi/scripts/` still accepted during
-  rollout — msg#11824, MBA live verified).
+  canonical path — msg#11824, MBA live verified).
 - **Log**: `~/.scitex/orochi/runtime/logs/tmux-unstick.ndjson`
-  (NDJSON, one record per detection + one summary per sweep). If the
-  runtime/ layout is not yet bootstrapped on this host, the script falls
-  back to the legacy `~/.scitex/orochi/logs/` path automatically.
+  (NDJSON, one record per detection + one summary per sweep).
 - **Host-specific wrappers**:
   - macOS (MBA): `deployment/fleet/launchd/com.scitex.orochi.tmux-unstick.plist`
   - Linux with per-user systemd (NAS, WSL):
