@@ -19,9 +19,12 @@ function _activateTab(tab) {
   var filesView = document.getElementById("files-view");
   var releasesView = document.getElementById("releases-view");
   var settingsView = document.getElementById("settings-view");
-  var vizView = document.getElementById("viz-view");
   messagesEl.style.display = "none";
   inputBar.style.display = "none";
+  var topicBanner = document.getElementById("channel-topic-banner");
+  if (topicBanner) topicBanner.style.display = "none";
+  var membersPanel = document.getElementById("channel-members-panel");
+  if (membersPanel) membersPanel.style.display = "none";
   todoView.style.display = "none";
   resourcesView.style.display = "none";
   agentsTabView.style.display = "none";
@@ -30,8 +33,7 @@ function _activateTab(tab) {
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
-  if (vizView) vizView.style.display = "none";
-  if (tab !== "viz" && typeof stopVizTab === "function") stopVizTab();
+  if (tab !== "todo" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
@@ -89,12 +91,6 @@ function _activateTab(tab) {
     settingsView.style.display = "block";
     settingsView.style.flex = "1";
     fetchSettings();
-  } else if (tab === "viz") {
-    if (vizView) {
-      vizView.style.display = "block";
-      vizView.style.flex = "1";
-    }
-    if (typeof renderVizTab === "function") renderVizTab();
   }
   try {
     localStorage.setItem("orochi_active_tab", tab);

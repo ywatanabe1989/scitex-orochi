@@ -536,7 +536,7 @@ function _showChannelCtxMenu(ch, x, y) {
       (notif === "nothing" ? " ch-ctx-active" : "") +
       '" data-action="notif-nothing">Nothing</div>',
     '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#8681; Export channel\u2026</div>',
+    '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#10515; Export channel\u2026</div>',
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
       (hidden ? "Show channel" : "Hide channel") +

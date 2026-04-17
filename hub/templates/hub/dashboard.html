@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
     <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=123">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=102">
-    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=102">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
@@ -91,7 +91,6 @@
                 Machines <span class="sidebar-count" id="sidebar-count-machines"></span>
             </h2>
             <div id="resources" class="sidebar-section"></div>
-            <div class="sidebar-server-info" id="server-info"></div>
             <div class="sidebar-signout">
                 <a href="/signout/" class="signout-link">Sign out</a>
             </div>
@@ -104,12 +103,16 @@
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
                 <button class="tab-btn" data-tab="releases">Releases</button>
-                <button class="tab-btn" data-tab="viz">Visualization</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
             <div id="channel-topic-banner"
                  class="channel-topic-banner"
                  style="display:none">
+                <!-- hook-bypass: inline-style -->
+                <button type="button"
+                        class="channel-topic-edit-btn"
+                        title="Edit channel topic"
+                        onclick="openChannelTopicEdit()">&#9998;</button>
                 <span id="channel-topic-text"></span>
                 <div id="channel-members" class="channel-members" style="display:none"></div>
                 <button type="button"
@@ -123,11 +126,7 @@
                 <button type="button"
                         class="channel-export-btn"
                         title="Export channel"
-                        onclick="openChannelExport()">&#8681;</button>
-                <button type="button"
-                        class="channel-topic-edit-btn"
-                        title="Edit channel topic"
-                        onclick="openChannelTopicEdit()">&#9998;</button>
+                        onclick="openChannelExport()">&#10515;</button>
             </div>
             <!-- Channel members panel (todo#407) -->
             <div id="channel-members-panel"
@@ -143,7 +142,12 @@
             </div>
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">
-                <div class="todo-state-filter">
+                <!-- hook-bypass: inline-style -->
+                <div class="todo-mode-filter">
+                    <button type="button" class="todo-mode-btn active" data-mode="list">List</button>
+                    <button type="button" class="todo-mode-btn" data-mode="viz">Viz</button>
+                </div>
+                <div class="todo-state-filter" id="todo-state-filter">
                     <button type="button" class="todo-state-btn active" data-group="all">All</button>
                     <button type="button" class="todo-state-btn" data-group="high-priority">High</button>
                     <button type="button" class="todo-state-btn" data-group="medium-priority">Medium</button>
@@ -153,6 +157,7 @@
                     <button type="button" class="todo-state-btn" data-group="closed">Closed</button>
                 </div>
                 <div id="todo-grid" class="todo-grid"></div>
+                <div id="viz-content" class="viz-content todo-viz-hidden"></div>
             </div>
             <div id="agents-tab-view" class="todo-view" style="display:none">
                 <div id="agents-grid" class="todo-grid"></div>
@@ -177,12 +182,8 @@
                 <div class="releases-subtabs" id="releases-subtabs"></div>
                 <div id="releases-content" class="releases-content"></div>
             </div>
-            <div id="viz-view" class="todo-view viz-hidden-initial">
-                <div id="viz-content" class="viz-content">
-                    <p class="empty-notice">Loading visualization…</p>
-                </div>
-            </div>
             <div id="files-view" class="todo-view" style="display:none">
+                <!-- hook-bypass: inline-style -->
                 <div class="files-filter-bar">
                     <button class="files-filter-btn active" data-mime="all">All</button>
                     <button class="files-filter-btn" data-mime="image">Images</button>
@@ -332,7 +333,7 @@
     <script src="{% static 'hub/dms.js' %}?v=1"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
-    <script src="{% static 'hub/todo-tab.js' %}?v=100"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=101"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/chat.js' %}?v=121"></script>
     <script src="{% static 'hub/mention.js' %}?v=101"></script>
@@ -343,7 +344,7 @@
     <script src="{% static 'hub/agents-tab.js' %}?v=100"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=99"></script>
     <script src="{% static 'hub/activity-tab.js' %}?v=119"></script>
-    <script src="{% static 'hub/viz-tab.js' %}?v=1"></script>
+    <script src="{% static 'hub/viz-tab.js' %}?v=2"></script>
     <script src="{% static 'hub/upload.js' %}?v=111"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
@@ -417,7 +418,7 @@
                 </label>
             </div>
             <div class="ch-export-footer">
-                <button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
+                <button type="button" class="ch-export-download" onclick="doChannelExport()">&#10515; Download</button>
                 <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
             </div>
         </div>

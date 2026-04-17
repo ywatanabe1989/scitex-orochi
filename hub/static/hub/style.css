@@ -797,9 +797,14 @@ blockquote.chat-blockquote {
   color: #ef4444;
   font-weight: 700;
 }
-.blockers-section {
+.blockers-section,
+#agents.sidebar-section,
+#channels.sidebar-section,
+#dms.sidebar-section,
+#resources.sidebar-section {
   max-height: 240px;
   overflow-y: auto;
+  margin-bottom: 8px;
 }
 .blockers-empty {
   color: #444;

@@ -71,8 +71,7 @@ function buildDetailHtml(issue) {
       ? issue.assignee.login
       : "unassigned";
   var commentsCount = issue.comments || 0;
-  var commentsHtml =
-    "<span>Comments: " + commentsCount + "</span>";
+  var commentsHtml = "<span>Comments: " + commentsCount + "</span>";
   return (
     '<div class="todo-detail">' +
     '<div class="todo-detail-body">' +
@@ -109,14 +108,21 @@ function buildIssueCard(issue) {
       "</span>";
   }
   var closedClass = issue.state === "closed" ? " closed" : "";
-  var stateClass = issue.state === "open" ? "todo-state-open" : "todo-state-closed";
+  var stateClass =
+    issue.state === "open" ? "todo-state-open" : "todo-state-closed";
   var stateTitle = issue.state === "open" ? "Open" : "Closed";
   return (
-    '<div class="todo-item' + closedClass + '" data-issue-number="' +
+    '<div class="todo-item' +
+    closedClass +
+    '" data-issue-number="' +
     issue.number +
     '">' +
     '<div class="todo-item-row">' +
-    '<span class="todo-state-dot ' + stateClass + '" title="' + stateTitle + '"></span>' +
+    '<span class="todo-state-dot ' +
+    stateClass +
+    '" title="' +
+    stateTitle +
+    '"></span>' +
     '<span class="todo-number">#' +
     issue.number +
     "</span>" +
@@ -184,7 +190,82 @@ function _syncTodoBtnState() {
   });
 }
 
+/* Count issues per state-filter pill and inject the N into the button.
+ * Labels are preserved as text and the count is rendered in a small
+ * muted span so styling can target it independently. */
+function _updateTodoBtnCounts(issues) {
+  var counts = {
+    all: 0,
+    "high-priority": 0,
+    "medium-priority": 0,
+    "low-priority": 0,
+    future: 0,
+    blocker: 0,
+    closed: 0,
+  };
+  (issues || []).forEach(function (issue) {
+    counts.all += 1;
+    if (issue.state === "closed") {
+      counts.closed += 1;
+      if (_hasBlockerLabel(issue)) counts.blocker += 1;
+      return;
+    }
+    if (_hasBlockerLabel(issue)) counts.blocker += 1;
+    var key = classifyIssue(issue);
+    if (counts[key] != null) counts[key] += 1;
+    else if (key === "_uncategorized") counts.future += 1;
+  });
+  var LABELS = {
+    all: "All",
+    "high-priority": "High",
+    "medium-priority": "Medium",
+    "low-priority": "Low",
+    future: "Future",
+    blocker: "Blocker",
+    closed: "Closed",
+  };
+  document.querySelectorAll(".todo-state-btn").forEach(function (b) {
+    var g = b.getAttribute("data-group");
+    var label = LABELS[g] || g;
+    var n = counts[g];
+    b.innerHTML =
+      escapeHtml(label) +
+      (n != null ? ' <span class="todo-state-count">' + n + "</span>" : "");
+  });
+}
+
+/* List / Viz mode toggle inside the TODO tab. List is the default;
+ * clicking Viz swaps the todo-grid panel for the viz-content panel and
+ * calls renderVizTab() (defined in viz-tab.js). */
+var _todoMode = "list";
+
+function _applyTodoMode() {
+  var grid = document.getElementById("todo-grid");
+  var viz = document.getElementById("viz-content");
+  var stateBar = document.getElementById("todo-state-filter");
+  if (_todoMode === "viz") {
+    if (grid) grid.classList.add("todo-viz-hidden");
+    if (viz) viz.classList.remove("todo-viz-hidden");
+    if (stateBar) stateBar.classList.add("todo-viz-hidden");
+    if (typeof renderVizTab === "function") renderVizTab();
+  } else {
+    if (grid) grid.classList.remove("todo-viz-hidden");
+    if (viz) viz.classList.add("todo-viz-hidden");
+    if (stateBar) stateBar.classList.remove("todo-viz-hidden");
+    if (typeof stopVizTab === "function") stopVizTab();
+  }
+  document.querySelectorAll(".todo-mode-btn").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-mode") === _todoMode);
+  });
+}
+
 document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".todo-mode-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      _todoMode = btn.getAttribute("data-mode") || "list";
+      _applyTodoMode();
+    });
+  });
   document.querySelectorAll(".todo-state-btn").forEach(function (btn) {
     btn.addEventListener("click", function (e) {
       var g = btn.getAttribute("data-group");
@@ -254,6 +335,7 @@ function _passesGroupFilter(issue) {
 }
 
 function _renderTodoFromCache(issues) {
+  _updateTodoBtnCounts(issues || []);
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
@@ -263,7 +345,9 @@ function _renderTodoFromCache(issues) {
     container.innerHTML = '<p class="empty-notice">No issues</p>';
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
     return;
   }
@@ -271,10 +355,13 @@ function _renderTodoFromCache(issues) {
   /* Apply group filter */
   issues = issues.filter(_passesGroupFilter);
   if (issues.length === 0) {
-    container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+    container.innerHTML =
+      '<p class="empty-notice">No issues match the current filter</p>';
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
     return;
   }
@@ -310,7 +397,9 @@ function _renderTodoFromCache(issues) {
   attachTodoEvents(container);
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -322,7 +411,9 @@ async function fetchTodoList(forceRefresh) {
   var _restoreFocus = function () {
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
   };
   var state = _todoBackendState();
@@ -331,18 +422,24 @@ async function fetchTodoList(forceRefresh) {
   /* Cache hit — render instantly with zero network. "all" superset also
    * satisfies any "open" request. */
   if (!forceRefresh) {
-    if (_todoCache.all && (now - _todoCacheTs.all) < _TODO_CACHE_TTL_MS) {
+    if (_todoCache.all && now - _todoCacheTs.all < _TODO_CACHE_TTL_MS) {
       _renderTodoFromCache(_todoCache.all);
       return;
     }
-    if (state === "open" && _todoCache.open && (now - _todoCacheTs.open) < _TODO_CACHE_TTL_MS) {
+    if (
+      state === "open" &&
+      _todoCache.open &&
+      now - _todoCacheTs.open < _TODO_CACHE_TTL_MS
+    ) {
       _renderTodoFromCache(_todoCache.open);
       return;
     }
   }
 
   try {
-    var res = await fetch("/api/github/issues?state=" + encodeURIComponent(state));
+    var res = await fetch(
+      "/api/github/issues?state=" + encodeURIComponent(state),
+    );
     if (!res.ok) {
       console.error("Failed to fetch TODO list:", res.status);
       var errBody = {};
@@ -374,7 +471,8 @@ async function fetchTodoList(forceRefresh) {
     /* Apply group filter */
     issues = issues.filter(_passesGroupFilter);
     if (issues.length === 0) {
-      container.innerHTML = '<p class="empty-notice">No issues match the current filter</p>';
+      container.innerHTML =
+        '<p class="empty-notice">No issues match the current filter</p>';
       _restoreFocus();
       return;
     }

@@ -6,8 +6,39 @@
   min-height: 0;
   width: 100%;
 }
-.viz-hidden-initial {
-  display: none;
+.viz-hidden-initial,
+.todo-viz-hidden {
+  display: none !important;
+}
+.todo-mode-filter {
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #2a2a2a;
+}
+.todo-mode-btn {
+  background: transparent;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
+}
+.todo-mode-btn:hover {
+  color: #ccc;
+  background: #181818;
+}
+.todo-mode-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+  font-weight: 600;
 }
 .viz-content {
   width: 100%;
@@ -157,6 +188,7 @@
   display: flex;
   gap: 0;
   padding: 0 16px;
+  margin-bottom: 8px;
   border-bottom: 1px solid #2a2a2a;
 }
 .todo-state-btn {
@@ -184,6 +216,24 @@
   border-bottom-color: #4ecdc4;
   background: transparent;
   font-weight: 600;
+}
+.todo-state-count {
+  display: inline-block;
+  min-width: 18px;
+  padding: 0 6px;
+  margin-left: 4px;
+  border-radius: 10px;
+  background: #262626;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: baseline;
+}
+.todo-state-btn.active .todo-state-count {
+  background: rgba(78, 205, 196, 0.18);
+  color: #4ecdc4;
 }
 .todo-item.closed .todo-title {
   text-decoration: line-through;
