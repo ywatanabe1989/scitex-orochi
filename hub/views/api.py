@@ -1813,6 +1813,8 @@ def api_agents_register(request):
         info={
             "agent_id": body.get("agent_id") or name,
             "machine": body.get("machine", ""),
+            # todo#55: canonical FQDN (socket.getfqdn()) from the heartbeat.
+            "hostname_canonical": body.get("hostname_canonical", ""),
             "role": body.get("role", "agent"),
             "model": body.get("model", ""),
             "workdir": body.get("workdir", ""),

@@ -1072,6 +1072,12 @@ def collect(agent: str) -> dict:
         "workdir": workspace,
         "project": project,
         "machine": machine,
+        # todo#55: canonical FQDN for display next to the short machine
+        # label in the dashboard (e.g. "spartan (spartan.hpc.unimelb.edu.au)").
+        # socket.getfqdn() returns the short name when no reverse DNS is
+        # configured, in which case the dashboard simply shows the short
+        # label once.
+        "hostname_canonical": (socket.getfqdn() or "").strip(),
         "skills_loaded": skills_loaded,
         "mcp_servers": mcp_servers,
         "claude_md_head": claude_md_head,
@@ -1229,6 +1235,7 @@ def push_all(url=None, token=None) -> int:
                 "agent_id": meta["agent"],
                 "role": "agent",
                 "machine": meta.get("machine", ""),
+                "hostname_canonical": meta.get("hostname_canonical", ""),
                 "model": meta.get("model", ""),
                 "multiplexer": meta.get("multiplexer", ""),
                 "project": meta.get("project", ""),

@@ -49,6 +49,12 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "workspace_id": workspace_id,
             "agent_id": info.get("agent_id", name),
             "machine": info.get("machine", ""),
+            # todo#55: canonical FQDN reported by the heartbeat via
+            # `socket.getfqdn()`. Display-only — the short `machine` field
+            # remains the join key for cards/channels. Preserved across
+            # heartbeats that omit the field (older clients).
+            "hostname_canonical": info.get("hostname_canonical", "")
+            or prev.get("hostname_canonical", ""),
             "role": info.get("role", ""),
             "model": info.get("model", ""),
             "multiplexer": info.get("multiplexer", ""),
@@ -597,6 +603,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "name": a["name"],
                 "agent_id": a.get("agent_id", a["name"]),
                 "machine": a.get("machine", ""),
+                # todo#55: FQDN / canonical hostname for display next to
+                # the short machine label. Empty string = older client
+                # that didn't push this field.
+                "hostname_canonical": a.get("hostname_canonical", ""),
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
                 "multiplexer": a.get("multiplexer", ""),
