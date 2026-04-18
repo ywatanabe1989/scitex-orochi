@@ -595,6 +595,8 @@ function _showChannelCtxMenu(ch, x, y) {
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
       (hidden ? "Show channel" : "Hide channel") +
       "</div>",
+    '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-item" data-action="topo-hide">Hide node (Viz)</div>',
   ].join("");
   document.body.appendChild(menu);
   _ctxMenu = menu;
@@ -615,6 +617,13 @@ function _showChannelCtxMenu(ch, x, y) {
         openChannelExport(ch);
         return;
       } else if (action === "hide") _setChannelPref(ch, { is_hidden: !hidden });
+      else if (action === "topo-hide") {
+        if (typeof window._topoHide === "function") {
+          try {
+            window._topoHide("channel", ch);
+          } catch (_) {}
+        }
+      }
       _hideChannelCtxMenu();
     });
   });
@@ -680,6 +689,13 @@ function _showAgentContextMenu(agent, x, y) {
     curSet[c.charAt(0) === "#" ? c : "#" + c] = true;
   });
 
+  /* Protect the human node from being hidden — skip the Viz-hide row
+   * entirely when the context menu is being opened on the current user
+   * (either their sidebar row or their topology node). */
+  var isSelf =
+    agent === (typeof userName !== "undefined" ? userName : null) ||
+    agent === window.__orochiUserName;
+
   var menu = document.createElement("div");
   menu.className = "ch-ctx-menu agent-ctx-menu";
   menu.style.cssText =
@@ -690,9 +706,30 @@ function _showAgentContextMenu(agent, x, y) {
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="dm">DM with agent&nbsp;&hellip; &#9656;</div>',
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-sub ch-ctx-hide" data-sub="remove">Remove from channel&nbsp;&hellip; &#9656;</div>',
+    isSelf
+      ? ""
+      : '<div class="ch-ctx-sep"></div>' +
+        '<div class="ch-ctx-item" data-action="topo-hide">Hide node (Viz)</div>',
   ].join("");
   document.body.appendChild(menu);
   _agentCtxMenu = menu;
+
+  /* Leaf action items (no submenu) — currently just "Hide node (Viz)".
+   * Wired here so the click closes the whole ctx menu after firing. */
+  menu.querySelectorAll("[data-action]").forEach(function (item) {
+    item.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var action = item.getAttribute("data-action");
+      if (action === "topo-hide") {
+        if (typeof window._topoHide === "function") {
+          try {
+            window._topoHide("agent", agent);
+          } catch (_) {}
+        }
+      }
+      _hideAgentCtxMenu();
+    });
+  });
 
   var subEl = null;
   function openSub(anchor, html, onPick) {
