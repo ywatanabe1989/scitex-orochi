@@ -2082,31 +2082,60 @@ function _topoBumpClick(name) {
 }
 
 /* Open (or create-and-open) the DM channel between the signed-in human
- * and the given agent. Channel name mirrors the backend convention:
+ * and the given agent. Channel name mirrors the backend convention
  *   dm:agent:<agent>|human:<user>
- * We switch UI state immediately (setCurrentChannel + loadChannelHistory
- * + activate Chat tab) and fire an _agentSubscribe in the background so
- * the DM row appears in the sidebar. If the channel already exists the
- * backend treats the POST as a no-op update. */
+ * (see hub/views/api.py::api_dms + _dm_canonical_name). We use POST
+ * /api/dms/ to get-or-create because it runs full_clean() AND sets
+ * kind=KIND_DM — the /api/channel-members/ path would create a bogus
+ * KIND_GROUP row with a reserved dm: name AND would 403 for non-staff
+ * users. Once the backend confirms the canonical name we switch the UI
+ * (setCurrentChannel + loadChannelHistory + activate Chat tab). */
 function _openAgentDm(agentName) {
   if (!agentName) return;
   var human =
     (typeof userName !== "undefined" && userName) ||
     window.__orochiUserName ||
     "human";
-  var channel = "dm:agent:" + agentName + "|human:" + human;
-  try {
-    if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
-    if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
-    var chatTabBtn = document.querySelector('[data-tab="chat"]');
-    if (chatTabBtn) chatTabBtn.click();
-  } catch (_) {}
-  /* Ensure membership in the background (idempotent). Skip if the helper
-   * isn't around (shouldn't happen — app.js is always loaded first). */
-  if (typeof _agentSubscribe === "function") {
+  var fallback = "dm:agent:" + agentName + "|human:" + human;
+  function _switchTo(channel) {
     try {
-      _agentSubscribe(agentName, channel, "read-write");
+      if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
+      if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
+      var chatTabBtn = document.querySelector('[data-tab="chat"]');
+      if (chatTabBtn) chatTabBtn.click();
     } catch (_) {}
+  }
+  var csrf = typeof getCsrfToken === "function" ? getCsrfToken() : "";
+  var url = typeof apiUrl === "function" ? apiUrl("/api/dms/") : "/api/dms/";
+  try {
+    fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrf,
+      },
+      body: JSON.stringify({ recipient: "agent:" + agentName }),
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (j) {
+        /* POST /api/dms/ returns the canonical {name, ...} row. Fall
+         * back to our constructed name if the response shape is
+         * unexpected. */
+        var ch = (j && (j.name || j.channel || (j.dm && j.dm.name))) || fallback;
+        _switchTo(ch);
+      })
+      .catch(function () {
+        /* Still switch — if the channel pre-exists (common: agents
+         * register their DM on startup) the UI will load it even
+         * though the create endpoint errored. */
+        _switchTo(fallback);
+      });
+  } catch (_) {
+    _switchTo(fallback);
   }
 }
 
