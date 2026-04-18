@@ -259,18 +259,11 @@
   opacity: 0.6;
 }
 
-/* Fleet-core agents (YAML-defined canonical roles). Slightly heavier
- * left-border + a teal hairline on the top so core slots are scannable
- * at a glance vs ad-hoc registrations. */
-.activity-card.activity-card-core {
-  border-left-width: 4px;
-  box-shadow: inset 0 1px 0 rgba(78, 205, 196, 0.18);
-}
-
-/* Fleet-core agents that went stale: render as a shadow so the slot is
- * still visible (the user expects a head/healer to be present even
- * when it's briefly down) but clearly not responsive. */
-.activity-card.activity-card-shadow {
+/* Ghost state: pinned agents that have gone offline (WS disconnected).
+ * Kept visible so the user knows the slot is expected — but clearly
+ * not responsive. Non-pinned offline agents are hidden entirely by the
+ * renderer, not dimmed. */
+.activity-card.activity-card-ghost {
   opacity: 0.35;
   filter: grayscale(0.6);
   background: #0f0f0f;
@@ -332,15 +325,107 @@
   font-style: italic;
 }
 
-/* Star marker for fleet-core agents. Placed between the status dot and
- * the name so the visual hierarchy is: liveness → role → identity. */
-.activity-core-star {
-  color: #fbbf24;
+/* Overview toolbar controls (filter + sort + view-mode). Lives in the
+ * same .activity-subtabs container that used to hold the sub-tab bar. */
+.activity-filter-input,
+.activity-sort-select,
+.activity-view-select {
+  background: #0e0e0e;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 4px 8px;
   font-size: 12px;
-  margin-right: 2px;
+  font-family: inherit;
 }
-.activity-card-shadow .activity-core-star {
-  color: #574019;
+.activity-filter-input {
+  flex: 0 1 240px;
+  min-width: 140px;
+}
+.activity-filter-input:focus,
+.activity-sort-select:focus,
+.activity-view-select:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+
+/* Per-row pin button. Always rendered — dimmed outline when not pinned,
+ * solid when pinned — so toggling never shifts any column position. */
+.activity-pin-btn {
+  background: transparent;
+  border: none;
+  color: #3a3a3a;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  width: 18px;
+  flex: 0 0 18px;
+  text-align: center;
+  transition: color 0.15s;
+}
+.activity-pin-btn:hover {
+  color: #888;
+}
+.activity-pin-btn.activity-pin-on {
+  color: #fbbf24;
+}
+
+/* List view: one-line dense rows. Grid switches layout via parent class. */
+.activity-grid.activity-view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+}
+.activity-grid.activity-view-list .activity-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  border-left: 3px solid #444;
+  background: transparent;
+  min-height: 28px;
+}
+.activity-grid.activity-view-list .activity-card .activity-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-grid.activity-view-list .activity-card .activity-liveness {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #888;
+  font-size: 11px;
+}
+
+/* Tile view: compact grid of cards with name + dot only. */
+.activity-grid.activity-view-tiled {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+  padding: 12px;
+}
+.activity-grid.activity-view-tiled .activity-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+/* Inline expanded detail: inserted directly below the clicked row. */
+.activity-inline-detail {
+  background: #0e0e0e;
+  border: 1px solid #222;
+  border-radius: 4px;
+  margin: 4px 0 8px;
+  padding: 12px;
+  max-height: 70vh;
+  overflow: auto;
 }
 
 @keyframes activity-pulse {

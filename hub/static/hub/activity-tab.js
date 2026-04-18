@@ -2,7 +2,6 @@
 /* globals: apiUrl, escapeHtml, getAgentColor, cleanAgentName, fetchAgents */
 
 var activityRefreshTimer = null;
-var _activitySubTab = "overview"; /* "overview" or agent name */
 var _paneShowRaw = false; /* false = strip ANSI (clean), true = raw */
 /* Cache for /api/agents/<name>/detail/ so the per-agent view can show
  * fields that the registry summary omits (full CLAUDE.md, full pane
@@ -27,12 +26,16 @@ async function _fetchActivityDetail(name) {
     );
     if (!res.ok) return;
     _activityDetailCache[name] = await res.json();
-    if (_activitySubTab === name) {
-      var grid = document.getElementById("activity-grid");
+    if (_overviewExpanded === name) {
+      var inlineBox = document.querySelector(
+        '.activity-inline-detail[data-detail-for="' +
+          String(name).replace(/"/g, '\\"') +
+          '"]',
+      );
       var agent = (window.__lastAgents || []).find(function (a) {
         return a.name === name;
       });
-      if (grid && agent) _renderActivityAgentDetail(agent, grid);
+      if (inlineBox && agent) _renderActivityAgentDetail(agent, inlineBox);
     }
   } catch (_e) {
     /* ignore; registry fallback still renders */
@@ -51,116 +54,20 @@ function _stripAnsi(str) {
     .replace(/\r/g, "");
 }
 
-/* ── Sub-tab bar ────────────────────────────────────────────────────── */
-function _renderActivitySubTabBar(agents) {
-  var bar = document.getElementById("activity-subtabs");
-  if (!bar) return;
-  var tabs = [{ id: "overview", label: "Overview" }];
-  agents.forEach(function (a) {
-    tabs.push({ id: a.name, label: a.name });
-  });
-  var html = "";
-  tabs.forEach(function (t) {
-    var active = t.id === _activitySubTab ? " agent-subtab-active" : "";
-    var isOffline = false;
-    if (t.id !== "overview") {
-      var ag = agents.find(function (a) {
-        return a.name === t.id;
-      });
-      if (ag) {
-        var lv = ag.liveness || ag.status || "online";
-        isOffline = lv === "offline";
-      }
-    }
-    html +=
-      '<button class="agent-subtab' +
-      active +
-      (isOffline ? " agent-subtab-offline" : "") +
-      '" ' +
-      'data-actsubtab="' +
-      escapeHtml(t.id) +
-      '">' +
-      escapeHtml(t.label) +
-      "</button>";
-  });
-  bar.innerHTML = html;
-  bar.addEventListener(
-    "click",
-    function (e) {
-      var btn = e.target.closest(".agent-subtab");
-      if (!btn) return;
-      var nextTab = btn.getAttribute("data-actsubtab");
-      /* todo#47 — switching away cancels Follow so we don't keep
-       * polling an agent the user can no longer see. */
-      if (_activityFollowAgent && _activityFollowAgent !== nextTab) {
-        _stopActivityFollow();
-      }
-      _activitySubTab = nextTab;
-      _applyActivitySubTab(agents);
-    },
-    { once: true },
-  ); /* removed and re-bound each render — use capture once trick */
-}
-
-/* Re-bind sub-tab click handler (called every render to avoid duplicate handlers) */
-function _bindActivitySubTabBar(agents) {
-  var bar = document.getElementById("activity-subtabs");
-  if (!bar) return;
-  var newBar = bar.cloneNode(true); /* clone to strip old listeners */
-  bar.parentNode.replaceChild(newBar, bar);
-  newBar.addEventListener("click", function (e) {
-    var btn = e.target.closest(".agent-subtab");
-    if (!btn) return;
-    var nextTab = btn.getAttribute("data-actsubtab");
-    /* todo#47 — switching away cancels Follow */
-    if (_activityFollowAgent && _activityFollowAgent !== nextTab) {
-      _stopActivityFollow();
-    }
-    _activitySubTab = nextTab;
-    /* If selected agent no longer in list, fall back */
-    if (
-      _activitySubTab !== "overview" &&
-      !agents.find(function (a) {
-        return a.name === _activitySubTab;
-      })
-    ) {
-      _activitySubTab = "overview";
-    }
-    _applyActivitySubTab(agents);
-  });
-}
-
-/* Switch grid content based on active sub-tab */
-function _applyActivitySubTab(agents) {
-  /* Update active class on tab buttons */
-  var bar = document.getElementById("activity-subtabs");
-  if (bar) {
-    bar.querySelectorAll(".agent-subtab").forEach(function (btn) {
-      btn.classList.toggle(
-        "agent-subtab-active",
-        btn.getAttribute("data-actsubtab") === _activitySubTab,
-      );
-    });
-  }
-  var grid = document.getElementById("activity-grid");
-  if (!grid) return;
-  if (_activitySubTab === "overview") {
-    /* Re-render overview cards */
-    grid.classList.remove("activity-grid-detail");
-    _renderActivityCards(agents, grid);
-    return;
-  }
-  var agent = agents.find(function (a) {
-    return a.name === _activitySubTab;
-  });
-  if (!agent) {
-    grid.classList.remove("activity-grid-detail");
-    grid.innerHTML = '<p class="empty-notice">Agent not found.</p>';
-    return;
-  }
-  grid.classList.add("activity-grid-detail");
-  _renderActivityAgentDetail(agent, grid);
-  _fetchActivityDetail(agent.name);
+/* ── Overview controls state (filter / sort / view / inline-expand) ──── */
+var _overviewFilter = "";
+var _overviewSort = "name";
+var _overviewView = "list";
+var _overviewExpanded = null;
+try {
+  var _savedSort = localStorage.getItem("orochi.overviewSort");
+  if (_savedSort === "name" || _savedSort === "machine")
+    _overviewSort = _savedSort;
+  var _savedView = localStorage.getItem("orochi.overviewView");
+  if (_savedView === "list" || _savedView === "tiled")
+    _overviewView = _savedView;
+} catch (_e) {
+  /* localStorage may be unavailable — fall back to defaults */
 }
 
 /* Render the hook-event panels (recent tools, prompts, Agent calls,
@@ -776,7 +683,7 @@ function _startActivityFollow(name) {
   _activityFollowTimer = setInterval(function () {
     if (!_activityFollowAgent) return;
     if (typeof document !== "undefined" && document.hidden) return;
-    if (_activitySubTab !== _activityFollowAgent) {
+    if (_overviewExpanded !== _activityFollowAgent) {
       _stopActivityFollow();
       return;
     }
@@ -1014,308 +921,144 @@ function _renderTaskField(task, fallback, age) {
   );
 }
 
-/* Render the overview cards grid (extracted for sub-tab use) */
+/* Overview list/tile renderer. One-line rows (or compact tiles) for
+ * every agent passing the visibility rule. Click a row → inline expand
+ * (single at a time). Expand is toggled via _overviewExpanded state.
+ *
+ * Visibility rule (functional, NOT duration-based):
+ *   status==="online" (WS connected)  → always shown (online/idle/stale)
+ *   status==="offline" + pinned       → shown as ghost (dimmed)
+ *   status==="offline" + unpinned     → hidden
+ */
 function _renderActivityCards(agents, grid) {
-  if (!agents || !agents.length) {
-    grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
-    return;
-  }
-  /* Visibility policy (ywatanabe msg 2026-04-18 17:00):
-   *  - Fleet-core agents (YAML-defined) are always shown, muted to a
-   *    shadow when stale/offline so their expected slot stays visible.
-   *  - Non-core registered agents are only shown while responsive;
-   *    they drop off when stale.
-   *  - Unregistered agents are not in the registry to begin with.
-   */
-  var isCore = typeof isFleetCoreAgent === "function" ? isFleetCoreAgent : null;
-  if (isCore) {
-    agents = agents.filter(function (a) {
-      return isCore(a) || !isAgentInactive(a);
-    });
-  }
-  if (!agents.length) {
-    grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
-    return;
-  }
   var summary = document.getElementById("activity-summary");
+  var all = agents || [];
   var counts = { online: 0, idle: 0, stale: 0, offline: 0 };
-  agents.forEach(function (a) {
+  all.forEach(function (a) {
     var l = a.liveness || a.status || "online";
     if (counts[l] != null) counts[l]++;
   });
   if (summary) {
     summary.innerHTML =
-      '<span class="activity-pill activity-pill-online" title="recently active (heartbeat &lt; 2 min)">' +
+      '<span class="activity-pill activity-pill-online" title="connected &amp; active">' +
       '<span class="activity-pill-dot"></span>' +
       counts.online +
       " active</span>" +
-      '<span class="activity-pill activity-pill-idle" title="quiet 2–10 min — likely thinking or waiting">' +
+      '<span class="activity-pill activity-pill-idle" title="connected, quiet 2–10 min">' +
       '<span class="activity-pill-dot"></span>' +
       counts.idle +
       " idle</span>" +
-      '<span class="activity-pill activity-pill-stale" title="quiet &gt;10 min — probably stuck, check it">' +
+      '<span class="activity-pill activity-pill-stale" title="connected, quiet &gt;10 min — probably stuck">' +
       '<span class="activity-pill-dot"></span>' +
       counts.stale +
       " stale</span>" +
-      '<span class="activity-pill activity-pill-offline" title="not connected to the hub right now">' +
+      '<span class="activity-pill activity-pill-offline" title="not connected">' +
       '<span class="activity-pill-dot"></span>' +
       counts.offline +
-      " offline</span>" +
-      '<span class="activity-legend-hint">← border color matches</span>';
+      " offline</span>";
   }
-  /* Minimal overview cards: name/liveness/task/machine + a few chips.
-   * Rich per-agent content (CLAUDE.md, pane, subagents, recent tools,
-   * MCP, health, skills, channels, pid, uptime, model) is shown in the
-   * per-agent sub-tab — click any card to open it. */
-  grid.innerHTML = agents
+
+  var visible = all.filter(function (a) {
+    var connected = (a.status || "online") !== "offline";
+    return connected || !!a.pinned;
+  });
+
+  if (!visible.length) {
+    grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
+    return;
+  }
+
+  var LIVENESS_HINTS = {
+    online: "connected & active — heartbeat <2 min",
+    idle: "connected, quiet 2–10 min",
+    stale: "connected, quiet >10 min — probably stuck",
+    offline: "not connected",
+  };
+
+  grid.innerHTML = visible
     .map(function (a) {
-      var color = getAgentColor(a.name);
+      var rawName = a.name || "";
       var liveness = a.liveness || a.status || "online";
+      var connected = (a.status || "online") !== "offline";
+      var ghostClass = !connected && a.pinned ? " activity-card-ghost" : "";
       var idleStr = _formatIdle(a.idle_seconds);
-      var task = a.current_task || "";
-      var preview = a.last_message_preview || "";
-      var machine = escapeHtml(a.machine || "—");
-      var role = escapeHtml(a.role || "agent");
-      var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
-      var subagentCount =
-        a.subagent_count != null
-          ? Number(a.subagent_count)
-          : Array.isArray(a.subagents)
-            ? a.subagents.length
-            : null;
+      var color = getAgentColor(rawName);
       var name = escapeHtml(
         typeof hostedAgentName === "function"
           ? hostedAgentName(a)
-          : cleanAgentName(a.name),
+          : cleanAgentName(rawName),
       );
-      var rawName = a.name || "";
-      var ageSec =
-        a.idle_seconds != null
-          ? Number(a.idle_seconds)
-          : _secondsSinceIso(a.last_heartbeat || a.last_action);
-      var ageStr = ageSec != null ? _formatIdle(ageSec) : "";
-      var isStuck =
-        ageSec != null &&
-        ageSec > 300 &&
-        (!subagentCount || subagentCount === 0) &&
-        !task;
-      var chips = [];
-      if (subagentCount != null && subagentCount > 0) {
-        chips.push(
-          '<span class="activity-chip activity-chip-subs activity-chip-subs-active" title="active subagents">' +
-            "\u25B6 " +
-            subagentCount +
-            " sub" +
-            (subagentCount === 1 ? "" : "s") +
-            "</span>",
-        );
-      }
-      if (ctxPct != null) {
-        var ctxClass =
-          ctxPct < 50 ? "ctx-ok" : ctxPct < 80 ? "ctx-warn" : "ctx-hot";
-        chips.push(
-          '<span class="activity-chip activity-chip-ctx ' +
-            ctxClass +
-            '" title="context usage">ctx ' +
-            ctxPct.toFixed(0) +
-            "%</span>",
-        );
-      }
-      var q5 = a.quota_5h_pct != null ? Number(a.quota_5h_pct) : null;
-      if (q5 != null) {
-        var q5Class = q5 < 50 ? "ctx-ok" : q5 < 80 ? "ctx-warn" : "ctx-hot";
-        chips.push(
-          '<span class="activity-chip activity-chip-ctx ' +
-            q5Class +
-            '" title="5h quota">5h ' +
-            q5.toFixed(0) +
-            "%</span>",
-        );
-      }
-      /* Pane-state chip (agent-container classifier result — running,
-       * y_n_prompt, auth_error, compose_pending, etc.). Each state has
-       * its own hover-hint explaining what it means. */
-      var paneState = a.pane_state || "";
-      var PANE_STATE_HINTS = {
-        y_n_prompt:
-          "agent blocked on a yes/no prompt — approve or reject in the pane",
-        compose_pending_unsent:
-          "agent drafted a message but hasn't sent it yet",
-        auth_error: "claude-code auth expired — agent needs re-login",
-        mcp_broken: "MCP sidecar disconnected — tools unavailable",
-        stuck: "detected as stuck by the classifier — no progress",
-      };
-      if (paneState && paneState !== "running") {
-        var paneHint =
-          PANE_STATE_HINTS[paneState] ||
-          "agent-container classifier: " + paneState;
-        chips.push(
-          '<span class="activity-chip activity-chip-pane-state activity-chip-pane-' +
-            escapeHtml(paneState).replace(/[^a-z0-9_-]/gi, "") +
-            '" title="' +
-            escapeHtml(paneHint) +
-            '">' +
-            escapeHtml(paneState.replace(/_/g, " ")) +
-            "</span>",
-        );
-      }
-      /* Tool sequence — last N hook events as breadcrumb chips. Proves
-       * the LLM is actually working (distinct from liveness, which only
-       * tracks the sidecar's heartbeat). Falls back to the single
-       * last_tool_name when the recent_tools ring buffer isn't
-       * populated yet. */
-      var recentTools = Array.isArray(a.recent_tools) ? a.recent_tools : [];
-      if (recentTools.length) {
-        var seqChips = recentTools
-          .slice(-5)
-          .map(function (t) {
-            var nm = String((t && (t.name || t.tool)) || "?");
-            var when = (t && (t.ts || t.at)) || "";
-            var age = _secondsSinceIso(when);
-            var ageStr = age != null ? " · " + _formatIdle(age) : "";
-            return (
-              '<span class="activity-tool-step" title="' +
-              escapeHtml(nm + ageStr) +
-              '">' +
-              escapeHtml(nm) +
-              "</span>"
-            );
-          })
-          .join('<span class="activity-tool-sep">\u203A</span>');
-        chips.push(
-          '<span class="activity-chip activity-chip-tool-seq" ' +
-            'title="last ' +
-            recentTools.slice(-5).length +
-            ' tool calls (oldest → newest)">' +
-            seqChips +
-            "</span>",
-        );
-      } else {
-        var toolAgeSec = _secondsSinceIso(a.last_tool_at);
-        if (toolAgeSec != null && toolAgeSec < 3600) {
-          chips.push(
-            '<span class="activity-chip activity-chip-tool" ' +
-              'title="last tool call: ' +
-              escapeHtml(String(a.last_tool_name || "")) +
-              '">tool ' +
-              _formatIdle(toolAgeSec) +
-              "</span>",
-          );
-        } else if (!task && !preview) {
-          /* Brand-new agent with no activity yet — explicit empty-state
-           * so the absence is intentional, not a data gap. */
-          chips.push(
-            '<span class="activity-chip activity-chip-idle-fresh" ' +
-              'title="agent registered but has not run any tools yet">' +
-              "awaiting first action" +
-              "</span>",
-          );
-        }
-      }
-      var chipsHtml =
-        chips.length > 0
-          ? '<div class="activity-chips">' + chips.join("") + "</div>"
-          : "";
-      var copyPayload = (
-        rawName +
-        " — " +
-        (task || preview || "(no task)")
-      ).replace(/"/g, "&quot;");
-      var copyBtn =
-        '<button type="button" class="activity-copy-btn" title="copy name + task to clipboard" ' +
-        'data-copy="' +
-        escapeHtml(copyPayload) +
-        '">\uD83D\uDCCB</button>';
-      var stuckClass = isStuck ? " activity-stuck" : "";
-      /* Fleet-core vs ad-hoc styling. Core agents that went stale are
-       * shadowed (muted) so their slot is still visible; ad-hoc stale
-       * agents were filtered out above. */
-      var core = typeof isFleetCoreAgent === "function" && isFleetCoreAgent(a);
-      var coreClass = core ? " activity-card-core" : "";
-      var shadowClass =
-        core && isAgentInactive(a) ? " activity-card-shadow" : "";
-      var LIVENESS_HINTS = {
-        online: "active — heartbeat <2 min ago",
-        idle: "idle — heartbeat 2–10 min ago",
-        stale: "stale — heartbeat >10 min ago (probably stuck)",
-        offline: "disconnected — no sidecar heartbeat",
-      };
+      var pinOn = a.pinned ? " activity-pin-on" : "";
+      var pinTitle = a.pinned
+        ? "Unpin (will hide when offline)"
+        : "Pin (keeps as ghost when offline, floats to top)";
       var livenessHint = LIVENESS_HINTS[liveness] || liveness;
-      var coreHint = core
-        ? "fleet-core role (always visible, shadowed when stale)"
-        : "ad-hoc registration (hidden when stale)";
-      return (
+      var livenessLabel =
+        typeof _livenessLabel === "function"
+          ? _livenessLabel(liveness)
+          : liveness;
+      var row =
         '<div class="activity-card activity-' +
         liveness +
-        stuckClass +
-        coreClass +
-        shadowClass +
-        '" ' +
-        'data-agent="' +
+        ghostClass +
+        '" data-agent="' +
         escapeHtml(rawName) +
         '" data-machine="' +
         escapeHtml(a.machine || "") +
-        '" title="' +
-        escapeHtml(coreHint) +
         '">' +
-        '<div class="activity-card-header">' +
+        '<button type="button" class="activity-pin-btn' +
+        pinOn +
+        '" data-pin-name="' +
+        escapeHtml(rawName) +
+        '" data-pin-next="' +
+        (a.pinned ? "false" : "true") +
+        '" title="' +
+        escapeHtml(pinTitle) +
+        '">\uD83D\uDCCC</button>' +
         '<span class="activity-status-dot activity-dot-' +
         liveness +
         '" title="' +
         escapeHtml(livenessHint) +
         '"></span>' +
-        (core
-          ? '<span class="activity-core-star" title="fleet-core role (YAML-defined, always shown)">\u2605</span>'
-          : "") +
         '<span class="activity-name" style="color:' +
         color +
         '">' +
         name +
         "</span>" +
-        copyBtn +
         '<span class="activity-liveness" title="' +
         escapeHtml(livenessHint) +
         '">' +
-        _livenessLabel(liveness) +
-        (idleStr ? " · " + idleStr : "") +
+        escapeHtml(livenessLabel) +
+        (idleStr ? " · " + escapeHtml(idleStr) : "") +
         "</span>" +
-        "</div>" +
-        '<div class="activity-meta">' +
-        machine +
-        " · " +
-        role +
-        "</div>" +
-        '<div class="activity-task">' +
-        _renderTaskField(task, preview, ageStr) +
-        "</div>" +
-        chipsHtml +
-        "</div>"
-      );
+        "</div>";
+      if (_overviewExpanded === rawName) {
+        row +=
+          '<div class="activity-inline-detail" data-detail-for="' +
+          escapeHtml(rawName) +
+          '"><p class="empty-notice">Loading detail…</p></div>';
+      }
+      return row;
     })
     .join("");
-  /* Re-apply Ctrl+K fuzzy filter after innerHTML rewrite (mirrors
-   * todo-tab / agents-tab / files-tab behaviour). Without this, typing
-   * "head" on Chat then switching to Agents shows all agents until you
-   * retype. */
+
   if (typeof runFilter === "function") runFilter();
-  /* Click card -> switch to that agent's sub-tab (Shift/Ctrl/Cmd keeps
-   * the legacy addTag filter behaviour so power users are not
-   * surprised). Copy button and other inline controls stop propagation. */
+
   Array.prototype.forEach.call(
     grid.querySelectorAll(".activity-card[data-agent]"),
     function (card) {
       card.style.cursor = "pointer";
       card.addEventListener("click", function (ev) {
+        if (ev.target.closest(".activity-pin-btn")) return;
         var name = card.getAttribute("data-agent");
         if (!name) return;
         if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
           if (typeof addTag === "function") addTag("agent", name);
           return;
         }
-        _activitySubTab = name;
-        _applyActivitySubTab(window.__lastAgents || []);
+        _overviewExpanded = _overviewExpanded === name ? null : name;
+        renderActivityTab();
       });
-      /* todo#51: bidirectional hover sync with SSH-mesh + res-cards. */
       card.addEventListener("mouseenter", function () {
         var host = card.getAttribute("data-machine");
         if (host && typeof syncHostHover === "function")
@@ -1328,27 +1071,77 @@ function _renderActivityCards(agents, grid) {
       });
     },
   );
-  /* Wire up copy buttons */
+
   Array.prototype.forEach.call(
-    grid.querySelectorAll(".activity-copy-btn"),
+    grid.querySelectorAll(".activity-pin-btn[data-pin-name]"),
     function (btn) {
       btn.addEventListener("click", function (ev) {
         ev.stopPropagation();
-        var txt = btn.getAttribute("data-copy") || "";
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard
-            .writeText(txt)
-            .then(function () {
-              btn.classList.add("activity-copy-ok");
-              setTimeout(function () {
-                btn.classList.remove("activity-copy-ok");
-              }, 900);
-            })
-            .catch(function () {});
-        }
+        var name = btn.getAttribute("data-pin-name");
+        var nextPin = btn.getAttribute("data-pin-next") === "true";
+        if (typeof togglePinAgent === "function") togglePinAgent(name, nextPin);
       });
     },
   );
+
+  if (_overviewExpanded) {
+    var agent = all.find(function (a) {
+      return a.name === _overviewExpanded;
+    });
+    var inlineBox = grid.querySelector(
+      '.activity-inline-detail[data-detail-for="' +
+        String(_overviewExpanded).replace(/"/g, '\\"') +
+        '"]',
+    );
+    if (agent && inlineBox) {
+      _renderActivityAgentDetail(agent, inlineBox);
+      _fetchActivityDetail(agent.name);
+    }
+  }
+}
+
+/* Apply layout class (list vs tile) to the overview grid. */
+function _applyOverviewViewClass(grid) {
+  if (!grid) return;
+  grid.classList.remove(
+    "activity-view-list",
+    "activity-view-tiled",
+    "activity-grid-detail",
+  );
+  grid.classList.add(
+    _overviewView === "tiled" ? "activity-view-tiled" : "activity-view-list",
+  );
+}
+
+var _overviewControlsWired = false;
+function _wireOverviewControls() {
+  if (_overviewControlsWired) return;
+  var filterInput = document.getElementById("activity-filter-input");
+  var sortSelect = document.getElementById("activity-sort-select");
+  var viewSelect = document.getElementById("activity-view-select");
+  if (!filterInput || !sortSelect || !viewSelect) return;
+  sortSelect.value = _overviewSort;
+  viewSelect.value = _overviewView;
+  filterInput.value = _overviewFilter;
+  filterInput.addEventListener("input", function () {
+    _overviewFilter = filterInput.value || "";
+    renderActivityTab();
+  });
+  sortSelect.addEventListener("change", function () {
+    _overviewSort = sortSelect.value;
+    try {
+      localStorage.setItem("orochi.overviewSort", _overviewSort);
+    } catch (_e) {}
+    renderActivityTab();
+  });
+  viewSelect.addEventListener("change", function () {
+    _overviewView = viewSelect.value;
+    try {
+      localStorage.setItem("orochi.overviewView", _overviewView);
+    } catch (_e) {}
+    renderActivityTab();
+  });
+  _overviewControlsWired = true;
 }
 
 function renderActivityTab() {
@@ -1360,7 +1153,9 @@ function renderActivityTab() {
   var summary = document.getElementById("activity-summary");
   if (!grid) return;
 
-  /* Reuse the global agents cache populated by fetchAgents() */
+  _wireOverviewControls();
+  _applyOverviewViewClass(grid);
+
   var src = window.__lastAgents || [];
   if (!src.length) {
     grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
@@ -1374,40 +1169,40 @@ function renderActivityTab() {
     return;
   }
 
-  /* Stable position: alphabetical by name only. ywatanabe at msg#6592
-   * / msg#6596 / msg#6598 said the worst UX is cards moving around mid-
-   * read — so we never reorder by status anymore. The status difference
-   * is conveyed entirely through the border color and the summary
-   * pills at the top. Pinned agents float to the top of the alphabet
-   * group as a soft hint, no liveness reorder. */
+  /* Sort: pinned always first (they're "locked to the top"), then by
+   * the user-selected key. Same ordering rule is intended to apply to
+   * future topology/connection-map view too. */
   var agents = src.slice().sort(function (a, b) {
     var pa = a.pinned ? 0 : 1;
     var pb = b.pinned ? 0 : 1;
     if (pa !== pb) return pa - pb;
-    return (a.name || "").localeCompare(b.name || "");
+    var ka, kb;
+    if (_overviewSort === "machine") {
+      ka = (a.machine || "") + "/" + (a.name || "");
+      kb = (b.machine || "") + "/" + (b.name || "");
+    } else {
+      ka = a.name || "";
+      kb = b.name || "";
+    }
+    return ka.localeCompare(kb);
   });
 
-  /* Build/update the sub-tab bar */
-  _renderActivitySubTabBar(agents);
-  _bindActivitySubTabBar(agents);
-
-  /* Render content based on the active sub-tab */
-  if (
-    _activitySubTab !== "overview" &&
-    !agents.find(function (a) {
-      return a.name === _activitySubTab;
-    })
-  ) {
-    _activitySubTab = "overview";
-  }
-  if (_activitySubTab === "overview") {
-    _renderActivityCards(agents, grid);
-  } else {
-    var detailAgent = agents.find(function (a) {
-      return a.name === _activitySubTab;
+  if (_overviewFilter) {
+    var q = _overviewFilter.toLowerCase();
+    agents = agents.filter(function (a) {
+      var hay = (
+        (a.name || "") +
+        " " +
+        (a.machine || "") +
+        " " +
+        (a.role || "")
+      ).toLowerCase();
+      return hay.indexOf(q) !== -1;
     });
-    if (detailAgent) _renderActivityAgentDetail(detailAgent, grid);
   }
+
+  _renderActivityCards(agents, grid);
+
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
