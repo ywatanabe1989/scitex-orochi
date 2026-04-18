@@ -1224,65 +1224,82 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
   var dx = to.x - from.x;
   var dy = to.y - from.y;
   var inPlace = Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5;
-  /* Back to the simple, rock-solid approach: animate cx/cy directly
-   * on each circle. No transforms, no additive compositing, no
-   * nested groups — just <animate attributeName="cx"/"cy"> from the
-   * sender's position to the receiver's position. Circles are
-   * symmetric, so rotation is unnecessary. ywatanabe 2026-04-19:
-   * "is it not possible to implement animation to move from start to
-   * end?" — yes, and this is the cleanest path. */
+  /* Pure JS requestAnimationFrame animation — SMIL was unreliable in
+   * practice (the packets "glowed in place" without visibly moving).
+   * rAF gives us a guaranteed per-frame setAttribute on cx/cy, plus
+   * easy fade-out control. ywatanabe 2026-04-19: "from start to end,
+   * use 1 sec". */
   var g = document.createElementNS(ns, "g");
   g.setAttribute("class", "topo-packet " + (klass || ""));
-  function _mkCircle(r, fillOpacity) {
-    var c = document.createElementNS(ns, "circle");
-    c.setAttribute("cx", String(from.x));
-    c.setAttribute("cy", String(from.y));
-    c.setAttribute("r", String(r));
-    c.setAttribute("fill-opacity", String(fillOpacity));
-    return c;
-  }
-  function _animate(node, attr, fromVal, toVal) {
-    var a = document.createElementNS(ns, "animate");
-    a.setAttribute("attributeName", attr);
-    a.setAttribute("from", String(fromVal));
-    a.setAttribute("to", String(toVal));
-    a.setAttribute("dur", dur + "ms");
-    a.setAttribute("begin", delay + "ms");
-    a.setAttribute("fill", "freeze");
-    node.appendChild(a);
-  }
+  var halo, core, burst;
   if (inPlace) {
-    /* Origin pulse — expanding fading ring (r grows, opacity fades). */
-    var burst = _mkCircle(4, 0.55);
-    _animate(burst, "r", 4, 20);
-    _animate(burst, "fill-opacity", 0.55, 0);
+    burst = document.createElementNS(ns, "circle");
+    burst.setAttribute("cx", String(from.x));
+    burst.setAttribute("cy", String(from.y));
+    burst.setAttribute("r", "4");
+    burst.setAttribute("fill-opacity", "0.55");
     g.appendChild(burst);
   } else {
-    /* Halo + core traveling from (from.x,from.y) to (to.x,to.y). */
-    var halo = _mkCircle(16, 0.2);
-    _animate(halo, "cx", from.x, to.x);
-    _animate(halo, "cy", from.y, to.y);
+    halo = document.createElementNS(ns, "circle");
+    halo.setAttribute("cx", String(from.x));
+    halo.setAttribute("cy", String(from.y));
+    halo.setAttribute("r", "16");
+    halo.setAttribute("fill-opacity", "0.2");
     g.appendChild(halo);
-    var core = _mkCircle(7, 0.95);
-    _animate(core, "cx", from.x, to.x);
-    _animate(core, "cy", from.y, to.y);
-    /* Subtle "action-potential" flash — opacity oscillates while the
-     * packet travels. Two pulses per flight. */
-    var pulse = document.createElementNS(ns, "animate");
-    pulse.setAttribute("attributeName", "fill-opacity");
-    pulse.setAttribute("values", "0.7;1;0.7;1;0.7");
-    pulse.setAttribute("dur", dur + "ms");
-    pulse.setAttribute("begin", delay + "ms");
-    pulse.setAttribute("fill", "freeze");
-    core.appendChild(pulse);
+    core = document.createElementNS(ns, "circle");
+    core.setAttribute("cx", String(from.x));
+    core.setAttribute("cy", String(from.y));
+    core.setAttribute("r", "7");
+    core.setAttribute("fill-opacity", "0.95");
     g.appendChild(core);
   }
   edges.appendChild(g);
+
+  var startTime = null;
+  function _frame(ts) {
+    if (!g.parentNode) return; /* removed externally */
+    if (startTime == null) startTime = ts;
+    var elapsed = ts - startTime - delay;
+    if (elapsed < 0) {
+      requestAnimationFrame(_frame);
+      return;
+    }
+    var t = Math.min(1, elapsed / dur);
+    if (inPlace) {
+      /* Expanding fading ring. */
+      burst.setAttribute("r", String(4 + (20 - 4) * t));
+      burst.setAttribute("fill-opacity", String(0.55 * (1 - t)));
+    } else {
+      var x = from.x + dx * t;
+      var y = from.y + dy * t;
+      halo.setAttribute("cx", String(x));
+      halo.setAttribute("cy", String(y));
+      core.setAttribute("cx", String(x));
+      core.setAttribute("cy", String(y));
+      /* Fade out in the last 20% so the packet evaporates into the
+       * destination node instead of hard-landing with lingering glow. */
+      if (t > 0.8) {
+        var fade = 1 - (t - 0.8) / 0.2;
+        halo.setAttribute("fill-opacity", String(0.2 * fade));
+        core.setAttribute("fill-opacity", String(0.95 * fade));
+      }
+    }
+    if (t < 1) {
+      requestAnimationFrame(_frame);
+    } else {
+      /* Remove shortly after landing so no lingering glow remains. */
+      setTimeout(function () {
+        if (g.parentNode) g.parentNode.removeChild(g);
+      }, 20);
+    }
+  }
+  requestAnimationFrame(_frame);
+  /* Safety removal in case the tab is backgrounded and rAF stalls. */
   setTimeout(
     function () {
       if (g.parentNode) g.parentNode.removeChild(g);
     },
-    dur + delay + 80,
+    dur + delay + 500,
   );
 }
 
@@ -1336,10 +1353,9 @@ function _topoPulseEdge(sender, channel, opts) {
   if (!edges) return;
   var klass =
     opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
-  /* Per-leg travel time. Slower than the initial 900ms so the flight
-   * is easier to follow by eye (ywatanabe 2026-04-19: "the growing is
-   * good but too fast"). */
-  var LEG = 1600;
+  /* 1 second per leg start→end, per ywatanabe 2026-04-19
+   * ("spend 1 sec for start to end"). */
+  var LEG = 1000;
   /* Leg 1 — sender → channel IF the sender is a visible agent. Human
    * posts (sender = username, not an agent name) skip leg 1 and start
    * from the channel node — so the user still sees their post
@@ -2576,15 +2592,26 @@ function _topoFlushClick() {
   }
   /* count === 1 is handled as drag-source on mousedown; no-op on click. */
 }
-function _topoBumpClick(name) {
+function _topoBumpClick(name, clientX, clientY) {
   if (_topoClickState && _topoClickState.name === name) {
     _topoClickState.count += 1;
+    /* Refresh click coordinates to the most recent click — ensures
+     * the DM popup opens at the actual dblclick position, not where
+     * the first click landed. */
+    _topoClickState.x = clientX;
+    _topoClickState.y = clientY;
     clearTimeout(_topoClickState.timer);
   } else {
     /* Different target → drop prior pending count silently (a click on
      * a different node is a new intent, not part of a multi-click). */
     if (_topoClickState) clearTimeout(_topoClickState.timer);
-    _topoClickState = { name: name, count: 1, timer: 0 };
+    _topoClickState = {
+      name: name,
+      count: 1,
+      timer: 0,
+      x: clientX,
+      y: clientY,
+    };
   }
   _topoClickState.timer = setTimeout(_topoFlushClick, TOPO_CLICK_WINDOW_MS);
 }
@@ -2964,7 +2991,7 @@ function _wireOverviewGridDelegation(grid) {
         _topoDragState.suppressClick = false;
         return;
       }
-      _topoBumpClick(tname);
+      _topoBumpClick(tname, ev.clientX, ev.clientY);
     }
     /* Topology action-bar buttons (post / clear). These live outside
      * the SVG but inside `grid`, so the delegation catches them here. */
