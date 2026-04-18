@@ -2794,6 +2794,59 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
       close();
     }
   });
+  /* Paste support — images / files / long text. Native paste of plain
+   * text keeps the default behavior (lands in the textarea). If the
+   * clipboard carries a file/image, route to the Chat composer (the
+   * canonical paste-to-attach pipeline lives there) and re-dispatch
+   * the paste event so the upload.js handler does the work.
+   * ywatanabe 2026-04-19: "small input modal should support pasting". */
+  input.addEventListener("paste", function (ev) {
+    var cd =
+      ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
+    if (!cd) return;
+    var hasFile = false;
+    if (cd.files && cd.files.length) hasFile = true;
+    else if (cd.items) {
+      for (var i = 0; i < cd.items.length; i++) {
+        var it = cd.items[i];
+        if (it && it.type && it.type.indexOf("image/") === 0) {
+          hasFile = true;
+          break;
+        }
+      }
+    }
+    /* Long text still attaches as a file via upload.js's
+     * _pastedTextShouldAttach heuristic — route for that case too. */
+    var text = "";
+    try {
+      text = cd.getData("text/plain") || "";
+    } catch (_) {}
+    var isLong = text.length > 1000;
+    if (hasFile || isLong) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      close();
+      _routeToChat();
+      setTimeout(function () {
+        var msgInput = document.getElementById("msg-input");
+        if (!msgInput) return;
+        msgInput.focus();
+        /* Synthesize a paste event on msg-input so upload.js's
+         * handleClipboardPaste processes the same clipboard payload. */
+        try {
+          var newEv = new ClipboardEvent("paste", {
+            clipboardData: cd,
+            bubbles: true,
+            cancelable: true,
+          });
+          msgInput.dispatchEvent(newEv);
+        } catch (_) {
+          /* Some browsers don't allow constructing ClipboardEvent with
+           * populated data — let the user paste again in that case. */
+        }
+      }, 50);
+    }
+  });
   closeBtn.addEventListener("click", close);
   expandBtn.addEventListener("click", function () {
     var on = extras.style.display === "none";
