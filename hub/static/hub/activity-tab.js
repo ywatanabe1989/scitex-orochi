@@ -1214,39 +1214,96 @@ function _repaintTopoArrows() {
 
 /* Spawn one glowing packet traveling from (fromX,fromY) -> (toX,toY)
  * over `dur` ms, optionally delayed. Self-removes after animation. */
+/* Modern directional packet. Three-layer glow (outer halo + mid ring
+ * + bright core) rotated to face the direction of travel so the
+ * whole shape reads as a capsule pointing downstream. Flying a few
+ * of these in quick succession gives a "data bus" feel (buzz factor
+ * per ywatanabe 2026-04-19). Self-removes ~80ms after animation. */
 function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
   var ns = "http://www.w3.org/2000/svg";
+  var dx = to.x - from.x;
+  var dy = to.y - from.y;
+  var inPlace = Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5;
+  var angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
   var g = document.createElementNS(ns, "g");
   g.setAttribute("class", "topo-packet " + (klass || ""));
-  var glow = document.createElementNS(ns, "circle");
-  glow.setAttribute("cx", from.x);
-  glow.setAttribute("cy", from.y);
-  glow.setAttribute("r", "6");
-  glow.setAttribute("fill-opacity", "0.35");
-  var core = document.createElementNS(ns, "circle");
-  core.setAttribute("cx", from.x);
-  core.setAttribute("cy", from.y);
-  core.setAttribute("r", "3");
-  [glow, core].forEach(function (node) {
-    var ax = document.createElementNS(ns, "animate");
-    ax.setAttribute("attributeName", "cx");
-    ax.setAttribute("from", String(from.x));
-    ax.setAttribute("to", String(to.x));
-    ax.setAttribute("dur", dur + "ms");
-    ax.setAttribute("begin", delay + "ms");
-    ax.setAttribute("fill", "freeze");
-    var ay = document.createElementNS(ns, "animate");
-    ay.setAttribute("attributeName", "cy");
-    ay.setAttribute("from", String(from.y));
-    ay.setAttribute("to", String(to.y));
-    ay.setAttribute("dur", dur + "ms");
-    ay.setAttribute("begin", delay + "ms");
-    ay.setAttribute("fill", "freeze");
-    node.appendChild(ax);
-    node.appendChild(ay);
-  });
-  g.appendChild(glow);
-  g.appendChild(core);
+  /* Outer transform: start position + rotation. animateTransform of
+   * type=translate with additive="sum" slides the packet while the
+   * base rotation stays locked on the flight direction. */
+  g.setAttribute(
+    "transform",
+    "translate(" + from.x + "," + from.y + ") rotate(" + angleDeg + ")",
+  );
+  if (inPlace) {
+    /* Origin pulse — expanding fading ring so the channel-node flashes
+     * at the start of the message-pass animation. */
+    var burst = document.createElementNS(ns, "circle");
+    burst.setAttribute("cx", "0");
+    burst.setAttribute("cy", "0");
+    burst.setAttribute("r", "4");
+    burst.setAttribute("fill-opacity", "0.55");
+    var br = document.createElementNS(ns, "animate");
+    br.setAttribute("attributeName", "r");
+    br.setAttribute("from", "4");
+    br.setAttribute("to", "18");
+    br.setAttribute("dur", dur + "ms");
+    br.setAttribute("begin", delay + "ms");
+    br.setAttribute("fill", "freeze");
+    var bo = document.createElementNS(ns, "animate");
+    bo.setAttribute("attributeName", "fill-opacity");
+    bo.setAttribute("from", "0.55");
+    bo.setAttribute("to", "0");
+    bo.setAttribute("dur", dur + "ms");
+    bo.setAttribute("begin", delay + "ms");
+    bo.setAttribute("fill", "freeze");
+    burst.appendChild(br);
+    burst.appendChild(bo);
+    g.appendChild(burst);
+  } else {
+    /* Outer halo — soft bloom. */
+    var halo = document.createElementNS(ns, "ellipse");
+    halo.setAttribute("cx", "0");
+    halo.setAttribute("cy", "0");
+    halo.setAttribute("rx", "14");
+    halo.setAttribute("ry", "6");
+    halo.setAttribute("fill-opacity", "0.18");
+    g.appendChild(halo);
+    /* Mid capsule — the packet body, an elongated ellipse in the flight
+     * direction so it looks like a comet/bus-like "capsule". */
+    var body = document.createElementNS(ns, "ellipse");
+    body.setAttribute("cx", "0");
+    body.setAttribute("cy", "0");
+    body.setAttribute("rx", "8");
+    body.setAttribute("ry", "3");
+    body.setAttribute("fill-opacity", "0.55");
+    g.appendChild(body);
+    /* Bright core + arrowhead tip at +rx end so flow direction is
+     * unambiguous even at small sizes. */
+    var tip = document.createElementNS(ns, "polygon");
+    tip.setAttribute("points", "-3,-2 9,0 -3,2");
+    g.appendChild(tip);
+    /* Tail trail — three small dots behind the capsule that fade; they
+     * emphasize motion direction ("comet tail"). */
+    for (var ti = 1; ti <= 3; ti++) {
+      var tail = document.createElementNS(ns, "circle");
+      var off = -(8 + ti * 3);
+      tail.setAttribute("cx", String(off));
+      tail.setAttribute("cy", "0");
+      tail.setAttribute("r", String(Math.max(1, 3 - ti)));
+      tail.setAttribute("fill-opacity", String(0.35 / ti));
+      g.appendChild(tail);
+    }
+    var at = document.createElementNS(ns, "animateTransform");
+    at.setAttribute("attributeName", "transform");
+    at.setAttribute("type", "translate");
+    at.setAttribute("from", "0,0");
+    at.setAttribute("to", dx + "," + dy);
+    at.setAttribute("dur", dur + "ms");
+    at.setAttribute("begin", delay + "ms");
+    at.setAttribute("additive", "sum");
+    at.setAttribute("fill", "freeze");
+    g.appendChild(at);
+  }
   edges.appendChild(g);
   setTimeout(
     function () {
