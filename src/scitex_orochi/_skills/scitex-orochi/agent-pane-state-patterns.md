@@ -262,7 +262,7 @@ See also: head-<host> PR #118 (`pane_state.py` reference implementation — may 
 ## Consumers in the fleet
 
 - `scitex-orochi/scripts/pane_state.py` (PR #118) — Python implementation reading the catalog.
-- `scripts/fleet-watch/fleet-prompt-actuator` (head-<host>, running on NAS cron) — auto-unblock healer loop.
+- `scripts/fleet-watch/fleet-prompt-actuator` (head-<host>, running via cron on the storage host) — auto-unblock healer loop.
 - `worker-healer-*` `/loop` prompts — future adoption layer, codifies per-host action tables.
 - `pane_state` field in hub `/api/agents/` — planned surface for the Agents tab (PR series TBD).
 

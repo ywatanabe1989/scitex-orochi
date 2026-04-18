@@ -97,7 +97,7 @@ Common "before" states on fleet hosts (2026-04-14 snapshot):
 | HPC cluster | `~/.venv-3.11` only, no `~/.venv` symlink | `~/.venv → .venv-3.11` |
 | NAS/storage host | `~/.venv-3.11` + `~/.venv-3.10`, no symlink | pick one as active, `ln -snf` |
 | Primary workstation | homebrew-site-packages, no venv | create `~/.venv-3.11`, adopt |
-| ywata-note-win | unclear | audit + adopt |
+| Secondary workstation | unclear | audit + adopt |
 
 **Safe migration recipe**:
 
@@ -131,7 +131,7 @@ Common "before" states on fleet hosts (2026-04-14 snapshot):
 | HPC cluster | `~/.venv-3.11` ✅ | ❌ | ⏳ partial |
 | NAS/storage host | `~/.venv-3.11` ✅ | ❌ | ⏳ partial |
 | Primary workstation | homebrew-site only | ❌ | ❌ |
-| ywata-note-win | unclear | ❌ | ❌ |
+| Secondary workstation | unclear | ❌ | ❌ |
 
 `worker-scitex-expert-<host>` owns the cross-host convergence work. This skill is the contract it implements against.
 

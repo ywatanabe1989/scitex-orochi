@@ -29,8 +29,8 @@ The result is silent under-reporting: probes claim a host has zero sessions when
 Wrap every remote command in a **login shell**:
 
 ```bash
-ssh -o ConnectTimeout=5 -o BatchMode=yes mba "bash -lc 'tmux ls 2>/dev/null | wc -l'"
-ssh -o ConnectTimeout=5 -o BatchMode=yes mba "bash -lc 'pgrep -cf claude'"
+ssh -o ConnectTimeout=5 -o BatchMode=yes <host> "bash -lc 'tmux ls 2>/dev/null | wc -l'"
+ssh -o ConnectTimeout=5 -o BatchMode=yes <host> "bash -lc 'pgrep -cf claude'"
 ```
 
 `bash -l` forces the shell to read profile files, restoring `$PATH`, `$TMUX_TMPDIR`, and any user environment that the sampled commands rely on. The single-quote wrapping prevents the local shell from expanding variables that should be resolved on the remote host.
@@ -154,7 +154,7 @@ Apply the same guard to any coreutil a probe calls: `ls`, `cp`, `mv`, `rm`, `gre
 
 Counter-pattern that motivates this rule: four unrelated probe false positives in one session (2026-04-13) all traced to the probing code trusting login-shell state on the target:
 1. `tmux ls` without `$TMUX_TMPDIR` — socket mismatch
-2. `ssh nas` routed to a stale LAN IP — host alias
+2. `ssh <host-alias>` routed to a stale LAN IP — host alias
 3. `vm_stat Pages free` treated as free memory — Darwin semantics
 4. `free` aliased to `watch -n 1 free` on one user — alias override
 
@@ -218,7 +218,7 @@ Tracked 2026-04-13. Agents responsible for each lane must update this list when 
 | host-a (WSL) | worker-healer-<host-a> | ✅ 2026-04-13 (cron job 40c61ea4 / msg#8406) | `bash -lc`, compound gate, silent success verified |
 | host-b (primary workstation) | worker-healer-<host-b> | 🔄 in-progress (2026-04-13) | Owner: head-<host-b>. Canonical /loop prompt drafted by worker-skill-manager; head-<host-b> to apply. |
 | host-c (NAS/storage) | worker-healer-<host-c> | ⏳ pending (depends on fleet_watch snapshot reuse) | Owner: head-<host-c>. Consume `~/.scitex/orochi/fleet-watch/` instead of re-probing. |
-| spartan | head-<host> (no mamba-healer yet) | ⏳ feasibility note only | Constraint: login1-only, never compute nodes. Probe must use `bash -lc`. |
+| host-d (HPC cluster) | head-<host-d> (no worker-healer yet) | ⏳ feasibility note only | Constraint: login-node-only, never compute nodes. Probe must use `bash -lc`. |
 
 ## Per-lane issue templates
 

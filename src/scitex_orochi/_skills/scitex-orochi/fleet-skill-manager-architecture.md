@@ -137,7 +137,7 @@ bash/python, no Claude session on either host.
    read from the same canonical upstream repos via `git pull`.
 7. **Write one log line** to host-local
    `~/.scitex/orochi/logs/skill-sync-daemon.log` with:
-   `ISO8601 | host=<mba|nas> | tick=N | exported=<N> | drift-repaired=<N> | dedupe-flags=<N> | mirror-updated=<bool> | wall-time=<sec>`
+   `ISO8601 | host=<hostname> | tick=N | exported=<N> | drift-repaired=<N> | dedupe-flags=<N> | mirror-updated=<bool> | wall-time=<sec>`
 8. **No hub post.** Ever. State-change-only reporting is the
    agent layer's job (Track B worker reads the log via host-local
    file access on primary host, or via SSH on standby host, when asked).

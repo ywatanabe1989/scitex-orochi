@@ -77,5 +77,5 @@ being present in the shell.
 1. Edit `~/.dotfiles/src/.bash.d/secrets/010_scitex/01_orochi.src` and add/update the export.
 2. If the value needs to reach the container, add the matching line to `deployment/docker/docker-compose.stable.yml`.
 3. If the code needs to read it, prefer the dual-read pattern in `convention-env-vars.md` (SCITEX_OROCHI_* first, legacy fallback only for conventional vars).
-4. Redeploy: `scp` the updated compose file to mba, then `docker compose up -d`.
+4. Redeploy: `scp` the updated compose file to the deploy host, then `docker compose up -d` (the specific host and hot-patch procedure live in `scitex-orochi-private`).
 5. Document the new var in this file's table above.
