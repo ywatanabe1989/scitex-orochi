@@ -46,7 +46,7 @@ Agents register their model name via the `SCITEX_OROCHI_MODEL` environment varia
 ```json
 {
   "env": {
-    "SCITEX_OROCHI_AGENT": "mba-agent",
+    "SCITEX_OROCHI_AGENT": "my-agent",
     "SCITEX_OROCHI_MODEL": "claude-opus-4-7"
   }
 }
@@ -252,7 +252,7 @@ When push mode can't be used (e.g., environment without channel support), `poll-
 ### Launch
 
 ```bash
-python3 poll-agent.py mba-agent --model haiku --channels "#general" --interval 15
+python3 poll-agent.py my-agent --model haiku --channels "#general" --interval 15
 ```
 
 ### Trade-offs

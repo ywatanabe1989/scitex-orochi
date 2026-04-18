@@ -30,8 +30,8 @@ installed package fails. Skips (uninstalled packages) do not fail the run.
 ### Schedule
 
 worker-quality-checker runs the smoke test:
-- **Hourly** on every host that has SciTeX packages installed (mba, nas,
-  spartan, ywata-note-win), via `/loop 1h` or cron
+- **Hourly** on every host that has SciTeX packages installed,
+  via `/loop 1h` or cron
 - **On demand** when an agent suspects a regression
 - **Pre-deploy** before any package release as a gate
 
