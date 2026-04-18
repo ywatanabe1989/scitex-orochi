@@ -1078,6 +1078,51 @@ var _topoViewBoxHistory = []; /* back stack (undo) */
 var _topoViewBoxFuture = []; /* forward stack (redo) */
 var _topoZoomWired = false;
 var _topoLastPositions = { agents: {}, channels: {} };
+/* Client-side "sticky" subscriptions — edges added via drag-drop that
+ * survive server-authoritative refetches until the backend starts
+ * returning the membership in a.channels. Without this, the optimistic
+ * mutation of window.__lastAgents gets clobbered the moment
+ * fetchAgentsThrottled resolves, and the edge vanishes until the user
+ * reloads. ywatanabe 2026-04-19: "after subscription by dragging,
+ * show the edge soon" / "we need reload or make another subscription".
+ * Shape: { "<agent-name>|<channel>": true }. */
+var _topoStickyEdges = {};
+function _topoStickyKey(agent, channel) {
+  return String(agent || "") + "|" + String(channel || "");
+}
+function _topoApplyStickyEdges() {
+  /* Merge sticky edges into window.__lastAgents so _renderActivity-
+   * Topology (and every other consumer of a.channels) sees them as
+   * real memberships. Purges sticky entries that the server has
+   * caught up to — keeps the set from growing unbounded. */
+  var live = window.__lastAgents || [];
+  var keep = {};
+  Object.keys(_topoStickyEdges).forEach(function (k) {
+    var pipe = k.indexOf("|");
+    if (pipe < 0) return;
+    var agent = k.slice(0, pipe);
+    var ch = k.slice(pipe + 1);
+    var row = null;
+    for (var i = 0; i < live.length; i++) {
+      if (live[i].name === agent) {
+        row = live[i];
+        break;
+      }
+    }
+    if (!row) {
+      /* Agent vanished from the live list — drop the sticky too. */
+      return;
+    }
+    var chs = Array.isArray(row.channels) ? row.channels : [];
+    if (chs.indexOf(ch) !== -1) {
+      /* Server caught up — no need to keep overriding. */
+      return;
+    }
+    row.channels = chs.concat([ch]);
+    keep[k] = true;
+  });
+  _topoStickyEdges = keep;
+}
 
 /* Permission-direction arrows: map of "<channel>::<agentName>" → one of
  * "read-only" | "read-write" | "write-only". Populated by
@@ -1276,6 +1321,14 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
       halo.setAttribute("cy", String(y));
       core.setAttribute("cx", String(x));
       core.setAttribute("cy", String(y));
+      /* Breathing pulse — subtle size modulation while in flight so the
+       * packet reads as a live/organic thing, not a rigid dot. Two
+       * breaths per traversal, halo ±22%, core ±15%. ywatanabe
+       * 2026-04-19: "add animation, to the packet; a bit changing size
+       * like breezing". */
+      var breath = Math.sin(t * Math.PI * 4);
+      halo.setAttribute("r", String(16 * (1 + 0.22 * breath)));
+      core.setAttribute("r", String(7 * (1 + 0.15 * breath)));
       /* Fade out in the last 20% so the packet evaporates into the
        * destination node instead of hard-landing with lingering glow. */
       if (t > 0.8) {
@@ -1347,8 +1400,6 @@ function _topoPulseEdge(sender, channel, opts) {
   if (!channel) return;
   var svg = document.querySelector(".activity-view-topology .topo-svg");
   if (!svg) return;
-  var cp = _topoLastPositions.channels[channel];
-  if (!cp) return;
   var edges = svg.querySelector(".topo-edges");
   if (!edges) return;
   var klass =
@@ -1357,6 +1408,59 @@ function _topoPulseEdge(sender, channel, opts) {
    * rapid multi-message bursts (ywatanabe 2026-04-19: "0.5s / edge
    * would be good in balance"). */
   var LEG = 500;
+  /* DM branch — DMs don't flow through a channel node on the canvas.
+   * Reuse the standard 2-leg pattern but with a virtual invisible
+   * midpoint between sender and each recipient, so legs 1+2 form a
+   * straight line from sender to recipient. ywatanabe 2026-04-19:
+   * "just place invisible node between user/agents and apply the same
+   * pattern to them". Channel formats:
+   *   dm:agent:<agent>|human:<user>  → recipients = [agent, user]
+   *   dm:group:<csv names>           → recipients = [name1, name2, ...]
+   */
+  if (channel.indexOf("dm:") === 0) {
+    var humanKeyDm =
+      (typeof userName !== "undefined" && userName) ||
+      window.__orochiUserName ||
+      "";
+    var dmRecipients = [];
+    if (channel.indexOf("dm:group:") === 0) {
+      dmRecipients = channel.slice("dm:group:".length).split(",");
+    } else {
+      /* Canonical DM names (backend api.py::_canonical_dm_name):
+       *   dm:<principal>|<principal>...  where each principal is
+       *   "agent:<name>" or "human:<user>" in sorted order. Split on
+       *   "|" and strip known prefixes — handles any permutation and
+       *   any N-party DM. */
+      var dmBody = channel.slice("dm:".length);
+      dmBody.split("|").forEach(function (part) {
+        if (!part) return;
+        if (part.indexOf("agent:") === 0) dmRecipients.push(part.slice(6));
+        else if (part.indexOf("human:") === 0) dmRecipients.push(part.slice(6));
+        else dmRecipients.push(part);
+      });
+    }
+    var dmFrom = sender ? _topoLastPositions.agents[sender] : null;
+    dmRecipients.forEach(function (rn) {
+      if (!rn || rn === sender) return;
+      var rp = _topoLastPositions.agents[rn];
+      if (!rp) return;
+      if (!dmFrom) {
+        _topoSpawnPacket(edges, rp, rp, 220, 0, klass);
+        return;
+      }
+      /* Invisible midpoint — exactly between sender and recipient so
+       * legs render as a single straight line. */
+      var mid = {
+        x: (dmFrom.x + rp.x) / 2,
+        y: (dmFrom.y + rp.y) / 2,
+      };
+      _topoSpawnPacket(edges, dmFrom, mid, LEG, 0, klass);
+      _topoSpawnPacket(edges, mid, rp, LEG, LEG, klass);
+    });
+    return;
+  }
+  var cp = _topoLastPositions.channels[channel];
+  if (!cp) return;
   /* Leg 1 — sender → channel IF the sender is a visible agent. Human
    * posts (sender = username, not an agent name) skip leg 1 and start
    * from the channel node — so the user still sees their post
@@ -1973,7 +2077,26 @@ function _topoSignature(visible) {
    * .topo-agent-selected class). Individual idle-seconds are NOT —
    * those flap every second and would cause pointless repaints. */
   var selSig = _topoSelectedNames().sort().join(",");
-  var parts = [_overviewColor || "name", "sel:" + selSig];
+  var prefs = window._channelPrefs || {};
+  var prefSig = Object.keys(prefs)
+    .sort()
+    .map(function (k) {
+      var p = prefs[k] || {};
+      return (
+        k +
+        (p.is_starred ? "*" : "") +
+        (p.is_muted ? "m" : "") +
+        (p.is_hidden ? "h" : "")
+      );
+    })
+    .join(",");
+  var stickySig = Object.keys(_topoStickyEdges).sort().join(",");
+  var parts = [
+    _overviewColor || "name",
+    "sel:" + selSig,
+    "prefs:" + prefSig,
+    "sticky:" + stickySig,
+  ];
   for (var i = 0; i < visible.length; i++) {
     var a = visible[i];
     var chCount = Array.isArray(a.channels) ? a.channels.length : 0;
@@ -1999,6 +2122,7 @@ function _topoSignature(visible) {
  * re-uses _renderActivityAgentDetail + _fetchActivityDetail so state
  * survives heartbeat-driven re-renders). */
 function _renderActivityTopology(visible, grid) {
+  _topoApplyStickyEdges();
   var sig = _topoSignature(visible);
   var existingSvg = grid.querySelector(".topo-svg");
   if (
@@ -2046,18 +2170,31 @@ function _renderActivityTopology(visible, grid) {
       chSet[c] = true;
     });
   }
-  var channels = Object.keys(chSet).sort();
+  /* Filter out channels the user hid via channel-ctx-menu. ywatanabe
+   * 2026-04-19: "hide channel does not hide as well" — the sidebar
+   * respected is_hidden but the topology did not. */
+  var _chPrefs = window._channelPrefs || {};
+  var channels = Object.keys(chSet)
+    .filter(function (c) {
+      return !((_chPrefs[c] || {}).is_hidden);
+    })
+    .sort();
 
   /* Size from the grid's inner box. Fall back to generous defaults on
    * first render when clientWidth is still 0. Leave room for labels so
    * long agent names don't get clipped at the viewport edge. */
   var W = Math.max(grid.clientWidth || 0, 600);
   var H = Math.max(grid.clientHeight || 0, 420);
-  var pad = 140; /* label-safe margin */
+  /* pad: reserved edge space for agent badges (they have long names
+   * like head-mba@Yusukes-MacBook-Air.local). Pushed agents toward
+   * the canvas edge; inner channel ring is more compact so the two
+   * rings don't crowd each other. ywatanabe 2026-04-19: "agents
+   * should be more outside as they sometimes overlaps channels". */
+  var pad = 100;
   var cx = W / 2;
   var cy = H / 2;
   var rOuter = Math.max(80, Math.min(W, H) / 2 - pad);
-  var rInner = Math.max(40, rOuter * 0.55);
+  var rInner = Math.max(40, rOuter * 0.42);
 
   function _pt(r, i, n) {
     /* Start at -90° so the first node sits at 12 o'clock. */
@@ -2196,8 +2333,28 @@ function _renderActivityTopology(visible, grid) {
         (p.x - r) +
         "," +
         p.y;
+      var _pref = _chPrefs[c] || {};
+      var chCls = " topo-node topo-channel";
+      if (_pref.is_starred) chCls += " topo-channel-starred";
+      if (_pref.is_muted) chCls += " topo-channel-muted";
+      var starGlyph = _pref.is_starred
+        ? '<text class="topo-ch-star" x="' +
+          (p.x + r + 2).toFixed(1) +
+          '" y="' +
+          (p.y - r + 4).toFixed(1) +
+          '" font-size="11" fill="#fbbf24">★</text>'
+        : "";
+      var muteGlyph = _pref.is_muted
+        ? '<text class="topo-ch-mute" x="' +
+          (p.x - r - 12).toFixed(1) +
+          '" y="' +
+          (p.y - r + 4).toFixed(1) +
+          '" font-size="11" fill="#94a3b8">\uD83D\uDD07</text>'
+        : "";
       return (
-        '<g class="topo-node topo-channel" data-channel="' +
+        '<g class="' +
+        chCls +
+        '" data-channel="' +
         escapeHtml(c) +
         '" data-agent-count="' +
         count +
@@ -2205,6 +2362,8 @@ function _renderActivityTopology(visible, grid) {
         '<polygon points="' +
         pts +
         '" fill="#1a1a1a" stroke="#444" stroke-width="1"/>' +
+        starGlyph +
+        muteGlyph +
         '<text class="topo-label topo-label-ch" x="' +
         p.x +
         '" y="' +
@@ -2308,7 +2467,14 @@ function _renderActivityTopology(visible, grid) {
        * "agent nodes should be easily clickable, make them button-like
        * object would be better (surround them by small border, like a
        * bit of badge)" */
-      var badgeLeft = p.x - LED_R - GAP / 2 - 6;
+      /* Robot glyph prefix — agent identity icon, parallel to the human
+       * node's 👤. Sits just inside the left edge of the pill with
+       * ample gap before the two LEDs so the emoji doesn't overlap the
+       * WebSocket indicator. ywatanabe 2026-04-19: "add icon to agents
+       * with robotic one as well" / "add margins to icons and
+       * indicators now overlapping". */
+      var agentIconX = p.x - LED_R - GAP / 2 - 26;
+      var badgeLeft = agentIconX - 8;
       var textW = Math.max(40, nameText.length * 6.5);
       var badgeRight = nameX + textW + 6;
       var badgeWidth = badgeRight - badgeLeft;
@@ -2324,6 +2490,12 @@ function _renderActivityTopology(visible, grid) {
         '" height="' +
         badgeH +
         '" rx="11" ry="11"/>';
+      var agentGlyph =
+        '<text class="topo-agent-glyph" x="' +
+        agentIconX.toFixed(1) +
+        '" y="' +
+        (p.y + 4).toFixed(1) +
+        '" font-size="12">\uD83E\uDD16</text>';
       return (
         '<g class="topo-node topo-agent' +
         selCls +
@@ -2332,6 +2504,7 @@ function _renderActivityTopology(visible, grid) {
         escapeHtml(a.name) +
         '">' +
         bg +
+        agentGlyph +
         wsLed +
         fnLed +
         pinMark +
@@ -2473,10 +2646,64 @@ function _renderActivityTopology(visible, grid) {
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="reset" title="Reset zoom (0)">0</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
     "</div>";
+  /* Left-side pool — all agents and all channels as chips so the user
+   * can see the full universe at a glance even when the canvas is
+   * zoomed / cluttered. ywatanabe 2026-04-19: "place channels pool;
+   * agents pool in the left side" / "so immediately create pool for
+   * agents and channels!!!!". Click a chip → scroll its node into
+   * view by re-centering the viewBox on it. */
+  var poolAgentsHtml = visible
+    .slice()
+    .sort(function (a, b) {
+      return (a.name || "").localeCompare(b.name || "");
+    })
+    .map(function (a) {
+      return (
+        '<div class="topo-pool-chip topo-pool-chip-agent" data-agent="' +
+        escapeHtml(a.name) +
+        '" title="' +
+        escapeHtml(a.name) +
+        '"><span class="topo-pool-chip-icon">\uD83E\uDD16</span>' +
+        escapeHtml(a.name) +
+        "</div>"
+      );
+    })
+    .join("");
+  var poolChSet = {};
+  channels.forEach(function (c) {
+    poolChSet[c] = true;
+  });
+  Object.keys(window._channelPrefs || {}).forEach(function (c) {
+    if (c && c.charAt(0) === "#") poolChSet[c] = true;
+  });
+  var poolChannelsHtml = Object.keys(poolChSet)
+    .sort()
+    .map(function (c) {
+      return (
+        '<div class="topo-pool-chip topo-pool-chip-channel" data-channel="' +
+        escapeHtml(c) +
+        '" title="' +
+        escapeHtml(c) +
+        '">' +
+        escapeHtml(c) +
+        "</div>"
+      );
+    })
+    .join("");
+  var pool =
+    '<div class="topo-pool">' +
+    '<div class="topo-pool-section"><div class="topo-pool-title">Agents</div>' +
+    poolAgentsHtml +
+    "</div>" +
+    '<div class="topo-pool-section"><div class="topo-pool-title">Channels</div>' +
+    poolChannelsHtml +
+    "</div>" +
+    "</div>";
   grid.innerHTML =
     '<div class="topo-wrap">' +
     hint +
     ctrls +
+    pool +
     svg +
     actionBar +
     "</div>" +
@@ -3305,6 +3532,7 @@ function _wireOverviewGridDelegation(grid) {
       if (s.kind === "agent") {
         var ch = target.getAttribute("data-channel");
         if (ch && typeof _agentSubscribe === "function") {
+          _topoStickyEdges[_topoStickyKey(s.name, ch)] = true;
           _optimisticAdd(s.name, ch);
           _agentSubscribe(s.name, ch, "read-write");
           _topoShowSubscribeToast(s.name, ch, "read-write");
@@ -3314,6 +3542,7 @@ function _wireOverviewGridDelegation(grid) {
       } else if (s.kind === "channel") {
         var ag = target.getAttribute("data-agent");
         if (ag && typeof _agentSubscribe === "function") {
+          _topoStickyEdges[_topoStickyKey(ag, s.name)] = true;
           _optimisticAdd(ag, s.name);
           _agentSubscribe(ag, s.name, "read-only");
           _topoShowSubscribeToast(ag, s.name, "read-only");
@@ -3350,10 +3579,24 @@ function _wireOverviewGridDelegation(grid) {
   });
   /* Cancel on window blur / escape. */
   window.addEventListener("blur", _topoCleanupDrag);
-  /* Delegated right-click on overview cards (and topology agent nodes) →
-   * open the agent context menu from app.js. Survives innerHTML rewrites. */
+  /* Delegated right-click on overview cards, topology agent nodes, and
+   * topology channel diamonds → open the entity-specific context menu
+   * from app.js. Survives innerHTML rewrites. ywatanabe 2026-04-19:
+   * "right click should have menus based on the entity clicked;
+   * (channel, agent)". Channel menu resolved first so the shared
+   * .topo-channel + .topo-agent hit-test order doesn't misroute. */
   grid.addEventListener("contextmenu", function (ev) {
     if (ev.shiftKey) return;
+    var topoCh = ev.target.closest(".topo-channel[data-channel]");
+    if (topoCh && grid.contains(topoCh)) {
+      if (typeof _showChannelCtxMenu !== "function") return;
+      var ch = topoCh.getAttribute("data-channel");
+      if (!ch) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      _showChannelCtxMenu(ch, ev.clientX, ev.clientY);
+      return;
+    }
     var card = ev.target.closest(".activity-card[data-agent]");
     var topo = ev.target.closest(".topo-agent[data-agent]");
     var host = card || topo;

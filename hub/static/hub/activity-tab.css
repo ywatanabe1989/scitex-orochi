@@ -648,6 +648,68 @@
   cursor: default;
   user-select: none;
 }
+/* Left-side pool — lists every agent and every channel as draggable
+ * chips. Floats over the left edge of the canvas; SVG sits behind
+ * it. ywatanabe 2026-04-19: "place channels pool; agents pool in the
+ * left side". */
+.activity-grid.activity-view-topology .topo-pool {
+  position: absolute;
+  left: 8px;
+  top: 40px;
+  bottom: 8px;
+  width: 170px;
+  z-index: 3;
+  overflow-y: auto;
+  background: rgba(10, 10, 10, 0.78);
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 11px;
+}
+.activity-grid.activity-view-topology .topo-pool-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-title {
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid #1f2937;
+  margin-bottom: 3px;
+}
+.activity-grid.activity-view-topology .topo-pool-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #0f1419;
+  border: 1px solid #273241;
+  border-radius: 10px;
+  cursor: grab;
+  color: #eaf1fb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-grid.activity-view-topology .topo-pool-chip:hover {
+  border-color: #4ecdc4;
+  background: #152028;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-icon {
+  font-size: 10px;
+  filter: saturate(0.8);
+}
+.activity-grid.activity-view-topology .topo-pool-chip-channel {
+  color: #eaf1fb;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
 .activity-grid.activity-view-topology .topo-svg.topo-zooming {
   cursor: crosshair;
 }
@@ -703,8 +765,12 @@
  * against the dark canvas. ywatanabe 2026-04-19: "make it more
  * readable, brighter color!". */
 .activity-grid.activity-view-topology .topo-label-ch {
-  fill: #c5d3df;
-  font-weight: 500;
+  fill: #eaf1fb !important;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
 }
 /* Dead agent — heartbeat ok but >3min no tool/action. Red border +
  * subtle red tint on the badge so it's visible at a glance. LED
@@ -732,6 +798,19 @@
 .activity-grid.activity-view-topology .topo-human .topo-human-glyph {
   pointer-events: none;
 }
+/* Agent glyph — robot 🤖 prefix on each agent node, parallel to the
+ * human 👤. Pointer-events off so it doesn't steal clicks from the
+ * badge background. ywatanabe 2026-04-19: "add icon to agents with
+ * robotic one as well". */
+.activity-grid.activity-view-topology .topo-agent-glyph {
+  pointer-events: none;
+  user-select: none;
+  dominant-baseline: middle;
+}
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-glyph {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
 .activity-grid.activity-view-topology .topo-agent:hover .topo-agent-bg {
   fill: #1f1f1f;
   stroke: #4ecdc4;
@@ -756,6 +835,25 @@
   stroke: #4ecdc4;
   stroke-width: 2;
   filter: drop-shadow(0 0 3px #4ecdc4);
+}
+/* Channel pref visuals — mirror the sidebar's star/mute state onto
+ * the topology so a glance at the map tells the user what's muted
+ * or starred without cross-referencing the sidebar. ywatanabe
+ * 2026-04-19: "mute channel does not change visual" / "star channel
+ * as well". */
+.activity-grid.activity-view-topology .topo-channel-starred polygon {
+  stroke: #fbbf24;
+  stroke-width: 1.8;
+}
+.activity-grid.activity-view-topology .topo-channel-starred .topo-label-ch {
+  fill: #fde68a !important;
+}
+.activity-grid.activity-view-topology .topo-channel-muted {
+  opacity: 0.4;
+}
+.activity-grid.activity-view-topology .topo-channel-muted polygon {
+  fill: #111 !important;
+  stroke: #333;
 }
 
 /* Message-passing animation: when a message lands the corresponding
@@ -913,8 +1011,9 @@
   user-select: none;
 }
 .activity-grid.activity-view-topology .topo-label-ch {
-  fill: #6a7d8c;
-  font-size: 10px;
+  fill: #ffffff !important;
+  font-size: 11px;
+  font-weight: 700;
 }
 .activity-grid.activity-view-topology .topo-agent:hover circle {
   stroke-width: 3;
