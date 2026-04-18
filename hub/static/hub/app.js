@@ -1619,6 +1619,16 @@ function handleMessage(msg) {
       if (!_topoText && _topoIsArtifact) {
         _topoText = "\uD83D\uDCCE attachment";
       }
+      if (window.__topoPulseDebug !== false && _topoCh.indexOf("dm:") === 0) {
+        var _dmNow = new Date();
+        console.info(
+          "%c[topo-pulse] DM received",
+          "color:#fbbf24;font-weight:700",
+          _dmNow.toISOString().slice(11, 23) + " (" + _dmNow.getTime() + "ms)",
+          "sender=" + msg.sender,
+          "channel=" + _topoCh,
+        );
+      }
       _topoPulseEdge(msg.sender, _topoCh, {
         isArtifact: _topoIsArtifact,
         text: _topoText,

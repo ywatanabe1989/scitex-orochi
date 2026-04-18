@@ -1788,13 +1788,28 @@ function _topoPulseEdge(sender, channel, opts) {
     }
     var dmFrom = sender ? _topoLastPositions.agents[sender] : null;
     if (_dbg) {
-      console.info("[topo-pulse] DM parse", {
-        sender: sender,
-        channel: channel,
-        recipients: dmRecipients,
-        senderPosFound: !!dmFrom,
-        availableKeys: Object.keys(_topoLastPositions.agents),
+      var _now = new Date();
+      var _ts =
+        _now.toISOString().slice(11, 23) + " (" + _now.getTime() + "ms)";
+      console.info("%c[topo-pulse] DM", "color:#4ecdc4;font-weight:700", _ts);
+      console.info("[topo-pulse]   sender:", sender);
+      console.info("[topo-pulse]   channel:", channel);
+      console.info("[topo-pulse]   recipients:", dmRecipients);
+      console.info(
+        "[topo-pulse]   sender pos:",
+        dmFrom ? { x: dmFrom.x, y: dmFrom.y } : "(not on graph)",
+      );
+      dmRecipients.forEach(function (rn) {
+        var rp = _topoLastPositions.agents[rn];
+        console.info(
+          "[topo-pulse]   recipient pos [" + rn + "]:",
+          rp ? { x: rp.x, y: rp.y } : "(not on graph)",
+        );
       });
+      console.info(
+        "[topo-pulse]   available node keys:",
+        Object.keys(_topoLastPositions.agents),
+      );
     }
     if (!dmRecipients.length && _dbg) {
       console.warn("[topo-pulse] DM bail: parsed zero recipients", {
@@ -3564,30 +3579,41 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
   pop.setAttribute("data-channel", channel);
   pop.style.left = Math.max(8, clientX - 140) + "px";
   pop.style.top = Math.max(8, clientY + 12) + "px";
+  /* Minimal popup: no header, no close button, no + button, no send
+   * button. Just a textarea whose tooltip documents all the keyboard
+   * shortcuts, plus a small ▾ chevron at the bottom-right corner that
+   * reveals attach / camera / sketch / voice buttons. Enter sends, Esc
+   * closes, outside click closes. ywatanabe 2026-04-19: "make the
+   * modal minimal; no send button needed; no dm nor channel label
+   * needed; no plus button needed; not x button needed; just add a
+   * small chevron to the bottom to show other buttons; show tooltip
+   * with keyboard shortcuts even when they are not expanded to use". */
+  var tccShortcuts =
+    "Enter — send\n" +
+    "Shift+Enter — newline\n" +
+    "Esc — close\n" +
+    "Drop files to attach\n" +
+    "Paste image/file to attach\n" +
+    "Click ▾ for attach / camera / sketch / voice";
   pop.innerHTML =
-    '<div class="tcc-header">' +
-    '<span class="tcc-channel">' +
-    escapeHtml(channel) +
-    "</span>" +
-    '<button type="button" class="tcc-expand" title="More input options (attach / camera / sketch / voice)">+</button>' +
-    '<button type="button" class="tcc-close" title="Close (Esc)">&times;</button>' +
-    "</div>" +
-    '<textarea class="tcc-input" rows="2" placeholder="message — Enter to send · Shift+Enter newline · drop files to attach"></textarea>' +
+    '<textarea class="tcc-input" rows="2" placeholder="message #' +
+    escapeHtml(channel).replace(/^#/, "") +
+    '" title="' +
+    tccShortcuts.replace(/"/g, "&quot;") +
+    '"></textarea>' +
     '<div class="tcc-extras" style="display:none">' +
-    '<button type="button" class="tcc-x tcc-attach" title="Attach file">\uD83D\uDCCE</button>' +
+    '<button type="button" class="tcc-x tcc-attach" title="Attach file (paste also works)">\uD83D\uDCCE</button>' +
     '<button type="button" class="tcc-x tcc-camera" title="Camera">\uD83D\uDCF7</button>' +
     '<button type="button" class="tcc-x tcc-sketch" title="Sketch">\u270F\uFE0F</button>' +
-    '<button type="button" class="tcc-x tcc-voice" title="Voice">\uD83C\uDFA4</button>' +
+    '<button type="button" class="tcc-x tcc-voice" title="Voice input">\uD83C\uDFA4</button>' +
     "</div>" +
-    '<div class="tcc-footer">' +
-    '<button type="button" class="tcc-send">Send</button>' +
-    "</div>";
+    '<button type="button" class="tcc-expand" title="' +
+    tccShortcuts.replace(/"/g, "&quot;") +
+    '" aria-label="More options">\u25BE</button>';
   document.body.appendChild(pop);
   var input = pop.querySelector(".tcc-input");
-  var sendBtn = pop.querySelector(".tcc-send");
   var extras = pop.querySelector(".tcc-extras");
   var expandBtn = pop.querySelector(".tcc-expand");
-  var closeBtn = pop.querySelector(".tcc-close");
   setTimeout(function () {
     if (input) input.focus();
   }, 10);
@@ -3625,7 +3651,6 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     }
     close();
   }
-  sendBtn.addEventListener("click", send);
   input.addEventListener("keydown", function (ev) {
     if (ev.key === "Enter" && !ev.shiftKey) {
       ev.preventDefault();
@@ -3688,11 +3713,10 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
       }, 50);
     }
   });
-  closeBtn.addEventListener("click", close);
   expandBtn.addEventListener("click", function () {
     var on = extras.style.display === "none";
     extras.style.display = on ? "" : "none";
-    expandBtn.textContent = on ? "−" : "+";
+    expandBtn.textContent = on ? "\u25B4" : "\u25BE";
   });
   /* Delegate extras — pop the channel into currentChannel so existing
    * global helpers target the right place, then invoke them. Fallback

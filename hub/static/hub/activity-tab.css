@@ -1012,7 +1012,7 @@
   background: #0e0e0e;
   border: 1px solid #2a2a2a;
   border-radius: 6px;
-  padding: 8px;
+  padding: 6px 6px 20px 6px;
   box-shadow:
     0 4px 14px rgba(0, 0, 0, 0.6),
     0 0 0 1px rgba(78, 205, 196, 0.2);
@@ -1041,23 +1041,26 @@
   white-space: nowrap;
   font-size: 11px;
 }
-.topo-channel-compose .tcc-expand,
-.topo-channel-compose .tcc-close {
+/* Minimal compose: tiny chevron at bottom-right, everything else
+ * hidden by default. ywatanabe 2026-04-19: "just add a small chevron
+ * to the bottom to show other buttons". */
+.topo-channel-compose .tcc-expand {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
   background: transparent;
-  border: 1px solid #2a2a2a;
-  color: #888;
-  border-radius: 3px;
-  width: 22px;
-  height: 22px;
-  line-height: 1;
+  border: 0;
+  color: #6a7785;
   cursor: pointer;
   font-size: 12px;
-  padding: 0;
+  line-height: 1;
+  padding: 2px 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
 }
-.topo-channel-compose .tcc-expand:hover,
-.topo-channel-compose .tcc-close:hover {
-  color: #ccc;
-  background: #171717;
+.topo-channel-compose .tcc-expand:hover {
+  color: #cbd5e1;
+  opacity: 1;
 }
 .topo-channel-compose .tcc-input {
   width: 100%;
