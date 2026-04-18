@@ -922,6 +922,54 @@
   fill: rgba(17, 17, 17, 0.8);
   pointer-events: none;
 }
+/* Landing bubble — short-lived speech bubble that appears attached to
+ * a destination node when a packet arrives. Stacks vertically above
+ * the node when multiple messages land in quick succession. Fade
+ * in/out keyframed here; stack lifecycle handled in JS. ywatanabe
+ * 2026-04-19: "after reaching to the target, as a bubble, the message
+ * should be shown and stacked and disappeared with timer like 1 s
+ * duration" / "in a fade in/out manner". */
+@keyframes topo-landing-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.activity-grid.activity-view-topology .topo-landing {
+  pointer-events: none;
+  animation: topo-landing-fade 1s ease-out forwards;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.activity-grid.activity-view-topology .topo-landing-bg {
+  fill: rgba(14, 14, 14, 0.92);
+  stroke: #4ecdc4;
+  stroke-width: 1px;
+  pointer-events: none;
+}
+.activity-grid.activity-view-topology .topo-landing-text {
+  font: 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  fill: #eaf1fb;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
 /* Inline channel-compose popup — anchored near the clicked channel
  * diamond on the topology. Minimal by default (text + send); expand
  * chevron reveals attach/camera/sketch/voice; drag-drop files route

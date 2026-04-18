@@ -1078,6 +1078,17 @@ var _topoViewBoxHistory = []; /* back stack (undo) */
 var _topoViewBoxFuture = []; /* forward stack (redo) */
 var _topoZoomWired = false;
 var _topoLastPositions = { agents: {}, channels: {} };
+/* Landing bubbles — short-lived speech-bubble DOM nodes attached to
+ * the destination node when a packet arrives. Multiple arrivals at the
+ * same node stack vertically; older bubbles lift up to make room.
+ * ywatanabe 2026-04-19: "after reaching to the target, as a bubble,
+ * the message should be shown and stacked and disappeared with timer
+ * like 1 s duration" / "in a fade in/out manner".
+ * Shape: { "<x>,<y>": [ {g, expireAt, timer}, ... ] } (oldest first). */
+var _topoLandingStacks = Object.create(null);
+var _TOPO_LANDING_DUR_MS = 1000;
+var _TOPO_LANDING_STACK_MAX = 4;
+var _TOPO_LANDING_STEP_PX = 18;
 /* Client-side "sticky" subscriptions — edges added via drag-drop that
  * survive server-authoritative refetches until the backend starts
  * returning the membership in a.channels. Without this, the optimistic
@@ -1471,6 +1482,18 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass, opts) {
     if (t < 1) {
       requestAnimationFrame(_frame);
     } else {
+      /* Landing bubble — show the message text as a speech bubble
+       * attached to the destination node (stacks with concurrent
+       * arrivals, fades in/out over 1s). Skipped for inPlace packets
+       * (those are already at the origin) and when there's no text. */
+      if (!inPlace && babbleText) {
+        try {
+          var svgRoot = edges && edges.ownerSVGElement;
+          if (svgRoot) _topoLandingBubble(svgRoot, to, babbleText);
+        } catch (_) {
+          /* non-fatal */
+        }
+      }
       /* Remove shortly after landing so no lingering glow remains. */
       setTimeout(function () {
         if (g.parentNode) g.parentNode.removeChild(g);
@@ -1485,6 +1508,109 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass, opts) {
     },
     dur + delay + 500,
   );
+}
+
+/* Landing bubble — a short-lived speech bubble ATTACHED to the
+ * destination node when a packet arrives. Separate from the in-flight
+ * babble that rides the packet. Multiple arrivals at the same node
+ * stack vertically (newest at bottom, older bubbles lift ~18px up).
+ * Fade driven by CSS (@keyframes topo-landing-fade 1s ease-out);
+ * lifecycle (stack cleanup) driven by JS setTimeout.
+ * ywatanabe 2026-04-19: "after reaching to the target, as a bubble,
+ * the message should be shown and stacked and disappeared with timer
+ * like 1 s duration" / "and as bubble on the destination". */
+function _topoLandingBubble(svgRoot, target, text) {
+  if (!svgRoot || !target || text == null) return;
+  var txt = String(text).replace(/\s+/g, " ").trim();
+  if (!txt) return;
+  if (txt.length > 60) txt = txt.slice(0, 60) + "\u2026";
+  /* Prefer a dedicated .topo-landings layer so bubbles render above
+   * edges/nodes. Create it lazily (render() doesn't know we exist). */
+  var layer = svgRoot.querySelector(".topo-landings");
+  if (!layer) {
+    layer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    layer.setAttribute("class", "topo-landings");
+    svgRoot.appendChild(layer);
+  }
+  var ns = "http://www.w3.org/2000/svg";
+  var key = Math.round(target.x) + "," + Math.round(target.y);
+  var stack = _topoLandingStacks[key];
+  if (!stack) {
+    stack = [];
+    _topoLandingStacks[key] = stack;
+  }
+  /* Cap stack — drop oldest (index 0) if we'd exceed the cap. */
+  while (stack.length >= _TOPO_LANDING_STACK_MAX) {
+    var dropped = stack.shift();
+    if (dropped) {
+      if (dropped.timer) clearTimeout(dropped.timer);
+      if (dropped.g && dropped.g.parentNode) {
+        dropped.g.parentNode.removeChild(dropped.g);
+      }
+    }
+  }
+  /* Two-level group so CSS transform-driven fade (translateY) composes
+   * with our JS-driven stack position (translate(x,y)) without one
+   * overwriting the other. Outer <g> = position attribute; inner
+   * <g class="topo-landing"> = CSS keyframe animation. */
+  var g = document.createElementNS(ns, "g");
+  var inner = document.createElementNS(ns, "g");
+  inner.setAttribute("class", "topo-landing");
+  var label = document.createElementNS(ns, "text");
+  label.setAttribute("class", "topo-landing-text");
+  label.setAttribute("text-anchor", "middle");
+  label.setAttribute("dominant-baseline", "middle");
+  label.textContent = txt;
+  var rect = document.createElementNS(ns, "rect");
+  rect.setAttribute("class", "topo-landing-bg");
+  rect.setAttribute("rx", "4");
+  rect.setAttribute("ry", "4");
+  inner.appendChild(rect);
+  inner.appendChild(label);
+  g.appendChild(inner);
+  layer.appendChild(g);
+  /* Position — newest bubble sits closest to the node (offset 0);
+   * older entries (already in stack) get pushed up one step each. */
+  function _placeStack() {
+    for (var i = 0; i < stack.length; i++) {
+      var entry = stack[i];
+      if (!entry || !entry.g) continue;
+      /* Index (stack.length - 1 - i) counted from newest: 0 = closest. */
+      var posFromBottom = stack.length - 1 - i;
+      var dy = -24 - posFromBottom * _TOPO_LANDING_STEP_PX;
+      entry.g.setAttribute(
+        "transform",
+        "translate(" + target.x + "," + (target.y + dy) + ")",
+      );
+    }
+  }
+  var entry = { g: g, timer: null, expireAt: Date.now() + _TOPO_LANDING_DUR_MS };
+  stack.push(entry);
+  /* Need the text in the DOM first so getBBox works; then size the rect. */
+  try {
+    var bbox = label.getBBox();
+    var padX = 6;
+    var padY = 2;
+    rect.setAttribute("x", String(bbox.x - padX));
+    rect.setAttribute("y", String(bbox.y - padY));
+    rect.setAttribute("width", String(bbox.width + padX * 2));
+    rect.setAttribute("height", String(bbox.height + padY * 2));
+  } catch (_) {
+    /* bbox may fail if tab is hidden — harmless, bubble will still animate. */
+  }
+  _placeStack();
+  entry.timer = setTimeout(function () {
+    /* Remove from stack + DOM. Then re-place remaining so they drop
+     * back toward the node as older ones expire. */
+    var idx = stack.indexOf(entry);
+    if (idx >= 0) stack.splice(idx, 1);
+    if (g.parentNode) g.parentNode.removeChild(g);
+    if (stack.length === 0) {
+      delete _topoLandingStacks[key];
+    } else {
+      _placeStack();
+    }
+  }, _TOPO_LANDING_DUR_MS);
 }
 
 /* Briefly brighten the line matching the given endpoints. */
