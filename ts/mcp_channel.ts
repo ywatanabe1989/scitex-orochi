@@ -391,6 +391,29 @@ const conn = {
         _dbg(`ws recv: ${raw.slice(0, 200)}`);
         const msg = JSON.parse(raw);
 
+        // todo#46 — hub→agent JSON ping. Echo original ts back so the
+        // hub can compute RTT and light the Agents-tab RT lamp. Keep
+        // this branch first so ping handling is not blocked by any
+        // later message-type routing.
+        if (msg.type === "ping") {
+          const sentTs =
+            typeof msg.ts === "number"
+              ? msg.ts
+              : typeof msg?.payload?.ts === "number"
+                ? msg.payload.ts
+                : null;
+          if (sentTs !== null) {
+            try {
+              _ws!.send(
+                JSON.stringify({ type: "pong", payload: { ts: sentTs } }),
+              );
+            } catch (_) {
+              /* socket already closing — ignore */
+            }
+          }
+          return;
+        }
+
         // Thread replies and reaction updates -> rewrite to message type
         if (msg.type === "thread_reply") {
           const parentId = msg.parent_id ?? msg.parent ?? "?";
