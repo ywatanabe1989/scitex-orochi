@@ -885,33 +885,84 @@ function _renderActivityCards(agents, grid) {
         );
       }
       /* Pane-state chip (agent-container classifier result — running,
-       * y_n_prompt, auth_error, compose_pending, etc.). Available from
-       * /api/agents/<name>/detail but also surfaced in the registry row
-       * via agent_meta.py. Separate from liveness: liveness tracks the
-       * push channel's freshness, pane_state tracks what the LLM itself
-       * is doing. */
+       * y_n_prompt, auth_error, compose_pending, etc.). Each state has
+       * its own hover-hint explaining what it means. */
       var paneState = a.pane_state || "";
+      var PANE_STATE_HINTS = {
+        y_n_prompt:
+          "agent blocked on a yes/no prompt — approve or reject in the pane",
+        compose_pending_unsent:
+          "agent drafted a message but hasn't sent it yet",
+        auth_error: "claude-code auth expired — agent needs re-login",
+        mcp_broken: "MCP sidecar disconnected — tools unavailable",
+        stuck: "detected as stuck by the classifier — no progress",
+      };
       if (paneState && paneState !== "running") {
+        var paneHint =
+          PANE_STATE_HINTS[paneState] ||
+          "agent-container classifier: " + paneState;
         chips.push(
           '<span class="activity-chip activity-chip-pane-state activity-chip-pane-' +
             escapeHtml(paneState).replace(/[^a-z0-9_-]/gi, "") +
-            '" title="pane state">' +
+            '" title="' +
+            escapeHtml(paneHint) +
+            '">' +
             escapeHtml(paneState.replace(/_/g, " ")) +
             "</span>",
         );
       }
-      /* Tool freshness — proves the LLM is actually working (last hook
-       * event < N min ago), not just that its sidecar is heartbeating. */
-      var toolAgeSec = _secondsSinceIso(a.last_tool_at);
-      if (toolAgeSec != null && toolAgeSec < 3600) {
+      /* Tool sequence — last N hook events as breadcrumb chips. Proves
+       * the LLM is actually working (distinct from liveness, which only
+       * tracks the sidecar's heartbeat). Falls back to the single
+       * last_tool_name when the recent_tools ring buffer isn't
+       * populated yet. */
+      var recentTools = Array.isArray(a.recent_tools) ? a.recent_tools : [];
+      if (recentTools.length) {
+        var seqChips = recentTools
+          .slice(-5)
+          .map(function (t) {
+            var nm = String((t && (t.name || t.tool)) || "?");
+            var when = (t && (t.ts || t.at)) || "";
+            var age = _secondsSinceIso(when);
+            var ageStr = age != null ? " · " + _formatIdle(age) : "";
+            return (
+              '<span class="activity-tool-step" title="' +
+              escapeHtml(nm + ageStr) +
+              '">' +
+              escapeHtml(nm) +
+              "</span>"
+            );
+          })
+          .join('<span class="activity-tool-sep">\u203A</span>');
         chips.push(
-          '<span class="activity-chip activity-chip-tool" ' +
-            'title="last tool call: ' +
-            escapeHtml(String(a.last_tool_name || "")) +
-            '">tool ' +
-            _formatIdle(toolAgeSec) +
+          '<span class="activity-chip activity-chip-tool-seq" ' +
+            'title="last ' +
+            recentTools.slice(-5).length +
+            ' tool calls (oldest → newest)">' +
+            seqChips +
             "</span>",
         );
+      } else {
+        var toolAgeSec = _secondsSinceIso(a.last_tool_at);
+        if (toolAgeSec != null && toolAgeSec < 3600) {
+          chips.push(
+            '<span class="activity-chip activity-chip-tool" ' +
+              'title="last tool call: ' +
+              escapeHtml(String(a.last_tool_name || "")) +
+              '">tool ' +
+              _formatIdle(toolAgeSec) +
+              "</span>",
+          );
+        } else if (!task && !preview) {
+          /* Brand-new agent with no activity yet — explicit empty-state
+           * so the absence is intentional, not a data gap. */
+          chips.push(
+            '<span class="activity-chip activity-chip-idle-fresh" ' +
+              'title="agent registered but has not run any tools yet">' +
+              "awaiting first action" +
+              "</span>",
+          );
+        }
       }
       var chipsHtml =
         chips.length > 0
@@ -935,6 +986,16 @@ function _renderActivityCards(agents, grid) {
       var coreClass = core ? " activity-card-core" : "";
       var shadowClass =
         core && isAgentInactive(a) ? " activity-card-shadow" : "";
+      var LIVENESS_HINTS = {
+        online: "active — heartbeat <2 min ago",
+        idle: "idle — heartbeat 2–10 min ago",
+        stale: "stale — heartbeat >10 min ago (probably stuck)",
+        offline: "disconnected — no sidecar heartbeat",
+      };
+      var livenessHint = LIVENESS_HINTS[liveness] || liveness;
+      var coreHint = core
+        ? "fleet-core role (always visible, shadowed when stale)"
+        : "ad-hoc registration (hidden when stale)";
       return (
         '<div class="activity-card activity-' +
         liveness +
@@ -944,10 +1005,16 @@ function _renderActivityCards(agents, grid) {
         '" ' +
         'data-agent="' +
         escapeHtml(rawName) +
+        '" data-machine="' +
+        escapeHtml(a.machine || "") +
+        '" title="' +
+        escapeHtml(coreHint) +
         '">' +
         '<div class="activity-card-header">' +
         '<span class="activity-status-dot activity-dot-' +
         liveness +
+        '" title="' +
+        escapeHtml(livenessHint) +
         '"></span>' +
         '<span class="activity-name" style="color:' +
         color +
@@ -955,7 +1022,9 @@ function _renderActivityCards(agents, grid) {
         name +
         "</span>" +
         copyBtn +
-        '<span class="activity-liveness">' +
+        '<span class="activity-liveness" title="' +
+        escapeHtml(livenessHint) +
+        '">' +
         _livenessLabel(liveness) +
         (idleStr ? " · " + idleStr : "") +
         "</span>" +

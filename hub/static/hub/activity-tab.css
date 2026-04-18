@@ -302,6 +302,36 @@
   border: 1px solid #1f486b;
 }
 
+/* Tool-sequence chip — inline breadcrumb of the last N hook events.
+ * Uses a compact row layout so a 5-step chain fits on one line on
+ * normal card widths. */
+.activity-chip-tool-seq {
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.activity-chip-tool-seq .activity-tool-step {
+  padding: 0 4px;
+}
+.activity-chip-tool-seq .activity-tool-sep {
+  color: #5a7b93;
+  padding: 0 1px;
+}
+
+/* Fresh-agent empty-state chip (registered but hasn't run any tools
+ * yet — makes the absence of tool/action data explicit instead of just
+ * showing nothing). */
+.activity-chip-idle-fresh {
+  background: #1a1a1a;
+  color: #888;
+  border: 1px dashed #3a3a3a;
+  font-style: italic;
+}
+
 @keyframes activity-pulse {
   0%,
   100% {
