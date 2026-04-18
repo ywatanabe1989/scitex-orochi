@@ -86,6 +86,13 @@ urlpatterns = [
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/agents/avatar/", views.api_agents_avatar, name="api-agents-avatar"),
+    # Pin/unpin — keeps agent visible as ghost when offline + floats to top.
+    # Mirrors hub/urls.py; was missing here so POST /api/agents/pin/ silently
+    # 404'd on workspace subdomains (ywatanabe reported 2026-04-19: "pin can
+    # be clickable; however, it does not change anything"). The frontend was
+    # flipping the class optimistically but the API call never persisted.
+    path("api/agents/pin/", views.api_agents_pin, name="api-agents-pin"),
+    path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     # Per-user (human) profile + avatar — todo#50
     path("api/user-profile/", views.api_user_profile, name="api-user-profile"),
     path(

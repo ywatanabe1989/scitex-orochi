@@ -515,7 +515,13 @@ function _renderActivityAgentDetail(a, grid) {
         "</pre>") +
     "</div>";
   /* Channel subscriptions (with + / x controls, admin-gated server-side). */
-  var uniqueSubs = [...new Set(a.channels || [])];
+  /* DMs are always available for any agent — hiding them from the badge
+   * list reduces noise and matches the overview row's channel column,
+   * which also filters DMs (ywatanabe 2026-04-19: "dm channel should be
+   * dropped as dm is always available"). */
+  var uniqueSubs = [...new Set(a.channels || [])].filter(function (c) {
+    return c && c.indexOf("dm:") !== 0;
+  });
   var channelBadgesHtml = uniqueSubs
     .map(function (c) {
       return (
