@@ -2049,6 +2049,115 @@ function _applyOverviewViewClass(grid) {
 }
 
 var _overviewGridWired = false;
+/* Topology click-counter: collects successive clicks on the same agent
+ * node within CLICK_WINDOW_MS and dispatches a single action (1/2/3-
+ * click). Double-click native event is also wired below as a fallback
+ * for legacy browsers — the guard re-uses the same counter. */
+var _topoClickState = null; /* {name, count, timer} */
+var TOPO_CLICK_WINDOW_MS = 350;
+function _topoFlushClick() {
+  if (!_topoClickState) return;
+  var s = _topoClickState;
+  _topoClickState = null;
+  if (!s.name) return;
+  if (s.count >= 3) {
+    _overviewExpanded = _overviewExpanded === s.name ? null : s.name;
+    if (typeof renderActivityTab === "function") renderActivityTab();
+  } else if (s.count === 2) {
+    _openAgentDm(s.name);
+  }
+  /* count === 1 is handled as drag-source on mousedown; no-op on click. */
+}
+function _topoBumpClick(name) {
+  if (_topoClickState && _topoClickState.name === name) {
+    _topoClickState.count += 1;
+    clearTimeout(_topoClickState.timer);
+  } else {
+    /* Different target → drop prior pending count silently (a click on
+     * a different node is a new intent, not part of a multi-click). */
+    if (_topoClickState) clearTimeout(_topoClickState.timer);
+    _topoClickState = { name: name, count: 1, timer: 0 };
+  }
+  _topoClickState.timer = setTimeout(_topoFlushClick, TOPO_CLICK_WINDOW_MS);
+}
+
+/* Open (or create-and-open) the DM channel between the signed-in human
+ * and the given agent. Channel name mirrors the backend convention:
+ *   dm:agent:<agent>|human:<user>
+ * We switch UI state immediately (setCurrentChannel + loadChannelHistory
+ * + activate Chat tab) and fire an _agentSubscribe in the background so
+ * the DM row appears in the sidebar. If the channel already exists the
+ * backend treats the POST as a no-op update. */
+function _openAgentDm(agentName) {
+  if (!agentName) return;
+  var human =
+    (typeof userName !== "undefined" && userName) ||
+    window.__orochiUserName ||
+    "human";
+  var channel = "dm:agent:" + agentName + "|human:" + human;
+  try {
+    if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
+    if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
+    var chatTabBtn = document.querySelector('[data-tab="chat"]');
+    if (chatTabBtn) chatTabBtn.click();
+  } catch (_) {}
+  /* Ensure membership in the background (idempotent). Skip if the helper
+   * isn't around (shouldn't happen — app.js is always loaded first). */
+  if (typeof _agentSubscribe === "function") {
+    try {
+      _agentSubscribe(agentName, channel, "read-write");
+    } catch (_) {}
+  }
+}
+
+/* ── Drag-to-subscribe on the topology canvas ──
+ *   mousedown on .topo-agent or .topo-channel starts a drag session.
+ *   After a 4px threshold a ghost <text> follows the cursor.
+ *   While dragging, hovered .topo-channel / .topo-agent nodes get
+ *   .topo-drop-target. Release on a valid opposite-kind node calls the
+ *   subscribe endpoint with the right permission; release elsewhere
+ *   cancels silently.
+ *
+ *   Zoom/pan gestures (_wireTopoZoomPan) guard themselves with an early
+ *   return when the mousedown target is an agent/channel, so the two
+ *   handlers coexist without conflict. */
+var _topoDragState = null;
+function _topoClearDrop() {
+  if (!_topoDragState) return;
+  if (_topoDragState.lastDrop) {
+    _topoDragState.lastDrop.classList.remove("topo-drop-target");
+    _topoDragState.lastDrop = null;
+  }
+}
+function _topoCleanupDrag() {
+  if (!_topoDragState) return;
+  _topoClearDrop();
+  if (_topoDragState.ghost && _topoDragState.ghost.parentNode) {
+    _topoDragState.ghost.parentNode.removeChild(_topoDragState.ghost);
+  }
+  _topoDragState = null;
+}
+function _topoSpawnGhost(svg, text, x, y) {
+  var ns = "http://www.w3.org/2000/svg";
+  var t = document.createElementNS(ns, "text");
+  t.setAttribute("class", "topo-drag-ghost");
+  t.setAttribute("x", x);
+  t.setAttribute("y", y);
+  t.setAttribute("pointer-events", "none");
+  t.textContent = text;
+  svg.appendChild(t);
+  return t;
+}
+function _topoShowSubscribeToast(agent, channel, perm) {
+  if (typeof _showMiniToast === "function") {
+    var verb = perm === "read-write" ? "read-write" : "read-only";
+    _showMiniToast(
+      "Added " + agent + " to " + channel + " (" + verb + ")",
+      "ok",
+    );
+  }
+}
+
 function _wireOverviewGridDelegation(grid) {
   if (_overviewGridWired || !grid) return;
   grid.addEventListener("click", function (ev) {
@@ -2092,9 +2201,9 @@ function _wireOverviewGridDelegation(grid) {
       renderActivityTab();
       return;
     }
-    /* Topology view — tap an agent-node <g data-agent="…"> to toggle
-     * expand. Channel nodes are a no-op for now (future: filter to
-     * that channel). */
+    /* Topology view — multi-click dispatch. 1-click = drag-source
+     * (handled on mousedown; click is a no-op), 2-click = DM,
+     * 3-click = toggle inline detail expand. */
     var topoAgent = ev.target.closest(".topo-agent[data-agent]");
     if (topoAgent && grid.contains(topoAgent)) {
       if (ev.target.closest(".activity-inline-detail")) return;
@@ -2104,10 +2213,153 @@ function _wireOverviewGridDelegation(grid) {
         if (typeof addTag === "function") addTag("agent", tname);
         return;
       }
-      _overviewExpanded = _overviewExpanded === tname ? null : tname;
-      renderActivityTab();
+      /* Suppress click dispatched immediately after a successful drop
+       * (prevents accidental expand after drag-release). */
+      if (_topoDragState && _topoDragState.suppressClick) {
+        _topoDragState.suppressClick = false;
+        return;
+      }
+      _topoBumpClick(tname);
     }
   });
+  /* Native dblclick fallback — bumps the counter to 2 so the same
+   * _topoFlushClick codepath opens the DM. Prevents the grid-level
+   * dblclick handler (which resets zoom) from also firing when the
+   * target is an agent node. */
+  grid.addEventListener("dblclick", function (ev) {
+    var topoAgent = ev.target.closest(".topo-agent[data-agent]");
+    if (!topoAgent || !grid.contains(topoAgent)) return;
+    var tname = topoAgent.getAttribute("data-agent");
+    if (!tname) return;
+    ev.stopPropagation();
+    /* The two clicks that made up the dblclick already bumped the
+     * counter via the click handler, so we don't need to bump again —
+     * but if the counter was flushed (rare: very fast dblclick with
+     * synthesized click events not firing twice), ensure count >= 2. */
+    if (!_topoClickState || _topoClickState.name !== tname) {
+      _openAgentDm(tname);
+    } else if (_topoClickState.count < 2) {
+      _topoClickState.count = 2;
+    }
+  });
+  /* Drag-to-subscribe — mousedown on an agent OR channel node starts
+   * a drag session. This coexists with _wireTopoZoomPan because that
+   * handler short-circuits when the target is .topo-agent/.topo-
+   * channel. */
+  grid.addEventListener("mousedown", function (ev) {
+    if (ev.button !== 0) return;
+    if (ev.shiftKey || ev.ctrlKey || ev.metaKey) return;
+    var svg = ev.target.closest && ev.target.closest(".topo-svg");
+    if (!svg) return;
+    var agentNode = ev.target.closest(".topo-agent[data-agent]");
+    var channelNode = ev.target.closest(".topo-channel[data-channel]");
+    if (!agentNode && !channelNode) return;
+    var kind = agentNode ? "agent" : "channel";
+    var name = agentNode
+      ? agentNode.getAttribute("data-agent")
+      : channelNode.getAttribute("data-channel");
+    if (!name) return;
+    _topoDragState = {
+      svg: svg,
+      kind: kind,
+      name: name,
+      startX: ev.clientX,
+      startY: ev.clientY,
+      ghost: null,
+      lastDrop: null,
+      moved: false,
+      suppressClick: false,
+    };
+  });
+  grid.addEventListener("mousemove", function (ev) {
+    var s = _topoDragState;
+    if (!s) return;
+    var dx = ev.clientX - s.startX;
+    var dy = ev.clientY - s.startY;
+    if (!s.moved && dx * dx + dy * dy < 16) return; /* 4px threshold */
+    s.moved = true;
+    /* Spawn ghost once we cross the threshold. */
+    if (!s.ghost) {
+      var p0 = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
+      var label =
+        (s.kind === "agent" ? "→ subscribe " : "← read ") + s.name;
+      s.ghost = _topoSpawnGhost(s.svg, label, p0.x + 8, p0.y - 8);
+    }
+    var p = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
+    s.ghost.setAttribute("x", (p.x + 8).toFixed(1));
+    s.ghost.setAttribute("y", (p.y - 8).toFixed(1));
+    /* Hover highlight. Valid target = opposite kind (agent→channel or
+     * channel→agent). Same-kind targets get a dimmer hint (future:
+     * agent→agent DM). */
+    var target = null;
+    /* elementsFromPoint works for SVG too. Pick the first opposite-kind
+     * node under the cursor. */
+    var stack = document.elementsFromPoint
+      ? document.elementsFromPoint(ev.clientX, ev.clientY)
+      : [];
+    for (var i = 0; i < stack.length; i++) {
+      var el = stack[i];
+      var chHit = el.closest && el.closest(".topo-channel[data-channel]");
+      var agHit = el.closest && el.closest(".topo-agent[data-agent]");
+      if (s.kind === "agent" && chHit) {
+        target = chHit;
+        break;
+      }
+      if (s.kind === "channel" && agHit) {
+        target = agHit;
+        break;
+      }
+    }
+    if (s.lastDrop !== target) {
+      if (s.lastDrop) s.lastDrop.classList.remove("topo-drop-target");
+      if (target) target.classList.add("topo-drop-target");
+      s.lastDrop = target;
+    }
+  });
+  grid.addEventListener("mouseup", function (ev) {
+    var s = _topoDragState;
+    if (!s) return;
+    var target = s.lastDrop;
+    if (s.moved && target) {
+      if (s.kind === "agent") {
+        /* agent → channel : agent gets write on channel. _agentSubscribe
+         * fires a mini-toast on success; we also show a transient in-
+         * place confirmation next to the drop site so the affordance
+         * reads as "landed here" even before the backend acks. */
+        var ch = target.getAttribute("data-channel");
+        if (ch && typeof _agentSubscribe === "function") {
+          _agentSubscribe(s.name, ch, "read-write");
+          _topoShowSubscribeToast(s.name, ch, "read-write");
+        }
+      } else if (s.kind === "channel") {
+        /* channel → agent : agent subscribes read-only */
+        var ag = target.getAttribute("data-agent");
+        if (ag && typeof _agentSubscribe === "function") {
+          _agentSubscribe(ag, s.name, "read-only");
+          _topoShowSubscribeToast(ag, s.name, "read-only");
+        }
+      }
+    }
+    if (s.moved) {
+      /* Any drag motion → suppress the trailing synthetic click so it
+       * doesn't trigger the single/triple dispatcher. We keep the state
+       * around for one tick so the click handler sees suppressClick,
+       * then tear it down. */
+      s.suppressClick = true;
+      _topoClearDrop();
+      if (s.ghost && s.ghost.parentNode) {
+        s.ghost.parentNode.removeChild(s.ghost);
+        s.ghost = null;
+      }
+      setTimeout(function () {
+        if (_topoDragState === s) _topoDragState = null;
+      }, 0);
+    } else {
+      _topoCleanupDrag();
+    }
+  });
+  /* Cancel on window blur / escape. */
+  window.addEventListener("blur", _topoCleanupDrag);
   /* Delegated right-click on overview cards (and topology agent nodes) →
    * open the agent context menu from app.js. Survives innerHTML rewrites. */
   grid.addEventListener("contextmenu", function (ev) {
@@ -2124,6 +2376,19 @@ function _wireOverviewGridDelegation(grid) {
     _showAgentContextMenu(name, ev.clientX, ev.clientY);
   });
   _overviewGridWired = true;
+}
+
+/* Standalone copy of the client→SVG-point transform (the one inside
+ * _wireTopoZoomPan is scoped). Kept separate so both wire helpers can
+ * use it without sharing closure state. */
+function _topoSvgPoint(svg, clientX, clientY) {
+  if (!svg || !svg.createSVGPoint) return { x: clientX, y: clientY };
+  var pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  var m = svg.getScreenCTM();
+  if (!m) return { x: clientX, y: clientY };
+  return pt.matrixTransform(m.inverse());
 }
 
 var _overviewControlsWired = false;

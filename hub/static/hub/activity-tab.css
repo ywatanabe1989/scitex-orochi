@@ -738,6 +738,33 @@
 .activity-grid.activity-view-topology .topo-agent:hover circle {
   stroke-width: 3;
 }
+
+/* Drag-to-subscribe feedback — a flying ghost <text> follows the
+ * cursor during drag, and the hovered drop-target node gets a teal
+ * glow. Both are SVG-scoped so they don't leak into other tabs. */
+.activity-grid.activity-view-topology .topo-drag-ghost {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  fill: #4ecdc4;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 0 3px rgba(78, 205, 196, 0.7));
+  opacity: 0.95;
+}
+.activity-grid.activity-view-topology .topo-agent.topo-drop-target circle {
+  stroke: #4ecdc4 !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 6px #4ecdc4);
+}
+.activity-grid.activity-view-topology .topo-agent.topo-drop-target text {
+  filter: drop-shadow(0 0 4px #4ecdc4);
+}
+.activity-grid.activity-view-topology .topo-channel.topo-drop-target polygon {
+  stroke: #4ecdc4 !important;
+  stroke-width: 3 !important;
+  fill: rgba(78, 205, 196, 0.18) !important;
+  filter: drop-shadow(0 0 6px #4ecdc4);
+}
 .activity-grid.activity-view-topology .activity-inline-detail {
   flex: 0 0 auto;
   margin: 10px 0 0;
