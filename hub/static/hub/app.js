@@ -874,7 +874,11 @@ function hostedAgentName(a) {
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
   var host = a && a.machine ? a.machine : "";
-  return host ? name + "@" + host : name;
+  /* Always pipe the constructed "<name>@<host>" string through
+   * cleanAgentName so the role-host suffix gets collapsed
+   * (head-mba@mba → head@mba). The earlier form returned the raw
+   * concatenation and the dedupe never fired. */
+  return host ? cleanAgentName(name + "@" + host) : name;
 }
 
 /* Fleet-core roles defined by YAML under ~/.scitex/orochi/shared/agents/
