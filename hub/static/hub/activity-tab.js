@@ -1371,12 +1371,22 @@ function _topoPulseEdge(sender, channel, opts) {
      * before the fan-out leg. */
     _topoSpawnPacket(edges, cp, cp, 180, 0, klass);
   }
-  /* Leg 2 — channel → each subscribed agent (except sender if agent).
-   * Edge-line flashing was removed (ywatanabe 2026-04-19: "instead of
-   * highlight the line at the same time, packet should move from one
-   * to another") — the traveling packet itself carries the signal. */
+  /* Leg 2 — channel → every other connected node (subscribed agents
+   * AND the human user). The human is in _topoLastPositions.agents
+   * keyed by username but is NOT present in window.__lastAgents, so
+   * the filter has two paths: an agent record with the channel in
+   * its a.channels OR the human node (always treated as reachable,
+   * since the dashed edges imply full connectivity). Sender is
+   * excluded so replies don't bounce back to the poster. ywatanabe
+   * 2026-04-19: "from the channel node, it should be sent to user
+   * as well (or other connected nodes than the sender itself)". */
+  var humanKey =
+    (typeof userName !== "undefined" && userName) ||
+    window.__orochiUserName ||
+    "";
   var subscribers = Object.keys(_topoLastPositions.agents).filter(function (n) {
     if (n === sender) return false;
+    if (humanKey && n === humanKey) return true;
     var ag = (window.__lastAgents || []).find(function (x) {
       return x.name === n;
     });
