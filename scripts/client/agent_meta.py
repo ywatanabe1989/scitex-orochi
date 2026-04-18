@@ -906,48 +906,117 @@ def collect(agent: str) -> dict:
     # the heartbeat payload bounded; the viewer renders the truncated
     # body and links to the canonical file path for the rest.
     claude_md_full = ""
-    try:
-        cmd = Path(workspace) / "CLAUDE.md"
-        if cmd.is_file():
-            text = cmd.read_text()
-            for ln in text.splitlines():
-                ln_stripped = ln.strip()
-                if ln_stripped and not ln_stripped.startswith("```"):
-                    claude_md_head = ln_stripped[:120]
-                    break
-            claude_md_full = text[:10000]
-    except Exception:
-        pass
+
+    # todo#53: historically only head-* agents had a CLAUDE.md at
+    # `<workspace>/CLAUDE.md`. Other roles (healer / skill-manager /
+    # todo-manager / ...) either live under a legacy `mamba-<name>/`
+    # directory, use the user's global `~/.claude/CLAUDE.md`, or have
+    # the file placed in a nested `.claude/` folder. We now walk a
+    # prioritised candidate list so the detail view has content for
+    # every agent instead of only head.
+    def _claude_md_candidates(ws: str) -> list[Path]:
+        p = Path(ws) if ws else None
+        home = Path.home()
+        cands: list[Path] = []
+        if p is not None:
+            cands += [p / "CLAUDE.md", p / ".claude" / "CLAUDE.md"]
+            if p.parent.name == "workspaces":
+                # Legacy sibling directory: mamba-<role>-<host>/CLAUDE.md
+                cands.append(p.parent / f"mamba-{p.name}" / "CLAUDE.md")
+            # Project-level Claude config if the agent cwd is a git repo
+            try:
+                git_root = p
+                while git_root != git_root.parent and not (git_root / ".git").exists():
+                    git_root = git_root.parent
+                if (git_root / ".git").exists():
+                    cands.append(git_root / "CLAUDE.md")
+            except Exception:
+                pass
+        cands += [home / ".claude" / "CLAUDE.md", home / "CLAUDE.md"]
+        # Dedup preserving order.
+        seen: set[str] = set()
+        uniq: list[Path] = []
+        for c in cands:
+            key = str(c)
+            if key in seen:
+                continue
+            seen.add(key)
+            uniq.append(c)
+        return uniq
+
+    for cmd in _claude_md_candidates(workspace):
+        try:
+            if cmd.is_file():
+                text = cmd.read_text()
+                for ln in text.splitlines():
+                    ln_stripped = ln.strip()
+                    if ln_stripped and not ln_stripped.startswith("```"):
+                        claude_md_head = ln_stripped[:120]
+                        break
+                claude_md_full = text[:10000]
+                break
+        except Exception:
+            continue
 
     # .mcp.json full — for the per-agent page .mcp.json viewer
     # (todo#460). Tokens are redacted (env values containing TOKEN /
     # SECRET / KEY substrings). Truncated to 10000 chars.
     mcp_json_full = ""
-    try:
-        mcp_path = Path(workspace) / ".mcp.json"
-        if mcp_path.is_file():
+
+    # todo#53: same fallback logic for .mcp.json so non-head agents also
+    # populate the MCP viewer.
+    def _mcp_json_candidates(ws: str) -> list[Path]:
+        p = Path(ws) if ws else None
+        home = Path.home()
+        cands: list[Path] = []
+        if p is not None:
+            cands += [p / ".mcp.json"]
+            if p.parent.name == "workspaces":
+                cands.append(p.parent / f"mamba-{p.name}" / ".mcp.json")
+            try:
+                git_root = p
+                while git_root != git_root.parent and not (git_root / ".git").exists():
+                    git_root = git_root.parent
+                if (git_root / ".git").exists():
+                    cands.append(git_root / ".mcp.json")
+            except Exception:
+                pass
+        cands += [home / ".mcp.json"]
+        seen: set[str] = set()
+        uniq: list[Path] = []
+        for c in cands:
+            key = str(c)
+            if key in seen:
+                continue
+            seen.add(key)
+            uniq.append(c)
+        return uniq
+
+    def _redact_secrets(obj):
+        if isinstance(obj, dict):
+            out = {}
+            for k, v in obj.items():
+                if isinstance(v, str) and any(
+                    tag in k.upper() for tag in ("TOKEN", "SECRET", "KEY", "PASSWORD")
+                ):
+                    out[k] = "***REDACTED***"
+                else:
+                    out[k] = _redact_secrets(v)
+            return out
+        if isinstance(obj, list):
+            return [_redact_secrets(x) for x in obj]
+        return obj
+
+    for mcp_path in _mcp_json_candidates(workspace):
+        try:
+            if not mcp_path.is_file():
+                continue
             doc = json.loads(mcp_path.read_text())
-
-            def _redact_secrets(obj):
-                if isinstance(obj, dict):
-                    out = {}
-                    for k, v in obj.items():
-                        if isinstance(v, str) and any(
-                            tag in k.upper()
-                            for tag in ("TOKEN", "SECRET", "KEY", "PASSWORD")
-                        ):
-                            out[k] = "***REDACTED***"
-                        else:
-                            out[k] = _redact_secrets(v)
-                    return out
-                if isinstance(obj, list):
-                    return [_redact_secrets(x) for x in obj]
-                return obj
-
             redacted = _redact_secrets(doc)
             mcp_json_full = json.dumps(redacted, indent=2)[:10000]
-    except Exception:
-        pass
+            break
+        except Exception:
+            continue
 
     return {
         "agent": agent,
