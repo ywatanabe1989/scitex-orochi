@@ -1839,6 +1839,9 @@ def api_agents_register(request):
             "recent_actions": body.get("recent_actions") or [],
             "pane_tail": body.get("pane_tail", ""),
             "pane_tail_block": body.get("pane_tail_block", ""),
+            # todo#47 — ~500 filtered lines of tmux scrollback for the
+            # agent-detail "Full pane" toggle. Capped at 32 KB client-side.
+            "pane_tail_full": body.get("pane_tail_full", ""),
             "claude_md_head": body.get("claude_md_head", ""),
             "mcp_servers": body.get("mcp_servers") or [],
             # todo#265: Claude Code OAuth account public metadata
