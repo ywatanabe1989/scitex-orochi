@@ -1225,15 +1225,21 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
   var dy = to.y - from.y;
   var inPlace = Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5;
   var angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
-  var g = document.createElementNS(ns, "g");
-  g.setAttribute("class", "topo-packet " + (klass || ""));
-  /* Outer transform: start position + rotation. animateTransform of
-   * type=translate with additive="sum" slides the packet while the
-   * base rotation stays locked on the flight direction. */
-  g.setAttribute(
-    "transform",
-    "translate(" + from.x + "," + from.y + ") rotate(" + angleDeg + ")",
-  );
+  /* Nested groups so the TRANSLATE animation runs in screen coords,
+   * not rotated coords. Previous single-<g> form combined translate +
+   * rotate on the same element with additive="sum"; the animated
+   * translate was then applied AFTER the rotate, which moved the
+   * packet along the rotated X-axis instead of along the edge line
+   * (user-visible bug: "light ball shown in a different position").
+   * Outer <g> carries the animated translate (screen-space); inner
+   * <g> holds only the rotate so the arrow glyph points along the
+   * flight direction. */
+  var outer = document.createElementNS(ns, "g");
+  outer.setAttribute("class", "topo-packet " + (klass || ""));
+  outer.setAttribute("transform", "translate(" + from.x + "," + from.y + ")");
+  var inner = document.createElementNS(ns, "g");
+  inner.setAttribute("transform", "rotate(" + angleDeg + ")");
+  outer.appendChild(inner);
   if (inPlace) {
     /* Origin pulse — expanding fading ring so the channel-node flashes
      * at the start of the message-pass animation. */
@@ -1258,7 +1264,7 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
     bo.setAttribute("fill", "freeze");
     burst.appendChild(br);
     burst.appendChild(bo);
-    g.appendChild(burst);
+    inner.appendChild(burst);
   } else {
     /* Outer halo — soft bloom. */
     var halo = document.createElementNS(ns, "ellipse");
@@ -1267,23 +1273,18 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
     halo.setAttribute("rx", "14");
     halo.setAttribute("ry", "6");
     halo.setAttribute("fill-opacity", "0.18");
-    g.appendChild(halo);
-    /* Mid capsule — the packet body, an elongated ellipse in the flight
-     * direction so it looks like a comet/bus-like "capsule". */
+    inner.appendChild(halo);
+    /* Mid capsule — the packet body, elongated along direction. */
     var body = document.createElementNS(ns, "ellipse");
     body.setAttribute("cx", "0");
     body.setAttribute("cy", "0");
     body.setAttribute("rx", "8");
     body.setAttribute("ry", "3");
     body.setAttribute("fill-opacity", "0.55");
-    g.appendChild(body);
-    /* Bright core + arrowhead tip at +rx end so flow direction is
-     * unambiguous even at small sizes. */
+    inner.appendChild(body);
     var tip = document.createElementNS(ns, "polygon");
     tip.setAttribute("points", "-3,-2 9,0 -3,2");
-    g.appendChild(tip);
-    /* Tail trail — three small dots behind the capsule that fade; they
-     * emphasize motion direction ("comet tail"). */
+    inner.appendChild(tip);
     for (var ti = 1; ti <= 3; ti++) {
       var tail = document.createElementNS(ns, "circle");
       var off = -(8 + ti * 3);
@@ -1291,8 +1292,11 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
       tail.setAttribute("cy", "0");
       tail.setAttribute("r", String(Math.max(1, 3 - ti)));
       tail.setAttribute("fill-opacity", String(0.35 / ti));
-      g.appendChild(tail);
+      inner.appendChild(tail);
     }
+    /* Animate the OUTER translate in screen coordinates so the packet
+     * actually tracks from→to. additive="sum" on top of the base
+     * translate(fromX,fromY). */
     var at = document.createElementNS(ns, "animateTransform");
     at.setAttribute("attributeName", "transform");
     at.setAttribute("type", "translate");
@@ -1302,12 +1306,12 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
     at.setAttribute("begin", delay + "ms");
     at.setAttribute("additive", "sum");
     at.setAttribute("fill", "freeze");
-    g.appendChild(at);
+    outer.appendChild(at);
   }
-  edges.appendChild(g);
+  edges.appendChild(outer);
   setTimeout(
     function () {
-      if (g.parentNode) g.parentNode.removeChild(g);
+      if (outer.parentNode) outer.parentNode.removeChild(outer);
     },
     dur + delay + 80,
   );
