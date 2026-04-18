@@ -112,14 +112,26 @@ function _renderAgentDetail(a) {
     }
     return { display: raw, tooltip: "" };
   }
-  /* todo#55: canonical FQDN for the Machine row. When the agent pushes
-   * one AND it differs from the short label, the UI renders
-   * "<label> (<fqdn>)". When identical or empty, the short label alone. */
+  /* todo#55/#58: canonical FQDN for the Machine row. Render
+   * "<label> (<fqdn>)" only when the FQDN adds real information beyond
+   * the short label. Drops redundant suffixes like ".local" /
+   * ".localdomain" / ".lan" / ".home.arpa" that macOS and WSL attach to
+   * their mDNS names — those contribute nothing (ywatanabe msg 2026-04-18
+   * "2" flagged the duplication for the 7 ywata-note-win agents whose
+   * FQDN was just the short label + ".localdomain"). */
   var machineCanonical = d.hostname_canonical || a.hostname_canonical || "";
-  var machineDisplay =
-    machineCanonical && machineCanonical !== machine
-      ? machine + " (" + machineCanonical + ")"
-      : machine;
+  function _fqdnAddsInfo(short, fqdn) {
+    if (!fqdn) return false;
+    if (fqdn === short) return false;
+    var redundantSuffixes = [".local", ".localdomain", ".lan", ".home.arpa"];
+    for (var i = 0; i < redundantSuffixes.length; i++) {
+      if (fqdn === short + redundantSuffixes[i]) return false;
+    }
+    return true;
+  }
+  var machineDisplay = _fqdnAddsInfo(machine, machineCanonical)
+    ? machine + " (" + machineCanonical + ")"
+    : machine;
   var modelClean = _cleanModel(d.model || a.model || "");
   var ctxPct = d.context_pct != null ? d.context_pct : a.context_pct;
   var currentTask = d.current_task || a.current_task || "";
@@ -185,9 +197,11 @@ function _renderAgentDetail(a) {
     [
       "Machine",
       machineDisplay,
-      machineCanonical && machineCanonical !== machine
+      _fqdnAddsInfo(machine, machineCanonical)
         ? "short label · canonical FQDN reported by the heartbeat"
-        : "hostname the agent is running on (short label — no FQDN reported)",
+        : machineCanonical
+          ? "FQDN is just the short label + redundant mDNS suffix; hidden"
+          : "hostname the agent is running on (short label — no FQDN reported)",
     ],
     [
       "Model",
