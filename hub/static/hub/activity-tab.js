@@ -1070,6 +1070,174 @@ function _computeAgentState(a) {
  * edge and label. We short-circuit on a compact signature. */
 var _topoLastSig = "";
 var _topoLastExpanded = null;
+var _topoViewBox = null; /* {x,y,w,h} — persisted zoom/pan across re-renders */
+var _topoZoomWired = false;
+
+/* Drag-rectangle zoom + shift-drag pan + double-click reset on the
+ * topology SVG. State lives in _topoViewBox so heartbeat-driven
+ * re-renders preserve the zoom. The inner .topo-zoombox <rect> is
+ * reused as the drag overlay. Bound ONCE — the inner SVG is replaced
+ * on each render but the grid wrapper is stable. */
+function _wireTopoZoomPan(grid, W, H) {
+  if (_topoZoomWired || !grid) return;
+  _topoZoomWired = true;
+  function _svgPoint(svg, clientX, clientY) {
+    var pt = svg.createSVGPoint();
+    pt.x = clientX;
+    pt.y = clientY;
+    var m = svg.getScreenCTM();
+    if (!m) return { x: clientX, y: clientY };
+    var inv = m.inverse();
+    var p = pt.matrixTransform(inv);
+    return { x: p.x, y: p.y };
+  }
+  var dragging = null; /* {mode:"zoom"|"pan", startX, startY, startVB} */
+  grid.addEventListener("mousedown", function (ev) {
+    var svg = ev.target.closest && ev.target.closest(".topo-svg");
+    if (!svg) return;
+    /* Ignore drags that start on agent/channel nodes — they keep
+     * their click-to-expand behavior via the existing delegation. */
+    if (ev.target.closest(".topo-agent, .topo-channel")) return;
+    if (ev.button !== 0) return;
+    ev.preventDefault();
+    var start = _svgPoint(svg, ev.clientX, ev.clientY);
+    if (ev.shiftKey) {
+      /* Pan */
+      var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
+      dragging = {
+        mode: "pan",
+        svg: svg,
+        startX: ev.clientX,
+        startY: ev.clientY,
+        startVB: { x: vb.x, y: vb.y, w: vb.w, h: vb.h },
+      };
+    } else {
+      /* Zoom rectangle */
+      dragging = {
+        mode: "zoom",
+        svg: svg,
+        startSvg: start,
+        endSvg: start,
+      };
+      var rect = svg.querySelector(".topo-zoombox");
+      if (rect) {
+        rect.setAttribute("x", String(start.x));
+        rect.setAttribute("y", String(start.y));
+        rect.setAttribute("width", "0");
+        rect.setAttribute("height", "0");
+        rect.style.display = "";
+      }
+    }
+  });
+  grid.addEventListener("mousemove", function (ev) {
+    if (!dragging) return;
+    if (dragging.mode === "zoom") {
+      var p = _svgPoint(dragging.svg, ev.clientX, ev.clientY);
+      dragging.endSvg = p;
+      var rect = dragging.svg.querySelector(".topo-zoombox");
+      if (rect) {
+        var x = Math.min(dragging.startSvg.x, p.x);
+        var y = Math.min(dragging.startSvg.y, p.y);
+        var w = Math.abs(p.x - dragging.startSvg.x);
+        var h = Math.abs(p.y - dragging.startSvg.y);
+        rect.setAttribute("x", x.toFixed(1));
+        rect.setAttribute("y", y.toFixed(1));
+        rect.setAttribute("width", w.toFixed(1));
+        rect.setAttribute("height", h.toFixed(1));
+      }
+    } else if (dragging.mode === "pan") {
+      /* Translate clientX/Y delta to SVG coordinates via the viewBox
+       * aspect ratio. Simpler: work in screen px scaled by current
+       * viewBox/screen ratio. */
+      var dxScreen = ev.clientX - dragging.startX;
+      var dyScreen = ev.clientY - dragging.startY;
+      var svgW = dragging.svg.clientWidth || W;
+      var svgH = dragging.svg.clientHeight || H;
+      var sx = dragging.startVB.w / svgW;
+      var sy = dragging.startVB.h / svgH;
+      var nx = dragging.startVB.x - dxScreen * sx;
+      var ny = dragging.startVB.y - dyScreen * sy;
+      _topoViewBox = {
+        x: nx,
+        y: ny,
+        w: dragging.startVB.w,
+        h: dragging.startVB.h,
+      };
+      dragging.svg.setAttribute(
+        "viewBox",
+        _topoViewBox.x.toFixed(1) +
+          " " +
+          _topoViewBox.y.toFixed(1) +
+          " " +
+          _topoViewBox.w.toFixed(1) +
+          " " +
+          _topoViewBox.h.toFixed(1),
+      );
+    }
+  });
+  grid.addEventListener("mouseup", function (ev) {
+    if (!dragging) return;
+    if (dragging.mode === "zoom") {
+      var p = _svgPoint(dragging.svg, ev.clientX, ev.clientY);
+      var x = Math.min(dragging.startSvg.x, p.x);
+      var y = Math.min(dragging.startSvg.y, p.y);
+      var w = Math.abs(p.x - dragging.startSvg.x);
+      var h = Math.abs(p.y - dragging.startSvg.y);
+      /* Only apply if the rectangle is large enough (user may just
+       * click without dragging). */
+      if (w > 8 && h > 8) {
+        _topoViewBox = { x: x, y: y, w: w, h: h };
+        dragging.svg.setAttribute(
+          "viewBox",
+          x.toFixed(1) +
+            " " +
+            y.toFixed(1) +
+            " " +
+            w.toFixed(1) +
+            " " +
+            h.toFixed(1),
+        );
+      }
+      var rect = dragging.svg.querySelector(".topo-zoombox");
+      if (rect) rect.style.display = "none";
+    }
+    dragging = null;
+  });
+  grid.addEventListener("dblclick", function (ev) {
+    var svg = ev.target.closest && ev.target.closest(".topo-svg");
+    if (!svg) return;
+    _topoViewBox = null;
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  });
+  /* Mouse wheel zoom — cursor-anchored, 10% per tick. */
+  grid.addEventListener(
+    "wheel",
+    function (ev) {
+      var svg = ev.target.closest && ev.target.closest(".topo-svg");
+      if (!svg) return;
+      ev.preventDefault();
+      var p = _svgPoint(svg, ev.clientX, ev.clientY);
+      var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
+      var factor = ev.deltaY > 0 ? 1.1 : 1 / 1.1;
+      var nw = vb.w * factor;
+      var nh = vb.h * factor;
+      var nx = p.x - (p.x - vb.x) * factor;
+      var ny = p.y - (p.y - vb.y) * factor;
+      _topoViewBox = { x: nx, y: ny, w: nw, h: nh };
+      svg.setAttribute(
+        "viewBox",
+        nx.toFixed(1) +
+          " " +
+          ny.toFixed(1) +
+          " " +
+          nw.toFixed(1) +
+          " " +
+          nh.toFixed(1),
+      );
+    },
+    { passive: false },
+  );
+}
 function _topoSignature(visible) {
   /* Cheap digest: name + online-ness + liveness bucket + pinned +
    * channel count. Liveness is in so the FN LED color follows the
@@ -1311,15 +1479,23 @@ function _renderActivityTopology(visible, grid) {
     })
     .join("");
 
+  /* viewBox persisted in _topoViewBox across re-renders so zoom/pan
+   * state survives heartbeat-driven rebuilds. If null, use the natural
+   * (0 0 W H) frame so the whole scene fits. */
+  var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
   var svg =
     '<svg class="topo-svg" width="' +
     W +
     '" height="' +
     H +
-    '" viewBox="0 0 ' +
-    W +
+    '" viewBox="' +
+    vb.x.toFixed(1) +
     " " +
-    H +
+    vb.y.toFixed(1) +
+    " " +
+    vb.w.toFixed(1) +
+    " " +
+    vb.h.toFixed(1) +
     '" xmlns="http://www.w3.org/2000/svg">' +
     '<g class="topo-edges">' +
     edgesSvg +
@@ -1330,6 +1506,9 @@ function _renderActivityTopology(visible, grid) {
     '<g class="topo-agents">' +
     agentSvg +
     "</g>" +
+    '<rect class="topo-zoombox" x="0" y="0" width="0" height="0"' +
+    ' fill="rgba(78,205,196,0.1)" stroke="#4ecdc4" stroke-width="1"' +
+    ' stroke-dasharray="4 4" style="display:none;pointer-events:none"/>' +
     "</svg>";
 
   var detailBox = "";
@@ -1339,13 +1518,17 @@ function _renderActivityTopology(visible, grid) {
       escapeHtml(_overviewExpanded) +
       '"><p class="empty-notice">Loading detail…</p></div>';
   }
-  grid.innerHTML = '<div class="topo-wrap">' + svg + "</div>" + detailBox;
+  var hint =
+    '<div class="topo-hint">drag = rectangle zoom · shift+drag = pan · double-click = reset</div>';
+  grid.innerHTML =
+    '<div class="topo-wrap">' + hint + svg + "</div>" + detailBox;
 
   /* Delegated click: agent node → toggle expand. Bound ONCE on the
    * grid (the delegation helper guards with _overviewGridWired). We
    * extend its reach here because the grid rewrites its innerHTML on
    * every heartbeat and per-element listeners would be lost. */
   _wireOverviewGridDelegation(grid);
+  _wireTopoZoomPan(grid, W, H);
 
   if (_overviewExpanded) {
     var agent = (window.__lastAgents || []).find(function (x) {

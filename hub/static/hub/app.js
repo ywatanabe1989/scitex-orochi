@@ -813,7 +813,11 @@ function _showAgentContextMenu(agent, x, y) {
           })
           .join("");
         openSub(item, html3, function (p) {
-          _toggleAgentChannelSubscription(agent, p.getAttribute("data-ch"), false);
+          _toggleAgentChannelSubscription(
+            agent,
+            p.getAttribute("data-ch"),
+            false,
+          );
         });
       }
     });
@@ -1832,7 +1836,9 @@ async function fetchAgents() {
           escapeHtml(state.toUpperCase()) +
           "</span>" +
           '<span class="agent-name" style="color:' +
-          getAgentColor(a.name) +
+          (typeof _colorKeyFor === "function"
+            ? getAgentColor(_colorKeyFor(a))
+            : getAgentColor(a.name)) +
           '">' +
           escapeHtml(hostedAgentName(a)) +
           "</span>" +
