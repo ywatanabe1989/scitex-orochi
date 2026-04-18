@@ -757,9 +757,20 @@
  * the identity color still shows through but at higher luminance.
  * ywatanabe 2026-04-19: "make the node text a bit lighter to make it
  * more readable by enhancing contrast". */
+/* Agent label — let the inline `fill=<hash-color>` come through
+ * unmodified so every agent gets a distinct, consistent pastel.
+ * A light dark stroke halo improves contrast on the dark canvas
+ * without washing the hue to white. ywatanabe 2026-04-19: "agent
+ * names should be color coded" / "they are now in white and in
+ * blue for head-nas@... i am not sure why only it is". The prior
+ * `filter: brightness(1.5)` saturated most pastels toward white,
+ * leaving only bluer hashes recognizable. */
 .activity-grid.activity-view-topology .topo-label-agent {
-  filter: brightness(1.5);
   font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
 }
 /* Channel label — same brightness pass so the #name reads clearly
  * against the dark canvas. ywatanabe 2026-04-19: "make it more
@@ -891,8 +902,14 @@
  * resting appearance here. pointer-events:none so the bubble never
  * blocks hover/click on nodes behind it. */
 .activity-grid.activity-view-topology .topo-packet-babble {
-  font: 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+  font:
+    10px -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
   fill: #eaf1fb;
   pointer-events: none;
   paint-order: stroke;

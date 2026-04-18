@@ -1090,6 +1090,66 @@ var _topoStickyEdges = {};
 function _topoStickyKey(agent, channel) {
   return String(agent || "") + "|" + String(channel || "");
 }
+var _topoHidden = { agents: {}, channels: {} };
+try {
+  var _topoHiddenRaw = localStorage.getItem("orochi.topoHidden");
+  if (_topoHiddenRaw) {
+    var _topoHiddenParsed = JSON.parse(_topoHiddenRaw);
+    if (_topoHiddenParsed && typeof _topoHiddenParsed === "object") {
+      _topoHidden.agents = _topoHiddenParsed.agents || {};
+      _topoHidden.channels = _topoHiddenParsed.channels || {};
+    }
+  }
+} catch (_e) {}
+function _topoSaveHidden() {
+  try {
+    localStorage.setItem(
+      "orochi.topoHidden",
+      JSON.stringify({
+        agents: _topoHidden.agents,
+        channels: _topoHidden.channels,
+      }),
+    );
+  } catch (_e) {}
+}
+function _topoHiddenSignature() {
+  return (
+    "h:" +
+    Object.keys(_topoHidden.agents).sort().join(",") +
+    ";" +
+    Object.keys(_topoHidden.channels).sort().join(",")
+  );
+}
+function _topoHide(kind, name) {
+  if (!kind || !name) return;
+  var hn =
+    (typeof userName !== "undefined" && userName) ||
+    window.__orochiUserName ||
+    "";
+  if (kind === "agent" && hn && name === hn) return;
+  if (kind === "agent") _topoHidden.agents[name] = true;
+  else if (kind === "channel") _topoHidden.channels[name] = true;
+  else return;
+  _topoSaveHidden();
+  _topoLastSig = "";
+  if (typeof renderActivityTab === "function") renderActivityTab();
+}
+function _topoUnhide(kind, name) {
+  if (kind === "agent") delete _topoHidden.agents[name];
+  else if (kind === "channel") delete _topoHidden.channels[name];
+  _topoSaveHidden();
+  _topoLastSig = "";
+  if (typeof renderActivityTab === "function") renderActivityTab();
+}
+function _topoUnhideAll() {
+  _topoHidden = { agents: {}, channels: {} };
+  _topoSaveHidden();
+  _topoLastSig = "";
+  if (typeof renderActivityTab === "function") renderActivityTab();
+}
+window._topoHide = _topoHide;
+window._topoUnhide = _topoUnhide;
+window._topoUnhideAll = _topoUnhideAll;
 function _topoApplyStickyEdges() {
   /* Merge sticky edges into window.__lastAgents so _renderActivity-
    * Topology (and every other consumer of a.channels) sees them as
@@ -2175,6 +2235,7 @@ function _topoSignature(visible) {
     "sel:" + selSig,
     "prefs:" + prefSig,
     "sticky:" + stickySig,
+    _topoHiddenSignature(),
   ];
   for (var i = 0; i < visible.length; i++) {
     var a = visible[i];
@@ -2202,6 +2263,12 @@ function _topoSignature(visible) {
  * survives heartbeat-driven re-renders). */
 function _renderActivityTopology(visible, grid) {
   _topoApplyStickyEdges();
+  /* Filter out agents the user hid via right-click. Edges involving
+   * hidden agents collapse automatically because they're dropped from
+   * the visible loop. Human node is protected inside _topoHide. */
+  visible = visible.filter(function (a) {
+    return !_topoHidden.agents[a.name];
+  });
   var sig = _topoSignature(visible);
   var existingSvg = grid.querySelector(".topo-svg");
   if (
@@ -2255,7 +2322,9 @@ function _renderActivityTopology(visible, grid) {
   var _chPrefs = window._channelPrefs || {};
   var channels = Object.keys(chSet)
     .filter(function (c) {
-      return !(_chPrefs[c] || {}).is_hidden;
+      if ((_chPrefs[c] || {}).is_hidden) return false;
+      if (_topoHidden.channels[c]) return false;
+      return true;
     })
     .sort();
 
@@ -2569,12 +2638,16 @@ function _renderActivityTopology(visible, grid) {
         '" height="' +
         badgeH +
         '" rx="11" ry="11"/>';
+      /* y=p.y (same as LED cy) + dominant-baseline:middle (CSS) so
+       * the glyph center aligns with the LEDs and the text baseline.
+       * ywatanabe 2026-04-19: "icons must have aligned in vertical
+       * axis with text and indicators". */
       var agentGlyph =
         '<text class="topo-agent-glyph" x="' +
         agentIconX.toFixed(1) +
         '" y="' +
-        (p.y + 4).toFixed(1) +
-        '" font-size="12">\uD83E\uDD16</text>';
+        p.y.toFixed(1) +
+        '" font-size="12" dominant-baseline="central" text-anchor="middle">\uD83E\uDD16</text>';
       return (
         '<g class="topo-node topo-agent' +
         selCls +

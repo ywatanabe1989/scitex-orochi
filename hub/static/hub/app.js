@@ -595,6 +595,9 @@ function _showChannelCtxMenu(ch, x, y) {
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
       (hidden ? "Show channel" : "Hide channel") +
       "</div>",
+    '<div class="ch-ctx-item ch-ctx-hide" data-action="topo-hide">' +
+      "Hide node (Viz topology)" +
+      "</div>",
   ].join("");
   document.body.appendChild(menu);
   _ctxMenu = menu;
@@ -615,6 +618,10 @@ function _showChannelCtxMenu(ch, x, y) {
         openChannelExport(ch);
         return;
       } else if (action === "hide") _setChannelPref(ch, { is_hidden: !hidden });
+      else if (action === "topo-hide") {
+        if (typeof window._topoHide === "function")
+          window._topoHide("channel", ch);
+      }
       _hideChannelCtxMenu();
     });
   });
@@ -684,15 +691,40 @@ function _showAgentContextMenu(agent, x, y) {
   menu.className = "ch-ctx-menu agent-ctx-menu";
   menu.style.cssText =
     "position:fixed;z-index:10000;left:" + x + "px;top:" + y + "px;";
+  /* Human users (the signed-in ywatanabe) can't be hidden from the
+   * topology — the canvas needs them as a node origin for post
+   * animations. Suppress the "Hide node" row for them so we don't
+   * advertise a no-op. */
+  var humanName =
+    (typeof userName !== "undefined" && userName) ||
+    window.__orochiUserName ||
+    "";
+  var canHide = !humanName || agent !== humanName;
+  var hideRow = canHide
+    ? '<div class="ch-ctx-sep"></div>' +
+      '<div class="ch-ctx-item ch-ctx-hide" data-topo-hide="1">' +
+      "Hide node (Viz topology)</div>"
+    : "";
   menu.innerHTML = [
     '<div class="ch-ctx-label">Agent: ' + escapeHtml(agent) + "</div>",
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="add">Add to channel&nbsp;&hellip; &#9656;</div>',
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="dm">DM with agent&nbsp;&hellip; &#9656;</div>',
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-sub ch-ctx-hide" data-sub="remove">Remove from channel&nbsp;&hellip; &#9656;</div>',
+    hideRow,
   ].join("");
   document.body.appendChild(menu);
   _agentCtxMenu = menu;
+  /* Wire the flat "Hide node" row (not a submenu). */
+  var hideItem = menu.querySelector('.ch-ctx-item[data-topo-hide="1"]');
+  if (hideItem) {
+    hideItem.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      if (typeof window._topoHide === "function")
+        window._topoHide("agent", agent);
+      _hideAgentCtxMenu();
+    });
+  }
 
   var subEl = null;
   function openSub(anchor, html, onPick) {
