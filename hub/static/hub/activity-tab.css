@@ -786,6 +786,27 @@
   fill: #fbbf24;
   filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 16px #fbbf24);
 }
+/* Babble — a small speech-bubble that rides along each in-flight
+ * packet showing the first ~60 chars of the message text (or 📎 for
+ * attachment-only packets). Fades out in sync with the packet via
+ * inline fill-opacity set by the rAF loop, so we just style the
+ * resting appearance here. pointer-events:none so the bubble never
+ * blocks hover/click on nodes behind it. */
+.activity-grid.activity-view-topology .topo-packet-babble {
+  font: 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  fill: #eaf1fb;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.activity-grid.activity-view-topology .topo-packet-babble-bg {
+  fill: rgba(17, 17, 17, 0.8);
+  pointer-events: none;
+}
 /* Inline channel-compose popup — anchored near the clicked channel
  * diamond on the topology. Minimal by default (text + send); expand
  * chevron reveals attach/camera/sketch/voice; drag-drop files route

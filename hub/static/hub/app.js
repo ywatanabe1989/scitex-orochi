@@ -1523,8 +1523,19 @@ function handleMessage(msg) {
         (msg.metadata && msg.metadata.attachments) ||
         (msg.payload && msg.payload.attachments) ||
         [];
+      var _topoIsArtifact =
+        Array.isArray(_topoAttach) && _topoAttach.length > 0;
+      /* Babble text — first ~60 chars of the message ride the packet as
+       * a small speech-bubble. For attachment-only posts we show a
+       * paperclip glyph so the packet is never silent. _topoSpawnPacket
+       * does the final truncation and ellipsis. */
+      var _topoText = msg.text || (msg.payload && msg.payload.content) || "";
+      if (!_topoText && _topoIsArtifact) {
+        _topoText = "\uD83D\uDCCE attachment";
+      }
       _topoPulseEdge(msg.sender, _topoCh, {
-        isArtifact: Array.isArray(_topoAttach) && _topoAttach.length > 0,
+        isArtifact: _topoIsArtifact,
+        text: _topoText,
       });
     }
     /* If this message is a reply and the matching thread panel is open,
