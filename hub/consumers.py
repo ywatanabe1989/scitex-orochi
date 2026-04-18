@@ -1,13 +1,47 @@
 """WebSocket consumers for agent and dashboard connections."""
 
+import asyncio
 import logging
+import time
 from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
+# Interval between hub→agent JSON pings. Agents echo back
+# {"type":"pong","payload":{"ts":<sent_ts>}} so the hub can compute
+# round-trip time and expose hub-side liveness on the Agents tab's PN
+# lamp (todo#46). Kept below the 30s heartbeat-stale threshold so a
+# drop is noticed by both ends before the registry marks offline.
+PING_INTERVAL_SECONDS = 25
+# Upper bound on a healthy RTT; above this the PN lamp degrades to yellow.
+RTT_WARN_MS = 500
+
+
+async def _hub_ping_loop(consumer: "AgentConsumer") -> None:
+    """Send periodic hub→agent JSON pings so hub-side liveness is tracked.
+
+    Runs for the lifetime of the WebSocket connection. Cancelled from
+    ``AgentConsumer.disconnect``. Exceptions other than ``CancelledError``
+    are logged and swallowed — a ping loop crash must not tear down the
+    whole consumer.
+    """
+    try:
+        while True:
+            await asyncio.sleep(PING_INTERVAL_SECONDS)
+            try:
+                await consumer.send_json({"type": "ping", "ts": time.time()})
+            except Exception:  # noqa: BLE001
+                log.exception("ping send failed for %s", consumer.agent_name)
+                return
+    except asyncio.CancelledError:
+        raise
+
+
+from hub.channel_acl import check_write_allowed
 from hub.models import (
     Channel,
+    ChannelMembership,
     DMParticipant,
     Message,
     MessageThread,
@@ -16,9 +50,77 @@ from hub.models import (
     WorkspaceToken,
     normalize_channel_name,
 )
-from hub.channel_acl import check_write_allowed
 
 log = logging.getLogger("orochi.consumers")
+
+
+@database_sync_to_async
+def _load_agent_channel_subs(workspace_id, agent_name):
+    """Return the list of channel names this agent is persistently
+    subscribed to in the given workspace.
+
+    Agent subscriptions live in :class:`ChannelMembership` rows keyed to
+    the agent's synthetic ``agent-<name>`` Django user. An agent is
+    considered subscribed iff a ``ChannelMembership`` row exists; the
+    row's ``permission`` column governs read-only vs read-write.
+    """
+    import re
+
+    from django.contrib.auth.models import User
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_.\-]", "-", agent_name or "anonymous-agent")
+    username = f"agent-{safe_name}"
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return []
+    memberships = ChannelMembership.objects.filter(
+        user=user,
+        channel__workspace_id=workspace_id,
+    ).select_related("channel")
+    return [m.channel.name for m in memberships]
+
+
+@database_sync_to_async
+def _persist_agent_subscription(workspace_id, agent_name, ch_name, subscribe):
+    """Add or remove a persistent ``ChannelMembership`` row for an agent.
+
+    Returns True on success, False if the channel or agent user cannot
+    be resolved. Creates the channel if missing (group kind).
+    """
+    import re
+
+    from django.contrib.auth.models import User
+
+    try:
+        workspace = Workspace.objects.get(id=workspace_id)
+    except Workspace.DoesNotExist:
+        return False
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_.\-]", "-", agent_name or "anonymous-agent")
+    username = f"agent-{safe_name}"
+    user, _ = User.objects.get_or_create(
+        username=username,
+        defaults={
+            "email": f"{username}@agents.orochi.local",
+            "is_active": True,
+            "is_staff": False,
+        },
+    )
+    channel, _ = Channel.objects.get_or_create(
+        workspace=workspace,
+        name=ch_name,
+        defaults={"kind": Channel.KIND_GROUP},
+    )
+    if subscribe:
+        ChannelMembership.objects.update_or_create(
+            user=user,
+            channel=channel,
+            defaults={"permission": ChannelMembership.PERM_READ_WRITE},
+        )
+    else:
+        ChannelMembership.objects.filter(user=user, channel=channel).delete()
+    return True
 
 
 @database_sync_to_async
@@ -136,14 +238,16 @@ def _sanitize_group(name: str) -> str:
 # (fleet-communication-discipline.md rule #8). Any channel not in this
 # allowlist — including #general, #ywatanabe, project channels like
 # #neurovista / #paper-*, and DMs — must stay free of fleet heartbeat noise.
-_FLEET_CHANNELS = frozenset({
-    "#agent",
-    "#progress",
-    "#audit",
-    "#escalation",
-    "#fleet",
-    "#system",
-})
+_FLEET_CHANNELS = frozenset(
+    {
+        "#agent",
+        "#progress",
+        "#audit",
+        "#escalation",
+        "#fleet",
+        "#system",
+    }
+)
 
 
 def _is_fleet_channel(ch_name: str) -> bool:
@@ -242,7 +346,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         # System messages (connect/disconnect/register) removed from chat feed
         # — too noisy during restarts. Sidebar presence updates are sufficient.
 
+        # todo#46 — start hub→agent JSON ping loop so dashboard can show
+        # live RTT and flag hub-side drops without waiting for the 30s
+        # heartbeat-stale timeout.
+        self._ping_task = asyncio.create_task(_hub_ping_loop(self))
+
     async def disconnect(self, code):
+        # Stop the ping task first so we don't race with the WS close.
+        ping_task = getattr(self, "_ping_task", None)
+        if ping_task is not None:
+            ping_task.cancel()
         if hasattr(self, "workspace_group"):
             # scitex-orochi#144 fix path 4: drop only THIS connection from
             # the per-agent set, not the whole agent record. The agent only
@@ -281,9 +394,19 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         msg_type = content.get("type")
 
         if msg_type == "register":
-            # Agent registration — subscribe to specific channels
+            # Agent registration — hydrate channels from persisted
+            # ``ChannelMembership`` rows. Agents register without a
+            # channels payload under the server-authoritative model; any
+            # channels sent by legacy clients are merged in (best-effort
+            # backward compat) but the canonical source is the DB.
             payload = content.get("payload", {})
-            channels = list(content.get("channels") or payload.get("channels", []) or [])
+            legacy_channels = list(
+                content.get("channels") or payload.get("channels", []) or []
+            )
+            persisted = await _load_agent_channel_subs(
+                self.workspace_id, self.agent_name
+            )
+            channels = list(dict.fromkeys([*persisted, *legacy_channels]))
             # Spec v3 §3.1 — ensure DM channels auto-subscribed at connect
             # are also reflected in ``agent_meta["channels"]`` so the
             # 90158bc chat_message filter forwards DM events.
@@ -299,6 +422,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "agent_id": payload.get("agent_id", self.agent_name),
                 "project": payload.get("project", ""),
                 "machine": payload.get("machine", ""),
+                # todo#55: canonical FQDN from the heartbeat (via
+                # `hostname -f`). Display-only — `machine` stays the
+                # short join key.
+                "hostname_canonical": payload.get("hostname_canonical", ""),
                 "role": payload.get("role", ""),
                 "model": payload.get("model", ""),
                 "workdir": payload.get("workdir", ""),
@@ -329,6 +456,91 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             await self.send_json({"type": "registered", "channels": channels})
 
             # Register system message removed — too noisy in chat feed
+
+        elif msg_type in ("subscribe", "unsubscribe"):
+            # Runtime channel subscription control. Persists to
+            # ``ChannelMembership`` so the subscription survives agent
+            # reboot (hydrated on next register).
+            payload = content.get("payload", {})
+            raw_name = payload.get("channel") or content.get("channel") or ""
+            if not raw_name:
+                await self.send_json(
+                    {
+                        "type": "error",
+                        "code": "channel_required",
+                        "message": "subscribe/unsubscribe requires a channel name",
+                    }
+                )
+                return
+            ch_name = normalize_channel_name(raw_name)
+            subscribe = msg_type == "subscribe"
+            ok = await _persist_agent_subscription(
+                self.workspace_id, self.agent_name, ch_name, subscribe
+            )
+            if not ok:
+                await self.send_json(
+                    {
+                        "type": "error",
+                        "code": "subscription_failed",
+                        "message": f"could not update subscription for {ch_name}",
+                    }
+                )
+                return
+            group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
+            if subscribe:
+                await self.channel_layer.group_add(group, self.channel_name)
+            else:
+                await self.channel_layer.group_discard(group, self.channel_name)
+            subs = list(getattr(self, "agent_meta", {}).get("channels", []) or [])
+            if subscribe and ch_name not in subs:
+                subs.append(ch_name)
+            if not subscribe and ch_name in subs:
+                subs.remove(ch_name)
+            if hasattr(self, "agent_meta"):
+                self.agent_meta["channels"] = subs
+            from hub.registry import register_agent
+
+            register_agent(
+                self.agent_name,
+                self.workspace_id,
+                getattr(self, "agent_meta", {"channels": subs}),
+            )
+            await self.channel_layer.group_send(
+                self.workspace_group,
+                {
+                    "type": "agent.info",
+                    "agent": self.agent_name,
+                    "info": getattr(self, "agent_meta", {}),
+                },
+            )
+            await self.send_json(
+                {
+                    "type": "subscribed" if subscribe else "unsubscribed",
+                    "channel": ch_name,
+                    "channels": subs,
+                }
+            )
+
+        elif msg_type == "pong":
+            # todo#46 — agent echoed our ping back. Compute round-trip
+            # time, stash on the registry, and broadcast to dashboard
+            # observers so the PN lamp lights up live.
+            payload = content.get("payload") or {}
+            sent_ts = payload.get("ts") or content.get("ts")
+            if isinstance(sent_ts, (int, float)):
+                rtt_ms = max(0.0, (time.time() - float(sent_ts)) * 1000.0)
+                from hub.registry import update_pong
+
+                update_pong(self.agent_name, rtt_ms)
+                await self.channel_layer.group_send(
+                    self.workspace_group,
+                    {
+                        "type": "agent.pong",
+                        "agent": self.agent_name,
+                        "rtt_ms": rtt_ms,
+                        "ts": time.time(),
+                    },
+                )
 
         elif msg_type == "heartbeat":
             # Store resource metrics from agent heartbeat
@@ -444,11 +656,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     self.agent_name,
                     ch_name,
                 )
-                await self.send_json({
-                    "type": "error",
-                    "code": "acl_denied",
-                    "message": f"You are not allowed to write to {ch_name}",
-                })
+                await self.send_json(
+                    {
+                        "type": "error",
+                        "code": "acl_denied",
+                        "message": f"You are not allowed to write to {ch_name}",
+                    }
+                )
                 return
 
             # Attachments may arrive either nested in metadata (new clients)
@@ -556,9 +770,15 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             if not allowed:
                 return
         else:
-            # Group channels: existing subscription filter.
+            # Group channels: subscription filter. The previous form
+            # guarded this with `agent_channels and ...`, which meant an
+            # agent with no subscriptions received every group message
+            # (including GitHub CI notifications routed to #progress).
+            # Subscription is now strictly opt-in: no membership → no
+            # group receipt. Per-DM delivery is still governed by the
+            # DM-participant check above.
             agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
-            if agent_channels and ch_name not in agent_channels:
+            if ch_name not in agent_channels:
                 return
         await self.send_json(
             {
@@ -579,6 +799,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def agent_info(self, event):
         """Handle agent.info from channel layer — ignore for agent sockets."""
+        pass
+
+    async def agent_pong(self, event):
+        """Handle agent.pong from channel layer — ignore for agent sockets."""
         pass
 
     async def system_message(self, event):
@@ -848,11 +1072,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             # interface (per `fleet-communication-discipline.md` rule #8); status
             # replies belong in fleet channels only. `@all` from ywatanabe used to
             # explode into 12+ status replies flooding the feed.
-            if (
-                "@" in text
-                and not is_dm
-                and _is_fleet_channel(ch_name)
-            ):
+            if "@" in text and not is_dm and _is_fleet_channel(ch_name):
                 await self._maybe_mention_reply(text, ch_name)
 
     async def _maybe_mention_reply(self, text: str, ch_name: str) -> None:
@@ -863,6 +1083,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         agent's last recent_actions (up to 5 lines) and its online/offline status.
         """
         import re
+
         from hub.registry import get_agents
 
         mentioned = re.findall(r"@([\w\-\.]+)", text)
@@ -990,6 +1211,17 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "agent": event["agent"],
                 "info": event.get("info", {}),
                 "metrics": event.get("metrics", {}),
+            }
+        )
+
+    async def agent_pong(self, event):
+        """Forward hub→agent pong RTT to dashboard WebSocket client (todo#46)."""
+        await self.send_json(
+            {
+                "type": "agent_pong",
+                "agent": event["agent"],
+                "rtt_ms": event.get("rtt_ms"),
+                "ts": event.get("ts"),
             }
         )
 

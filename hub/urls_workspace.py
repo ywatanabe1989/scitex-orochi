@@ -49,7 +49,11 @@ urlpatterns = [
     path("agent-login/", views.agent_login_view, name="agent-login"),
     # REST API — no slug needed, workspace from subdomain
     path("api/channels/", views.api_channels, name="api-channels"),
-    path("api/channels/<str:chat_id>/export/", views.api_channel_export, name="api-channel-export"),
+    path(
+        "api/channels/<str:chat_id>/export/",
+        views.api_channel_export,
+        name="api-channel-export",
+    ),
     path("api/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"),
     path("api/channel-members/", views.api_channel_members, name="api-channel-members"),
     path("api/messages/", views.api_messages, name="api-messages"),
@@ -82,6 +86,18 @@ urlpatterns = [
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/agents/avatar/", views.api_agents_avatar, name="api-agents-avatar"),
+    # Per-user (human) profile + avatar — todo#50
+    path("api/user-profile/", views.api_user_profile, name="api-user-profile"),
+    path(
+        "api/user-profile/avatar/",
+        views.api_user_profile_avatar,
+        name="api-user-profile-avatar",
+    ),
+    path(
+        "api/workspace-members/avatars/",
+        views.api_workspace_member_avatars,
+        name="api-workspace-member-avatars",
+    ),
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),

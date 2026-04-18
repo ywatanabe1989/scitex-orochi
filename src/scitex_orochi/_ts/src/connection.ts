@@ -3,14 +3,30 @@
  */
 import WebSocket from "ws";
 import { hostname } from "os";
-import {
-  OROCHI_AGENT,
-  OROCHI_CHANNELS,
-  OROCHI_MODEL,
-  buildWsUrl,
-  maskUrl,
-} from "./config.js";
+import { execSync } from "child_process";
+import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
 import { getSystemMetrics } from "./metrics.js";
+
+// todo#55: canonical FQDN for display next to the short machine label
+// ("spartan (spartan.hpc.unimelb.edu.au)"). os.hostname() in Node returns
+// the SHORT hostname on every platform we care about, so shell out to
+// `hostname -f` once per process and cache. Falls back to the short
+// label on hosts with no reverse DNS so the UI degrades gracefully.
+let _canonicalHostname: string | null = null;
+function canonicalHostname(): string {
+  if (_canonicalHostname !== null) return _canonicalHostname;
+  try {
+    _canonicalHostname = execSync("hostname -f", {
+      stdio: ["ignore", "pipe", "ignore"],
+      timeout: 1_500,
+    })
+      .toString()
+      .trim();
+  } catch {
+    _canonicalHostname = hostname();
+  }
+  return _canonicalHostname;
+}
 
 // ---------------------------------------------------------------------------
 // Connection state
@@ -161,8 +177,9 @@ export class OrochiConnection {
         type: "register",
         sender: OROCHI_AGENT,
         payload: {
-          channels: OROCHI_CHANNELS,
           machine: hostname(),
+          // todo#55: canonical FQDN for display next to the short label.
+          hostname_canonical: canonicalHostname(),
           role: "claude-code",
           model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${hostname()}`,

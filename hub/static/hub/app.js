@@ -58,14 +58,20 @@ function setCurrentChannel(ch) {
   } catch (_) {}
   /* Update textarea placeholder to show active channel — msg#9368.
    * In multi-select mode (ch=null), keep showing the last active channel
-   * so the user knows where their message will be posted (#9694). */
+   * so the user knows where their message will be posted (#9694).
+   * DMs use a friendly "@<other>" label instead of the raw
+   * "dm:agent:X|human:Y" channel string. */
   try {
     var inp = document.getElementById("msg-input");
     if (inp) {
       var targetCh = ch || lastActiveChannel;
-      inp.placeholder = targetCh
-        ? "Message #" + targetCh.replace(/^#/, "") + "\u2026"
-        : "Type a message\u2026";
+      if (targetCh && targetCh.indexOf("dm:") === 0) {
+        inp.placeholder = "Message " + _dmFriendlyLabel(targetCh) + "\u2026";
+      } else {
+        inp.placeholder = targetCh
+          ? "Message #" + targetCh.replace(/^#/, "") + "\u2026"
+          : "Type a message\u2026";
+      }
     }
   } catch (_) {}
   /* Update composer target indicator (todo#364) */
@@ -74,6 +80,26 @@ function setCurrentChannel(ch) {
    * or last active when in all-channels mode */
   _updateChannelTopicBanner(ch || lastActiveChannel);
 }
+
+/* Friendly-label for a dm:<principal>|<principal> channel. Strips the
+ * "dm:" prefix, splits on "|", drops the self principal when known, and
+ * strips "agent:"/"human:" type prefixes so the result is "@name" (or
+ * "@a, @b" when the self principal can't be determined). */
+function _dmFriendlyLabel(ch) {
+  if (!ch || ch.indexOf("dm:") !== 0) return ch || "";
+  var parts = ch.substring(3).split("|");
+  var self = window.__orochiUserName ? "human:" + window.__orochiUserName : "";
+  var others = parts.filter(function (p) {
+    return p && p !== self;
+  });
+  if (others.length === 0) others = parts;
+  return others
+    .map(function (p) {
+      return "@" + p.replace(/^(agent:|human:)/, "");
+    })
+    .join(", ");
+}
+window._dmFriendlyLabel = _dmFriendlyLabel;
 
 function _updateComposerTarget(ch, isReply, replyMsgId) {
   try {
@@ -88,8 +114,7 @@ function _updateComposerTarget(ch, isReply, replyMsgId) {
       el.firstChild.nodeValue = "";
     } else if (ch && ch.startsWith("dm:")) {
       el.classList.add("is-dm");
-      var parts = ch.replace("dm:", "").split("|");
-      nameEl.textContent = "\u2192 @" + (parts[1] || parts[0]) + " (DM)";
+      nameEl.textContent = "\u2192 " + _dmFriendlyLabel(ch) + " (DM)";
       el.firstChild.nodeValue = "";
     } else {
       nameEl.textContent = ch || "#general";
@@ -543,7 +568,7 @@ function _showChannelCtxMenu(ch, x, y) {
       (notif === "nothing" ? " ch-ctx-active" : "") +
       '" data-action="notif-nothing">Nothing</div>',
     '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#8681; Export channel\u2026</div>',
+    '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#10515; Export channel\u2026</div>',
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
       (hidden ? "Show channel" : "Hide channel") +
@@ -718,6 +743,115 @@ function _addDragAndDrop(container, section) {
   });
 }
 
+/* ── todo#49: agent ↔ channel subscription DnD helpers ── */
+function _agentHasChannel(channelsCsv, channel) {
+  if (!channel) return false;
+  var norm = channel.charAt(0) === "#" ? channel : "#" + channel;
+  var bare = channel.charAt(0) === "#" ? channel.slice(1) : channel;
+  var list = String(channelsCsv || "")
+    .split(",")
+    .map(function (s) {
+      return s.trim();
+    })
+    .filter(Boolean);
+  for (var i = 0; i < list.length; i++) {
+    var v = list[i];
+    if (v === channel || v === norm || v === bare || v === "#" + bare)
+      return true;
+  }
+  return false;
+}
+
+function _setChannelDropHint(el, text) {
+  var hint = el.querySelector(".ch-hint");
+  if (!hint) {
+    hint = document.createElement("span");
+    hint.className = "ch-hint";
+    el.appendChild(hint);
+  }
+  hint.textContent = text;
+}
+
+function _agentDjangoUsername(name) {
+  /* Mirrors hub/views/api.py: re.sub(r"[^a-zA-Z0-9_.\-]", "-", name) */
+  if (!name) return "";
+  var safe = String(name).replace(/[^a-zA-Z0-9_.\-]/g, "-");
+  return "agent-" + safe;
+}
+
+function _showMiniToast(text, kind) {
+  var el = document.getElementById("orochi-mini-toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "orochi-mini-toast";
+    document.body.appendChild(el);
+  }
+  el.className = "";
+  if (kind) el.classList.add(kind);
+  el.textContent = text;
+  /* force reflow so transition re-fires when toast shown twice in a row */
+  void el.offsetWidth;
+  el.classList.add("visible");
+  if (el._hideTimer) clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(function () {
+    el.classList.remove("visible");
+  }, 2200);
+}
+
+function _toggleAgentChannelSubscription(agentName, channel, subscribe) {
+  var username = _agentDjangoUsername(agentName);
+  if (!username || !channel) return;
+  var method = subscribe ? "POST" : "DELETE";
+  var body = JSON.stringify({ channel: channel, username: username });
+  var url = apiUrl("/api/channel-members/");
+  fetch(url, {
+    method: method,
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: body,
+  })
+    .then(function (res) {
+      if (!res.ok) {
+        return res
+          .json()
+          .catch(function () {
+            return { error: res.status };
+          })
+          .then(function (j) {
+            var msg =
+              (j && j.error) || "HTTP " + res.status + " — check permissions";
+            _showMiniToast(
+              (subscribe ? "Subscribe failed: " : "Unsubscribe failed: ") + msg,
+              "err",
+            );
+            throw new Error(msg);
+          });
+      }
+      return res.json();
+    })
+    .then(function () {
+      _showMiniToast(
+        (subscribe ? "Subscribed " : "Unsubscribed ") +
+          agentName +
+          (subscribe ? " → " : " ← ") +
+          channel,
+        "ok",
+      );
+      /* Registry heartbeat takes up to ~2s to re-propagate agent.channels;
+       * force an immediate refresh so the UI reflects the change and a
+       * subsequent drag sees the latest subscription state. */
+      if (typeof fetchAgentsThrottled === "function") {
+        fetchAgentsThrottled();
+      } else if (typeof fetchAgents === "function") {
+        fetchAgents();
+      }
+    })
+    .catch(function (_) {});
+}
+
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
@@ -810,12 +944,36 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
+/* Collapse agent-name redundancy:
+ *
+ *  - "head@mba@Host"             → "head@mba"     (strip extra @host)
+ *  - "head-mba@mba"              → "head@mba"     (role-host@host)
+ *  - "healer-ywata-note-win@ywata-note-win"
+ *                                → "healer@ywata-note-win"
+ *  - "mamba-todo-manager-mba@mba"→ "mamba-todo-manager@mba"
+ *  - "expert-scitex@ywata-note-win" → unchanged (no duplicated host)
+ *
+ * Rationale: agent IDs are registered as "<role>-<host>" because the
+ * agent-container config generates them that way (head.yaml on mba ⇒
+ * "head-mba"), but the dashboard already shows "@<host>" separately,
+ * so the duplication just adds noise. This renderer-level fix keeps
+ * the registered IDs intact and only affects display. */
 function cleanAgentName(name) {
   if (!name) return name;
   var parts = name.split("@");
   if (parts.length >= 3) {
-    return parts[0] + "@" + parts[1];
+    /* Legacy double-@ form: "head@mba@Host" → "head@mba". Re-enter so
+     * the role-host dedupe below also runs on the survivor. */
+    name = parts[0] + "@" + parts[1];
+    parts = name.split("@");
+  }
+  if (parts.length === 2) {
+    var lead = parts[0];
+    var host = parts[1];
+    var suffix = "-" + host;
+    if (host && lead.length > suffix.length && lead.endsWith(suffix)) {
+      return lead.slice(0, -suffix.length) + "@" + host;
+    }
   }
   return name;
 }
@@ -832,8 +990,45 @@ function hostedAgentName(a) {
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
   var host = a && a.machine ? a.machine : "";
-  return host ? name + "@" + host : name;
+  /* Always pipe the constructed "<name>@<host>" string through
+   * cleanAgentName so the role-host suffix gets collapsed
+   * (head-mba@mba → head@mba). The earlier form returned the raw
+   * concatenation and the dedupe never fired. */
+  return host ? cleanAgentName(name + "@" + host) : name;
 }
+
+/* Fleet-core roles defined by YAML under ~/.scitex/orochi/shared/agents/
+ * (and the per-host overrides in spartan/agents/ etc.). These agents are
+ * launched canonically by `sac start --all` and are expected to be
+ * present on every applicable host. Non-core registered agents are
+ * ad-hoc — they should disappear from the dashboard once they go stale
+ * rather than stick around as zombie cards. */
+var FLEET_CORE_ROLES = [
+  "expert-scitex",
+  "fleet-lead",
+  "head",
+  "healer",
+  "quality-checker",
+  "skill-manager",
+  "synchronizer",
+  "todo-manager",
+];
+
+/* Return true if the agent matches a YAML-defined fleet-core role.
+ * Names register as "<role>" (singleton) or "<role>-<host>" (per-host);
+ * stripping the "-<host>" suffix gives the role, which we compare
+ * against FLEET_CORE_ROLES. */
+function isFleetCoreAgent(a) {
+  if (!a || !a.name) return false;
+  var name = String(a.name).split("@")[0];
+  var host = a.machine ? String(a.machine) : "";
+  if (host && name.length > host.length + 1 && name.endsWith("-" + host)) {
+    name = name.slice(0, -(host.length + 1));
+  }
+  return FLEET_CORE_ROLES.indexOf(name) !== -1;
+}
+window.isFleetCoreAgent = isFleetCoreAgent;
+window.FLEET_CORE_ROLES = FLEET_CORE_ROLES;
 
 function fuzzyMatch(query, text) {
   if (!query) return true;
@@ -1087,11 +1282,23 @@ function handleMessage(msg) {
     msg.type === "presence_change" ||
     msg.type === "status_update" ||
     msg.type === "agent_presence" ||
-    msg.type === "agent_info"
+    msg.type === "agent_info" ||
+    msg.type === "agent_pong"
   ) {
     fetchAgentsThrottled();
     fetchStatsThrottled();
     fetchResources();
+    /* todo#47 — if the Agents tab currently has a detail view open
+     * for the agent that just sent an info/pong, invalidate that
+     * view's cache so pane_tail / RTT / last_action refresh live. */
+    if (
+      (msg.type === "agent_info" ||
+        msg.type === "agent_pong" ||
+        msg.type === "agent_presence") &&
+      typeof window.onAgentInfoEvent === "function"
+    ) {
+      window.onAgentInfoEvent(msg.agent);
+    }
   } else if (msg.type === "reaction_update") {
     if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
   } else if (msg.type === "thread_reply") {
@@ -1302,12 +1509,16 @@ async function fetchAgents() {
         var statusClassCompact = liveness === "online" ? "online" : "offline";
         var tooltip =
           (a.agent_id || a.name) + " (" + (a.machine || "unknown") + ")";
+        /* todo#49: draggable agent cards — drop on channel to subscribe */
+        var chList = Array.isArray(a.channels) ? a.channels.join(",") : "";
         return (
           '<div class="agent-card sidebar-compact' +
           (inactive ? " inactive" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
-          '" title="' +
+          '" data-agent-channels="' +
+          escapeHtml(chList) +
+          '" draggable="true" title="' +
           escapeHtml(tooltip) +
           '">' +
           '<span class="agent-status ' +
@@ -1326,6 +1537,35 @@ async function fetchAgents() {
         /* Restore .selected from before re-render (#274 Part 2) */
         var elName = el.getAttribute("data-agent-name");
         if (elName && prevSelectedAgents[elName]) el.classList.add("selected");
+        /* todo#49: drag agent card onto a channel to subscribe / unsubscribe. */
+        el.addEventListener("dragstart", function (ev) {
+          var n = el.getAttribute("data-agent-name") || "";
+          var chs = el.getAttribute("data-agent-channels") || "";
+          el.classList.add("agent-dragging");
+          try {
+            ev.dataTransfer.effectAllowed = "link";
+            ev.dataTransfer.setData("application/x-orochi-agent", n);
+            ev.dataTransfer.setData("text/plain", n);
+            /* Carry current subscriptions so the drop handler can render
+             * add/remove affordance without an extra fetch. */
+            ev.dataTransfer.setData("application/x-orochi-agent-channels", chs);
+          } catch (e) {}
+          window.__orochiDragAgent = { name: n, channels: chs };
+        });
+        el.addEventListener("dragend", function () {
+          el.classList.remove("agent-dragging");
+          window.__orochiDragAgent = null;
+          document
+            .querySelectorAll(
+              ".channel-item.drop-target-agent-add,.channel-item.drop-target-agent-remove",
+            )
+            .forEach(function (t) {
+              t.classList.remove("drop-target-agent-add");
+              t.classList.remove("drop-target-agent-remove");
+              var hint = t.querySelector(".ch-hint");
+              if (hint) hint.remove();
+            });
+        });
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
           if (ev.target.closest(".kill-btn")) return; /* handled separately */
@@ -1615,6 +1855,52 @@ async function fetchStats() {
       }
       /* Context menu */
       _addChannelContextMenu(el);
+      /* todo#49: accept agent-card drops to toggle subscription. */
+      el.addEventListener("dragover", function (ev) {
+        var drag = window.__orochiDragAgent;
+        if (!drag || !drag.name) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "link";
+        var ch = el.getAttribute("data-channel") || "";
+        var subscribed = _agentHasChannel(drag.channels, ch);
+        if (subscribed) {
+          el.classList.add("drop-target-agent-remove");
+          el.classList.remove("drop-target-agent-add");
+          _setChannelDropHint(el, "drop to unsubscribe");
+        } else {
+          el.classList.add("drop-target-agent-add");
+          el.classList.remove("drop-target-agent-remove");
+          _setChannelDropHint(el, "drop to subscribe");
+        }
+      });
+      el.addEventListener("dragleave", function () {
+        el.classList.remove("drop-target-agent-add");
+        el.classList.remove("drop-target-agent-remove");
+        var hint = el.querySelector(".ch-hint");
+        if (hint) hint.remove();
+      });
+      el.addEventListener("drop", function (ev) {
+        var agentName =
+          (ev.dataTransfer &&
+            ev.dataTransfer.getData("application/x-orochi-agent")) ||
+          (window.__orochiDragAgent && window.__orochiDragAgent.name) ||
+          "";
+        if (!agentName) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        var ch = el.getAttribute("data-channel") || "";
+        var chs =
+          (ev.dataTransfer &&
+            ev.dataTransfer.getData("application/x-orochi-agent-channels")) ||
+          (window.__orochiDragAgent && window.__orochiDragAgent.channels) ||
+          "";
+        var subscribed = _agentHasChannel(chs, ch);
+        el.classList.remove("drop-target-agent-add");
+        el.classList.remove("drop-target-agent-remove");
+        var hint = el.querySelector(".ch-hint");
+        if (hint) hint.remove();
+        _toggleAgentChannelSubscription(agentName, ch, !subscribed);
+      });
       el.addEventListener("click", function (ev) {
         if (
           ev.target.classList.contains("ch-star") ||
@@ -1736,5 +2022,27 @@ document.addEventListener("keydown", function (e) {
     generic.classList.remove("visible", "open");
     if (generic.classList.contains("long-press-menu")) generic.remove();
     e.preventDefault();
+    return;
+  }
+  /* Inline-style-based modals (display:flex toggled via style) —
+   * channel-topic-modal, channel-export-modal, channel-members-panel,
+   * and any future role="dialog" element that uses this pattern.
+   * Close the top-most visible one. */
+  var styleModals = document.querySelectorAll(
+    '[role="dialog"], .ch-topic-modal, .ch-export-modal, .ch-members-panel, ' +
+      "#channel-topic-modal, #channel-export-modal, #channel-members-panel, " +
+      "#new-dm-modal, .dm-modal",
+  );
+  for (var i = 0; i < styleModals.length; i++) {
+    var m = styleModals[i];
+    var isVisible =
+      m.hidden !== true &&
+      getComputedStyle(m).display !== "none" &&
+      getComputedStyle(m).visibility !== "hidden";
+    if (!isVisible) continue;
+    m.style.display = "none";
+    m.hidden = true;
+    e.preventDefault();
+    return;
   }
 });

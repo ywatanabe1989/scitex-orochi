@@ -21,6 +21,10 @@ function _activateTab(tab) {
   var settingsView = document.getElementById("settings-view");
   messagesEl.style.display = "none";
   inputBar.style.display = "none";
+  var topicBanner = document.getElementById("channel-topic-banner");
+  if (topicBanner) topicBanner.style.display = "none";
+  var membersPanel = document.getElementById("channel-members-panel");
+  if (membersPanel) membersPanel.style.display = "none";
   todoView.style.display = "none";
   resourcesView.style.display = "none";
   agentsTabView.style.display = "none";
@@ -29,15 +33,28 @@ function _activateTab(tab) {
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
+  /* Viz lives inside #todo-view; its poll is owned by todo-tab.js.
+   * When the TODO tab is left, todo-tab.js stops the viz poll. */
+  if (tab !== "todo" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
+    /* Restore the channel-topic banner on re-entry to Chat. The block at
+     * the top of _activateTab hides it unconditionally; we only want that
+     * when leaving chat, not when returning. Without this line the banner
+     * vanishes after the first tab switch. Banner content already tracks
+     * the textarea target (see app.js _updateChannelTopicBanner). */
+    if (topicBanner) topicBanner.style.display = "";
     /* Always default-focus the compose input when the chat tab is shown.
      * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
      * the primary action target on the chat tab, so the user should never
      * have to click into it manually after switching tabs or reloading.
      * Defer with rAF so the layout has settled (display:'' just changed). */
     requestAnimationFrame(function () {
+      /* Snap to bottom whenever chat is shown — initial load + every
+       * tab-switch back to chat. Layout may not be final until after the
+       * rAF tick, so scroll here (not synchronously). */
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       var input = document.getElementById("msg-input");
       if (input) {
         input.focus();
@@ -64,11 +81,18 @@ function _activateTab(tab) {
     fetchWorkspaces();
   } else if (tab === "activity") {
     if (activityView) {
-      activityView.style.display = "block";
+      /* Clear the inline display:none set above and let the CSS rule
+       * (#activity-view.todo-view { display: flex }) take effect. An
+       * inline `display: block` here would override the flex container
+       * declaration, which breaks the flex chain and prevents
+       * `.activity-grid` from scrolling (its `overflow: auto` never has
+       * an upper bound to trigger against). See #200 for the CSS side. */
+      activityView.style.display = "";
       activityView.style.flex = "1";
     }
     if (typeof refreshActivityFromApi === "function") refreshActivityFromApi();
-    if (typeof startActivityAutoRefresh === "function") startActivityAutoRefresh();
+    if (typeof startActivityAutoRefresh === "function")
+      startActivityAutoRefresh();
   } else if (tab === "files") {
     if (filesView) {
       filesView.style.display = "block";
@@ -154,9 +178,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     var isCollapsed = h2.classList.toggle("collapsed");
     if (section) section.classList.toggle("collapsed", isCollapsed);
     try {
-      var state = JSON.parse(
-        localStorage.getItem("orochi_collapsed") || "{}",
-      );
+      var state = JSON.parse(localStorage.getItem("orochi_collapsed") || "{}");
       if (isCollapsed) {
         state[key] = true;
       } else {

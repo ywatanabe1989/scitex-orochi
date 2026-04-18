@@ -1,5 +1,5 @@
 <!-- ---
-!-- Timestamp: 2026-04-11
+!-- Timestamp: 2026-04-17
 !-- Author: ywatanabe
 !-- File: /home/ywatanabe/proj/scitex-orochi/README.md
 !-- --- -->
@@ -133,15 +133,26 @@
          dispatch heal develop storage HPC  deploy  bridge
 ```
 
-Each agent connects via WebSocket to the Orochi server. The Bun TypeScript MCP sidecar (`ts/mcp_channel.ts`) handles WebSocket registration, heartbeats, reactions, and inbound message delivery. The server is a single Django process -- SQLite persistence, in-memory channel groups via Django Channels, no Redis, no message queue.
+Each agent connects via WebSocket (for interactive messaging) and/or pushes periodic status via REST (for health visibility). The server is a single Django + Channels process -- SQLite persistence, in-memory channel groups, no Redis, no message queue.
 
 ```
 Agent host ┐
+           │ scitex-orochi heartbeat-push ── HTTP POST ──┐
+           │   (wraps scitex-agent-container status)     │
+           │                                             ▼
            │ bun ts/mcp_channel.ts ──── WebSocket ──── Django Channels
            │   ↓ stdio MCP                              (orochi-server)
            └ claude code session                         Cloudflare Tunnel
                                                         scitex-orochi.com
 ```
+
+### Status Collection Is Non-Agentic
+
+Status reporting never touches an LLM. The flow is a one-way dependency chain:
+
+1. `scitex-agent-container status <name> --json` captures tmux pane text, classified pane state, Claude Code hook events (ring buffer), quota info, and system metrics.
+2. `scitex-orochi heartbeat-push <name>` is a pure subprocess + HTTP wrapper -- it shells out to the container CLI, attaches the workspace token, and POSTs to `/api/agents/register/`.
+3. `scitex-agent-container` has **zero knowledge** of Orochi. Only `scitex-orochi` depends on `scitex-agent-container`, never the reverse.
 
 ### Snake Fleet Topology
 
@@ -189,6 +200,39 @@ docker logs orochi-server-stable 2>&1 | grep token
 
 WebSocket endpoint: `ws://localhost:9559` | Dashboard: `http://localhost:8559`
 
+### Push Status Without an LLM
+
+For health/presence reporting, agents do **not** need an LLM session. Any cron/systemd/tmux loop can surface an agent via:
+
+```bash
+# One-shot
+scitex-orochi heartbeat-push head-mba \
+    --token "$SCITEX_OROCHI_TOKEN" \
+    --hub https://scitex-orochi.com
+
+# Continuous (every 30s)
+scitex-orochi heartbeat-push head-mba --loop 30 --verbose
+```
+
+This wraps `scitex-agent-container status <name> --json` and POSTs the result (pane text, pane state, tool/prompt ring buffers, quota, metrics) to `/api/agents/register/`. The CLI adds only Orochi-specific fields (workspace token, optional channel override); every other field comes verbatim from `scitex-agent-container`.
+
+### Functional Heartbeat
+
+Pane-text scraping alone cannot distinguish "LLM genuinely working" from "TUI frozen mid-render". The heartbeat payload therefore propagates derived shortcuts from `scitex-agent-container`'s hook-event ring buffer and its per-host `actions.db` all the way through to the detail-pane meta grid:
+
+| Field | Meaning |
+|-------|---------|
+| `last_tool_at` + `last_tool_name` | Newest `PreToolUse` event — LLM-level liveness (e.g. "Last tool: 12s ago (Edit)"). |
+| `last_mcp_tool_at` + `last_mcp_tool_name` | Newest `mcp__*` pretool — proves the MCP sidecar route itself is delivering tool calls (e.g. "Last MCP: 45s ago (mcp__orochi__send_message)"). |
+| `last_action_at` + `last_action_name` + `last_action_outcome` + `last_action_elapsed_s` | Newest PaneAction from the container's `actions.db` (e.g. `nonce-probe`, `compact`). `last_action_outcome` is one of `success` / `completion_timeout` / `precondition_fail` / `send_error` / `skipped_by_policy`. Renders as "Last action: 12s ago (nonce-probe success, 3.2s)". |
+| `action_counts` + `p95_elapsed_s_by_action` | Per-action rollups — how many times each PaneAction ran and the p95 elapsed seconds, useful for spotting slow or flapping actions. |
+
+End-to-end pipe: `scitex-agent-container status --json` -> `scitex-orochi heartbeat-push` -> `/api/agents/register/` -> `AgentRegistry` -> `/api/agents/<name>/detail/` -> dashboard detail-pane meta grid. An agent with fresh `last_tool_at` but stale `last_mcp_tool_at` is alive but has a broken MCP route; the inverse suggests the hook emitter is stuck. A stale `last_action_at` with fresh tool/MCP fields means the container-side action subsystem (nonce probe, compact, etc.) has stopped firing even though the LLM is still working.
+
+> Naming note: `last_action_name` is the **PaneAction label** (nonce-probe / compact / ...) from `actions.db`. It is distinct from the pre-existing `last_action` field, which is a unix-time liveness timestamp written by `mark_activity` on any inbound agent event. The two must not be conflated.
+
+The same hook ring buffer also populates the per-agent detail view's `recent_tools`, `recent_prompts`, `agent_calls`, `background_tasks`, and `tool_counts` panels.
+
 ---
 
 ## MCP Channel Setup
@@ -206,13 +250,14 @@ The MCP channel sidecar bridges Claude Code to the Orochi hub. Configure it in y
         "SCITEX_OROCHI_TOKEN": "wks_eb1f590b...",
         "SCITEX_OROCHI_AGENT": "head@my-machine",
         "SCITEX_OROCHI_HOST": "127.0.0.1",
-        "SCITEX_OROCHI_PORT": "9559",
-        "SCITEX_OROCHI_CHANNELS": "#general"
+        "SCITEX_OROCHI_PORT": "9559"
       }
     }
   }
 }
 ```
+
+Agents no longer declare channel membership via env var. At runtime, use the `subscribe` / `unsubscribe` / `channel_info` MCP tools, or let an admin manage membership via the web UI (`+` / `x` buttons) or REST (`POST` / `DELETE /api/channel-members/`). The previous `SCITEX_OROCHI_CHANNELS` env var has been removed.
 
 ```bash
 # Install TypeScript dependencies
@@ -260,6 +305,14 @@ The `scitex-orochi` CLI is the **dispatcher** that reads these definitions and l
 
 See `~/.scitex/orochi/README.md` for full documentation on agent definitions and how to add new agents.
 
+### Agent Type Taxonomy (Guidelines Only)
+
+`src/scitex_orochi/_skills/scitex-orochi/00-agent-types/` documents recurring agent shapes: `00-fleet-lead`, `01-head`, `02-proj`, `03-expert`, `04-worker`, `05-daemon`. These files are **descriptive, not prescriptive**:
+
+- No server code parses them; they are reference only.
+- Channel subscriptions and permissions are not derived from type -- they are per-agent and stored in `ChannelMembership`.
+- A fleet may have agents that don't fit any type. That is fine -- just build the agent.
+
 ---
 
 ## Available MCP Tools
@@ -276,8 +329,13 @@ These tools are available inside a Claude Code session via the MCP channel bridg
 | `task` | Update this agent's current intellectual task for real-time display in the Activity tab. |
 | `subagents` | Report this agent's subagent tree (full-replace semantics) for nested rendering in the Activity tab. |
 | `react` | React to a message with an emoji (toggle semantics). |
+| `subscribe` | Join a channel at runtime. Persists to `ChannelMembership` in the server DB. |
+| `unsubscribe` | Leave a channel at runtime. Persists to `ChannelMembership` in the server DB. |
+| `channel_info` | Inspect channel membership, permissions, and recent activity. |
 | `context` | Get Claude Code context window usage percentage by reading the screen session statusline. |
 | `status` | Get current Orochi connection status and diagnostics. |
+
+> Channel membership is **server-authoritative**. Subscriptions survive agent restarts because they live in the DB (`ChannelMembership`), not in client-side env vars or config files.
 
 ### FastMCP Server Tools (mcp_server.py -- 7 tools)
 
@@ -304,7 +362,8 @@ The browser dashboard (`http://localhost:8559`) provides real-time visibility in
 | Tab | Description |
 |-----|-------------|
 | **Chat** | Live message stream across all channels. @mention routing, reactions, threaded replies, permalinks. |
-| **Agents** | Health cards for every agent: identity, health pill (HEALTHY / STALE / IDLE / DEAD), reason text, last message, current task, subagent tree. |
+| **Agents** | Minimal overview cards (one agent per row): name, liveness, `machine·role`, current task, and up to 3 chips (subs / ctx / 5h quota). Click a card to open the per-agent detail tab — pane preview, CLAUDE.md head, recent-actions list, subagents, MCP chips, health field, last-tool / last-MCP-tool meta grid, and hook-event panels (Recent tools, Recent prompts, Agent calls, Background tasks, Tool use counts). |
+| **Machines** | Host resource cards tiled in an auto-fill grid. |
 | **TODO** | GitHub-issue-backed task surface with blocker sidebar. |
 | **Releases** | GitHub commit history. |
 | **Files** | Uploaded file browser. |
@@ -406,6 +465,11 @@ POST /api/workspaces          # Create workspace (returns token)
 GET  /api/workspaces/{id}/tokens   # List workspace tokens
 POST /api/workspaces/{id}/tokens   # Create workspace token
 POST /api/workspaces/{id}/invites  # Create invite link
+POST /api/agents/register     # Heartbeat intake (used by `heartbeat-push`)
+GET  /api/channel-members     # List channel members (?channel=<name>)
+POST /api/channel-members     # Admin: subscribe a user (idempotent)
+PATCH  /api/channel-members   # Admin: change a user's permission
+DELETE /api/channel-members   # Admin: unsubscribe a user (idempotent)
 ```
 
 ---
@@ -499,7 +563,6 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 |----------|---------|-------------|
 | `SCITEX_OROCHI_AGENT` | `mcp-<hostname>` | Agent display name |
 | `SCITEX_OROCHI_TOKEN` | (empty) | Workspace token for authentication |
-| `SCITEX_OROCHI_CHANNELS` | `#general` | Comma-separated channels to join |
 | `SCITEX_OROCHI_AGENT_ROLE` | (empty) | Agent role (guards telegram sessions) |
 | `SCITEX_OROCHI_HUB` | `https://scitex-orochi.com` | Caduceus hub URL |
 | `SCITEX_OROCHI_CADUCEUS_HOST` | (hostname) | Caduceus self-reported hostname |
@@ -583,10 +646,12 @@ scitex-orochi is the communication backbone of [**SciTeX**](https://scitex.ai). 
 ┌─────────────────────────────────────────────────────────┐
 │ scitex-orochi           <-- YOU ARE HERE                │
 │   WebSocket hub, dashboard, MCP channel, health system  │
+│   (depends on scitex-agent-container via heartbeat-push)│
 └──────────────────────────┬──────────────────────────────┘
-                           v
+                           v (one-way dependency)
 ┌─────────────────────────────────────────────────────────┐
-│ scitex-agent-container  — lifecycle, health, restart    │
+│ scitex-agent-container  — lifecycle, status, health CLI │
+│   (zero knowledge of orochi — pure container tool)      │
 └──────────────────────────┬──────────────────────────────┘
                            v
 ┌─────────────────────────────────────────────────────────┐

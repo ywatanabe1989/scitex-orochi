@@ -218,7 +218,11 @@ class OrochiServer:
         self, ws: Any, msg: Message, workspace_id: str = ""
     ) -> str:
         name = msg.sender
-        channels = set(msg.payload.get("channels", ["#general"]))
+        # Channels are server-authoritative: agents register with no channels
+        # and subscribe at runtime via MCP tools / REST API / web UI.
+        # Legacy clients that still send a channels payload are respected
+        # here for backward compatibility but new installs should send none.
+        channels = set(msg.payload.get("channels", []))
         machine = msg.payload.get("machine", "")
         role = msg.payload.get("role", "")
         model = msg.payload.get("model", "")

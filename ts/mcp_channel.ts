@@ -14,7 +14,6 @@ import {
 import WebSocket from "ws";
 import {
   OROCHI_AGENT,
-  OROCHI_CHANNELS,
   OROCHI_MODEL,
   OROCHI_TOKEN,
   buildHttpBase,
@@ -32,6 +31,9 @@ import {
   handleHealth,
   handleReply,
   handleHistory,
+  handleSubscribe,
+  handleUnsubscribe,
+  handleChannelInfo,
   handleConnectivityMatrix,
   handleReact,
   handleRsyncMedia,
@@ -205,8 +207,12 @@ async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    channels: OROCHI_CHANNELS,
-    machine: process.env.SCITEX_OROCHI_MACHINE || hostname() || "",
+    machine:
+      process.env.SCITEX_OROCHI_MACHINE ||
+      process.env.SCITEX_OROCHI_HOSTNAME ||
+      process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
+      hostname() ||
+      "",
     multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 
@@ -351,16 +357,22 @@ const conn = {
       } catch {}
 
       // Register with the hub
+      const _machine =
+        process.env.SCITEX_OROCHI_MACHINE ||
+        process.env.SCITEX_OROCHI_HOSTNAME ||
+        process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
+        hostname() ||
+        "";
       _ws!.send(
         JSON.stringify({
           type: "register",
           sender: OROCHI_AGENT,
           payload: {
-            channels: OROCHI_CHANNELS,
-            machine: hostname(),
+            machine: _machine,
             role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
             model: OROCHI_MODEL,
-            agent_id: `${OROCHI_AGENT}@${hostname()}`,
+            multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
+            agent_id: `${OROCHI_AGENT}@${_machine}`,
             icon: process.env.SCITEX_OROCHI_ICON || "",
             icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
             icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
@@ -378,6 +390,29 @@ const conn = {
       try {
         _dbg(`ws recv: ${raw.slice(0, 200)}`);
         const msg = JSON.parse(raw);
+
+        // todo#46 — hub→agent JSON ping. Echo original ts back so the
+        // hub can compute RTT and light the Agents-tab RT lamp. Keep
+        // this branch first so ping handling is not blocked by any
+        // later message-type routing.
+        if (msg.type === "ping") {
+          const sentTs =
+            typeof msg.ts === "number"
+              ? msg.ts
+              : typeof msg?.payload?.ts === "number"
+                ? msg.payload.ts
+                : null;
+          if (sentTs !== null) {
+            try {
+              _ws!.send(
+                JSON.stringify({ type: "pong", payload: { ts: sentTs } }),
+              );
+            } catch (_) {
+              /* socket already closing — ignore */
+            }
+          }
+          return;
+        }
 
         // Thread replies and reaction updates -> rewrite to message type
         if (msg.type === "thread_reply") {
@@ -610,6 +645,10 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
   if (name === "health") return handleHealth(args as any);
   if (name === "context") return handleContext(args as any);
   if (name === "status") return handleStatus(conn as any);
+  if (name === "subscribe") return handleSubscribe(conn as any, args as any);
+  if (name === "unsubscribe")
+    return handleUnsubscribe(conn as any, args as any);
+  if (name === "channel_info") return handleChannelInfo(args as any);
   if (name === "download_media") return handleDownloadMedia(args as any);
   if (name === "upload_media") return handleUploadMedia(args as any);
   if (name === "rsync_media") return handleRsyncMedia(args as any);

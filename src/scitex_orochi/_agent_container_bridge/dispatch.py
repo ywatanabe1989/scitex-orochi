@@ -61,7 +61,6 @@ def prepare_shim_yaml(
     mcp_path = write_mcp_config_file(
         agent_name=agent_name,
         orochi=orochi_spec,
-        claude_channels=claude_section.get("channels", []) or [],
         agent_env=spec.get("env", {}) or {},
         agent_labels=metadata.get("labels", {}) or {},
     )

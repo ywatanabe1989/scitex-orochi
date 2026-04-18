@@ -44,7 +44,10 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ghp", re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}")),
     # JWTs (three base64url segments separated by dots). Used by OAuth
     # id_tokens, Django session JWTs, etc.
-    ("jwt", re.compile(r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}")),
+    (
+        "jwt",
+        re.compile(r"eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}"),
+    ),
     # OpenAI-style keys.
     ("sk-", re.compile(r"\bsk-[A-Za-z0-9]{20,}")),
     # AWS access-key-id prefixes.
@@ -180,6 +183,12 @@ def api_agent_detail(request, name: str):
     raw_pane = agent.get("pane_tail_block") or agent.get("pane_tail") or ""
     pane_text = redact_secrets(raw_pane) if raw_pane else ""
     pane_text_source = "cached" if raw_pane else "unavailable"
+    # todo#47 — ~500-line scrollback for the "Full pane" toggle. Same
+    # redaction pipeline as pane_text; empty string if the agent's
+    # agent_meta.py hasn't been updated yet (graceful degrade — the UI
+    # falls back to the short pane_text).
+    raw_pane_full = agent.get("pane_tail_full") or ""
+    pane_text_full = redact_secrets(raw_pane_full) if raw_pane_full else ""
 
     # Compute uptime from registered_at ISO string when available.
     uptime_seconds: int | None = None
@@ -195,11 +204,19 @@ def api_agent_detail(request, name: str):
         "name": agent.get("name", name),
         "role": agent.get("role", ""),
         "machine": agent.get("machine", ""),
+        # todo#55: canonical FQDN reported by the heartbeat, displayed
+        # next to the short `machine` label in the detail header.
+        "hostname_canonical": agent.get("hostname_canonical", ""),
         "model": agent.get("model", ""),
         "uptime_seconds": uptime_seconds,
         "registered_at": agent.get("registered_at"),
         "last_action_ts": agent.get("last_action"),
         "last_heartbeat": agent.get("last_heartbeat"),
+        # todo#46 — hub→agent ping RTT. Dashboard drives the PN lamp
+        # off `last_pong_ts` (live when fresh) and `last_rtt_ms` (color
+        # by latency).
+        "last_pong_ts": agent.get("last_pong_ts"),
+        "last_rtt_ms": agent.get("last_rtt_ms"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
         "claude_md": redact_secrets(agent.get("claude_md") or ""),
         # todo#460: serve the workspace .mcp.json for the Agents tab viewer.
@@ -217,6 +234,9 @@ def api_agent_detail(request, name: str):
         "pane_state": agent.get("pane_state") or "",
         "stuck_prompt_text": redact_secrets(agent.get("stuck_prompt_text") or ""),
         "pane_text": pane_text,
+        # todo#47 — longer scrollback; empty string when the agent
+        # hasn't pushed it yet.
+        "pane_text_full": pane_text_full,
         "pane_text_source": pane_text_source,
         "channel_subs": sorted({c for c in (agent.get("channels") or []) if c}),
         "mcp_servers": list(agent.get("mcp_servers") or []),
@@ -225,6 +245,44 @@ def api_agent_detail(request, name: str):
         "pid": int(agent.get("pid") or 0),
         "subagents": list(agent.get("subagents") or []),
         "subagent_count": int(agent.get("subagent_count") or 0),
+        # Quota surfaced from agent_meta.py --push heartbeat. The heartbeat
+        # stores `quota_5h_pct` / `quota_5h_remaining`; the UI reads
+        # `quota_5h_used_pct` / `quota_5h_reset_at`. Map both shapes so
+        # legacy payloads and newer fields coexist. Kept here so the
+        # Agents tab meta-grid and Activity header chips can display
+        # "5h X%" / "7d Y%" without a second round-trip.
+        "quota_5h_used_pct": agent.get("quota_5h_used_pct")
+        if agent.get("quota_5h_used_pct") is not None
+        else agent.get("quota_5h_pct"),
+        "quota_7d_used_pct": agent.get("quota_7d_used_pct")
+        if agent.get("quota_7d_used_pct") is not None
+        else agent.get("quota_7d_pct"),
+        "quota_5h_reset_at": agent.get("quota_5h_reset_at")
+        or agent.get("quota_5h_remaining")
+        or "",
+        "quota_7d_reset_at": agent.get("quota_7d_reset_at")
+        or agent.get("quota_7d_remaining")
+        or "",
         "health": agent.get("health") or {},
+        # scitex-agent-container hook-event ring-buffer (PreToolUse /
+        # PostToolUse / UserPromptSubmit). Empty lists when the hook
+        # wiring hasn't been configured for this agent yet.
+        "recent_tools": agent.get("recent_tools") or [],
+        "recent_prompts": agent.get("recent_prompts") or [],
+        "agent_calls": agent.get("agent_calls") or [],
+        "background_tasks": agent.get("background_tasks") or [],
+        "tool_counts": agent.get("tool_counts") or {},
+        # Functional-heartbeat shortcuts.
+        "last_tool_at": agent.get("last_tool_at") or "",
+        "last_tool_name": agent.get("last_tool_name") or "",
+        "last_mcp_tool_at": agent.get("last_mcp_tool_at") or "",
+        "last_mcp_tool_name": agent.get("last_mcp_tool_name") or "",
+        # PaneAction summary (scitex-agent-container action_store).
+        "last_action_at": agent.get("last_action_at") or "",
+        "last_action_name": agent.get("last_action_name") or "",
+        "last_action_outcome": agent.get("last_action_outcome") or "",
+        "last_action_elapsed_s": agent.get("last_action_elapsed_s"),
+        "action_counts": agent.get("action_counts") or {},
+        "p95_elapsed_s_by_action": agent.get("p95_elapsed_s_by_action") or {},
     }
     return JsonResponse(payload)

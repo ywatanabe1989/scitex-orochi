@@ -51,12 +51,16 @@ function donutHtml(label, percent) {
     return (
       '<div class="res-donut">' +
       '<svg class="res-donut-svg" viewBox="0 0 64 64" width="64" height="64">' +
-      '<circle class="res-donut-bg" cx="32" cy="32" r="' + radius + '" ' +
+      '<circle class="res-donut-bg" cx="32" cy="32" r="' +
+      radius +
+      '" ' +
       'fill="none" stroke="#1f1f1f" stroke-width="8"/>' +
       '<text x="32" y="36" text-anchor="middle" class="res-donut-text res-donut-unknown">\u2014</text>' +
-      '</svg>' +
-      '<div class="res-donut-label">' + label + '</div>' +
-      '</div>'
+      "</svg>" +
+      '<div class="res-donut-label">' +
+      label +
+      "</div>" +
+      "</div>"
     );
   }
   var color = p > 80 ? "#ef4444" : p > 60 ? "#f59e0b" : "#4ecdc4";
@@ -64,17 +68,31 @@ function donutHtml(label, percent) {
   return (
     '<div class="res-donut">' +
     '<svg class="res-donut-svg" viewBox="0 0 64 64" width="64" height="64">' +
-    '<circle class="res-donut-bg" cx="32" cy="32" r="' + radius + '" ' +
+    '<circle class="res-donut-bg" cx="32" cy="32" r="' +
+    radius +
+    '" ' +
     'fill="none" stroke="#1f1f1f" stroke-width="8"/>' +
-    '<circle class="res-donut-fg" cx="32" cy="32" r="' + radius + '" ' +
-    'fill="none" stroke="' + color + '" stroke-width="8" ' +
-    'stroke-dasharray="' + circumference.toFixed(2) + '" ' +
-    'stroke-dashoffset="' + offset.toFixed(2) + '" ' +
+    '<circle class="res-donut-fg" cx="32" cy="32" r="' +
+    radius +
+    '" ' +
+    'fill="none" stroke="' +
+    color +
+    '" stroke-width="8" ' +
+    'stroke-dasharray="' +
+    circumference.toFixed(2) +
+    '" ' +
+    'stroke-dashoffset="' +
+    offset.toFixed(2) +
+    '" ' +
     'stroke-linecap="round" transform="rotate(-90 32 32)"/>' +
-    '<text x="32" y="36" text-anchor="middle" class="res-donut-text">' + p + '%</text>' +
-    '</svg>' +
-    '<div class="res-donut-label">' + label + '</div>' +
-    '</div>'
+    '<text x="32" y="36" text-anchor="middle" class="res-donut-text">' +
+    p +
+    "%</text>" +
+    "</svg>" +
+    '<div class="res-donut-label">' +
+    label +
+    "</div>" +
+    "</div>"
   );
 }
 
@@ -91,7 +109,9 @@ function renderResources() {
     container.innerHTML = '<p class="empty-notice">No reports yet</p>';
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
     return;
   }
@@ -143,7 +163,9 @@ function renderResources() {
     .join("");
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -158,7 +180,9 @@ function renderResourcesTab() {
     grid.innerHTML = '<p class="empty-notice">No resource reports yet.</p>';
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
     return;
   }
@@ -167,10 +191,21 @@ function renderResourcesTab() {
     el.addEventListener("click", function () {
       addTag("host", el.getAttribute("data-host-name"));
     });
+    /* todo#51: bidirectional hover-sync with SSH-mesh + activity cards. */
+    el.addEventListener("mouseenter", function () {
+      if (typeof syncHostHover === "function")
+        syncHostHover(el.getAttribute("data-host-name"), true);
+    });
+    el.addEventListener("mouseleave", function () {
+      if (typeof syncHostHover === "function")
+        syncHostHover(el.getAttribute("data-host-name"), false);
+    });
   });
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -237,7 +272,10 @@ function buildResourceCard(k) {
   if (d.gpu && d.gpu.length > 0) {
     var gpuRow = '<div class="res-donut-row">';
     d.gpu.forEach(function (g, i) {
-      gpuRow += donutHtml("GPU" + (d.gpu.length > 1 ? (i + 1) : ""), g.utilization_percent || 0);
+      gpuRow += donutHtml(
+        "GPU" + (d.gpu.length > 1 ? i + 1 : ""),
+        g.utilization_percent || 0,
+      );
     });
     gpuRow += "</div>";
     html += gpuRow;
@@ -287,7 +325,13 @@ async function fetchResources() {
       var r = entry.resources || {};
       /* Don't overwrite richer WS data with empty REST metrics (#337) */
       var existing = resourceData[agentName];
-      if (existing && !existing._api && (r.mem_used_percent || 0) === 0 && (existing.memory || {}).percent > 0) return;
+      if (
+        existing &&
+        !existing._api &&
+        (r.mem_used_percent || 0) === 0 &&
+        (existing.memory || {}).percent > 0
+      )
+        return;
       resourceData[agentName] = {
         hostname: _friendlyMachine(entry.machine || agentName),
         agent: agentName,

@@ -58,14 +58,14 @@ urlpatterns = [
         "api/workspace/<slug:slug>/channels/", views.api_channels, name="api-channels"
     ),
     path(
-        "api/workspace/<slug:slug>/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"
+        "api/workspace/<slug:slug>/channel-prefs/",
+        views.api_channel_prefs,
+        name="api-channel-prefs",
     ),
     path(
         "api/workspace/<slug:slug>/messages/", views.api_messages, name="api-messages"
     ),
-    path(
-        "api/workspace/<slug:slug>/dms/", views.api_dms, name="api-dms"
-    ),
+    path("api/workspace/<slug:slug>/dms/", views.api_dms, name="api-dms"),
     path(
         "api/workspace/<slug:slug>/history/<str:channel_name>/",
         views.api_history,
@@ -109,6 +109,18 @@ urlpatterns = [
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/agents/avatar/", views.api_agents_avatar, name="api-agents-avatar"),
+    # Per-user (human) profile + avatar — todo#50
+    path("api/user-profile/", views.api_user_profile, name="api-user-profile"),
+    path(
+        "api/user-profile/avatar/",
+        views.api_user_profile_avatar,
+        name="api-user-profile-avatar",
+    ),
+    path(
+        "api/workspace-members/avatars/",
+        views.api_workspace_member_avatars,
+        name="api-workspace-member-avatars",
+    ),
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
@@ -135,7 +147,11 @@ urlpatterns = [
     # File upload
     path("api/upload", views.api_upload, name="api-upload"),
     path("api/upload-base64", views.api_upload_base64, name="api-upload-base64"),
-    path("api/media/by-hash/<str:content_hash>", views.api_media_by_hash, name="api-media-by-hash"),
+    path(
+        "api/media/by-hash/<str:content_hash>",
+        views.api_media_by_hash,
+        name="api-media-by-hash",
+    ),
     # Web push (todo#263)
     path("api/push/vapid-key", views.api_push_vapid_key, name="api-push-vapid-key"),
     path("api/push/subscribe", views.api_push_subscribe, name="api-push-subscribe"),
@@ -147,7 +163,11 @@ urlpatterns = [
     path("api/fleet/state", views.fleet_state, name="fleet_state"),
     # GitHub API proxy (blockers sidebar + todo tab)
     path("api/github/issues", views.github_issues, name="api-github-issues"),
-    path("api/github/issue-title/", views.github_issue_title, name="api-github-issue-title"),
+    path(
+        "api/github/issue-title/",
+        views.github_issue_title,
+        name="api-github-issue-title",
+    ),
     # Telegram webhook
     path("webhook/telegram/", views.telegram_webhook, name="telegram-webhook"),
     # GitHub webhook

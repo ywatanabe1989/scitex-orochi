@@ -49,7 +49,9 @@ function _renderAttachmentTray() {
     tray.innerHTML = "";
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
     return;
   }
@@ -92,7 +94,9 @@ function _renderAttachmentTray() {
   });
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -117,7 +121,8 @@ document.addEventListener("keydown", function (e) {
   if (!((isMac ? e.metaKey : e.ctrlKey) && e.key === "u")) return;
   var tag = document.activeElement && document.activeElement.tagName;
   /* Only intercept when focus is on the message composer or not on a text input */
-  var onComposer = document.activeElement && document.activeElement.id === "msg-input";
+  var onComposer =
+    document.activeElement && document.activeElement.id === "msg-input";
   var onOtherInput = (tag === "INPUT" || tag === "TEXTAREA") && !onComposer;
   if (onOtherInput) return;
   e.preventDefault();
@@ -200,15 +205,80 @@ msgInput.addEventListener("drop", function (e) {
 
 /* Clipboard paste — stage image(s) in the tray, don't send. Dedup by
  * (name|size|type|lastModified) so the same image can't be captured twice
- * via both cd.files and cd.items on browsers that expose both. */
+ * via both cd.files and cd.items on browsers that expose both.
+ *
+ * todo#52: if the paste is a large block of plain text (>= 1500 chars
+ * or >= 25 lines), convert it into a .txt attachment so the chat feed
+ * stays readable. Short snippets paste inline as before. */
+var PASTE_TEXT_ATTACH_MIN_CHARS = 1500;
+var PASTE_TEXT_ATTACH_MIN_LINES = 25;
+
+function _pastedTextShouldAttach(text) {
+  if (!text) return false;
+  if (text.length >= PASTE_TEXT_ATTACH_MIN_CHARS) return true;
+  var newlines = 0;
+  for (
+    var i = 0;
+    i < text.length && newlines < PASTE_TEXT_ATTACH_MIN_LINES;
+    i++
+  ) {
+    if (text.charCodeAt(i) === 10) newlines++;
+  }
+  return newlines >= PASTE_TEXT_ATTACH_MIN_LINES;
+}
+
+function _buildPastedTextFile(text) {
+  /* Sniff a reasonable extension + MIME so the receiver sees syntax
+   * highlighting in the attachment preview. Default to .txt. */
+  var ext = ".txt";
+  var mime = "text/plain";
+  var trimmed = text.trim();
+  if (/^\s*[\{\[]/.test(trimmed) && /[\}\]]\s*$/.test(trimmed)) {
+    try {
+      JSON.parse(trimmed);
+      ext = ".json";
+      mime = "application/json";
+    } catch (_) {}
+  } else if (/^(diff --git|---\s|\+\+\+\s|@@\s)/m.test(trimmed)) {
+    ext = ".patch";
+    mime = "text/x-diff";
+  } else if (/^(def |class |import |from \S+ import )/m.test(trimmed)) {
+    ext = ".py";
+    mime = "text/x-python";
+  } else if (
+    /^(Traceback \(most recent call last\)|\s+at .+\(.+:\d+:\d+\))/m.test(
+      trimmed,
+    )
+  ) {
+    ext = ".log";
+    mime = "text/plain";
+  }
+  var ts = new Date()
+    .toISOString()
+    .replace(/[:.]/g, "-")
+    .replace("T", "_")
+    .slice(0, 19);
+  var name = "pasted-" + ts + ext;
+  try {
+    return new File([text], name, { type: mime });
+  } catch (_) {
+    /* Older Safari: File ctor may throw — fall back to Blob + pseudo-File */
+    var blob = new Blob([text], { type: mime });
+    blob.name = name;
+    return blob;
+  }
+}
+
 function handleClipboardPaste(e) {
-  var cd = e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
+  var cd =
+    e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;
   var collected = [];
   var seen = new Set();
   function pushUnique(f) {
     if (!f || !f.type || f.type.indexOf("image/") !== 0) return;
-    var key = f.name + "|" + f.size + "|" + f.type + "|" + (f.lastModified || 0);
+    var key =
+      f.name + "|" + f.size + "|" + f.type + "|" + (f.lastModified || 0);
     if (seen.has(key)) return;
     seen.add(key);
     collected.push(f);
@@ -224,10 +294,33 @@ function handleClipboardPaste(e) {
       }
     }
   }
-  if (collected.length > 0) {
+  /* todo#52: consider the text payload separately from image attachments.
+   * Both can coexist — e.g. user screenshots a log + pastes a stack trace. */
+  var text = "";
+  try {
+    text = cd.getData("text/plain") || "";
+  } catch (_) {
+    text = "";
+  }
+  var attachText = _pastedTextShouldAttach(text);
+  if (collected.length > 0 || attachText) {
     e.preventDefault();
-    console.log("[orochi-upload] staging", collected.length, "pasted image(s)");
-    stageFiles(collected);
+    if (attachText) {
+      collected.push(_buildPastedTextFile(text));
+      console.log(
+        "[orochi-upload] staging pasted text as attachment:",
+        text.length,
+        "chars",
+      );
+    }
+    if (collected.length > 0) {
+      console.log(
+        "[orochi-upload] staging",
+        collected.length,
+        "pasted item(s)",
+      );
+      stageFiles(collected);
+    }
   }
 }
 msgInput.addEventListener("paste", handleClipboardPaste);

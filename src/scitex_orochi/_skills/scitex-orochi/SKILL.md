@@ -17,40 +17,38 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 
 ## Sub-skills
 
+### Agent Patterns
 - [agent-deployment](agent-deployment.md) — Launch autonomous agents, push/poll modes, MCP config
-- [host-connectivity](host-connectivity.md) — Machine-specific network details, known port blocks
-- [fleet-members](fleet-members.md) — Fleet hierarchy, agent roles, hosts, directory conventions
 - [agent-health-check](agent-health-check.md) — 8-step health checklist with commands for each check
-- [deploy-workflow](deploy-workflow.md) — Hub deployment process, agent restart, dev channel handling
-- [dashboard-features](dashboard-features.md) — Chat, Agents tab, element inspector, TODO, settings
-- [known-issues](known-issues.md) — Active operational issues with workarounds (media 400, thread gaps, quota)
 - [agent-self-evolution](agent-self-evolution.md) — How agents learn, share knowledge, and improve fleet operations
-- [compute-resources](compute-resources.md) — Hardware requirements, host roles, and scaling recommendations
-- [cli-conventions](cli-conventions.md) — CLI design rules: verb-noun, --json, --help-recursive, exit codes, stdout/stderr, SCITEX_<PKG>_* env var convention
-- [newbie-test-protocol](newbie-test-protocol.md) — Operator protocol for mamba-newbie-mba (clueless first-time-user simulation, Hawthorne-avoidance, runbook, metrics). NOT loaded by newbie itself.
-- [orochi-operating-principles](orochi-operating-principles.md) — Fleet-wide rules (mutual aid, ship-next, channel etiquette, deploy protocol, account switching, 3-subagent cap, 2×2 priority matrix). Consolidates decisions from 2026-04-12.
-- [secrets-location](secrets-location.md) — Canonical secrets paths (`~/.dotfiles/src/.bash.d/secrets/` + `~/.password-store/`) and the "ガンガン使って" aggressive-use policy.
-- [connectivity-probe](connectivity-probe.md) — `bash -lc` wrap, SSH flags, cross-OS metric semantics (Darwin vs Linux), alias override guard, compound escalation gate, adoption checklist per host. Records 4 probe false-positive families learned 2026-04-13.
-- [agent-autostart](agent-autostart.md) — launchd (MBA) / systemd user + linger (NAS / WSL) / `.bash_profile` + tmux (Spartan) recipes. Includes `SCITEX_OROCHI_AGENT` yaml env block requirement + `~/.claude.json` gitignore rule.
-- [agent-startup-protocol](agent-startup-protocol.md) — 5-step boot every Orochi agent runs: history backfill → identity verify → one-line presence announce → allowlist-checked subscribe → crash-visibly on failure.
-- [agent-account-switch](agent-account-switch.md) — Credential file naming (`~/.claude/.credentials-<account>.json` + symlink), dotfiles sharing, in-place `/login` swap without kill, quota-threshold triggers, state detection patterns. Keeps agents alive across 5h/7d Anthropic quota windows.
-- [pane-state-patterns](pane-state-patterns.md) — Canonical regex catalog for classifying tmux pane state (`idle`/`working`/`quota_exhausted`/`auth_needed`/`permission_prompt`/`dev_channels_prompt`/`paste_pending`/`stuck`/`dead`). Auto-unblock actions per state. References `emacs-claude-code` as upstream truth.
-- [spartan-hpc-startup-pattern](spartan-hpc-startup-pattern.md) — Lmod module chain, `LD_LIBRARY_PATH` hardening for non-interactive SSH, hostname guards, bash-startup latency budget, login vs compute policy, partition cheatsheet.
-- [scientific-figure-standards](scientific-figure-standards.md) — Sample size disclosure, H₀ mandatory + H₁ when defined, mean±SD shaded per-subject aligned time windows, event annotation (red line at `t=0`), per-subject + grand-summary PDF structure, FDR-floor null-control rule, hard-reject anti-patterns.
-- [fleet-claim-protocol](fleet-claim-protocol.md) — DRAFT: hub-side `Claim` model + atomic `select_for_update` acquire + renewable TTL + realpath-normalized keys + 8 test cases + landing order. Promoted to canonical when the MCP tools land.
-- [resource-hub](resource-hub.md) — Fleet-wide aggregation of per-host `~/.scitex/cache/` via rsync pull into `~/.scitex/fleet-cache/<host>/`, `scitex-resource` reader API, staleness + death detection without Claude Code loops.
-- [close-evidence-gate](close-evidence-gate.md) — Mechanical enforcement against rubber-stamp issue closes: `gh-issue-close-safe` wrapper (commit + screenshot + signature required), 30-min `gh-audit-closes` cron auto-reopens violations, `#audit` channel. Codifies the 2026-04-13 directive "rules ではなく強制 system".
-- [fleet-resurrection-protocol](fleet-resurrection-protocol.md) — 4-layer defense-in-depth recovery: self-probe (in-agent /loop), per-host healer (pane classifier + actuator), cross-host mesh (bastion + compound probe), OS watchdog (systemd/launchd/sbatch). 3 incident walk-throughs + invariants + known gaps.
-- [active-probe-protocol](active-probe-protocol.md) — DM ping + 30–60 s wait + structured classification; the ground-truth liveness signal that replaces "pane moved therefore alive" false positives. Healer `/loop` prompt template, scope matrix, post-redeploy grace window, forbidden probe-from-#general anti-pattern. Codifies 2026-04-14 false-positive incident fix (msg #10675).
-- [python-venv-convention](python-venv-convention.md) — Canonical venv chain: `~/.venv-<VER>` real + `~/.venv` symlink + `~/proj/<pkg>/.venv` symlink. Atomic Python version switch via `ln -snf`, inode economy for HPC, safe migration recipe, forbidden patterns, direnv/uv/poetry compatibility.
-- [config-seed](config-seed.md) — Pre-seed `~/.claude/settings.json` via dotfiles symlink so Claude Code does not prompt on every Write/Edit/Bash. Canonical permission allowlist, trusted-directories list, broken-symlink diagnostic, version-specific prompt catalog, 7-step fresh-host bootstrap checklist. Root cause fix for todo#423 MBA stuck-prompt cluster.
-- [random-nonce-ping-protocol](random-nonce-ping-protocol.md) — 60-second random-nonce liveness ping. Publisher ↔ verifier ring scope matrix, 8-hex nonce format, 60 s hard SLA, MCP sidecar auto-responder target state (PR #122 / todo#424), interim degraded-cadence fallback (5-min `/loop` tick until sidecar lands). Enforces rule #13 mechanically.
-- [channel-subscription-authority](channel-subscription-authority.md) — Hub DB `ChannelMembership` is source of truth; yaml `SCITEX_OROCHI_CHANNELS` is additive-only seed at first boot. Register-handler contract, tombstone rows for leaves, migration recipe from yaml-driven era.
-- [hpc-etiquette](hpc-etiquette.md) — Never `find /`, never walk `$HOME` on NFS, no compute on login nodes, scope every filesystem query, inode-aware outputs, SLURM walltime discipline, shell-level guardrails. Response to 2026-04-14 Sean Crosby (UniMelb HPC admin) complaint about unbounded find on Spartan.
-- [spartan-dashboard](spartan-dashboard.md) — https://dashboard.hpc.unimelb.edu.au/ as the canonical source for Spartan quota / jobs / storage / accounting. Replaces `find` / `du` / `squeue` polling with admin-blessed queries. ywatanabe msg#10984.
-- [fleet-role-taxonomy](fleet-role-taxonomy.md) — 2-layer (process/agent) + 4 exclusive roles (lead / head / worker / daemon) + orthogonal function tags. Defining axis "LLM-in-loop?": daemons are quota-zero programmatic processes, not agents. Host-diverse daemon policy (NAS is I/O-light only because `scitex-cloud` visitor SLURM runs there; CPU-hot → MBA launchd; heavy+NAS-local → `sbatch`). Inventory of existing NAS daemons (audit-closes, fleet-watch, prompt-actuator, autossh-tunnel-1230, etc.). Ratified 2026-04-14 msg#11475.
-- [skill-manager-architecture](skill-manager-architecture.md) — Two-layer skill lifecycle: `skill-sync-daemon` on **MBA launchd (primary) + NAS systemd (warm-standby, idempotent dual-run, no shared lease)** + `mamba-skill-manager-mba` on MBA (agent layer, LLM worker, on-demand queries + drift/dedupe triage). Auto-repair threshold strict to frontmatter mechanics; semantic changes → `gh issue` under `skill-drift` label. First pilot of the hybrid-worker split pattern, landing with parallel pilots `todo-sweep-daemon` and `slurm-resource-scraper`.
-- [slurm-resource-scraper-contract](slurm-resource-scraper-contract.md) — External-tool-compat metrics-collector contract: stock SLURM CLI as canonical wire format (`sinfo -o` / `squeue -h -o` / `sacct -P` / `scontrol --json` / `sreport`), NDJSON output with SLURM long-form column names, bash + systemd-timer on Spartan + NAS + WSL, zero Claude quota, portability-smoke-tested. Canonical example of the design-time external-tool-compat principle for *all* metrics-collector daemons (host-self-describe, tunnel-health, etc.). Anti-pattern explicitly flagged: "custom JSON schema". Drafted by head-nas, parallel pilot landing in the same ratification commit.
+- [pane-state-patterns](agent-pane-state-patterns.md) — Regex catalog for classifying terminal pane state
+- [permission-prompt-patterns](agent-permission-prompt-patterns.md) — Claude Code permission prompt regexes and recovery
+
+### Fleet Design
+- [agent-types](00-agent-types.md) — 6 roles (daemon / lead / head / worker / proj / expert) across 2 layers
+- [orochi-operating-principles](fleet-operating-principles.md) — Fleet-wide rules: mutual aid, ship-next, priority matrix
+- [skill-manager-architecture](fleet-skill-manager-architecture.md) — Hybrid agent/daemon split for skill lifecycle
+
+### Conventions
+- [cli-conventions](convention-cli.md) — CLI design: verb-noun, --json, exit codes, SCITEX_* env vars
+- [env-vars](convention-env-vars.md) — `SCITEX_OROCHI_*` naming + where values live + how to change safely
+- [python-venv-convention](convention-python-venv.md) — Version-tagged venv chain with symlinks
+- [quality-checks](convention-quality-checks.md) — Fleet-wide quality monitoring and smoke test patterns
+- [connectivity-probe](convention-connectivity-probe.md) — `bash -lc` wrap, SSH flags, cross-OS metric semantics
+
+### HPC
+- [hpc-etiquette](hpc-etiquette.md) — General HPC cluster etiquette: no find /, modules, quotas, schedulers
+- [spartan-hpc-startup-pattern](hpc-spartan-startup-pattern.md) — Lmod module chain, LD_LIBRARY_PATH, login vs compute
+
+### Product
+- [dashboard-features](product-dashboard-features.md) — Chat, Agents tab, element inspector, TODO, settings
+- [compute-resources](product-compute-resources.md) — Hardware requirements, host roles, scaling recommendations
+- [scientific-figure-standards](product-scientific-figure-standards.md) — Sample size, stats rules, figure layout standards
+
+### Meta
+- [skills-public-vs-private](skills-public-vs-private.md) — Where to put a skill: shipped package vs `~/.scitex/<pkg>/`
+
+For fleet-internal operational skills (specific hosts, agents, incidents, credentials), see `scitex-orochi-private`.
 
 ## MCP Tools
 
@@ -126,7 +124,7 @@ Web dashboard at `http://<host>:8559` with 5 tabs: Chat, TODO, Agents, Resources
 
 ## Deployment
 
-Dual-instance deployment on NAS:
+Dual-instance deployment:
 
 | Instance | Dashboard | WebSocket | Data |
 |----------|-----------|-----------|------|
@@ -149,45 +147,3 @@ All env vars use the `SCITEX_OROCHI_*` prefix. No legacy `OROCHI_*` fallbacks.
 | `SCITEX_OROCHI_DB` | `/data/orochi.db` | SQLite database path |
 | `SCITEX_OROCHI_DASHBOARD_WS_UPSTREAM` | (empty) | WS upstream for dev sync |
 | `SCITEX_OROCHI_CORS_ORIGINS` | (empty) | Comma-separated CORS origins |
-| `SCITEX_OROCHI_TELEGRAM_BRIDGE_ENABLED` | `false` | Enable Telegram bridge |
-| `SCITEX_OROCHI_TELEGRAM_BOT_TOKEN` | (empty) | Telegram bot token |
-| `SCITEX_OROCHI_TELEGRAM_CHAT_ID` | (empty) | Telegram chat ID |
-| `SCITEX_OROCHI_CONTACT_EMAIL` | (empty) | Escalation contact email |
-| `SCITEX_OROCHI_CONTACT_PHONE` | (empty) | Escalation contact phone |
-| `SCITEX_OROCHI_ESCALATION_THRESHOLD` | `high` | Escalation severity level |
-
-**Naming convention**: All fleet-wide env vars MUST use `SCITEX_OROCHI_*` prefix for searchability (`grep -r SCITEX_OROCHI_`). No legacy `OROCHI_*` or unprefixed variables.
-
-## HARD RULE: Orochi and Telegram Are Mutually Exclusive
-
-**Never use Telegram in Orochi fleet agents.** There is a known conflict between Orochi and Telegram bridges — using both causes message routing issues.
-
-- Orochi fleet agents: use Orochi channels, scitex-notification (email), PWA push
-- Do NOT configure Telegram bots, Telegram bridges, or Telegram notifications in any Orochi agent
-- The legacy `SCITEX_OROCHI_TELEGRAM_*` env vars should be treated as deprecated
-
-If notification is needed:
-- **Primary**: Email via `scitex-notification`
-- **Secondary**: PWA push notifications from the Orochi dashboard
-- **Tertiary (future)**: Twilio voice/SMS (pending Japan regulatory setup)
-
-## Telegram Integration (Legacy / Not Used by Orochi)
-
-```
-ENV (SCITEX_OROCHI_TELEGRAM_BOT_TOKEN)
-  ▼
-scitex-orochi  ◀── YOU ARE HERE
-  ~/.scitex/orochi/agents/telegrammer.yaml (bot_token_env references env var name)
-  ▼
-scitex-agent-container
-  Reads YAML, injects env into session
-  ▼
-claude-code-telegrammer
-  TUI watchdog, receives token via env
-```
-
-Key points:
-- YAML holds the env var **name**, never the secret itself
-- Zero-trust: telegram agents get `SCITEX_OROCHI_DISABLE=true` (no recursive orochi access)
-- Telegram bridge runs server-side in orochi, not inside agents
-- The bot token flows: host env -> orochi reads YAML -> agent-container injects -> telegrammer consumes

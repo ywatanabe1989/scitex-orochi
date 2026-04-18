@@ -189,6 +189,11 @@ orochi.add_command(list_invites)
 # Hook-driven liveness reporting (#143)
 orochi.add_command(report)
 
+# Non-agentic heartbeat pusher (consumes scitex-agent-container CLI)
+from scitex_orochi._cli.commands.heartbeat_cmd import heartbeat_push
+
+orochi.add_command(heartbeat_push)
+
 # Integration
 orochi.add_command(docs)
 orochi.add_command(skills)

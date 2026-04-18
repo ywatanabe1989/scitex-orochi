@@ -47,6 +47,12 @@ refreshAgentNames().then(function () {
   loadHistory();
 });
 fetchAgents();
+/* Per-user avatars — populate cachedHumanIcons/Colors so other users'
+ * chosen emoji/image/color render across the dashboard. */
+if (typeof fetchHumanProfiles === "function") {
+  fetchHumanProfiles();
+  setInterval(fetchHumanProfiles, 60000);
+}
 fetchStats();
 connect();
 setInterval(fetchStats, 10000);
@@ -80,7 +86,8 @@ document.addEventListener("keydown", function (e) {
   /* 1. Emoji picker overlay */
   var emojiOverlay = document.querySelector(".emoji-picker-overlay.visible");
   if (emojiOverlay) {
-    if (typeof window.closeEmojiPicker === "function") window.closeEmojiPicker();
+    if (typeof window.closeEmojiPicker === "function")
+      window.closeEmojiPicker();
     e.preventDefault();
     return;
   }

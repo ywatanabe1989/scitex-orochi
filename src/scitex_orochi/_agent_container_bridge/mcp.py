@@ -110,7 +110,6 @@ def build_orochi_mcp_config(
     *,
     agent_name: str,
     orochi: OrochiSpec,
-    claude_channels: list[str],
     agent_env: dict[str, str],
     agent_labels: dict[str, str],
 ) -> dict | None:
@@ -132,18 +131,15 @@ def build_orochi_mcp_config(
 
     host = orochi.hosts[0] if orochi.hosts else "localhost"
 
-    # Prefer spec.orochi.channels, fall back to claude.channels, then
-    # default to #general.
-    channels = orochi.channels or claude_channels or ["#general"]
-    channels_str = ",".join(channels)
-
+    # Channel subscriptions are server-authoritative: assigned at runtime via
+    # MCP tools, REST API, or web UI. The agent registers with no channels;
+    # the server hydrates memberships from persisted state.
     token = _resolve_token(orochi, agent_env)
 
     env_block: dict[str, str] = {
         "SCITEX_OROCHI_HOST": host,
         "SCITEX_OROCHI_PORT": str(orochi.port),
         "SCITEX_OROCHI_AGENT": agent_name,
-        "SCITEX_OROCHI_CHANNELS": channels_str,
         # Defuse mcp_channel.ts's telegram-guard when the parent shell has
         # a telegram bot token in env (e.g., launched from a telegrammer
         # shell). Empty string is falsy, so the guard passes harmlessly.
@@ -185,7 +181,6 @@ def write_mcp_config_file(
     *,
     agent_name: str,
     orochi: OrochiSpec,
-    claude_channels: list[str],
     agent_env: dict[str, str],
     agent_labels: dict[str, str],
 ) -> str | None:
@@ -203,7 +198,6 @@ def write_mcp_config_file(
     mcp_config = build_orochi_mcp_config(
         agent_name=agent_name,
         orochi=orochi,
-        claude_channels=claude_channels,
         agent_env=agent_env,
         agent_labels=agent_labels,
     )

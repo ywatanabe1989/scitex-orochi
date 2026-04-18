@@ -26,8 +26,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import time
+import urllib.error
+import urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -55,24 +58,91 @@ STARVATION_DAYS = 7  # threshold for "open too long" list
 _cache: dict[str, object] = {"ts": 0.0, "payload": None}
 
 
-def _gh_issue_list(repo: str, state: str = "all") -> list[dict]:
-    """Shell out to ``gh issue list`` for one repo. Returns a list of issue dicts."""
-    cmd = [
-        "gh", "issue", "list",
-        "--repo", repo,
-        "--state", state,
-        "--limit", "500",
-        "--json", "number,title,state,createdAt,closedAt,labels,assignees,url",
-    ]
+def _github_token() -> str:
+    """Return a GitHub API token from env (GH_TOKEN or GITHUB_TOKEN).
+
+    Falls back to the ``gh`` CLI only if it is available — the production
+    docker container does not ship ``gh``, so the HTTP path is primary.
+    """
+    for var in ("GH_TOKEN", "GITHUB_TOKEN"):
+        tok = os.environ.get(var)
+        if tok:
+            return tok
     try:
-        out = subprocess.check_output(cmd, stderr=subprocess.PIPE, timeout=30)
-        return json.loads(out.decode())
-    except subprocess.CalledProcessError as e:
-        log.warning("gh issue list failed for %s: %s", repo, e.stderr.decode()[:200])
-        return []
-    except (subprocess.TimeoutExpired, json.JSONDecodeError) as e:
-        log.warning("gh issue list parse failed for %s: %s", repo, e)
-        return []
+        out = subprocess.check_output(
+            ["gh", "auth", "token"], stderr=subprocess.DEVNULL, timeout=3
+        )
+        return out.decode().strip()
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
+        return ""
+
+
+def _gh_issue_list(repo: str, state: str = "all") -> list[dict]:
+    """Fetch issues via the GitHub REST API.
+
+    Returns a list of dicts with ``gh`` CLI-style keys so the aggregator
+    does not need to change: ``number, title, state (OPEN/CLOSED),
+    createdAt, closedAt, labels [{name}], url``.
+
+    Paginates up to 5 pages (500 issues). Silently returns ``[]`` on
+    auth/network failure so the endpoint degrades to an empty chart
+    rather than 500.
+    """
+    token = _github_token()
+    state_param = {"all": "all", "open": "open", "closed": "closed"}.get(state, "all")
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "User-Agent": "scitex-orochi-todo-stats",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+
+    collected: list[dict] = []
+    for page in range(1, 6):
+        url = (
+            f"https://api.github.com/repos/{repo}/issues"
+            f"?state={state_param}&per_page=100&page={page}"
+        )
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                batch = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            log.warning("github api %s -> HTTP %s", repo, e.code)
+            break
+        except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
+            log.warning("github api %s -> %s", repo, e)
+            break
+        if not isinstance(batch, list) or not batch:
+            break
+        for item in batch:
+            # Skip pull requests — /issues endpoint returns both.
+            if "pull_request" in item:
+                continue
+            collected.append(
+                {
+                    "number": item.get("number"),
+                    "title": item.get("title") or "",
+                    "state": "OPEN" if item.get("state") == "open" else "CLOSED",
+                    "createdAt": item.get("created_at"),
+                    "closedAt": item.get("closed_at"),
+                    "labels": [
+                        {"name": lab.get("name")} for lab in (item.get("labels") or [])
+                    ],
+                    "assignees": [
+                        {"login": a.get("login")} for a in (item.get("assignees") or [])
+                    ],
+                    "url": item.get("html_url"),
+                }
+            )
+        if len(batch) < 100:
+            break
+    return collected
 
 
 def _aggregate(repos: tuple[str, ...]) -> dict:
@@ -116,28 +186,32 @@ def _aggregate(repos: tuple[str, ...]) -> dict:
                         label_counts[name] += 1
                 if created and created < starvation_cutoff:
                     age_days = int((now - created).days)
-                    starvation.append({
-                        "repo": repo,
-                        "number": issue.get("number"),
-                        "title": (issue.get("title") or "")[:160],
-                        "age_days": age_days,
-                        "url": issue.get("url"),
-                        "labels": [
-                            (l.get("name") if isinstance(l, dict) else str(l))
-                            for l in (issue.get("labels") or [])
-                        ],
-                    })
+                    starvation.append(
+                        {
+                            "repo": repo,
+                            "number": issue.get("number"),
+                            "title": (issue.get("title") or "")[:160],
+                            "age_days": age_days,
+                            "url": issue.get("url"),
+                            "labels": [
+                                (l.get("name") if isinstance(l, dict) else str(l))
+                                for l in (issue.get("labels") or [])
+                            ],
+                        }
+                    )
 
     starvation.sort(key=lambda r: r["age_days"], reverse=True)
 
     daily_series = []
     for i in range(WINDOW_DAYS, -1, -1):
         d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
-        daily_series.append({
-            "date": d,
-            "opened": daily_opened.get(d, 0),
-            "closed": daily_closed.get(d, 0),
-        })
+        daily_series.append(
+            {
+                "date": d,
+                "opened": daily_opened.get(d, 0),
+                "closed": daily_closed.get(d, 0),
+            }
+        )
 
     return {
         "ts": now.isoformat(),
