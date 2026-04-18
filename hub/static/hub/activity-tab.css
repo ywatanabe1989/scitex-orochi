@@ -1090,6 +1090,72 @@
   filter: drop-shadow(0 0 3px #4ecdc4);
   transition: stroke 0.15s ease-out;
 }
+
+/* Agent→channel edges are clickable for unsubscribe. Hover brightens
+ * stroke + thickens the line so it's discoverable; cursor becomes a
+ * pointer. ywatanabe 2026-04-19: "edges (lines) must be selectable to
+ * unsubscribe". */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge {
+  cursor: pointer;
+  transition:
+    stroke 0.12s ease-out,
+    stroke-opacity 0.12s ease-out,
+    stroke-width 0.12s ease-out;
+}
+.activity-grid.activity-view-topology .topo-edges line.topo-edge:hover {
+  stroke: #f59e0b !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2.4 !important;
+  filter: drop-shadow(0 0 3px #f59e0b);
+}
+
+/* Floating popover anchored near an edge click — offers Unsubscribe. */
+.topo-edge-menu {
+  z-index: 10050;
+  background: #101821;
+  color: #cbd5e1;
+  border: 1px solid #1f2a37;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.topo-edge-menu-title {
+  color: #8acdee;
+  padding: 2px 4px 4px;
+  border-bottom: 1px solid #1f2a37;
+  font-weight: 600;
+  word-break: break-all;
+}
+.topo-edge-menu-btn {
+  background: #14324a;
+  color: #bfe1f1;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.topo-edge-menu-btn:hover {
+  background: #1a4060;
+  color: #e0f0f8;
+}
+.topo-edge-menu-btn.topo-edge-menu-btn-danger {
+  background: #3b1d1d;
+  color: #fca5a5;
+  border-color: #7f1d1d;
+}
+.topo-edge-menu-btn.topo-edge-menu-btn-danger:hover {
+  background: #5b2626;
+  color: #fecaca;
+}
 .activity-grid.activity-view-topology .topo-label {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
