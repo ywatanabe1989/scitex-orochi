@@ -679,8 +679,28 @@
 }
 .activity-grid.activity-view-topology .topo-agent,
 .activity-grid.activity-view-topology .topo-agent circle,
-.activity-grid.activity-view-topology .topo-agent text {
+.activity-grid.activity-view-topology .topo-agent text,
+.activity-grid.activity-view-topology .topo-agent rect {
   cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-agent .topo-agent-bg {
+  fill: #141414;
+  stroke: #2a2a2a;
+  stroke-width: 1;
+  transition:
+    fill 0.15s,
+    stroke 0.15s;
+}
+.activity-grid.activity-view-topology .topo-agent:hover .topo-agent-bg {
+  fill: #1f1f1f;
+  stroke: #4ecdc4;
+  filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.55));
+}
+.activity-grid.activity-view-topology
+  .topo-agent.topo-agent-selected
+  .topo-agent-bg {
+  stroke: #fbbf24;
+  stroke-width: 2;
 }
 .activity-grid.activity-view-topology .topo-agent:hover circle,
 .activity-grid.activity-view-topology .topo-agent:hover text {

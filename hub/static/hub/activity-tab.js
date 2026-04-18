@@ -2217,12 +2217,35 @@ function _renderActivityTopology(visible, grid) {
         : "";
       var nameX = p.x + LED_R + GAP / 2 + (a.pinned ? 22 : 8);
       var selCls = _topoSelected[a.name] ? " topo-agent-selected" : "";
+      /* Button-like badge background so the agent reads as clickable.
+       * Approx width from the rendered text + LEDs + optional pin. ch
+       * width ≈ 6.5px at 11px monospace. ywatanabe 2026-04-19:
+       * "agent nodes should be easily clickable, make them button-like
+       * object would be better (surround them by small border, like a
+       * bit of badge)" */
+      var badgeLeft = p.x - LED_R - GAP / 2 - 6;
+      var textW = Math.max(40, nameText.length * 6.5);
+      var badgeRight = nameX + textW + 6;
+      var badgeWidth = badgeRight - badgeLeft;
+      var badgeY = p.y - 11;
+      var badgeH = 22;
+      var bg =
+        '<rect class="topo-agent-bg" x="' +
+        badgeLeft.toFixed(1) +
+        '" y="' +
+        badgeY.toFixed(1) +
+        '" width="' +
+        badgeWidth.toFixed(1) +
+        '" height="' +
+        badgeH +
+        '" rx="11" ry="11"/>';
       return (
         '<g class="topo-node topo-agent' +
         selCls +
         '" data-agent="' +
         escapeHtml(a.name) +
         '">' +
+        bg +
         wsLed +
         fnLed +
         pinMark +

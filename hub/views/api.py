@@ -203,13 +203,22 @@ def api_channel_members(request, slug=None):
     workspace = get_workspace(request, slug=slug)
 
     if request.method in ("POST", "PATCH", "DELETE"):
-        if not request.user.is_superuser and not request.user.is_staff:
-            return JsonResponse({"error": "permission denied"}, status=403)
         body = json.loads(request.body) if request.body else {}
         ch_name = normalize_channel_name(body.get("channel", ""))
         username = body.get("username", "")
         if not ch_name or not username:
             return JsonResponse({"error": "channel and username required"}, status=400)
+        # Auth rule (todo#drag-subscribe, ywatanabe 2026-04-19):
+        # - Admins (superuser / staff) may subscribe ANY user to any channel.
+        # - Any logged-in workspace member may subscribe AGENT accounts
+        #   (username prefixed "agent-") to channels in this workspace —
+        #   this is the drag-agent-to-channel path on the topology graph,
+        #   which shouldn't require staff. Cross-human subscriptions still
+        #   need staff.
+        is_agent_target = username.startswith("agent-")
+        if not (request.user.is_superuser or request.user.is_staff):
+            if not is_agent_target:
+                return JsonResponse({"error": "permission denied"}, status=403)
         from django.contrib.auth import get_user_model
 
         User = get_user_model()
