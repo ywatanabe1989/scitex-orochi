@@ -225,7 +225,17 @@ def api_channel_members(request, slug=None):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            return JsonResponse({"error": "user not found"}, status=404)
+            # For agent targets, auto-create the User row so drag/right-
+            # click subscribe succeeds even before the agent has sent
+            # its first heartbeat (which is the usual moment when the
+            # row gets created by register_agent). ywatanabe 2026-04-19:
+            # "right click -> RW; 404 not found" happened when the
+            # named agent is registered in the YAML fleet registry but
+            # has never pinged the hub yet, so no Django User exists.
+            if is_agent_target:
+                user = User.objects.create_user(username=username)
+            else:
+                return JsonResponse({"error": "user not found"}, status=404)
 
         if request.method == "DELETE":
             try:
