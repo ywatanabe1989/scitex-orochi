@@ -1142,7 +1142,11 @@
   filter: drop-shadow(0 0 3px #f59e0b);
 }
 
-/* Floating popover anchored near an edge click — offers Unsubscribe. */
+/* Floating popover anchored near an edge click — offers Unsubscribe.
+ * Confirm-dialog feel: title, preview row ("<#channel> <- <agent>" with
+ * agent color), danger-red primary, neutral Cancel. Opens with a 120ms
+ * opacity fade-in (animation + inline opacity transition both cover the
+ * case where a user has prefers-reduced-motion). */
 .topo-edge-menu {
   z-index: 10050;
   background: #101821;
@@ -1153,10 +1157,22 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
-  min-width: 180px;
+  min-width: 200px;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  transition: opacity 120ms ease-out;
+  animation: topo-edge-menu-in 120ms ease-out both;
+}
+@keyframes topo-edge-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .topo-edge-menu-title {
   color: #8acdee;
@@ -1164,6 +1180,29 @@
   border-bottom: 1px solid #1f2a37;
   font-weight: 600;
   word-break: break-all;
+}
+.topo-edge-menu-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #0b1320;
+  border: 1px solid #1f2a37;
+  border-radius: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  flex-wrap: wrap;
+}
+.topo-edge-menu-preview-ch {
+  color: #ffffff;
+  font-weight: 700;
+}
+.topo-edge-menu-preview-arr {
+  color: #64748b;
+}
+.topo-edge-menu-preview-ag {
+  font-weight: 600;
 }
 .topo-edge-menu-btn {
   background: #14324a;
@@ -1181,13 +1220,15 @@
   color: #e0f0f8;
 }
 .topo-edge-menu-btn.topo-edge-menu-btn-danger {
-  background: #3b1d1d;
-  color: #fca5a5;
-  border-color: #7f1d1d;
+  background: #7f1d1d;
+  color: #fee2e2;
+  border-color: #b91c1c;
+  font-weight: 600;
 }
 .topo-edge-menu-btn.topo-edge-menu-btn-danger:hover {
-  background: #5b2626;
-  color: #fecaca;
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #ef4444;
 }
 .activity-grid.activity-view-topology .topo-label {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

@@ -380,7 +380,13 @@ function _renderActivityAgentDetail(a, grid) {
     statusColor +
     '"></span>' +
     '<span class="agent-detail-header-title" style="color:' +
-    escapeHtml(getAgentColor ? getAgentColor(a.name) : "#4ecdc4") +
+    escapeHtml(
+      typeof getAgentColor === "function"
+        ? getAgentColor(
+            typeof _colorKeyFor === "function" ? _colorKeyFor(a) : a.name,
+          )
+        : "#4ecdc4",
+    ) +
     '">' +
     escapeHtml(
       typeof cleanAgentName === "function" ? cleanAgentName(a.name) : a.name,
@@ -3115,6 +3121,20 @@ function _renderActivityTopology(visible, grid) {
       var selCls = _topoPoolSelection.agents[a.name]
         ? " topo-pool-chip-selected"
         : "";
+      /* Per-agent color accent on pool chip — matches the topology
+       * node label fill and the list-view activity-name color so the
+       * SAME agent wears the SAME color in every surface. Key source
+       * is _colorKeyFor(a) (respects the "color by: name/host/account"
+       * dropdown), identical to the canvas label path. Border-left
+       * only — body text stays #eaf1fb so dark-on-pastel doesn't
+       * crush contrast. ywatanabe 2026-04-19 "why the colors not
+       * synched????". */
+      var poolAgentColor =
+        typeof getAgentColor === "function"
+          ? getAgentColor(
+              typeof _colorKeyFor === "function" ? _colorKeyFor(a) : a.name,
+            )
+          : "#eaf1fb";
       return (
         '<div class="topo-pool-chip topo-pool-chip-agent' +
         selCls +
@@ -3122,6 +3142,8 @@ function _renderActivityTopology(visible, grid) {
         escapeHtml(a.name) +
         '" title="' +
         escapeHtml(a.name) +
+        '" style="border-left:3px solid ' +
+        escapeHtml(poolAgentColor) +
         '"><span class="topo-pool-chip-icon">\uD83E\uDD16</span>' +
         escapeHtml(a.name) +
         "</div>"
@@ -3801,7 +3823,25 @@ function _topoCloseEdgeMenu() {
   }
   _topoEdgeMenuEl = null;
   document.removeEventListener("click", _topoEdgeMenuOutsideClick, true);
+  document.removeEventListener("mousedown", _topoEdgeMenuOutsideClick, true);
   document.removeEventListener("keydown", _topoEdgeMenuKeyHandler, true);
+}
+/* Viewport clamp — mirror of app.js::_repositionMenuInViewport. Copied
+ * (not imported) because this file's popovers should work even if app.js
+ * hasn't exposed its helper on window. ywatanabe 2026-04-19. */
+function _topoClampMenuInViewport(el) {
+  if (!el) return;
+  var pad = 8;
+  var rect = el.getBoundingClientRect();
+  if (rect.right > window.innerWidth - pad) {
+    el.style.left = Math.max(pad, window.innerWidth - rect.width - pad) + "px";
+  }
+  if (rect.bottom > window.innerHeight - pad) {
+    el.style.top = Math.max(pad, window.innerHeight - rect.height - pad) + "px";
+  }
+  /* Also clamp left/top edges in case the click was near 0,0. */
+  if (rect.left < pad) el.style.left = pad + "px";
+  if (rect.top < pad) el.style.top = pad + "px";
 }
 function _topoEdgeMenuOutsideClick(ev) {
   if (!_topoEdgeMenuEl) return;
@@ -3884,17 +3924,34 @@ function _topoShowEdgeMenu(agent, channel, clientX, clientY) {
   var menu = document.createElement("div");
   menu.className = "topo-edge-menu";
   menu.setAttribute("role", "menu");
-  /* Position near click; clamp inside viewport so it doesn't overflow. */
-  var x = clientX;
-  var y = clientY;
+  /* Confirm-dialog flow: title + subtle preview row + danger button +
+   * Cancel. The preview line mirrors what will happen ("<#channel>  <-
+   * <agent>") in monospace with the agent's own color so users can
+   * double-check before destroying their subscription. */
+  var agentColor =
+    typeof getAgentColor === "function" ? getAgentColor(agent) : "#cbd5e1";
   menu.style.position = "fixed";
-  menu.style.left = x + "px";
-  menu.style.top = y + "px";
+  menu.style.left = clientX + "px";
+  menu.style.top = clientY + "px";
+  /* Start transparent; rAF flips opacity:1 after insertion for a 120ms
+   * fade-in. No fade on close — that path just removes the node. */
+  menu.style.opacity = "0";
   menu.innerHTML =
     '<div class="topo-edge-menu-title">' +
     escapeHtml(agent) +
     " &rarr; " +
     escapeHtml(channel) +
+    "</div>" +
+    '<div class="topo-edge-menu-preview">' +
+    '<span class="topo-edge-menu-preview-ch">' +
+    escapeHtml(channel) +
+    "</span>" +
+    '<span class="topo-edge-menu-preview-arr">&larr;</span>' +
+    '<span class="topo-edge-menu-preview-ag" style="color:' +
+    escapeHtml(agentColor) +
+    '">' +
+    escapeHtml(agent) +
+    "</span>" +
     "</div>" +
     '<button type="button" class="topo-edge-menu-btn topo-edge-menu-btn-danger" data-topo-edge-action="unsubscribe">Unsubscribe ' +
     escapeHtml(agent) +
@@ -3903,14 +3960,16 @@ function _topoShowEdgeMenu(agent, channel, clientX, clientY) {
     "</button>" +
     '<button type="button" class="topo-edge-menu-btn" data-topo-edge-action="cancel">Cancel</button>';
   document.body.appendChild(menu);
-  /* Clamp inside viewport. */
-  var mw = menu.offsetWidth;
-  var mh = menu.offsetHeight;
-  var vw = window.innerWidth || document.documentElement.clientWidth;
-  var vh = window.innerHeight || document.documentElement.clientHeight;
-  if (x + mw + 8 > vw) menu.style.left = Math.max(4, vw - mw - 8) + "px";
-  if (y + mh + 8 > vh) menu.style.top = Math.max(4, vh - mh - 8) + "px";
+  /* Viewport-aware clamp — keeps the popover 8px inside every edge so
+   * the outline never kisses the screen border, even when a user clicks
+   * an edge pixel near the bottom-right corner. */
+  _topoClampMenuInViewport(menu);
   _topoEdgeMenuEl = menu;
+  /* Fade in: next frame flip opacity so the browser has a chance to
+   * commit the initial opacity:0 → transition kicks in. */
+  requestAnimationFrame(function () {
+    if (_topoEdgeMenuEl === menu) menu.style.opacity = "1";
+  });
   menu.addEventListener("click", function (ev) {
     var btn = ev.target.closest("[data-topo-edge-action]");
     if (!btn) return;
@@ -3921,9 +3980,12 @@ function _topoShowEdgeMenu(agent, channel, clientX, clientY) {
     }
     _topoCloseEdgeMenu();
   });
-  /* Dismiss on outside click / Escape. Defer to next tick so the
-   * current click that opened the menu doesn't immediately close it. */
+  /* Dismiss on outside click (mousedown catches it earlier than click,
+   * so the menu can't flicker on drag-select) / Escape. Defer to next
+   * tick so the current click that opened the menu doesn't immediately
+   * close it. */
   setTimeout(function () {
+    document.addEventListener("mousedown", _topoEdgeMenuOutsideClick, true);
     document.addEventListener("click", _topoEdgeMenuOutsideClick, true);
     document.addEventListener("keydown", _topoEdgeMenuKeyHandler, true);
   }, 0);

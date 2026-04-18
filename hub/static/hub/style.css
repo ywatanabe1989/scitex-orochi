@@ -31,10 +31,24 @@ body {
   flex-shrink: 0;
   background: #111;
   border-right: 1px solid #333;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px;
   display: flex;
   flex-direction: column;
+}
+.sidebar-brand,
+.wall-clock,
+.filter-bar {
+  flex: 0 0 auto;
+}
+.sidebar-sections {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.sidebar-signout {
+  flex: 0 0 auto;
 }
 .sidebar h2 {
   font-size: 13px;
