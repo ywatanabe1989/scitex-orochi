@@ -178,7 +178,14 @@ function _updateChannelTopicBanner(ch) {
   } else if (membersBtn) {
     membersBtn.style.display = "none";
   }
-  banner.style.display = desc || ch ? "" : "none";
+  /* Banner visibility: only ever show on the Chat tab, even if a channel
+   * is selected. Other tabs (TODO, Agents, Machines, Files, Releases,
+   * Settings) share the same #channel-topic-banner element but must not
+   * render it — the banner is conceptually a chat-space header, not a
+   * global workspace header. See ywatanabe directive 2026-04-18 18:31. */
+  var _onChatTab =
+    typeof activeTab !== "undefined" ? activeTab === "chat" : true;
+  banner.style.display = _onChatTab && (desc || ch) ? "" : "none";
 }
 
 /* Channel members panel (todo#407) */
