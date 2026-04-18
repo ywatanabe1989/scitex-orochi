@@ -1630,6 +1630,21 @@ function _wireOverviewGridDelegation(grid) {
       renderActivityTab();
     }
   });
+  /* Delegated right-click on overview cards (and topology agent nodes) →
+   * open the agent context menu from app.js. Survives innerHTML rewrites. */
+  grid.addEventListener("contextmenu", function (ev) {
+    if (ev.shiftKey) return;
+    var card = ev.target.closest(".activity-card[data-agent]");
+    var topo = ev.target.closest(".topo-agent[data-agent]");
+    var host = card || topo;
+    if (!host || !grid.contains(host)) return;
+    var name = host.getAttribute("data-agent");
+    if (!name) return;
+    if (typeof _showAgentContextMenu !== "function") return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    _showAgentContextMenu(name, ev.clientX, ev.clientY);
+  });
   _overviewGridWired = true;
 }
 

@@ -2185,6 +2185,49 @@ a.chat-link:hover {
   color: #6cf;
 }
 
+/* Agent-row context menu (right-click on sidebar / Agents tab) */
+.agent-ctx-menu,
+.agent-ctx-submenu {
+  min-width: 220px;
+}
+.agent-ctx-submenu {
+  min-width: 240px;
+}
+.ch-ctx-item.ch-ctx-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+}
+.ch-ctx-rowname {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ch-ctx-perm {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid #2a4a60;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #8ad;
+  background: #0a1824;
+  cursor: pointer;
+}
+.ch-ctx-perm:hover {
+  background: #1a3a50;
+  color: #fff;
+}
+.ch-ctx-perm.ch-ctx-perm-rw {
+  color: #4fa;
+  border-color: #2a6a4a;
+}
+.ch-ctx-perm.ch-ctx-perm-rw:hover {
+  background: #1a4a30;
+  color: #fff;
+}
+
 /* ── Channel export modal ── */
 .ch-export-modal {
   position: fixed;

@@ -628,6 +628,268 @@ function _hideChannelCtxMenu() {
   }
 }
 
+/* ── Agent-row context menu (right-click on sidebar or Agents overview) ──
+ * Offers: subscribe to channel (read-only / read-write), open/create DM
+ * with another agent (unidirectional readonly or bidirectional read-write),
+ * and unsubscribe from a currently-joined channel. Mirrors the channel
+ * ctx-menu pattern above, but adds hover submenus.
+ */
+var _agentCtxMenu = null;
+function _hideAgentCtxMenu() {
+  if (_agentCtxMenu) {
+    _agentCtxMenu.remove();
+    _agentCtxMenu = null;
+  }
+  document.removeEventListener("keydown", _agentCtxKeyHandler, true);
+}
+function _agentCtxKeyHandler(ev) {
+  if (ev.key === "Escape") _hideAgentCtxMenu();
+}
+
+function _addAgentContextMenu(el) {
+  el.addEventListener("contextmenu", function (ev) {
+    /* Only intercept plain right-click — let devtools through on Shift+RMB */
+    if (ev.shiftKey) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    var name =
+      el.getAttribute("data-agent-name") || el.getAttribute("data-agent");
+    if (!name) return;
+    _showAgentContextMenu(name, ev.clientX, ev.clientY);
+  });
+}
+
+function _showAgentContextMenu(agent, x, y) {
+  _hideAgentCtxMenu();
+  _hideChannelCtxMenu();
+  var agents = Array.isArray(window.__lastAgents) ? window.__lastAgents : [];
+  var self = agents.find(function (a) {
+    return a && a.name === agent;
+  }) || { name: agent, channels: [] };
+  var curChannels = Array.isArray(self.channels) ? self.channels : [];
+  var curSet = {};
+  curChannels.forEach(function (c) {
+    curSet[c] = true;
+    curSet[c.charAt(0) === "#" ? c : "#" + c] = true;
+  });
+
+  var menu = document.createElement("div");
+  menu.className = "ch-ctx-menu agent-ctx-menu";
+  menu.style.cssText =
+    "position:fixed;z-index:10000;left:" + x + "px;top:" + y + "px;";
+  menu.innerHTML = [
+    '<div class="ch-ctx-label">Agent: ' + escapeHtml(agent) + "</div>",
+    '<div class="ch-ctx-item ch-ctx-sub" data-sub="add">Add to channel&nbsp;&hellip; &#9656;</div>',
+    '<div class="ch-ctx-item ch-ctx-sub" data-sub="dm">DM with agent&nbsp;&hellip; &#9656;</div>',
+    '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-item ch-ctx-sub ch-ctx-hide" data-sub="remove">Remove from channel&nbsp;&hellip; &#9656;</div>',
+  ].join("");
+  document.body.appendChild(menu);
+  _agentCtxMenu = menu;
+
+  var subEl = null;
+  function openSub(anchor, html, onPick) {
+    if (subEl) subEl.remove();
+    subEl = document.createElement("div");
+    subEl.className = "ch-ctx-menu agent-ctx-submenu";
+    var r = anchor.getBoundingClientRect();
+    subEl.style.cssText =
+      "position:fixed;z-index:10001;left:" +
+      (r.right + 2) +
+      "px;top:" +
+      r.top +
+      "px;max-height:60vh;overflow-y:auto;";
+    subEl.innerHTML = html;
+    document.body.appendChild(subEl);
+    subEl.querySelectorAll("[data-pick]").forEach(function (it) {
+      it.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        onPick(it);
+        _hideAgentCtxMenu();
+      });
+    });
+  }
+  function permRow(label, attrs) {
+    /* attrs: {ro: {...}, rw: {...}} — each merged into the span as data-*.
+     * Produces a <div> with label + RO/RW picker spans. */
+    function dataAttrs(o) {
+      var out = ' data-pick="1"';
+      for (var k in o) out += " data-" + k + '="' + o[k] + '"';
+      return out;
+    }
+    return (
+      '<div class="ch-ctx-item ch-ctx-row">' +
+      '<span class="ch-ctx-rowname">' +
+      label +
+      "</span>" +
+      '<span class="ch-ctx-perm"' +
+      dataAttrs(attrs.ro) +
+      ' title="read-only">RO</span>' +
+      '<span class="ch-ctx-perm ch-ctx-perm-rw"' +
+      dataAttrs(attrs.rw) +
+      ' title="read-write">RW</span>' +
+      "</div>"
+    );
+  }
+
+  menu.querySelectorAll(".ch-ctx-sub").forEach(function (item) {
+    item.addEventListener("mouseenter", function () {
+      var kind = item.getAttribute("data-sub");
+      var empty = '<div class="ch-ctx-label">(none)</div>';
+      if (kind === "add") {
+        /* Only show #-prefixed entries; _channelPrefs may also carry
+         * legacy bare-name mirrors that would duplicate the row. */
+        var chs = Object.keys(_channelPrefs || {})
+          .filter(function (c) {
+            return c && c.charAt(0) === "#" && !curSet[c];
+          })
+          .sort();
+        if (!chs.length) return openSub(item, empty, function () {});
+        var html = chs
+          .map(function (c) {
+            var e = escapeHtml(c);
+            return permRow(e, {
+              ro: { ch: e, perm: "read-only" },
+              rw: { ch: e, perm: "read-write" },
+            });
+          })
+          .join("");
+        openSub(item, html, function (p) {
+          _agentSubscribe(
+            agent,
+            p.getAttribute("data-ch"),
+            p.getAttribute("data-perm"),
+          );
+        });
+      } else if (kind === "dm") {
+        var others = agents
+          .filter(function (a) {
+            return a && a.name && a.name !== agent;
+          })
+          .sort(function (a, b) {
+            return (a.name || "").localeCompare(b.name || "");
+          });
+        if (!others.length) return openSub(item, empty, function () {});
+        var html2 = others
+          .map(function (a) {
+            var nm = escapeHtml(a.name);
+            return permRow("@" + nm, {
+              ro: { other: nm, dir: "ro" },
+              rw: { other: nm, dir: "rw" },
+            });
+          })
+          .join("");
+        openSub(item, html2, function (p) {
+          _agentDmCreate(
+            agent,
+            p.getAttribute("data-other"),
+            p.getAttribute("data-dir"),
+          );
+        });
+      } else if (kind === "remove") {
+        var rm = curChannels
+          .filter(function (c) {
+            return c && c.indexOf("dm:") !== 0;
+          })
+          .sort();
+        if (!rm.length) return openSub(item, empty, function () {});
+        var html3 = rm
+          .map(function (c) {
+            var e = escapeHtml(c);
+            return (
+              '<div class="ch-ctx-item ch-ctx-hide" data-pick="1" data-ch="' +
+              e +
+              '">' +
+              e +
+              "</div>"
+            );
+          })
+          .join("");
+        openSub(item, html3, function (p) {
+          _toggleAgentChannelSubscription(agent, p.getAttribute("data-ch"), false);
+        });
+      }
+    });
+  });
+
+  /* Close on outside click / Escape. Mousedown on menu/submenu swallowed
+   * so item clicks still dispatch before dismissal. */
+  setTimeout(function () {
+    document.addEventListener(
+      "click",
+      function onDocClick(ev) {
+        if (
+          _agentCtxMenu &&
+          !_agentCtxMenu.contains(ev.target) &&
+          !(subEl && subEl.contains(ev.target))
+        ) {
+          document.removeEventListener("click", onDocClick, true);
+          _hideAgentCtxMenu();
+        }
+      },
+      true,
+    );
+    document.addEventListener("keydown", _agentCtxKeyHandler, true);
+  }, 10);
+}
+
+/* POST /api/channel-members/ with a chosen permission. Reuses the same
+ * endpoint as _toggleAgentChannelSubscription but passes the permission
+ * body field (see hub/views/api.py api_channel_members). */
+function _agentSubscribe(agentName, channel, permission) {
+  var username = _agentDjangoUsername(agentName);
+  if (!username || !channel) return Promise.resolve();
+  var body = JSON.stringify({
+    channel: channel,
+    username: username,
+    permission: permission || "read-write",
+  });
+  return fetch(apiUrl("/api/channel-members/"), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: body,
+  })
+    .then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          throw new Error(res.status + ": " + (t || "").slice(0, 200));
+        });
+      }
+      return res.json();
+    })
+    .then(function () {
+      _showMiniToast(
+        "Subscribed " + agentName + " → " + channel + " (" + permission + ")",
+        "ok",
+      );
+      if (typeof fetchAgentsThrottled === "function") fetchAgentsThrottled();
+      else if (typeof fetchAgents === "function") fetchAgents();
+    })
+    .catch(function (e) {
+      _showMiniToast("Subscribe failed: " + e.message, "err");
+    });
+}
+
+/* Create a DM channel between two agents with a direction policy.
+ * dir = "rw": both agents subscribed read-write (bidirectional)
+ * dir = "ro": self=read-only, other=read-write (self can only read) */
+function _agentDmCreate(selfAgent, otherAgent, dir) {
+  if (!selfAgent || !otherAgent || selfAgent === otherAgent) return;
+  /* Canonical channel name: dm:agent:<A>|agent:<B> with names sorted so
+   * A↔B and B↔A collapse to a single channel. */
+  var pair = [selfAgent, otherAgent].sort();
+  var channel = "dm:agent:" + pair[0] + "|agent:" + pair[1];
+  var selfPerm = dir === "ro" ? "read-only" : "read-write";
+  var otherPerm = "read-write";
+  _agentSubscribe(selfAgent, channel, selfPerm).then(function () {
+    _agentSubscribe(otherAgent, channel, otherPerm);
+  });
+}
+
 /* ── Channel export modal ── */
 function openChannelExport(ch) {
   var modal = document.getElementById("channel-export-modal");
@@ -1630,6 +1892,8 @@ async function fetchAgents() {
           }
           if (typeof applyFeedFilter === "function") applyFeedFilter();
         });
+        /* Right-click: open agent context menu (channel subscribe / DM). */
+        _addAgentContextMenu(el);
       });
     container
       .querySelectorAll(".pin-btn[data-pin-name]")
