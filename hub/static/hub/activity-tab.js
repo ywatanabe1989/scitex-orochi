@@ -1274,13 +1274,13 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
     var halo = document.createElementNS(ns, "circle");
     halo.setAttribute("cx", "0");
     halo.setAttribute("cy", "0");
-    halo.setAttribute("r", "10");
+    halo.setAttribute("r", "16");
     halo.setAttribute("fill-opacity", "0.2");
     inner.appendChild(halo);
     var core = document.createElementNS(ns, "circle");
     core.setAttribute("cx", "0");
     core.setAttribute("cy", "0");
-    core.setAttribute("r", "4");
+    core.setAttribute("r", "7");
     core.setAttribute("fill-opacity", "0.95");
     /* Subtle flash: opacity oscillates 0.75 ↔ 1.0 at 2× frequency over
      * the flight duration. Values list = "0.75;1;0.75;1;0.75" gives
