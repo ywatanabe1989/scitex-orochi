@@ -187,48 +187,42 @@
             </div>
             <!-- hook-bypass: inline-style -->
             <div id="files-view" class="todo-view files-view" style="display:none">
-                <div class="files-toolbar">
-                    <div class="files-filter-bar">
-                        <button class="files-filter-btn active" data-mime="all">All</button>
-                        <button class="files-filter-btn" data-mime="image">Images</button>
-                        <button class="files-filter-btn" data-mime="video">Videos</button>
-                        <button class="files-filter-btn" data-mime="audio">Audio</button>
-                        <button class="files-filter-btn" data-mime="application/pdf">PDFs</button>
-                        <button class="files-filter-btn" data-mime="other">Other</button>
+                <!-- File-type category tabs (All / Images / Videos / ...)
+                     removed per ywatanabe msg 2026-04-18 17:12 — the
+                     sidebar Ctrl+K fuzzy filter covers the same use case
+                     without the extra UI row. Controls are left-aligned. -->
+                <div class="files-toolbar files-toolbar-left-aligned">
+                    <div class="files-search-wrap">
+                        <span class="files-search-icon">&#128269;</span>
+                        <input type="search"
+                               id="files-search"
+                               class="files-search-input"
+                               placeholder="Fuzzy filter (space = AND)"
+                               oninput="filesSetQuery(this.value)"
+                               autocomplete="off">
                     </div>
-                    <div class="files-toolbar-right">
-                        <div class="files-search-wrap">
-                            <span class="files-search-icon">&#128269;</span>
-                            <input type="search"
-                                   id="files-search"
-                                   class="files-search-input"
-                                   placeholder="Fuzzy filter (space = AND)"
-                                   oninput="filesSetQuery(this.value)"
-                                   autocomplete="off">
-                        </div>
-                        <div class="files-view-group" role="tablist" aria-label="View mode">
-                            <button class="files-view-btn active"
-                                    id="files-view-grid"
-                                    title="Icons"
-                                    onclick="filesSetView('grid')">&#9641;</button>
-                            <button class="files-view-btn"
-                                    id="files-view-tiles"
-                                    title="Tiles"
-                                    onclick="filesSetView('tiles')">&#9783;</button>
-                            <button class="files-view-btn"
-                                    id="files-view-list"
-                                    title="List"
-                                    onclick="filesSetView('list')">&#9776;</button>
-                            <button class="files-view-btn"
-                                    id="files-view-details"
-                                    title="Details"
-                                    onclick="filesSetView('details')">&#8801;</button>
-                        </div>
+                    <div class="files-view-group" role="tablist" aria-label="View mode">
+                        <button class="files-view-btn active"
+                                id="files-view-grid"
+                                title="Icons"
+                                onclick="filesSetView('grid')">&#9641;</button>
                         <button class="files-view-btn"
-                                id="files-view-preview"
-                                title="Preview pane"
-                                onclick="filesTogglePreview()">&#9635;</button>
+                                id="files-view-tiles"
+                                title="Tiles"
+                                onclick="filesSetView('tiles')">&#9783;</button>
+                        <button class="files-view-btn"
+                                id="files-view-list"
+                                title="List"
+                                onclick="filesSetView('list')">&#9776;</button>
+                        <button class="files-view-btn"
+                                id="files-view-details"
+                                title="Details"
+                                onclick="filesSetView('details')">&#8801;</button>
                     </div>
+                    <button class="files-view-btn"
+                            id="files-view-preview"
+                            title="Preview pane"
+                            onclick="filesTogglePreview()">&#9635;</button>
                 </div>
                 <div id="files-body" class="files-body">
                     <div id="files-grid" class="files-grid"></div>
@@ -365,7 +359,7 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=99"></script>
-    <script src="{% static 'hub/app.js' %}?v=129"></script>
+    <script src="{% static 'hub/app.js' %}?v=130"></script>
     <script src="{% static 'hub/dms.js' %}?v=2"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
