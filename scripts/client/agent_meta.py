@@ -132,6 +132,53 @@ def read_oauth_metadata(claude_json_path=None) -> dict:
     return result
 
 
+_HOOK_EVENT_KEYS = (
+    "recent_tools",
+    "recent_prompts",
+    "tool_counts",
+    "last_tool_name",
+    "last_tool_at",
+    "last_mcp_tool_name",
+    "last_mcp_tool_at",
+    "last_action_name",
+    "last_action_at",
+    "last_action_outcome",
+    "last_action_elapsed_s",
+    "p95_elapsed_s_by_action",
+    # scitex-orochi #132 — subagent activity. agent_calls is the
+    # projected Agent/Task tool-invocation ring buffer; subagents is
+    # the in-flight list with descriptions; background_tasks is
+    # run_in_background Bash calls.
+    "agent_calls",
+    "background_tasks",
+    "subagents",
+)
+
+
+def _collect_hook_events(agent: str) -> dict:
+    """Read hook-event ring-buffer summary via scitex-agent-container.
+
+    scitex-orochi todo#187 / #59: the per-agent Last tool / Last MCP /
+    Last action rows stay empty because this heartbeat script never
+    pulled these fields from the hook-event ring buffer. Shell-out is
+    short-lived (<1 s) and bounded by ``timeout``; on any failure we
+    return an empty dict so the rest of the heartbeat still flows.
+    """
+    try:
+        proc = subprocess.run(
+            ["scitex-agent-container", "status", agent, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if proc.returncode != 0:
+            return {}
+        data = json.loads(proc.stdout or "{}")
+    except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+        return {}
+    return {k: data[k] for k in _HOOK_EVENT_KEYS if k in data}
+
+
 def detect_multiplexer(agent: str) -> str:
     """Return 'tmux', 'screen', or '' if not found."""
     if (
@@ -1158,6 +1205,10 @@ def collect(agent: str) -> dict:
         # stuck-prompt text. Computed from pane_tail_block_clean below.
         "pane_state": _classify_pane_state(pane_tail_block_clean, pane),
         "stuck_prompt_text": _extract_stuck_prompt(pane_tail_block_clean, pane),
+        # scitex-orochi #187 / #59 — hook-event ring buffer summary
+        # from scitex-agent-container. Unpacked as top-level keys so
+        # push_all()'s whitelist can forward each one verbatim.
+        **_collect_hook_events(agent),
         "runtime": "claude-code",
         "version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
         # Machine resource snapshot (todo#329 — Machines tab populate).
@@ -1337,6 +1388,30 @@ def push_all(url=None, token=None) -> int:
                 "pane_tail_full": meta.get("pane_tail_full", ""),
                 "pane_state": meta.get("pane_state", ""),
                 "stuck_prompt_text": meta.get("stuck_prompt_text", ""),
+                # scitex-orochi #187 / #59 — forward the hook-event
+                # ring buffer summary so the Agents tab's Last tool /
+                # Last MCP / Last action rows populate. Without this,
+                # collect() gathers them but the whitelist drops them
+                # before they reach the hub (same trap as #232 for
+                # pane_tail_full).
+                "recent_tools": meta.get("recent_tools") or [],
+                "recent_prompts": meta.get("recent_prompts") or [],
+                "tool_counts": meta.get("tool_counts") or {},
+                "last_tool_name": meta.get("last_tool_name") or "",
+                "last_tool_at": meta.get("last_tool_at") or "",
+                "last_mcp_tool_name": meta.get("last_mcp_tool_name") or "",
+                "last_mcp_tool_at": meta.get("last_mcp_tool_at") or "",
+                "last_action_name": meta.get("last_action_name") or "",
+                "last_action_at": meta.get("last_action_at") or "",
+                "last_action_outcome": meta.get("last_action_outcome") or "",
+                "last_action_elapsed_s": meta.get("last_action_elapsed_s"),
+                "p95_elapsed_s_by_action": meta.get("p95_elapsed_s_by_action") or {},
+                # scitex-orochi #132 — subagent activity for the
+                # Agents tab AGENT CALLS / BACKGROUND TASKS panels
+                # and the active-subagent badge.
+                "agent_calls": meta.get("agent_calls") or [],
+                "background_tasks": meta.get("background_tasks") or [],
+                "subagents": meta.get("subagents") or [],
             }
             # todo#265: merge OAuth account public metadata into the
             # heartbeat payload. All 9 keys are whitelist-extracted
