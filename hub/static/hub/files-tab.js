@@ -532,6 +532,8 @@ function renderFilesGrid() {
     },
     { once: true },
   );
+  /* Re-apply Ctrl+K fuzzy filter after innerHTML rewrite (see todo-tab.js). */
+  if (typeof runFilter === "function") runFilter();
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {

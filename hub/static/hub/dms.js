@@ -37,9 +37,7 @@
     if (others.length === 0) return "";
     var t = others[0].type === "agent" ? "agent" : "human";
     var label = t === "agent" ? "AI" : "U";
-    return (
-      '<span class="dm-principal-badge ' + t + '">' + label + "</span>"
-    );
+    return '<span class="dm-principal-badge ' + t + '">' + label + "</span>";
   }
 
   function renderDms(rows) {
@@ -75,20 +73,19 @@
           if (!ch) return;
           /* Mirror the channel-link pattern from chat.js:1547 and the
            * #channels click handler in app.js:920. */
-          if (
-            typeof currentChannel !== "undefined" &&
-            currentChannel === ch
-          ) {
+          if (typeof currentChannel !== "undefined" && currentChannel === ch) {
             if (typeof setCurrentChannel === "function")
               setCurrentChannel(null);
             if (typeof loadHistory === "function") loadHistory();
           } else {
-            if (typeof setCurrentChannel === "function")
-              setCurrentChannel(ch);
+            if (typeof setCurrentChannel === "function") setCurrentChannel(ch);
             if (typeof loadChannelHistory === "function")
               loadChannelHistory(ch);
           }
-          if (typeof addTag === "function") addTag("channel", ch);
+          /* Do NOT push a channel:<raw-dm-name> filter tag — DM routing
+           * already goes through setCurrentChannel() above, and the raw
+           * "dm:agent:X|human:Y" string surfaced in a filter chip is
+           * unreadable (msg 082849 screenshot). */
           fetchDms();
           if (typeof fetchStats === "function") fetchStats();
         });
@@ -187,8 +184,7 @@
       return c.label.toLowerCase().indexOf(q) !== -1;
     });
     if (filtered.length === 0) {
-      container.innerHTML =
-        '<div class="dm-modal-empty">No matches</div>';
+      container.innerHTML = '<div class="dm-modal-empty">No matches</div>';
       return;
     }
     container.innerHTML = filtered
@@ -240,9 +236,8 @@
       var ch = row && row.name;
       if (ch) {
         if (typeof setCurrentChannel === "function") setCurrentChannel(ch);
-        if (typeof loadChannelHistory === "function")
-          loadChannelHistory(ch);
-        if (typeof addTag === "function") addTag("channel", ch);
+        if (typeof loadChannelHistory === "function") loadChannelHistory(ch);
+        /* Intentionally no addTag("channel", ch) — see click handler above. */
         if (typeof fetchStats === "function") fetchStats();
       }
     } catch (e) {
@@ -297,14 +292,18 @@
       if (e.key === "Escape") closeModal();
       /* Focus trap for a11y (#262) */
       if (e.key === "Tab" && modal && !modal.hidden) {
-        var focusable = modal.querySelectorAll('input, button, [tabindex]:not([tabindex="-1"])');
+        var focusable = modal.querySelectorAll(
+          'input, button, [tabindex]:not([tabindex="-1"])',
+        );
         if (focusable.length === 0) return;
         var first = focusable[0];
         var last = focusable[focusable.length - 1];
         if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault(); last.focus();
+          e.preventDefault();
+          last.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault(); first.focus();
+          e.preventDefault();
+          first.focus();
         }
       }
     });

@@ -277,38 +277,11 @@ function _updateTodoBtnCounts(issues) {
   });
 }
 
-/* List / Viz mode toggle inside the TODO tab. List is the default;
- * clicking Viz swaps the todo-grid panel for the viz-content panel and
- * calls renderVizTab() (defined in viz-tab.js). */
-var _todoMode = "list";
-
-function _applyTodoMode() {
-  var grid = document.getElementById("todo-grid");
-  var viz = document.getElementById("viz-content");
-  var stateBar = document.getElementById("todo-state-filter");
-  if (_todoMode === "viz") {
-    if (grid) grid.classList.add("todo-viz-hidden");
-    if (viz) viz.classList.remove("todo-viz-hidden");
-    if (stateBar) stateBar.classList.add("todo-viz-hidden");
-    if (typeof renderVizTab === "function") renderVizTab();
-  } else {
-    if (grid) grid.classList.remove("todo-viz-hidden");
-    if (viz) viz.classList.add("todo-viz-hidden");
-    if (stateBar) stateBar.classList.remove("todo-viz-hidden");
-    if (typeof stopVizTab === "function") stopVizTab();
-  }
-  document.querySelectorAll(".todo-mode-btn").forEach(function (b) {
-    b.classList.toggle("active", b.getAttribute("data-mode") === _todoMode);
-  });
-}
+/* Viz is now a top-level tab (tabs.js handles its own show/hide and
+ * calls renderVizTab()); the in-TODO List/Viz mode switcher was removed
+ * so this module no longer owns viz lifecycle. */
 
 document.addEventListener("DOMContentLoaded", function () {
-  document.querySelectorAll(".todo-mode-btn").forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      _todoMode = btn.getAttribute("data-mode") || "list";
-      _applyTodoMode();
-    });
-  });
   document.querySelectorAll(".todo-state-btn").forEach(function (btn) {
     btn.addEventListener("click", function (e) {
       var g = btn.getAttribute("data-group");
@@ -463,6 +436,11 @@ function _renderTodoFromCache(issues) {
   attachTodoEvents(container);
   _backgroundFillDetails(container);
   _updateLastFetchedLabel(_todoCacheTs.all || _todoCacheTs.open || Date.now());
+  /* Re-apply any active filter-input query — the innerHTML rewrite above
+   * wiped the display:none state runFilter() had previously set. Without
+   * this, typing "todo#418" on the Chat tab then switching to TODO shows
+   * every issue. */
+  if (typeof runFilter === "function") runFilter();
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {

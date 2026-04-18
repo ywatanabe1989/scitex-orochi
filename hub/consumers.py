@@ -704,9 +704,15 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             if not allowed:
                 return
         else:
-            # Group channels: existing subscription filter.
+            # Group channels: subscription filter. The previous form
+            # guarded this with `agent_channels and ...`, which meant an
+            # agent with no subscriptions received every group message
+            # (including GitHub CI notifications routed to #progress).
+            # Subscription is now strictly opt-in: no membership → no
+            # group receipt. Per-DM delivery is still governed by the
+            # DM-participant check above.
             agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
-            if agent_channels and ch_name not in agent_channels:
+            if ch_name not in agent_channels:
                 return
         await self.send_json(
             {

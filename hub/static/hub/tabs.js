@@ -12,6 +12,7 @@ function _activateTab(tab) {
   var messagesEl = document.getElementById("messages");
   var inputBar = document.querySelector(".input-bar");
   var todoView = document.getElementById("todo-view");
+  var vizView = document.getElementById("viz-view");
   var resourcesView = document.getElementById("resources-view");
   var agentsTabView = document.getElementById("agents-tab-view");
   var workspacesView = document.getElementById("workspaces-view");
@@ -26,6 +27,7 @@ function _activateTab(tab) {
   var membersPanel = document.getElementById("channel-members-panel");
   if (membersPanel) membersPanel.style.display = "none";
   todoView.style.display = "none";
+  if (vizView) vizView.style.display = "none";
   resourcesView.style.display = "none";
   agentsTabView.style.display = "none";
   workspacesView.style.display = "none";
@@ -33,16 +35,26 @@ function _activateTab(tab) {
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
-  if (tab !== "todo" && typeof stopVizTab === "function") stopVizTab();
+  if (tab !== "viz" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
+    /* Restore the channel-topic banner on re-entry to Chat. The block at
+     * the top of _activateTab hides it unconditionally; we only want that
+     * when leaving chat, not when returning. Without this line the banner
+     * vanishes after the first tab switch. Banner content already tracks
+     * the textarea target (see app.js _updateChannelTopicBanner). */
+    if (topicBanner) topicBanner.style.display = "";
     /* Always default-focus the compose input when the chat tab is shown.
      * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
      * the primary action target on the chat tab, so the user should never
      * have to click into it manually after switching tabs or reloading.
      * Defer with rAF so the layout has settled (display:'' just changed). */
     requestAnimationFrame(function () {
+      /* Snap to bottom whenever chat is shown — initial load + every
+       * tab-switch back to chat. Layout may not be final until after the
+       * rAF tick, so scroll here (not synchronously). */
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       var input = document.getElementById("msg-input");
       if (input) {
         input.focus();
@@ -55,6 +67,12 @@ function _activateTab(tab) {
     todoView.style.display = "block";
     todoView.style.flex = "1";
     fetchTodoList();
+  } else if (tab === "viz") {
+    if (vizView) {
+      vizView.style.display = "block";
+      vizView.style.flex = "1";
+    }
+    if (typeof renderVizTab === "function") renderVizTab();
   } else if (tab === "agents-tab") {
     agentsTabView.style.display = "block";
     agentsTabView.style.flex = "1";

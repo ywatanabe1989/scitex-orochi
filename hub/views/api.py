@@ -1764,11 +1764,47 @@ def api_agents_register(request):
     if not name:
         return JsonResponse({"error": "name required"}, status=400)
 
+    # Hydrate the agent's channel subscriptions from the DB (the
+    # ChannelMembership table is the source of truth, matching the WS
+    # register flow). Previously this endpoint hard-coded a
+    # ["#general"] default on every heartbeat, which forced every new
+    # agent to join #general even when the dashboard user wanted
+    # subscriptions to be opt-in.
+    #
+    # A caller that explicitly sends "channels" (legacy REST clients)
+    # is honored for backward-compat; otherwise we use whatever the DB
+    # has, which may be an empty list for a brand-new agent.
+    import re as _re
+
+    from django.contrib.auth.models import User as _User
+
+    from hub.models import ChannelMembership as _ChannelMembership
     from hub.registry import (
         mark_activity,
         register_agent,
         set_current_task,
         update_heartbeat,
+    )
+
+    _safe_name = _re.sub(r"[^a-zA-Z0-9_.\-]", "-", name)
+    _agent_username = f"agent-{_safe_name}"
+    _persisted_channels: list[str] = []
+    try:
+        _agent_user = _User.objects.get(username=_agent_username)
+        _persisted_channels = [
+            m.channel.name
+            for m in _ChannelMembership.objects.filter(
+                user=_agent_user,
+                channel__workspace_id=wt.workspace_id,
+            ).select_related("channel")
+        ]
+    except _User.DoesNotExist:
+        _persisted_channels = []
+    _legacy_channels = body.get("channels")
+    _effective_channels = (
+        list(_legacy_channels)
+        if isinstance(_legacy_channels, list)
+        else _persisted_channels
     )
 
     register_agent(
@@ -1780,7 +1816,7 @@ def api_agents_register(request):
             "role": body.get("role", "agent"),
             "model": body.get("model", ""),
             "workdir": body.get("workdir", ""),
-            "channels": body.get("channels") or ["#general"],
+            "channels": _effective_channels,
             # todo#213: claude-hud-style process/runtime metadata pushed by
             # mamba-healer-mba's agent_meta.py --push loop.
             "multiplexer": body.get("multiplexer", ""),
