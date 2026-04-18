@@ -557,7 +557,9 @@ def collect(agent: str) -> dict:
     pane_tail = ""  # last interesting single line (legacy field)
     pane_tail_block = ""  # last ~10 interesting lines (raw — keeps channel inbound for WS-alive proof)
     pane_tail_block_clean = ""  # same as block but stripped of channel inbound (for stuck-detection / state classifier)
-    pane_tail_full = ""  # up to 500 filtered lines, trimmed to 32 KB (todo#47 web-terminal tier)
+    pane_tail_full = (
+        ""  # up to 500 filtered lines, trimmed to 32 KB (todo#47 web-terminal tier)
+    )
 
     def _is_channel_inbound_line(s: str) -> bool:
         """ywatanabe msg#10657 / #10677: incoming Orochi channel pushes
@@ -1330,6 +1332,9 @@ def push_all(url=None, token=None) -> int:
                 "mcp_servers": list(meta.get("mcp_servers") or []),
                 "pane_tail": meta.get("pane_tail", ""),
                 "pane_tail_block": meta.get("pane_tail_block", ""),
+                # todo#47 — full scrollback for the "Expand" toggle in
+                # the agent detail pane viewer.
+                "pane_tail_full": meta.get("pane_tail_full", ""),
                 "pane_state": meta.get("pane_state", ""),
                 "stuck_prompt_text": meta.get("stuck_prompt_text", ""),
             }
