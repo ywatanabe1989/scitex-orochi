@@ -302,16 +302,33 @@ function _renderAgentDetail(a) {
     "</div>" +
     "</div>";
 
+  // todo#47 — Terminal output controls: Refresh forces a fresh
+  // /detail fetch (useful when heartbeats are paused or the user
+  // wants a synchronous read). Copy dumps the raw text to the
+  // clipboard. Both are data-hooked so the click handlers can find
+  // them without relying on fragile closures.
   var paneLabel =
     'Terminal output <span class="agent-detail-pane-source">(' +
     escapeHtml(paneSource) +
-    ")</span>";
+    ")</span>" +
+    '<span class="agent-detail-pane-controls">' +
+    '<button type="button" class="agent-detail-pane-btn" ' +
+    'data-action="refresh-pane" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="Force re-fetch of detail (pane + RTT + last action)">Refresh</button>' +
+    '<button type="button" class="agent-detail-pane-btn" ' +
+    'data-action="copy-pane" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="Copy full pane text to clipboard">Copy</button>' +
+    "</span>";
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
     '<div class="agent-detail-pane-label">' +
     paneLabel +
     "</div>" +
-    '<pre class="agent-detail-pane">' +
+    '<pre class="agent-detail-pane" data-agent="' +
+    escapeHtml(a.name) +
+    '">' +
     (pane
       ? escapeHtml(pane)
       : '<span class="muted-cell">No terminal output available (pane_text_source=' +
@@ -552,6 +569,50 @@ function _renderAgentContent(grid) {
   }
 
   _bindChannelControls(content);
+  _bindPaneControls(content);
+}
+
+/* todo#47 — wire Refresh / Copy buttons in the pane viewer. Refresh
+ * invalidates the detail cache and re-renders; Copy dumps pane text
+ * to the clipboard. Both are scoped per-agent via data-agent on the
+ * button itself so there's no ambiguity when multiple agents are
+ * stacked in the DOM. */
+function _bindPaneControls(content) {
+  content.querySelectorAll('[data-action="refresh-pane"]').forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var name = btn.getAttribute("data-agent") || "";
+      if (!name) return;
+      btn.disabled = true;
+      btn.textContent = "Refreshing…";
+      _invalidateAgentDetail(name);
+      setTimeout(function () {
+        btn.disabled = false;
+        btn.textContent = "Refresh";
+      }, 1500);
+    });
+  });
+  content.querySelectorAll('[data-action="copy-pane"]').forEach(function (btn) {
+    btn.addEventListener("click", async function (ev) {
+      ev.preventDefault();
+      var name = btn.getAttribute("data-agent") || "";
+      if (!name) return;
+      var pre = content.querySelector(
+        '.agent-detail-pane[data-agent="' + name + '"]',
+      );
+      var text = pre ? pre.textContent || "" : "";
+      try {
+        await navigator.clipboard.writeText(text);
+        var original = btn.textContent;
+        btn.textContent = "Copied";
+        setTimeout(function () {
+          btn.textContent = original;
+        }, 1200);
+      } catch (err) {
+        alert("Copy failed: " + err.message);
+      }
+    });
+  });
 }
 
 /* ── Channel subscription controls (Phase 3) ────────────────────────── */
