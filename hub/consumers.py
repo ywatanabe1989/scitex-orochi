@@ -381,6 +381,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "agent_id": payload.get("agent_id", self.agent_name),
                 "project": payload.get("project", ""),
                 "machine": payload.get("machine", ""),
+                # todo#55: canonical FQDN from the heartbeat (via
+                # `hostname -f`). Display-only — `machine` stays the
+                # short join key.
+                "hostname_canonical": payload.get("hostname_canonical", ""),
                 "role": payload.get("role", ""),
                 "model": payload.get("model", ""),
                 "workdir": payload.get("workdir", ""),

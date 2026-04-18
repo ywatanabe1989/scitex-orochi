@@ -96,6 +96,14 @@ function _renderAgentDetail(a) {
   var statusColor = livenessColor(liveness);
   var role = d.role || a.role || "agent";
   var machine = d.machine || a.machine || "?";
+  /* todo#55: canonical FQDN for the Machine row. When the agent pushes
+   * one AND it differs from the short label, the UI renders
+   * "<label> (<fqdn>)". When identical or empty, the short label alone. */
+  var machineCanonical = d.hostname_canonical || a.hostname_canonical || "";
+  var machineDisplay =
+    machineCanonical && machineCanonical !== machine
+      ? machine + " (" + machineCanonical + ")"
+      : machine;
   var model = d.model || a.model || "-";
   var ctxPct = d.context_pct != null ? d.context_pct : a.context_pct;
   var currentTask = d.current_task || a.current_task || "";
@@ -158,7 +166,13 @@ function _renderAgentDetail(a) {
    * middle-truncated). */
   var metaFields = [
     ["Role", role, "declared agent role (head / healer / expert-scitex / ...)"],
-    ["Machine", machine, "canonical hostname the agent is running on"],
+    [
+      "Machine",
+      machineDisplay,
+      machineCanonical && machineCanonical !== machine
+        ? "short label · canonical FQDN reported by the heartbeat"
+        : "hostname the agent is running on (short label — no FQDN reported)",
+    ],
     ["Model", model, "Claude model id the agent is running against"],
     [
       "Multiplexer",
