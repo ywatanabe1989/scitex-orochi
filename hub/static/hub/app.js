@@ -558,6 +558,23 @@ function _addChannelContextMenu(el) {
   });
 }
 
+/* Nudge a just-appended fixed-position menu back inside the viewport.
+ * Assumes `el` is already attached to the DOM with a {left,top} pair.
+ * Keeps an 8px safety padding from all viewport edges so the outline
+ * doesn't kiss the screen border. Called once right after appendChild.
+ * ywatanabe 2026-04-19. */
+function _repositionMenuInViewport(el) {
+  if (!el) return;
+  var pad = 8;
+  var rect = el.getBoundingClientRect();
+  if (rect.right > window.innerWidth - pad) {
+    el.style.left = Math.max(pad, window.innerWidth - rect.width - pad) + "px";
+  }
+  if (rect.bottom > window.innerHeight - pad) {
+    el.style.top = Math.max(pad, window.innerHeight - rect.height - pad) + "px";
+  }
+}
+
 var _ctxMenu = null;
 function _showChannelCtxMenu(ch, x, y) {
   _hideChannelCtxMenu();
@@ -602,6 +619,7 @@ function _showChannelCtxMenu(ch, x, y) {
   ].join("");
   document.body.appendChild(menu);
   _ctxMenu = menu;
+  _repositionMenuInViewport(menu);
 
   menu.querySelectorAll(".ch-ctx-item").forEach(function (item) {
     item.addEventListener("click", function () {
@@ -730,6 +748,7 @@ function _showAgentContextMenu(agent, x, y) {
   ].join("");
   document.body.appendChild(menu);
   _agentCtxMenu = menu;
+  _repositionMenuInViewport(menu);
   /* Wire the flat "Hide node" row (not a submenu). */
   var hideItem = menu.querySelector('.ch-ctx-item[data-topo-hide="1"]');
   if (hideItem) {
@@ -756,6 +775,25 @@ function _showAgentContextMenu(agent, x, y) {
     subEl.innerHTML = html;
     document.body.appendChild(subEl);
     window._agentCtxSubMenu = subEl;
+    /* Viewport-aware flip: if the submenu would overflow the right
+     * edge, flip it to the left of the anchor instead of the right.
+     * If it would overflow the bottom, nudge it up. Keep 8px padding
+     * from all viewport edges. ywatanabe 2026-04-19. */
+    var pad = 8;
+    var sr = subEl.getBoundingClientRect();
+    if (sr.right > window.innerWidth - pad) {
+      var flipped = r.left - sr.width - 2;
+      subEl.style.left =
+        Math.max(
+          pad,
+          flipped >= pad ? flipped : window.innerWidth - sr.width - pad,
+        ) + "px";
+    }
+    sr = subEl.getBoundingClientRect();
+    if (sr.bottom > window.innerHeight - pad) {
+      subEl.style.top =
+        Math.max(pad, window.innerHeight - sr.height - pad) + "px";
+    }
     subEl.querySelectorAll("[data-pick]").forEach(function (it) {
       it.addEventListener("click", function (ev) {
         ev.stopPropagation();
