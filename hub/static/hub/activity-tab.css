@@ -745,6 +745,119 @@
   fill: #fbbf24;
   filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 16px #fbbf24);
 }
+/* Inline channel-compose popup — anchored near the clicked channel
+ * diamond on the topology. Minimal by default (text + send); expand
+ * chevron reveals attach/camera/sketch/voice; drag-drop files route
+ * to the Chat composer. */
+.topo-channel-compose {
+  position: fixed;
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 360px;
+  background: #0e0e0e;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(78, 205, 196, 0.2);
+  color: #e6e6e6;
+  font-size: 12px;
+  font-family: inherit;
+}
+.topo-channel-compose.tcc-drag-over {
+  border-color: #4ecdc4;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(78, 205, 196, 0.7);
+}
+.topo-channel-compose .tcc-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.topo-channel-compose .tcc-channel {
+  flex: 1 1 auto;
+  font-family: ui-monospace, monospace;
+  color: #4ecdc4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.topo-channel-compose .tcc-expand,
+.topo-channel-compose .tcc-close {
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: #888;
+  border-radius: 3px;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+.topo-channel-compose .tcc-expand:hover,
+.topo-channel-compose .tcc-close:hover {
+  color: #ccc;
+  background: #171717;
+}
+.topo-channel-compose .tcc-input {
+  width: 100%;
+  background: #0a0a0a;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.topo-channel-compose .tcc-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.topo-channel-compose .tcc-extras {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.topo-channel-compose .tcc-x {
+  background: #151515;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.topo-channel-compose .tcc-x:hover {
+  background: #1a1a1a;
+  border-color: #4ecdc4;
+}
+.topo-channel-compose .tcc-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.topo-channel-compose .tcc-send {
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 4px 14px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.topo-channel-compose .tcc-send:hover {
+  background: #1a4060;
+  color: #bfe1f1;
+}
+
 .activity-grid.activity-view-topology .topo-edges line.topo-edge-live {
   stroke: #4ecdc4 !important;
   stroke-opacity: 1 !important;

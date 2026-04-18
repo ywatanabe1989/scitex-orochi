@@ -1266,34 +1266,33 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
     burst.appendChild(bo);
     inner.appendChild(burst);
   } else {
-    /* Outer halo — soft bloom. */
-    var halo = document.createElementNS(ns, "ellipse");
+    /* Simple circle packet with subtle flash — ywatanabe 2026-04-19:
+     * "instead of oval, circle packet with subtle flashing will be
+     * modern". Outer soft halo + bright core circle; the core opacity
+     * pulses over the flight duration so the packet "breathes" as it
+     * travels along the edge. */
+    var halo = document.createElementNS(ns, "circle");
     halo.setAttribute("cx", "0");
     halo.setAttribute("cy", "0");
-    halo.setAttribute("rx", "14");
-    halo.setAttribute("ry", "6");
-    halo.setAttribute("fill-opacity", "0.18");
+    halo.setAttribute("r", "10");
+    halo.setAttribute("fill-opacity", "0.2");
     inner.appendChild(halo);
-    /* Mid capsule — the packet body, elongated along direction. */
-    var body = document.createElementNS(ns, "ellipse");
-    body.setAttribute("cx", "0");
-    body.setAttribute("cy", "0");
-    body.setAttribute("rx", "8");
-    body.setAttribute("ry", "3");
-    body.setAttribute("fill-opacity", "0.55");
-    inner.appendChild(body);
-    var tip = document.createElementNS(ns, "polygon");
-    tip.setAttribute("points", "-3,-2 9,0 -3,2");
-    inner.appendChild(tip);
-    for (var ti = 1; ti <= 3; ti++) {
-      var tail = document.createElementNS(ns, "circle");
-      var off = -(8 + ti * 3);
-      tail.setAttribute("cx", String(off));
-      tail.setAttribute("cy", "0");
-      tail.setAttribute("r", String(Math.max(1, 3 - ti)));
-      tail.setAttribute("fill-opacity", String(0.35 / ti));
-      inner.appendChild(tail);
-    }
+    var core = document.createElementNS(ns, "circle");
+    core.setAttribute("cx", "0");
+    core.setAttribute("cy", "0");
+    core.setAttribute("r", "4");
+    core.setAttribute("fill-opacity", "0.95");
+    /* Subtle flash: opacity oscillates 0.75 ↔ 1.0 at 2× frequency over
+     * the flight duration. Values list = "0.75;1;0.75;1;0.75" gives
+     * two pulses regardless of dur. */
+    var pulse = document.createElementNS(ns, "animate");
+    pulse.setAttribute("attributeName", "fill-opacity");
+    pulse.setAttribute("values", "0.75;1;0.75;1;0.75");
+    pulse.setAttribute("dur", dur + "ms");
+    pulse.setAttribute("begin", delay + "ms");
+    pulse.setAttribute("fill", "freeze");
+    core.appendChild(pulse);
+    inner.appendChild(core);
     /* Animate the OUTER translate in screen coordinates so the packet
      * actually tracks from→to. additive="sum" on top of the base
      * translate(fromX,fromY). */
@@ -1367,7 +1366,10 @@ function _topoPulseEdge(sender, channel, opts) {
   if (!edges) return;
   var klass =
     opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
-  var LEG = 900;
+  /* Per-leg travel time. Slower than the initial 900ms so the flight
+   * is easier to follow by eye (ywatanabe 2026-04-19: "the growing is
+   * good but too fast"). */
+  var LEG = 1600;
   /* Leg 1 — sender → channel IF the sender is a visible agent. Human
    * posts (sender = username, not an agent name) skip leg 1 and start
    * from the channel node — so the user still sees their post
@@ -1693,27 +1695,7 @@ function _wireTopoZoomPan(grid, W, H) {
       ev.stopPropagation();
       var chName = ch.getAttribute("data-channel");
       if (!chName) return;
-      var text = window.prompt("Post to " + chName + ":", "");
-      if (text == null) return;
-      text = String(text).trim();
-      if (!text) return;
-      var payload = { channel: chName, content: text };
-      if (
-        typeof wsConnected !== "undefined" &&
-        wsConnected &&
-        typeof ws !== "undefined" &&
-        ws &&
-        ws.readyState === WebSocket.OPEN
-      ) {
-        ws.send(JSON.stringify({ type: "message", payload: payload }));
-      } else if (typeof sendOrochiMessage === "function") {
-        sendOrochiMessage({
-          type: "message",
-          sender:
-            typeof userName !== "undefined" && userName ? userName : "human",
-          payload: payload,
-        });
-      }
+      _topoOpenChannelCompose(chName, ev.clientX, ev.clientY);
       return;
     }
     /* Plain double-click on empty area = reset zoom. */
@@ -2609,7 +2591,17 @@ function _topoFlushClick() {
     _overviewExpanded = _overviewExpanded === s.name ? null : s.name;
     if (typeof renderActivityTab === "function") renderActivityTab();
   } else if (s.count === 2) {
-    _openAgentDm(s.name);
+    /* Double-click agent = small DM compose popup near the click
+     * point (ywatanabe 2026-04-19: "double click -> just show small
+     * input area as well, just like in the case where I click a
+     * channel"). Uses the same _topoOpenChannelCompose helper; the
+     * DM channel is auto-created on first POST via the backend. */
+    var human =
+      (typeof userName !== "undefined" && userName) ||
+      window.__orochiUserName ||
+      "human";
+    var dmCh = "dm:agent:" + s.name + "|human:" + human;
+    _topoOpenChannelCompose(dmCh, s.x || 0, s.y || 0);
   }
   /* count === 1 is handled as drag-source on mousedown; no-op on click. */
 }
@@ -2712,6 +2704,148 @@ function _topoCleanupDrag() {
   }
   _topoDragState = null;
 }
+/* Inline compose popup anchored near a clicked channel node. Opens on
+ * double-click channel; replaces the old window.prompt() UX
+ * (ywatanabe 2026-04-19: "this is too much; just show a simple one
+ * near clicked point is enough"). Minimal by default: text input +
+ * send button + expand chevron. When expanded, surfaces attach /
+ * camera / sketch / voice buttons that delegate to the global
+ * helpers already used by the Chat compose. Drag-drop files onto the
+ * popup always works (collapsed or expanded). Keyboard: Enter sends,
+ * Shift+Enter = newline, Esc closes. */
+function _topoOpenChannelCompose(channel, clientX, clientY) {
+  /* Kill any previous popup first. */
+  var prev = document.getElementById("topo-channel-compose");
+  if (prev && prev.parentNode) prev.parentNode.removeChild(prev);
+  var pop = document.createElement("div");
+  pop.id = "topo-channel-compose";
+  pop.className = "topo-channel-compose";
+  pop.setAttribute("data-channel", channel);
+  pop.style.left = Math.max(8, clientX - 140) + "px";
+  pop.style.top = Math.max(8, clientY + 12) + "px";
+  pop.innerHTML =
+    '<div class="tcc-header">' +
+    '<span class="tcc-channel">' +
+    escapeHtml(channel) +
+    "</span>" +
+    '<button type="button" class="tcc-expand" title="More input options (attach / camera / sketch / voice)">+</button>' +
+    '<button type="button" class="tcc-close" title="Close (Esc)">&times;</button>' +
+    "</div>" +
+    '<textarea class="tcc-input" rows="2" placeholder="message — Enter to send · Shift+Enter newline · drop files to attach"></textarea>' +
+    '<div class="tcc-extras" style="display:none">' +
+    '<button type="button" class="tcc-x tcc-attach" title="Attach file">\uD83D\uDCCE</button>' +
+    '<button type="button" class="tcc-x tcc-camera" title="Camera">\uD83D\uDCF7</button>' +
+    '<button type="button" class="tcc-x tcc-sketch" title="Sketch">\u270F\uFE0F</button>' +
+    '<button type="button" class="tcc-x tcc-voice" title="Voice">\uD83C\uDFA4</button>' +
+    "</div>" +
+    '<div class="tcc-footer">' +
+    '<button type="button" class="tcc-send">Send</button>' +
+    "</div>";
+  document.body.appendChild(pop);
+  var input = pop.querySelector(".tcc-input");
+  var sendBtn = pop.querySelector(".tcc-send");
+  var extras = pop.querySelector(".tcc-extras");
+  var expandBtn = pop.querySelector(".tcc-expand");
+  var closeBtn = pop.querySelector(".tcc-close");
+  setTimeout(function () {
+    if (input) input.focus();
+  }, 10);
+
+  function close() {
+    if (pop.parentNode) pop.parentNode.removeChild(pop);
+    document.removeEventListener("mousedown", outsideClick, true);
+  }
+  function outsideClick(ev) {
+    if (!pop.contains(ev.target)) close();
+  }
+  setTimeout(function () {
+    document.addEventListener("mousedown", outsideClick, true);
+  }, 50);
+
+  function send() {
+    var text = (input.value || "").trim();
+    if (!text) return;
+    var payload = { channel: channel, content: text };
+    if (
+      typeof wsConnected !== "undefined" &&
+      wsConnected &&
+      typeof ws !== "undefined" &&
+      ws &&
+      ws.readyState === WebSocket.OPEN
+    ) {
+      ws.send(JSON.stringify({ type: "message", payload: payload }));
+    } else if (typeof sendOrochiMessage === "function") {
+      sendOrochiMessage({
+        type: "message",
+        sender:
+          typeof userName !== "undefined" && userName ? userName : "human",
+        payload: payload,
+      });
+    }
+    close();
+  }
+  sendBtn.addEventListener("click", send);
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && !ev.shiftKey) {
+      ev.preventDefault();
+      send();
+    } else if (ev.key === "Escape") {
+      ev.preventDefault();
+      close();
+    }
+  });
+  closeBtn.addEventListener("click", close);
+  expandBtn.addEventListener("click", function () {
+    var on = extras.style.display === "none";
+    extras.style.display = on ? "" : "none";
+    expandBtn.textContent = on ? "−" : "+";
+  });
+  /* Delegate extras — pop the channel into currentChannel so existing
+   * global helpers target the right place, then invoke them. Fallback
+   * to focusing the main composer for modes that don't have a headless
+   * API surface. */
+  function _routeToChat() {
+    if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
+    if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
+    var tabBtn = document.querySelector('[data-tab="chat"]');
+    if (tabBtn) tabBtn.click();
+    close();
+  }
+  pop.querySelector(".tcc-attach").addEventListener("click", function () {
+    _routeToChat();
+    if (typeof openAttachmentPicker === "function") openAttachmentPicker();
+  });
+  pop.querySelector(".tcc-camera").addEventListener("click", function () {
+    _routeToChat();
+    if (typeof openCameraCapture === "function") openCameraCapture();
+  });
+  pop.querySelector(".tcc-sketch").addEventListener("click", function () {
+    _routeToChat();
+    if (typeof openSketchPanel === "function") openSketchPanel();
+  });
+  pop.querySelector(".tcc-voice").addEventListener("click", function () {
+    _routeToChat();
+    if (typeof startVoiceInput === "function") startVoiceInput();
+  });
+  /* Drop files onto popup → route to Chat with attachments primed. */
+  pop.addEventListener("dragover", function (ev) {
+    ev.preventDefault();
+    pop.classList.add("tcc-drag-over");
+  });
+  pop.addEventListener("dragleave", function () {
+    pop.classList.remove("tcc-drag-over");
+  });
+  pop.addEventListener("drop", function (ev) {
+    ev.preventDefault();
+    pop.classList.remove("tcc-drag-over");
+    var files = ev.dataTransfer && ev.dataTransfer.files;
+    if (files && files.length && typeof handleFileUpload === "function") {
+      _routeToChat();
+      for (var i = 0; i < files.length; i++) handleFileUpload(files[i]);
+    }
+  });
+}
+
 function _topoSpawnGhost(svg, text, x, y) {
   var ns = "http://www.w3.org/2000/svg";
   var t = document.createElementNS(ns, "text");
