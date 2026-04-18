@@ -491,7 +491,28 @@ function _renderAgentContent(grid) {
       '" not found.</p>';
     return;
   }
+  /* Preserve scrollTop of long, user-scrolled panes across heartbeat-driven
+   * re-renders. Without this the CLAUDE.md viewer (and .mcp.json viewer)
+   * snaps to the top every poll tick — reported by ywatanabe 2026-04-18
+   * 20:45 ("sometimes it automatically scrolls up to the top"). We stash
+   * scrollTop by CSS class because there is only one detail card in the
+   * DOM at a time, so class alone is a stable key. */
+  var _preserveScrollClasses = [
+    "agent-detail-claude-md",
+    "agent-detail-mcp-json",
+  ];
+  var _savedScrollTops = {};
+  _preserveScrollClasses.forEach(function (cls) {
+    var el = content.querySelector("." + cls);
+    if (el) _savedScrollTops[cls] = el.scrollTop;
+  });
   content.innerHTML = _renderAgentDetail(agent);
+  _preserveScrollClasses.forEach(function (cls) {
+    if (_savedScrollTops[cls] != null) {
+      var el = content.querySelector("." + cls);
+      if (el) el.scrollTop = _savedScrollTops[cls];
+    }
+  });
   /* Scroll pane to bottom so latest output is visible */
   var pre = content.querySelector(".agent-detail-pane");
   if (pre) pre.scrollTop = pre.scrollHeight;
