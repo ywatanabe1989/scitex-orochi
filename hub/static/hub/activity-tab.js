@@ -1711,11 +1711,36 @@ function _topoFlashEdge(edges, a, b, delay, dur) {
  * packet variant "topo-packet-artifact" is used (styled differently
  * as a babble bubble). ywatanabe 2026-04-19. */
 function _topoPulseEdge(sender, channel, opts) {
-  if (!channel) return;
+  /* Diagnostic tap — logs every bail-out with the relevant inputs so we
+   * can see in DevTools console exactly why an expected pulse didn't
+   * fire (most common: sender/recipient not in _topoLastPositions, or
+   * topology tab not visible). Set window.__topoPulseDebug = false to
+   * silence. ywatanabe 2026-04-19: "DM does not work in visual
+   * feedback. why???". */
+  var _dbg = window.__topoPulseDebug !== false;
+  if (!channel) {
+    if (_dbg)
+      console.warn("[topo-pulse] bail: no channel", { sender, channel });
+    return;
+  }
   var svg = document.querySelector(".activity-view-topology .topo-svg");
-  if (!svg) return;
+  if (!svg) {
+    if (_dbg)
+      console.warn("[topo-pulse] bail: topology svg not in DOM (tab hidden?)", {
+        sender,
+        channel,
+      });
+    return;
+  }
   var edges = svg.querySelector(".topo-edges");
-  if (!edges) return;
+  if (!edges) {
+    if (_dbg)
+      console.warn("[topo-pulse] bail: .topo-edges not found", {
+        sender,
+        channel,
+      });
+    return;
+  }
   var klass =
     opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
   /* Babble text that rides each packet. Caller passes the message
@@ -1762,12 +1787,38 @@ function _topoPulseEdge(sender, channel, opts) {
       });
     }
     var dmFrom = sender ? _topoLastPositions.agents[sender] : null;
+    if (_dbg) {
+      console.info("[topo-pulse] DM parse", {
+        sender: sender,
+        channel: channel,
+        recipients: dmRecipients,
+        senderPosFound: !!dmFrom,
+        availableKeys: Object.keys(_topoLastPositions.agents),
+      });
+    }
+    if (!dmRecipients.length && _dbg) {
+      console.warn("[topo-pulse] DM bail: parsed zero recipients", {
+        channel,
+      });
+    }
     dmRecipients.forEach(function (rn) {
       if (!rn || rn === sender) return;
       var rp = _topoLastPositions.agents[rn];
-      if (!rp) return;
+      if (!rp) {
+        if (_dbg)
+          console.warn("[topo-pulse] DM bail: recipient not on graph", {
+            recipient: rn,
+            channel,
+          });
+        return;
+      }
       if (!dmFrom) {
-        _topoSpawnPacket(edges, rp, rp, 220, 0, klass);
+        if (_dbg)
+          console.warn(
+            "[topo-pulse] DM: sender not on graph; falling back to in-place pulse at recipient",
+            { sender, recipient: rn },
+          );
+        _topoSpawnPacket(edges, rp, rp, 220, 0, klass, { text: babble });
         return;
       }
       /* Invisible midpoint — exactly between sender and recipient so
@@ -1776,8 +1827,8 @@ function _topoPulseEdge(sender, channel, opts) {
         x: (dmFrom.x + rp.x) / 2,
         y: (dmFrom.y + rp.y) / 2,
       };
-      _topoSpawnPacket(edges, dmFrom, mid, LEG, 0, klass);
-      _topoSpawnPacket(edges, mid, rp, LEG, LEG, klass);
+      _topoSpawnPacket(edges, dmFrom, mid, LEG, 0, klass, { text: babble });
+      _topoSpawnPacket(edges, mid, rp, LEG, LEG, klass, { text: babble });
     });
     return;
   }
