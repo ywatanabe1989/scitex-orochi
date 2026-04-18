@@ -2811,8 +2811,8 @@ function _renderActivityTopology(visible, grid) {
        * WebSocket indicator. ywatanabe 2026-04-19: "add icon to agents
        * with robotic one as well" / "add margins to icons and
        * indicators now overlapping". */
-      var agentIconX = p.x - LED_R - GAP / 2 - 26;
-      var badgeLeft = agentIconX - 8;
+      var agentIconX = p.x - LED_R - GAP / 2 - 28;
+      var badgeLeft = agentIconX - 14;
       var textW = Math.max(40, nameText.length * 6.5);
       var badgeRight = nameX + textW + 6;
       var badgeWidth = badgeRight - badgeLeft;
