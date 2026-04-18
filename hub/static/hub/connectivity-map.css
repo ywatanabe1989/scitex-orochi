@@ -5,7 +5,9 @@
   border: 1px solid #222;
   border-radius: 6px;
   padding: 12px;
-  margin: 16px;
+  /* todo#51: zero L/R margin so the mesh aligns with #resources-grid
+   * below (.todo-view already supplies 16px padding on both sides). */
+  margin: 0 0 12px 0;
 }
 
 .connectivity-header {
@@ -35,9 +37,18 @@
   border-radius: 10px;
   font-weight: 600;
 }
-.conn-pill-ok { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
-.conn-pill-fail { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-.conn-source { font-size: 10px; color: #555; }
+.conn-pill-ok {
+  background: rgba(78, 205, 196, 0.2);
+  color: #4ecdc4;
+}
+.conn-pill-fail {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+.conn-source {
+  font-size: 10px;
+  color: #555;
+}
 
 .connectivity-svg {
   display: block;
@@ -47,11 +58,25 @@
 }
 
 .conn-node circle {
-  transition: stroke 0.15s, fill 0.15s;
+  transition:
+    stroke 0.15s,
+    fill 0.15s,
+    stroke-width 0.15s;
 }
-.conn-node:hover circle {
+.conn-node[data-host-name] {
+  cursor: pointer;
+}
+.conn-node:hover circle,
+.conn-node.mesh-hl circle {
   fill: #1a1a1a;
   stroke: #88e6dd;
+  stroke-width: 3;
+}
+/* todo#51: bidirectional hover sync between SSH-mesh ↔ cards */
+.res-card.mesh-hl,
+.activity-card.mesh-hl {
+  border-color: #88e6dd !important;
+  box-shadow: 0 0 0 2px rgba(136, 230, 221, 0.25);
 }
 .conn-node-label {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -64,7 +89,9 @@
 
 /* Bastion cloud nodes (outer ring) */
 .conn-node-bastion rect {
-  transition: fill 0.15s, stroke 0.15s;
+  transition:
+    fill 0.15s,
+    stroke 0.15s;
 }
 .conn-node-bastion:hover rect {
   fill: rgba(78, 205, 196, 0.2);
@@ -82,4 +109,7 @@
 }
 
 /* Pending badge pill */
-.conn-pill-pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.conn-pill-pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}

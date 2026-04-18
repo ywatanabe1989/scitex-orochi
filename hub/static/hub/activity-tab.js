@@ -1067,6 +1067,17 @@ function _renderActivityCards(agents, grid) {
         _activitySubTab = name;
         _applyActivitySubTab(window.__lastAgents || []);
       });
+      /* todo#51: bidirectional hover sync with SSH-mesh + res-cards. */
+      card.addEventListener("mouseenter", function () {
+        var host = card.getAttribute("data-machine");
+        if (host && typeof syncHostHover === "function")
+          syncHostHover(host, true);
+      });
+      card.addEventListener("mouseleave", function () {
+        var host = card.getAttribute("data-machine");
+        if (host && typeof syncHostHover === "function")
+          syncHostHover(host, false);
+      });
     },
   );
   /* Wire up copy buttons */
