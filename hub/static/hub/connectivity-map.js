@@ -3,9 +3,38 @@
 
 var connectivityCache = null;
 
+/* todo#51: bidirectional hover sync across SSH-mesh, res-cards,
+ * activity-cards. Any DOM element with data-host-name / data-machine
+ * matching `host` gets `.mesh-hl`; removed on `off`. Exposed globally so
+ * activity-tab.js and resources-tab.js can call it without a circular
+ * require. */
+function syncHostHover(host, on) {
+  if (!host) return;
+  var selectors = [
+    '.conn-node[data-host-name="' + host + '"]',
+    '.res-card[data-host-name="' + host + '"]',
+    '.activity-card[data-machine="' + host + '"]',
+  ];
+  selectors.forEach(function (sel) {
+    var els;
+    try {
+      els = document.querySelectorAll(sel);
+    } catch (e) {
+      return;
+    }
+    els.forEach(function (el) {
+      if (on) el.classList.add("mesh-hl");
+      else el.classList.remove("mesh-hl");
+    });
+  });
+}
+window.syncHostHover = syncHostHover;
+
 async function fetchConnectivity() {
   try {
-    var res = await fetch(apiUrl("/api/connectivity/"), { credentials: "same-origin" });
+    var res = await fetch(apiUrl("/api/connectivity/"), {
+      credentials: "same-origin",
+    });
     if (!res.ok) return;
     connectivityCache = await res.json();
     renderConnectivityMap();
@@ -18,8 +47,12 @@ async function fetchConnectivity() {
 function _layoutNodes(nodes, cx, cy, innerRadius, outerRadius) {
   var positions = {};
   if (nodes.length === 0) return positions;
-  var machines = nodes.filter(function (n) { return n.type !== "bastion"; });
-  var bastions = nodes.filter(function (n) { return n.type === "bastion"; });
+  var machines = nodes.filter(function (n) {
+    return n.type !== "bastion";
+  });
+  var bastions = nodes.filter(function (n) {
+    return n.type === "bastion";
+  });
   var mCount = machines.length;
 
   /* Machine nodes: evenly around inner ring */
@@ -63,9 +96,20 @@ function _edgePath(p1, p2, offsetSign) {
   var midx = (p1.x + p2.x) / 2 + nx * off * 4;
   var midy = (p1.y + p2.y) / 2 + ny * off * 4;
   /* Quadratic bezier so the arrow direction is visually distinct */
-  return "M " + (p1.x + nx * off) + " " + (p1.y + ny * off) +
-         " Q " + midx + " " + midy +
-         " " + (p2.x + nx * off) + " " + (p2.y + ny * off);
+  return (
+    "M " +
+    (p1.x + nx * off) +
+    " " +
+    (p1.y + ny * off) +
+    " Q " +
+    midx +
+    " " +
+    midy +
+    " " +
+    (p2.x + nx * off) +
+    " " +
+    (p2.y + ny * off)
+  );
 }
 
 function renderConnectivityMap() {
@@ -75,11 +119,17 @@ function renderConnectivityMap() {
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var container = document.getElementById("connectivity-map");
   if (!container) return;
-  if (!connectivityCache || !connectivityCache.nodes || connectivityCache.nodes.length === 0) {
+  if (
+    !connectivityCache ||
+    !connectivityCache.nodes ||
+    connectivityCache.nodes.length === 0
+  ) {
     container.innerHTML = '<p class="empty-notice">No connectivity data.</p>';
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
     return;
   }
@@ -96,33 +146,49 @@ function renderConnectivityMap() {
   var positions = _layoutNodes(nodes, cx, cy, innerRadius, outerRadius);
 
   /* Pair up bidirectional edges so we can offset them */
-  var edgeKey = function (e) { return e.source + "→" + e.target; };
+  var edgeKey = function (e) {
+    return e.source + "→" + e.target;
+  };
   var seen = {};
 
   var svgParts = [];
   svgParts.push(
-    '<svg class="connectivity-svg" viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '">'
+    '<svg class="connectivity-svg" viewBox="0 0 ' +
+      W +
+      " " +
+      H +
+      '" width="100%" height="' +
+      H +
+      '">',
   );
   /* Definitions: arrowhead markers */
   svgParts.push(
-    '<defs>' +
-    '<marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
-    '<path d="M 0 0 L 10 5 L 0 10 z" fill="#4ecdc4"/></marker>' +
-    '<marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
-    '<path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"/></marker>' +
-    '<marker id="arrow-pending" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
-    '<path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b"/></marker>' +
-    '</defs>'
+    "<defs>" +
+      '<marker id="arrow-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+      '<path d="M 0 0 L 10 5 L 0 10 z" fill="#4ecdc4"/></marker>' +
+      '<marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+      '<path d="M 0 0 L 10 5 L 0 10 z" fill="#ef4444"/></marker>' +
+      '<marker id="arrow-pending" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">' +
+      '<path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b"/></marker>' +
+      "</defs>",
   );
   /* Separate machine vs bastion nodes */
-  var machineNodes = nodes.filter(function (n) { return n.type !== "bastion"; });
-  var bastionNodes = nodes.filter(function (n) { return n.type === "bastion"; });
+  var machineNodes = nodes.filter(function (n) {
+    return n.type !== "bastion";
+  });
+  var bastionNodes = nodes.filter(function (n) {
+    return n.type === "bastion";
+  });
   /* Separate bastion-anchor edges from machine-to-machine edges */
   var bastionAnchorEdges = edges.filter(function (e) {
-    return e.source.indexOf("bastion") === 0 || e.target.indexOf("bastion") === 0;
+    return (
+      e.source.indexOf("bastion") === 0 || e.target.indexOf("bastion") === 0
+    );
   });
   var machineEdges = edges.filter(function (e) {
-    return e.source.indexOf("bastion") !== 0 && e.target.indexOf("bastion") !== 0;
+    return (
+      e.source.indexOf("bastion") !== 0 && e.target.indexOf("bastion") !== 0
+    );
   });
 
   /* Draw bastion anchor edges (dashed, thin) first */
@@ -130,13 +196,26 @@ function renderConnectivityMap() {
     var p1 = positions[e.source];
     var p2 = positions[e.target];
     if (!p1 || !p2) return;
-    var color = e.status === "ok" ? "#4ecdc4" : e.status === "pending" ? "#f59e0b" : "#ef4444";
+    var color =
+      e.status === "ok"
+        ? "#4ecdc4"
+        : e.status === "pending"
+          ? "#f59e0b"
+          : "#ef4444";
     var d = "M " + p1.x + " " + p1.y + " L " + p2.x + " " + p2.y;
     svgParts.push(
-      '<path d="' + d + '" stroke="' + color + '" stroke-width="1" fill="none" ' +
-      'stroke-dasharray="3 3" opacity="0.5">' +
-      '<title>' + escapeHtml(e.source) + ' ↔ ' + escapeHtml(e.target) + ' (CF tunnel)</title>' +
-      '</path>'
+      '<path d="' +
+        d +
+        '" stroke="' +
+        color +
+        '" stroke-width="1" fill="none" ' +
+        'stroke-dasharray="3 3" opacity="0.5">' +
+        "<title>" +
+        escapeHtml(e.source) +
+        " ↔ " +
+        escapeHtml(e.target) +
+        " (CF tunnel)</title>" +
+        "</path>",
     );
   });
 
@@ -155,11 +234,25 @@ function renderConnectivityMap() {
     var dash = e.status === "ok" ? "" : 'stroke-dasharray="4 4"';
     var marker = e.status === "ok" ? "url(#arrow-ok)" : "url(#arrow-fail)";
     svgParts.push(
-      '<path d="' + d + '" stroke="' + color + '" stroke-width="1.5" fill="none" ' +
-      dash + ' marker-end="' + marker + '" opacity="0.75">' +
-      '<title>' + escapeHtml(e.source) + ' → ' + escapeHtml(e.target) +
-      ' (' + escapeHtml(e.status) + ', ' + escapeHtml(e.method) + ')</title>' +
-      '</path>'
+      '<path d="' +
+        d +
+        '" stroke="' +
+        color +
+        '" stroke-width="1.5" fill="none" ' +
+        dash +
+        ' marker-end="' +
+        marker +
+        '" opacity="0.75">' +
+        "<title>" +
+        escapeHtml(e.source) +
+        " → " +
+        escapeHtml(e.target) +
+        " (" +
+        escapeHtml(e.status) +
+        ", " +
+        escapeHtml(e.method) +
+        ")</title>" +
+        "</path>",
     );
   });
 
@@ -172,15 +265,38 @@ function renderConnectivityMap() {
     var fill = isPending ? "rgba(245,158,11,0.12)" : "rgba(78,205,196,0.10)";
     svgParts.push(
       '<g class="conn-node conn-node-bastion">' +
-      '<rect x="' + (p.x - bastionR) + '" y="' + (p.y - bastionR * 0.7) + '" ' +
-      'width="' + (bastionR * 2) + '" height="' + (bastionR * 1.4) + '" rx="8" ry="8" ' +
-      'fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5" ' +
-      (isPending ? 'stroke-dasharray="4 2"' : '') + '/>' +
-      '<text x="' + p.x + '" y="' + (p.y + 3) + '" text-anchor="middle" ' +
-      'class="conn-node-label conn-bastion-label">' +
-      '☁ ' + escapeHtml(n.label.replace('bastion-', '')) + '</text>' +
-      '<title>' + escapeHtml(n.label) + ' — ' + escapeHtml(n.role || "") + '</title>' +
-      '</g>'
+        '<rect x="' +
+        (p.x - bastionR) +
+        '" y="' +
+        (p.y - bastionR * 0.7) +
+        '" ' +
+        'width="' +
+        bastionR * 2 +
+        '" height="' +
+        bastionR * 1.4 +
+        '" rx="8" ry="8" ' +
+        'fill="' +
+        fill +
+        '" stroke="' +
+        stroke +
+        '" stroke-width="1.5" ' +
+        (isPending ? 'stroke-dasharray="4 2"' : "") +
+        "/>" +
+        '<text x="' +
+        p.x +
+        '" y="' +
+        (p.y + 3) +
+        '" text-anchor="middle" ' +
+        'class="conn-node-label conn-bastion-label">' +
+        "☁ " +
+        escapeHtml(n.label.replace("bastion-", "")) +
+        "</text>" +
+        "<title>" +
+        escapeHtml(n.label) +
+        " — " +
+        escapeHtml(n.role || "") +
+        "</title>" +
+        "</g>",
     );
   });
 
@@ -188,43 +304,108 @@ function renderConnectivityMap() {
   machineNodes.forEach(function (n) {
     var p = positions[n.id];
     if (!p) return;
+    /* todo#51: data-host-name lets hover-sync find the node from res-card
+     * and activity-card mouseenter handlers. Use n.id (matches .res-card
+     * data-host-name and .activity-card data-machine). */
     svgParts.push(
-      '<g class="conn-node">' +
-      '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + nodeR + '" ' +
-      'fill="#141414" stroke="#4ecdc4" stroke-width="2"/>' +
-      '<text x="' + p.x + '" y="' + (p.y + 4) + '" text-anchor="middle" ' +
-      'class="conn-node-label">' + escapeHtml(n.label) + '</text>' +
-      '<title>' + escapeHtml(n.label) + ' — ' + escapeHtml(n.role || "") + '</title>' +
-      '</g>'
+      '<g class="conn-node" data-host-name="' +
+        escapeHtml(n.id) +
+        '">' +
+        '<circle cx="' +
+        p.x +
+        '" cy="' +
+        p.y +
+        '" r="' +
+        nodeR +
+        '" ' +
+        'fill="#141414" stroke="#4ecdc4" stroke-width="2"/>' +
+        '<text x="' +
+        p.x +
+        '" y="' +
+        (p.y + 4) +
+        '" text-anchor="middle" ' +
+        'class="conn-node-label">' +
+        escapeHtml(n.label) +
+        "</text>" +
+        "<title>" +
+        escapeHtml(n.label) +
+        " — " +
+        escapeHtml(n.role || "") +
+        "</title>" +
+        "</g>",
     );
   });
   svgParts.push("</svg>");
 
   /* Build the legend + summary */
-  var okCount = edges.filter(function (e) { return e.status === "ok"; }).length;
-  var failCount = edges.filter(function (e) { return e.status === "fail"; }).length;
-  var pendingCount = edges.filter(function (e) { return e.status === "pending"; }).length;
-  var bastionLive = nodes.filter(function (n) { return n.type === "bastion" && n.status !== "pending"; }).length;
-  var bastionTotal = nodes.filter(function (n) { return n.type === "bastion"; }).length;
+  var okCount = edges.filter(function (e) {
+    return e.status === "ok";
+  }).length;
+  var failCount = edges.filter(function (e) {
+    return e.status === "fail";
+  }).length;
+  var pendingCount = edges.filter(function (e) {
+    return e.status === "pending";
+  }).length;
+  var bastionLive = nodes.filter(function (n) {
+    return n.type === "bastion" && n.status !== "pending";
+  }).length;
+  var bastionTotal = nodes.filter(function (n) {
+    return n.type === "bastion";
+  }).length;
   var srcLabel = connectivityCache.source === "live" ? "live" : "static";
-  var pendingPill = pendingCount > 0
-    ? '<span class="conn-pill conn-pill-pending">☁ ' + bastionLive + '/' + bastionTotal + ' CF tunnels</span>'
-    : '<span class="conn-pill conn-pill-ok">☁ ' + bastionLive + '/' + bastionTotal + ' CF tunnels</span>';
+  var pendingPill =
+    pendingCount > 0
+      ? '<span class="conn-pill conn-pill-pending">☁ ' +
+        bastionLive +
+        "/" +
+        bastionTotal +
+        " CF tunnels</span>"
+      : '<span class="conn-pill conn-pill-ok">☁ ' +
+        bastionLive +
+        "/" +
+        bastionTotal +
+        " CF tunnels</span>";
   var html =
     '<div class="connectivity-header">' +
     '<span class="connectivity-title">SSH mesh</span>' +
     '<span class="connectivity-summary">' +
     pendingPill +
-    '<span class="conn-pill conn-pill-ok">' + okCount + ' links ok</span>' +
-    (failCount ? '<span class="conn-pill conn-pill-fail">' + failCount + ' blocked</span>' : '') +
-    '<span class="conn-source">(' + escapeHtml(srcLabel) + ')</span>' +
-    '</span>' +
-    '</div>' +
+    '<span class="conn-pill conn-pill-ok">' +
+    okCount +
+    " links ok</span>" +
+    (failCount
+      ? '<span class="conn-pill conn-pill-fail">' +
+        failCount +
+        " blocked</span>"
+      : "") +
+    '<span class="conn-source">(' +
+    escapeHtml(srcLabel) +
+    ")</span>" +
+    "</span>" +
+    "</div>" +
     svgParts.join("");
   container.innerHTML = html;
+  /* todo#51: after innerHTML swap, re-attach hover handlers on each
+   * machine node. Delegation via the SVG root is awkward because the
+   * event target is the inner <circle> or <text>. */
+  Array.prototype.forEach.call(
+    container.querySelectorAll(".conn-node[data-host-name]"),
+    function (g) {
+      var host = g.getAttribute("data-host-name");
+      g.addEventListener("mouseenter", function () {
+        syncHostHover(host, true);
+      });
+      g.addEventListener("mouseleave", function () {
+        syncHostHover(host, false);
+      });
+    },
+  );
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
