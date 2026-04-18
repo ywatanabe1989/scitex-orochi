@@ -1225,12 +1225,11 @@ function _renderActivityTopology(visible, grid) {
     })
     .join("");
 
-  /* Agent circles — main disc colored by identity (name/host/account),
-   * with TWO LED dots at the upper edge matching the list view's twin-
-   * indicator pattern (ywatanabe 2026-04-19: "keep the twin indicators
-   * throughout the app to reduce users mental burden"). Left LED = WS
-   * connection, right LED = functional liveness. Stroke reserved for
-   * pin-ring only. */
+  /* Agent nodes — no big identity disc (the disc + two LEDs read as a
+   * "face", ywatanabe 2026-04-19). Just the twin-LED pair the list
+   * view uses — WS on the left, functional liveness on the right —
+   * followed by the agent name (identity color goes on the text).
+   * Pinned agents get a small gold pushpin prefix instead of a ring. */
   var FN_COLORS = {
     online: "#4ecdc4",
     idle: "#ffd93d",
@@ -1252,59 +1251,56 @@ function _renderActivityTopology(visible, grid) {
           : cleanAgentName
             ? cleanAgentName(a.name)
             : a.name;
-      var pinRing = a.pinned
-        ? '<circle cx="' +
-          p.x +
-          '" cy="' +
-          p.y +
-          '" r="18" fill="none" stroke="#fbbf24" stroke-width="2"/>'
-        : "";
-      /* Two LED dots at the 11 o'clock and 1 o'clock positions on the
-       * circle edge — same order as the list row (WS first, FN second).
-       * r=4 with a dark stroke so they're legible on any identity color. */
-      var R = 14;
-      var ledDx = R * 0.55;
-      var ledDy = -R * 0.85;
+      /* Two small LEDs centered on the ring position, then the label to
+       * the right. Gap between LEDs = 10px so they read as a pair, not
+       * a single smear. */
+      var LED_R = 4;
+      var GAP = 5;
+      var wsCx = p.x - (LED_R + GAP / 2);
+      var fnCx = p.x + (LED_R + GAP / 2);
       var wsLed =
         '<circle cx="' +
-        (p.x - ledDx).toFixed(1) +
+        wsCx.toFixed(1) +
         '" cy="' +
-        (p.y + ledDy).toFixed(1) +
-        '" r="4" fill="' +
+        p.y.toFixed(1) +
+        '" r="' +
+        LED_R +
+        '" fill="' +
         wsColor +
-        '" stroke="#0a0a0a" stroke-width="1"><title>WebSocket: ' +
+        '" stroke="#0a0a0a" stroke-width="0.5"><title>WebSocket: ' +
         (connected ? "connected" : "disconnected") +
         "</title></circle>";
       var fnLed =
         '<circle cx="' +
-        (p.x + ledDx).toFixed(1) +
+        fnCx.toFixed(1) +
         '" cy="' +
-        (p.y + ledDy).toFixed(1) +
-        '" r="4" fill="' +
+        p.y.toFixed(1) +
+        '" r="' +
+        LED_R +
+        '" fill="' +
         fnColor +
-        '" stroke="#0a0a0a" stroke-width="1"><title>Liveness: ' +
+        '" stroke="#0a0a0a" stroke-width="0.5"><title>Liveness: ' +
         escapeHtml(liveness) +
         "</title></circle>";
+      var pinMark = a.pinned
+        ? '<text class="topo-label-pin" x="' +
+          (p.x + LED_R + GAP / 2 + 8).toFixed(1) +
+          '" y="' +
+          (p.y + 4).toFixed(1) +
+          '" fill="#fbbf24" font-size="11">\uD83D\uDCCC</text>'
+        : "";
+      var nameX = p.x + LED_R + GAP / 2 + (a.pinned ? 22 : 8);
       return (
         '<g class="topo-node topo-agent" data-agent="' +
         escapeHtml(a.name) +
         '">' +
-        pinRing +
-        '<circle cx="' +
-        p.x +
-        '" cy="' +
-        p.y +
-        '" r="' +
-        R +
-        '" fill="' +
-        color +
-        '" stroke="#0a0a0a" stroke-width="1"/>' +
         wsLed +
         fnLed +
+        pinMark +
         '<text class="topo-label topo-label-agent" x="' +
-        (p.x + 20) +
+        nameX.toFixed(1) +
         '" y="' +
-        (p.y + 4) +
+        (p.y + 4).toFixed(1) +
         '" fill="' +
         color +
         '">' +
