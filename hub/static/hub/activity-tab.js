@@ -1264,7 +1264,7 @@ function _repaintTopoArrows() {
  * whole shape reads as a capsule pointing downstream. Flying a few
  * of these in quick succession gives a "data bus" feel (buzz factor
  * per ywatanabe 2026-04-19). Self-removes ~80ms after animation. */
-function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
+function _topoSpawnPacket(edges, from, to, dur, delay, klass, opts) {
   var ns = "http://www.w3.org/2000/svg";
   var dx = to.x - from.x;
   var dy = to.y - from.y;
@@ -1298,7 +1298,56 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
     core.setAttribute("fill-opacity", "0.95");
     g.appendChild(core);
   }
+  /* Babble — a small speech-bubble that follows the packet showing the
+   * first ~60 chars of the message text (or "📎" for attachment-only
+   * packets). Fades out in sync with the packet. Built as an SVG
+   * <rect>+<text> pair so it translates naturally with cx/cy updates
+   * and stays inside the topology <svg>'s coord system. SVG <text>
+   * has no native background, hence the <rect> drawn first. */
+  var babbleText = opts && opts.text ? String(opts.text) : "";
+  /* Truncate to 60 chars + ellipsis. Also collapse newlines so the
+   * bubble stays one line. */
+  babbleText = babbleText.replace(/\s+/g, " ").trim();
+  if (babbleText.length > 60) babbleText = babbleText.slice(0, 60) + "\u2026";
+  var babbleRect = null;
+  var babbleTxt = null;
+  if (babbleText) {
+    babbleTxt = document.createElementNS(ns, "text");
+    babbleTxt.setAttribute("class", "topo-packet-babble");
+    babbleTxt.setAttribute("x", String(from.x));
+    babbleTxt.setAttribute("y", String(from.y - 14));
+    babbleTxt.setAttribute("text-anchor", "middle");
+    babbleTxt.setAttribute("dominant-baseline", "middle");
+    babbleTxt.textContent = babbleText;
+    /* Underlay rectangle for legibility — sized after we measure the
+     * <text>, since bbox needs the node attached to the DOM. */
+    babbleRect = document.createElementNS(ns, "rect");
+    babbleRect.setAttribute("class", "topo-packet-babble-bg");
+    babbleRect.setAttribute("rx", "3");
+    babbleRect.setAttribute("ry", "3");
+    /* Insert rect first so text renders on top. */
+    g.appendChild(babbleRect);
+    g.appendChild(babbleTxt);
+  }
   edges.appendChild(g);
+
+  /* Size the bg rect once the text is in the DOM (getBBox needs it). */
+  var babbleBBox = null;
+  if (babbleTxt && babbleRect) {
+    try {
+      babbleBBox = babbleTxt.getBBox();
+    } catch (_) {
+      babbleBBox = null;
+    }
+    if (babbleBBox) {
+      var padX = 4;
+      var padY = 1.5;
+      babbleRect.setAttribute("x", String(babbleBBox.x - padX));
+      babbleRect.setAttribute("y", String(babbleBBox.y - padY));
+      babbleRect.setAttribute("width", String(babbleBBox.width + padX * 2));
+      babbleRect.setAttribute("height", String(babbleBBox.height + padY * 2));
+    }
+  }
 
   var startTime = null;
   function _frame(ts) {
@@ -1310,17 +1359,19 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
       return;
     }
     var t = Math.min(1, elapsed / dur);
+    var curX = from.x;
+    var curY = from.y;
     if (inPlace) {
       /* Expanding fading ring. */
       burst.setAttribute("r", String(4 + (20 - 4) * t));
       burst.setAttribute("fill-opacity", String(0.55 * (1 - t)));
     } else {
-      var x = from.x + dx * t;
-      var y = from.y + dy * t;
-      halo.setAttribute("cx", String(x));
-      halo.setAttribute("cy", String(y));
-      core.setAttribute("cx", String(x));
-      core.setAttribute("cy", String(y));
+      curX = from.x + dx * t;
+      curY = from.y + dy * t;
+      halo.setAttribute("cx", String(curX));
+      halo.setAttribute("cy", String(curY));
+      core.setAttribute("cx", String(curX));
+      core.setAttribute("cy", String(curY));
       /* Breathing pulse — subtle size modulation while in flight so the
        * packet reads as a live/organic thing, not a rigid dot. Two
        * breaths per traversal, halo ±22%, core ±15%. ywatanabe
@@ -1335,6 +1386,26 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
         var fade = 1 - (t - 0.8) / 0.2;
         halo.setAttribute("fill-opacity", String(0.2 * fade));
         core.setAttribute("fill-opacity", String(0.95 * fade));
+      }
+    }
+    /* Move the babble bubble along with the packet. The bubble sits
+     * ~14px above the packet so it never overlaps the core dot. It
+     * fades out on the same last-20% curve so landing feels clean. */
+    if (babbleTxt) {
+      babbleTxt.setAttribute("x", String(curX));
+      babbleTxt.setAttribute("y", String(curY - 14));
+      if (babbleRect && babbleBBox) {
+        /* Recompute rect position based on current text-anchor=middle. */
+        babbleRect.setAttribute("x", String(curX - babbleBBox.width / 2 - 4));
+        babbleRect.setAttribute(
+          "y",
+          String(curY - 14 - babbleBBox.height / 2 - 1.5),
+        );
+      }
+      var bfade = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
+      babbleTxt.setAttribute("fill-opacity", String(bfade));
+      if (babbleRect) {
+        babbleRect.setAttribute("fill-opacity", String(0.8 * bfade));
       }
     }
     if (t < 1) {
@@ -1404,6 +1475,14 @@ function _topoPulseEdge(sender, channel, opts) {
   if (!edges) return;
   var klass =
     opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
+  /* Babble text that rides each packet. Caller passes the message
+   * preview via opts.text (or opts.babble). Attachment-only posts
+   * pass "📎" from app.js. */
+  var babble = "";
+  if (opts) {
+    babble = opts.text || opts.babble || "";
+  }
+  var packetOpts = { text: babble };
   /* 0.5 second per leg — balance between legibility and not blocking
    * rapid multi-message bursts (ywatanabe 2026-04-19: "0.5s / edge
    * would be good in balance"). */
@@ -1468,12 +1547,12 @@ function _topoPulseEdge(sender, channel, opts) {
   var ap = sender ? _topoLastPositions.agents[sender] : null;
   var leg2Delay = 0;
   if (ap) {
-    _topoSpawnPacket(edges, ap, cp, LEG, 0, klass);
+    _topoSpawnPacket(edges, ap, cp, LEG, 0, klass, packetOpts);
     leg2Delay = LEG;
   } else {
     /* Brief in-place pulse on the channel so the origin is visible
      * before the fan-out leg. */
-    _topoSpawnPacket(edges, cp, cp, 180, 0, klass);
+    _topoSpawnPacket(edges, cp, cp, 180, 0, klass, packetOpts);
   }
   /* Leg 2 — channel → every other connected node (subscribed agents
    * AND the human user). The human is in _topoLastPositions.agents
@@ -1501,7 +1580,7 @@ function _topoPulseEdge(sender, channel, opts) {
   subscribers.forEach(function (n) {
     var target = _topoLastPositions.agents[n];
     if (!target) return;
-    _topoSpawnPacket(edges, cp, target, LEG, leg2Delay, klass);
+    _topoSpawnPacket(edges, cp, target, LEG, leg2Delay, klass, packetOpts);
   });
 }
 window._topoPulseEdge = _topoPulseEdge;
