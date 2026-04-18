@@ -140,30 +140,90 @@ function _renderAgentDetail(a) {
     if (reset) s += " (resets " + reset + ")";
     return s;
   }
+  /* Smart middle-truncation for long paths (e.g. workdirs). Keep the
+   * first and last segments readable and drop the middle so the cell
+   * doesn't steal a full row. Full path goes into the title tooltip. */
+  function _smartTruncatePath(p, max) {
+    if (!p) return p;
+    var home = /^\/home\/[^/]+/;
+    var display = String(p).replace(home, "~");
+    if (display.length <= max) return display;
+    var head = Math.floor((max - 1) / 2);
+    var tail = max - 1 - head;
+    return display.slice(0, head) + "\u2026" + display.slice(-tail);
+  }
+  /* [label, value, tooltip] — tooltip optional. The detail-meta-grid
+   * renderer below writes the tooltip onto the <span> so hovering a
+   * cell reveals the full value (critical for workdir paths that get
+   * middle-truncated). */
   var metaFields = [
-    ["Role", role],
-    ["Machine", machine],
-    ["Model", model],
-    ["Multiplexer", multiplexer || "-"],
-    ["PID", pid || "-"],
-    ["Liveness", liveness],
-    ["Context", ctxPct != null ? Number(ctxPct).toFixed(1) + "%" : "-"],
-    ["5h quota", _fmtQuota(q5, q5Reset)],
-    ["7d quota", _fmtQuota(q7, q7Reset)],
+    ["Role", role, "declared agent role (head / healer / expert-scitex / ...)"],
+    ["Machine", machine, "canonical hostname the agent is running on"],
+    ["Model", model, "Claude model id the agent is running against"],
+    [
+      "Multiplexer",
+      multiplexer || "-",
+      "tmux / screen session hosting the agent process",
+    ],
+    ["PID", pid || "-", "host-side process id of the claude-code binary"],
+    [
+      "Liveness",
+      liveness,
+      "push-freshness: online <2m, idle 2–10m, stale >10m, offline disconnected",
+    ],
+    [
+      "Context",
+      ctxPct != null ? Number(ctxPct).toFixed(1) + "%" : "-",
+      "context-window usage reported by claude-hud",
+    ],
+    [
+      "5h quota",
+      _fmtQuota(q5, q5Reset),
+      "rolling 5-hour Claude usage quota consumed",
+    ],
+    [
+      "7d quota",
+      _fmtQuota(q7, q7Reset),
+      "rolling 7-day Claude usage quota consumed",
+    ],
     [
       "Subagents (" + (subagentCount != null ? subagentCount : 0) + ")",
       subagentCount != null ? String(subagentCount) : "-",
+      "active Agent-tool subagents spawned by this agent",
     ],
-    ["Uptime", d.uptime_seconds != null ? _fmtDuration(d.uptime_seconds) : "-"],
-    ["Idle", idleSec != null ? _fmtDuration(idleSec) : "-"],
-    ["Workdir", workdir || "-"],
-    ["Registered", registeredAt || "-"],
-    ["Last heartbeat", lastHeartbeat || "-"],
+    [
+      "Uptime",
+      d.uptime_seconds != null ? _fmtDuration(d.uptime_seconds) : "-",
+      "time since this agent first registered",
+    ],
+    [
+      "Idle",
+      idleSec != null ? _fmtDuration(idleSec) : "-",
+      "time since this agent last reported activity",
+    ],
+    [
+      "Workdir",
+      _smartTruncatePath(workdir, 40) || "-",
+      workdir || "(no workdir reported)",
+    ],
+    [
+      "Registered",
+      registeredAt || "-",
+      "iso timestamp of the first register heartbeat",
+    ],
+    [
+      "Last heartbeat",
+      lastHeartbeat || "-",
+      "iso timestamp of the most recent push",
+    ],
   ];
   var metaHtml = metaFields
     .map(function (f) {
+      var tip = f[2] ? ' title="' + escapeHtml(String(f[2])) + '"' : "";
       return (
-        "<span><strong>" +
+        "<span" +
+        tip +
+        "><strong>" +
         escapeHtml(f[0]) +
         ":</strong>" +
         escapeHtml(String(f[1])) +
