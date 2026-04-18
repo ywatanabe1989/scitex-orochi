@@ -1224,93 +1224,63 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
   var dx = to.x - from.x;
   var dy = to.y - from.y;
   var inPlace = Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5;
-  var angleDeg = Math.atan2(dy, dx) * (180 / Math.PI);
-  /* Nested groups so the TRANSLATE animation runs in screen coords,
-   * not rotated coords. Previous single-<g> form combined translate +
-   * rotate on the same element with additive="sum"; the animated
-   * translate was then applied AFTER the rotate, which moved the
-   * packet along the rotated X-axis instead of along the edge line
-   * (user-visible bug: "light ball shown in a different position").
-   * Outer <g> carries the animated translate (screen-space); inner
-   * <g> holds only the rotate so the arrow glyph points along the
-   * flight direction. */
-  var outer = document.createElementNS(ns, "g");
-  outer.setAttribute("class", "topo-packet " + (klass || ""));
-  outer.setAttribute("transform", "translate(" + from.x + "," + from.y + ")");
-  var inner = document.createElementNS(ns, "g");
-  inner.setAttribute("transform", "rotate(" + angleDeg + ")");
-  outer.appendChild(inner);
+  /* Back to the simple, rock-solid approach: animate cx/cy directly
+   * on each circle. No transforms, no additive compositing, no
+   * nested groups — just <animate attributeName="cx"/"cy"> from the
+   * sender's position to the receiver's position. Circles are
+   * symmetric, so rotation is unnecessary. ywatanabe 2026-04-19:
+   * "is it not possible to implement animation to move from start to
+   * end?" — yes, and this is the cleanest path. */
+  var g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "topo-packet " + (klass || ""));
+  function _mkCircle(r, fillOpacity) {
+    var c = document.createElementNS(ns, "circle");
+    c.setAttribute("cx", String(from.x));
+    c.setAttribute("cy", String(from.y));
+    c.setAttribute("r", String(r));
+    c.setAttribute("fill-opacity", String(fillOpacity));
+    return c;
+  }
+  function _animate(node, attr, fromVal, toVal) {
+    var a = document.createElementNS(ns, "animate");
+    a.setAttribute("attributeName", attr);
+    a.setAttribute("from", String(fromVal));
+    a.setAttribute("to", String(toVal));
+    a.setAttribute("dur", dur + "ms");
+    a.setAttribute("begin", delay + "ms");
+    a.setAttribute("fill", "freeze");
+    node.appendChild(a);
+  }
   if (inPlace) {
-    /* Origin pulse — expanding fading ring so the channel-node flashes
-     * at the start of the message-pass animation. */
-    var burst = document.createElementNS(ns, "circle");
-    burst.setAttribute("cx", "0");
-    burst.setAttribute("cy", "0");
-    burst.setAttribute("r", "4");
-    burst.setAttribute("fill-opacity", "0.55");
-    var br = document.createElementNS(ns, "animate");
-    br.setAttribute("attributeName", "r");
-    br.setAttribute("from", "4");
-    br.setAttribute("to", "18");
-    br.setAttribute("dur", dur + "ms");
-    br.setAttribute("begin", delay + "ms");
-    br.setAttribute("fill", "freeze");
-    var bo = document.createElementNS(ns, "animate");
-    bo.setAttribute("attributeName", "fill-opacity");
-    bo.setAttribute("from", "0.55");
-    bo.setAttribute("to", "0");
-    bo.setAttribute("dur", dur + "ms");
-    bo.setAttribute("begin", delay + "ms");
-    bo.setAttribute("fill", "freeze");
-    burst.appendChild(br);
-    burst.appendChild(bo);
-    inner.appendChild(burst);
+    /* Origin pulse — expanding fading ring (r grows, opacity fades). */
+    var burst = _mkCircle(4, 0.55);
+    _animate(burst, "r", 4, 20);
+    _animate(burst, "fill-opacity", 0.55, 0);
+    g.appendChild(burst);
   } else {
-    /* Simple circle packet with subtle flash — ywatanabe 2026-04-19:
-     * "instead of oval, circle packet with subtle flashing will be
-     * modern". Outer soft halo + bright core circle; the core opacity
-     * pulses over the flight duration so the packet "breathes" as it
-     * travels along the edge. */
-    var halo = document.createElementNS(ns, "circle");
-    halo.setAttribute("cx", "0");
-    halo.setAttribute("cy", "0");
-    halo.setAttribute("r", "16");
-    halo.setAttribute("fill-opacity", "0.2");
-    inner.appendChild(halo);
-    var core = document.createElementNS(ns, "circle");
-    core.setAttribute("cx", "0");
-    core.setAttribute("cy", "0");
-    core.setAttribute("r", "7");
-    core.setAttribute("fill-opacity", "0.95");
-    /* Subtle flash: opacity oscillates 0.75 ↔ 1.0 at 2× frequency over
-     * the flight duration. Values list = "0.75;1;0.75;1;0.75" gives
-     * two pulses regardless of dur. */
+    /* Halo + core traveling from (from.x,from.y) to (to.x,to.y). */
+    var halo = _mkCircle(16, 0.2);
+    _animate(halo, "cx", from.x, to.x);
+    _animate(halo, "cy", from.y, to.y);
+    g.appendChild(halo);
+    var core = _mkCircle(7, 0.95);
+    _animate(core, "cx", from.x, to.x);
+    _animate(core, "cy", from.y, to.y);
+    /* Subtle "action-potential" flash — opacity oscillates while the
+     * packet travels. Two pulses per flight. */
     var pulse = document.createElementNS(ns, "animate");
     pulse.setAttribute("attributeName", "fill-opacity");
-    pulse.setAttribute("values", "0.75;1;0.75;1;0.75");
+    pulse.setAttribute("values", "0.7;1;0.7;1;0.7");
     pulse.setAttribute("dur", dur + "ms");
     pulse.setAttribute("begin", delay + "ms");
     pulse.setAttribute("fill", "freeze");
     core.appendChild(pulse);
-    inner.appendChild(core);
-    /* Animate the OUTER translate in screen coordinates so the packet
-     * actually tracks from→to. additive="sum" on top of the base
-     * translate(fromX,fromY). */
-    var at = document.createElementNS(ns, "animateTransform");
-    at.setAttribute("attributeName", "transform");
-    at.setAttribute("type", "translate");
-    at.setAttribute("from", "0,0");
-    at.setAttribute("to", dx + "," + dy);
-    at.setAttribute("dur", dur + "ms");
-    at.setAttribute("begin", delay + "ms");
-    at.setAttribute("additive", "sum");
-    at.setAttribute("fill", "freeze");
-    outer.appendChild(at);
+    g.appendChild(core);
   }
-  edges.appendChild(outer);
+  edges.appendChild(g);
   setTimeout(
     function () {
-      if (outer.parentNode) outer.parentNode.removeChild(outer);
+      if (g.parentNode) g.parentNode.removeChild(g);
     },
     dur + delay + 80,
   );
