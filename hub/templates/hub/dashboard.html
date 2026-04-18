@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
     <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=127">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=104">
-    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=105">
+    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=106">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
@@ -147,9 +147,20 @@
                 <div id="ch-members-list" class="ch-members-list"></div>
             </div>
             <div id="messages" class="messages"></div>
+            <!-- hook-bypass: inline-style -->
             <div id="todo-view" class="todo-view" style="display:none">
                 <div id="todo-stats" class="todo-stats"></div>
                 <div class="todo-state-filter">
+                    <div class="todo-view-switch" role="tablist" aria-label="todo view mode">
+                        <button type="button"
+                                class="todo-view-switch-btn"
+                                data-view="viz"
+                                title="velocity / dependency visualization">Viz</button>
+                        <button type="button"
+                                class="todo-view-switch-btn active"
+                                data-view="list"
+                                title="grouped list">List</button>
+                    </div>
                     <button type="button" class="todo-state-btn active" data-group="all">All</button>
                     <button type="button" class="todo-state-btn" data-group="high-priority">High</button>
                     <button type="button" class="todo-state-btn" data-group="medium-priority">Medium</button>
@@ -160,10 +171,6 @@
                     <span id="todo-last-updated"
                           class="todo-last-updated"
                           title="Last fetched from GitHub"></span>
-                    <button type="button"
-                            id="todo-viz-toggle"
-                            class="todo-viz-toggle"
-                            title="Show velocity chart">Viz</button>
                 </div>
                 <div id="todo-grid" class="todo-grid"></div>
                 <div id="viz-content" class="viz-content todo-viz-hidden"></div>
@@ -394,7 +401,7 @@
     <script src="{% static 'hub/dms.js' %}?v=3"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=101"></script>
-    <script src="{% static 'hub/todo-tab.js' %}?v=107"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=108"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/chat.js' %}?v=121"></script>
     <script src="{% static 'hub/mention.js' %}?v=101"></script>
@@ -404,7 +411,7 @@
     <script src="{% static 'hub/blockers.js' %}?v=1"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=110"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=100"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=133"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=134"></script>
     <script src="{% static 'hub/viz-tab.js' %}?v=4"></script>
     <script src="{% static 'hub/upload.js' %}?v=112"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=104"></script>

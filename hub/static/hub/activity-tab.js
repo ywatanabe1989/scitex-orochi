@@ -1071,9 +1071,10 @@ function _computeAgentState(a) {
 var _topoLastSig = "";
 var _topoLastExpanded = null;
 function _topoSignature(visible) {
-  /* Cheap digest: name + online-ness + pinned + channel count.
-   * Individual idle-seconds or heartbeat timestamps deliberately
-   * excluded — those flap every second and cause pointless repaints. */
+  /* Cheap digest: name + online-ness + liveness bucket + pinned +
+   * channel count. Liveness is in so the FN LED color follows the
+   * online→idle→stale transitions. Individual idle-seconds are NOT —
+   * those flap every second and would cause pointless repaints. */
   var parts = [];
   for (var i = 0; i < visible.length; i++) {
     var a = visible[i];
@@ -1082,6 +1083,8 @@ function _topoSignature(visible) {
       (a.name || "") +
         ":" +
         (a.status === "offline" ? "0" : "1") +
+        ":" +
+        (a.liveness || a.status || "online") +
         ":" +
         (a.pinned ? "1" : "0") +
         ":" +
@@ -1222,13 +1225,27 @@ function _renderActivityTopology(visible, grid) {
     })
     .join("");
 
-  /* Agent circles with label to the right. */
+  /* Agent circles — main disc colored by identity (name/host/account),
+   * with TWO LED dots at the upper edge matching the list view's twin-
+   * indicator pattern (ywatanabe 2026-04-19: "keep the twin indicators
+   * throughout the app to reduce users mental burden"). Left LED = WS
+   * connection, right LED = functional liveness. Stroke reserved for
+   * pin-ring only. */
+  var FN_COLORS = {
+    online: "#4ecdc4",
+    idle: "#ffd93d",
+    stale: "#ff8c42",
+    offline: "#555",
+  };
   var agentSvg = visible
     .map(function (a) {
       var p = agentPos[a.name];
       var color = getAgentColor(_colorKeyFor(a));
-      var online = (a.status || "online") === "online";
-      var stroke = online ? "#4ecdc4" : "#555";
+      var connected = (a.status || "online") !== "offline";
+      var liveness =
+        a.liveness || a.status || (connected ? "online" : "offline");
+      var wsColor = connected ? "#4ecdc4" : "#555";
+      var fnColor = FN_COLORS[liveness] || "#555";
       var nameText =
         typeof hostedAgentName === "function"
           ? hostedAgentName(a)
@@ -1242,6 +1259,32 @@ function _renderActivityTopology(visible, grid) {
           p.y +
           '" r="18" fill="none" stroke="#fbbf24" stroke-width="2"/>'
         : "";
+      /* Two LED dots at the 11 o'clock and 1 o'clock positions on the
+       * circle edge — same order as the list row (WS first, FN second).
+       * r=4 with a dark stroke so they're legible on any identity color. */
+      var R = 14;
+      var ledDx = R * 0.55;
+      var ledDy = -R * 0.85;
+      var wsLed =
+        '<circle cx="' +
+        (p.x - ledDx).toFixed(1) +
+        '" cy="' +
+        (p.y + ledDy).toFixed(1) +
+        '" r="4" fill="' +
+        wsColor +
+        '" stroke="#0a0a0a" stroke-width="1"><title>WebSocket: ' +
+        (connected ? "connected" : "disconnected") +
+        "</title></circle>";
+      var fnLed =
+        '<circle cx="' +
+        (p.x + ledDx).toFixed(1) +
+        '" cy="' +
+        (p.y + ledDy).toFixed(1) +
+        '" r="4" fill="' +
+        fnColor +
+        '" stroke="#0a0a0a" stroke-width="1"><title>Liveness: ' +
+        escapeHtml(liveness) +
+        "</title></circle>";
       return (
         '<g class="topo-node topo-agent" data-agent="' +
         escapeHtml(a.name) +
@@ -1251,11 +1294,13 @@ function _renderActivityTopology(visible, grid) {
         p.x +
         '" cy="' +
         p.y +
-        '" r="14" fill="' +
+        '" r="' +
+        R +
+        '" fill="' +
         color +
-        '" stroke="' +
-        stroke +
-        '" stroke-width="2"/>' +
+        '" stroke="#0a0a0a" stroke-width="1"/>' +
+        wsLed +
+        fnLed +
         '<text class="topo-label topo-label-agent" x="' +
         (p.x + 20) +
         '" y="' +
