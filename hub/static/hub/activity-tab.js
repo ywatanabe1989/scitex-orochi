@@ -326,10 +326,33 @@ function _renderActivityAgentDetail(a, grid) {
     var d = Math.floor(v / 86400);
     return d + "d " + Math.round((v % 86400) / 3600) + "h";
   }
+  /* todo#55/#56/#58: collapse redundant FQDN suffixes and hide
+   * <synthetic>-style model placeholders, mirroring the same polish on
+   * the Agents tab detail card. */
+  var _machine = a.machine || "?";
+  var _fqdn = a.hostname_canonical || "";
+  var _redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
+  var _fqdnUseful = _fqdn && _fqdn !== _machine;
+  if (_fqdnUseful) {
+    for (var _i = 0; _i < _redundant.length; _i++) {
+      if (_fqdn === _machine + _redundant[_i]) {
+        _fqdnUseful = false;
+        break;
+      }
+    }
+  }
+  var _machineDisplay = _fqdnUseful ? _machine + " (" + _fqdn + ")" : _machine;
+  var _rawModel = a.model || "";
+  var _modelDisplay =
+    _rawModel.length > 2 &&
+    _rawModel.charAt(0) === "<" &&
+    _rawModel.charAt(_rawModel.length - 1) === ">"
+      ? "—"
+      : _rawModel || "-";
   var metaFields = [
     ["Role", a.role || "agent"],
-    ["Machine", a.machine || "?"],
-    ["Model", a.model || "-"],
+    ["Machine", _machineDisplay],
+    ["Model", _modelDisplay],
     ["Multiplexer", a.multiplexer || "-"],
     ["PID", a.pid || "-"],
     ["Liveness", liveness],
