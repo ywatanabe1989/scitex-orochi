@@ -1434,50 +1434,16 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass, opts) {
    * <rect>+<text> pair so it translates naturally with cx/cy updates
    * and stays inside the topology <svg>'s coord system. SVG <text>
    * has no native background, hence the <rect> drawn first. */
+  /* Message preview (babble) is NOT shown during flight — only lands
+   * at the destination via `_topoLandingBubble(to, text)` when t>=1.
+   * ywatanabe 2026-04-19 "do not show packet message until reached
+   * to destination" / "only show message after reaching destination".
+   * We just normalize + truncate the text here so the landing bubble
+   * receives a ready-to-render string. */
   var babbleText = opts && opts.text ? String(opts.text) : "";
-  /* Truncate to 60 chars + ellipsis. Also collapse newlines so the
-   * bubble stays one line. */
   babbleText = babbleText.replace(/\s+/g, " ").trim();
   if (babbleText.length > 60) babbleText = babbleText.slice(0, 60) + "\u2026";
-  var babbleRect = null;
-  var babbleTxt = null;
-  if (babbleText) {
-    babbleTxt = document.createElementNS(ns, "text");
-    babbleTxt.setAttribute("class", "topo-packet-babble");
-    babbleTxt.setAttribute("x", String(from.x));
-    babbleTxt.setAttribute("y", String(from.y - 14));
-    babbleTxt.setAttribute("text-anchor", "middle");
-    babbleTxt.setAttribute("dominant-baseline", "middle");
-    babbleTxt.textContent = babbleText;
-    /* Underlay rectangle for legibility — sized after we measure the
-     * <text>, since bbox needs the node attached to the DOM. */
-    babbleRect = document.createElementNS(ns, "rect");
-    babbleRect.setAttribute("class", "topo-packet-babble-bg");
-    babbleRect.setAttribute("rx", "3");
-    babbleRect.setAttribute("ry", "3");
-    /* Insert rect first so text renders on top. */
-    g.appendChild(babbleRect);
-    g.appendChild(babbleTxt);
-  }
   edges.appendChild(g);
-
-  /* Size the bg rect once the text is in the DOM (getBBox needs it). */
-  var babbleBBox = null;
-  if (babbleTxt && babbleRect) {
-    try {
-      babbleBBox = babbleTxt.getBBox();
-    } catch (_) {
-      babbleBBox = null;
-    }
-    if (babbleBBox) {
-      var padX = 4;
-      var padY = 1.5;
-      babbleRect.setAttribute("x", String(babbleBBox.x - padX));
-      babbleRect.setAttribute("y", String(babbleBBox.y - padY));
-      babbleRect.setAttribute("width", String(babbleBBox.width + padX * 2));
-      babbleRect.setAttribute("height", String(babbleBBox.height + padY * 2));
-    }
-  }
 
   var startTime = null;
   function _frame(ts) {
@@ -1518,26 +1484,8 @@ function _topoSpawnPacket(edges, from, to, dur, delay, klass, opts) {
         core.setAttribute("fill-opacity", String(0.95 * fade));
       }
     }
-    /* Move the babble bubble along with the packet. The bubble sits
-     * ~14px above the packet so it never overlaps the core dot. It
-     * fades out on the same last-20% curve so landing feels clean. */
-    if (babbleTxt) {
-      babbleTxt.setAttribute("x", String(curX));
-      babbleTxt.setAttribute("y", String(curY - 14));
-      if (babbleRect && babbleBBox) {
-        /* Recompute rect position based on current text-anchor=middle. */
-        babbleRect.setAttribute("x", String(curX - babbleBBox.width / 2 - 4));
-        babbleRect.setAttribute(
-          "y",
-          String(curY - 14 - babbleBBox.height / 2 - 1.5),
-        );
-      }
-      var bfade = t > 0.8 ? 1 - (t - 0.8) / 0.2 : 1;
-      babbleTxt.setAttribute("fill-opacity", String(bfade));
-      if (babbleRect) {
-        babbleRect.setAttribute("fill-opacity", String(0.8 * bfade));
-      }
-    }
+    /* No in-flight babble — message text only renders at destination
+     * via the landing bubble below. */
     if (t < 1) {
       requestAnimationFrame(_frame);
     } else {
@@ -1761,36 +1709,31 @@ function _topoPulseEdge(sender, channel, opts) {
    * rapid multi-message bursts (ywatanabe 2026-04-19: "0.5s / edge
    * would be good in balance"). */
   var LEG = 500;
-  /* DM branch — DMs don't flow through a channel node on the canvas.
-   * Reuse the standard 2-leg pattern but with a virtual invisible
-   * midpoint between sender and each recipient, so legs 1+2 form a
-   * straight line from sender to recipient. ywatanabe 2026-04-19:
-   * "just place invisible node between user/agents and apply the same
-   * pattern to them". Channel formats:
-   *   dm:agent:<agent>|human:<user>  → recipients = [agent, user]
-   *   dm:group:<csv names>           → recipients = [name1, name2, ...]
+  /* DM branch — DMs flow along real visible edges (drawn in
+   * _renderActivityTopology as <line class="topo-edge topo-edge-dm">).
+   * For each recipient present on the graph, fire ONE single-leg
+   * packet from sender to recipient along that edge. No virtual
+   * midpoint, no tricks. ywatanabe 2026-04-19: "connect user and
+   * target with a visible LINE and propagate packet along it".
+   * Channel formats:
+   *   dm:<principal>|<principal>...  → each "agent:<n>" or "human:<n>"
+   *   dm:group:<csv names>           → comma-separated raw names
    */
   if (channel.indexOf("dm:") === 0) {
-    var humanKeyDm =
-      (typeof userName !== "undefined" && userName) ||
-      window.__orochiUserName ||
-      "";
     var dmRecipients = [];
     if (channel.indexOf("dm:group:") === 0) {
       dmRecipients = channel.slice("dm:group:".length).split(",");
     } else {
-      /* Canonical DM names (backend api.py::_canonical_dm_name):
-       *   dm:<principal>|<principal>...  where each principal is
-       *   "agent:<name>" or "human:<user>" in sorted order. Split on
-       *   "|" and strip known prefixes — handles any permutation and
-       *   any N-party DM. */
-      var dmBody = channel.slice("dm:".length);
-      dmBody.split("|").forEach(function (part) {
-        if (!part) return;
-        if (part.indexOf("agent:") === 0) dmRecipients.push(part.slice(6));
-        else if (part.indexOf("human:") === 0) dmRecipients.push(part.slice(6));
-        else dmRecipients.push(part);
-      });
+      channel
+        .slice("dm:".length)
+        .split("|")
+        .forEach(function (part) {
+          if (!part) return;
+          if (part.indexOf("agent:") === 0) dmRecipients.push(part.slice(6));
+          else if (part.indexOf("human:") === 0)
+            dmRecipients.push(part.slice(6));
+          else dmRecipients.push(part);
+        });
     }
     var dmFrom = sender ? _topoLastPositions.agents[sender] : null;
     if (_dbg) {
@@ -1798,53 +1741,43 @@ function _topoPulseEdge(sender, channel, opts) {
         ? "x:" + dmFrom.x.toFixed(1) + " y:" + dmFrom.y.toFixed(1)
         : "(not on graph)";
       console.log("coordinate sender: " + _sCoord);
-      dmRecipients.forEach(function (rn) {
-        if (!rn || rn === sender) return;
-        console.log("DM sent from " + sender + " to " + rn);
-        var rp = _topoLastPositions.agents[rn];
-        var _rCoord = rp
-          ? "x:" + rp.x.toFixed(1) + " y:" + rp.y.toFixed(1)
-          : "(not on graph)";
-        console.log("coordinate receiver " + _rCoord);
-      });
-      console.log(
-        "[topo-pulse] available node keys:",
-        Object.keys(_topoLastPositions.agents),
-      );
     }
-    if (!dmRecipients.length && _dbg) {
-      console.warn("[topo-pulse] DM bail: parsed zero recipients", {
-        channel,
-      });
+    if (!dmRecipients.length) {
+      if (_dbg)
+        console.warn("[topo-pulse] DM bail: parsed zero recipients", {
+          channel,
+        });
+      return;
+    }
+    if (!dmFrom) {
+      if (_dbg)
+        console.warn(
+          "[topo-pulse] DM bail: sender not on graph. available keys:",
+          Object.keys(_topoLastPositions.agents),
+        );
+      return;
     }
     dmRecipients.forEach(function (rn) {
       if (!rn || rn === sender) return;
       var rp = _topoLastPositions.agents[rn];
+      if (_dbg) {
+        console.log("DM sent from " + sender + " to " + rn);
+        var _rCoord = rp
+          ? "x:" + rp.x.toFixed(1) + " y:" + rp.y.toFixed(1)
+          : "(not on graph)";
+        console.log("coordinate receiver " + _rCoord);
+      }
       if (!rp) {
         if (_dbg)
           console.warn("[topo-pulse] DM bail: recipient not on graph", {
             recipient: rn,
             channel,
+            availableKeys: Object.keys(_topoLastPositions.agents),
           });
         return;
       }
-      if (!dmFrom) {
-        if (_dbg)
-          console.warn(
-            "[topo-pulse] DM: sender not on graph; falling back to in-place pulse at recipient",
-            { sender, recipient: rn },
-          );
-        _topoSpawnPacket(edges, rp, rp, 220, 0, klass, { text: babble });
-        return;
-      }
-      /* Invisible midpoint — exactly between sender and recipient so
-       * legs render as a single straight line. */
-      var mid = {
-        x: (dmFrom.x + rp.x) / 2,
-        y: (dmFrom.y + rp.y) / 2,
-      };
-      _topoSpawnPacket(edges, dmFrom, mid, LEG, 0, klass, { text: babble });
-      _topoSpawnPacket(edges, mid, rp, LEG, LEG, klass, { text: babble });
+      /* Single-leg flight along the real DM edge. */
+      _topoSpawnPacket(edges, dmFrom, rp, LEG, 0, klass, { text: babble });
     });
     return;
   }
@@ -2701,6 +2634,63 @@ function _renderActivityTopology(visible, grid) {
       });
     }
   }
+
+  /* DM edges — a visible dashed gold line directly connecting each pair
+   * (or tuple) of DM principals. Source of truth is window._channelPrefs
+   * (same map that drives the sidebar channel list). This replaces the
+   * old virtual-midpoint packet trick: the DM edge now exists as a real
+   * <line> in the DOM, and _topoPulseEdge fires a single-leg packet
+   * along it. ywatanabe 2026-04-19: "connect user and target with a
+   * visible LINE and propagate packet along it — no virtual midpoint,
+   * no tricks". Edges where either principal isn't on the graph (agent
+   * offline/hidden, or human not present) are skipped silently. */
+  var _dmPrefs = window._channelPrefs || {};
+  Object.keys(_dmPrefs).forEach(function (dmCh) {
+    if (!dmCh || dmCh.indexOf("dm:") !== 0) return;
+    if ((_dmPrefs[dmCh] || {}).is_hidden) return;
+    if (_topoHidden.channels[dmCh]) return;
+    /* Parse principals — same logic as _topoPulseEdge. */
+    var principals = [];
+    if (dmCh.indexOf("dm:group:") === 0) {
+      principals = dmCh.slice("dm:group:".length).split(",");
+    } else {
+      dmCh
+        .slice("dm:".length)
+        .split("|")
+        .forEach(function (part) {
+          if (!part) return;
+          if (part.indexOf("agent:") === 0) principals.push(part.slice(6));
+          else if (part.indexOf("human:") === 0) principals.push(part.slice(6));
+          else principals.push(part);
+        });
+    }
+    /* Draw an edge between every unordered pair of principals that
+     * are both present on the graph. For 2-party DMs this is the one
+     * line user↔agent. For group DMs it forms a small clique. */
+    for (var di = 0; di < principals.length; di++) {
+      for (var dj = di + 1; dj < principals.length; dj++) {
+        var pa = agentPos[principals[di]];
+        var pb = agentPos[principals[dj]];
+        if (!pa || !pb) continue;
+        edgesSvg +=
+          '<line class="topo-edge topo-edge-dm" data-dm-channel="' +
+          escapeHtml(dmCh) +
+          '" data-dm-a="' +
+          escapeHtml(principals[di]) +
+          '" data-dm-b="' +
+          escapeHtml(principals[dj]) +
+          '" x1="' +
+          pa.x.toFixed(1) +
+          '" y1="' +
+          pa.y.toFixed(1) +
+          '" x2="' +
+          pb.x.toFixed(1) +
+          '" y2="' +
+          pb.y.toFixed(1) +
+          '"/>';
+      }
+    }
+  });
 
   /* Per-channel subscriber counts across the visible agents. Used to
    * scale each channel diamond — "based on the number of agents, the
