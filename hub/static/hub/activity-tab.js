@@ -1353,9 +1353,10 @@ function _topoPulseEdge(sender, channel, opts) {
   if (!edges) return;
   var klass =
     opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
-  /* 1 second per leg start→end, per ywatanabe 2026-04-19
-   * ("spend 1 sec for start to end"). */
-  var LEG = 1000;
+  /* 0.5 second per leg — balance between legibility and not blocking
+   * rapid multi-message bursts (ywatanabe 2026-04-19: "0.5s / edge
+   * would be good in balance"). */
+  var LEG = 500;
   /* Leg 1 — sender → channel IF the sender is a visible agent. Human
    * posts (sender = username, not an agent name) skip leg 1 and start
    * from the channel node — so the user still sees their post
@@ -1723,17 +1724,49 @@ function _wireTopoZoomPan(grid, W, H) {
       _zoomAt(svg, 1.25, null, null);
     }
   });
-  /* Mouse wheel zoom — cursor-anchored, 10% per tick; routes through
-   * _zoomAt so history / reset work. */
+  /* Wheel interactions — standard GIS/CAD convention:
+   *   ctrl + wheel  = cursor-anchored zoom (10% per tick)
+   *   plain wheel   = vertical pan (deltaY)
+   *   shift + wheel = horizontal pan (shift remaps deltaY to deltaX,
+   *                   or deltaX from a trackpad is honored)
+   * ywatanabe 2026-04-19: "mouse mid should allow shift to directions,
+   * supporting horizontal and vertical move" / "ctrl scroll should
+   * change the zoom". */
   grid.addEventListener(
     "wheel",
     function (ev) {
       var svg = ev.target.closest && ev.target.closest(".topo-svg");
       if (!svg) return;
       ev.preventDefault();
-      var p = _svgPoint(svg, ev.clientX, ev.clientY);
-      var factor = ev.deltaY > 0 ? 1.1 : 1 / 1.1;
-      _zoomAt(svg, factor, p.x, p.y);
+      if (ev.ctrlKey || ev.metaKey) {
+        var p = _svgPoint(svg, ev.clientX, ev.clientY);
+        var factor = ev.deltaY > 0 ? 1.1 : 1 / 1.1;
+        _zoomAt(svg, factor, p.x, p.y);
+        return;
+      }
+      /* Pan — translate the viewBox. Trackpads deliver deltaX natively;
+       * a plain mouse wheel sends deltaY only, which we remap to
+       * horizontal when Shift is held. Screen-space delta → viewBox-
+       * space via the current scale. */
+      var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
+      var svgW = svg.clientWidth || W;
+      var svgH = svg.clientHeight || H;
+      var sx = vb.w / svgW;
+      var sy = vb.h / svgH;
+      var deltaX = ev.deltaX;
+      var deltaY = ev.deltaY;
+      if (ev.shiftKey && deltaX === 0) {
+        deltaX = deltaY;
+        deltaY = 0;
+      }
+      _pushVB();
+      _topoViewBox = {
+        x: vb.x + deltaX * sx,
+        y: vb.y + deltaY * sy,
+        w: vb.w,
+        h: vb.h,
+      };
+      _applyVB(svg, _topoViewBox);
     },
     { passive: false },
   );
@@ -2019,9 +2052,25 @@ function _renderActivityTopology(visible, grid) {
     return { x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) };
   }
 
+  /* Human user node — the signed-in human sits on the outer ring
+   * alongside agents so their posts animate from a real origin node
+   * (not just an in-place channel burst) and incoming replies animate
+   * back to them. ywatanabe 2026-04-19: "me, user should be another
+   * node". Slotted first so it sits at 12 o'clock and is easy to
+   * locate. Key in agentPos is the literal username so the existing
+   * _topoPulseEdge(sender,channel) path finds it without special-
+   * casing the sender field. */
+  var humanName =
+    (typeof userName !== "undefined" && userName) ||
+    window.__orochiUserName ||
+    "";
+  var nSlots = visible.length + (humanName ? 1 : 0);
   var agentPos = {};
+  if (humanName) {
+    agentPos[humanName] = _pt(rOuter, 0, nSlots);
+  }
   visible.forEach(function (a, i) {
-    agentPos[a.name] = _pt(rOuter, i, visible.length);
+    agentPos[a.name] = _pt(rOuter, i + (humanName ? 1 : 0), nSlots);
   });
   var chPos = {};
   channels.forEach(function (c, i) {
@@ -2066,6 +2115,37 @@ function _renderActivityTopology(visible, grid) {
         "/>";
     });
   });
+
+  /* Human → every channel edge. The signed-in human can in principle
+   * post to any channel (and often reads most), so we draw an edge
+   * from the human node to every channel diamond. Lines are dashed
+   * + fainter so they read as "possible path" rather than a firm
+   * subscription. Packets animating along them still travel at full
+   * opacity. */
+  if (humanName) {
+    var hap = agentPos[humanName];
+    if (hap) {
+      channels.forEach(function (c) {
+        var cp = chPos[c];
+        if (!cp) return;
+        edgesSvg +=
+          '<line data-agent="' +
+          escapeHtml(humanName) +
+          '" data-channel="' +
+          escapeHtml(c) +
+          '" x1="' +
+          hap.x.toFixed(1) +
+          '" y1="' +
+          hap.y.toFixed(1) +
+          '" x2="' +
+          cp.x.toFixed(1) +
+          '" y2="' +
+          cp.y.toFixed(1) +
+          '" stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1"' +
+          ' stroke-dasharray="3 4"/>';
+      });
+    }
+  }
 
   /* Per-channel subscriber counts across the visible agents. Used to
    * scale each channel diamond — "based on the number of agents, the
@@ -2236,6 +2316,42 @@ function _renderActivityTopology(visible, grid) {
     })
     .join("");
 
+  /* Human node — rendered after agents so it layers on top. Gold
+   * pill with a 👤 glyph prefix; wired through the same data-agent
+   * hook so the packet animator's sender lookup works unchanged. */
+  var humanSvg = "";
+  if (humanName && agentPos[humanName]) {
+    var hp = agentPos[humanName];
+    var hLabel = humanName;
+    var hTextW = Math.max(40, hLabel.length * 6.5);
+    var hBadgeLeft = hp.x - 18;
+    var hBadgeWidth = 18 + 14 + hTextW + 6;
+    humanSvg =
+      '<g class="topo-node topo-agent topo-human" data-agent="' +
+      escapeHtml(humanName) +
+      '">' +
+      '<rect class="topo-agent-bg topo-human-bg" x="' +
+      hBadgeLeft.toFixed(1) +
+      '" y="' +
+      (hp.y - 11).toFixed(1) +
+      '" width="' +
+      hBadgeWidth.toFixed(1) +
+      '" height="22" rx="11" ry="11"/>' +
+      '<text class="topo-human-glyph" x="' +
+      (hp.x - 10).toFixed(1) +
+      '" y="' +
+      (hp.y + 4).toFixed(1) +
+      '" font-size="13">\uD83D\uDC64</text>' +
+      '<text class="topo-label topo-label-agent" x="' +
+      (hp.x + 6).toFixed(1) +
+      '" y="' +
+      (hp.y + 4).toFixed(1) +
+      '" fill="#fbbf24">' +
+      escapeHtml(hLabel) +
+      "</text>" +
+      "</g>";
+  }
+
   /* viewBox persisted in _topoViewBox across re-renders so zoom/pan
    * state survives heartbeat-driven rebuilds. If null, use the natural
    * (0 0 W H) frame so the whole scene fits. */
@@ -2281,6 +2397,7 @@ function _renderActivityTopology(visible, grid) {
     "</g>" +
     '<g class="topo-agents">' +
     agentSvg +
+    humanSvg +
     "</g>" +
     '<rect class="topo-zoombox" x="0" y="0" width="0" height="0"' +
     ' fill="rgba(78,205,196,0.1)" stroke="#4ecdc4" stroke-width="1"' +

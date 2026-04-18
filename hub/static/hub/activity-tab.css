@@ -691,6 +691,27 @@
     fill 0.15s,
     stroke 0.15s;
 }
+/* Brighten the node label so it reads clearly against the dark badge —
+ * the identity color still shows through but at higher luminance.
+ * ywatanabe 2026-04-19: "make the node text a bit lighter to make it
+ * more readable by enhancing contrast". */
+.activity-grid.activity-view-topology .topo-label-agent {
+  filter: brightness(1.35);
+  font-weight: 600;
+}
+/* Human user node — gold pill, distinct from agents. */
+.activity-grid.activity-view-topology .topo-human .topo-human-bg {
+  fill: #1a1410;
+  stroke: #fbbf24;
+  stroke-width: 1.5;
+}
+.activity-grid.activity-view-topology .topo-human:hover .topo-human-bg {
+  fill: #231912;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.55));
+}
+.activity-grid.activity-view-topology .topo-human .topo-human-glyph {
+  pointer-events: none;
+}
 .activity-grid.activity-view-topology .topo-agent:hover .topo-agent-bg {
   fill: #1f1f1f;
   stroke: #4ecdc4;
