@@ -400,9 +400,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Channels column — fixed width so every row's age sits at the same x
+ * and the name column on the left also wraps predictably. */
+.activity-grid.activity-view-list .activity-card .activity-channels {
+  flex: 0 0 240px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6a7d8c;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+}
 .activity-grid.activity-view-list .activity-card .activity-age {
-  flex: 0 0 auto;
-  margin-left: auto;
+  flex: 0 0 60px;
+  text-align: right;
   color: #888;
   font-size: 11px;
 }

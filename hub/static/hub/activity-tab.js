@@ -54,10 +54,11 @@ function _stripAnsi(str) {
     .replace(/\r/g, "");
 }
 
-/* ── Overview controls state (filter / sort / view / inline-expand) ──── */
+/* ── Overview controls state (filter / sort / view / color / expand) ── */
 var _overviewFilter = "";
 var _overviewSort = "name";
 var _overviewView = "list";
+var _overviewColor = "name";
 var _overviewExpanded = null;
 try {
   var _savedSort = localStorage.getItem("orochi.overviewSort");
@@ -66,8 +67,28 @@ try {
   var _savedView = localStorage.getItem("orochi.overviewView");
   if (_savedView === "list" || _savedView === "tiled")
     _overviewView = _savedView;
+  var _savedColor = localStorage.getItem("orochi.overviewColor");
+  if (
+    _savedColor === "name" ||
+    _savedColor === "host" ||
+    _savedColor === "account"
+  )
+    _overviewColor = _savedColor;
 } catch (_e) {
   /* localStorage may be unavailable — fall back to defaults */
+}
+
+/* Pick the color key from the agent record based on the user-selected
+ * "color by" option. Hash returns a deterministic pastel color for any
+ * non-empty string (reuses getAgentColor), so the same machine, name,
+ * or account always maps to the same color across rows. Empty key
+ * falls back to name so rows never render colorless. */
+function _colorKeyFor(a) {
+  var key = "";
+  if (_overviewColor === "host") key = a.machine || "";
+  else if (_overviewColor === "account") key = a.account_email || "";
+  if (!key) key = a.name || "";
+  return key;
 }
 
 /* Render the hook-event panels (recent tools, prompts, Agent calls,
@@ -1093,7 +1114,13 @@ function _renderActivityCards(agents, grid) {
       var connected = (a.status || "online") !== "offline";
       var ghostClass = !connected && a.pinned ? " activity-card-ghost" : "";
       var idleStr = _formatIdle(a.idle_seconds);
-      var color = getAgentColor(rawName);
+      var color = getAgentColor(_colorKeyFor(a));
+      var channels = Array.isArray(a.channels) ? a.channels : [];
+      var channelsStr = channels
+        .filter(function (c) {
+          return c && c.indexOf("dm:") !== 0;
+        })
+        .join(" ");
       var name = escapeHtml(
         typeof hostedAgentName === "function"
           ? hostedAgentName(a)
@@ -1155,6 +1182,11 @@ function _renderActivityCards(agents, grid) {
         '">' +
         name +
         "</span>" +
+        '<span class="activity-channels" title="' +
+        escapeHtml(channelsStr || "no channels") +
+        '">' +
+        escapeHtml(channelsStr) +
+        "</span>" +
         (ageStr
           ? '<span class="activity-age" title="' +
             escapeHtml(livenessHint) +
@@ -1175,65 +1207,12 @@ function _renderActivityCards(agents, grid) {
 
   if (typeof runFilter === "function") runFilter();
 
-  Array.prototype.forEach.call(
-    grid.querySelectorAll(".activity-card[data-agent]"),
-    function (card) {
-      card.style.cursor = "pointer";
-      card.addEventListener("click", function (ev) {
-        if (ev.target.closest(".activity-pin-btn")) return;
-        var name = card.getAttribute("data-agent");
-        if (!name) return;
-        if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
-          if (typeof addTag === "function") addTag("agent", name);
-          return;
-        }
-        _overviewExpanded = _overviewExpanded === name ? null : name;
-        renderActivityTab();
-      });
-      card.addEventListener("mouseenter", function () {
-        var host = card.getAttribute("data-machine");
-        if (host && typeof syncHostHover === "function")
-          syncHostHover(host, true);
-      });
-      card.addEventListener("mouseleave", function () {
-        var host = card.getAttribute("data-machine");
-        if (host && typeof syncHostHover === "function")
-          syncHostHover(host, false);
-      });
-    },
-  );
-
-  Array.prototype.forEach.call(
-    grid.querySelectorAll(".activity-pin-btn[data-pin-name]"),
-    function (btn) {
-      btn.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var name = btn.getAttribute("data-pin-name");
-        var nextPin = btn.getAttribute("data-pin-next") === "true";
-        /* Optimistic UI: flip local __lastAgents entry and the button
-         * state immediately so the pin feels responsive, then hit the
-         * API. fetchAgents() will re-render with authoritative server
-         * data once the POST/DELETE lands. */
-        var live = window.__lastAgents || [];
-        for (var i = 0; i < live.length; i++) {
-          if (live[i].name === name) {
-            live[i].pinned = nextPin;
-            break;
-          }
-        }
-        btn.classList.toggle("activity-pin-on", nextPin);
-        btn.setAttribute("data-pin-next", nextPin ? "false" : "true");
-        if (typeof togglePinAgent === "function") {
-          togglePinAgent(name, nextPin);
-        } else {
-          console.error(
-            "togglePinAgent unavailable — pin click had no effect for",
-            name,
-          );
-        }
-      });
-    },
-  );
+  /* Single delegated click listener on the grid — bound ONCE, survives
+   * innerHTML rewrites (the grid element itself is never replaced).
+   * Per-element listeners were silently lost between heartbeat re-
+   * renders, causing the pin button to become unclickable after a poll
+   * tick (ywatanabe 2026-04-19). */
+  _wireOverviewGridDelegation(grid);
 
   if (_overviewExpanded) {
     var agent = all.find(function (a) {
@@ -1264,16 +1243,65 @@ function _applyOverviewViewClass(grid) {
   );
 }
 
+var _overviewGridWired = false;
+function _wireOverviewGridDelegation(grid) {
+  if (_overviewGridWired || !grid) return;
+  grid.addEventListener("click", function (ev) {
+    var pinBtn = ev.target.closest(".activity-pin-btn[data-pin-name]");
+    if (pinBtn && grid.contains(pinBtn)) {
+      ev.stopPropagation();
+      var pname = pinBtn.getAttribute("data-pin-name");
+      var nextPin = pinBtn.getAttribute("data-pin-next") === "true";
+      var live = window.__lastAgents || [];
+      for (var i = 0; i < live.length; i++) {
+        if (live[i].name === pname) {
+          live[i].pinned = nextPin;
+          break;
+        }
+      }
+      pinBtn.classList.toggle("activity-pin-on", nextPin);
+      pinBtn.setAttribute("data-pin-next", nextPin ? "false" : "true");
+      if (typeof togglePinAgent === "function") {
+        togglePinAgent(pname, nextPin);
+      } else {
+        console.error(
+          "togglePinAgent unavailable — pin click had no effect for",
+          pname,
+        );
+      }
+      return;
+    }
+    var card = ev.target.closest(".activity-card[data-agent]");
+    if (card && grid.contains(card)) {
+      /* ignore clicks that originate inside the inline-detail panel —
+       * those should be handled by the detail's own widgets, not toggle
+       * expand. */
+      if (ev.target.closest(".activity-inline-detail")) return;
+      var cname = card.getAttribute("data-agent");
+      if (!cname) return;
+      if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+        if (typeof addTag === "function") addTag("agent", cname);
+        return;
+      }
+      _overviewExpanded = _overviewExpanded === cname ? null : cname;
+      renderActivityTab();
+    }
+  });
+  _overviewGridWired = true;
+}
+
 var _overviewControlsWired = false;
 function _wireOverviewControls() {
   if (_overviewControlsWired) return;
   var filterInput = document.getElementById("activity-filter-input");
   var sortSelect = document.getElementById("activity-sort-select");
   var viewSelect = document.getElementById("activity-view-select");
+  var colorSelect = document.getElementById("activity-color-select");
   if (!filterInput || !sortSelect || !viewSelect) return;
   sortSelect.value = _overviewSort;
   viewSelect.value = _overviewView;
   filterInput.value = _overviewFilter;
+  if (colorSelect) colorSelect.value = _overviewColor;
   filterInput.addEventListener("input", function () {
     _overviewFilter = filterInput.value || "";
     renderActivityTab();
@@ -1292,6 +1320,15 @@ function _wireOverviewControls() {
     } catch (_e) {}
     renderActivityTab();
   });
+  if (colorSelect) {
+    colorSelect.addEventListener("change", function () {
+      _overviewColor = colorSelect.value;
+      try {
+        localStorage.setItem("orochi.overviewColor", _overviewColor);
+      } catch (_e) {}
+      renderActivityTab();
+    });
+  }
   _overviewControlsWired = true;
 }
 
