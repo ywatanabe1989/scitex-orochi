@@ -354,7 +354,7 @@
 .activity-pin-btn {
   background: transparent;
   border: none;
-  color: #3a3a3a;
+  color: #1a1a1a;
   font-size: 14px;
   line-height: 1;
   padding: 0 2px;
@@ -363,12 +363,15 @@
   flex: 0 0 18px;
   text-align: center;
   transition: color 0.15s;
+  opacity: 0.6;
 }
 .activity-pin-btn:hover {
-  color: #888;
+  color: #666;
+  opacity: 1;
 }
 .activity-pin-btn.activity-pin-on {
   color: #fbbf24;
+  opacity: 1;
 }
 
 /* List view: one-line dense rows. Grid switches layout via parent class.
