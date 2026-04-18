@@ -595,6 +595,7 @@ function _showChannelCtxMenu(ch, x, y) {
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
       (hidden ? "Show channel" : "Hide channel") +
       "</div>",
+    '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="topo-hide">' +
       "Hide node (Viz topology)" +
       "</div>",
@@ -619,8 +620,11 @@ function _showChannelCtxMenu(ch, x, y) {
         return;
       } else if (action === "hide") _setChannelPref(ch, { is_hidden: !hidden });
       else if (action === "topo-hide") {
-        if (typeof window._topoHide === "function")
-          window._topoHide("channel", ch);
+        if (typeof window._topoHide === "function") {
+          try {
+            window._topoHide("channel", ch);
+          } catch (_) {}
+        }
       }
       _hideChannelCtxMenu();
     });
@@ -653,6 +657,17 @@ function _hideAgentCtxMenu() {
   if (_agentCtxMenu) {
     _agentCtxMenu.remove();
     _agentCtxMenu = null;
+  }
+  /* The hover submenu (Add/DM/Remove/etc.) is a separate DOM node
+   * outside _agentCtxMenu. Without this, picking a submenu item
+   * closes the parent menu but leaves the submenu floating on
+   * screen. ywatanabe 2026-04-19: "subscribed #general but why the
+   * menu keeps shown?". */
+  if (window._agentCtxSubMenu) {
+    try {
+      window._agentCtxSubMenu.remove();
+    } catch (_e) {}
+    window._agentCtxSubMenu = null;
   }
   document.removeEventListener("keydown", _agentCtxKeyHandler, true);
 }
@@ -740,6 +755,7 @@ function _showAgentContextMenu(agent, x, y) {
       "px;max-height:60vh;overflow-y:auto;";
     subEl.innerHTML = html;
     document.body.appendChild(subEl);
+    window._agentCtxSubMenu = subEl;
     subEl.querySelectorAll("[data-pick]").forEach(function (it) {
       it.addEventListener("click", function (ev) {
         ev.stopPropagation();
