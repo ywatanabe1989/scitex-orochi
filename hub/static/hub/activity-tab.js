@@ -2176,7 +2176,7 @@ function _renderActivityTopology(visible, grid) {
   var _chPrefs = window._channelPrefs || {};
   var channels = Object.keys(chSet)
     .filter(function (c) {
-      return !((_chPrefs[c] || {}).is_hidden);
+      return !(_chPrefs[c] || {}).is_hidden;
     })
     .sort();
 
@@ -2558,10 +2558,56 @@ function _renderActivityTopology(visible, grid) {
       "</g>";
   }
 
-  /* viewBox persisted in _topoViewBox across re-renders so zoom/pan
-   * state survives heartbeat-driven rebuilds. If null, use the natural
-   * (0 0 W H) frame so the whole scene fits. */
-  var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
+  /* Auto-fit viewBox on first render: compute bbox over every node
+   * (agents + human + channel diamonds) with rough badge-width
+   * estimates so long-name agents on the right/bottom aren't
+   * clipped. Persisted zoom/pan overrides this once user has
+   * interacted. ywatanabe 2026-04-19: "by default the size of the
+   * graph must be maximized to include all elements". */
+  var vb;
+  if (_topoViewBox) {
+    vb = _topoViewBox;
+  } else {
+    var bMinX = Infinity,
+      bMinY = Infinity,
+      bMaxX = -Infinity,
+      bMaxY = -Infinity;
+    visible.forEach(function (a) {
+      var p = agentPos[a.name];
+      if (!p) return;
+      var nm = a.name || "";
+      var w = Math.max(40, nm.length * 6.5) + 60; /* badge + glyph + LEDs */
+      bMinX = Math.min(bMinX, p.x - 34);
+      bMaxX = Math.max(bMaxX, p.x + w);
+      bMinY = Math.min(bMinY, p.y - 14);
+      bMaxY = Math.max(bMaxY, p.y + 14);
+    });
+    if (humanName && agentPos[humanName]) {
+      var hp2 = agentPos[humanName];
+      var hw = Math.max(40, humanName.length * 6.5) + 40;
+      bMinX = Math.min(bMinX, hp2.x - 20);
+      bMaxX = Math.max(bMaxX, hp2.x + hw);
+      bMinY = Math.min(bMinY, hp2.y - 14);
+      bMaxY = Math.max(bMaxY, hp2.y + 14);
+    }
+    channels.forEach(function (c) {
+      var p = chPos[c];
+      if (!p) return;
+      var r = 22; /* max diamond radius */
+      bMinX = Math.min(bMinX, p.x - r - (c.length * 6.5) / 2);
+      bMaxX = Math.max(bMaxX, p.x + r + (c.length * 6.5) / 2);
+      bMinY = Math.min(bMinY, p.y - r - 16);
+      bMaxY = Math.max(bMaxY, p.y + r + 6);
+    });
+    if (isFinite(bMinX)) {
+      var pad2 = 24;
+      var vbW = bMaxX - bMinX + pad2 * 2;
+      var vbH = bMaxY - bMinY + pad2 * 2;
+      vb = { x: bMinX - pad2, y: bMinY - pad2, w: vbW, h: vbH };
+    } else {
+      vb = { x: 0, y: 0, w: W, h: H };
+    }
+  }
   /* <defs> carries two permission-direction markers. refX is placed
    * so the arrow tip sits just off the line end — otherwise it would
    * overlap the LED/diamond node. markerUnits=userSpaceOnUse so the
