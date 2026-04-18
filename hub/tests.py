@@ -2153,6 +2153,28 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("hostname_canonical", data2)
         self.assertEqual(data2["hostname_canonical"], "")
 
+    def test_ping_pong_fields_exposed(self):
+        """todo#46: detail endpoint must expose last_pong_ts / last_rtt_ms
+        once update_pong has been called, and must always include the
+        keys (as None) when no pong has been received yet."""
+        self._register()
+        # Fresh registration: fields present but null.
+        data = self._get().json()
+        self.assertIn("last_pong_ts", data)
+        self.assertIn("last_rtt_ms", data)
+        self.assertIsNone(data["last_pong_ts"])
+        self.assertIsNone(data["last_rtt_ms"])
+
+        # After a pong: last_rtt_ms is the float we recorded, last_pong_ts
+        # is an ISO8601 string close to "now".
+        from hub.registry import update_pong
+
+        update_pong("alpha", 42.5)
+        data2 = self._get().json()
+        self.assertAlmostEqual(data2["last_rtt_ms"], 42.5, places=3)
+        self.assertIsNotNone(data2["last_pong_ts"])
+        self.assertIn("T", data2["last_pong_ts"])  # ISO8601 marker
+
     def test_event_log_shortcuts_projected(self):
         """The hook-event / action_store shortcuts the frontend reads
         for the Last tool / Last MCP / Last action rows must always be

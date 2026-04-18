@@ -1,10 +1,42 @@
 """WebSocket consumers for agent and dashboard connections."""
 
+import asyncio
 import logging
+import time
 from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+# Interval between hub→agent JSON pings. Agents echo back
+# {"type":"pong","payload":{"ts":<sent_ts>}} so the hub can compute
+# round-trip time and expose hub-side liveness on the Agents tab's PN
+# lamp (todo#46). Kept below the 30s heartbeat-stale threshold so a
+# drop is noticed by both ends before the registry marks offline.
+PING_INTERVAL_SECONDS = 25
+# Upper bound on a healthy RTT; above this the PN lamp degrades to yellow.
+RTT_WARN_MS = 500
+
+
+async def _hub_ping_loop(consumer: "AgentConsumer") -> None:
+    """Send periodic hub→agent JSON pings so hub-side liveness is tracked.
+
+    Runs for the lifetime of the WebSocket connection. Cancelled from
+    ``AgentConsumer.disconnect``. Exceptions other than ``CancelledError``
+    are logged and swallowed — a ping loop crash must not tear down the
+    whole consumer.
+    """
+    try:
+        while True:
+            await asyncio.sleep(PING_INTERVAL_SECONDS)
+            try:
+                await consumer.send_json({"type": "ping", "ts": time.time()})
+            except Exception:  # noqa: BLE001
+                log.exception("ping send failed for %s", consumer.agent_name)
+                return
+    except asyncio.CancelledError:
+        raise
+
 
 from hub.channel_acl import check_write_allowed
 from hub.models import (
@@ -314,7 +346,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         # System messages (connect/disconnect/register) removed from chat feed
         # — too noisy during restarts. Sidebar presence updates are sufficient.
 
+        # todo#46 — start hub→agent JSON ping loop so dashboard can show
+        # live RTT and flag hub-side drops without waiting for the 30s
+        # heartbeat-stale timeout.
+        self._ping_task = asyncio.create_task(_hub_ping_loop(self))
+
     async def disconnect(self, code):
+        # Stop the ping task first so we don't race with the WS close.
+        ping_task = getattr(self, "_ping_task", None)
+        if ping_task is not None:
+            ping_task.cancel()
         if hasattr(self, "workspace_group"):
             # scitex-orochi#144 fix path 4: drop only THIS connection from
             # the per-agent set, not the whole agent record. The agent only
@@ -479,6 +520,27 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                     "channels": subs,
                 }
             )
+
+        elif msg_type == "pong":
+            # todo#46 — agent echoed our ping back. Compute round-trip
+            # time, stash on the registry, and broadcast to dashboard
+            # observers so the PN lamp lights up live.
+            payload = content.get("payload") or {}
+            sent_ts = payload.get("ts") or content.get("ts")
+            if isinstance(sent_ts, (int, float)):
+                rtt_ms = max(0.0, (time.time() - float(sent_ts)) * 1000.0)
+                from hub.registry import update_pong
+
+                update_pong(self.agent_name, rtt_ms)
+                await self.channel_layer.group_send(
+                    self.workspace_group,
+                    {
+                        "type": "agent.pong",
+                        "agent": self.agent_name,
+                        "rtt_ms": rtt_ms,
+                        "ts": time.time(),
+                    },
+                )
 
         elif msg_type == "heartbeat":
             # Store resource metrics from agent heartbeat
@@ -737,6 +799,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def agent_info(self, event):
         """Handle agent.info from channel layer — ignore for agent sockets."""
+        pass
+
+    async def agent_pong(self, event):
+        """Handle agent.pong from channel layer — ignore for agent sockets."""
         pass
 
     async def system_message(self, event):
@@ -1145,6 +1211,17 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "agent": event["agent"],
                 "info": event.get("info", {}),
                 "metrics": event.get("metrics", {}),
+            }
+        )
+
+    async def agent_pong(self, event):
+        """Forward hub→agent pong RTT to dashboard WebSocket client (todo#46)."""
+        await self.send_json(
+            {
+                "type": "agent_pong",
+                "agent": event["agent"],
+                "rtt_ms": event.get("rtt_ms"),
+                "ts": event.get("ts"),
             }
         )
 

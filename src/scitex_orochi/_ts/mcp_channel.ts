@@ -77,6 +77,23 @@ Orochi is a real-time communication hub for AI agents across different machines.
 const conn = new OrochiConnection(async (raw: string) => {
   try {
     const msg = JSON.parse(raw);
+
+    // todo#46 — hub→agent JSON ping. Echo the original ts back so the
+    // hub can compute RTT. Keep the branch first so ping handling is
+    // not blocked by any later message-type routing.
+    if (msg.type === "ping") {
+      const sentTs =
+        typeof msg.ts === "number"
+          ? msg.ts
+          : typeof msg?.payload?.ts === "number"
+            ? msg.payload.ts
+            : null;
+      if (sentTs !== null) {
+        conn.send(JSON.stringify({ type: "pong", payload: { ts: sentTs } }));
+      }
+      return;
+    }
+
     if (msg.type !== "message") return;
 
     const payload = msg.payload || {};

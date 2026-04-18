@@ -415,6 +415,19 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
                 _agents[name]["metrics"] = metrics
 
 
+def update_pong(name: str, rtt_ms: float) -> None:
+    """Record a hub→agent pong's RTT so the PN lamp goes live (todo#46).
+
+    Stores both the RTT and the pong timestamp — the dashboard treats
+    a stale ``last_pong_ts`` as "no recent pong" independent of the RTT
+    value, so an agent that stops responding is visibly degraded.
+    """
+    with _lock:
+        if name in _agents:
+            _agents[name]["last_pong_ts"] = time.time()
+            _agents[name]["last_rtt_ms"] = float(rtt_ms)
+
+
 def register_connection(name: str, conn_id: str) -> int:
     """Track a new WebSocket connection for ``name``.
 
@@ -630,6 +643,16 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     if hb_ts
                     else None
                 ),
+                # todo#46 — hub→agent ping RTT. last_pong_ts is what the
+                # dashboard checks to decide whether the PN lamp is live.
+                "last_pong_ts": (
+                    datetime.fromtimestamp(
+                        a["last_pong_ts"], tz=timezone.utc
+                    ).isoformat()
+                    if a.get("last_pong_ts")
+                    else None
+                ),
+                "last_rtt_ms": a.get("last_rtt_ms"),
                 "last_action": (
                     datetime.fromtimestamp(action_ts, tz=timezone.utc).isoformat()
                     if action_ts
