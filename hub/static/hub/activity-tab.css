@@ -371,7 +371,11 @@
   color: #fbbf24;
 }
 
-/* List view: one-line dense rows. Grid switches layout via parent class. */
+/* List view: one-line dense rows. Grid switches layout via parent class.
+ * Left-to-right column order (fixed-width at the left so every row's
+ * name sits at the same x-position regardless of status):
+ *   [pin][ws-led][fn-led][state-badge][name@host] ... [age]
+ */
 .activity-grid.activity-view-list {
   display: flex;
   flex-direction: column;
@@ -381,7 +385,7 @@
 .activity-grid.activity-view-list .activity-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 4px 10px;
   border-radius: 3px;
   border: 1px solid transparent;
@@ -396,11 +400,80 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.activity-grid.activity-view-list .activity-card .activity-liveness {
+.activity-grid.activity-view-list .activity-card .activity-age {
   flex: 0 0 auto;
   margin-left: auto;
   color: #888;
   font-size: 11px;
+}
+
+/* Two small LEDs (WebSocket connection + functional liveness) rendered
+ * side-by-side after the pin button. Fixed size so the name column
+ * always starts at the same x. */
+.activity-led {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #333;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease;
+}
+.activity-led-ws-on {
+  background: #4ecdc4;
+}
+.activity-led-ws-off {
+  background: #555;
+}
+.activity-led-fn-online {
+  background: #4ecdc4;
+}
+.activity-led-fn-idle {
+  background: #ffd93d;
+}
+.activity-led-fn-stale {
+  background: #ff8c42;
+}
+.activity-led-fn-offline {
+  background: #555;
+}
+
+/* Fixed-width status badge. The width is intentionally locked so the
+ * name column aligns across rows regardless of which state label is
+ * rendered (RUNNING vs IDLE vs SELECTING have different character
+ * counts). */
+.activity-state {
+  flex: 0 0 auto;
+  width: 80px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  text-transform: uppercase;
+}
+.activity-state.activity-state-running {
+  background: #0f2a28;
+  color: #4ecdc4;
+  border-color: #1f4a47;
+}
+.activity-state.activity-state-idle {
+  background: #1a1a1a;
+  color: #888;
+}
+.activity-state.activity-state-selecting {
+  background: #2a2014;
+  color: #fbbf24;
+  border-color: #4a3a1a;
+}
+.activity-state.activity-state-offline {
+  background: #1a1a1a;
+  color: #555;
+  border-color: #2a2a2a;
 }
 
 /* Tile view: compact grid of cards with name + dot only. */

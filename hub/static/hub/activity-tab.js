@@ -921,9 +921,49 @@ function _renderTaskField(task, fallback, age) {
   );
 }
 
+/* Derive a higher-level "what is the agent doing" state, distinct from
+ * the WS-level connection status and the heartbeat-age liveness.
+ *
+ * Precedence (highest wins):
+ *   selecting  — pane classifier says agent is blocked on a choice
+ *                (y_n_prompt, compose_pending_unsent) or needs a human
+ *                (auth_error, mcp_broken)
+ *   running    — LLM fired a tool within the last 30s (active work)
+ *   idle       — connected, quiet
+ *   offline    — WS is disconnected
+ */
+function _computeAgentState(a) {
+  var pane = a.pane_state || "";
+  if (
+    pane === "y_n_prompt" ||
+    pane === "compose_pending_unsent" ||
+    pane === "auth_error" ||
+    pane === "mcp_broken" ||
+    pane === "stuck"
+  ) {
+    return "selecting";
+  }
+  var connected = (a.status || "online") !== "offline";
+  if (!connected) return "offline";
+  var lastToolSec =
+    typeof _secondsSinceIso === "function"
+      ? _secondsSinceIso(a.last_tool_at || a.last_action)
+      : null;
+  if (lastToolSec != null && lastToolSec < 30) return "running";
+  return "idle";
+}
+
 /* Overview list/tile renderer. One-line rows (or compact tiles) for
  * every agent passing the visibility rule. Click a row → inline expand
  * (single at a time). Expand is toggled via _overviewExpanded state.
+ *
+ * Each row carries THREE indicators so connection, heartbeat-age, and
+ * LLM-level activity are all visible at a glance without opening the
+ * detail panel:
+ *
+ *   WS LED       — WebSocket functional connection (status online/offline)
+ *   Functional LED — heartbeat-age liveness (online/idle/stale/offline)
+ *   State chip   — synthesized pane+tool state: running/idle/selecting
  *
  * Visibility rule (functional, NOT duration-based):
  *   status==="online" (WS connected)  → always shown (online/idle/stale)
@@ -993,10 +1033,17 @@ function _renderActivityCards(agents, grid) {
         ? "Unpin (will hide when offline)"
         : "Pin (keeps as ghost when offline, floats to top)";
       var livenessHint = LIVENESS_HINTS[liveness] || liveness;
-      var livenessLabel =
-        typeof _livenessLabel === "function"
-          ? _livenessLabel(liveness)
-          : liveness;
+      var wsHint = connected ? "WebSocket connected" : "WebSocket disconnected";
+      var state = _computeAgentState(a);
+      var stateLabel = state.toUpperCase();
+      var stateHint =
+        {
+          running: "LLM fired a tool within the last 30s",
+          idle: "connected, no recent tool calls",
+          selecting: "agent is blocked on a choice or needs attention",
+          offline: "not connected",
+        }[state] || state;
+      var ageStr = idleStr ? idleStr : "";
       var row =
         '<div class="activity-card activity-' +
         liveness +
@@ -1015,22 +1062,35 @@ function _renderActivityCards(agents, grid) {
         '" title="' +
         escapeHtml(pinTitle) +
         '">\uD83D\uDCCC</button>' +
-        '<span class="activity-status-dot activity-dot-' +
+        '<span class="activity-led activity-led-ws activity-led-ws-' +
+        (connected ? "on" : "off") +
+        '" title="' +
+        escapeHtml(wsHint) +
+        '"></span>' +
+        '<span class="activity-led activity-led-fn activity-led-fn-' +
         liveness +
         '" title="' +
         escapeHtml(livenessHint) +
         '"></span>' +
+        '<span class="activity-state activity-state-' +
+        state +
+        '" title="' +
+        escapeHtml(stateHint) +
+        '">' +
+        escapeHtml(stateLabel) +
+        "</span>" +
         '<span class="activity-name" style="color:' +
         color +
         '">' +
         name +
         "</span>" +
-        '<span class="activity-liveness" title="' +
-        escapeHtml(livenessHint) +
-        '">' +
-        escapeHtml(livenessLabel) +
-        (idleStr ? " · " + escapeHtml(idleStr) : "") +
-        "</span>" +
+        (ageStr
+          ? '<span class="activity-age" title="' +
+            escapeHtml(livenessHint) +
+            '">' +
+            escapeHtml(ageStr) +
+            "</span>"
+          : "") +
         "</div>";
       if (_overviewExpanded === rawName) {
         row +=
@@ -1079,7 +1139,27 @@ function _renderActivityCards(agents, grid) {
         ev.stopPropagation();
         var name = btn.getAttribute("data-pin-name");
         var nextPin = btn.getAttribute("data-pin-next") === "true";
-        if (typeof togglePinAgent === "function") togglePinAgent(name, nextPin);
+        /* Optimistic UI: flip local __lastAgents entry and the button
+         * state immediately so the pin feels responsive, then hit the
+         * API. fetchAgents() will re-render with authoritative server
+         * data once the POST/DELETE lands. */
+        var live = window.__lastAgents || [];
+        for (var i = 0; i < live.length; i++) {
+          if (live[i].name === name) {
+            live[i].pinned = nextPin;
+            break;
+          }
+        }
+        btn.classList.toggle("activity-pin-on", nextPin);
+        btn.setAttribute("data-pin-next", nextPin ? "false" : "true");
+        if (typeof togglePinAgent === "function") {
+          togglePinAgent(name, nextPin);
+        } else {
+          console.error(
+            "togglePinAgent unavailable — pin click had no effect for",
+            name,
+          );
+        }
       });
     },
   );
