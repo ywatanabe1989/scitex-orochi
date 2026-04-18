@@ -1071,7 +1071,8 @@ function _computeAgentState(a) {
 var _topoLastSig = "";
 var _topoLastExpanded = null;
 var _topoViewBox = null; /* {x,y,w,h} — persisted zoom/pan across re-renders */
-var _topoViewBoxHistory = []; /* stack for Escape = undo zoom */
+var _topoViewBoxHistory = []; /* back stack (undo) */
+var _topoViewBoxFuture = []; /* forward stack (redo) */
 var _topoZoomWired = false;
 var _topoLastPositions = { agents: {}, channels: {} };
 
@@ -1160,22 +1161,32 @@ function _topoFlashEdge(edges, a, b, delay, dur) {
  * packet variant "topo-packet-artifact" is used (styled differently
  * as a babble bubble). ywatanabe 2026-04-19. */
 function _topoPulseEdge(sender, channel, opts) {
-  if (!sender || !channel) return;
+  if (!channel) return;
   var svg = document.querySelector(".activity-view-topology .topo-svg");
   if (!svg) return;
-  var ap = _topoLastPositions.agents[sender];
   var cp = _topoLastPositions.channels[channel];
-  if (!ap || !cp) return;
+  if (!cp) return;
   var edges = svg.querySelector(".topo-edges");
   if (!edges) return;
   var klass =
     opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
   var LEG = 900;
-  /* Leg 1 — sender → channel. */
-  _topoSpawnPacket(edges, ap, cp, LEG, 0, klass);
-  _topoFlashEdge(edges, ap, cp, 0, LEG);
-  /* Leg 2 — channel → each subscribed agent (except sender). Propagate
-   * only through visible agents (positions known). */
+  /* Leg 1 — sender → channel IF the sender is a visible agent. Human
+   * posts (sender = username, not an agent name) skip leg 1 and start
+   * from the channel node — so the user still sees their post
+   * propagate via leg 2 ("double-click channel → post" case). */
+  var ap = sender ? _topoLastPositions.agents[sender] : null;
+  var leg2Delay = 0;
+  if (ap) {
+    _topoSpawnPacket(edges, ap, cp, LEG, 0, klass);
+    _topoFlashEdge(edges, ap, cp, 0, LEG);
+    leg2Delay = LEG;
+  } else {
+    /* Brief in-place pulse on the channel so the origin is visible
+     * before the fan-out leg. */
+    _topoSpawnPacket(edges, cp, cp, 180, 0, klass);
+  }
+  /* Leg 2 — channel → each subscribed agent (except sender if agent). */
   var subscribers = Object.keys(_topoLastPositions.agents).filter(function (n) {
     if (n === sender) return false;
     var ag = (window.__lastAgents || []).find(function (x) {
@@ -1188,8 +1199,8 @@ function _topoPulseEdge(sender, channel, opts) {
   subscribers.forEach(function (n) {
     var target = _topoLastPositions.agents[n];
     if (!target) return;
-    _topoSpawnPacket(edges, cp, target, LEG, LEG, klass);
-    _topoFlashEdge(edges, cp, target, LEG, LEG);
+    _topoSpawnPacket(edges, cp, target, LEG, leg2Delay, klass);
+    _topoFlashEdge(edges, cp, target, leg2Delay, LEG);
   });
 }
 window._topoPulseEdge = _topoPulseEdge;
@@ -1222,6 +1233,9 @@ function _wireTopoZoomPan(grid, W, H) {
       });
     else _topoViewBoxHistory.push(null);
     if (_topoViewBoxHistory.length > 30) _topoViewBoxHistory.shift();
+    /* Any new zoom/pan invalidates the redo chain — matches browser
+     * history semantics. */
+    _topoViewBoxFuture.length = 0;
   }
   function _applyVB(svg, vb) {
     if (!vb) svg.setAttribute("viewBox", "0 0 " + W + " " + H);
@@ -1251,9 +1265,36 @@ function _wireTopoZoomPan(grid, W, H) {
   }
   function _popVB(svg) {
     if (!_topoViewBoxHistory.length) return;
+    /* Save current state onto the future stack so Forward can redo. */
+    _topoViewBoxFuture.push(
+      _topoViewBox
+        ? {
+            x: _topoViewBox.x,
+            y: _topoViewBox.y,
+            w: _topoViewBox.w,
+            h: _topoViewBox.h,
+          }
+        : null,
+    );
     var prev = _topoViewBoxHistory.pop();
     _topoViewBox = prev;
     _applyVB(svg, prev);
+  }
+  function _forwardVB(svg) {
+    if (!_topoViewBoxFuture.length) return;
+    _topoViewBoxHistory.push(
+      _topoViewBox
+        ? {
+            x: _topoViewBox.x,
+            y: _topoViewBox.y,
+            w: _topoViewBox.w,
+            h: _topoViewBox.h,
+          }
+        : null,
+    );
+    var next = _topoViewBoxFuture.pop();
+    _topoViewBox = next;
+    _applyVB(svg, next);
   }
   function _resetVB(svg) {
     _pushVB();
@@ -1420,6 +1461,7 @@ function _wireTopoZoomPan(grid, W, H) {
     if (!svg) return;
     var action = btn.getAttribute("data-topo-ctrl");
     if (action === "back") _popVB(svg);
+    else if (action === "forward") _forwardVB(svg);
     else if (action === "reset") _resetVB(svg);
     else if (action === "plus") _zoomAt(svg, 1 / 1.25, null, null);
     else if (action === "minus") _zoomAt(svg, 1.25, null, null);
@@ -1461,11 +1503,13 @@ function _wireTopoZoomPan(grid, W, H) {
   );
 }
 function _topoSignature(visible) {
-  /* Cheap digest: name + online-ness + liveness bucket + pinned +
-   * channel count. Liveness is in so the FN LED color follows the
-   * online→idle→stale transitions. Individual idle-seconds are NOT —
-   * those flap every second and would cause pointless repaints. */
-  var parts = [];
+  /* Digest: color-key selection + per-agent (name + online-ness +
+   * liveness bucket + pinned + channel count). _overviewColor goes in
+   * because swapping "color: host / account" changes the text fill on
+   * every node — without it, the cache would skip the re-render.
+   * Individual idle-seconds are NOT — those flap every second and
+   * would cause pointless repaints. */
+  var parts = [_overviewColor || "name"];
   for (var i = 0; i < visible.length; i++) {
     var a = visible[i];
     var chCount = Array.isArray(a.channels) ? a.channels.length : 0;
@@ -1762,10 +1806,11 @@ function _renderActivityTopology(visible, grid) {
       '"><p class="empty-notice">Loading detail…</p></div>';
   }
   var hint =
-    '<div class="topo-hint">drag = pan · ctrl+drag = rectangle zoom · wheel = zoom · esc = back · 0 = reset</div>';
+    '<div class="topo-hint">drag = rectangle zoom · shift/ctrl+drag = pan · wheel = zoom · esc = back · 0 = reset · dbl-click channel = post</div>';
   var ctrls =
     '<div class="topo-ctrls">' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="back" title="Previous zoom (Escape)">↶</button>' +
+    '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="forward" title="Next zoom (redo)">↷</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="minus" title="Zoom out (−)">−</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="reset" title="Reset zoom (0)">0</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
