@@ -813,6 +813,9 @@ async function _activityChannelRequest(method, agent, channel) {
     });
     throw new Error(res.status + ": " + txt.slice(0, 200));
   }
+  /* Any membership mutation invalidates the topology arrow cache so
+   * next render re-fetches per-channel permissions. */
+  if (typeof _invalidateTopoPerms === "function") _invalidateTopoPerms();
   return res.json();
 }
 
@@ -1076,6 +1079,139 @@ var _topoViewBoxFuture = []; /* forward stack (redo) */
 var _topoZoomWired = false;
 var _topoLastPositions = { agents: {}, channels: {} };
 
+/* Permission-direction arrows: map of "<channel>::<agentName>" → one of
+ * "read-only" | "read-write" | "write-only". Populated by
+ * _refreshTopoPerms() which calls /api/channel-members/?channel=…
+ * per visible channel and caches the result. Missing pairs default to
+ * "read-write" (bidirectional arrows — safer than hiding direction).
+ * TTL = 30 s; any subscribe/unsubscribe invalidates the whole map. */
+var _topoChannelPerms = Object.create(null);
+var _topoChannelPermsFetchedAt = 0;
+var _topoChannelPermsInflight = Object.create(null); /* channel → bool */
+var TOPO_PERMS_TTL_MS = 30000;
+
+function _invalidateTopoPerms() {
+  _topoChannelPerms = Object.create(null);
+  _topoChannelPermsFetchedAt = 0;
+}
+window._invalidateTopoPerms = _invalidateTopoPerms;
+
+function _permKey(channel, agentName) {
+  return channel + "::" + agentName;
+}
+
+/* Fetch membership+permission for one channel and fold the result into
+ * _topoChannelPerms. Silent on failure — the caller treats missing
+ * entries as read-write. */
+async function _fetchTopoPermsForChannel(channel) {
+  if (_topoChannelPermsInflight[channel]) return;
+  _topoChannelPermsInflight[channel] = true;
+  try {
+    var res = await fetch(
+      apiUrl("/api/channel-members/?channel=" + encodeURIComponent(channel)),
+      { credentials: "same-origin" },
+    );
+    if (!res.ok) return;
+    var rows = await res.json();
+    if (!Array.isArray(rows)) return;
+    rows.forEach(function (row) {
+      if (!row || !row.username) return;
+      /* Backend usernames for agents are "agent-<name>"; the topology
+       * renderer keys on bare agent names. Strip the prefix so the
+       * cache lookup matches either form. */
+      var uname = String(row.username);
+      var bare = uname.indexOf("agent-") === 0 ? uname.slice(6) : uname;
+      var perm = row.permission || "read-write";
+      _topoChannelPerms[_permKey(channel, bare)] = perm;
+      _topoChannelPerms[_permKey(channel, uname)] = perm;
+    });
+  } catch (_e) {
+    /* ignore — fall back to read-write default on missing entries */
+  } finally {
+    _topoChannelPermsInflight[channel] = false;
+    /* Trigger a lightweight repaint so arrows appear once data lands.
+     * We don't want to rebuild the whole SVG (would thrash zoom); just
+     * re-decorate the existing lines. */
+    if (typeof _repaintTopoArrows === "function") _repaintTopoArrows();
+  }
+}
+
+/* Kick off one fetch per visible channel if the cache is cold or
+ * expired. Non-blocking: arrows render with defaults first, then
+ * upgrade once each fetch resolves. */
+function _refreshTopoPerms(channels) {
+  var now = Date.now();
+  if (now - _topoChannelPermsFetchedAt < TOPO_PERMS_TTL_MS) return;
+  _topoChannelPermsFetchedAt = now;
+  channels.forEach(function (c) {
+    _fetchTopoPermsForChannel(c);
+  });
+}
+
+/* Multi-select state for the topology. A Set of agent names currently
+ * selected; the renderer adds `.topo-agent-selected` to matching nodes
+ * and the floating action bar appears when size ≥ 2. */
+var _topoSelected = Object.create(null); /* name → true */
+function _topoSelectedNames() {
+  return Object.keys(_topoSelected);
+}
+function _topoSelectClear() {
+  _topoSelected = Object.create(null);
+}
+function _topoSelectToggle(name) {
+  if (_topoSelected[name]) delete _topoSelected[name];
+  else _topoSelected[name] = true;
+}
+function _topoSelectAdd(name) {
+  if (name) _topoSelected[name] = true;
+}
+
+/* Map a permission string to the SVG attribute fragment that places
+ * arrows on the correct endpoint(s). Each line is drawn agent→channel
+ * (x1/y1 = agent, x2/y2 = channel), so marker-start sits at the agent
+ * and marker-end sits at the channel.
+ *   read-only   (agent reads from channel)  → arrow at agent end
+ *   read-write  (bidirectional)              → arrows on both ends
+ *   write-only  (agent writes to channel)    → arrow at channel end
+ */
+function _markerAttrsForPerm(perm) {
+  if (perm === "read-only") {
+    return ' marker-start="url(#topo-arrow-start)"';
+  }
+  if (perm === "write-only") {
+    return ' marker-end="url(#topo-arrow-end)"';
+  }
+  /* default = read-write → both */
+  return ' marker-start="url(#topo-arrow-start)" marker-end="url(#topo-arrow-end)"';
+}
+
+/* After a permission-fetch resolves we only need to update the
+ * `marker-start`/`marker-end` attributes on existing <line> elements,
+ * NOT rebuild the SVG (that would thrash zoom state). */
+function _repaintTopoArrows() {
+  var svg = document.querySelector(".activity-view-topology .topo-svg");
+  if (!svg) return;
+  var lines = svg.querySelectorAll(
+    ".topo-edges line[data-agent][data-channel]",
+  );
+  for (var i = 0; i < lines.length; i++) {
+    var ln = lines[i];
+    var name = ln.getAttribute("data-agent");
+    var ch = ln.getAttribute("data-channel");
+    var perm = _topoChannelPerms[_permKey(ch, name)] || "read-write";
+    if (perm === "read-only") {
+      ln.setAttribute("marker-start", "url(#topo-arrow-start)");
+      ln.removeAttribute("marker-end");
+    } else if (perm === "write-only") {
+      ln.removeAttribute("marker-start");
+      ln.setAttribute("marker-end", "url(#topo-arrow-end)");
+    } else {
+      ln.setAttribute("marker-start", "url(#topo-arrow-start)");
+      ln.setAttribute("marker-end", "url(#topo-arrow-end)");
+    }
+  }
+}
+
 /* Spawn one glowing packet traveling from (fromX,fromY) -> (toX,toY)
  * over `dur` ms, optionally delayed. Self-removes after animation. */
 function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
@@ -1306,7 +1442,7 @@ function _wireTopoZoomPan(grid, W, H) {
   grid._topoPopVB = _popVB;
   grid._topoResetVB = _resetVB;
 
-  var dragging = null; /* {mode:"zoom"|"pan", ...} */
+  var dragging = null; /* {mode:"zoom"|"pan"|"lasso", ...} */
   grid.addEventListener("mousedown", function (ev) {
     var svg = ev.target.closest && ev.target.closest(".topo-svg");
     if (!svg) return;
@@ -1314,11 +1450,33 @@ function _wireTopoZoomPan(grid, W, H) {
     if (ev.button !== 0) return;
     ev.preventDefault();
     var start = _svgPoint(svg, ev.clientX, ev.clientY);
-    /* Semantic: plain drag = rectangle zoom, shift/ctrl-drag = pan.
+    /* Semantic:
+     *   plain drag     = rectangle zoom
+     *   shift/meta drag = pan
+     *   ctrl drag       = lasso multi-select (new — ywatanabe
+     *                     2026-04-19, todo#multiselect)
      * Cursor class toggles so it's default when just hovering and
-     * becomes crosshair/grab only during the actual drag. */
-    var panMode = ev.ctrlKey || ev.metaKey || ev.shiftKey;
-    if (panMode) {
+     * becomes crosshair / grab / copy only during the actual drag. */
+    var panMode = ev.shiftKey || ev.metaKey;
+    var lassoMode = ev.ctrlKey && !panMode;
+    if (lassoMode) {
+      dragging = {
+        mode: "lasso",
+        svg: svg,
+        startSvg: start,
+        endSvg: start,
+        additive: true,
+      };
+      var lrect = svg.querySelector(".topo-lasso");
+      if (lrect) {
+        lrect.setAttribute("x", String(start.x));
+        lrect.setAttribute("y", String(start.y));
+        lrect.setAttribute("width", "0");
+        lrect.setAttribute("height", "0");
+        lrect.style.display = "";
+      }
+      svg.classList.add("topo-lassoing");
+    } else if (panMode) {
       var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
       dragging = {
         mode: "pan",
@@ -1361,6 +1519,20 @@ function _wireTopoZoomPan(grid, W, H) {
         rect.setAttribute("y", y.toFixed(1));
         rect.setAttribute("width", w.toFixed(1));
         rect.setAttribute("height", h.toFixed(1));
+      }
+    } else if (dragging.mode === "lasso") {
+      var pL = _svgPoint(dragging.svg, ev.clientX, ev.clientY);
+      dragging.endSvg = pL;
+      var lrect = dragging.svg.querySelector(".topo-lasso");
+      if (lrect) {
+        var lx = Math.min(dragging.startSvg.x, pL.x);
+        var ly = Math.min(dragging.startSvg.y, pL.y);
+        var lw = Math.abs(pL.x - dragging.startSvg.x);
+        var lh = Math.abs(pL.y - dragging.startSvg.y);
+        lrect.setAttribute("x", lx.toFixed(1));
+        lrect.setAttribute("y", ly.toFixed(1));
+        lrect.setAttribute("width", lw.toFixed(1));
+        lrect.setAttribute("height", lh.toFixed(1));
       }
     } else if (dragging.mode === "pan") {
       /* Translate clientX/Y delta to SVG coordinates via the viewBox
@@ -1408,9 +1580,43 @@ function _wireTopoZoomPan(grid, W, H) {
       }
       var rect = svg.querySelector(".topo-zoombox");
       if (rect) rect.style.display = "none";
+    } else if (dragging.mode === "lasso") {
+      var pL = _svgPoint(svg, ev.clientX, ev.clientY);
+      var lx = Math.min(dragging.startSvg.x, pL.x);
+      var ly = Math.min(dragging.startSvg.y, pL.y);
+      var lw = Math.abs(pL.x - dragging.startSvg.x);
+      var lh = Math.abs(pL.y - dragging.startSvg.y);
+      var lrect = svg.querySelector(".topo-lasso");
+      if (lrect) lrect.style.display = "none";
+      /* Select every agent whose center lies inside the box. Tiny
+       * stray-click boxes are ignored (treat as cancel). */
+      if (lw > 3 && lh > 3) {
+        if (!dragging.additive) _topoSelectClear();
+        var added = 0;
+        Object.keys(_topoLastPositions.agents || {}).forEach(function (name) {
+          var pos = _topoLastPositions.agents[name];
+          if (!pos) return;
+          if (
+            pos.x >= lx &&
+            pos.x <= lx + lw &&
+            pos.y >= ly &&
+            pos.y <= ly + lh
+          ) {
+            _topoSelectAdd(name);
+            added++;
+          }
+        });
+        if (added) {
+          /* Nudge the signature so the next render reflects the new
+           * .topo-agent-selected classes AND shows the action bar. */
+          _topoLastSig = "";
+          renderActivityTab();
+        }
+      }
     }
     svg.classList.remove("topo-zooming");
     svg.classList.remove("topo-panning");
+    svg.classList.remove("topo-lassoing");
     dragging = null;
   });
   grid.addEventListener("dblclick", function (ev) {
@@ -1502,14 +1708,207 @@ function _wireTopoZoomPan(grid, W, H) {
     { passive: false },
   );
 }
+
+/* ─── Multi-select group compose modal ───────────────────────────
+ * Opened from the floating action bar when ≥2 agents are selected.
+ * Two posting modes:
+ *   mention  → a single post in a chosen channel with @agent1 @agent2
+ *              prepended to the text (needs a channel selector).
+ *   group-dm → create/ensure a DM channel named
+ *              "dm:group:<sorted,comma-joined,names>", subscribe each
+ *              selected agent as read-write, then post the text.
+ * Modal Escape closes it; we use a capture-phase listener that stops
+ * propagation so the topology Escape = zoom-back handler doesn't also
+ * fire while the modal is open. */
+var _topoComposeEl = null;
+var _topoComposeEscapeHandler = null;
+
+function _closeTopoGroupCompose() {
+  if (_topoComposeEl && _topoComposeEl.parentNode) {
+    _topoComposeEl.parentNode.removeChild(_topoComposeEl);
+  }
+  _topoComposeEl = null;
+  if (_topoComposeEscapeHandler) {
+    document.removeEventListener("keydown", _topoComposeEscapeHandler, true);
+    _topoComposeEscapeHandler = null;
+  }
+}
+
+function _openTopoGroupCompose(agents) {
+  if (!Array.isArray(agents) || agents.length < 2) return;
+  _closeTopoGroupCompose();
+  /* Channel options come from the global _channelPrefs map (app.js).
+   * Skip dm: entries; they aren't useful as mention destinations. */
+  var prefs = (typeof _channelPrefs !== "undefined" && _channelPrefs) || {};
+  var chOpts = Object.keys(prefs)
+    .filter(function (n) {
+      return n && n.indexOf("dm:") !== 0;
+    })
+    .sort()
+    .map(function (n) {
+      return (
+        '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + "</option>"
+      );
+    })
+    .join("");
+  var chips = agents
+    .map(function (n) {
+      return '<span class="topo-compose-chip">' + escapeHtml(n) + "</span>";
+    })
+    .join("");
+  var overlay = document.createElement("div");
+  overlay.className = "topo-compose-overlay";
+  overlay.innerHTML =
+    '<div class="topo-compose-modal" role="dialog" aria-modal="true">' +
+    '<div class="topo-compose-header">' +
+    '<span class="topo-compose-title">Post to ' +
+    agents.length +
+    " selected agents</span>" +
+    '<button type="button" class="topo-compose-close" data-topo-compose="cancel" title="Close (Esc)">×</button>' +
+    "</div>" +
+    '<div class="topo-compose-body">' +
+    '<div class="topo-compose-targets">' +
+    chips +
+    "</div>" +
+    '<label class="topo-compose-label">Message</label>' +
+    '<textarea class="topo-compose-text" rows="4" placeholder="Type your message…"></textarea>' +
+    '<fieldset class="topo-compose-mode">' +
+    '<legend class="topo-compose-label">Delivery</legend>' +
+    '<label class="topo-compose-radio"><input type="radio" name="topo-compose-mode" value="mention"> mention in channel</label>' +
+    '<label class="topo-compose-radio"><input type="radio" name="topo-compose-mode" value="group-dm" checked> group DM</label>' +
+    "</fieldset>" +
+    '<div class="topo-compose-channel" style="display:none">' +
+    '<label class="topo-compose-label">Channel</label>' +
+    '<select class="topo-compose-channel-select">' +
+    chOpts +
+    "</select>" +
+    "</div>" +
+    "</div>" +
+    '<div class="topo-compose-footer">' +
+    '<button type="button" class="topo-compose-btn" data-topo-compose="cancel">Cancel</button>' +
+    '<button type="button" class="topo-compose-btn topo-compose-btn-primary" data-topo-compose="post">Post</button>' +
+    "</div></div>";
+  document.body.appendChild(overlay);
+  _topoComposeEl = overlay;
+
+  var textEl = overlay.querySelector(".topo-compose-text");
+  var modeRadios = overlay.querySelectorAll('input[name="topo-compose-mode"]');
+  var chBox = overlay.querySelector(".topo-compose-channel");
+  var chSelect = overlay.querySelector(".topo-compose-channel-select");
+  function _currentMode() {
+    for (var i = 0; i < modeRadios.length; i++) {
+      if (modeRadios[i].checked) return modeRadios[i].value;
+    }
+    return "group-dm";
+  }
+  function _syncModeUI() {
+    chBox.style.display = _currentMode() === "mention" ? "" : "none";
+  }
+  modeRadios.forEach(function (r) {
+    r.addEventListener("change", _syncModeUI);
+  });
+  _syncModeUI();
+  setTimeout(function () {
+    if (textEl) textEl.focus();
+  }, 40);
+
+  overlay.addEventListener("click", function (ev) {
+    if (ev.target === overlay) {
+      _closeTopoGroupCompose();
+      return;
+    }
+    var btn = ev.target.closest("[data-topo-compose]");
+    if (!btn) return;
+    var action = btn.getAttribute("data-topo-compose");
+    if (action === "cancel") {
+      _closeTopoGroupCompose();
+      return;
+    }
+    if (action !== "post") return;
+    var text = (textEl && textEl.value ? textEl.value : "").trim();
+    if (!text) {
+      if (textEl) textEl.focus();
+      return;
+    }
+    if (_currentMode() === "mention") {
+      var ch = chSelect && chSelect.value ? chSelect.value : "";
+      if (!ch) {
+        alert("Pick a channel to mention in.");
+        return;
+      }
+      _submitTopoMentionPost(ch, agents, text);
+      _closeTopoGroupCompose();
+    } else {
+      _submitTopoGroupDmPost(agents, text).catch(function (err) {
+        alert("Group DM failed: " + (err && err.message ? err.message : err));
+      });
+    }
+  });
+
+  /* Capture-phase Escape: close the modal AND stop propagation before
+   * the topology Escape-handler (which pops zoom history) sees it. */
+  _topoComposeEscapeHandler = function (ev) {
+    if (ev.key !== "Escape") return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    _closeTopoGroupCompose();
+  };
+  document.addEventListener("keydown", _topoComposeEscapeHandler, true);
+}
+
+function _submitTopoMentionPost(channel, agents, text) {
+  var mentions = agents
+    .map(function (n) {
+      return "@" + n;
+    })
+    .join(" ");
+  var body = mentions + " " + text;
+  if (typeof sendOrochiMessage !== "function") {
+    alert("sendOrochiMessage unavailable — cannot post");
+    return;
+  }
+  sendOrochiMessage({
+    type: "message",
+    sender: typeof userName !== "undefined" && userName ? userName : "human",
+    payload: { channel: channel, content: body },
+  });
+}
+
+async function _submitTopoGroupDmPost(agents, text) {
+  var sorted = agents.slice().sort();
+  var channel = "dm:group:" + sorted.join(",");
+  /* Subscribe each selected agent to the new channel (read-write).
+   * The backend creates the channel on first POST and the call is
+   * idempotent for already-subscribed agents. Run sequentially so
+   * any failure surfaces with a clear error instead of a race. */
+  for (var i = 0; i < sorted.length; i++) {
+    await _activityChannelRequest("POST", sorted[i], channel);
+  }
+  /* Invalidate perm cache since we just mutated memberships. */
+  _invalidateTopoPerms();
+  if (typeof sendOrochiMessage === "function") {
+    sendOrochiMessage({
+      type: "message",
+      sender: typeof userName !== "undefined" && userName ? userName : "human",
+      payload: { channel: channel, content: text },
+    });
+  }
+  _closeTopoGroupCompose();
+  /* Refresh agents so the list view reflects the new subscriptions. */
+  if (typeof fetchAgents === "function") fetchAgents();
+}
+
 function _topoSignature(visible) {
-  /* Digest: color-key selection + per-agent (name + online-ness +
-   * liveness bucket + pinned + channel count). _overviewColor goes in
-   * because swapping "color: host / account" changes the text fill on
-   * every node — without it, the cache would skip the re-render.
-   * Individual idle-seconds are NOT — those flap every second and
-   * would cause pointless repaints. */
-  var parts = [_overviewColor || "name"];
+  /* Digest: color-key selection + multi-select set + per-agent (name +
+   * online-ness + liveness bucket + pinned + channel count).
+   * _overviewColor goes in because swapping "color: host / account"
+   * changes the text fill on every node — without it, the cache would
+   * skip the re-render. Selected-set is included so toggling
+   * multi-select triggers a repaint (adds/removes the
+   * .topo-agent-selected class). Individual idle-seconds are NOT —
+   * those flap every second and would cause pointless repaints. */
+  var selSig = _topoSelectedNames().sort().join(",");
+  var parts = [_overviewColor || "name", "sel:" + selSig];
   for (var i = 0; i < visible.length; i++) {
     var a = visible[i];
     var chCount = Array.isArray(a.channels) ? a.channels.length : 0;
@@ -1603,15 +2002,28 @@ function _renderActivityTopology(visible, grid) {
    * targets the right coordinates. */
   _topoLastPositions = { agents: agentPos, channels: chPos };
 
-  /* Edges — iterate visible agents, intersect with the channel set. */
+  /* Kick off (or refresh) the per-channel permission fetch. Arrows
+   * render immediately with the read-write default and upgrade in
+   * place once each fetch resolves. */
+  _refreshTopoPerms(channels);
+
+  /* Edges — iterate visible agents, intersect with the channel set.
+   * Each <line> carries data-channel/data-agent so _repaintTopoArrows()
+   * can re-apply marker-start/marker-end without touching geometry. */
   var edgesSvg = "";
   visible.forEach(function (a) {
     var ap = agentPos[a.name];
     (a.channels || []).forEach(function (c) {
       var cp = chPos[c];
       if (!ap || !cp) return;
+      var perm = _topoChannelPerms[_permKey(c, a.name)] || "read-write";
+      var markers = _markerAttrsForPerm(perm);
       edgesSvg +=
-        '<line x1="' +
+        '<line data-agent="' +
+        escapeHtml(a.name) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '" x1="' +
         ap.x.toFixed(1) +
         '" y1="' +
         ap.y.toFixed(1) +
@@ -1619,7 +2031,9 @@ function _renderActivityTopology(visible, grid) {
         cp.x.toFixed(1) +
         '" y2="' +
         cp.y.toFixed(1) +
-        '" stroke="#2a3a40" stroke-opacity="0.6" stroke-width="1"/>';
+        '" stroke="#2a3a40" stroke-opacity="0.6" stroke-width="1"' +
+        markers +
+        "/>";
     });
   });
 
@@ -1745,8 +2159,11 @@ function _renderActivityTopology(visible, grid) {
           '" fill="#fbbf24" font-size="11">\uD83D\uDCCC</text>'
         : "";
       var nameX = p.x + LED_R + GAP / 2 + (a.pinned ? 22 : 8);
+      var selCls = _topoSelected[a.name] ? " topo-agent-selected" : "";
       return (
-        '<g class="topo-node topo-agent" data-agent="' +
+        '<g class="topo-node topo-agent' +
+        selCls +
+        '" data-agent="' +
         escapeHtml(a.name) +
         '">' +
         wsLed +
@@ -1770,6 +2187,24 @@ function _renderActivityTopology(visible, grid) {
    * state survives heartbeat-driven rebuilds. If null, use the natural
    * (0 0 W H) frame so the whole scene fits. */
   var vb = _topoViewBox || { x: 0, y: 0, w: W, h: H };
+  /* <defs> carries two permission-direction markers. refX is placed
+   * so the arrow tip sits just off the line end — otherwise it would
+   * overlap the LED/diamond node. markerUnits=userSpaceOnUse so the
+   * triangle scales with viewBox zoom (vanishes gracefully when the
+   * user zooms out to survey the whole graph). */
+  var markerDefs =
+    "<defs>" +
+    '<marker id="topo-arrow-end" viewBox="0 0 10 10" refX="9" refY="5"' +
+    ' markerWidth="6" markerHeight="6" orient="auto-start-reverse"' +
+    ' markerUnits="userSpaceOnUse">' +
+    '<path d="M0,0 L10,5 L0,10 z" fill="#4ecdc4" class="topo-arrow-head"/>' +
+    "</marker>" +
+    '<marker id="topo-arrow-start" viewBox="0 0 10 10" refX="9" refY="5"' +
+    ' markerWidth="6" markerHeight="6" orient="auto-start-reverse"' +
+    ' markerUnits="userSpaceOnUse">' +
+    '<path d="M0,0 L10,5 L0,10 z" fill="#4ecdc4" class="topo-arrow-head"/>' +
+    "</marker>" +
+    "</defs>";
   var svg =
     '<svg class="topo-svg" width="' +
     W +
@@ -1784,6 +2219,7 @@ function _renderActivityTopology(visible, grid) {
     " " +
     vb.h.toFixed(1) +
     '" xmlns="http://www.w3.org/2000/svg">' +
+    markerDefs +
     '<g class="topo-edges">' +
     edgesSvg +
     "</g>" +
@@ -1796,6 +2232,9 @@ function _renderActivityTopology(visible, grid) {
     '<rect class="topo-zoombox" x="0" y="0" width="0" height="0"' +
     ' fill="rgba(78,205,196,0.1)" stroke="#4ecdc4" stroke-width="1"' +
     ' stroke-dasharray="4 4" style="display:none;pointer-events:none"/>' +
+    '<rect class="topo-lasso" x="0" y="0" width="0" height="0"' +
+    ' fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="1"' +
+    ' stroke-dasharray="3 3" style="display:none;pointer-events:none"/>' +
     "</svg>";
 
   var detailBox = "";
@@ -1806,7 +2245,23 @@ function _renderActivityTopology(visible, grid) {
       '"><p class="empty-notice">Loading detail…</p></div>';
   }
   var hint =
-    '<div class="topo-hint">drag = rectangle zoom · shift/ctrl+drag = pan · wheel = zoom · esc = back · 0 = reset · dbl-click channel = post</div>';
+    '<div class="topo-hint">drag = rectangle zoom · shift+drag = pan · ctrl+drag = lasso · shift+click agent = multi-select · wheel = zoom · esc = back · 0 = reset · dbl-click channel = post</div>';
+  /* Floating action bar — visible only when ≥2 agents are selected.
+   * Markup always rendered so the same event-delegation wiring works;
+   * visibility toggled via a CSS class. */
+  var selNames = _topoSelectedNames();
+  var barCls =
+    "topo-actionbar" + (selNames.length >= 2 ? " topo-actionbar-show" : "");
+  var actionBar =
+    '<div class="' +
+    barCls +
+    '" role="toolbar">' +
+    '<span class="topo-actionbar-count">' +
+    selNames.length +
+    " selected</span>" +
+    '<button type="button" class="topo-actionbar-btn" data-topo-action="post">post to selected agents</button>' +
+    '<button type="button" class="topo-actionbar-btn topo-actionbar-btn-ghost" data-topo-action="clear">clear</button>' +
+    "</div>";
   var ctrls =
     '<div class="topo-ctrls">' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="back" title="Previous zoom (Escape)">↶</button>' +
@@ -1816,7 +2271,13 @@ function _renderActivityTopology(visible, grid) {
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
     "</div>";
   grid.innerHTML =
-    '<div class="topo-wrap">' + hint + ctrls + svg + "</div>" + detailBox;
+    '<div class="topo-wrap">' +
+    hint +
+    ctrls +
+    svg +
+    actionBar +
+    "</div>" +
+    detailBox;
 
   /* Delegated click: agent node → toggle expand. Bound ONCE on the
    * grid (the delegation helper guards with _overviewGridWired). We
@@ -2125,7 +2586,8 @@ function _openAgentDm(agentName) {
         /* POST /api/dms/ returns the canonical {name, ...} row. Fall
          * back to our constructed name if the response shape is
          * unexpected. */
-        var ch = (j && (j.name || j.channel || (j.dm && j.dm.name))) || fallback;
+        var ch =
+          (j && (j.name || j.channel || (j.dm && j.dm.name))) || fallback;
         _switchTo(ch);
       })
       .catch(function () {
@@ -2230,15 +2692,27 @@ function _wireOverviewGridDelegation(grid) {
       renderActivityTab();
       return;
     }
-    /* Topology view — multi-click dispatch. 1-click = drag-source
-     * (handled on mousedown; click is a no-op), 2-click = DM,
-     * 3-click = toggle inline detail expand. */
+    /* Topology view — agent node click dispatch. Modifiers take
+     * precedence over the 1/2/3-click timer:
+     *   shift+click          → toggle multi-select membership
+     *   ctrl/meta+click      → addTag (routes to Ctrl+K global search)
+     *   plain 1-click        → drag source (handled on mousedown; click is a no-op)
+     *   plain 2-click        → open DM with that agent
+     *   plain 3-click        → toggle inline detail expand
+     * The click that immediately follows a successful drag-drop is
+     * suppressed so the drop doesn't also trigger expand. */
     var topoAgent = ev.target.closest(".topo-agent[data-agent]");
     if (topoAgent && grid.contains(topoAgent)) {
       if (ev.target.closest(".activity-inline-detail")) return;
       var tname = topoAgent.getAttribute("data-agent");
       if (!tname) return;
-      if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+      if (ev.shiftKey) {
+        _topoSelectToggle(tname);
+        _topoLastSig = "";
+        renderActivityTab();
+        return;
+      }
+      if (ev.ctrlKey || ev.metaKey) {
         if (typeof addTag === "function") addTag("agent", tname);
         return;
       }
@@ -2249,6 +2723,21 @@ function _wireOverviewGridDelegation(grid) {
         return;
       }
       _topoBumpClick(tname);
+    }
+    /* Topology action-bar buttons (post / clear). These live outside
+     * the SVG but inside `grid`, so the delegation catches them here. */
+    var abBtn = ev.target.closest(".topo-actionbar-btn[data-topo-action]");
+    if (abBtn && grid.contains(abBtn)) {
+      ev.stopPropagation();
+      var action = abBtn.getAttribute("data-topo-action");
+      if (action === "clear") {
+        _topoSelectClear();
+        _topoLastSig = "";
+        renderActivityTab();
+      } else if (action === "post") {
+        _openTopoGroupCompose(_topoSelectedNames());
+      }
+      return;
     }
   });
   /* Native dblclick fallback — bumps the counter to 2 so the same
@@ -2310,8 +2799,7 @@ function _wireOverviewGridDelegation(grid) {
     /* Spawn ghost once we cross the threshold. */
     if (!s.ghost) {
       var p0 = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
-      var label =
-        (s.kind === "agent" ? "→ subscribe " : "← read ") + s.name;
+      var label = (s.kind === "agent" ? "→ subscribe " : "← read ") + s.name;
       s.ghost = _topoSpawnGhost(s.svg, label, p0.x + 8, p0.y - 8);
     }
     var p = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
