@@ -332,6 +332,17 @@
   font-style: italic;
 }
 
+/* Star marker for fleet-core agents. Placed between the status dot and
+ * the name so the visual hierarchy is: liveness → role → identity. */
+.activity-core-star {
+  color: #fbbf24;
+  font-size: 12px;
+  margin-right: 2px;
+}
+.activity-card-shadow .activity-core-star {
+  color: #574019;
+}
+
 @keyframes activity-pulse {
   0%,
   100% {
