@@ -3933,6 +3933,29 @@ function _wireOverviewGridDelegation(grid) {
         pcKind === "channel" ? "data-channel" : "data-agent",
       );
       if (!pcName) return;
+      /* Plain click on a HIDDEN chip = un-hide (the pool is the
+       * canonical "bring it back" affordance). ywatanabe 2026-04-19:
+       * "once hidden channels cannot be shown for good" / "are there
+       * no interface to show once hidden channels???". Ctrl/meta
+       * still toggles selection so multi-select can include hidden. */
+      var prefHidden =
+        pcKind === "channel" && (window._channelPrefs || {})[pcName]
+          ? !!(window._channelPrefs[pcName] || {}).is_hidden
+          : false;
+      var isHidden =
+        (pcKind === "agent" && _topoHidden.agents[pcName]) ||
+        (pcKind === "channel" && _topoHidden.channels[pcName]) ||
+        prefHidden;
+      if (isHidden && !(ev.ctrlKey || ev.metaKey)) {
+        if (typeof _topoUnhide === "function") _topoUnhide(pcKind, pcName);
+        if (prefHidden && typeof _setChannelPref === "function") {
+          _setChannelPref(pcName, { is_hidden: false });
+        }
+        _topoLastSig = "";
+        if (typeof renderActivityTab === "function") renderActivityTab();
+        ev.stopPropagation();
+        return;
+      }
       if (ev.ctrlKey || ev.metaKey) {
         _topoPoolSelectToggle(pcKind, pcName);
       } else {
