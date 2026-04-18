@@ -541,7 +541,13 @@ def collect(agent: str) -> dict:
     # last single action alone is pointless — he wants the recent flow.
     pane = (
         subprocess.run(
-            ["tmux", "capture-pane", "-t", agent, "-p", "-J", "-S", "-30", "-E", "-"],
+            # todo#47 — bump scrollback depth from 30 to 500 lines so
+            # the hub detail endpoint can expose a ``pane_tail_full``
+            # field for the web-terminal viewer. The ~10-line
+            # ``pane_tail_block`` keeps its original semantics below
+            # (stuck-detection + compact UI), so classifiers aren't
+            # perturbed. The full view is the new user-facing surface.
+            ["tmux", "capture-pane", "-t", agent, "-p", "-J", "-S", "-500", "-E", "-"],
             capture_output=True,
             text=True,
         ).stdout
@@ -551,6 +557,7 @@ def collect(agent: str) -> dict:
     pane_tail = ""  # last interesting single line (legacy field)
     pane_tail_block = ""  # last ~10 interesting lines (raw — keeps channel inbound for WS-alive proof)
     pane_tail_block_clean = ""  # same as block but stripped of channel inbound (for stuck-detection / state classifier)
+    pane_tail_full = ""  # up to 500 filtered lines, trimmed to 32 KB (todo#47 web-terminal tier)
 
     def _is_channel_inbound_line(s: str) -> bool:
         """ywatanabe msg#10657 / #10677: incoming Orochi channel pushes
@@ -577,6 +584,7 @@ def collect(agent: str) -> dict:
     if pane:
         kept: list[str] = []
         kept_clean: list[str] = []
+        kept_full: list[str] = []  # full-scrollback for todo#47 web-terminal viewer
         for raw_line in reversed(pane.splitlines()):
             stripped = raw_line.strip()
             if not stripped:
@@ -589,16 +597,30 @@ def collect(agent: str) -> dict:
             if stripped.startswith("↑↓") or stripped.startswith("Esc to"):
                 continue
             line = stripped[:160]
-            kept.append(line)
-            if not _is_channel_inbound_line(line):
-                kept_clean.append(line)
-            if len(kept) >= 10 and len(kept_clean) >= 10:
+            # Full view keeps every interesting line up to the scrollback
+            # cap we captured (500 lines). 32 KB is a generous ceiling —
+            # well under WS frame limits, but enough for ~400-line Claude
+            # Code transcripts with long MCP tool outputs.
+            if len(kept_full) < 500:
+                kept_full.append(line)
+            if len(kept) < 10:
+                kept.append(line)
+                if not _is_channel_inbound_line(line):
+                    kept_clean.append(line)
+            if len(kept_full) >= 500:
                 break
         if kept:
             pane_tail = kept[0]
             pane_tail_block = "\n".join(reversed(kept))
             # Trim clean to its own 10-line cap to match pane_tail_block size.
             pane_tail_block_clean = "\n".join(reversed(kept_clean[:10]))
+        if kept_full:
+            pane_tail_full = "\n".join(reversed(kept_full))
+            # Hard-cap the payload so a pathological pane can't bloat the
+            # heartbeat. Trim from the head (oldest) so the tail (latest
+            # activity) is preserved.
+            if len(pane_tail_full) > 32 * 1024:
+                pane_tail_full = pane_tail_full[-32 * 1024 :]
     subagents = 0
     m = re.search(r"(\d+) local agent", pane)
     if m:
@@ -1071,6 +1093,10 @@ def collect(agent: str) -> dict:
         # msg#6587 (single line is pointless — needs the recent flow).
         "pane_tail": pane_tail,
         "pane_tail_block": pane_tail_block,
+        # todo#47 — ~500 filtered lines of tmux scrollback for the
+        # agent-detail "Full pane" toggle in the Agents tab. 32 KB
+        # cap applied above.
+        "pane_tail_full": pane_tail_full,
         # ywatanabe msg#10657/10677: same as pane_tail_block but with
         # `← scitex-orochi · ...` channel inbound + `⎿` continuation
         # lines stripped, so consumers (fleet_watch.sh stuck-cycle

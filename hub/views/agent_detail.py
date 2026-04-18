@@ -183,6 +183,12 @@ def api_agent_detail(request, name: str):
     raw_pane = agent.get("pane_tail_block") or agent.get("pane_tail") or ""
     pane_text = redact_secrets(raw_pane) if raw_pane else ""
     pane_text_source = "cached" if raw_pane else "unavailable"
+    # todo#47 — ~500-line scrollback for the "Full pane" toggle. Same
+    # redaction pipeline as pane_text; empty string if the agent's
+    # agent_meta.py hasn't been updated yet (graceful degrade — the UI
+    # falls back to the short pane_text).
+    raw_pane_full = agent.get("pane_tail_full") or ""
+    pane_text_full = redact_secrets(raw_pane_full) if raw_pane_full else ""
 
     # Compute uptime from registered_at ISO string when available.
     uptime_seconds: int | None = None
@@ -228,6 +234,9 @@ def api_agent_detail(request, name: str):
         "pane_state": agent.get("pane_state") or "",
         "stuck_prompt_text": redact_secrets(agent.get("stuck_prompt_text") or ""),
         "pane_text": pane_text,
+        # todo#47 — longer scrollback; empty string when the agent
+        # hasn't pushed it yet.
+        "pane_text_full": pane_text_full,
         "pane_text_source": pane_text_source,
         "channel_subs": sorted({c for c in (agent.get("channels") or []) if c}),
         "mcp_servers": list(agent.get("mcp_servers") or []),

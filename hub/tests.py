@@ -2153,6 +2153,27 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("hostname_canonical", data2)
         self.assertEqual(data2["hostname_canonical"], "")
 
+    def test_pane_text_full_exposed(self):
+        """todo#47: detail endpoint must forward the ~500-line
+        pane_tail_full scrollback when the agent pushes it; empty
+        string when the agent hasn't updated its agent_meta.py."""
+        # New agent with pane_tail_full populated.
+        big_pane = "\n".join(f"line-{i}" for i in range(200))
+        self._register(pane_tail_full=big_pane)
+        data = self._get().json()
+        self.assertIn("pane_text_full", data)
+        # Content flows through redact_secrets (no secrets in this fixture).
+        self.assertIn("line-199", data["pane_text_full"])
+
+        # Old agent without pane_tail_full: field present, empty.
+        from hub.registry import _agents as _reg_agents
+
+        _reg_agents.clear()
+        self._register()
+        data2 = self._get().json()
+        self.assertIn("pane_text_full", data2)
+        self.assertEqual(data2["pane_text_full"], "")
+
     def test_ping_pong_fields_exposed(self):
         """todo#46: detail endpoint must expose last_pong_ts / last_rtt_ms
         once update_pong has been called, and must always include the

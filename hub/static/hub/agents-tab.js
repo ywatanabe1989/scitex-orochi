@@ -155,6 +155,12 @@ function _renderAgentDetail(a) {
     pane = a.pane_tail_block || a.pane_tail || "";
     paneSource = pane ? "cached" : "unavailable";
   }
+  // todo#47 — longer scrollback (up to ~500 filtered lines) pushed
+  // by newer agent_meta.py clients. Empty string when the agent
+  // hasn't updated yet; the "Full pane" toggle falls back to the
+  // short pane in that case.
+  var paneFull = d.pane_text_full || "";
+  var paneFullAvailable = !!paneFull;
 
   var workdir = d.workdir || a.workdir || "";
   var pid = d.pid || a.pid || "";
@@ -302,16 +308,21 @@ function _renderAgentDetail(a) {
     "</div>" +
     "</div>";
 
-  // todo#47 — Terminal output controls: Refresh forces a fresh
-  // /detail fetch (useful when heartbeats are paused or the user
-  // wants a synchronous read). Copy dumps the raw text to the
-  // clipboard. Both are data-hooked so the click handlers can find
-  // them without relying on fragile closures.
+  // todo#47 — Terminal output controls: Refresh / Copy / (optional)
+  // Expand. Expand only appears when the newer agent_meta.py push
+  // delivered pane_text_full. Buttons are data-hooked per-agent so
+  // multiple stacked detail panels don't collide.
   var paneLabel =
     'Terminal output <span class="agent-detail-pane-source">(' +
     escapeHtml(paneSource) +
     ")</span>" +
     '<span class="agent-detail-pane-controls">' +
+    (paneFullAvailable
+      ? '<button type="button" class="agent-detail-pane-btn" ' +
+        'data-action="expand-pane" data-agent="' +
+        escapeHtml(a.name) +
+        '" title="Show ~500-line scrollback">Expand</button>'
+      : "") +
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-action="refresh-pane" data-agent="' +
     escapeHtml(a.name) +
@@ -319,7 +330,7 @@ function _renderAgentDetail(a) {
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-action="copy-pane" data-agent="' +
     escapeHtml(a.name) +
-    '" title="Copy full pane text to clipboard">Copy</button>' +
+    '" title="Copy pane text to clipboard">Copy</button>' +
     "</span>";
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
@@ -328,7 +339,11 @@ function _renderAgentDetail(a) {
     "</div>" +
     '<pre class="agent-detail-pane" data-agent="' +
     escapeHtml(a.name) +
-    '">' +
+    '" data-pane-short="' +
+    escapeHtml(pane || "") +
+    '" data-pane-full="' +
+    escapeHtml(paneFull) +
+    '" data-pane-view="short">' +
     (pane
       ? escapeHtml(pane)
       : '<span class="muted-cell">No terminal output available (pane_text_source=' +
@@ -610,6 +625,32 @@ function _bindPaneControls(content) {
         }, 1200);
       } catch (err) {
         alert("Copy failed: " + err.message);
+      }
+    });
+  });
+  // todo#47 — Expand / Collapse between short and full scrollback.
+  // The full pane is stashed on data-pane-full so no network round-
+  // trip is needed to toggle. data-pane-view tracks which is shown.
+  content.querySelectorAll('[data-action="expand-pane"]').forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var name = btn.getAttribute("data-agent") || "";
+      if (!name) return;
+      var pre = content.querySelector(
+        '.agent-detail-pane[data-agent="' + name + '"]',
+      );
+      if (!pre) return;
+      var view = pre.getAttribute("data-pane-view") || "short";
+      if (view === "short") {
+        pre.textContent = pre.getAttribute("data-pane-full") || "";
+        pre.setAttribute("data-pane-view", "full");
+        btn.textContent = "Collapse";
+        btn.setAttribute("title", "Show short pane (~10 lines)");
+      } else {
+        pre.textContent = pre.getAttribute("data-pane-short") || "";
+        pre.setAttribute("data-pane-view", "short");
+        btn.textContent = "Expand";
+        btn.setAttribute("title", "Show ~500-line scrollback");
       }
     });
   });
