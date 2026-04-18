@@ -629,6 +629,26 @@ class DMConsumerRoutingTest(TestCase):
         self.assertEqual(len(consumer._sent), 1)
         self.assertEqual(consumer._sent[0]["channel"], "#general")
 
+    def test_agent_chat_message_no_subs_receives_no_group(self):
+        """Opt-in subscription: an agent with zero channels must not receive
+        group broadcasts (the previous `agent_channels and ...` guard
+        short-circuited the filter and let every group message through,
+        which caused GitHub CI notifications routed to #progress to reach
+        healer-ywata-note-win even though it was only subscribed to
+        #general).
+        """
+        from asgiref.sync import async_to_sync
+
+        consumer = self._make_agent_consumer(self.mem_alice.id, agent_channels=[])
+        event = {
+            "type": "chat.message",
+            "sender": "github",
+            "channel": "#progress",
+            "text": "CI success",
+        }
+        async_to_sync(consumer.chat_message)(event)
+        self.assertEqual(consumer._sent, [])
+
     # ------------------------------------------------------------------
     # DashboardConsumer.chat_message — confidentiality filter
     # ------------------------------------------------------------------

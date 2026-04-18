@@ -54,7 +54,16 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "multiplexer": info.get("multiplexer", ""),
             "project": info.get("project", ""),
             "workdir": info.get("workdir", ""),
-            "channels": info.get("channels", []),
+            # Subscriptions are server-authoritative (ChannelMembership).
+            # Preserve prev.channels when a heartbeat omits the field so
+            # REST pushers (agent_meta.py) don't wipe subscriptions every
+            # 30s. A caller that really wants to clear channels must send
+            # "channels": [] explicitly.
+            "channels": (
+                list(info["channels"])
+                if isinstance(info.get("channels"), (list, tuple))
+                else prev.get("channels") or []
+            ),
             "claude_md": info.get("claude_md", "") or prev.get("claude_md", ""),
             "status": "online",
             "registered_at": prev.get("registered_at") or time.time(),

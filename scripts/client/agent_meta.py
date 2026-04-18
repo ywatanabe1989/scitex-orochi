@@ -1173,7 +1173,10 @@ def push_all(url=None, token=None) -> int:
                 "version": meta.get("version", ""),
                 "runtime": meta.get("runtime", ""),
                 "current_task": meta.get("current_task", ""),
-                "channels": ["#general"],
+                # Intentionally no "channels" key. Subscriptions are
+                # server-authoritative (ChannelMembership rows); heartbeats
+                # must not clobber them. New agents start with no
+                # subscriptions — the user opts in via the dashboard.
                 # Observability fields for the per-agent detail view
                 # (/api/agents/<name>/detail/). Without these the hub
                 # shows empty CLAUDE.md / .mcp.json / terminal output
