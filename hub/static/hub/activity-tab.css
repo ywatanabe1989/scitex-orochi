@@ -702,6 +702,27 @@
   border-color: #4ecdc4;
   background: #152028;
 }
+/* Pool chip multi-select — ctrl-click adds to the selection; the set is
+ * then drag-dropped onto any canvas node / pool chip to bulk-subscribe.
+ * Bright amber border matches the canvas lasso (.topo-agent-selected)
+ * so the two affordances read as the same concept. */
+.activity-grid.activity-view-topology .topo-pool-chip-selected {
+  border-color: #fbbf24;
+  background: #2a2013;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
+}
+.activity-grid.activity-view-topology .topo-pool-chip-selected:hover {
+  border-color: #fbbf24;
+  background: #3a2a18;
+}
+/* When a dragged bundle hovers a pool chip, it lights up the same way
+ * canvas drop targets do (topo-drop-target on .topo-channel polygon /
+ * .topo-agent circle). */
+.activity-grid.activity-view-topology .topo-pool-chip.topo-drop-target {
+  border-color: #4ecdc4 !important;
+  background: #102428 !important;
+  box-shadow: 0 0 0 2px #4ecdc4;
+}
 .activity-grid.activity-view-topology .topo-pool-chip-icon {
   font-size: 10px;
   filter: saturate(0.8);
