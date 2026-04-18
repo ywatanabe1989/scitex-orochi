@@ -81,6 +81,12 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
+            # todo#46 — preserve ping/pong state across re-registers
+            # (heartbeat, WS reconnect). Without this, every heartbeat
+            # wiped last_pong_ts/last_rtt_ms back to absent, so the RT
+            # lamp flickered to gray 1× per 30s heartbeat cycle.
+            "last_pong_ts": prev.get("last_pong_ts"),
+            "last_rtt_ms": prev.get("last_rtt_ms"),
             # Extended process/runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,
