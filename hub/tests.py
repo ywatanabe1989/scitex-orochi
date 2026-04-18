@@ -308,6 +308,67 @@ class RestApiTest(TestCase):
         resp = client.get("/api/workspaces/")
         self.assertEqual(resp.status_code, 302)
 
+    def test_api_media_surfaces_old_attachments_past_noisy_metadata(self):
+        """Regression: /api/media/ used to scan the newest 400 messages
+        with any non-empty metadata. On a busy workspace, reactions /
+        reply metadata crowded out the window and attachments uploaded
+        further back never showed up in the Files tab. The query now
+        filters for ``metadata__has_key="attachments"`` so the limit
+        applies to attachment-bearing messages specifically.
+        """
+        # Simulate the busy-workspace pattern: many newer messages with
+        # non-empty metadata that do NOT carry attachments. Need more
+        # than the old code's 400-row overshoot (limit=200 × 2) so the
+        # attachment falls outside the scan window in the broken
+        # version.
+        Message.objects.bulk_create(
+            [
+                Message(
+                    workspace=self.ws,
+                    channel=self.ch,
+                    sender=f"bot-{i}",
+                    content=f"noise-{i}",
+                    metadata={"reactions": [{"emoji": "👍"}]},
+                )
+                for i in range(450)
+            ]
+        )
+        # …and one OLDER message that actually has an attachment. Newer
+        # reaction-only messages should not evict it from the result.
+        import datetime as _dt
+
+        old_att_msg = Message.objects.create(
+            workspace=self.ws,
+            channel=self.ch,
+            sender="ywatanabe",
+            content="has attachment",
+            metadata={
+                "attachments": [
+                    {
+                        "url": "/media/2026-04/abc.pdf",
+                        "filename": "abc.pdf",
+                        "mime_type": "application/pdf",
+                        "size": 1234,
+                    }
+                ]
+            },
+        )
+        Message.objects.filter(pk=old_att_msg.pk).update(
+            ts=_dt.datetime(2026, 4, 1, 0, 0, tzinfo=_dt.timezone.utc)
+        )
+        # Hit the workspace subdomain (api-ws.lvh.me) so
+        # WorkspaceSubdomainMiddleware dispatches to hub.urls_workspace.
+        resp = self.client.get("/api/media/", HTTP_HOST="api-ws.lvh.me")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        filenames = [item["filename"] for item in data]
+        self.assertIn(
+            "abc.pdf",
+            filenames,
+            f"older attachment was evicted by newer reaction-only "
+            f"messages; got {filenames!r}",
+        )
+
 
 class WorkspaceTokenTest(TestCase):
     def test_token_resolves_to_workspace(self):

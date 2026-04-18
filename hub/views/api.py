@@ -1383,12 +1383,19 @@ def api_media(request):
     """
     workspace = get_workspace(request)
     limit = min(int(request.GET.get("limit", "200")), 1000)
+    offset = max(int(request.GET.get("offset", "0")), 0)
 
+    # Narrow the SQL to messages that actually carry attachments. Prior
+    # version used ``.exclude(metadata={})`` which also matched messages
+    # whose metadata only held reactions/replies/mentions — on a busy
+    # workspace those crowd out the newest ``limit`` window and the
+    # Files tab ends up showing ~1 attachment even when hundreds exist
+    # further back in history.
     msgs = (
         Message.objects.filter(workspace=workspace)
-        .exclude(metadata={})
+        .filter(metadata__has_key="attachments")
         .select_related("channel")
-        .order_by("-ts")[: limit * 2]  # overshoot — some messages have empty metadata
+        .order_by("-ts")[offset : offset + limit]
     )
 
     items = []
@@ -1414,10 +1421,6 @@ def api_media(request):
                     "message_id": m.id,
                 }
             )
-            if len(items) >= limit:
-                break
-        if len(items) >= limit:
-            break
 
     return JsonResponse(items, safe=False)
 
