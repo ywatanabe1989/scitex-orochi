@@ -2918,22 +2918,41 @@ function _wireOverviewGridDelegation(grid) {
     if (!s) return;
     var target = s.lastDrop;
     if (s.moved && target) {
+      /* Optimistic: mutate __lastAgents so the channel membership
+       * renders into the topology on the very next re-render, before
+       * the server round-trip completes. Backend-authoritative state
+       * still arrives via fetchAgentsThrottled() called inside
+       * _agentSubscribe. */
+      function _optimisticAdd(agentName, channel) {
+        var live = window.__lastAgents || [];
+        for (var i = 0; i < live.length; i++) {
+          if (live[i].name === agentName) {
+            var chs = Array.isArray(live[i].channels)
+              ? live[i].channels.slice()
+              : [];
+            if (chs.indexOf(channel) === -1) chs.push(channel);
+            live[i].channels = chs;
+            break;
+          }
+        }
+      }
       if (s.kind === "agent") {
-        /* agent → channel : agent gets write on channel. _agentSubscribe
-         * fires a mini-toast on success; we also show a transient in-
-         * place confirmation next to the drop site so the affordance
-         * reads as "landed here" even before the backend acks. */
         var ch = target.getAttribute("data-channel");
         if (ch && typeof _agentSubscribe === "function") {
+          _optimisticAdd(s.name, ch);
           _agentSubscribe(s.name, ch, "read-write");
           _topoShowSubscribeToast(s.name, ch, "read-write");
+          _topoLastSig = ""; /* force re-render with new edge */
+          renderActivityTab();
         }
       } else if (s.kind === "channel") {
-        /* channel → agent : agent subscribes read-only */
         var ag = target.getAttribute("data-agent");
         if (ag && typeof _agentSubscribe === "function") {
+          _optimisticAdd(ag, s.name);
           _agentSubscribe(ag, s.name, "read-only");
           _topoShowSubscribeToast(ag, s.name, "read-only");
+          _topoLastSig = "";
+          renderActivityTab();
         }
       }
     }
@@ -2944,8 +2963,16 @@ function _wireOverviewGridDelegation(grid) {
        * then tear it down. */
       s.suppressClick = true;
       _topoClearDrop();
-      if (s.ghost && s.ghost.parentNode) {
-        s.ghost.parentNode.removeChild(s.ghost);
+      /* Fade the ghost out over 250ms instead of hard-removing — the
+       * babble just "evaporates" instead of popping. ywatanabe
+       * 2026-04-19: "babble should disappear soon with animation". */
+      if (s.ghost) {
+        var ghost = s.ghost;
+        ghost.style.transition = "opacity 0.25s ease-out";
+        ghost.style.opacity = "0";
+        setTimeout(function () {
+          if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+        }, 280);
         s.ghost = null;
       }
       setTimeout(function () {
