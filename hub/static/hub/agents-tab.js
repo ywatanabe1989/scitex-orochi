@@ -6,6 +6,12 @@ var _selectedAgentTab = "overview"; /* "overview" or agent name */
 var _lastAgentsData = []; /* cached for sub-tab renders */
 var _agentDetailCache = {}; /* name -> last /detail response */
 var _agentDetailInflight = {}; /* name -> bool (in-flight guard) */
+/* todo#47 — pane view state survives heartbeat-driven re-renders so
+ * Expand and Follow don't reset every poll. */
+var _paneExpanded = {}; /* name -> bool */
+var _followAgent = null; /* name currently in follow mode (only one) */
+var _followTimer = null; /* setInterval handle */
+var FOLLOW_INTERVAL_MS = 3000;
 
 /* Fetch the full per-agent detail payload (todo#420).
  *
@@ -78,7 +84,13 @@ function _bindSubTabBar(grid) {
   bar.addEventListener("click", function (e) {
     var btn = e.target.closest(".agent-subtab");
     if (!btn) return;
-    _selectedAgentTab = btn.getAttribute("data-subtab");
+    var nextTab = btn.getAttribute("data-subtab");
+    /* todo#47 — any agent switch (including → overview) cancels Follow
+     * so we're not polling an agent the user can no longer see. */
+    if (_followAgent && _followAgent !== nextTab) {
+      _stopFollow();
+    }
+    _selectedAgentTab = nextTab;
     /* Re-render content area only, not the whole tab (preserve scroll) */
     _renderAgentContent(grid);
   });
@@ -308,30 +320,62 @@ function _renderAgentDetail(a) {
     "</div>" +
     "</div>";
 
-  // todo#47 — Terminal output controls: Refresh / Copy / (optional)
-  // Expand. Expand only appears when the newer agent_meta.py push
-  // delivered pane_text_full. Buttons are data-hooked per-agent so
-  // multiple stacked detail panels don't collide.
+  // todo#47 — Terminal output controls: Refresh / Copy / Follow /
+  // (optional) Expand. Expand only appears when the newer
+  // agent_meta.py push delivered pane_text_full. Follow polls /detail
+  // every 3s for a live-tail feel. Buttons are data-hooked per-agent
+  // so multiple stacked detail panels don't collide.
+  var _isFollowing = _followAgent === a.name;
+  var _isExpanded = _paneExpanded[a.name] && paneFullAvailable;
   var paneLabel =
     'Terminal output <span class="agent-detail-pane-source">(' +
     escapeHtml(paneSource) +
     ")</span>" +
     '<span class="agent-detail-pane-controls">' +
     (paneFullAvailable
-      ? '<button type="button" class="agent-detail-pane-btn" ' +
-        'data-action="expand-pane" data-agent="' +
+      ? '<button type="button" class="agent-detail-pane-btn' +
+        (_isExpanded ? " agent-detail-pane-btn-on" : "") +
+        '" data-action="expand-pane" data-agent="' +
         escapeHtml(a.name) +
-        '" title="Show ~500-line scrollback">Expand</button>'
+        '" title="' +
+        (_isExpanded
+          ? "Show short pane (~10 lines)"
+          : "Show ~500-line scrollback") +
+        '">' +
+        (_isExpanded ? "Collapse" : "Expand") +
+        "</button>"
       : "") +
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-action="refresh-pane" data-agent="' +
     escapeHtml(a.name) +
     '" title="Force re-fetch of detail (pane + RTT + last action)">Refresh</button>' +
+    '<button type="button" class="agent-detail-pane-btn' +
+    (_isFollowing ? " agent-detail-pane-btn-on" : "") +
+    '" data-action="follow-pane" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="' +
+    (_isFollowing
+      ? "Stop live-tail polling"
+      : "Poll /detail every " +
+        FOLLOW_INTERVAL_MS / 1000 +
+        "s for a live-tail feel") +
+    '">' +
+    (_isFollowing ? "Following" : "Follow") +
+    "</button>" +
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-action="copy-pane" data-agent="' +
     escapeHtml(a.name) +
     '" title="Copy pane text to clipboard">Copy</button>' +
     "</span>";
+  // Initial view honors preserved _paneExpanded so heartbeat re-renders
+  // don't snap the user back to the short view.
+  var _initialView = _isExpanded ? "full" : "short";
+  var _initialBody = _isExpanded
+    ? paneFull
+    : pane ||
+      '<span class="muted-cell">No terminal output available (pane_text_source=' +
+        paneSource +
+        ")</span>";
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
     '<div class="agent-detail-pane-label">' +
@@ -343,9 +387,11 @@ function _renderAgentDetail(a) {
     escapeHtml(pane || "") +
     '" data-pane-full="' +
     escapeHtml(paneFull) +
-    '" data-pane-view="short">' +
-    (pane
-      ? escapeHtml(pane)
+    '" data-pane-view="' +
+    _initialView +
+    '">' +
+    (_isExpanded || pane
+      ? escapeHtml(_initialBody)
       : '<span class="muted-cell">No terminal output available (pane_text_source=' +
         escapeHtml(paneSource) +
         ")</span>") +
@@ -593,20 +639,22 @@ function _renderAgentContent(grid) {
  * button itself so there's no ambiguity when multiple agents are
  * stacked in the DOM. */
 function _bindPaneControls(content) {
-  content.querySelectorAll('[data-action="refresh-pane"]').forEach(function (btn) {
-    btn.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      var name = btn.getAttribute("data-agent") || "";
-      if (!name) return;
-      btn.disabled = true;
-      btn.textContent = "Refreshing…";
-      _invalidateAgentDetail(name);
-      setTimeout(function () {
-        btn.disabled = false;
-        btn.textContent = "Refresh";
-      }, 1500);
+  content
+    .querySelectorAll('[data-action="refresh-pane"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var name = btn.getAttribute("data-agent") || "";
+        if (!name) return;
+        btn.disabled = true;
+        btn.textContent = "Refreshing…";
+        _invalidateAgentDetail(name);
+        setTimeout(function () {
+          btn.disabled = false;
+          btn.textContent = "Refresh";
+        }, 1500);
+      });
     });
-  });
   content.querySelectorAll('[data-action="copy-pane"]').forEach(function (btn) {
     btn.addEventListener("click", async function (ev) {
       ev.preventDefault();
@@ -631,29 +679,97 @@ function _bindPaneControls(content) {
   // todo#47 — Expand / Collapse between short and full scrollback.
   // The full pane is stashed on data-pane-full so no network round-
   // trip is needed to toggle. data-pane-view tracks which is shown.
-  content.querySelectorAll('[data-action="expand-pane"]').forEach(function (btn) {
-    btn.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      var name = btn.getAttribute("data-agent") || "";
-      if (!name) return;
-      var pre = content.querySelector(
-        '.agent-detail-pane[data-agent="' + name + '"]',
-      );
-      if (!pre) return;
-      var view = pre.getAttribute("data-pane-view") || "short";
-      if (view === "short") {
-        pre.textContent = pre.getAttribute("data-pane-full") || "";
-        pre.setAttribute("data-pane-view", "full");
-        btn.textContent = "Collapse";
-        btn.setAttribute("title", "Show short pane (~10 lines)");
-      } else {
-        pre.textContent = pre.getAttribute("data-pane-short") || "";
-        pre.setAttribute("data-pane-view", "short");
-        btn.textContent = "Expand";
-        btn.setAttribute("title", "Show ~500-line scrollback");
-      }
+  // State is mirrored into _paneExpanded so heartbeat-driven re-renders
+  // don't snap the user back to the short view.
+  content
+    .querySelectorAll('[data-action="expand-pane"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var name = btn.getAttribute("data-agent") || "";
+        if (!name) return;
+        var pre = content.querySelector(
+          '.agent-detail-pane[data-agent="' + name + '"]',
+        );
+        if (!pre) return;
+        var view = pre.getAttribute("data-pane-view") || "short";
+        if (view === "short") {
+          pre.textContent = pre.getAttribute("data-pane-full") || "";
+          pre.setAttribute("data-pane-view", "full");
+          btn.textContent = "Collapse";
+          btn.classList.add("agent-detail-pane-btn-on");
+          btn.setAttribute("title", "Show short pane (~10 lines)");
+          _paneExpanded[name] = true;
+          pre.scrollTop = pre.scrollHeight;
+        } else {
+          pre.textContent = pre.getAttribute("data-pane-short") || "";
+          pre.setAttribute("data-pane-view", "short");
+          btn.textContent = "Expand";
+          btn.classList.remove("agent-detail-pane-btn-on");
+          btn.setAttribute("title", "Show ~500-line scrollback");
+          _paneExpanded[name] = false;
+        }
+      });
     });
-  });
+  // todo#47 — Follow: poll /detail every FOLLOW_INTERVAL_MS for a
+  // live-tail feel. Only one agent can follow at a time; switching
+  // agents or toggling off clears the timer. Hidden tab pauses so we
+  // don't keep hammering when the dashboard is in a background tab.
+  content
+    .querySelectorAll('[data-action="follow-pane"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var name = btn.getAttribute("data-agent") || "";
+        if (!name) return;
+        if (_followAgent === name) {
+          _stopFollow();
+        } else {
+          _startFollow(name);
+        }
+      });
+    });
+}
+
+function _stopFollow() {
+  if (_followTimer != null) {
+    clearInterval(_followTimer);
+    _followTimer = null;
+  }
+  _followAgent = null;
+  document
+    .querySelectorAll('[data-action="follow-pane"]')
+    .forEach(function (b) {
+      b.classList.remove("agent-detail-pane-btn-on");
+      b.textContent = "Follow";
+      b.setAttribute(
+        "title",
+        "Poll /detail every " +
+          FOLLOW_INTERVAL_MS / 1000 +
+          "s for a live-tail feel",
+      );
+    });
+}
+
+function _startFollow(name) {
+  _stopFollow();
+  _followAgent = name;
+  document
+    .querySelectorAll('[data-action="follow-pane"][data-agent="' + name + '"]')
+    .forEach(function (b) {
+      b.classList.add("agent-detail-pane-btn-on");
+      b.textContent = "Following";
+      b.setAttribute("title", "Stop live-tail polling");
+    });
+  _followTimer = setInterval(function () {
+    if (!_followAgent) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    if (_selectedAgentTab !== _followAgent) {
+      _stopFollow();
+      return;
+    }
+    _invalidateAgentDetail(_followAgent);
+  }, FOLLOW_INTERVAL_MS);
 }
 
 /* ── Channel subscription controls (Phase 3) ────────────────────────── */

@@ -9,6 +9,13 @@ var _paneShowRaw = false; /* false = strip ANSI (clean), true = raw */
  * text, redacted MCP). Mirrors _agentDetailCache in agents-tab.js. */
 var _activityDetailCache = {};
 var _activityDetailInflight = {};
+/* todo#47 — Pane view state survives heartbeat-driven re-renders
+ * (Expand stays expanded, Follow keeps polling). One agent follows
+ * at a time; sub-tab switch or hidden document auto-stops. */
+var _activityPaneExpanded = {}; /* name -> bool */
+var _activityFollowAgent = null;
+var _activityFollowTimer = null;
+var ACTIVITY_FOLLOW_INTERVAL_MS = 3000;
 
 async function _fetchActivityDetail(name) {
   if (!name || name === "overview") return;
@@ -82,7 +89,13 @@ function _renderActivitySubTabBar(agents) {
     function (e) {
       var btn = e.target.closest(".agent-subtab");
       if (!btn) return;
-      _activitySubTab = btn.getAttribute("data-actsubtab");
+      var nextTab = btn.getAttribute("data-actsubtab");
+      /* todo#47 — switching away cancels Follow so we don't keep
+       * polling an agent the user can no longer see. */
+      if (_activityFollowAgent && _activityFollowAgent !== nextTab) {
+        _stopActivityFollow();
+      }
+      _activitySubTab = nextTab;
       _applyActivitySubTab(agents);
     },
     { once: true },
@@ -98,7 +111,12 @@ function _bindActivitySubTabBar(agents) {
   newBar.addEventListener("click", function (e) {
     var btn = e.target.closest(".agent-subtab");
     if (!btn) return;
-    _activitySubTab = btn.getAttribute("data-actsubtab");
+    var nextTab = btn.getAttribute("data-actsubtab");
+    /* todo#47 — switching away cancels Follow */
+    if (_activityFollowAgent && _activityFollowAgent !== nextTab) {
+      _stopActivityFollow();
+    }
+    _activitySubTab = nextTab;
     /* If selected agent no longer in list, fall back */
     if (
       _activitySubTab !== "overview" &&
@@ -287,6 +305,7 @@ function _renderActivityAgentDetail(a, grid) {
   a = Object.assign({}, a, {
     claude_md: d.claude_md || a.claude_md || a.claude_md_head || "",
     pane_tail_block: d.pane_text || a.pane_tail_block || a.pane_tail || "",
+    pane_text_full: d.pane_text_full || "",
   });
   var liveness = a.liveness || a.status || "online";
   var livenessColors = {
@@ -450,17 +469,69 @@ function _renderActivityAgentDetail(a, grid) {
         escapeHtml(a.current_task || a.last_message_preview) +
         "</div>"
       : "";
-  /* Terminal pane — with Raw/Clean toggle */
-  var paneContent = pane ? (_paneShowRaw ? pane : _stripAnsi(pane)) : "";
+  /* Terminal pane — Raw/Clean + todo#47 Refresh / Copy / Follow /
+   * Expand. Expand only renders when pane_text_full is available
+   * (newer agent_meta.py push); older agents just see the short
+   * tail. Follow polls /detail every 3 s for a live-tail feel. */
+  var paneFull = a.pane_text_full || "";
+  var paneFullAvailable = !!paneFull;
+  var _isFollowing = _activityFollowAgent === a.name;
+  var _isExpanded = !!_activityPaneExpanded[a.name] && paneFullAvailable;
+  var paneSource = _isExpanded ? paneFull : pane || "";
+  var paneContent = paneSource
+    ? _paneShowRaw
+      ? paneSource
+      : _stripAnsi(paneSource)
+    : "";
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
     '<div class="agent-detail-pane-label-row">' +
     '<span class="agent-detail-pane-label">Terminal output</span>' +
+    '<span class="agent-detail-pane-controls">' +
+    (paneFullAvailable
+      ? '<button type="button" class="agent-detail-pane-btn' +
+        (_isExpanded ? " agent-detail-pane-btn-on" : "") +
+        '" data-act-pane-action="expand" data-agent="' +
+        escapeHtml(a.name) +
+        '" title="' +
+        (_isExpanded
+          ? "Show short pane (~10 lines)"
+          : "Show ~500-line scrollback") +
+        '">' +
+        (_isExpanded ? "Collapse" : "Expand") +
+        "</button>"
+      : "") +
+    '<button type="button" class="agent-detail-pane-btn" ' +
+    'data-act-pane-action="refresh" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="Force re-fetch of detail">Refresh</button>' +
+    '<button type="button" class="agent-detail-pane-btn' +
+    (_isFollowing ? " agent-detail-pane-btn-on" : "") +
+    '" data-act-pane-action="follow" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="' +
+    (_isFollowing
+      ? "Stop live-tail polling"
+      : "Poll /detail every " +
+        ACTIVITY_FOLLOW_INTERVAL_MS / 1000 +
+        "s for a live-tail feel") +
+    '">' +
+    (_isFollowing ? "Following" : "Follow") +
+    "</button>" +
+    '<button type="button" class="agent-detail-pane-btn" ' +
+    'data-act-pane-action="copy" data-agent="' +
+    escapeHtml(a.name) +
+    '" title="Copy pane text to clipboard">Copy</button>' +
     '<button class="pane-raw-toggle" id="pane-raw-toggle" title="Toggle raw/clean terminal output">' +
     (_paneShowRaw ? "Raw" : "Clean") +
     "</button>" +
+    "</span>" +
     "</div>" +
-    '<pre class="agent-detail-pane" id="agent-detail-pane-content">' +
+    '<pre class="agent-detail-pane" id="agent-detail-pane-content" data-agent="' +
+    escapeHtml(a.name) +
+    '" data-pane-view="' +
+    (_isExpanded ? "full" : "short") +
+    '">' +
     (paneContent
       ? escapeHtml(paneContent)
       : '<span class="muted-cell">No terminal output available</span>') +
@@ -564,7 +635,9 @@ function _renderActivityAgentDetail(a, grid) {
   /* Scroll pane to bottom */
   var pre = grid.querySelector(".agent-detail-pane");
   if (pre) pre.scrollTop = pre.scrollHeight;
-  /* Wire Raw/Clean toggle */
+  /* Wire Raw/Clean toggle. When Expand is active, the toggle re-renders
+   * against pane_text_full so raw/clean applies to the full scrollback
+   * too — otherwise Raw would silently fall back to the short tail. */
   var toggleBtn = grid.querySelector("#pane-raw-toggle");
   if (toggleBtn) {
     toggleBtn.addEventListener("click", function () {
@@ -572,11 +645,9 @@ function _renderActivityAgentDetail(a, grid) {
       toggleBtn.textContent = _paneShowRaw ? "Raw" : "Clean";
       var paneEl = grid.querySelector("#agent-detail-pane-content");
       if (paneEl) {
-        var rawPaneContent = pane
-          ? _paneShowRaw
-            ? pane
-            : _stripAnsi(pane)
-          : "";
+        var useFull = paneEl.getAttribute("data-pane-view") === "full";
+        var src = useFull ? paneFull : pane || "";
+        var rawPaneContent = src ? (_paneShowRaw ? src : _stripAnsi(src)) : "";
         paneEl.innerHTML = rawPaneContent
           ? escapeHtml(rawPaneContent)
           : '<span class="muted-cell">No terminal output available</span>';
@@ -584,7 +655,134 @@ function _renderActivityAgentDetail(a, grid) {
       }
     });
   }
+  _bindActivityPaneControls(grid, a.name, pane, paneFull);
   _bindActivityChannelControls(grid, a.name);
+}
+
+/* todo#47 — Refresh / Copy / Follow / Expand for the Agents-tab pane.
+ * Expand state + Follow state live in module vars so heartbeat-driven
+ * re-renders preserve them. */
+function _bindActivityPaneControls(grid, name, pane, paneFull) {
+  grid
+    .querySelectorAll('[data-act-pane-action="refresh"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        btn.disabled = true;
+        var original = btn.textContent;
+        btn.textContent = "Refreshing…";
+        delete _activityDetailCache[name];
+        _fetchActivityDetail(name);
+        setTimeout(function () {
+          btn.disabled = false;
+          btn.textContent = original;
+        }, 1500);
+      });
+    });
+  grid
+    .querySelectorAll('[data-act-pane-action="copy"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", async function (ev) {
+        ev.preventDefault();
+        var pre = grid.querySelector("#agent-detail-pane-content");
+        var text = pre ? pre.textContent || "" : "";
+        try {
+          await navigator.clipboard.writeText(text);
+          var original = btn.textContent;
+          btn.textContent = "Copied";
+          setTimeout(function () {
+            btn.textContent = original;
+          }, 1200);
+        } catch (err) {
+          alert("Copy failed: " + err.message);
+        }
+      });
+    });
+  grid
+    .querySelectorAll('[data-act-pane-action="expand"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var pre = grid.querySelector("#agent-detail-pane-content");
+        if (!pre) return;
+        var view = pre.getAttribute("data-pane-view") || "short";
+        var nextView = view === "short" ? "full" : "short";
+        var src = nextView === "full" ? paneFull : pane || "";
+        var body = src ? (_paneShowRaw ? src : _stripAnsi(src)) : "";
+        pre.innerHTML = body
+          ? escapeHtml(body)
+          : '<span class="muted-cell">No terminal output available</span>';
+        pre.setAttribute("data-pane-view", nextView);
+        if (nextView === "full") {
+          _activityPaneExpanded[name] = true;
+          btn.textContent = "Collapse";
+          btn.classList.add("agent-detail-pane-btn-on");
+          btn.setAttribute("title", "Show short pane (~10 lines)");
+        } else {
+          _activityPaneExpanded[name] = false;
+          btn.textContent = "Expand";
+          btn.classList.remove("agent-detail-pane-btn-on");
+          btn.setAttribute("title", "Show ~500-line scrollback");
+        }
+        pre.scrollTop = pre.scrollHeight;
+      });
+    });
+  grid
+    .querySelectorAll('[data-act-pane-action="follow"]')
+    .forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        if (_activityFollowAgent === name) {
+          _stopActivityFollow();
+        } else {
+          _startActivityFollow(name);
+        }
+      });
+    });
+}
+
+function _stopActivityFollow() {
+  if (_activityFollowTimer != null) {
+    clearInterval(_activityFollowTimer);
+    _activityFollowTimer = null;
+  }
+  _activityFollowAgent = null;
+  document
+    .querySelectorAll('[data-act-pane-action="follow"]')
+    .forEach(function (b) {
+      b.classList.remove("agent-detail-pane-btn-on");
+      b.textContent = "Follow";
+      b.setAttribute(
+        "title",
+        "Poll /detail every " +
+          ACTIVITY_FOLLOW_INTERVAL_MS / 1000 +
+          "s for a live-tail feel",
+      );
+    });
+}
+
+function _startActivityFollow(name) {
+  _stopActivityFollow();
+  _activityFollowAgent = name;
+  document
+    .querySelectorAll(
+      '[data-act-pane-action="follow"][data-agent="' + name + '"]',
+    )
+    .forEach(function (b) {
+      b.classList.add("agent-detail-pane-btn-on");
+      b.textContent = "Following";
+      b.setAttribute("title", "Stop live-tail polling");
+    });
+  _activityFollowTimer = setInterval(function () {
+    if (!_activityFollowAgent) return;
+    if (typeof document !== "undefined" && document.hidden) return;
+    if (_activitySubTab !== _activityFollowAgent) {
+      _stopActivityFollow();
+      return;
+    }
+    delete _activityDetailCache[_activityFollowAgent];
+    _fetchActivityDetail(_activityFollowAgent);
+  }, ACTIVITY_FOLLOW_INTERVAL_MS);
 }
 
 async function _activityChannelRequest(method, agent, channel) {

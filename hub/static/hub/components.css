@@ -899,3 +899,17 @@
   opacity: 0.5;
   cursor: wait;
 }
+/* todo#47 — active/engaged state for toggle buttons (Follow, Expand).
+ * Teal fill matches the hover color and the RT lamp so the "this is
+ * live-updating" cue is consistent across the viewer. */
+.agent-detail-pane-btn-on,
+.agent-detail-pane-btn.agent-detail-pane-btn-on {
+  background: #4ecdc4;
+  border-color: #4ecdc4;
+  color: #fff;
+}
+.agent-detail-pane-btn-on:hover:not(:disabled) {
+  background: #3db5ac;
+  border-color: #3db5ac;
+  color: #fff;
+}
