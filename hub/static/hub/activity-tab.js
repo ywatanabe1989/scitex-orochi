@@ -526,6 +526,21 @@ function _renderActivityAgentDetail(a, grid) {
     d.background_tasks || [],
     d.tool_counts || {},
   );
+  /* Preserve scrollTop of long, user-scrolled panes across heartbeat-driven
+   * re-renders. Without this the CLAUDE.md viewer (and .mcp.json viewer)
+   * snaps to the top every poll tick — reported by ywatanabe 2026-04-18
+   * 20:45 / 21:02 / 21:13 on the *Agents* tab (which this file renders,
+   * despite its historical name of "activity-tab"). Mirrors the fix in
+   * agents-tab.js (PR #221, #222). */
+  var _preserveScrollClasses = [
+    "agent-detail-claude-md",
+    "agent-detail-mcp-json",
+  ];
+  var _savedScrollTops = {};
+  _preserveScrollClasses.forEach(function (cls) {
+    var el = grid.querySelector("." + cls);
+    if (el && el.scrollTop > 0) _savedScrollTops[cls] = el.scrollTop;
+  });
   grid.innerHTML =
     '<div class="agent-detail-view">' +
     headerHtml +
@@ -534,6 +549,18 @@ function _renderActivityAgentDetail(a, grid) {
     splitHtml +
     hooksHtml +
     "</div>";
+  var _restoreScroll = function () {
+    _preserveScrollClasses.forEach(function (cls) {
+      if (_savedScrollTops[cls] != null) {
+        var el = grid.querySelector("." + cls);
+        if (el) el.scrollTop = _savedScrollTops[cls];
+      }
+    });
+  };
+  _restoreScroll();
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(_restoreScroll);
+  }
   /* Scroll pane to bottom */
   var pre = grid.querySelector(".agent-detail-pane");
   if (pre) pre.scrollTop = pre.scrollHeight;
