@@ -1016,6 +1016,9 @@ function _renderActivityCards(agents, grid) {
         '" title="' +
         escapeHtml(livenessHint) +
         '"></span>' +
+        (core
+          ? '<span class="activity-core-star" title="fleet-core role (YAML-defined, always shown)">\u2605</span>'
+          : "") +
         '<span class="activity-name" style="color:' +
         color +
         '">' +
@@ -1042,6 +1045,11 @@ function _renderActivityCards(agents, grid) {
       );
     })
     .join("");
+  /* Re-apply Ctrl+K fuzzy filter after innerHTML rewrite (mirrors
+   * todo-tab / agents-tab / files-tab behaviour). Without this, typing
+   * "head" on Chat then switching to Agents shows all agents until you
+   * retype. */
+  if (typeof runFilter === "function") runFilter();
   /* Click card -> switch to that agent's sub-tab (Shift/Ctrl/Cmd keeps
    * the legacy addTag filter behaviour so power users are not
    * surprised). Copy button and other inline controls stop propagation. */

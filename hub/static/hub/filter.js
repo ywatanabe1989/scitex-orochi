@@ -426,4 +426,16 @@ function filterSidebarElements(qWords, allTags) {
           ? ""
           : "none";
     });
+  /* Agents tab activity-card grid (what "Agents" actually renders —
+   * the data-tab="activity" view). Previously Ctrl+K only filtered
+   * table rows in the legacy agents-tab overview, not these cards. */
+  document
+    .querySelectorAll("#activity-grid .activity-card")
+    .forEach(function (el) {
+      var text = el.textContent;
+      el.style.display =
+        _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+          ? ""
+          : "none";
+    });
 }
