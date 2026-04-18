@@ -1375,6 +1375,40 @@ function _wireTopoZoomPan(grid, W, H) {
   grid.addEventListener("dblclick", function (ev) {
     var svg = ev.target.closest && ev.target.closest(".topo-svg");
     if (!svg) return;
+    /* Double-click on a channel diamond → open a compose-to-channel
+     * prompt. The graph becomes a posting interface (ywatanabe
+     * 2026-04-19: "the graph itself should be a message posting
+     * interface; like double click a channel -> post"). */
+    var ch = ev.target.closest(".topo-channel[data-channel]");
+    if (ch) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      var chName = ch.getAttribute("data-channel");
+      if (!chName) return;
+      var text = window.prompt("Post to " + chName + ":", "");
+      if (text == null) return;
+      text = String(text).trim();
+      if (!text) return;
+      var payload = { channel: chName, content: text };
+      if (
+        typeof wsConnected !== "undefined" &&
+        wsConnected &&
+        typeof ws !== "undefined" &&
+        ws &&
+        ws.readyState === WebSocket.OPEN
+      ) {
+        ws.send(JSON.stringify({ type: "message", payload: payload }));
+      } else if (typeof sendOrochiMessage === "function") {
+        sendOrochiMessage({
+          type: "message",
+          sender:
+            typeof userName !== "undefined" && userName ? userName : "human",
+          payload: payload,
+        });
+      }
+      return;
+    }
+    /* Plain double-click on empty area = reset zoom. */
     _resetVB(svg);
   });
   /* Button controls — back / minus / reset / plus. */

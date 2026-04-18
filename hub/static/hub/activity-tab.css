@@ -689,7 +689,12 @@
 .activity-grid.activity-view-topology .topo-channel,
 .activity-grid.activity-view-topology .topo-channel polygon,
 .activity-grid.activity-view-topology .topo-channel text {
-  cursor: default;
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-channel:hover polygon {
+  stroke: #4ecdc4;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 3px #4ecdc4);
 }
 
 /* Message-passing animation: when a message lands the corresponding
