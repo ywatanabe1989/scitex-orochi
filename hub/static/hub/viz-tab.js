@@ -20,12 +20,42 @@ var _vizPollTimer = null;
 var _vizCachedData = null;
 var _vizCachedAt = 0;
 var _VIZ_FRESH_MS = 60_000;
+/* Signature of the last rendered payload. Background polls that return
+ * the same data skip the DOM write entirely — avoids flashing the SVG
+ * every 60s when nothing changed. */
+var _vizRenderedSig = "";
+
+function _vizSig(data) {
+  try {
+    var daily = (data && data.daily_velocity) || [];
+    var totals = (data && data.totals) || {};
+    return (
+      String(totals.open || 0) +
+      ":" +
+      String(totals.closed || 0) +
+      ":" +
+      daily.length +
+      ":" +
+      (daily.length
+        ? daily[daily.length - 1].date +
+          "/" +
+          daily[daily.length - 1].opened +
+          "/" +
+          daily[daily.length - 1].closed
+        : "")
+    );
+  } catch (_) {
+    return String(Date.now());
+  }
+}
 
 function renderVizTab() {
   var container = document.getElementById("viz-content");
   if (container && _vizCachedData) {
     /* Instant paint from cache — user sees the chart before the network
-     * call returns. */
+     * call returns. Force the signature write by resetting first so a
+     * re-activation after the section was hidden still paints. */
+    _vizRenderedSig = "";
     _renderVizPayload(_vizCachedData, container);
   }
   /* Refetch if the cache is older than the poll interval. */
@@ -74,6 +104,12 @@ async function fetchVizPayload() {
 }
 
 function _renderVizPayload(data, container) {
+  /* Skip redundant re-renders — if the payload signature matches the
+   * last render, the DOM is already correct. Saves the SVG rebuild on
+   * every 60s poll when nothing changed. */
+  var sig = _vizSig(data);
+  if (sig && sig === _vizRenderedSig) return;
+  _vizRenderedSig = sig;
   var daily = (data && data.daily_velocity) || [];
   var totals = (data && data.totals) || { open: 0, closed: 0 };
   if (!daily.length) {

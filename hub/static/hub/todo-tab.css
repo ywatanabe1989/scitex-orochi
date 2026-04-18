@@ -204,6 +204,32 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+/* Viz toggle button sits at the right edge of the state-filter row.
+ * The .todo-last-updated above claims `margin-left: auto`, so the Viz
+ * toggle just follows it in source order — no extra margin needed. */
+.todo-viz-toggle {
+  background: transparent;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-left: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    background 0.12s,
+    border-color 0.12s;
+}
+.todo-viz-toggle:hover {
+  color: #eee;
+  background: #1a1a1a;
+  border-color: #3a3a3a;
+}
+.todo-viz-toggle.active {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
 .todo-state-btn {
   background: transparent;
   color: #888;

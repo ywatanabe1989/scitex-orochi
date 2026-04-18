@@ -277,11 +277,46 @@ function _updateTodoBtnCounts(issues) {
   });
 }
 
-/* Viz is now a top-level tab (tabs.js handles its own show/hide and
- * calls renderVizTab()); the in-TODO List/Viz mode switcher was removed
- * so this module no longer owns viz lifecycle. */
+/* Viz lives inside the TODO tab as an in-panel toggle on the right
+ * edge of the state-filter row. Clicking "Viz" swaps the todo-grid for
+ * viz-content and hides the state-filter pills (they don't apply to the
+ * chart). The earlier attempt at a top-level Viz tab was reverted at
+ * ywatanabe's request (msg 2026-04-18 15:58). */
+var _todoVizOn = false;
+
+function _applyTodoVizMode() {
+  var grid = document.getElementById("todo-grid");
+  var viz = document.getElementById("viz-content");
+  var toggleBtn = document.getElementById("todo-viz-toggle");
+  if (_todoVizOn) {
+    if (grid) grid.classList.add("todo-viz-hidden");
+    if (viz) viz.classList.remove("todo-viz-hidden");
+    if (toggleBtn) {
+      toggleBtn.classList.add("active");
+      toggleBtn.textContent = "List";
+      toggleBtn.setAttribute("title", "Back to list");
+    }
+    if (typeof renderVizTab === "function") renderVizTab();
+  } else {
+    if (grid) grid.classList.remove("todo-viz-hidden");
+    if (viz) viz.classList.add("todo-viz-hidden");
+    if (toggleBtn) {
+      toggleBtn.classList.remove("active");
+      toggleBtn.textContent = "Viz";
+      toggleBtn.setAttribute("title", "Show velocity chart");
+    }
+    if (typeof stopVizTab === "function") stopVizTab();
+  }
+}
 
 document.addEventListener("DOMContentLoaded", function () {
+  var vizToggle = document.getElementById("todo-viz-toggle");
+  if (vizToggle) {
+    vizToggle.addEventListener("click", function () {
+      _todoVizOn = !_todoVizOn;
+      _applyTodoVizMode();
+    });
+  }
   document.querySelectorAll(".todo-state-btn").forEach(function (btn) {
     btn.addEventListener("click", function (e) {
       var g = btn.getAttribute("data-group");
