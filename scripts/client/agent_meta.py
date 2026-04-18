@@ -145,6 +145,13 @@ _HOOK_EVENT_KEYS = (
     "last_action_outcome",
     "last_action_elapsed_s",
     "p95_elapsed_s_by_action",
+    # scitex-orochi #132 — subagent activity. agent_calls is the
+    # projected Agent/Task tool-invocation ring buffer; subagents is
+    # the in-flight list with descriptions; background_tasks is
+    # run_in_background Bash calls.
+    "agent_calls",
+    "background_tasks",
+    "subagents",
 )
 
 
@@ -1399,6 +1406,12 @@ def push_all(url=None, token=None) -> int:
                 "last_action_outcome": meta.get("last_action_outcome") or "",
                 "last_action_elapsed_s": meta.get("last_action_elapsed_s"),
                 "p95_elapsed_s_by_action": meta.get("p95_elapsed_s_by_action") or {},
+                # scitex-orochi #132 — subagent activity for the
+                # Agents tab AGENT CALLS / BACKGROUND TASKS panels
+                # and the active-subagent badge.
+                "agent_calls": meta.get("agent_calls") or [],
+                "background_tasks": meta.get("background_tasks") or [],
+                "subagents": meta.get("subagents") or [],
             }
             # todo#265: merge OAuth account public metadata into the
             # heartbeat payload. All 9 keys are whitelist-extracted
