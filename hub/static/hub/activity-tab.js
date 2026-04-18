@@ -376,20 +376,40 @@ function _renderActivityAgentDetail(a, grid) {
         escapeHtml(a.current_task || a.last_message_preview) +
         "</div>"
       : "";
-  /* Terminal pane — Raw/Clean + todo#47 Refresh / Copy / Follow /
-   * Expand. Expand only renders when pane_text_full is available
-   * (newer agent_meta.py push); older agents just see the short
-   * tail. Follow polls /detail every 3 s for a live-tail feel. */
+  /* Terminal pane — Refresh / Tail / Copy / Expand. Expand only renders
+   * when pane_text_full is available (newer agent_meta.py push); older
+   * agents just see the short tail. Tail polls /detail every 3 s for a
+   * live-tail feel. ANSI is always stripped — the raw/clean toggle was
+   * removed (ywatanabe 2026-04-19: "make it clean by default"). */
   var paneFull = a.pane_text_full || "";
   var paneFullAvailable = !!paneFull;
   var _isFollowing = _activityFollowAgent === a.name;
   var _isExpanded = !!_activityPaneExpanded[a.name] && paneFullAvailable;
   var paneSource = _isExpanded ? paneFull : pane || "";
-  var paneContent = paneSource
-    ? _paneShowRaw
-      ? paneSource
-      : _stripAnsi(paneSource)
-    : "";
+  var paneContent = paneSource ? _stripAnsi(paneSource) : "";
+  /* Primary DM channel for web→agent interaction (ywatanabe 2026-04-19:
+   * "like sending 'how are you?' in the terminal from web"). We send
+   * into the agent's existing dm:agent:<name>|human:<user> channel; the
+   * agent is already subscribed to it and sees the text as a Claude
+   * Code message in its terminal. Falls back to the first non-#general
+   * channel if no explicit DM exists. */
+  var agentDmChannel = "";
+  var agentChannels = a.channels || [];
+  for (var _ci = 0; _ci < agentChannels.length; _ci++) {
+    var _c = agentChannels[_ci] || "";
+    if (_c.indexOf("dm:agent:" + a.name + "|") === 0) {
+      agentDmChannel = _c;
+      break;
+    }
+  }
+  if (!agentDmChannel) {
+    for (var _cj = 0; _cj < agentChannels.length; _cj++) {
+      if ((agentChannels[_cj] || "").indexOf("dm:") === 0) {
+        agentDmChannel = agentChannels[_cj];
+        break;
+      }
+    }
+  }
   var paneHtml =
     '<div class="agent-detail-pane-wrap">' +
     '<div class="agent-detail-pane-label-row">' +
@@ -418,20 +438,19 @@ function _renderActivityAgentDetail(a, grid) {
     escapeHtml(a.name) +
     '" title="' +
     (_isFollowing
-      ? "Stop live-tail polling"
-      : "Poll /detail every " +
+      ? "Stop live-tail (auto-refresh every " +
         ACTIVITY_FOLLOW_INTERVAL_MS / 1000 +
-        "s for a live-tail feel") +
+        "s)"
+      : "Live-tail — re-poll /detail every " +
+        ACTIVITY_FOLLOW_INTERVAL_MS / 1000 +
+        "s") +
     '">' +
-    (_isFollowing ? "Following" : "Follow") +
+    (_isFollowing ? "Tailing" : "Tail") +
     "</button>" +
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-act-pane-action="copy" data-agent="' +
     escapeHtml(a.name) +
     '" title="Copy pane text to clipboard">Copy</button>' +
-    '<button class="pane-raw-toggle" id="pane-raw-toggle" title="Toggle raw/clean terminal output">' +
-    (_paneShowRaw ? "Raw" : "Clean") +
-    "</button>" +
     "</span>" +
     "</div>" +
     '<pre class="agent-detail-pane" id="agent-detail-pane-content" data-agent="' +
@@ -442,16 +461,38 @@ function _renderActivityAgentDetail(a, grid) {
     (paneContent
       ? escapeHtml(paneContent)
       : '<span class="muted-cell">No terminal output available</span>') +
-    "</pre></div>";
-  /* CLAUDE.md (full if available, head otherwise) */
+    "</pre>" +
+    (agentDmChannel
+      ? '<div class="activity-send-row" data-send-agent="' +
+        escapeHtml(a.name) +
+        '" data-send-channel="' +
+        escapeHtml(agentDmChannel) +
+        '">' +
+        '<input type="text" class="activity-send-input" ' +
+        'placeholder="message to agent (Enter to send via ' +
+        escapeHtml(agentDmChannel) +
+        ')" ' +
+        'autocomplete="off" spellcheck="false">' +
+        '<button type="button" class="activity-send-btn" ' +
+        'title="Send to agent">Send</button>' +
+        "</div>"
+      : "") +
+    "</div>";
+  /* CLAUDE.md — always render the section so the slot is visible even
+   * before /detail/ returns or when the agent hasn't pushed one. User
+   * reported the section silently disappearing ("often occurs"); a
+   * placeholder makes the absence explicit instead of a data gap. */
   var claudeMd = a.claude_md || a.claude_md_head || "";
-  var claudeMdHtml = claudeMd
-    ? '<div class="agent-detail-section">' +
-      '<div class="agent-detail-pane-label">CLAUDE.md</div>' +
-      '<pre class="agent-detail-claude-md">' +
-      escapeHtml(claudeMd) +
-      "</pre></div>"
-    : "";
+  var claudeMdHtml =
+    '<div class="agent-detail-section">' +
+    '<div class="agent-detail-pane-label">CLAUDE.md</div>' +
+    (claudeMd
+      ? '<pre class="agent-detail-claude-md">' + escapeHtml(claudeMd) + "</pre>"
+      : '<pre class="agent-detail-claude-md agent-detail-claude-md-empty">' +
+        "(loading — fetching /detail/ for this agent; empty here means " +
+        "the agent hasn't pushed a CLAUDE.md via agent_meta yet)" +
+        "</pre>") +
+    "</div>";
   /* Channel subscriptions (with + / x controls, admin-gated server-side). */
   var uniqueSubs = [...new Set(a.channels || [])];
   var channelBadgesHtml = uniqueSubs
@@ -542,28 +583,58 @@ function _renderActivityAgentDetail(a, grid) {
   /* Scroll pane to bottom */
   var pre = grid.querySelector(".agent-detail-pane");
   if (pre) pre.scrollTop = pre.scrollHeight;
-  /* Wire Raw/Clean toggle. When Expand is active, the toggle re-renders
-   * against pane_text_full so raw/clean applies to the full scrollback
-   * too — otherwise Raw would silently fall back to the short tail. */
-  var toggleBtn = grid.querySelector("#pane-raw-toggle");
-  if (toggleBtn) {
-    toggleBtn.addEventListener("click", function () {
-      _paneShowRaw = !_paneShowRaw;
-      toggleBtn.textContent = _paneShowRaw ? "Raw" : "Clean";
-      var paneEl = grid.querySelector("#agent-detail-pane-content");
-      if (paneEl) {
-        var useFull = paneEl.getAttribute("data-pane-view") === "full";
-        var src = useFull ? paneFull : pane || "";
-        var rawPaneContent = src ? (_paneShowRaw ? src : _stripAnsi(src)) : "";
-        paneEl.innerHTML = rawPaneContent
-          ? escapeHtml(rawPaneContent)
-          : '<span class="muted-cell">No terminal output available</span>';
-        paneEl.scrollTop = paneEl.scrollHeight;
-      }
-    });
-  }
   _bindActivityPaneControls(grid, a.name, pane, paneFull);
   _bindActivityChannelControls(grid, a.name);
+  _bindActivitySendInput(grid, a.name);
+}
+
+/* Web→agent interaction: Enter or Send click posts the text into the
+ * agent's DM channel via the existing /api/messages/ REST endpoint.
+ * Agent sees it in its next poll as a Claude Code message, which
+ * appears in the agent's terminal pane. Mirrors chat.js sendMessage
+ * but scoped to a specific agent's DM. */
+function _bindActivitySendInput(grid, name) {
+  var row = grid.querySelector(
+    '.activity-send-row[data-send-agent="' +
+      String(name).replace(/"/g, '\\"') +
+      '"]',
+  );
+  if (!row) return;
+  var input = row.querySelector(".activity-send-input");
+  var btn = row.querySelector(".activity-send-btn");
+  if (!input || !btn) return;
+  var channel = row.getAttribute("data-send-channel");
+  if (!channel) return;
+  function _doSend() {
+    var text = (input.value || "").trim();
+    if (!text) return;
+    var payload = { channel: channel, content: text };
+    if (typeof sendOrochiMessage === "function") {
+      sendOrochiMessage({
+        type: "message",
+        sender:
+          typeof userName !== "undefined" && userName ? userName : "human",
+        payload: payload,
+      });
+      input.value = "";
+      btn.textContent = "Sent";
+      setTimeout(function () {
+        btn.textContent = "Send";
+      }, 800);
+    } else {
+      console.error("sendOrochiMessage unavailable — web→agent send failed");
+    }
+  }
+  btn.addEventListener("click", function (ev) {
+    ev.preventDefault();
+    _doSend();
+  });
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter" && !ev.shiftKey) {
+      ev.preventDefault();
+      _doSend();
+    }
+  });
 }
 
 /* todo#47 — Refresh / Copy / Follow / Expand for the Agents-tab pane.

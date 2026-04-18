@@ -501,6 +501,56 @@
   overflow: auto;
 }
 
+/* Web→agent send row (under the terminal pane). Hitting Enter or
+ * clicking Send posts the text into the agent's DM channel so the
+ * agent sees it as a Claude Code message in its terminal context. */
+.activity-send-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.activity-send-input {
+  flex: 1 1 auto;
+  background: #0a0a0a;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.activity-send-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.activity-send-btn {
+  flex: 0 0 auto;
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.activity-send-btn:hover {
+  background: #1a4060;
+  color: #bfe1f1;
+}
+
+/* CLAUDE.md empty-state placeholder — less visual weight than the real
+ * content so the reader knows it's an absence, not corrupt data. */
+.agent-detail-claude-md-empty {
+  color: #666;
+  font-style: italic;
+  font-size: 11px;
+  background: #0a0a0a;
+  border: 1px dashed #2a2a2a;
+  padding: 8px;
+}
+
 @keyframes activity-pulse {
   0%,
   100% {
