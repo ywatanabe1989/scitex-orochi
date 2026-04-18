@@ -736,6 +736,115 @@ function _addDragAndDrop(container, section) {
   });
 }
 
+/* ── todo#49: agent ↔ channel subscription DnD helpers ── */
+function _agentHasChannel(channelsCsv, channel) {
+  if (!channel) return false;
+  var norm = channel.charAt(0) === "#" ? channel : "#" + channel;
+  var bare = channel.charAt(0) === "#" ? channel.slice(1) : channel;
+  var list = String(channelsCsv || "")
+    .split(",")
+    .map(function (s) {
+      return s.trim();
+    })
+    .filter(Boolean);
+  for (var i = 0; i < list.length; i++) {
+    var v = list[i];
+    if (v === channel || v === norm || v === bare || v === "#" + bare)
+      return true;
+  }
+  return false;
+}
+
+function _setChannelDropHint(el, text) {
+  var hint = el.querySelector(".ch-hint");
+  if (!hint) {
+    hint = document.createElement("span");
+    hint.className = "ch-hint";
+    el.appendChild(hint);
+  }
+  hint.textContent = text;
+}
+
+function _agentDjangoUsername(name) {
+  /* Mirrors hub/views/api.py: re.sub(r"[^a-zA-Z0-9_.\-]", "-", name) */
+  if (!name) return "";
+  var safe = String(name).replace(/[^a-zA-Z0-9_.\-]/g, "-");
+  return "agent-" + safe;
+}
+
+function _showMiniToast(text, kind) {
+  var el = document.getElementById("orochi-mini-toast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "orochi-mini-toast";
+    document.body.appendChild(el);
+  }
+  el.className = "";
+  if (kind) el.classList.add(kind);
+  el.textContent = text;
+  /* force reflow so transition re-fires when toast shown twice in a row */
+  void el.offsetWidth;
+  el.classList.add("visible");
+  if (el._hideTimer) clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(function () {
+    el.classList.remove("visible");
+  }, 2200);
+}
+
+function _toggleAgentChannelSubscription(agentName, channel, subscribe) {
+  var username = _agentDjangoUsername(agentName);
+  if (!username || !channel) return;
+  var method = subscribe ? "POST" : "DELETE";
+  var body = JSON.stringify({ channel: channel, username: username });
+  var url = apiUrl("/api/channel-members/");
+  fetch(url, {
+    method: method,
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: body,
+  })
+    .then(function (res) {
+      if (!res.ok) {
+        return res
+          .json()
+          .catch(function () {
+            return { error: res.status };
+          })
+          .then(function (j) {
+            var msg =
+              (j && j.error) || "HTTP " + res.status + " — check permissions";
+            _showMiniToast(
+              (subscribe ? "Subscribe failed: " : "Unsubscribe failed: ") + msg,
+              "err",
+            );
+            throw new Error(msg);
+          });
+      }
+      return res.json();
+    })
+    .then(function () {
+      _showMiniToast(
+        (subscribe ? "Subscribed " : "Unsubscribed ") +
+          agentName +
+          (subscribe ? " → " : " ← ") +
+          channel,
+        "ok",
+      );
+      /* Registry heartbeat takes up to ~2s to re-propagate agent.channels;
+       * force an immediate refresh so the UI reflects the change and a
+       * subsequent drag sees the latest subscription state. */
+      if (typeof fetchAgentsThrottled === "function") {
+        fetchAgentsThrottled();
+      } else if (typeof fetchAgents === "function") {
+        fetchAgents();
+      }
+    })
+    .catch(function (_) {});
+}
+
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
@@ -1381,12 +1490,16 @@ async function fetchAgents() {
         var statusClassCompact = liveness === "online" ? "online" : "offline";
         var tooltip =
           (a.agent_id || a.name) + " (" + (a.machine || "unknown") + ")";
+        /* todo#49: draggable agent cards — drop on channel to subscribe */
+        var chList = Array.isArray(a.channels) ? a.channels.join(",") : "";
         return (
           '<div class="agent-card sidebar-compact' +
           (inactive ? " inactive" : "") +
           '" data-agent-name="' +
           escapeHtml(a.name) +
-          '" title="' +
+          '" data-agent-channels="' +
+          escapeHtml(chList) +
+          '" draggable="true" title="' +
           escapeHtml(tooltip) +
           '">' +
           '<span class="agent-status ' +
@@ -1405,6 +1518,35 @@ async function fetchAgents() {
         /* Restore .selected from before re-render (#274 Part 2) */
         var elName = el.getAttribute("data-agent-name");
         if (elName && prevSelectedAgents[elName]) el.classList.add("selected");
+        /* todo#49: drag agent card onto a channel to subscribe / unsubscribe. */
+        el.addEventListener("dragstart", function (ev) {
+          var n = el.getAttribute("data-agent-name") || "";
+          var chs = el.getAttribute("data-agent-channels") || "";
+          el.classList.add("agent-dragging");
+          try {
+            ev.dataTransfer.effectAllowed = "link";
+            ev.dataTransfer.setData("application/x-orochi-agent", n);
+            ev.dataTransfer.setData("text/plain", n);
+            /* Carry current subscriptions so the drop handler can render
+             * add/remove affordance without an extra fetch. */
+            ev.dataTransfer.setData("application/x-orochi-agent-channels", chs);
+          } catch (e) {}
+          window.__orochiDragAgent = { name: n, channels: chs };
+        });
+        el.addEventListener("dragend", function () {
+          el.classList.remove("agent-dragging");
+          window.__orochiDragAgent = null;
+          document
+            .querySelectorAll(
+              ".channel-item.drop-target-agent-add,.channel-item.drop-target-agent-remove",
+            )
+            .forEach(function (t) {
+              t.classList.remove("drop-target-agent-add");
+              t.classList.remove("drop-target-agent-remove");
+              var hint = t.querySelector(".ch-hint");
+              if (hint) hint.remove();
+            });
+        });
         el.addEventListener("click", function (ev) {
           if (ev.target.closest(".pin-btn")) return; /* handled separately */
           if (ev.target.closest(".kill-btn")) return; /* handled separately */
@@ -1694,6 +1836,52 @@ async function fetchStats() {
       }
       /* Context menu */
       _addChannelContextMenu(el);
+      /* todo#49: accept agent-card drops to toggle subscription. */
+      el.addEventListener("dragover", function (ev) {
+        var drag = window.__orochiDragAgent;
+        if (!drag || !drag.name) return;
+        ev.preventDefault();
+        ev.dataTransfer.dropEffect = "link";
+        var ch = el.getAttribute("data-channel") || "";
+        var subscribed = _agentHasChannel(drag.channels, ch);
+        if (subscribed) {
+          el.classList.add("drop-target-agent-remove");
+          el.classList.remove("drop-target-agent-add");
+          _setChannelDropHint(el, "drop to unsubscribe");
+        } else {
+          el.classList.add("drop-target-agent-add");
+          el.classList.remove("drop-target-agent-remove");
+          _setChannelDropHint(el, "drop to subscribe");
+        }
+      });
+      el.addEventListener("dragleave", function () {
+        el.classList.remove("drop-target-agent-add");
+        el.classList.remove("drop-target-agent-remove");
+        var hint = el.querySelector(".ch-hint");
+        if (hint) hint.remove();
+      });
+      el.addEventListener("drop", function (ev) {
+        var agentName =
+          (ev.dataTransfer &&
+            ev.dataTransfer.getData("application/x-orochi-agent")) ||
+          (window.__orochiDragAgent && window.__orochiDragAgent.name) ||
+          "";
+        if (!agentName) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        var ch = el.getAttribute("data-channel") || "";
+        var chs =
+          (ev.dataTransfer &&
+            ev.dataTransfer.getData("application/x-orochi-agent-channels")) ||
+          (window.__orochiDragAgent && window.__orochiDragAgent.channels) ||
+          "";
+        var subscribed = _agentHasChannel(chs, ch);
+        el.classList.remove("drop-target-agent-add");
+        el.classList.remove("drop-target-agent-remove");
+        var hint = el.querySelector(".ch-hint");
+        if (hint) hint.remove();
+        _toggleAgentChannelSubscription(agentName, ch, !subscribed);
+      });
       el.addEventListener("click", function (ev) {
         if (
           ev.target.classList.contains("ch-star") ||

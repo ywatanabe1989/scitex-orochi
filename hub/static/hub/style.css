@@ -2289,6 +2289,63 @@ a.chat-link:hover {
   border-top: 2px solid #4af;
 }
 
+/* ── Drag-and-drop agent ↔ channel subscription (todo#49) ── */
+.agent-card[draggable="true"] {
+  cursor: grab;
+}
+.agent-card.agent-dragging {
+  opacity: 0.5;
+  background: #0d1a28 !important;
+}
+.channel-item.drop-target-agent-add {
+  outline: 2px solid #22c55e;
+  outline-offset: -2px;
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+.channel-item.drop-target-agent-remove {
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+.channel-item .ch-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: #93c5fd;
+  opacity: 0.9;
+  padding-left: 4px;
+}
+#orochi-mini-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  z-index: 99999;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+  max-width: 80vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#orochi-mini-toast.visible {
+  opacity: 1;
+}
+#orochi-mini-toast.ok {
+  border-color: #22c55e;
+}
+#orochi-mini-toast.err {
+  border-color: #ef4444;
+  color: #fecaca;
+}
+
 /* Mermaid diagram container */
 .mermaid-container {
   margin: 8px 0;
