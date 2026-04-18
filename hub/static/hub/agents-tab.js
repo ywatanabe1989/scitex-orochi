@@ -96,6 +96,22 @@ function _renderAgentDetail(a) {
   var statusColor = livenessColor(liveness);
   var role = d.role || a.role || "agent";
   var machine = d.machine || a.machine || "?";
+  /* todo#56: some transcripts surface <synthetic> / <none> / <compact>
+   * placeholder tokens for model when the assistant turn was synthesised
+   * (e.g. after /compact). Show a dash with the raw token in the tooltip
+   * instead of exposing the placeholder verbatim in the detail card. */
+  function _cleanModel(m) {
+    if (!m) return { display: "-", tooltip: "" };
+    var raw = String(m);
+    if (
+      raw.length > 2 &&
+      raw.charAt(0) === "<" &&
+      raw.charAt(raw.length - 1) === ">"
+    ) {
+      return { display: "—", tooltip: "heartbeat reported " + raw };
+    }
+    return { display: raw, tooltip: "" };
+  }
   /* todo#55: canonical FQDN for the Machine row. When the agent pushes
    * one AND it differs from the short label, the UI renders
    * "<label> (<fqdn>)". When identical or empty, the short label alone. */
@@ -104,7 +120,7 @@ function _renderAgentDetail(a) {
     machineCanonical && machineCanonical !== machine
       ? machine + " (" + machineCanonical + ")"
       : machine;
-  var model = d.model || a.model || "-";
+  var modelClean = _cleanModel(d.model || a.model || "");
   var ctxPct = d.context_pct != null ? d.context_pct : a.context_pct;
   var currentTask = d.current_task || a.current_task || "";
   var channels = d.channel_subs || a.channels || [];
@@ -173,7 +189,11 @@ function _renderAgentDetail(a) {
         ? "short label · canonical FQDN reported by the heartbeat"
         : "hostname the agent is running on (short label — no FQDN reported)",
     ],
-    ["Model", model, "Claude model id the agent is running against"],
+    [
+      "Model",
+      modelClean.display,
+      modelClean.tooltip || "Claude model id the agent is running against",
+    ],
     [
       "Multiplexer",
       multiplexer || "-",
@@ -248,9 +268,7 @@ function _renderAgentDetail(a) {
   var headerHtml =
     '<div class="agent-detail-header">' +
     '<div class="agent-detail-header-line">' +
-    '<span class="status-dot-inline" style="background:' +
-    statusColor +
-    '"></span>' +
+    _renderIndicatorLamps(a, d) +
     '<span class="agent-detail-header-title">' +
     escapeHtml(a.name) +
     "</span>" +
@@ -715,6 +733,100 @@ function livenessColor(liveness) {
     default:
       return "#888";
   }
+}
+
+/* todo#57: multi-lamp connectivity indicator bank on the detail header.
+ * Instead of one status dot, surface the independent signals the user
+ * needs to triage a broken agent: heartbeat freshness, pane classifier,
+ * MCP sidecar, and explicit health. Each lamp renders as a 10px dot
+ * with a hover tooltip explaining what it tracks and the current state
+ * value. Gray = no signal reported (distinct from red = bad signal). */
+function _buildIndicatorLamps(a, d) {
+  var lamps = [];
+  var liveness =
+    d.liveness || a.liveness || (isAgentInactive(a) ? "offline" : "online");
+  lamps.push({
+    key: "heartbeat",
+    color: livenessColor(liveness),
+    label: "HB",
+    title:
+      "Heartbeat freshness · " +
+      liveness +
+      " (online <2m · idle 2–10m · stale >10m · offline no push)",
+  });
+  var paneState = d.pane_state || a.pane_state || "";
+  var paneOk = ["", "running", "idle", "unknown"];
+  var paneStuck = [
+    "y_n_prompt",
+    "auth_error",
+    "mcp_broken",
+    "compose_pending_unsent",
+    "stuck",
+  ];
+  var paneColor = "#888";
+  if (paneOk.indexOf(paneState) !== -1) paneColor = "#4ecdc4";
+  else if (paneStuck.indexOf(paneState) !== -1) paneColor = "#ef4444";
+  else paneColor = "#ffd93d";
+  lamps.push({
+    key: "pane",
+    color: paneColor,
+    label: "PN",
+    title:
+      "Pane classifier · " +
+      (paneState || "(no classification)") +
+      " — red=stuck / amber=unusual / teal=ok / gray=no signal",
+  });
+  var mcpServers = d.mcp_servers || a.mcp_servers || [];
+  var mcpColor = mcpServers.length > 0 ? "#4ecdc4" : "#888";
+  lamps.push({
+    key: "mcp",
+    color: mcpColor,
+    label: "MCP",
+    title:
+      "MCP sidecar · " +
+      (mcpServers.length > 0
+        ? mcpServers.length + " server(s) connected"
+        : "(none reported — sidecar may be down)"),
+  });
+  var health = (d.health || a.health || {}).status || "";
+  var healthColor;
+  if (!health) healthColor = "#888";
+  else if (health === "healthy" || health === "ok") healthColor = "#4ecdc4";
+  else if (health === "degraded" || health === "warn") healthColor = "#ffd93d";
+  else healthColor = "#ef4444";
+  lamps.push({
+    key: "health",
+    color: healthColor,
+    label: "HL",
+    title:
+      "Self-reported health · " +
+      (health || "(none reported)") +
+      " — teal=healthy / amber=degraded / red=unhealthy / gray=no signal",
+  });
+  return lamps;
+}
+
+function _renderIndicatorLamps(a, d) {
+  var lamps = _buildIndicatorLamps(a, d);
+  return (
+    '<span class="agent-detail-lamps" role="status">' +
+    lamps
+      .map(function (l) {
+        return (
+          '<span class="agent-detail-lamp" data-lamp="' +
+          escapeHtml(l.key) +
+          '" title="' +
+          escapeHtml(l.title) +
+          '"><span class="agent-detail-lamp-dot" style="background:' +
+          l.color +
+          '"></span><span class="agent-detail-lamp-label">' +
+          escapeHtml(l.label) +
+          "</span></span>"
+        );
+      })
+      .join("") +
+    "</span>"
+  );
 }
 
 /* todo#418: pane_state badge — maps classifier label to display color+icon.

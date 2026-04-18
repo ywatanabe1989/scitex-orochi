@@ -1059,10 +1059,20 @@ def collect(agent: str) -> dict:
         "model": (
             model
             if model and not model.startswith("<")
+            # Linux-only: peek at /proc/<pid>/environ for the real
+            # model env the runtime set at spawn.
             else (
                 _read_process_env(
                     pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
                 )
+                # Darwin fallback: /proc doesn't exist. Check the pusher's
+                # own env — on mba the tmux launcher exports
+                # SCITEX_OROCHI_MODEL before spawning both claude and the
+                # heartbeat helper, so they share the same env. Without
+                # this the heartbeat keeps pushing "<synthetic>" (incident:
+                # head-mba detail card, ywatanabe msg 2026-04-18 20:09).
+                or os.environ.get("SCITEX_AGENT_CONTAINER_MODEL", "").strip()
+                or os.environ.get("SCITEX_OROCHI_MODEL", "").strip()
                 or model
             )
         ),

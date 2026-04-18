@@ -635,6 +635,38 @@
   align-items: center;
   gap: 10px;
 }
+/* todo#57: multi-lamp connectivity indicator bank */
+.agent-detail-lamps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.agent-detail-lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: help;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #888;
+  line-height: 1;
+}
+.agent-detail-lamp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 3px currentColor;
+}
+.agent-detail-lamp-label {
+  font-weight: 600;
+}
 .agent-detail-header-title {
   font-weight: 600;
   color: #4ecdc4;
