@@ -1683,20 +1683,12 @@ function _wireTopoZoomPan(grid, W, H) {
   grid.addEventListener("dblclick", function (ev) {
     var svg = ev.target.closest && ev.target.closest(".topo-svg");
     if (!svg) return;
-    /* Double-click on a channel diamond → open a compose-to-channel
-     * prompt. The graph becomes a posting interface (ywatanabe
-     * 2026-04-19: "the graph itself should be a message posting
-     * interface; like double click a channel -> post"). */
-    var ch = ev.target.closest(".topo-channel[data-channel]");
-    if (ch) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      var chName = ch.getAttribute("data-channel");
-      if (!chName) return;
-      _topoOpenChannelCompose(chName, ev.clientX, ev.clientY);
-      return;
-    }
-    /* Plain double-click on empty area = reset zoom. */
+    /* Channel dblclick-to-compose is now handled by the click-counter
+     * (_topoBumpClick with kind="channel") so that triple-click can
+     * open Chat on the same node. Only plain empty-area dblclick
+     * resets zoom here. */
+    if (ev.target.closest(".topo-channel[data-channel]")) return;
+    if (ev.target.closest(".topo-agent[data-agent]")) return;
     _resetVB(svg);
   });
   /* Button controls — back / minus / reset / plus. */
@@ -2043,6 +2035,17 @@ function _renderActivityTopology(visible, grid) {
       chSet[c] = true;
     });
   });
+  /* Also include every workspace channel from _channelPrefs (the
+   * sidebar channel list) so zero-subscriber channels still appear
+   * as connectable nodes — ywatanabe 2026-04-19 "channels must be
+   * there all the time even with 0 subscribers to allow connection".
+   */
+  if (typeof _channelPrefs !== "undefined" && _channelPrefs) {
+    Object.keys(_channelPrefs).forEach(function (c) {
+      if (!c || c.indexOf("dm:") === 0) return;
+      chSet[c] = true;
+    });
+  }
   var channels = Object.keys(chSet).sort();
 
   /* Size from the grid's inner box. Fall back to generous defaults on
@@ -2232,8 +2235,26 @@ function _renderActivityTopology(visible, grid) {
       var connected = (a.status || "online") !== "offline";
       var liveness =
         a.liveness || a.status || (connected ? "online" : "offline");
+      /* Dead-state detection — heartbeat is fresh but the agent has
+       * shown no reaction (no tool call, no recorded action) for
+       * >3min. This catches the classic "silent death" where the
+       * sidecar keeps heartbeating but the LLM process is gone.
+       * ywatanabe 2026-04-19: "please implement dead color, red with
+       * logics like 3 min no-reaction". */
+      var toolSec =
+        typeof _secondsSinceIso === "function"
+          ? _secondsSinceIso(a.last_tool_at)
+          : null;
+      var actSec =
+        typeof _secondsSinceIso === "function"
+          ? _secondsSinceIso(a.last_action)
+          : null;
+      var noTool = toolSec == null || toolSec > 180;
+      var noAct = actSec == null || actSec > 180;
+      var isDead = connected && noTool && noAct;
       var wsColor = connected ? "#4ecdc4" : "#555";
       var fnColor = FN_COLORS[liveness] || "#555";
+      if (isDead) fnColor = "#ef4444";
       var nameText =
         typeof hostedAgentName === "function"
           ? hostedAgentName(a)
@@ -2280,6 +2301,7 @@ function _renderActivityTopology(visible, grid) {
         : "";
       var nameX = p.x + LED_R + GAP / 2 + (a.pinned ? 22 : 8);
       var selCls = _topoSelected[a.name] ? " topo-agent-selected" : "";
+      var deadCls = isDead ? " topo-agent-dead" : "";
       /* Button-like badge background so the agent reads as clickable.
        * Approx width from the rendered text + LEDs + optional pin. ch
        * width ≈ 6.5px at 11px monospace. ywatanabe 2026-04-19:
@@ -2305,6 +2327,7 @@ function _renderActivityTopology(visible, grid) {
       return (
         '<g class="topo-node topo-agent' +
         selCls +
+        deadCls +
         '" data-agent="' +
         escapeHtml(a.name) +
         '">' +
@@ -2694,22 +2717,38 @@ var _overviewGridWired = false;
  * node within CLICK_WINDOW_MS and dispatches a single action (1/2/3-
  * click). Double-click native event is also wired below as a fallback
  * for legacy browsers — the guard re-uses the same counter. */
-var _topoClickState = null; /* {name, count, timer} */
+var _topoClickState = null; /* {kind, name, count, timer, x, y} */
 var TOPO_CLICK_WINDOW_MS = 350;
 function _topoFlushClick() {
   if (!_topoClickState) return;
   var s = _topoClickState;
   _topoClickState = null;
   if (!s.name) return;
+  if (s.kind === "channel") {
+    /* Channel multi-click:
+     *   2 = open inline compose popup
+     *   3 = jump to the Chat tab focused on this channel
+     *       (ywatanabe 2026-04-19: "triple click a channel → show in
+     *       Chat channel"). */
+    if (s.count >= 3) {
+      if (typeof setCurrentChannel === "function") setCurrentChannel(s.name);
+      if (typeof loadChannelHistory === "function") loadChannelHistory(s.name);
+      var chatBtn = document.querySelector('[data-tab="chat"]');
+      if (chatBtn) chatBtn.click();
+    } else if (s.count === 2) {
+      _topoOpenChannelCompose(s.name, s.x || 0, s.y || 0);
+    }
+    /* count === 1 is a no-op (preserves rectangle-zoom path for
+     * empty-area clicks — channels still mark a click as "handled" by
+     * virtue of being a clickable node, but we don't want a single
+     * click to trigger anything destructive). */
+    return;
+  }
+  /* Default: agent multi-click. */
   if (s.count >= 3) {
     _overviewExpanded = _overviewExpanded === s.name ? null : s.name;
     if (typeof renderActivityTab === "function") renderActivityTab();
   } else if (s.count === 2) {
-    /* Double-click agent = small DM compose popup near the click
-     * point (ywatanabe 2026-04-19: "double click -> just show small
-     * input area as well, just like in the case where I click a
-     * channel"). Uses the same _topoOpenChannelCompose helper; the
-     * DM channel is auto-created on first POST via the backend. */
     var human =
       (typeof userName !== "undefined" && userName) ||
       window.__orochiUserName ||
@@ -2717,22 +2756,23 @@ function _topoFlushClick() {
     var dmCh = "dm:agent:" + s.name + "|human:" + human;
     _topoOpenChannelCompose(dmCh, s.x || 0, s.y || 0);
   }
-  /* count === 1 is handled as drag-source on mousedown; no-op on click. */
+  /* count === 1 for agents is handled as drag-source on mousedown. */
 }
-function _topoBumpClick(name, clientX, clientY) {
-  if (_topoClickState && _topoClickState.name === name) {
+function _topoBumpClick(name, clientX, clientY, kind) {
+  var k = kind || "agent";
+  if (
+    _topoClickState &&
+    _topoClickState.name === name &&
+    _topoClickState.kind === k
+  ) {
     _topoClickState.count += 1;
-    /* Refresh click coordinates to the most recent click — ensures
-     * the DM popup opens at the actual dblclick position, not where
-     * the first click landed. */
     _topoClickState.x = clientX;
     _topoClickState.y = clientY;
     clearTimeout(_topoClickState.timer);
   } else {
-    /* Different target → drop prior pending count silently (a click on
-     * a different node is a new intent, not part of a multi-click). */
     if (_topoClickState) clearTimeout(_topoClickState.timer);
     _topoClickState = {
+      kind: k,
       name: name,
       count: 1,
       timer: 0,
@@ -3118,7 +3158,17 @@ function _wireOverviewGridDelegation(grid) {
         _topoDragState.suppressClick = false;
         return;
       }
-      _topoBumpClick(tname, ev.clientX, ev.clientY);
+      _topoBumpClick(tname, ev.clientX, ev.clientY, "agent");
+    }
+    /* Channel node click counter — 2 = inline compose popup,
+     * 3 = jump to Chat tab on this channel. ywatanabe 2026-04-19
+     * "triple click a channel → show in Chat channel". */
+    var topoChannel = ev.target.closest(".topo-channel[data-channel]");
+    if (topoChannel && grid.contains(topoChannel)) {
+      if (ev.target.closest(".activity-inline-detail")) return;
+      var chName = topoChannel.getAttribute("data-channel");
+      if (!chName) return;
+      _topoBumpClick(chName, ev.clientX, ev.clientY, "channel");
     }
     /* Topology action-bar buttons (post / clear). These live outside
      * the SVG but inside `grid`, so the delegation catches them here. */

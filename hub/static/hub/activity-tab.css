@@ -696,8 +696,28 @@
  * ywatanabe 2026-04-19: "make the node text a bit lighter to make it
  * more readable by enhancing contrast". */
 .activity-grid.activity-view-topology .topo-label-agent {
-  filter: brightness(1.35);
+  filter: brightness(1.5);
   font-weight: 600;
+}
+/* Channel label — same brightness pass so the #name reads clearly
+ * against the dark canvas. ywatanabe 2026-04-19: "make it more
+ * readable, brighter color!". */
+.activity-grid.activity-view-topology .topo-label-ch {
+  fill: #c5d3df;
+  font-weight: 500;
+}
+/* Dead agent — heartbeat ok but >3min no tool/action. Red border +
+ * subtle red tint on the badge so it's visible at a glance. LED
+ * already switches to #ef4444 via _topoSpawnPacket's FN_COLORS
+ * override. ywatanabe 2026-04-19 "please implement dead color, red
+ * with logics like 3 min no-reaction". */
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-bg {
+  stroke: #ef4444;
+  stroke-width: 1.5;
+  fill: #1a0f0f;
+}
+.activity-grid.activity-view-topology .topo-agent-dead .topo-label-agent {
+  fill: #ff6b6b !important;
 }
 /* Human user node — gold pill, distinct from agents. */
 .activity-grid.activity-view-topology .topo-human .topo-human-bg {
