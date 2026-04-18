@@ -828,12 +828,36 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
+/* Collapse agent-name redundancy:
+ *
+ *  - "head@mba@Host"             → "head@mba"     (strip extra @host)
+ *  - "head-mba@mba"              → "head@mba"     (role-host@host)
+ *  - "healer-ywata-note-win@ywata-note-win"
+ *                                → "healer@ywata-note-win"
+ *  - "mamba-todo-manager-mba@mba"→ "mamba-todo-manager@mba"
+ *  - "expert-scitex@ywata-note-win" → unchanged (no duplicated host)
+ *
+ * Rationale: agent IDs are registered as "<role>-<host>" because the
+ * agent-container config generates them that way (head.yaml on mba ⇒
+ * "head-mba"), but the dashboard already shows "@<host>" separately,
+ * so the duplication just adds noise. This renderer-level fix keeps
+ * the registered IDs intact and only affects display. */
 function cleanAgentName(name) {
   if (!name) return name;
   var parts = name.split("@");
   if (parts.length >= 3) {
-    return parts[0] + "@" + parts[1];
+    /* Legacy double-@ form: "head@mba@Host" → "head@mba". Re-enter so
+     * the role-host dedupe below also runs on the survivor. */
+    name = parts[0] + "@" + parts[1];
+    parts = name.split("@");
+  }
+  if (parts.length === 2) {
+    var lead = parts[0];
+    var host = parts[1];
+    var suffix = "-" + host;
+    if (host && lead.length > suffix.length && lead.endsWith(suffix)) {
+      return lead.slice(0, -suffix.length) + "@" + host;
+    }
   }
   return name;
 }
