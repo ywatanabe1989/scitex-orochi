@@ -206,6 +206,11 @@ def api_agent_detail(request, name: str):
         "registered_at": agent.get("registered_at"),
         "last_action_ts": agent.get("last_action"),
         "last_heartbeat": agent.get("last_heartbeat"),
+        # todo#46 — hub→agent ping RTT. Dashboard drives the PN lamp
+        # off `last_pong_ts` (live when fresh) and `last_rtt_ms` (color
+        # by latency).
+        "last_pong_ts": agent.get("last_pong_ts"),
+        "last_rtt_ms": agent.get("last_rtt_ms"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
         "claude_md": redact_secrets(agent.get("claude_md") or ""),
         # todo#460: serve the workspace .mcp.json for the Agents tab viewer.

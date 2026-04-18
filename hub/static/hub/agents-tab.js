@@ -796,6 +796,61 @@ function _buildIndicatorLamps(a, d) {
       liveness +
       " (online <2m · idle 2–10m · stale >10m · offline no push)",
   });
+
+  // todo#46 — Hub→agent round-trip ping lamp (RT). last_pong_ts is an
+  // ISO8601 string from the agent detail / agents projection; treat
+  // missing-or-stale-beyond-60s as "no signal" (gray). RTT color
+  // thresholds: <=250ms teal, <=1000ms amber, >1000ms red.
+  var pongIso = d.last_pong_ts || a.last_pong_ts || null;
+  var rttMs = d.last_rtt_ms;
+  if (typeof rttMs !== "number") rttMs = a.last_rtt_ms;
+  var pongAgeSec = null;
+  if (pongIso) {
+    var pongDate = new Date(pongIso);
+    if (!isNaN(pongDate.getTime())) {
+      pongAgeSec = Math.max(0, (Date.now() - pongDate.getTime()) / 1000);
+    }
+  }
+  var rtColor;
+  var rtTitle;
+  if (pongAgeSec === null || pongAgeSec > 60) {
+    rtColor = "#888";
+    rtTitle = "Hub ping RTT · no recent pong — hub→agent channel may be stuck";
+  } else if (typeof rttMs !== "number") {
+    rtColor = "#888";
+    rtTitle = "Hub ping RTT · pong received but no RTT sample";
+  } else if (rttMs <= 250) {
+    rtColor = "#4ecdc4";
+    rtTitle =
+      "Hub ping RTT · " +
+      Math.round(rttMs) +
+      " ms (last pong " +
+      Math.round(pongAgeSec) +
+      "s ago)";
+  } else if (rttMs <= 1000) {
+    rtColor = "#ffd93d";
+    rtTitle =
+      "Hub ping RTT · " +
+      Math.round(rttMs) +
+      " ms — slow (last pong " +
+      Math.round(pongAgeSec) +
+      "s ago)";
+  } else {
+    rtColor = "#ef4444";
+    rtTitle =
+      "Hub ping RTT · " +
+      Math.round(rttMs) +
+      " ms — very slow (last pong " +
+      Math.round(pongAgeSec) +
+      "s ago)";
+  }
+  lamps.push({
+    key: "rtt",
+    color: rtColor,
+    label: "RT",
+    title: rtTitle,
+  });
+
   var paneState = d.pane_state || a.pane_state || "";
   var paneOk = ["", "running", "idle", "unknown"];
   var paneStuck = [
