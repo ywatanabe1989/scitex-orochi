@@ -463,6 +463,11 @@ function _renderTodoFromCache(issues) {
   attachTodoEvents(container);
   _backgroundFillDetails(container);
   _updateLastFetchedLabel(_todoCacheTs.all || _todoCacheTs.open || Date.now());
+  /* Re-apply any active filter-input query — the innerHTML rewrite above
+   * wiped the display:none state runFilter() had previously set. Without
+   * this, typing "todo#418" on the Chat tab then switching to TODO shows
+   * every issue. */
+  if (typeof runFilter === "function") runFilter();
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {

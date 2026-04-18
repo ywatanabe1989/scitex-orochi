@@ -37,12 +37,22 @@ function _activateTab(tab) {
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
+    /* Restore the channel-topic banner on re-entry to Chat. The block at
+     * the top of _activateTab hides it unconditionally; we only want that
+     * when leaving chat, not when returning. Without this line the banner
+     * vanishes after the first tab switch. Banner content already tracks
+     * the textarea target (see app.js _updateChannelTopicBanner). */
+    if (topicBanner) topicBanner.style.display = "";
     /* Always default-focus the compose input when the chat tab is shown.
      * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
      * the primary action target on the chat tab, so the user should never
      * have to click into it manually after switching tabs or reloading.
      * Defer with rAF so the layout has settled (display:'' just changed). */
     requestAnimationFrame(function () {
+      /* Snap to bottom whenever chat is shown — initial load + every
+       * tab-switch back to chat. Layout may not be final until after the
+       * rAF tick, so scroll here (not synchronously). */
+      messagesEl.scrollTop = messagesEl.scrollHeight;
       var input = document.getElementById("msg-input");
       if (input) {
         input.focus();

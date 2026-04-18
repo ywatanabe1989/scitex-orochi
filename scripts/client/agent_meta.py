@@ -1174,6 +1174,17 @@ def push_all(url=None, token=None) -> int:
                 "runtime": meta.get("runtime", ""),
                 "current_task": meta.get("current_task", ""),
                 "channels": ["#general"],
+                # Observability fields for the per-agent detail view
+                # (/api/agents/<name>/detail/). Without these the hub
+                # shows empty CLAUDE.md / .mcp.json / terminal output
+                # panels even though the agent collects them locally.
+                "claude_md": meta.get("claude_md", ""),
+                "mcp_json": meta.get("mcp_json", ""),
+                "mcp_servers": list(meta.get("mcp_servers") or []),
+                "pane_tail": meta.get("pane_tail", ""),
+                "pane_tail_block": meta.get("pane_tail_block", ""),
+                "pane_state": meta.get("pane_state", ""),
+                "stuck_prompt_text": meta.get("stuck_prompt_text", ""),
             }
             # todo#265: merge OAuth account public metadata into the
             # heartbeat payload. All 9 keys are whitelist-extracted

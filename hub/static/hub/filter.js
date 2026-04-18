@@ -5,7 +5,9 @@
 /* mention.js redefines fuzzyMatch() to return a numeric score where
  * -1 means no match. In JS -1 is truthy, so all boolean filter checks
  * would pass regardless of match. _fm() wraps with >= 0 check. */
-var _fm = function (query, text) { return fuzzyMatch(query, text) >= 0; };
+var _fm = function (query, text) {
+  return fuzzyMatch(query, text) >= 0;
+};
 
 var filterInput = document.getElementById("filter-input");
 var filterTagsEl = document.getElementById("filter-tags");
@@ -101,7 +103,9 @@ function renderTags() {
     .join("");
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -174,7 +178,9 @@ function showSuggestions(items) {
   filterSuggestEl.classList.add("visible");
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -188,7 +194,9 @@ function hideSuggestions() {
   suggestIndex = -1;
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
 }
 
@@ -269,13 +277,19 @@ function runFilter() {
       " " +
       (content ? content.textContent : "");
     /* Each keyword must match independently (AND logic) */
-    var show = qWords.length === 0 || qWords.every(function (w) {
-      return _fm(w, text);
-    });
+    var show =
+      qWords.length === 0 ||
+      qWords.every(function (w) {
+        return _fm(w, text);
+      });
     if (show && allTags.length > 0) {
       /* Group agent tags for OR (union) logic; other tags stay AND */
-      var agentTags = allTags.filter(function (t) { return t.type === "agent"; });
-      var otherTags = allTags.filter(function (t) { return t.type !== "agent"; });
+      var agentTags = allTags.filter(function (t) {
+        return t.type === "agent";
+      });
+      var otherTags = allTags.filter(function (t) {
+        return t.type !== "agent";
+      });
       if (agentTags.length > 0) {
         var senderText = (sender ? sender.textContent : "").toLowerCase();
         show = agentTags.some(function (tag) {
@@ -297,9 +311,8 @@ function runFilter() {
     }
     /* Skip single-channel filter when multi-select is active (#366):
      * applyFeedFilter() handles multi-channel visibility in that case. */
-    var _multiActive = document.querySelectorAll(
-      "#channels .channel-item.selected",
-    ).length >= 2;
+    var _multiActive =
+      document.querySelectorAll("#channels .channel-item.selected").length >= 2;
     if (show && currentChannel && !_multiActive) {
       show = el.getAttribute("data-channel") === currentChannel;
     }
@@ -307,7 +320,11 @@ function runFilter() {
   });
   document.querySelectorAll(".todo-item").forEach(function (el) {
     var text = el.textContent;
-    var show = qWords.length === 0 || qWords.every(function (w) { return _fm(w, text); });
+    var show =
+      qWords.length === 0 ||
+      qWords.every(function (w) {
+        return _fm(w, text);
+      });
     if (show && allTags.length > 0) {
       show = allTags.every(function (tag) {
         var val = tag.value.toLowerCase();
@@ -329,33 +346,84 @@ function runFilter() {
 }
 
 function _matchAllWords(words, text) {
-  return words.length === 0 || words.every(function (w) { return _fm(w, text); });
+  return (
+    words.length === 0 ||
+    words.every(function (w) {
+      return _fm(w, text);
+    })
+  );
 }
 
 function filterSidebarElements(qWords, allTags) {
   document.querySelectorAll("#agents .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+        ? ""
+        : "none";
   });
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+        ? ""
+        : "none";
   });
   document.querySelectorAll("#resources .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+        ? ""
+        : "none";
   });
   document.querySelectorAll("#agents-grid .agent-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+        ? ""
+        : "none";
   });
   document.querySelectorAll("#resources-grid .res-card").forEach(function (el) {
     var text = el.textContent;
     el.style.display =
-      _matchAllWords(qWords, text) && matchesAllTags(allTags, text) ? "" : "none";
+      _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+        ? ""
+        : "none";
   });
+  /* Agents tab: per-agent table rows in the overview sub-tab. The paired
+   * .agent-pane-row / .claude-md-detail siblings must follow the parent
+   * agent-row's visibility so we don't leave orphaned pane previews
+   * behind after a filter. */
+  document
+    .querySelectorAll("#agent-tab-content tr.agent-row")
+    .forEach(function (el) {
+      var text = el.textContent;
+      var show = _matchAllWords(qWords, text) && matchesAllTags(allTags, text);
+      el.style.display = show ? "" : "none";
+      var sib = el.nextElementSibling;
+      while (
+        sib &&
+        (sib.classList.contains("agent-pane-row") ||
+          sib.classList.contains("claude-md-detail"))
+      ) {
+        if (!show) {
+          sib.style.display = "none";
+        } else if (sib.classList.contains("agent-pane-row")) {
+          sib.style.display = "";
+        }
+        /* claude-md-detail keeps whatever the toggle button set (display:none
+         * when collapsed, table-row when expanded) — don't clobber it. */
+        sib = sib.nextElementSibling;
+      }
+    });
+  /* Files tab rows. */
+  document
+    .querySelectorAll("#files-view tr.files-list-row")
+    .forEach(function (el) {
+      var text = el.textContent;
+      el.style.display =
+        _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
+          ? ""
+          : "none";
+    });
 }

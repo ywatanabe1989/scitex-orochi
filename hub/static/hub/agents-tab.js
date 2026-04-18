@@ -369,6 +369,9 @@ function _renderAgentContent(grid) {
           _renderAgentContent(grid);
         });
       });
+    /* Re-apply Ctrl+K fuzzy filter after the innerHTML rewrite — see
+     * todo-tab.js rationale. */
+    if (typeof runFilter === "function") runFilter();
     return;
   }
 

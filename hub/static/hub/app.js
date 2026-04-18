@@ -58,14 +58,20 @@ function setCurrentChannel(ch) {
   } catch (_) {}
   /* Update textarea placeholder to show active channel — msg#9368.
    * In multi-select mode (ch=null), keep showing the last active channel
-   * so the user knows where their message will be posted (#9694). */
+   * so the user knows where their message will be posted (#9694).
+   * DMs use a friendly "@<other>" label instead of the raw
+   * "dm:agent:X|human:Y" channel string. */
   try {
     var inp = document.getElementById("msg-input");
     if (inp) {
       var targetCh = ch || lastActiveChannel;
-      inp.placeholder = targetCh
-        ? "Message #" + targetCh.replace(/^#/, "") + "\u2026"
-        : "Type a message\u2026";
+      if (targetCh && targetCh.indexOf("dm:") === 0) {
+        inp.placeholder = "Message " + _dmFriendlyLabel(targetCh) + "\u2026";
+      } else {
+        inp.placeholder = targetCh
+          ? "Message #" + targetCh.replace(/^#/, "") + "\u2026"
+          : "Type a message\u2026";
+      }
     }
   } catch (_) {}
   /* Update composer target indicator (todo#364) */
@@ -74,6 +80,26 @@ function setCurrentChannel(ch) {
    * or last active when in all-channels mode */
   _updateChannelTopicBanner(ch || lastActiveChannel);
 }
+
+/* Friendly-label for a dm:<principal>|<principal> channel. Strips the
+ * "dm:" prefix, splits on "|", drops the self principal when known, and
+ * strips "agent:"/"human:" type prefixes so the result is "@name" (or
+ * "@a, @b" when the self principal can't be determined). */
+function _dmFriendlyLabel(ch) {
+  if (!ch || ch.indexOf("dm:") !== 0) return ch || "";
+  var parts = ch.substring(3).split("|");
+  var self = window.__orochiUserName ? "human:" + window.__orochiUserName : "";
+  var others = parts.filter(function (p) {
+    return p && p !== self;
+  });
+  if (others.length === 0) others = parts;
+  return others
+    .map(function (p) {
+      return "@" + p.replace(/^(agent:|human:)/, "");
+    })
+    .join(", ");
+}
+window._dmFriendlyLabel = _dmFriendlyLabel;
 
 function _updateComposerTarget(ch, isReply, replyMsgId) {
   try {
@@ -88,8 +114,7 @@ function _updateComposerTarget(ch, isReply, replyMsgId) {
       el.firstChild.nodeValue = "";
     } else if (ch && ch.startsWith("dm:")) {
       el.classList.add("is-dm");
-      var parts = ch.replace("dm:", "").split("|");
-      nameEl.textContent = "\u2192 @" + (parts[1] || parts[0]) + " (DM)";
+      nameEl.textContent = "\u2192 " + _dmFriendlyLabel(ch) + " (DM)";
       el.firstChild.nodeValue = "";
     } else {
       nameEl.textContent = ch || "#general";
