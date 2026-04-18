@@ -204,31 +204,37 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* Viz toggle button sits at the right edge of the state-filter row.
- * The .todo-last-updated above claims `margin-left: auto`, so the Viz
- * toggle just follows it in source order — no extra margin needed. */
-.todo-viz-toggle {
-  background: transparent;
-  color: #888;
+/* [Viz | List] segmented switch at the leftmost position of the
+ * TODO header. Mirrors .activity-view-switch on the Agents tab so
+ * the visual language stays consistent. */
+.todo-view-switch {
+  display: inline-flex;
   border: 1px solid #2a2a2a;
   border-radius: 4px;
-  padding: 4px 10px;
-  margin-left: 8px;
-  font-size: 12px;
+  overflow: hidden;
+  margin-right: 8px;
+}
+.todo-view-switch-btn {
+  background: #0e0e0e;
+  color: #888;
+  border: none;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: inherit;
   cursor: pointer;
-  transition:
-    color 0.12s,
-    background 0.12s,
-    border-color 0.12s;
+  border-right: 1px solid #2a2a2a;
+  letter-spacing: 0.3px;
 }
-.todo-viz-toggle:hover {
-  color: #eee;
-  background: #1a1a1a;
-  border-color: #3a3a3a;
+.todo-view-switch-btn:last-child {
+  border-right: none;
 }
-.todo-viz-toggle.active {
+.todo-view-switch-btn:hover {
+  background: #151515;
+  color: #ccc;
+}
+.todo-view-switch-btn.active {
+  background: #0f2a28;
   color: #4ecdc4;
-  border-color: #4ecdc4;
 }
 .todo-state-btn {
   background: transparent;
