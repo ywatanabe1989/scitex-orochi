@@ -99,6 +99,7 @@
             <div class="tab-bar">
                 <button class="tab-btn active" data-tab="chat">Chat</button>
                 <button class="tab-btn" data-tab="todo">TODO</button>
+                <button class="tab-btn" data-tab="viz">Viz</button>
                 <button class="tab-btn" data-tab="activity">Agents</button>
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
@@ -143,10 +144,6 @@
             <div id="messages" class="messages"></div>
             <div id="todo-view" class="todo-view" style="display:none">
                 <!-- hook-bypass: inline-style -->
-                <div class="todo-mode-filter">
-                    <button type="button" class="todo-mode-btn active" data-mode="list">List</button>
-                    <button type="button" class="todo-mode-btn" data-mode="viz">Viz</button>
-                </div>
                 <div class="todo-state-filter" id="todo-state-filter">
                     <button type="button" class="todo-state-btn active" data-group="all">All</button>
                     <button type="button" class="todo-state-btn" data-group="high-priority">High</button>
@@ -160,7 +157,10 @@
                           title="Last fetched from GitHub"></span>
                 </div>
                 <div id="todo-grid" class="todo-grid"></div>
-                <div id="viz-content" class="viz-content todo-viz-hidden"></div>
+            </div>
+            <div id="viz-view" class="todo-view" style="display:none">
+                <!-- hook-bypass: inline-style -->
+                <div id="viz-content" class="viz-content"></div>
             </div>
             <div id="agents-tab-view" class="todo-view" style="display:none">
                 <div id="agents-grid" class="todo-grid"></div>
@@ -369,7 +369,7 @@
     <script src="{% static 'hub/dms.js' %}?v=2"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=99"></script>
-    <script src="{% static 'hub/todo-tab.js' %}?v=105"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=106"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/chat.js' %}?v=121"></script>
     <script src="{% static 'hub/mention.js' %}?v=101"></script>
@@ -380,7 +380,7 @@
     <script src="{% static 'hub/agents-tab.js' %}?v=101"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=99"></script>
     <script src="{% static 'hub/activity-tab.js' %}?v=119"></script>
-    <script src="{% static 'hub/viz-tab.js' %}?v=2"></script>
+    <script src="{% static 'hub/viz-tab.js' %}?v=3"></script>
     <script src="{% static 'hub/upload.js' %}?v=111"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=104"></script>
     <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
@@ -389,7 +389,7 @@
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>
     <script src="{% static 'hub/webcam.js' %}?v=1"></script>
     <script src="{% static 'hub/voice-input.js' %}?v=126"></script>
-    <script src="{% static 'hub/tabs.js' %}?v=105"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=106"></script>
     <script src="{% static 'hub/init.js' %}?v=99"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
     <script src="{% static 'hub/push.js' %}?v=99"></script>

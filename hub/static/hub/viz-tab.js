@@ -13,11 +13,27 @@
 /* globals apiUrl, escapeHtml */
 
 var _vizPollTimer = null;
+/* Cache the most recent stats payload so tab re-activation paints
+ * instantly from memory while a background refetch runs. Without this
+ * every tab switch waits on /api/todo/stats/ (which hits GitHub and is
+ * perceptibly slow). */
+var _vizCachedData = null;
+var _vizCachedAt = 0;
+var _VIZ_FRESH_MS = 60_000;
 
 function renderVizTab() {
-  fetchVizPayload();
+  var container = document.getElementById("viz-content");
+  if (container && _vizCachedData) {
+    /* Instant paint from cache — user sees the chart before the network
+     * call returns. */
+    _renderVizPayload(_vizCachedData, container);
+  }
+  /* Refetch if the cache is older than the poll interval. */
+  if (Date.now() - _vizCachedAt > _VIZ_FRESH_MS) {
+    fetchVizPayload();
+  }
   if (_vizPollTimer) clearInterval(_vizPollTimer);
-  _vizPollTimer = setInterval(fetchVizPayload, 60_000);
+  _vizPollTimer = setInterval(fetchVizPayload, _VIZ_FRESH_MS);
 }
 
 function stopVizTab() {
@@ -35,17 +51,25 @@ async function fetchVizPayload() {
       credentials: "same-origin",
     });
     if (!res.ok) {
-      container.innerHTML =
-        '<p class="empty-notice">Failed to load stats (HTTP ' +
-        res.status +
-        ").</p>";
+      /* Don't clobber a cached chart on a transient 5xx — show the
+       * error only when we have nothing on screen. */
+      if (!_vizCachedData) {
+        container.innerHTML =
+          '<p class="empty-notice">Failed to load stats (HTTP ' +
+          res.status +
+          ").</p>";
+      }
       return;
     }
     var data = await res.json();
+    _vizCachedData = data;
+    _vizCachedAt = Date.now();
     _renderVizPayload(data, container);
   } catch (e) {
-    container.innerHTML =
-      '<p class="empty-notice">Error: ' + escapeHtml(String(e)) + "</p>";
+    if (!_vizCachedData) {
+      container.innerHTML =
+        '<p class="empty-notice">Error: ' + escapeHtml(String(e)) + "</p>";
+    }
   }
 }
 

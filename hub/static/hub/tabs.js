@@ -12,6 +12,7 @@ function _activateTab(tab) {
   var messagesEl = document.getElementById("messages");
   var inputBar = document.querySelector(".input-bar");
   var todoView = document.getElementById("todo-view");
+  var vizView = document.getElementById("viz-view");
   var resourcesView = document.getElementById("resources-view");
   var agentsTabView = document.getElementById("agents-tab-view");
   var workspacesView = document.getElementById("workspaces-view");
@@ -26,6 +27,7 @@ function _activateTab(tab) {
   var membersPanel = document.getElementById("channel-members-panel");
   if (membersPanel) membersPanel.style.display = "none";
   todoView.style.display = "none";
+  if (vizView) vizView.style.display = "none";
   resourcesView.style.display = "none";
   agentsTabView.style.display = "none";
   workspacesView.style.display = "none";
@@ -33,7 +35,7 @@ function _activateTab(tab) {
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
-  if (tab !== "todo" && typeof stopVizTab === "function") stopVizTab();
+  if (tab !== "viz" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
     inputBar.style.display = "";
@@ -65,6 +67,12 @@ function _activateTab(tab) {
     todoView.style.display = "block";
     todoView.style.flex = "1";
     fetchTodoList();
+  } else if (tab === "viz") {
+    if (vizView) {
+      vizView.style.display = "block";
+      vizView.style.flex = "1";
+    }
+    if (typeof renderVizTab === "function") renderVizTab();
   } else if (tab === "agents-tab") {
     agentsTabView.style.display = "block";
     agentsTabView.style.flex = "1";
