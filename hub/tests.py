@@ -2137,6 +2137,62 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("[REDACTED]", out)
         self.assertEqual(redact_secrets(""), "")
 
+    def test_hostname_canonical_exposed(self):
+        """todo#55: detail endpoint must forward the canonical FQDN
+        pushed by the heartbeat (PR #215/#216). Empty string when the
+        client never pushed one."""
+        self._register(hostname_canonical="Yusukes-MacBook-Air.local")
+        data = self._get().json()
+        self.assertEqual(data["hostname_canonical"], "Yusukes-MacBook-Air.local")
+        # Default path: field present but empty when client didn't push.
+        from hub.registry import _agents as _reg_agents
+
+        _reg_agents.clear()
+        self._register()
+        data2 = self._get().json()
+        self.assertIn("hostname_canonical", data2)
+        self.assertEqual(data2["hostname_canonical"], "")
+
+    def test_event_log_shortcuts_projected(self):
+        """The hook-event / action_store shortcuts the frontend reads
+        for the Last tool / Last MCP / Last action rows must always be
+        present in the detail payload — empty strings when the agent
+        hasn't produced any events yet, NOT missing keys."""
+        self._register()
+        data = self._get().json()
+        for key in (
+            "last_tool_at",
+            "last_tool_name",
+            "last_mcp_tool_at",
+            "last_mcp_tool_name",
+            "last_action_at",
+            "last_action_name",
+            "last_action_outcome",
+            "recent_tools",
+            "tool_counts",
+            "action_counts",
+        ):
+            self.assertIn(key, data, f"missing key: {key}")
+
+    def test_event_log_shortcuts_forwarded_when_registered(self):
+        """When the heartbeat includes last_tool_at / last_tool_name,
+        the detail endpoint forwards them verbatim."""
+        self._register(
+            last_tool_at="2026-04-18T11:00:00+00:00",
+            last_tool_name="Bash",
+            last_mcp_tool_at="2026-04-18T11:00:05+00:00",
+            last_mcp_tool_name="mcp__scitex-orochi__send_message",
+            last_action_at="2026-04-18T11:00:10+00:00",
+            last_action_name="nonce_probe",
+            last_action_outcome="SUCCESS",
+        )
+        data = self._get().json()
+        self.assertEqual(data["last_tool_at"], "2026-04-18T11:00:00+00:00")
+        self.assertEqual(data["last_tool_name"], "Bash")
+        self.assertEqual(data["last_mcp_tool_name"], "mcp__scitex-orochi__send_message")
+        self.assertEqual(data["last_action_name"], "nonce_probe")
+        self.assertEqual(data["last_action_outcome"], "SUCCESS")
+
 
 # scitex-orochi#144 fix path 4 — active session counter regression tests
 class ActiveSessionCounterTests(TestCase):
