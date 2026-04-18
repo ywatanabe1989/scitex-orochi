@@ -4,6 +4,13 @@
 var cachedAgentIcons = {}; /* {name: image|emoji|text string} */
 var cachedAgentColors = {}; /* {name: hex color string} */
 
+/* Per-human avatar caches — populated by fetchHumanProfiles().
+ * Keys are *usernames* (same string that shows up as a message sender),
+ * values follow the same shape as the agent caches so getSenderIcon
+ * can reuse its rendering logic. */
+var cachedHumanIcons = {};
+var cachedHumanColors = {};
+
 /* Inline SVG icon generators for branding — official SciTeX snake */
 function getSnakeIcon(size, color) {
   size = size || 20;
@@ -45,6 +52,31 @@ function getPersonIcon(size, color) {
 /* Gravatar-style cascade: custom avatar image > emoji/text > snake SVG > person icon */
 function getSenderIcon(senderName, isAgent, size) {
   size = size || 18;
+  /* Humans get their per-user override first — this is only checked
+   * when isAgent is false so agent icons stay untouched. */
+  if (!isAgent) {
+    var humanIcon = cachedHumanIcons[senderName];
+    if (humanIcon) {
+      if (humanIcon.startsWith("http") || humanIcon.startsWith("/")) {
+        return (
+          '<img class="agent-avatar" src="' +
+          escapeHtml(humanIcon) +
+          '" width="' +
+          size +
+          '" height="' +
+          size +
+          '" alt="">'
+        );
+      }
+      return (
+        '<span class="agent-custom-icon" style="font-size:' +
+        Math.round(size * 0.9) +
+        'px">' +
+        humanIcon +
+        "</span>"
+      );
+    }
+  }
   var icon = cachedAgentIcons[senderName];
   if (icon) {
     if (icon.startsWith("http") || icon.startsWith("/")) {
@@ -70,7 +102,7 @@ function getSenderIcon(senderName, isAgent, size) {
     var color = cachedAgentColors[senderName] || getAgentColor(senderName);
     return getSnakeIcon(size, color);
   }
-  return getPersonIcon(size, "#c4a6e8");
+  return getPersonIcon(size, cachedHumanColors[senderName] || "#c4a6e8");
 }
 
 function getSnakeLogo() {
@@ -166,4 +198,133 @@ function uploadAgentAvatar(agentName, file) {
     .catch(function (e) {
       console.error("Avatar upload failed:", e);
     });
+}
+
+/* ----- Human (per-user) avatar wiring — mirrors the agent flow ----- */
+
+/* Fetch workspace humans + their avatars and populate the caches.
+ * Safe to call repeatedly (e.g. after upload, after workspace change). */
+function fetchHumanProfiles() {
+  return fetch(apiUrl("/api/workspace-members/avatars/"), {
+    credentials: "same-origin",
+  })
+    .then(function (res) {
+      if (!res.ok) return [];
+      return res.json();
+    })
+    .then(function (rows) {
+      if (!Array.isArray(rows)) return;
+      rows.forEach(function (u) {
+        var icon = u.icon_image || u.icon_emoji || u.icon_text;
+        if (icon) {
+          cachedHumanIcons[u.username] = icon;
+        } else {
+          delete cachedHumanIcons[u.username];
+        }
+        if (u.color) {
+          cachedHumanColors[u.username] = u.color;
+        } else {
+          delete cachedHumanColors[u.username];
+        }
+      });
+      if (typeof renderMyAvatarButton === "function") renderMyAvatarButton();
+    })
+    .catch(function (e) {
+      console.error("fetchHumanProfiles failed:", e);
+    });
+}
+
+var _humanAvatarFileInput = null;
+
+function _ensureHumanAvatarInput() {
+  if (_humanAvatarFileInput) return;
+  _humanAvatarFileInput = document.createElement("input");
+  _humanAvatarFileInput.type = "file";
+  _humanAvatarFileInput.accept = "image/*";
+  _humanAvatarFileInput.style.display = "none";
+  document.body.appendChild(_humanAvatarFileInput);
+  _humanAvatarFileInput.addEventListener("change", function () {
+    if (!this.files || !this.files[0]) return;
+    uploadHumanAvatar(this.files[0]);
+    this.value = "";
+  });
+}
+
+function openHumanAvatarPicker() {
+  _ensureHumanAvatarInput();
+  _humanAvatarFileInput.click();
+}
+
+function uploadHumanAvatar(file) {
+  var fd = new FormData();
+  fd.append("file", file);
+  var headers = {};
+  if (typeof csrfToken !== "undefined" && csrfToken) {
+    headers["X-CSRFToken"] = csrfToken;
+  }
+  return fetch(apiUrl("/api/user-profile/avatar/"), {
+    method: "POST",
+    headers: headers,
+    credentials: "same-origin",
+    body: fd,
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (data) {
+      if (data && data.url && typeof window.__orochiUserName === "string") {
+        cachedHumanIcons[window.__orochiUserName] = data.url;
+      }
+      fetchHumanProfiles();
+    })
+    .catch(function (e) {
+      console.error("Human avatar upload failed:", e);
+    });
+}
+
+/* Compact colour/emoji editor (shift-click). Uses window.prompt to stay
+ * dependency-free — same pattern as the workspace-icon picker in
+ * settings-tab.js. Empty input clears the field. */
+function openHumanAvatarTextEditor() {
+  var emoji = window.prompt(
+    "Avatar emoji (single character, empty to clear):",
+    "",
+  );
+  if (emoji === null) return;
+  var color = window.prompt(
+    "Avatar colour (hex like #4ecdc4, empty to clear):",
+    "",
+  );
+  if (color === null) return;
+  var headers = { "Content-Type": "application/json" };
+  if (typeof csrfToken !== "undefined" && csrfToken) {
+    headers["X-CSRFToken"] = csrfToken;
+  }
+  fetch(apiUrl("/api/user-profile/"), {
+    method: "PATCH",
+    headers: headers,
+    credentials: "same-origin",
+    body: JSON.stringify({
+      icon_emoji: emoji.trim(),
+      color: color.trim(),
+    }),
+  })
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function () {
+      fetchHumanProfiles();
+    })
+    .catch(function (e) {
+      console.error("User profile update failed:", e);
+    });
+}
+
+/* Render the current user's avatar into #my-avatar-btn (if present).
+ * Called after fetchHumanProfiles populates the cache. */
+function renderMyAvatarButton() {
+  var btn = document.getElementById("my-avatar-btn");
+  if (!btn) return;
+  var name = window.__orochiUserName || "";
+  btn.innerHTML = getSenderIcon(name, false, 22);
 }

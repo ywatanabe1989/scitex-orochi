@@ -8,7 +8,7 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=124">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=125">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=102">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=105">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
@@ -92,6 +92,12 @@
             </h2>
             <div id="resources" class="sidebar-section"></div>
             <div class="sidebar-signout">
+                <button type="button"
+                        id="my-avatar-btn"
+                        class="my-avatar-btn"
+                        title="Click: upload avatar image — Shift+click: set emoji/colour"
+                        onclick="if(event.shiftKey){openHumanAvatarTextEditor();}else{openHumanAvatarPicker();}">
+                </button>
                 <a href="/signout/" class="signout-link">Sign out</a>
             </div>
         </div>
@@ -358,7 +364,7 @@
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
-    <script src="{% static 'hub/agent-icons.js' %}?v=99"></script>
+    <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
     <script src="{% static 'hub/app.js' %}?v=131"></script>
     <script src="{% static 'hub/dms.js' %}?v=2"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
@@ -384,7 +390,7 @@
     <script src="{% static 'hub/webcam.js' %}?v=1"></script>
     <script src="{% static 'hub/voice-input.js' %}?v=126"></script>
     <script src="{% static 'hub/tabs.js' %}?v=107"></script>
-    <script src="{% static 'hub/init.js' %}?v=99"></script>
+    <script src="{% static 'hub/init.js' %}?v=100"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
     <script src="{% static 'hub/push.js' %}?v=99"></script>
     <!-- mermaid.js — diagram rendering for ```mermaid code blocks -->

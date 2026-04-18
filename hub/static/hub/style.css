@@ -1205,6 +1205,37 @@ a.chat-link:hover {
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Per-user avatar picker button — sits next to the Sign out link.
+ * Matches the signout link's row height so the footer doesn't shift. */
+.my-avatar-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid #333;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: inherit;
+  flex: 0 0 auto;
+}
+.my-avatar-btn:hover {
+  border-color: #4ecdc4;
+}
+.my-avatar-btn img,
+.my-avatar-btn svg,
+.my-avatar-btn .agent-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 .signout-link {
   display: block;
@@ -1216,6 +1247,7 @@ a.chat-link:hover {
   transition:
     background 0.15s,
     color 0.15s;
+  flex: 1 1 auto;
 }
 .signout-link:hover {
   background: rgba(255, 255, 255, 0.08);
