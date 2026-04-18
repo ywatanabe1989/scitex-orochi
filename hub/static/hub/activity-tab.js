@@ -1421,11 +1421,26 @@ function _renderActivityTopology(visible, grid) {
     });
   });
 
-  /* Channel diamonds (rotated squares) with label above. */
+  /* Per-channel subscriber counts across the visible agents. Used to
+   * scale each channel diamond — "based on the number of agents, the
+   * channel node can be larger" (ywatanabe 2026-04-19). */
+  var chAgentCounts = {};
+  visible.forEach(function (a) {
+    (a.channels || []).forEach(function (c) {
+      if (!chSet[c]) return;
+      chAgentCounts[c] = (chAgentCounts[c] || 0) + 1;
+    });
+  });
+  /* Channel diamonds (rotated squares) with label above. Size scales
+   * with subscriber count: r ranges 8 (1 agent) to 22 (7+ agents)
+   * following sqrt so visual area grows sub-linearly and busy hubs
+   * don't completely overpower the layout. */
   var chSvg = channels
     .map(function (c) {
       var p = chPos[c];
-      var r = 10;
+      var count = chAgentCounts[c] || 1;
+      var r = Math.min(22, 8 + Math.sqrt(count - 1) * 5);
+      var labelText = c + " (" + count + ")";
       var pts =
         p.x +
         "," +
@@ -1445,6 +1460,8 @@ function _renderActivityTopology(visible, grid) {
       return (
         '<g class="topo-node topo-channel" data-channel="' +
         escapeHtml(c) +
+        '" data-agent-count="' +
+        count +
         '">' +
         '<polygon points="' +
         pts +
@@ -1452,9 +1469,9 @@ function _renderActivityTopology(visible, grid) {
         '<text class="topo-label topo-label-ch" x="' +
         p.x +
         '" y="' +
-        (p.y - r - 6) +
+        (p.y - r - 6).toFixed(1) +
         '" text-anchor="middle">' +
-        escapeHtml(c) +
+        escapeHtml(labelText) +
         "</text>" +
         "</g>"
       );

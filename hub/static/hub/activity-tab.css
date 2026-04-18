@@ -677,10 +677,18 @@
   background: #161616;
   color: #ccc;
 }
-.activity-grid.activity-view-topology .topo-node {
+.activity-grid.activity-view-topology .topo-agent,
+.activity-grid.activity-view-topology .topo-agent circle,
+.activity-grid.activity-view-topology .topo-agent text {
   cursor: pointer;
 }
-.activity-grid.activity-view-topology .topo-channel {
+.activity-grid.activity-view-topology .topo-agent:hover circle,
+.activity-grid.activity-view-topology .topo-agent:hover text {
+  filter: brightness(1.25);
+}
+.activity-grid.activity-view-topology .topo-channel,
+.activity-grid.activity-view-topology .topo-channel polygon,
+.activity-grid.activity-view-topology .topo-channel text {
   cursor: default;
 }
 .activity-grid.activity-view-topology .topo-label {
