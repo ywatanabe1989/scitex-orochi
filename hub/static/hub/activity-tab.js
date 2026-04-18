@@ -3120,6 +3120,9 @@ function _renderActivityTopology(visible, grid) {
               typeof _colorKeyFor === "function" ? _colorKeyFor(a) : a.name,
             )
           : "#eaf1fb";
+      /* Color the NAME text, not a left-edge stripe. ywatanabe
+       * 2026-04-19: "do not highlight left edge of cards; but update
+       * colors of the agent text instead". */
       return (
         '<div class="topo-pool-chip topo-pool-chip-agent' +
         selCls +
@@ -3127,11 +3130,12 @@ function _renderActivityTopology(visible, grid) {
         escapeHtml(a.name) +
         '" title="' +
         escapeHtml(a.name) +
-        '" style="border-left:3px solid ' +
-        escapeHtml(poolAgentColor) +
         '"><span class="topo-pool-chip-icon">\uD83E\uDD16</span>' +
+        '<span class="topo-pool-chip-name" style="color:' +
+        escapeHtml(poolAgentColor) +
+        '">' +
         escapeHtml(a.name) +
-        "</div>"
+        "</span></div>"
       );
     })
     .join("");
