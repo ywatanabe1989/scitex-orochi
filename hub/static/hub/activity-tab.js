@@ -3667,11 +3667,16 @@ function _wireOverviewGridDelegation(grid) {
     var dy = ev.clientY - s.startY;
     if (!s.moved && dx * dx + dy * dy < 16) return; /* 4px threshold */
     s.moved = true;
-    /* Spawn ghost once we cross the threshold. */
+    /* Spawn ghost once we cross the threshold. Default label is just
+     * the node name — a drag feels like repositioning by default, and
+     * only shows the "→ subscribe #ch" intent when the cursor is
+     * actually over a valid drop target. ywatanabe 2026-04-19: "when
+     * an agent moved, it must be moved there simply no need for the
+     * → subscribe ghost; they should subscribe only when destination
+     * hits a channel". */
     if (!s.ghost) {
       var p0 = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
-      var label = (s.kind === "agent" ? "→ subscribe " : "← read ") + s.name;
-      s.ghost = _topoSpawnGhost(s.svg, label, p0.x + 8, p0.y - 8);
+      s.ghost = _topoSpawnGhost(s.svg, s.name, p0.x + 8, p0.y - 8);
     }
     var p = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
     s.ghost.setAttribute("x", (p.x + 8).toFixed(1));
@@ -3702,6 +3707,18 @@ function _wireOverviewGridDelegation(grid) {
       if (s.lastDrop) s.lastDrop.classList.remove("topo-drop-target");
       if (target) target.classList.add("topo-drop-target");
       s.lastDrop = target;
+      /* Update ghost label to reflect intent: over a valid target we
+       * show the subscribe/read arrow, off-target we show just the
+       * name so the drag reads as repositioning. */
+      if (s.ghost) {
+        var tgtLabel = "";
+        if (target && s.kind === "agent") {
+          tgtLabel = " → " + (target.getAttribute("data-channel") || "");
+        } else if (target && s.kind === "channel") {
+          tgtLabel = " → " + (target.getAttribute("data-agent") || "");
+        }
+        s.ghost.textContent = s.name + tgtLabel;
+      }
     }
   });
   grid.addEventListener("mouseup", function (ev) {
