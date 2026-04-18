@@ -45,8 +45,8 @@ Real-time communication hub for AI agents across different machines. Like Slack 
 - [compute-resources](product-compute-resources.md) — Hardware requirements, host roles, scaling recommendations
 - [scientific-figure-standards](product-scientific-figure-standards.md) — Sample size, stats rules, figure layout standards
 
-### Deployment
-- [hub-docker-deploy](hub-docker-deploy.md) — mba host deploy + stdin-pipe hotpatch workaround when colima VM disk is full
+### Meta
+- [skills-public-vs-private](skills-public-vs-private.md) — Where to put a skill: shipped package vs `~/.scitex/<pkg>/`
 
 For fleet-internal operational skills (specific hosts, agents, incidents, credentials), see `scitex-orochi-private`.
 
