@@ -1378,14 +1378,16 @@ function _topoPulseEdge(sender, channel, opts) {
   var leg2Delay = 0;
   if (ap) {
     _topoSpawnPacket(edges, ap, cp, LEG, 0, klass);
-    _topoFlashEdge(edges, ap, cp, 0, LEG);
     leg2Delay = LEG;
   } else {
     /* Brief in-place pulse on the channel so the origin is visible
      * before the fan-out leg. */
     _topoSpawnPacket(edges, cp, cp, 180, 0, klass);
   }
-  /* Leg 2 — channel → each subscribed agent (except sender if agent). */
+  /* Leg 2 — channel → each subscribed agent (except sender if agent).
+   * Edge-line flashing was removed (ywatanabe 2026-04-19: "instead of
+   * highlight the line at the same time, packet should move from one
+   * to another") — the traveling packet itself carries the signal. */
   var subscribers = Object.keys(_topoLastPositions.agents).filter(function (n) {
     if (n === sender) return false;
     var ag = (window.__lastAgents || []).find(function (x) {
@@ -1399,7 +1401,6 @@ function _topoPulseEdge(sender, channel, opts) {
     var target = _topoLastPositions.agents[n];
     if (!target) return;
     _topoSpawnPacket(edges, cp, target, LEG, leg2Delay, klass);
-    _topoFlashEdge(edges, cp, target, leg2Delay, LEG);
   });
 }
 window._topoPulseEdge = _topoPulseEdge;
