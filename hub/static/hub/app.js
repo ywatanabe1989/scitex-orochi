@@ -1514,6 +1514,19 @@ function handleMessage(msg) {
     if (knownMessageKeys[key]) return;
     knownMessageKeys[key] = true;
     appendMessage(msg);
+    /* Topology view — pulse a glowing packet along the edge from the
+     * sender to the channel so the map animates as traffic flows.
+     * Silently no-ops when topology isn't visible. */
+    if (typeof _topoPulseEdge === "function") {
+      var _topoCh = msg.channel || (msg.payload && msg.payload.channel) || "";
+      var _topoAttach =
+        (msg.metadata && msg.metadata.attachments) ||
+        (msg.payload && msg.payload.attachments) ||
+        [];
+      _topoPulseEdge(msg.sender, _topoCh, {
+        isArtifact: Array.isArray(_topoAttach) && _topoAttach.length > 0,
+      });
+    }
     /* If this message is a reply and the matching thread panel is open,
      * also live-append it there (deduped by reply id). */
     if (typeof appendToThreadPanelIfOpen === "function") {

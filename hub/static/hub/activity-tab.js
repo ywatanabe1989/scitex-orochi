@@ -1073,6 +1073,126 @@ var _topoLastExpanded = null;
 var _topoViewBox = null; /* {x,y,w,h} — persisted zoom/pan across re-renders */
 var _topoViewBoxHistory = []; /* stack for Escape = undo zoom */
 var _topoZoomWired = false;
+var _topoLastPositions = { agents: {}, channels: {} };
+
+/* Spawn one glowing packet traveling from (fromX,fromY) -> (toX,toY)
+ * over `dur` ms, optionally delayed. Self-removes after animation. */
+function _topoSpawnPacket(edges, from, to, dur, delay, klass) {
+  var ns = "http://www.w3.org/2000/svg";
+  var g = document.createElementNS(ns, "g");
+  g.setAttribute("class", "topo-packet " + (klass || ""));
+  var glow = document.createElementNS(ns, "circle");
+  glow.setAttribute("cx", from.x);
+  glow.setAttribute("cy", from.y);
+  glow.setAttribute("r", "6");
+  glow.setAttribute("fill-opacity", "0.35");
+  var core = document.createElementNS(ns, "circle");
+  core.setAttribute("cx", from.x);
+  core.setAttribute("cy", from.y);
+  core.setAttribute("r", "3");
+  [glow, core].forEach(function (node) {
+    var ax = document.createElementNS(ns, "animate");
+    ax.setAttribute("attributeName", "cx");
+    ax.setAttribute("from", String(from.x));
+    ax.setAttribute("to", String(to.x));
+    ax.setAttribute("dur", dur + "ms");
+    ax.setAttribute("begin", delay + "ms");
+    ax.setAttribute("fill", "freeze");
+    var ay = document.createElementNS(ns, "animate");
+    ay.setAttribute("attributeName", "cy");
+    ay.setAttribute("from", String(from.y));
+    ay.setAttribute("to", String(to.y));
+    ay.setAttribute("dur", dur + "ms");
+    ay.setAttribute("begin", delay + "ms");
+    ay.setAttribute("fill", "freeze");
+    node.appendChild(ax);
+    node.appendChild(ay);
+  });
+  g.appendChild(glow);
+  g.appendChild(core);
+  edges.appendChild(g);
+  setTimeout(
+    function () {
+      if (g.parentNode) g.parentNode.removeChild(g);
+    },
+    dur + delay + 80,
+  );
+}
+
+/* Briefly brighten the line matching the given endpoints. */
+function _topoFlashEdge(edges, a, b, delay, dur) {
+  var lines = edges.querySelectorAll("line");
+  for (var i = 0; i < lines.length; i++) {
+    var ln = lines[i];
+    var x1 = Number(ln.getAttribute("x1"));
+    var y1 = Number(ln.getAttribute("y1"));
+    var x2 = Number(ln.getAttribute("x2"));
+    var y2 = Number(ln.getAttribute("y2"));
+    var matchA =
+      Math.abs(x1 - a.x) < 0.5 &&
+      Math.abs(y1 - a.y) < 0.5 &&
+      Math.abs(x2 - b.x) < 0.5 &&
+      Math.abs(y2 - b.y) < 0.5;
+    var matchB =
+      Math.abs(x1 - b.x) < 0.5 &&
+      Math.abs(y1 - b.y) < 0.5 &&
+      Math.abs(x2 - a.x) < 0.5 &&
+      Math.abs(y2 - a.y) < 0.5;
+    if (matchA || matchB) {
+      (function (line) {
+        setTimeout(function () {
+          line.classList.add("topo-edge-live");
+          setTimeout(function () {
+            line.classList.remove("topo-edge-live");
+          }, dur);
+        }, delay);
+      })(ln);
+      break;
+    }
+  }
+}
+
+/* Message-pass animation:
+ *   leg 1 (0-900ms):   sender-agent → channel-node
+ *   leg 2 (900-1800ms): channel-node → each other subscribed agent
+ * So a post visibly propagates through the graph in two stages, the
+ * way real pub/sub traffic would. If msg carries attachments, the
+ * packet variant "topo-packet-artifact" is used (styled differently
+ * as a babble bubble). ywatanabe 2026-04-19. */
+function _topoPulseEdge(sender, channel, opts) {
+  if (!sender || !channel) return;
+  var svg = document.querySelector(".activity-view-topology .topo-svg");
+  if (!svg) return;
+  var ap = _topoLastPositions.agents[sender];
+  var cp = _topoLastPositions.channels[channel];
+  if (!ap || !cp) return;
+  var edges = svg.querySelector(".topo-edges");
+  if (!edges) return;
+  var klass =
+    opts && opts.isArtifact ? "topo-packet-artifact" : "topo-packet-message";
+  var LEG = 900;
+  /* Leg 1 — sender → channel. */
+  _topoSpawnPacket(edges, ap, cp, LEG, 0, klass);
+  _topoFlashEdge(edges, ap, cp, 0, LEG);
+  /* Leg 2 — channel → each subscribed agent (except sender). Propagate
+   * only through visible agents (positions known). */
+  var subscribers = Object.keys(_topoLastPositions.agents).filter(function (n) {
+    if (n === sender) return false;
+    var ag = (window.__lastAgents || []).find(function (x) {
+      return x.name === n;
+    });
+    return (
+      ag && Array.isArray(ag.channels) && ag.channels.indexOf(channel) !== -1
+    );
+  });
+  subscribers.forEach(function (n) {
+    var target = _topoLastPositions.agents[n];
+    if (!target) return;
+    _topoSpawnPacket(edges, cp, target, LEG, LEG, klass);
+    _topoFlashEdge(edges, cp, target, LEG, LEG);
+  });
+}
+window._topoPulseEdge = _topoPulseEdge;
 
 /* Drag-rectangle zoom + shift-drag pan + double-click reset on the
  * topology SVG. State lives in _topoViewBox so heartbeat-driven
@@ -1400,6 +1520,10 @@ function _renderActivityTopology(visible, grid) {
   channels.forEach(function (c, i) {
     chPos[c] = _pt(rInner, i, channels.length);
   });
+  /* Stash for the message-pulse animator (_topoPulseEdge). Re-computed
+   * on every render so a window-resize or agent add/remove still
+   * targets the right coordinates. */
+  _topoLastPositions = { agents: agentPos, channels: chPos };
 
   /* Edges — iterate visible agents, intersect with the channel set. */
   var edgesSvg = "";

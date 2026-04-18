@@ -691,6 +691,35 @@
 .activity-grid.activity-view-topology .topo-channel text {
   cursor: default;
 }
+
+/* Message-passing animation: when a message lands the corresponding
+ * edge brightens and a glowing teal packet flies along it from sender
+ * to channel. The CSS drop-shadow gives the packet a soft bloom so it
+ * reads as "techky / modern" at a glance. */
+.activity-grid.activity-view-topology .topo-packet circle {
+  filter: drop-shadow(0 0 4px #4ecdc4) drop-shadow(0 0 10px #4ecdc4);
+}
+/* Message variant = teal glowing dot (default fill set at runtime). */
+.activity-grid.activity-view-topology .topo-packet-message circle {
+  fill: #4ecdc4;
+}
+/* Artifact variant = larger amber "babble" with a softer, more bubbly
+ * look to distinguish file/image posts from plain chat. */
+.activity-grid.activity-view-topology .topo-packet-artifact circle {
+  fill: #fbbf24;
+  filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 14px #fbbf24);
+}
+.activity-grid.activity-view-topology .topo-packet-artifact circle:first-child {
+  r: 9;
+  fill-opacity: 0.4;
+}
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-live {
+  stroke: #4ecdc4 !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 1.8 !important;
+  filter: drop-shadow(0 0 3px #4ecdc4);
+  transition: stroke 0.15s ease-out;
+}
 .activity-grid.activity-view-topology .topo-label {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 11px;
