@@ -259,6 +259,49 @@
   opacity: 0.6;
 }
 
+/* Fleet-core agents (YAML-defined canonical roles). Slightly heavier
+ * left-border + a teal hairline on the top so core slots are scannable
+ * at a glance vs ad-hoc registrations. */
+.activity-card.activity-card-core {
+  border-left-width: 4px;
+  box-shadow: inset 0 1px 0 rgba(78, 205, 196, 0.18);
+}
+
+/* Fleet-core agents that went stale: render as a shadow so the slot is
+ * still visible (the user expects a head/healer to be present even
+ * when it's briefly down) but clearly not responsive. */
+.activity-card.activity-card-shadow {
+  opacity: 0.35;
+  filter: grayscale(0.6);
+  background: #0f0f0f;
+}
+
+/* Pane-state chip (stuck/y_n_prompt/auth_error/compose_pending). */
+.activity-chip-pane-state {
+  background: #3a1e1e;
+  color: #fca5a5;
+  border: 1px solid #6b2525;
+}
+.activity-chip-pane-y_n_prompt,
+.activity-chip-pane-compose_pending_unsent {
+  background: #3a2f10;
+  color: #fcd34d;
+  border-color: #6b5220;
+}
+.activity-chip-pane-auth_error,
+.activity-chip-pane-mcp_broken {
+  background: #3a1010;
+  color: #f87171;
+  border-color: #6b2020;
+}
+
+/* Tool-freshness chip (last LLM hook event). */
+.activity-chip-tool {
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+}
+
 @keyframes activity-pulse {
   0%,
   100% {

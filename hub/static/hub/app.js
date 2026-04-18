@@ -877,6 +877,39 @@ function hostedAgentName(a) {
   return host ? name + "@" + host : name;
 }
 
+/* Fleet-core roles defined by YAML under ~/.scitex/orochi/shared/agents/
+ * (and the per-host overrides in spartan/agents/ etc.). These agents are
+ * launched canonically by `sac start --all` and are expected to be
+ * present on every applicable host. Non-core registered agents are
+ * ad-hoc — they should disappear from the dashboard once they go stale
+ * rather than stick around as zombie cards. */
+var FLEET_CORE_ROLES = [
+  "expert-scitex",
+  "fleet-lead",
+  "head",
+  "healer",
+  "quality-checker",
+  "skill-manager",
+  "synchronizer",
+  "todo-manager",
+];
+
+/* Return true if the agent matches a YAML-defined fleet-core role.
+ * Names register as "<role>" (singleton) or "<role>-<host>" (per-host);
+ * stripping the "-<host>" suffix gives the role, which we compare
+ * against FLEET_CORE_ROLES. */
+function isFleetCoreAgent(a) {
+  if (!a || !a.name) return false;
+  var name = String(a.name).split("@")[0];
+  var host = a.machine ? String(a.machine) : "";
+  if (host && name.length > host.length + 1 && name.endsWith("-" + host)) {
+    name = name.slice(0, -(host.length + 1));
+  }
+  return FLEET_CORE_ROLES.indexOf(name) !== -1;
+}
+window.isFleetCoreAgent = isFleetCoreAgent;
+window.FLEET_CORE_ROLES = FLEET_CORE_ROLES;
+
 function fuzzyMatch(query, text) {
   if (!query) return true;
   query = query.toLowerCase();
