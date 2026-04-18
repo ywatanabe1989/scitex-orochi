@@ -98,6 +98,33 @@ class WorkspaceMember(models.Model):
         return f"{self.user} in {self.workspace} ({self.role})"
 
 
+class UserProfile(models.Model):
+    """Per-user display settings (icon, colour) for logged-in humans.
+
+    Mirrors :class:`AgentProfile` but keyed on the Django user, not on a
+    workspace+name pair: a human's avatar is a personal preference that
+    follows them across every workspace they belong to.
+
+    The cascade used by the frontend is the same as for agents:
+    ``icon_image`` > ``icon_emoji`` > ``icon_text`` > default person
+    glyph. ``color`` is an optional override for the hash-based fallback.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="profile",
+    )
+    icon_image = models.CharField(max_length=500, blank=True, default="")
+    icon_emoji = models.CharField(max_length=16, blank=True, default="")
+    icon_text = models.CharField(max_length=16, blank=True, default="")
+    color = models.CharField(max_length=16, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"profile({self.user})"
+
+
 class AgentProfile(models.Model):
     """Per-agent display settings (icon, label) that persist across
     WebSocket reconnects and container restarts. The in-memory registry
@@ -221,8 +248,11 @@ class ChannelPreference(models.Model):
         choices=NOTIF_CHOICES,
         default=NOTIF_ALL,
     )
-    sort_order = models.IntegerField(default=0, db_index=True,
-                                     help_text="Manual sort order within sidebar section (drag-and-drop)")
+    sort_order = models.IntegerField(
+        default=0,
+        db_index=True,
+        help_text="Manual sort order within sidebar section (drag-and-drop)",
+    )
 
     class Meta:
         unique_together = ("user", "channel")

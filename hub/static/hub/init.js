@@ -31,8 +31,13 @@
   if (!el) return;
   function tick() {
     el.textContent = new Date().toLocaleString("ja-JP", {
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
     });
   }
   tick();
@@ -43,6 +48,12 @@ refreshAgentNames().then(function () {
   loadHistory();
 });
 fetchAgents();
+/* Per-user avatars — populate cachedHumanIcons/Colors so other users'
+ * chosen emoji/image/color render across the dashboard. */
+if (typeof fetchHumanProfiles === "function") {
+  fetchHumanProfiles();
+  setInterval(fetchHumanProfiles, 60000);
+}
 fetchStats();
 connect();
 setInterval(fetchStats, 10000);
@@ -76,7 +87,8 @@ document.addEventListener("keydown", function (e) {
   /* 1. Emoji picker overlay */
   var emojiOverlay = document.querySelector(".emoji-picker-overlay.visible");
   if (emojiOverlay) {
-    if (typeof window.closeEmojiPicker === "function") window.closeEmojiPicker();
+    if (typeof window.closeEmojiPicker === "function")
+      window.closeEmojiPicker();
     e.preventDefault();
     return;
   }
