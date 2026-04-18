@@ -772,6 +772,23 @@ function _renderActivityCards(agents, grid) {
     grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
     return;
   }
+  /* Visibility policy (ywatanabe msg 2026-04-18 17:00):
+   *  - Fleet-core agents (YAML-defined) are always shown, muted to a
+   *    shadow when stale/offline so their expected slot stays visible.
+   *  - Non-core registered agents are only shown while responsive;
+   *    they drop off when stale.
+   *  - Unregistered agents are not in the registry to begin with.
+   */
+  var isCore = typeof isFleetCoreAgent === "function" ? isFleetCoreAgent : null;
+  if (isCore) {
+    agents = agents.filter(function (a) {
+      return isCore(a) || !isAgentInactive(a);
+    });
+  }
+  if (!agents.length) {
+    grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
+    return;
+  }
   var summary = document.getElementById("activity-summary");
   var counts = { online: 0, idle: 0, stale: 0, offline: 0 };
   agents.forEach(function (a) {
@@ -867,6 +884,35 @@ function _renderActivityCards(agents, grid) {
             "%</span>",
         );
       }
+      /* Pane-state chip (agent-container classifier result — running,
+       * y_n_prompt, auth_error, compose_pending, etc.). Available from
+       * /api/agents/<name>/detail but also surfaced in the registry row
+       * via agent_meta.py. Separate from liveness: liveness tracks the
+       * push channel's freshness, pane_state tracks what the LLM itself
+       * is doing. */
+      var paneState = a.pane_state || "";
+      if (paneState && paneState !== "running") {
+        chips.push(
+          '<span class="activity-chip activity-chip-pane-state activity-chip-pane-' +
+            escapeHtml(paneState).replace(/[^a-z0-9_-]/gi, "") +
+            '" title="pane state">' +
+            escapeHtml(paneState.replace(/_/g, " ")) +
+            "</span>",
+        );
+      }
+      /* Tool freshness — proves the LLM is actually working (last hook
+       * event < N min ago), not just that its sidecar is heartbeating. */
+      var toolAgeSec = _secondsSinceIso(a.last_tool_at);
+      if (toolAgeSec != null && toolAgeSec < 3600) {
+        chips.push(
+          '<span class="activity-chip activity-chip-tool" ' +
+            'title="last tool call: ' +
+            escapeHtml(String(a.last_tool_name || "")) +
+            '">tool ' +
+            _formatIdle(toolAgeSec) +
+            "</span>",
+        );
+      }
       var chipsHtml =
         chips.length > 0
           ? '<div class="activity-chips">' + chips.join("") + "</div>"
@@ -882,10 +928,19 @@ function _renderActivityCards(agents, grid) {
         escapeHtml(copyPayload) +
         '">\uD83D\uDCCB</button>';
       var stuckClass = isStuck ? " activity-stuck" : "";
+      /* Fleet-core vs ad-hoc styling. Core agents that went stale are
+       * shadowed (muted) so their slot is still visible; ad-hoc stale
+       * agents were filtered out above. */
+      var core = typeof isFleetCoreAgent === "function" && isFleetCoreAgent(a);
+      var coreClass = core ? " activity-card-core" : "";
+      var shadowClass =
+        core && isAgentInactive(a) ? " activity-card-shadow" : "";
       return (
         '<div class="activity-card activity-' +
         liveness +
         stuckClass +
+        coreClass +
+        shadowClass +
         '" ' +
         'data-agent="' +
         escapeHtml(rawName) +
