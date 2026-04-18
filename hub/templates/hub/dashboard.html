@@ -14,12 +14,12 @@
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=133">
-    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=103">
+    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=121">
@@ -147,6 +147,11 @@
                 </div>
                 <div id="ch-members-list" class="ch-members-list"></div>
             </div>
+            <input id="chat-filter-input"
+                   class="chat-filter-input"
+                   placeholder="filter messages in this channel&hellip;"
+                   autocomplete="off"
+                   oninput="chatFilterApply(this.value)">
             <div id="messages" class="messages"></div>
             <!-- hook-bypass: inline-style -->
             <div id="todo-view" class="todo-view" style="display:none">
@@ -180,7 +185,24 @@
                 <div id="agents-grid" class="todo-grid"></div>
             </div>
             <div id="resources-view" class="todo-view" style="display:none">
-                <div id="connectivity-map" class="connectivity-section"></div>
+                <!-- hook-bypass: inline-style -->
+                <div id="machines-subtabs" class="machines-subtabs">
+                    <div class="machines-view-switch"
+                         role="tablist"
+                         aria-label="machines view mode">
+                        <button type="button"
+                                class="machines-view-switch-btn"
+                                data-view="viz"
+                                title="connectivity map (SSH mesh)">Viz</button>
+                        <button type="button"
+                                class="machines-view-switch-btn active"
+                                data-view="cards"
+                                title="resource cards grid">Cards</button>
+                    </div>
+                </div>
+                <div id="connectivity-map"
+                     class="connectivity-section"
+                     style="display:none"></div>
                 <div id="resources-grid" class="todo-grid"></div>
             </div>
             <div id="workspaces-view" class="todo-view" style="display:none">
@@ -231,15 +253,6 @@
                      sidebar Ctrl+K fuzzy filter covers the same use case
                      without the extra UI row. Controls are left-aligned. -->
                 <div class="files-toolbar files-toolbar-left-aligned">
-                    <div class="files-search-wrap">
-                        <span class="files-search-icon">&#128269;</span>
-                        <input type="search"
-                               id="files-search"
-                               class="files-search-input"
-                               placeholder="Fuzzy filter (space = AND)"
-                               oninput="filesSetQuery(this.value)"
-                               autocomplete="off">
-                    </div>
                     <div class="files-view-group" role="tablist" aria-label="View mode">
                         <button class="files-view-btn active"
                                 id="files-view-grid"
@@ -257,6 +270,15 @@
                                 id="files-view-details"
                                 title="Details"
                                 onclick="filesSetView('details')">&#8801;</button>
+                    </div>
+                    <div class="files-search-wrap">
+                        <span class="files-search-icon">&#128269;</span>
+                        <input type="search"
+                               id="files-search"
+                               class="files-search-input"
+                               placeholder="Fuzzy filter (space = AND)"
+                               oninput="filesSetQuery(this.value)"
+                               autocomplete="off">
                     </div>
                     <button class="files-view-btn"
                             id="files-view-preview"
@@ -401,7 +423,7 @@
     <script src="{% static 'hub/app.js' %}?v=136"></script>
     <script src="{% static 'hub/dms.js' %}?v=4"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
-    <script src="{% static 'hub/resources-tab.js' %}?v=101"></script>
+    <script src="{% static 'hub/resources-tab.js' %}?v=102"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=108"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/chat.js' %}?v=122"></script>
@@ -422,7 +444,7 @@
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>
     <script src="{% static 'hub/webcam.js' %}?v=1"></script>
     <script src="{% static 'hub/voice-input.js' %}?v=126"></script>
-    <script src="{% static 'hub/tabs.js' %}?v=107"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=108"></script>
     <script src="{% static 'hub/init.js' %}?v=100"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
     <script src="{% static 'hub/push.js' %}?v=99"></script>

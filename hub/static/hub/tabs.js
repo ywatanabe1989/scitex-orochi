@@ -10,6 +10,7 @@ function _activateTab(tab) {
     b.classList.toggle("active", b.getAttribute("data-tab") === tab);
   });
   var messagesEl = document.getElementById("messages");
+  var chatFilterEl = document.getElementById("chat-filter-input");
   var inputBar = document.querySelector(".input-bar");
   var todoView = document.getElementById("todo-view");
   var resourcesView = document.getElementById("resources-view");
@@ -20,6 +21,7 @@ function _activateTab(tab) {
   var releasesView = document.getElementById("releases-view");
   var settingsView = document.getElementById("settings-view");
   messagesEl.style.display = "none";
+  if (chatFilterEl) chatFilterEl.style.display = "none";
   inputBar.style.display = "none";
   var topicBanner = document.getElementById("channel-topic-banner");
   if (topicBanner) topicBanner.style.display = "none";
@@ -38,6 +40,7 @@ function _activateTab(tab) {
   if (tab !== "todo" && typeof stopVizTab === "function") stopVizTab();
   if (tab === "chat") {
     messagesEl.style.display = "";
+    if (chatFilterEl) chatFilterEl.style.display = "";
     inputBar.style.display = "";
     /* Restore the channel-topic banner on re-entry to Chat. The block at
      * the top of _activateTab hides it unconditionally; we only want that

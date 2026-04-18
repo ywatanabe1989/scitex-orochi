@@ -43,7 +43,6 @@ function _pulseSidebarRow(channel, variant) {
   var cls = variant === "mention" ? "ch-pulse-mention" : "dm-pulse";
   rows.forEach(function (row) {
     row.classList.remove(cls);
-    /* Force reflow so removing + re-adding restarts the animation. */
     void row.offsetWidth;
     row.classList.add(cls);
     var done = function () {
@@ -67,6 +66,54 @@ function _pulseSidebarRow(channel, variant) {
   });
 }
 window._pulseSidebarRow = _pulseSidebarRow;
+
+/* Chat sticky filter bar — client-side text filter over visible messages
+ * in the current channel. Resets on channel switch. */
+var _chatFilterQuery = "";
+var _chatFilterDebounce = null;
+function _chatFilterApplyNow(q) {
+  _chatFilterQuery = (q || "").trim().toLowerCase();
+  var container = document.getElementById("messages");
+  if (!container) return;
+  var rows = container.querySelectorAll(".message");
+  if (!_chatFilterQuery) {
+    rows.forEach(function (el) {
+      el.classList.remove("chat-filter-miss");
+      el.classList.remove("chat-filter-hit");
+    });
+    return;
+  }
+  for (var i = 0; i < rows.length; i++) {
+    var el = rows[i];
+    var txt = (el.textContent || "").toLowerCase();
+    if (txt.indexOf(_chatFilterQuery) !== -1) {
+      el.classList.add("chat-filter-hit");
+      el.classList.remove("chat-filter-miss");
+    } else {
+      el.classList.add("chat-filter-miss");
+      el.classList.remove("chat-filter-hit");
+    }
+  }
+}
+function chatFilterApply(q) {
+  if (_chatFilterDebounce) clearTimeout(_chatFilterDebounce);
+  _chatFilterDebounce = setTimeout(function () {
+    _chatFilterDebounce = null;
+    _chatFilterApplyNow(q);
+  }, 100);
+}
+function chatFilterReset() {
+  if (_chatFilterDebounce) {
+    clearTimeout(_chatFilterDebounce);
+    _chatFilterDebounce = null;
+  }
+  _chatFilterQuery = "";
+  var inp = document.getElementById("chat-filter-input");
+  if (inp) inp.value = "";
+  _chatFilterApplyNow("");
+}
+window.chatFilterApply = chatFilterApply;
+window.chatFilterReset = chatFilterReset;
 
 /* Voice-recording deferred message queue.
  * When window.isVoiceRecording is true, appendMessage defers the DOM update
@@ -1013,8 +1060,7 @@ function appendMessage(msg) {
    * history rebuilds don't animate. Own posts aren't faded (they're echoes
    * of what the user just typed and animating them feels laggy) but mentions
    * of the user still flash via the sidebar pulse below. */
-  var _isOwnPost =
-    typeof userName !== "undefined" && senderName === userName;
+  var _isOwnPost = typeof userName !== "undefined" && senderName === userName;
   if (_initialLoadComplete && !_isLoadingHistory && !_isOwnPost) {
     el.classList.add("msg-arrived");
     setTimeout(function () {
@@ -1048,6 +1094,17 @@ function appendMessage(msg) {
     try {
       applyFeedFilter();
     } catch (_) {}
+  }
+  /* Re-apply chat filter so newly-arrived messages respect the sticky
+   * filter input if the user has one typed. O(1) per incoming message
+   * (only tests the one new row). */
+  if (_chatFilterQuery) {
+    var _txt = (el.textContent || "").toLowerCase();
+    if (_txt.indexOf(_chatFilterQuery) !== -1) {
+      el.classList.add("chat-filter-hit");
+    } else {
+      el.classList.add("chat-filter-miss");
+    }
   }
   /* Auto-scroll: skip entirely during voice recording to prevent the
    * scrollTop write from interfering with the SpeechRecognition session.

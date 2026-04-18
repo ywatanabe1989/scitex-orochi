@@ -56,6 +56,13 @@ function setCurrentChannel(ch) {
   try {
     localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
   } catch (_) {}
+  /* Per-channel chat filter: reset whenever the user switches channels so
+   * a stale filter from the previous channel doesn't hide messages here. */
+  if (typeof chatFilterReset === "function") {
+    try {
+      chatFilterReset();
+    } catch (_) {}
+  }
   /* Update textarea placeholder to show active channel — msg#9368.
    * In multi-select mode (ch=null), keep showing the last active channel
    * so the user knows where their message will be posted (#9694).

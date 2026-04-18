@@ -1,7 +1,65 @@
 /* Resource Monitor Panel + Resources Tab */
-/* globals: escapeHtml, activeTab, addTag, apiUrl */
+/* globals: escapeHtml, activeTab, addTag, apiUrl, renderConnectivityMap */
 
 var resourceData = {};
+
+/* Machines tab [Viz | Cards] view mode — persisted in localStorage.
+ * "viz"   = connectivity-map (SSH mesh); resource cards hidden
+ * "cards" = resource cards grid (default); connectivity-map hidden
+ * ywatanabe 2026-04-19: matches the Agents tab [Viz|List] switch. */
+var _machinesView = "cards";
+try {
+  var _persistedMV = localStorage.getItem("orochi.machinesView");
+  if (_persistedMV === "viz" || _persistedMV === "cards")
+    _machinesView = _persistedMV;
+} catch (_e) {}
+
+function _applyMachinesViewVisibility() {
+  var connEl = document.getElementById("connectivity-map");
+  var gridEl = document.getElementById("resources-grid");
+  if (connEl)
+    connEl.style.display = _machinesView === "viz" ? "" : "none";
+  if (gridEl)
+    gridEl.style.display = _machinesView === "cards" ? "" : "none";
+}
+
+var _machinesControlsWired = false;
+function _wireMachinesControls() {
+  if (_machinesControlsWired) return;
+  var viewSwitch = document.querySelector(".machines-view-switch");
+  if (!viewSwitch) return;
+  function _setBtnActive() {
+    viewSwitch
+      .querySelectorAll(".machines-view-switch-btn")
+      .forEach(function (b) {
+        b.classList.toggle(
+          "active",
+          b.getAttribute("data-view") === _machinesView,
+        );
+      });
+  }
+  _setBtnActive();
+  viewSwitch.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".machines-view-switch-btn[data-view]");
+    if (!btn) return;
+    var next = btn.getAttribute("data-view");
+    if (next === _machinesView) return;
+    _machinesView = next;
+    try {
+      localStorage.setItem("orochi.machinesView", _machinesView);
+    } catch (_e) {}
+    _setBtnActive();
+    _applyMachinesViewVisibility();
+    /* If switching to Viz and the connectivity cache is empty, trigger
+     * a fetch so the map paints instead of showing "No connectivity
+     * data." forever. */
+    if (_machinesView === "viz") {
+      if (typeof renderConnectivityMap === "function") renderConnectivityMap();
+      if (typeof fetchConnectivity === "function") fetchConnectivity();
+    }
+  });
+  _machinesControlsWired = true;
+}
 
 function updateResourcePanel(data) {
   var key = data.hostname || data.agent || "unknown";
@@ -205,6 +263,8 @@ function renderResourcesTab() {
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  _wireMachinesControls();
+  _applyMachinesViewVisibility();
   var grid = document.getElementById("resources-grid");
   var keys = Object.keys(resourceData);
   if (keys.length === 0) {

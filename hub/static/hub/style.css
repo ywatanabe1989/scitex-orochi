@@ -2553,3 +2553,32 @@ a.chat-link:hover {
 .mermaid-raw {
   margin-top: 4px;
 }
+
+/* Chat sticky filter bar — client-side per-channel message filter.
+ * Sticks to top of the messages pane so it stays visible while scrolling.
+ * Per-channel: value is cleared whenever the user switches channels
+ * (see setCurrentChannel in app.js). ywatanabe 2026-04-19. */
+.chat-filter-input {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #101010;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #ddd;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  margin: 6px 12px 0 12px;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.chat-filter-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+  background: #141414;
+}
+.chat-filter-miss {
+  display: none !important;
+}
