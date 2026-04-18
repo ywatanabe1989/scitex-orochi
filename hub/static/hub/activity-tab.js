@@ -1086,7 +1086,7 @@ var _topoLastPositions = { agents: {}, channels: {} };
  * like 1 s duration" / "in a fade in/out manner".
  * Shape: { "<x>,<y>": [ {g, expireAt, timer}, ... ] } (oldest first). */
 var _topoLandingStacks = Object.create(null);
-var _TOPO_LANDING_DUR_MS = 1000;
+var _TOPO_LANDING_DUR_MS = 1300;
 var _TOPO_LANDING_STACK_MAX = 4;
 var _TOPO_LANDING_STEP_PX = 18;
 /* Client-side "sticky" subscriptions — edges added via drag-drop that
