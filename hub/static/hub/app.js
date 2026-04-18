@@ -1282,11 +1282,23 @@ function handleMessage(msg) {
     msg.type === "presence_change" ||
     msg.type === "status_update" ||
     msg.type === "agent_presence" ||
-    msg.type === "agent_info"
+    msg.type === "agent_info" ||
+    msg.type === "agent_pong"
   ) {
     fetchAgentsThrottled();
     fetchStatsThrottled();
     fetchResources();
+    /* todo#47 — if the Agents tab currently has a detail view open
+     * for the agent that just sent an info/pong, invalidate that
+     * view's cache so pane_tail / RTT / last_action refresh live. */
+    if (
+      (msg.type === "agent_info" ||
+        msg.type === "agent_pong" ||
+        msg.type === "agent_presence") &&
+      typeof window.onAgentInfoEvent === "function"
+    ) {
+      window.onAgentInfoEvent(msg.agent);
+    }
   } else if (msg.type === "reaction_update") {
     if (typeof handleReactionUpdate === "function") handleReactionUpdate(msg);
   } else if (msg.type === "thread_reply") {

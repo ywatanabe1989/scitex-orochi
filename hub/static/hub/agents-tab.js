@@ -629,6 +629,22 @@ function _invalidateAgentDetail(name) {
   _fetchAgentDetail(name);
 }
 
+/* todo#47 — live read-only pane tier.
+ *
+ * Exported entry point called by app.js on every `agent_info` /
+ * `agent_pong` WebSocket event. If the dashboard is currently showing
+ * the detail tab for *this* agent, re-fetch detail so the pane_tail /
+ * RTT / last_action surfaces refresh within seconds instead of waiting
+ * for the user to re-click. No-op when the user is on the Overview tab
+ * or looking at a different agent — avoids hammering the API with
+ * unrelated heartbeats. */
+function onAgentInfoEvent(name) {
+  if (!name) return;
+  if (_selectedAgentTab !== name) return;
+  _invalidateAgentDetail(name);
+}
+window.onAgentInfoEvent = onAgentInfoEvent;
+
 /* ── Overview HTML builder (extracted from renderAgentsTab) ─────────── */
 function _buildOverviewHtml(agents) {
   var machineMap = {};
