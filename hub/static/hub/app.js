@@ -429,11 +429,25 @@ function _setChannelPref(ch, patch) {
       var elNorm = elCh.charAt(0) === "#" ? elCh : "#" + elCh;
       if (elNorm !== normCh) return;
       var pref = _channelPrefs[elNorm] || _channelPrefs[elCh] || {};
-      var starEl = el.querySelector(".ch-star");
-      if (starEl) {
-        starEl.classList.toggle("ch-star-on", !!pref.is_starred);
-        starEl.classList.toggle("ch-star-off", !pref.is_starred);
-        starEl.setAttribute("title", pref.is_starred ? "Unstar" : "Star");
+      var pinEl = el.querySelector(".ch-pin");
+      if (pinEl) {
+        pinEl.classList.toggle("ch-pin-on", !!pref.is_starred);
+        pinEl.classList.toggle("ch-pin-off", !pref.is_starred);
+        pinEl.setAttribute(
+          "title",
+          pref.is_starred ? "Unpin" : "Pin (float to top)",
+        );
+      }
+      var watchEl = el.querySelector(".ch-watch");
+      if (watchEl) {
+        watchEl.classList.toggle("ch-watch-on", !pref.is_muted);
+        watchEl.classList.toggle("ch-watch-off", !!pref.is_muted);
+        watchEl.setAttribute(
+          "title",
+          pref.is_muted
+            ? "Unmute (watch this channel)"
+            : "Mute (stop notifications)",
+        );
       }
       el.classList.toggle("ch-starred", !!pref.is_starred);
       el.classList.toggle("ch-muted", !!pref.is_muted);
@@ -492,9 +506,9 @@ function _renderStarredSection() {
         escapeHtml(ch) +
         '" draggable="true">' +
         '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
-        '<span class="ch-star ch-star-on" data-ch="' +
+        '<span class="ch-pin ch-pin-on" data-ch="' +
         escapeHtml(ch) +
-        '" title="Unstar">&#9733;</span>' +
+        '" title="Unpin (will drop from top)">\uD83D\uDCCC</span>' +
         '<span class="ch-name">' +
         escapeHtml(ch) +
         "</span>" +
@@ -506,7 +520,8 @@ function _renderStarredSection() {
   container.querySelectorAll(".channel-item").forEach(function (el) {
     el.addEventListener("click", function (ev) {
       if (
-        ev.target.classList.contains("ch-star") ||
+        ev.target.classList.contains("ch-pin") ||
+        ev.target.classList.contains("ch-watch") ||
         ev.target.classList.contains("ch-drag-handle")
       )
         return;
@@ -515,7 +530,7 @@ function _renderStarredSection() {
       loadChannelHistory(ch);
       if (typeof applyFeedFilter === "function") applyFeedFilter();
     });
-    var star = el.querySelector(".ch-star");
+    var star = el.querySelector(".ch-pin");
     if (star)
       star.addEventListener("click", function (ev) {
         ev.stopPropagation();
@@ -1771,13 +1786,22 @@ async function fetchStats() {
         var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
         var muted = pref.is_muted ? " ch-muted" : "";
         var starHtml =
-          '<span class="ch-star ' +
-          (pref.is_starred ? "ch-star-on" : "ch-star-off") +
+          '<span class="ch-pin ' +
+          (pref.is_starred ? "ch-pin-on" : "ch-pin-off") +
           '" data-ch="' +
           escapeHtml(norm) +
           '" title="' +
-          (pref.is_starred ? "Unstar" : "Star") +
-          '">&#9733;</span>';
+          (pref.is_starred ? "Unpin" : "Pin (float to top)") +
+          '">\uD83D\uDCCC</span>' +
+          '<span class="ch-watch ' +
+          (pref.is_muted ? "ch-watch-off" : "ch-watch-on") +
+          '" data-ch="' +
+          escapeHtml(norm) +
+          '" title="' +
+          (pref.is_muted
+            ? "Unmute (watch this channel)"
+            : "Mute (stop notifications)") +
+          '">\uD83D\uDC41</span>';
         var unread = channelUnread[c] || channelUnread[norm] || 0;
         var badgeHtml =
           '<span class="ch-badge-slot">' +
@@ -1810,14 +1834,24 @@ async function fetchStats() {
       /* Restore selected state from before re-render */
       var elCh = el.getAttribute("data-channel");
       if (elCh && prevSelected[elCh]) el.classList.add("selected");
-      /* Star icon click — toggle star without navigating */
-      var starEl = el.querySelector(".ch-star");
-      if (starEl) {
-        starEl.addEventListener("click", function (ev) {
+      /* Pin icon click — toggle is_starred (pinned-to-top) */
+      var pinEl = el.querySelector(".ch-pin");
+      if (pinEl) {
+        pinEl.addEventListener("click", function (ev) {
           ev.stopPropagation();
-          var norm = starEl.getAttribute("data-ch");
+          var norm = pinEl.getAttribute("data-ch");
           var curPref = _channelPrefs[norm] || {};
           _setChannelPref(norm, { is_starred: !curPref.is_starred });
+        });
+      }
+      /* Eye icon click — toggle is_muted (watching vs muted) */
+      var watchEl = el.querySelector(".ch-watch");
+      if (watchEl) {
+        watchEl.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          var norm = watchEl.getAttribute("data-ch");
+          var curPref = _channelPrefs[norm] || {};
+          _setChannelPref(norm, { is_muted: !curPref.is_muted });
         });
       }
       /* Context menu */
@@ -1870,7 +1904,8 @@ async function fetchStats() {
       });
       el.addEventListener("click", function (ev) {
         if (
-          ev.target.classList.contains("ch-star") ||
+          ev.target.classList.contains("ch-pin") ||
+          ev.target.classList.contains("ch-watch") ||
           ev.target.classList.contains("ch-drag-handle")
         )
           return;

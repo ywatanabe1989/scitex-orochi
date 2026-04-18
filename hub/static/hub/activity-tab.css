@@ -395,6 +395,14 @@
   border-left: 3px solid #444;
   background: transparent;
   min-height: 28px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.activity-grid.activity-view-list .activity-card:hover {
+  background: #171717;
+  border-color: #2a2a2a;
 }
 .activity-grid.activity-view-list .activity-card .activity-name {
   flex: 1 1 auto;
@@ -503,6 +511,11 @@
   align-items: center;
   gap: 8px;
   padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.activity-grid.activity-view-tiled .activity-card:hover {
+  background: #171717;
 }
 
 /* Inline expanded detail: inserted directly below the clicked row. */

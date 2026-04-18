@@ -2019,32 +2019,53 @@ a.chat-link:hover {
   background: #3cb371;
 }
 
-/* ── Channel star / mute / prefs (todo#391) ── */
-.ch-star {
-  font-size: 12px;
-  margin-right: 4px;
+/* ── Channel pin / watch / mute / prefs (todo#391 — pin+eye replaced ★) ── */
+/* Legacy .ch-star class kept as alias for older code paths; new markup
+ * uses .ch-pin (pinned-to-top / was is_starred) and .ch-watch (eye —
+ * toggles is_muted). */
+.ch-star,
+.ch-pin,
+.ch-watch {
+  font-size: 11px;
+  margin-right: 3px;
   flex-shrink: 0;
-  transition: color 0.15s;
+  transition:
+    color 0.15s,
+    opacity 0.15s;
   line-height: 1;
+  cursor: pointer;
 }
-.ch-star-off {
-  color: transparent; /* invisible until hover */
+.ch-star-off,
+.ch-pin-off {
+  opacity: 0.15; /* near-invisible until hover */
+  filter: grayscale(1);
 }
-.channel-item:hover .ch-star-off {
-  color: #556;
+.channel-item:hover .ch-star-off,
+.channel-item:hover .ch-pin-off,
+.channel-item:hover .ch-watch-off {
+  opacity: 0.7;
 }
 .ch-star-on {
   color: #f5a623;
 }
-.ch-star:hover {
-  color: #f5a623 !important;
+.ch-pin-on {
+  opacity: 1;
+  filter: none;
+}
+.ch-watch-on {
+  opacity: 0.85;
+}
+.ch-watch-off {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+.ch-pin:hover,
+.ch-watch:hover {
+  opacity: 1 !important;
+  filter: none !important;
 }
 .ch-muted {
   opacity: 0.5;
-}
-.ch-muted::after {
-  content: " 🔇";
-  font-size: 10px;
 }
 
 /* Starred section heading */
