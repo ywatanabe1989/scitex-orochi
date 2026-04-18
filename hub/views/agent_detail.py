@@ -198,6 +198,9 @@ def api_agent_detail(request, name: str):
         "name": agent.get("name", name),
         "role": agent.get("role", ""),
         "machine": agent.get("machine", ""),
+        # todo#55: canonical FQDN reported by the heartbeat, displayed
+        # next to the short `machine` label in the detail header.
+        "hostname_canonical": agent.get("hostname_canonical", ""),
         "model": agent.get("model", ""),
         "uptime_seconds": uptime_seconds,
         "registered_at": agent.get("registered_at"),
