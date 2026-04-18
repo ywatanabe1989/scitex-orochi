@@ -1794,26 +1794,21 @@ function _topoPulseEdge(sender, channel, opts) {
     }
     var dmFrom = sender ? _topoLastPositions.agents[sender] : null;
     if (_dbg) {
-      var _now = new Date();
-      var _ts =
-        _now.toISOString().slice(11, 23) + " (" + _now.getTime() + "ms)";
-      console.info("%c[topo-pulse] DM", "color:#4ecdc4;font-weight:700", _ts);
-      console.info("[topo-pulse]   sender:", sender);
-      console.info("[topo-pulse]   channel:", channel);
-      console.info("[topo-pulse]   recipients:", dmRecipients);
-      console.info(
-        "[topo-pulse]   sender pos:",
-        dmFrom ? { x: dmFrom.x, y: dmFrom.y } : "(not on graph)",
-      );
+      var _sCoord = dmFrom
+        ? "x:" + dmFrom.x.toFixed(1) + " y:" + dmFrom.y.toFixed(1)
+        : "(not on graph)";
+      console.log("coordinate sender: " + _sCoord);
       dmRecipients.forEach(function (rn) {
+        if (!rn || rn === sender) return;
+        console.log("DM sent from " + sender + " to " + rn);
         var rp = _topoLastPositions.agents[rn];
-        console.info(
-          "[topo-pulse]   recipient pos [" + rn + "]:",
-          rp ? { x: rp.x, y: rp.y } : "(not on graph)",
-        );
+        var _rCoord = rp
+          ? "x:" + rp.x.toFixed(1) + " y:" + rp.y.toFixed(1)
+          : "(not on graph)";
+        console.log("coordinate receiver " + _rCoord);
       });
-      console.info(
-        "[topo-pulse]   available node keys:",
+      console.log(
+        "[topo-pulse] available node keys:",
         Object.keys(_topoLastPositions.agents),
       );
     }
