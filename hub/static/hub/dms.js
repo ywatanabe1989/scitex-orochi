@@ -53,14 +53,37 @@
             typeof currentChannel !== "undefined" && currentChannel === ch
               ? " active"
               : "";
+          /* Reuse the same _channelPrefs lookup the channels section uses so
+           * pin/mute state is shared between the Channels and DM sidebars. */
+          var prefs =
+            (typeof _channelPrefs !== "undefined" && _channelPrefs[ch]) || {};
+          var pinned = !!prefs.is_starred;
+          var muted = !!prefs.is_muted;
           return (
             '<div class="dm-item' +
             active +
+            (muted ? " ch-muted" : "") +
             '" data-channel="' +
             escapeHtml(ch) +
             '" title="' +
             escapeHtml(ch) +
             '">' +
+            '<span class="ch-pin ' +
+            (pinned ? "ch-pin-on" : "ch-pin-off") +
+            '" data-ch="' +
+            escapeHtml(ch) +
+            '" title="' +
+            (pinned ? "Unpin" : "Pin (float to top)") +
+            '">\uD83D\uDCCC</span>' +
+            '<span class="ch-watch ' +
+            (muted ? "ch-watch-off" : "ch-watch-on") +
+            '" data-ch="' +
+            escapeHtml(ch) +
+            '" title="' +
+            (muted
+              ? "Unmute (watch this DM)"
+              : "Mute (stop DM notifications)") +
+            '">\uD83D\uDC41</span>' +
             dmBadgeHtml(row) +
             escapeHtml(dmDisplayName(row)) +
             "</div>"
@@ -68,7 +91,36 @@
         })
         .join("");
       container.querySelectorAll(".dm-item").forEach(function (el) {
-        el.addEventListener("click", function () {
+        /* Pin icon toggles is_starred via the shared _setChannelPref. */
+        var pinEl = el.querySelector(".ch-pin");
+        if (pinEl && typeof _setChannelPref === "function") {
+          pinEl.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            var chName = pinEl.getAttribute("data-ch");
+            var pref =
+              (typeof _channelPrefs !== "undefined" && _channelPrefs[chName]) ||
+              {};
+            _setChannelPref(chName, { is_starred: !pref.is_starred });
+          });
+        }
+        /* Eye icon toggles is_muted. */
+        var watchEl = el.querySelector(".ch-watch");
+        if (watchEl && typeof _setChannelPref === "function") {
+          watchEl.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            var chName = watchEl.getAttribute("data-ch");
+            var pref =
+              (typeof _channelPrefs !== "undefined" && _channelPrefs[chName]) ||
+              {};
+            _setChannelPref(chName, { is_muted: !pref.is_muted });
+          });
+        }
+        el.addEventListener("click", function (ev) {
+          if (
+            ev.target.classList.contains("ch-pin") ||
+            ev.target.classList.contains("ch-watch")
+          )
+            return;
           var ch = el.getAttribute("data-channel");
           if (!ch) return;
           /* Mirror the channel-link pattern from chat.js:1547 and the

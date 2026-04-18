@@ -2068,6 +2068,64 @@ a.chat-link:hover {
   opacity: 0.5;
 }
 
+/* Machines sidebar — one-line compact row (ywatanabe 2026-04-19).
+ *   [conn-dot] name   CPU%  Mem used/total GB  Disk%
+ * Replaces the 3-stacked-bars layout. Everything fits in ~260px so the
+ * metric chips stay on a single line. */
+.res-card.res-card-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  min-height: 22px;
+  font-size: 11px;
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.res-card.res-card-compact:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.res-card.res-card-compact .res-conn {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ecdc4;
+}
+.res-card.res-card-compact .res-conn-stale {
+  background: #ef4444;
+}
+.res-card.res-card-compact .res-host-name {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+.res-card.res-card-compact .res-metrics {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+  align-items: center;
+}
+.res-card.res-card-compact .res-chip {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: #151515;
+  border: 1px solid #242424;
+  color: #9aa5b1;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+}
+
 /* Starred section heading */
 #starred-heading {
   color: #f5a623;

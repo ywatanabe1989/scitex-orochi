@@ -115,50 +115,81 @@ function renderResources() {
     }
     return;
   }
+  /* Sidebar machines = one-line rows (ywatanabe 2026-04-19: "name only
+   * and connectivity and pin; X%, Y/Z GB, A/B TB"). Connectivity dot
+   * on the left; host name color-coded by its own hash; compact chips
+   * for CPU% / Mem Y/Z GB / Disk%. Total disk GB/TB isn't pushed by
+   * heartbeat yet, so disk stays percent-only for now. */
   container.innerHTML = keys
     .map(function (k) {
       var d = resourceData[k];
       var health = (d.health && d.health.status) || "healthy";
-      var hColor = healthColor(health);
+      var healthy = health === "healthy";
       var cpu = (d.cpu && d.cpu.percent) || 0;
-      var mem = (d.memory && d.memory.percent) || 0;
+      var memPct = (d.memory && d.memory.percent) || 0;
+      var memTotalMb =
+        (d.memory && d.memory.total_mb) ||
+        (d._metrics && d._metrics.mem_total_mb) ||
+        0;
+      var memStr = "—";
+      if (memTotalMb > 0) {
+        var memTotalGb = memTotalMb / 1024;
+        var memUsedGb = (memTotalMb * memPct) / 100 / 1024;
+        memStr = memUsedGb.toFixed(1) + "/" + memTotalGb.toFixed(0) + "GB";
+      } else if (memPct > 0) {
+        memStr = memPct.toFixed(0) + "%";
+      }
       var diskPct = 0;
       if (d.disk) {
         var dk = Object.keys(d.disk)[0];
         if (dk) diskPct = d.disk[dk].percent || 0;
       }
-      var html =
-        '<div class="res-card">' +
-        '<div class="res-host"><span class="res-dot"></span>' +
-        escapeHtml(k) +
-        "</div>" +
-        barHtml("CPU", cpu) +
-        barHtml("Mem", mem) +
-        barHtml("Disk", diskPct);
+      var color =
+        typeof getAgentColor === "function" ? getAgentColor(k) : "#e6e6e6";
+      var gpuStr = "";
       if (d.gpu && d.gpu.length > 0) {
-        d.gpu.forEach(function (g) {
-          html += barHtml("GPU", g.utilization_percent || 0);
-        });
+        gpuStr =
+          ' <span class="res-chip" title="GPU utilization">' +
+          Math.round(d.gpu[0].utilization_percent || 0) +
+          "% gpu</span>";
       }
-      if (d._loadAvg) {
-        html +=
-          '<div class="res-meta">Load: ' +
-          d._loadAvg
-            .map(function (v) {
-              return v.toFixed(1);
-            })
-            .join(" / ") +
-          "</div>";
-      }
-      if (d._status) {
-        html += '<div class="res-meta">' + escapeHtml(d._status) + "</div>";
-      }
+      var slurmStr = "";
       if (d.slurm && d.slurm.total_jobs > 0) {
-        html +=
-          '<div class="res-meta">SLURM: ' + d.slurm.total_jobs + " jobs</div>";
+        slurmStr =
+          ' <span class="res-chip" title="SLURM jobs">' +
+          d.slurm.total_jobs +
+          " jobs</span>";
       }
-      html += "</div>";
-      return html;
+      return (
+        '<div class="res-card res-card-compact" data-machine="' +
+        escapeHtml(k) +
+        '" title="' +
+        escapeHtml(k) +
+        (d._status ? " · " + d._status : "") +
+        '">' +
+        '<span class="res-conn res-conn-' +
+        (healthy ? "ok" : "stale") +
+        '"></span>' +
+        '<span class="res-host-name" style="color:' +
+        color +
+        '">' +
+        escapeHtml(k) +
+        "</span>" +
+        '<span class="res-metrics">' +
+        '<span class="res-chip" title="CPU %">' +
+        Math.round(cpu) +
+        "%</span>" +
+        '<span class="res-chip" title="Mem used/total">' +
+        escapeHtml(memStr) +
+        "</span>" +
+        '<span class="res-chip" title="Disk %">' +
+        Math.round(diskPct) +
+        "%</span>" +
+        gpuStr +
+        slurmStr +
+        "</span>" +
+        "</div>"
+      );
     })
     .join("");
   if (inputHasFocus && document.activeElement !== msgInput) {

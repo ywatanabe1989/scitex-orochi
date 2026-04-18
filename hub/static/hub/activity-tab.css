@@ -325,8 +325,42 @@
   font-style: italic;
 }
 
-/* Overview toolbar controls (filter + sort + view-mode). Lives in the
- * same .activity-subtabs container that used to hold the sub-tab bar. */
+/* Overview toolbar controls (view switch + sort + color). Lives in the
+ * same .activity-subtabs container that used to hold the sub-tab bar.
+ * Filter input removed — Ctrl+K fuzzy search covers it globally. */
+
+/* [Viz | List] segmented switch — mirrors the TODO tab's state-filter
+ * pattern ywatanabe pointed at. Two buttons, active = teal tint. */
+.activity-view-switch {
+  display: inline-flex;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 8px;
+}
+.activity-view-switch-btn {
+  background: #0e0e0e;
+  color: #888;
+  border: none;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  border-right: 1px solid #2a2a2a;
+  letter-spacing: 0.3px;
+}
+.activity-view-switch-btn:last-child {
+  border-right: none;
+}
+.activity-view-switch-btn:hover {
+  background: #151515;
+  color: #ccc;
+}
+.activity-view-switch-btn.active {
+  background: #0f2a28;
+  color: #4ecdc4;
+}
+
 .activity-filter-input,
 .activity-sort-select,
 .activity-view-select {
@@ -498,6 +532,64 @@
   color: #555;
   border-color: #2a2a2a;
 }
+.activity-state.activity-state-compacting {
+  background: #1a1626;
+  color: #a78bfa;
+  border-color: #3a2d5a;
+}
+
+/* Compact variant for sidebar rows — narrower badge so the 260px
+ * sidebar fits everything in one line. */
+.activity-state.activity-state-compact {
+  width: 52px;
+  padding: 1px 3px;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+}
+
+/* Sidebar agent row — mirrors overview list row but condensed. Lives
+ * outside .activity-grid so reuses the shared .activity-led / .activity-
+ * state / .activity-pin-btn styles plus its own flex layout. */
+.sidebar .agent-card.sidebar-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  min-height: 22px;
+  cursor: pointer;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.sidebar .agent-card.sidebar-agent-row:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.sidebar .agent-card.sidebar-agent-row .activity-pin-btn {
+  font-size: 11px;
+  width: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+}
+.sidebar .agent-card.sidebar-agent-row .activity-led {
+  width: 7px;
+  height: 7px;
+}
+.sidebar .agent-card.sidebar-agent-row .agent-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sidebar .agent-card.sidebar-agent-row.sidebar-agent-ghost {
+  opacity: 0.4;
+  filter: grayscale(0.6);
+}
 
 /* Tile view: compact grid of cards with name + dot only. */
 .activity-grid.activity-view-tiled {
@@ -516,6 +608,51 @@
 }
 .activity-grid.activity-view-tiled .activity-card:hover {
   background: #171717;
+}
+
+/* Topology view — radial SVG of agents (outer ring) and channels
+ * (inner ring) with edges showing #channel membership. Click an agent
+ * node to toggle the inline detail panel (same hook list view uses). */
+.activity-grid.activity-view-topology {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px;
+}
+.activity-grid.activity-view-topology .topo-wrap {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+}
+.activity-grid.activity-view-topology .topo-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.activity-grid.activity-view-topology .topo-node {
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-channel {
+  cursor: default;
+}
+.activity-grid.activity-view-topology .topo-label {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  pointer-events: none;
+  user-select: none;
+}
+.activity-grid.activity-view-topology .topo-label-ch {
+  fill: #6a7d8c;
+  font-size: 10px;
+}
+.activity-grid.activity-view-topology .topo-agent:hover circle {
+  stroke-width: 3;
+}
+.activity-grid.activity-view-topology .activity-inline-detail {
+  flex: 0 0 auto;
+  margin: 10px 0 0;
 }
 
 /* Inline expanded detail: inserted directly below the clicked row. */

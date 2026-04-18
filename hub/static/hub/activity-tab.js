@@ -65,7 +65,11 @@ try {
   if (_savedSort === "name" || _savedSort === "machine")
     _overviewSort = _savedSort;
   var _savedView = localStorage.getItem("orochi.overviewView");
-  if (_savedView === "list" || _savedView === "tiled")
+  if (
+    _savedView === "list" ||
+    _savedView === "tiled" ||
+    _savedView === "topology"
+  )
     _overviewView = _savedView;
   var _savedColor = localStorage.getItem("orochi.overviewColor");
   if (
@@ -1032,6 +1036,9 @@ function _renderTaskField(task, fallback, age) {
  */
 function _computeAgentState(a) {
   var pane = a.pane_state || "";
+  if (pane === "compacting" || pane === "auto_compact") {
+    return "compacting";
+  }
   if (
     pane === "y_n_prompt" ||
     pane === "compose_pending_unsent" ||
@@ -1043,12 +1050,276 @@ function _computeAgentState(a) {
   }
   var connected = (a.status || "online") !== "offline";
   if (!connected) return "offline";
+  /* Heuristic fallback for compact when pane classifier hasn't fired:
+   * the last tool name contains "compact" (mcp or slash command). */
+  var lastTool = String(a.last_tool_name || "").toLowerCase();
+  if (lastTool.indexOf("compact") !== -1) return "compacting";
   var lastToolSec =
     typeof _secondsSinceIso === "function"
       ? _secondsSinceIso(a.last_tool_at || a.last_action)
       : null;
   if (lastToolSec != null && lastToolSec < 30) return "running";
   return "idle";
+}
+
+/* Signature cache — topology rebuilds every heartbeat were visibly
+ * slow on busy hubs (user: "Viz is quite slow"). The SVG only needs
+ * to repaint when the visible set, their statuses, or the expand
+ * target changes; the heartbeat-driven re-renders that merely bump
+ * `last_heartbeat` / `idle_seconds` would otherwise rebuild every
+ * edge and label. We short-circuit on a compact signature. */
+var _topoLastSig = "";
+var _topoLastExpanded = null;
+function _topoSignature(visible) {
+  /* Cheap digest: name + online-ness + pinned + channel count.
+   * Individual idle-seconds or heartbeat timestamps deliberately
+   * excluded — those flap every second and cause pointless repaints. */
+  var parts = [];
+  for (var i = 0; i < visible.length; i++) {
+    var a = visible[i];
+    var chCount = Array.isArray(a.channels) ? a.channels.length : 0;
+    parts.push(
+      (a.name || "") +
+        ":" +
+        (a.status === "offline" ? "0" : "1") +
+        ":" +
+        (a.pinned ? "1" : "0") +
+        ":" +
+        chCount,
+    );
+  }
+  return parts.join("|");
+}
+
+/* Radial topology renderer. Agents sit on an outer ring, channels on
+ * an inner ring, with straight-line edges between subscribed pairs.
+ * Pure SVG + vanilla JS — no d3, no external deps. Click an agent node
+ * to toggle the inline detail panel (same hook the list view uses;
+ * re-uses _renderActivityAgentDetail + _fetchActivityDetail so state
+ * survives heartbeat-driven re-renders). */
+function _renderActivityTopology(visible, grid) {
+  var sig = _topoSignature(visible);
+  var existingSvg = grid.querySelector(".topo-svg");
+  if (
+    existingSvg &&
+    sig === _topoLastSig &&
+    _overviewExpanded === _topoLastExpanded
+  ) {
+    /* Nothing structurally changed — the existing SVG is still
+     * accurate. Skip the full rebuild; just refresh the inline detail
+     * panel if one is open (its contents DO change on heartbeat). */
+    if (_overviewExpanded) {
+      var agent0 = (window.__lastAgents || []).find(function (x) {
+        return x.name === _overviewExpanded;
+      });
+      var inlineBox0 = grid.querySelector(
+        '.activity-inline-detail[data-detail-for="' +
+          String(_overviewExpanded).replace(/"/g, '\\"') +
+          '"]',
+      );
+      if (agent0 && inlineBox0) {
+        _renderActivityAgentDetail(agent0, inlineBox0);
+      }
+    }
+    return;
+  }
+  _topoLastSig = sig;
+  _topoLastExpanded = _overviewExpanded;
+  /* Collect channels referenced by at least one visible agent, minus
+   * DMs (implicit per-agent; not interesting in a topology view). */
+  var chSet = {};
+  visible.forEach(function (a) {
+    (a.channels || []).forEach(function (c) {
+      if (!c || c.indexOf("dm:") === 0) return;
+      chSet[c] = true;
+    });
+  });
+  var channels = Object.keys(chSet).sort();
+
+  /* Size from the grid's inner box. Fall back to generous defaults on
+   * first render when clientWidth is still 0. Leave room for labels so
+   * long agent names don't get clipped at the viewport edge. */
+  var W = Math.max(grid.clientWidth || 0, 600);
+  var H = Math.max(grid.clientHeight || 0, 420);
+  var pad = 140; /* label-safe margin */
+  var cx = W / 2;
+  var cy = H / 2;
+  var rOuter = Math.max(80, Math.min(W, H) / 2 - pad);
+  var rInner = Math.max(40, rOuter * 0.55);
+
+  function _pt(r, i, n) {
+    /* Start at -90° so the first node sits at 12 o'clock. */
+    var theta = (i / Math.max(1, n)) * Math.PI * 2 - Math.PI / 2;
+    return { x: cx + r * Math.cos(theta), y: cy + r * Math.sin(theta) };
+  }
+
+  var agentPos = {};
+  visible.forEach(function (a, i) {
+    agentPos[a.name] = _pt(rOuter, i, visible.length);
+  });
+  var chPos = {};
+  channels.forEach(function (c, i) {
+    chPos[c] = _pt(rInner, i, channels.length);
+  });
+
+  /* Edges — iterate visible agents, intersect with the channel set. */
+  var edgesSvg = "";
+  visible.forEach(function (a) {
+    var ap = agentPos[a.name];
+    (a.channels || []).forEach(function (c) {
+      var cp = chPos[c];
+      if (!ap || !cp) return;
+      edgesSvg +=
+        '<line x1="' +
+        ap.x.toFixed(1) +
+        '" y1="' +
+        ap.y.toFixed(1) +
+        '" x2="' +
+        cp.x.toFixed(1) +
+        '" y2="' +
+        cp.y.toFixed(1) +
+        '" stroke="#2a3a40" stroke-opacity="0.6" stroke-width="1"/>';
+    });
+  });
+
+  /* Channel diamonds (rotated squares) with label above. */
+  var chSvg = channels
+    .map(function (c) {
+      var p = chPos[c];
+      var r = 10;
+      var pts =
+        p.x +
+        "," +
+        (p.y - r) +
+        " " +
+        (p.x + r) +
+        "," +
+        p.y +
+        " " +
+        p.x +
+        "," +
+        (p.y + r) +
+        " " +
+        (p.x - r) +
+        "," +
+        p.y;
+      return (
+        '<g class="topo-node topo-channel" data-channel="' +
+        escapeHtml(c) +
+        '">' +
+        '<polygon points="' +
+        pts +
+        '" fill="#1a1a1a" stroke="#444" stroke-width="1"/>' +
+        '<text class="topo-label topo-label-ch" x="' +
+        p.x +
+        '" y="' +
+        (p.y - r - 6) +
+        '" text-anchor="middle">' +
+        escapeHtml(c) +
+        "</text>" +
+        "</g>"
+      );
+    })
+    .join("");
+
+  /* Agent circles with label to the right. */
+  var agentSvg = visible
+    .map(function (a) {
+      var p = agentPos[a.name];
+      var color = getAgentColor(_colorKeyFor(a));
+      var online = (a.status || "online") === "online";
+      var stroke = online ? "#4ecdc4" : "#555";
+      var nameText =
+        typeof hostedAgentName === "function"
+          ? hostedAgentName(a)
+          : cleanAgentName
+            ? cleanAgentName(a.name)
+            : a.name;
+      var pinRing = a.pinned
+        ? '<circle cx="' +
+          p.x +
+          '" cy="' +
+          p.y +
+          '" r="18" fill="none" stroke="#fbbf24" stroke-width="2"/>'
+        : "";
+      return (
+        '<g class="topo-node topo-agent" data-agent="' +
+        escapeHtml(a.name) +
+        '">' +
+        pinRing +
+        '<circle cx="' +
+        p.x +
+        '" cy="' +
+        p.y +
+        '" r="14" fill="' +
+        color +
+        '" stroke="' +
+        stroke +
+        '" stroke-width="2"/>' +
+        '<text class="topo-label topo-label-agent" x="' +
+        (p.x + 20) +
+        '" y="' +
+        (p.y + 4) +
+        '" fill="' +
+        color +
+        '">' +
+        escapeHtml(nameText) +
+        "</text>" +
+        "</g>"
+      );
+    })
+    .join("");
+
+  var svg =
+    '<svg class="topo-svg" width="' +
+    W +
+    '" height="' +
+    H +
+    '" viewBox="0 0 ' +
+    W +
+    " " +
+    H +
+    '" xmlns="http://www.w3.org/2000/svg">' +
+    '<g class="topo-edges">' +
+    edgesSvg +
+    "</g>" +
+    '<g class="topo-channels">' +
+    chSvg +
+    "</g>" +
+    '<g class="topo-agents">' +
+    agentSvg +
+    "</g>" +
+    "</svg>";
+
+  var detailBox = "";
+  if (_overviewExpanded) {
+    detailBox =
+      '<div class="activity-inline-detail" data-detail-for="' +
+      escapeHtml(_overviewExpanded) +
+      '"><p class="empty-notice">Loading detail…</p></div>';
+  }
+  grid.innerHTML = '<div class="topo-wrap">' + svg + "</div>" + detailBox;
+
+  /* Delegated click: agent node → toggle expand. Bound ONCE on the
+   * grid (the delegation helper guards with _overviewGridWired). We
+   * extend its reach here because the grid rewrites its innerHTML on
+   * every heartbeat and per-element listeners would be lost. */
+  _wireOverviewGridDelegation(grid);
+
+  if (_overviewExpanded) {
+    var agent = (window.__lastAgents || []).find(function (x) {
+      return x.name === _overviewExpanded;
+    });
+    var inlineBox = grid.querySelector(
+      '.activity-inline-detail[data-detail-for="' +
+        String(_overviewExpanded).replace(/"/g, '\\"') +
+        '"]',
+    );
+    if (agent && inlineBox) {
+      _renderActivityAgentDetail(agent, inlineBox);
+      _fetchActivityDetail(agent.name);
+    }
+  }
 }
 
 /* Overview list/tile renderer. One-line rows (or compact tiles) for
@@ -1103,6 +1374,11 @@ function _renderActivityCards(agents, grid) {
 
   if (!visible.length) {
     grid.innerHTML = '<p class="empty-notice">No agents connected.</p>';
+    return;
+  }
+
+  if (_overviewView === "topology") {
+    _renderActivityTopology(visible, grid);
     return;
   }
 
@@ -1236,17 +1512,21 @@ function _renderActivityCards(agents, grid) {
   }
 }
 
-/* Apply layout class (list vs tile) to the overview grid. */
+/* Apply layout class (list vs tiled vs topology) to the overview grid.
+ * The three modes are mutually exclusive CSS scopes — each adds one
+ * class and the renderer dispatches on _overviewView internally. */
 function _applyOverviewViewClass(grid) {
   if (!grid) return;
   grid.classList.remove(
     "activity-view-list",
     "activity-view-tiled",
+    "activity-view-topology",
     "activity-grid-detail",
   );
-  grid.classList.add(
-    _overviewView === "tiled" ? "activity-view-tiled" : "activity-view-list",
-  );
+  var cls = "activity-view-list";
+  if (_overviewView === "tiled") cls = "activity-view-tiled";
+  else if (_overviewView === "topology") cls = "activity-view-topology";
+  grid.classList.add(cls);
 }
 
 var _overviewGridWired = false;
@@ -1291,6 +1571,22 @@ function _wireOverviewGridDelegation(grid) {
       }
       _overviewExpanded = _overviewExpanded === cname ? null : cname;
       renderActivityTab();
+      return;
+    }
+    /* Topology view — tap an agent-node <g data-agent="…"> to toggle
+     * expand. Channel nodes are a no-op for now (future: filter to
+     * that channel). */
+    var topoAgent = ev.target.closest(".topo-agent[data-agent]");
+    if (topoAgent && grid.contains(topoAgent)) {
+      if (ev.target.closest(".activity-inline-detail")) return;
+      var tname = topoAgent.getAttribute("data-agent");
+      if (!tname) return;
+      if (ev.shiftKey || ev.ctrlKey || ev.metaKey) {
+        if (typeof addTag === "function") addTag("agent", tname);
+        return;
+      }
+      _overviewExpanded = _overviewExpanded === tname ? null : tname;
+      renderActivityTab();
     }
   });
   _overviewGridWired = true;
@@ -1299,19 +1595,32 @@ function _wireOverviewGridDelegation(grid) {
 var _overviewControlsWired = false;
 function _wireOverviewControls() {
   if (_overviewControlsWired) return;
-  var filterInput = document.getElementById("activity-filter-input");
   var sortSelect = document.getElementById("activity-sort-select");
-  var viewSelect = document.getElementById("activity-view-select");
+  var viewSwitch = document.querySelector(".activity-view-switch");
   var colorSelect = document.getElementById("activity-color-select");
-  if (!filterInput || !sortSelect || !viewSelect) return;
+  if (!sortSelect || !viewSwitch) return;
   sortSelect.value = _overviewSort;
-  viewSelect.value = _overviewView;
-  filterInput.value = _overviewFilter;
+  /* Legacy localStorage value "tiled" -> fall back to "list" since the
+   * switch is now binary (Viz / List). "topology" still accepted. */
+  if (_overviewView !== "list" && _overviewView !== "topology")
+    _overviewView = "list";
   if (colorSelect) colorSelect.value = _overviewColor;
-  filterInput.addEventListener("input", function () {
-    _overviewFilter = filterInput.value || "";
-    renderActivityTab();
-  });
+  /* Filter input removed — users filter via the global Ctrl+K fuzzy
+   * search which already applies across every tab (ywatanabe 2026-04-
+   * 19: "filtering should be always Ctrl K in the scope"). The module
+   * var _overviewFilter stays zero so the old filter logic is a no-op. */
+  _overviewFilter = "";
+  function _setViewBtnActive() {
+    viewSwitch
+      .querySelectorAll(".activity-view-switch-btn")
+      .forEach(function (b) {
+        b.classList.toggle(
+          "active",
+          b.getAttribute("data-view") === _overviewView,
+        );
+      });
+  }
+  _setViewBtnActive();
   sortSelect.addEventListener("change", function () {
     _overviewSort = sortSelect.value;
     try {
@@ -1319,11 +1628,16 @@ function _wireOverviewControls() {
     } catch (_e) {}
     renderActivityTab();
   });
-  viewSelect.addEventListener("change", function () {
-    _overviewView = viewSelect.value;
+  viewSwitch.addEventListener("click", function (ev) {
+    var btn = ev.target.closest(".activity-view-switch-btn[data-view]");
+    if (!btn) return;
+    var next = btn.getAttribute("data-view");
+    if (next === _overviewView) return;
+    _overviewView = next;
     try {
       localStorage.setItem("orochi.overviewView", _overviewView);
     } catch (_e) {}
+    _setViewBtnActive();
     renderActivityTab();
   });
   if (colorSelect) {

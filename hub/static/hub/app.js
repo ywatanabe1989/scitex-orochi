@@ -1484,29 +1484,87 @@ async function fetchAgents() {
     /* todo#320: sidebar agent cards are now compact — name + status
      * dot only. Full detail (badges, kill/pin/restart, task rows,
      * detail popup, health pill, tooltip) lives in the Agents tab. */
-    container.innerHTML = agents
+    /* Sidebar agent rows mirror the Agents-tab overview one-liner so the
+     * two stay visually in sync (ywatanabe 2026-04-19). Same columns:
+     *   [pin][ws-led][fn-led][state-badge-compact][name@host]
+     * Compact widths so it fits in the ~260px sidebar. Visibility rule
+     * matches the overview: offline agents are hidden unless pinned. */
+    var connected = function (x) {
+      return (x.status || "online") !== "offline";
+    };
+    var _computeStateLocal = function (a) {
+      var pane = a.pane_state || "";
+      if (pane === "compacting" || pane === "auto_compact") return "compacting";
+      if (
+        pane === "y_n_prompt" ||
+        pane === "compose_pending_unsent" ||
+        pane === "auth_error" ||
+        pane === "mcp_broken" ||
+        pane === "stuck"
+      )
+        return "selecting";
+      if (!connected(a)) return "offline";
+      var lastToolName = String(a.last_tool_name || "").toLowerCase();
+      if (lastToolName.indexOf("compact") !== -1) return "compacting";
+      var lastToolSec =
+        a.last_tool_at || a.last_action
+          ? (Date.now() - new Date(a.last_tool_at || a.last_action).getTime()) /
+            1000
+          : null;
+      if (lastToolSec != null && lastToolSec < 30) return "running";
+      return "idle";
+    };
+    var sidebarVisible = agents.filter(function (a) {
+      return connected(a) || !!a.pinned;
+    });
+    container.innerHTML = sidebarVisible
       .map(function (a) {
-        var inactive = isAgentInactive(a);
-        var liveness = a.liveness || (inactive ? "offline" : "online");
-        var statusClassCompact = liveness === "online" ? "online" : "offline";
+        var liveness = a.liveness || (connected(a) ? "online" : "offline");
+        var state = _computeStateLocal(a);
+        var ghostClass =
+          !connected(a) && a.pinned ? " sidebar-agent-ghost" : "";
+        var rawName = a.name || "";
         var tooltip =
-          (a.agent_id || a.name) + " (" + (a.machine || "unknown") + ")";
-        /* todo#49: draggable agent cards — drop on channel to subscribe */
+          (a.agent_id || rawName) + " (" + (a.machine || "unknown") + ")";
         var chList = Array.isArray(a.channels) ? a.channels.join(",") : "";
+        var pinOn = a.pinned ? " activity-pin-on" : "";
+        var pinTitle = a.pinned
+          ? "Unpin"
+          : "Pin (keeps as ghost when offline, floats to top)";
         return (
-          '<div class="agent-card sidebar-compact' +
-          (inactive ? " inactive" : "") +
+          '<div class="agent-card sidebar-agent-row' +
+          ghostClass +
           '" data-agent-name="' +
-          escapeHtml(a.name) +
+          escapeHtml(rawName) +
           '" data-agent-channels="' +
           escapeHtml(chList) +
           '" draggable="true" title="' +
           escapeHtml(tooltip) +
           '">' +
-          '<span class="agent-status ' +
-          statusClassCompact +
+          '<button type="button" class="activity-pin-btn pin-btn' +
+          pinOn +
+          (a.pinned ? " pinned" : "") +
+          '" data-pin-name="' +
+          escapeHtml(rawName) +
+          '" data-pin-next="' +
+          (a.pinned ? "false" : "true") +
+          '" title="' +
+          escapeHtml(pinTitle) +
+          '">\uD83D\uDCCC</button>' +
+          '<span class="activity-led activity-led-ws activity-led-ws-' +
+          (connected(a) ? "on" : "off") +
           '"></span>' +
-          '<span class="agent-name">' +
+          '<span class="activity-led activity-led-fn activity-led-fn-' +
+          liveness +
+          '"></span>' +
+          '<span class="activity-state activity-state-compact activity-state-' +
+          state +
+          '">' +
+          escapeHtml(state.toUpperCase()) +
+          "</span>" +
+          '<span class="agent-name" style="color:' +
+          getAgentColor(a.name) +
+          '">' +
           escapeHtml(hostedAgentName(a)) +
           "</span>" +
           "</div>"

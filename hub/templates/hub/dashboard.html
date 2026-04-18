@@ -8,7 +8,7 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=126">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=127">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=105">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=100">
-    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=132">
+    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=133">
     <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=103">
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
@@ -181,23 +181,23 @@
             <div id="activity-view" class="todo-view" style="display:none">
                 <!-- hook-bypass: inline-style -->
                 <div id="activity-subtabs" class="activity-subtabs">
-                    <input type="text"
-                           id="activity-filter-input"
-                           class="activity-filter-input"
-                           placeholder="filter agents…"
-                           autocomplete="off"
-                           spellcheck="false">
+                    <div class="activity-view-switch"
+                         role="tablist"
+                         aria-label="overview view mode">
+                        <button type="button"
+                                class="activity-view-switch-btn"
+                                data-view="topology"
+                                title="topology (agents ↔ channels map)">Viz</button>
+                        <button type="button"
+                                class="activity-view-switch-btn active"
+                                data-view="list"
+                                title="one-line rows">List</button>
+                    </div>
                     <select id="activity-sort-select"
                             class="activity-sort-select"
                             title="sort order">
                         <option value="name">sort: name</option>
                         <option value="machine">sort: machine</option>
-                    </select>
-                    <select id="activity-view-select"
-                            class="activity-view-select"
-                            title="view mode">
-                        <option value="list">view: list</option>
-                        <option value="tiled">view: tiled</option>
                     </select>
                     <select id="activity-color-select"
                             class="activity-sort-select"
@@ -390,10 +390,10 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
-    <script src="{% static 'hub/app.js' %}?v=134"></script>
-    <script src="{% static 'hub/dms.js' %}?v=2"></script>
+    <script src="{% static 'hub/app.js' %}?v=135"></script>
+    <script src="{% static 'hub/dms.js' %}?v=3"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
-    <script src="{% static 'hub/resources-tab.js' %}?v=100"></script>
+    <script src="{% static 'hub/resources-tab.js' %}?v=101"></script>
     <script src="{% static 'hub/todo-tab.js' %}?v=107"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
     <script src="{% static 'hub/chat.js' %}?v=121"></script>
@@ -404,7 +404,7 @@
     <script src="{% static 'hub/blockers.js' %}?v=1"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=110"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=100"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=130"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=133"></script>
     <script src="{% static 'hub/viz-tab.js' %}?v=4"></script>
     <script src="{% static 'hub/upload.js' %}?v=112"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=104"></script>
