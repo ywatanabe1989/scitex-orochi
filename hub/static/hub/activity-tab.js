@@ -2248,7 +2248,7 @@ function _renderActivityTopology(visible, grid) {
       var perm = _topoChannelPerms[_permKey(c, a.name)] || "read-write";
       var markers = _markerAttrsForPerm(perm);
       edgesSvg +=
-        '<line data-agent="' +
+        '<line class="topo-edge" data-agent="' +
         escapeHtml(a.name) +
         '" data-channel="' +
         escapeHtml(c) +
@@ -3358,6 +3358,152 @@ function _topoShowSubscribeToast(agent, channel, perm) {
   }
 }
 
+/* Edge-click unsubscribe: clicking (or right-clicking) a topology edge
+ * offers to remove that agent's subscription to the channel.
+ * ywatanabe 2026-04-19: "edges (lines) must be selectable to
+ * unsubscribe".
+ *
+ * Optimistic: drop the channel from window.__lastAgents[i].channels and
+ * from _topoStickyEdges so the edge disappears immediately. The DELETE
+ * request to /api/channel-members/ then confirms with the backend.
+ * _agentSubscribe's throttled fetchAgents will reconcile any drift. */
+var _topoEdgeMenuEl = null;
+function _topoCloseEdgeMenu() {
+  if (_topoEdgeMenuEl && _topoEdgeMenuEl.parentNode) {
+    _topoEdgeMenuEl.parentNode.removeChild(_topoEdgeMenuEl);
+  }
+  _topoEdgeMenuEl = null;
+  document.removeEventListener("click", _topoEdgeMenuOutsideClick, true);
+  document.removeEventListener("keydown", _topoEdgeMenuKeyHandler, true);
+}
+function _topoEdgeMenuOutsideClick(ev) {
+  if (!_topoEdgeMenuEl) return;
+  if (_topoEdgeMenuEl.contains(ev.target)) return;
+  _topoCloseEdgeMenu();
+}
+function _topoEdgeMenuKeyHandler(ev) {
+  if (ev.key === "Escape") {
+    ev.stopPropagation();
+    _topoCloseEdgeMenu();
+  }
+}
+function _topoDoEdgeUnsubscribe(agent, channel) {
+  /* Optimistic removal: drop from __lastAgents + sticky set before
+   * firing the DELETE so the edge vanishes on the next render. */
+  var live = window.__lastAgents || [];
+  for (var i = 0; i < live.length; i++) {
+    if (live[i].name === agent) {
+      var chs = Array.isArray(live[i].channels) ? live[i].channels : [];
+      live[i].channels = chs.filter(function (c) {
+        return c !== channel;
+      });
+      break;
+    }
+  }
+  if (typeof _topoStickyKey === "function") {
+    delete _topoStickyEdges[_topoStickyKey(agent, channel)];
+  }
+  _topoLastSig = "";
+  if (typeof renderActivityTab === "function") renderActivityTab();
+  if (typeof _invalidateTopoPerms === "function") _invalidateTopoPerms();
+
+  /* Fire DELETE /api/channel-members/ directly so we control the toast
+   * wording exactly (app.js::_toggleAgentChannelSubscription emits its
+   * own "Unsubscribed ← channel" toast; we want "from" here). */
+  if (typeof _showMiniToast === "function") {
+    _showMiniToast("Unsubscribed " + agent + " from " + channel, "ok");
+  }
+  if (typeof _agentDjangoUsername !== "function") return;
+  var username = _agentDjangoUsername(agent);
+  if (!username) return;
+  var url =
+    typeof apiUrl === "function"
+      ? apiUrl("/api/channel-members/")
+      : "/api/channel-members/";
+  fetch(url, {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken":
+        typeof getCsrfToken === "function" ? getCsrfToken() : "",
+    },
+    body: JSON.stringify({ channel: channel, username: username }),
+  })
+    .then(function (res) {
+      if (!res.ok) {
+        return res
+          .json()
+          .catch(function () {
+            return { error: res.status };
+          })
+          .then(function (j) {
+            var msg =
+              (j && j.error) ||
+              "HTTP " + res.status + " — check permissions";
+            if (typeof _showMiniToast === "function") {
+              _showMiniToast("Unsubscribe failed: " + msg, "err");
+            }
+          });
+      }
+      /* Reconcile with server state so a subsequent subscribe sees the
+       * authoritative channel list, not our optimistic mutation. */
+      if (typeof fetchAgentsThrottled === "function") fetchAgentsThrottled();
+      else if (typeof fetchAgents === "function") fetchAgents();
+    })
+    .catch(function (_) {});
+}
+function _topoShowEdgeMenu(agent, channel, clientX, clientY) {
+  _topoCloseEdgeMenu();
+  if (!agent || !channel) return;
+  var menu = document.createElement("div");
+  menu.className = "topo-edge-menu";
+  menu.setAttribute("role", "menu");
+  /* Position near click; clamp inside viewport so it doesn't overflow. */
+  var x = clientX;
+  var y = clientY;
+  menu.style.position = "fixed";
+  menu.style.left = x + "px";
+  menu.style.top = y + "px";
+  menu.innerHTML =
+    '<div class="topo-edge-menu-title">' +
+    escapeHtml(agent) +
+    " &rarr; " +
+    escapeHtml(channel) +
+    "</div>" +
+    '<button type="button" class="topo-edge-menu-btn topo-edge-menu-btn-danger" data-topo-edge-action="unsubscribe">Unsubscribe ' +
+    escapeHtml(agent) +
+    " from " +
+    escapeHtml(channel) +
+    "</button>" +
+    '<button type="button" class="topo-edge-menu-btn" data-topo-edge-action="cancel">Cancel</button>';
+  document.body.appendChild(menu);
+  /* Clamp inside viewport. */
+  var mw = menu.offsetWidth;
+  var mh = menu.offsetHeight;
+  var vw = window.innerWidth || document.documentElement.clientWidth;
+  var vh = window.innerHeight || document.documentElement.clientHeight;
+  if (x + mw + 8 > vw) menu.style.left = Math.max(4, vw - mw - 8) + "px";
+  if (y + mh + 8 > vh) menu.style.top = Math.max(4, vh - mh - 8) + "px";
+  _topoEdgeMenuEl = menu;
+  menu.addEventListener("click", function (ev) {
+    var btn = ev.target.closest("[data-topo-edge-action]");
+    if (!btn) return;
+    var action = btn.getAttribute("data-topo-edge-action");
+    ev.stopPropagation();
+    if (action === "unsubscribe") {
+      _topoDoEdgeUnsubscribe(agent, channel);
+    }
+    _topoCloseEdgeMenu();
+  });
+  /* Dismiss on outside click / Escape. Defer to next tick so the
+   * current click that opened the menu doesn't immediately close it. */
+  setTimeout(function () {
+    document.addEventListener("click", _topoEdgeMenuOutsideClick, true);
+    document.addEventListener("keydown", _topoEdgeMenuKeyHandler, true);
+  }, 0);
+}
+
 function _wireOverviewGridDelegation(grid) {
   if (_overviewGridWired || !grid) return;
   grid.addEventListener("click", function (ev) {
@@ -3400,6 +3546,23 @@ function _wireOverviewGridDelegation(grid) {
       _overviewExpanded = _overviewExpanded === cname ? null : cname;
       renderActivityTab();
       return;
+    }
+    /* Topology edge click → unsubscribe popover. Edges are bare <line>
+     * elements inside <g class="topo-edges">; only agent→channel edges
+     * carry .topo-edge (human→channel dashed guides are skipped so the
+     * signed-in human can't "unsubscribe" themselves from a channel
+     * they never explicitly joined). */
+    var topoEdge = ev.target.closest(".topo-edges line.topo-edge");
+    if (topoEdge && grid.contains(topoEdge)) {
+      if (ev.shiftKey || ev.ctrlKey || ev.metaKey) return;
+      var eAgent = topoEdge.getAttribute("data-agent");
+      var eCh = topoEdge.getAttribute("data-channel");
+      if (eAgent && eCh) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        _topoShowEdgeMenu(eAgent, eCh, ev.clientX, ev.clientY);
+        return;
+      }
     }
     /* Topology view — agent node click dispatch. Modifiers take
      * precedence over the 1/2/3-click timer:
@@ -3633,6 +3796,21 @@ function _wireOverviewGridDelegation(grid) {
    * .topo-channel + .topo-agent hit-test order doesn't misroute. */
   grid.addEventListener("contextmenu", function (ev) {
     if (ev.shiftKey) return;
+    /* Right-click on an agent→channel edge → same unsubscribe popover
+     * as the left-click path. Channel/agent nodes are resolved by later
+     * branches so the order here matters — edge check first, since a
+     * line never overlaps a diamond/circle hit box. */
+    var topoEdge = ev.target.closest(".topo-edges line.topo-edge");
+    if (topoEdge && grid.contains(topoEdge)) {
+      var eAgent = topoEdge.getAttribute("data-agent");
+      var eCh = topoEdge.getAttribute("data-channel");
+      if (eAgent && eCh) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        _topoShowEdgeMenu(eAgent, eCh, ev.clientX, ev.clientY);
+        return;
+      }
+    }
     var topoCh = ev.target.closest(".topo-channel[data-channel]");
     if (topoCh && grid.contains(topoCh)) {
       if (typeof _showChannelCtxMenu !== "function") return;
