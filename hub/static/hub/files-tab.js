@@ -171,7 +171,11 @@ function renderFilePreview(item) {
     /* On mobile Safari `target="_blank"` often opens the PDF inline in
      * the same view with no Orochi chrome and no way back. Force the
      * Orochi-controlled modal viewer instead so the user always has a
-     * close button. todo#240, ywatanabe report msg 6073. */
+     * close button. todo#240, ywatanabe report msg 6073.
+     *
+     * The inner `.file-icon-pdf` div is tagged with data-pdf-thumb-url
+     * so pdfThumb.hydrateAll() swaps the "PDF" text for a first-page
+     * image thumbnail after render. todo#89. */
     return (
       '<button type="button" class="file-preview-link file-pdf-open-btn" ' +
       'onclick="event.preventDefault();event.stopPropagation();' +
@@ -180,7 +184,9 @@ function renderFilePreview(item) {
       "," +
       JSON.stringify(filename).replace(/"/g, "&quot;") +
       ')">' +
-      '<div class="file-icon-pdf">PDF</div>' +
+      '<div class="file-icon-pdf" data-pdf-thumb-url="' +
+      url +
+      '">PDF</div>' +
       "</button>"
     );
   }
@@ -341,7 +347,13 @@ function renderFilesGrid() {
               ? '<img class="files-tile-thumb" src="' +
                 escapeHtml(item.url) +
                 '" alt="" loading="lazy">'
-              : '<div class="files-tile-icon">' + _catIcon(cat) + "</div>";
+              : cat === "application/pdf"
+                ? '<div class="files-tile-icon" data-pdf-thumb-url="' +
+                  escapeHtml(item.url) +
+                  '">' +
+                  _catIcon(cat) +
+                  "</div>"
+                : '<div class="files-tile-icon">' + _catIcon(cat) + "</div>";
           return (
             '<div class="files-tile' +
             (isSelected ? " file-card-selected" : "") +
@@ -372,6 +384,7 @@ function renderFilesGrid() {
           );
         })
         .join("");
+    if (window.pdfThumb) window.pdfThumb.hydrateAll(grid);
     return;
   }
 
@@ -534,6 +547,8 @@ function renderFilesGrid() {
   );
   /* Re-apply Ctrl+K fuzzy filter after innerHTML rewrite (see todo-tab.js). */
   if (typeof runFilter === "function") runFilter();
+  /* Hydrate PDF thumbnails for grid view (todo#89). */
+  if (window.pdfThumb) window.pdfThumb.hydrateAll(grid);
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {

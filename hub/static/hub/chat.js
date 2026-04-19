@@ -393,6 +393,9 @@ function buildAttachmentsHtml(attachments) {
       return;
     }
     if (isPdf) {
+      /* The attachment-card-icon is tagged with data-pdf-thumb-url so
+       * pdf-thumbnail.js can swap the "PDF" placeholder for the actual
+       * first-page image after async render. todo#89. */
       html +=
         '<div class="attachment-card attachment-card-pdf" onclick="event.preventDefault();event.stopPropagation();' +
         "if(typeof openPdfViewer==='function')openPdfViewer(" +
@@ -402,7 +405,9 @@ function buildAttachmentsHtml(attachments) {
         ");else window.open(" +
         JSON.stringify(url).replace(/"/g, "&quot;") +
         ",'_blank')\">" +
-        '<div class="attachment-card-icon">PDF</div>' +
+        '<div class="attachment-card-icon" data-pdf-thumb-url="' +
+        escapeHtml(url) +
+        '">PDF</div>' +
         '<div class="attachment-card-meta"><div class="attachment-card-name">' +
         escapeHtml(fname) +
         "</div>" +
@@ -1010,6 +1015,9 @@ function appendMessage(msg) {
         "</div>"
       );
     })();
+  /* Hydrate PDF first-page thumbnails in this message's attachments
+   * (todo#89). Safe no-op if pdf-thumbnail.js hasn't loaded yet. */
+  if (window.pdfThumb) window.pdfThumb.hydrateAll(el);
   if (currentChannel && channel !== currentChannel) {
     el.style.display = "none";
   }
