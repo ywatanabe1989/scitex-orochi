@@ -1431,6 +1431,17 @@
 .activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
   filter: drop-shadow(0 0 5px #4ecdc4);
 }
+/* Circular crop for SVG canvas avatars — mirrors the HTML <img
+ * class="agent-avatar"> 50% border-radius so images look like the
+ * rest of the UI (round profile-picture style). User request
+ * 2026-04-20: "icon should be trimmed in a circle shape". Applies
+ * to agent, channel, and human canvas images. */
+.activity-grid.activity-view-topology .topo-agent-glyph-img,
+.activity-grid.activity-view-topology .topo-ch-icon-img,
+.activity-grid.activity-view-topology .topo-human-glyph-img {
+  clip-path: circle(50% at 50% 50%);
+}
+
 /* Agent-detail-pane SSH terminal container — replaces the read-only
  * <pre> scrollback with a live xterm when the user clicks SSH.
  * Fixed height matches the pane so layout doesn't jump. TODO.md
