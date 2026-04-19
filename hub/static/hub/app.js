@@ -456,8 +456,26 @@ function _setChannelPref(ch, patch) {
             : "Mute (stop notifications)",
         );
       }
+      /* Keep the per-row eye icon (todo#418) in sync immediately after a
+       * hide/unhide click so the user gets instant visual feedback before
+       * fetchStats() re-renders the list. */
+      var eyeEl = el.querySelector(".ch-eye");
+      if (eyeEl) {
+        eyeEl.classList.toggle("ch-eye-on", !pref.is_hidden);
+        eyeEl.classList.toggle("ch-eye-off", !!pref.is_hidden);
+        eyeEl.textContent = pref.is_hidden ? "\uD83D\uDEAB" : "\uD83D\uDC41";
+        eyeEl.setAttribute(
+          "title",
+          pref.is_hidden
+            ? "Show channel (un-hide)"
+            : "Hide channel (dim in list)",
+        );
+      }
       el.classList.toggle("ch-starred", !!pref.is_starred);
       el.classList.toggle("ch-muted", !!pref.is_muted);
+      el.classList.toggle("ch-hidden", !!pref.is_hidden);
+      if (pref.is_hidden) el.setAttribute("data-hidden", "1");
+      else el.removeAttribute("data-hidden");
     });
   }
   fetchStats();
@@ -2211,19 +2229,38 @@ async function fetchStats() {
      * normalized name so legacy rows collapse into a single entry. */
     var seenNames = {};
     var displayChannels = [];
+    /* todo#418: hidden channels always render, but dimmed at the bottom of
+     * the Channels section. Clicking a dimmed row un-hides it. No separate
+     * toggle UI or per-row eye button — just a subtle visual sort-to-bottom
+     * so the list stays scannable. */
     stats.channels.forEach(function (c) {
       if (typeof c !== "string") return;
       if (c.indexOf("dm:") === 0) return;
       var norm = c.charAt(0) === "#" ? c : "#" + c;
       if (seenNames[norm]) return;
       seenNames[norm] = true;
-      /* Skip hidden channels; starred channels stay in the list (sorted first) */
       var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
-      if (pref.is_hidden) return;
-      displayChannels.push({ raw: c, norm: norm });
+      displayChannels.push({
+        raw: c,
+        norm: norm,
+        hidden: !!pref.is_hidden,
+      });
     });
-    /* Sort: starred first (sorted by sort_order/alpha), then non-starred alpha */
+    /* Also include channels that only exist in _channelPrefs with is_hidden
+     * (e.g. deleted from server list but kept for un-hiding). */
+    Object.keys(_channelPrefs).forEach(function (ch) {
+      if (typeof ch !== "string") return;
+      if (ch.indexOf("dm:") === 0) return;
+      var pref = _channelPrefs[ch];
+      if (!pref || !pref.is_hidden) return;
+      var norm = ch.charAt(0) === "#" ? ch : "#" + ch;
+      if (seenNames[norm]) return;
+      seenNames[norm] = true;
+      displayChannels.push({ raw: ch, norm: norm, hidden: true });
+    });
+    /* Sort: starred first, then visible, then hidden rows at bottom. */
     displayChannels.sort(function (a, b) {
+      if (!!a.hidden !== !!b.hidden) return a.hidden ? 1 : -1;
       var pa = _channelPrefs[a.norm] || _channelPrefs[a.raw] || {};
       var pb = _channelPrefs[b.norm] || _channelPrefs[b.raw] || {};
       var aStarred = pa.is_starred ? 0 : 1;
@@ -2233,6 +2270,15 @@ async function fetchStats() {
       var ob = pb.sort_order != null ? pb.sort_order : 9999;
       return oa !== ob ? oa - ob : a.norm.localeCompare(b.norm);
     });
+    /* Track first-hidden index so we can drop a subtle divider before
+     * the hidden block (todo#418). */
+    var firstHiddenIdx = -1;
+    for (var _i = 0; _i < displayChannels.length; _i++) {
+      if (displayChannels[_i].hidden) {
+        firstHiddenIdx = _i;
+        break;
+      }
+    }
     chContainer.innerHTML = displayChannels
       .map(function (entry, i) {
         var c = entry.raw;
@@ -2256,7 +2302,25 @@ async function fetchStats() {
           (pref.is_muted
             ? "Unmute (watch this channel)"
             : "Mute (stop notifications)") +
-          '">\uD83D\uDC41</span>';
+          '">\uD83D\uDC41</span>' +
+          /* Per-row hide/unhide toggle (todo#418) — a small eye icon that
+           * flips is_hidden. 👁 = visible (click to hide); 🚫👁 style via
+           * CSS for hidden rows. Click stops propagation so the row's own
+           * click handler (which would select the channel or un-hide
+           * via whole-row click) does not also fire. This is a simpler
+           * parallel affordance to the right-click "Hide/Show channel"
+           * context-menu entry. */
+          '<span class="ch-eye ' +
+          (pref.is_hidden ? "ch-eye-off" : "ch-eye-on") +
+          '" data-ch="' +
+          escapeHtml(norm) +
+          '" title="' +
+          (pref.is_hidden
+            ? "Show channel (un-hide)"
+            : "Hide channel (dim in list)") +
+          '">' +
+          (pref.is_hidden ? "\uD83D\uDEAB" : "\uD83D\uDC41") +
+          "</span>";
         var unread = channelUnread[c] || channelUnread[norm] || 0;
         var badgeHtml =
           '<span class="ch-badge-slot">' +
@@ -2267,14 +2331,27 @@ async function fetchStats() {
             : "") +
           "</span>";
         var starred = pref.is_starred ? " ch-starred" : "";
+        var hiddenCls = entry.hidden ? " ch-hidden" : "";
+        var divider =
+          i === firstHiddenIdx
+            ? '<div class="ch-hidden-divider" aria-hidden="true"></div>'
+            : "";
+        var rowTitle = entry.hidden
+          ? ' title="Hidden \u2014 click to un-hide"'
+          : "";
         return (
+          divider +
           '<div class="channel-item' +
           active +
           muted +
           starred +
+          hiddenCls +
           '" data-channel="' +
           escapeHtml(c) +
-          '" draggable="true">' +
+          '"' +
+          (entry.hidden ? ' data-hidden="1"' : "") +
+          rowTitle +
+          ' draggable="true">' +
           '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
           starHtml +
           '<span class="ch-name">' +
@@ -2307,6 +2384,17 @@ async function fetchStats() {
           var norm = watchEl.getAttribute("data-ch");
           var curPref = _channelPrefs[norm] || {};
           _setChannelPref(norm, { is_muted: !curPref.is_muted });
+        });
+      }
+      /* Hide/unhide icon click — toggle is_hidden (todo#418). */
+      var eyeEl = el.querySelector(".ch-eye");
+      if (eyeEl) {
+        eyeEl.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          var norm = eyeEl.getAttribute("data-ch");
+          var curPref = _channelPrefs[norm] || {};
+          _setChannelPref(norm, { is_hidden: !curPref.is_hidden });
         });
       }
       /* Context menu */
@@ -2361,10 +2449,17 @@ async function fetchStats() {
         if (
           ev.target.classList.contains("ch-pin") ||
           ev.target.classList.contains("ch-watch") ||
+          ev.target.classList.contains("ch-eye") ||
           ev.target.classList.contains("ch-drag-handle")
         )
           return;
         var ch = el.getAttribute("data-channel");
+        /* Hidden row click: un-hide (same call path as ctx-menu "Show channel"). */
+        if (el.getAttribute("data-hidden") === "1") {
+          ev.stopPropagation();
+          _setChannelPref(ch, { is_hidden: false });
+          return;
+        }
         var multi = ev.ctrlKey || ev.metaKey;
         /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select without
          * disturbing siblings; plain click keeps legacy single-select. */
@@ -2428,7 +2523,14 @@ async function fetchStats() {
       });
     });
     var chCountEl = document.getElementById("sidebar-count-channels");
-    if (chCountEl) chCountEl.textContent = "(" + displayChannels.length + ")";
+    if (chCountEl) {
+      /* Count visible (non-hidden) rows for the heading — the dimmed
+       * hidden rows at the bottom are intentionally not in this count. */
+      var visibleCount = displayChannels.filter(function (e) {
+        return !e.hidden;
+      }).length;
+      chCountEl.textContent = "(" + visibleCount + ")";
+    }
     /* Add drag-and-drop to channels section */
     _addDragAndDrop(chContainer, "channels");
     if (typeof updateChannelUnreadBadges === "function")

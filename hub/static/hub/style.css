@@ -2039,7 +2039,8 @@ a.chat-link:hover {
  * toggles is_muted). */
 .ch-star,
 .ch-pin,
-.ch-watch {
+.ch-watch,
+.ch-eye {
   font-size: 11px;
   margin-right: 3px;
   flex-shrink: 0;
@@ -2056,7 +2057,8 @@ a.chat-link:hover {
 }
 .channel-item:hover .ch-star-off,
 .channel-item:hover .ch-pin-off,
-.channel-item:hover .ch-watch-off {
+.channel-item:hover .ch-watch-off,
+.channel-item:hover .ch-eye-on {
   opacity: 0.7;
 }
 .ch-star-on {
@@ -2073,13 +2075,45 @@ a.chat-link:hover {
   opacity: 0.25;
   filter: grayscale(1);
 }
+/* Per-row hide/unhide eye icon (todo#418). ch-eye-on = channel is visible,
+ * icon dim until row hover; ch-eye-off = channel is hidden, icon stays
+ * semi-opaque so users can find the un-hide affordance on a dimmed row. */
+.ch-eye-on {
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+.ch-eye-off {
+  opacity: 0.75;
+  filter: none;
+}
 .ch-pin:hover,
-.ch-watch:hover {
+.ch-watch:hover,
+.ch-eye:hover {
   opacity: 1 !important;
   filter: none !important;
 }
 .ch-muted {
   opacity: 0.5;
+}
+
+/* Hidden channel rows — rendered inline at the bottom of the Channels
+ * section, dimmed so the list stays scannable. Clicking a dimmed row
+ * un-hides it (promotes back to the normal list on next render).
+ * No bulk toggle button — the dimmed rows ARE the affordance.
+ * See todo#418. */
+.channel-item.ch-hidden {
+  opacity: 0.4;
+  color: #6a7785;
+  cursor: pointer;
+}
+.channel-item.ch-hidden:hover {
+  opacity: 0.7;
+}
+/* Subtle separator above the first hidden row so users understand
+ * they're entering the "hidden" zone. */
+.ch-hidden-divider {
+  border-top: 1px dashed #2a2a2a;
+  margin: 6px 8px;
 }
 
 /* Machines sidebar — one-line compact row (ywatanabe 2026-04-19).
