@@ -2410,30 +2410,23 @@ async function fetchStats() {
         var active = currentChannel === c ? " active" : "";
         var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
         var muted = pref.is_muted ? " ch-muted" : "";
+        /* Star = float-to-top (pinned). ★ filled for starred, ☆ outline
+         * for unstarred. Replaces the earlier 📌 pin emoji so both canvas
+         * pool chips and this list use a single standardized icon. */
         var starHtml =
           '<span class="ch-pin ' +
           (pref.is_starred ? "ch-pin-on" : "ch-pin-off") +
           '" data-ch="' +
           escapeHtml(norm) +
           '" title="' +
-          (pref.is_starred ? "Unpin" : "Pin (float to top)") +
-          '">\uD83D\uDCCC</span>' +
-          '<span class="ch-watch ' +
-          (pref.is_muted ? "ch-watch-off" : "ch-watch-on") +
-          '" data-ch="' +
-          escapeHtml(norm) +
-          '" title="' +
-          (pref.is_muted
-            ? "Unmute (watch this channel)"
-            : "Mute (stop notifications)") +
-          '">\uD83D\uDC41</span>' +
-          /* Per-row hide/unhide toggle (todo#418) — a small eye icon that
-           * flips is_hidden. 👁 = visible (click to hide); 🚫👁 style via
-           * CSS for hidden rows. Click stops propagation so the row's own
-           * click handler (which would select the channel or un-hide
-           * via whole-row click) does not also fire. This is a simpler
-           * parallel affordance to the right-click "Hide/Show channel"
-           * context-menu entry. */
+          (pref.is_starred ? "Unstar" : "Star (float to top)") +
+          '">' +
+          (pref.is_starred ? "\u2605" : "\u2606") +
+          "</span>" +
+          /* Per-row hide/unhide toggle (todo#418) — 👁 visible / 🚫 hidden.
+           * Click stops propagation so the row's own click handler does
+           * not also fire. Single eye (the earlier ch-watch mute duplicate
+           * was removed — mute still reachable via right-click menu). */
           '<span class="ch-eye ' +
           (pref.is_hidden ? "ch-eye-off" : "ch-eye-on") +
           '" data-ch="' +
