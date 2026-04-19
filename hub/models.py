@@ -178,6 +178,10 @@ class Channel(models.Model):
         default=KIND_GROUP,
         db_index=True,
     )
+    icon_emoji = models.CharField(max_length=16, blank=True, default="")
+    icon_image = models.CharField(max_length=500, blank=True, default="")
+    icon_text = models.CharField(max_length=16, blank=True, default="")
+    color = models.CharField(max_length=16, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

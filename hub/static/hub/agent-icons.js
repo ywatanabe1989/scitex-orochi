@@ -11,6 +11,15 @@ var cachedAgentColors = {}; /* {name: hex color string} */
 var cachedHumanIcons = {};
 var cachedHumanColors = {};
 
+/* Per-channel icon + color caches — populated by fetchChannels() in app.js
+ * when GET /api/channels/ returns. channelIdentity() reads these as the
+ * single source of truth so sidebar rows, Activity pool chips and the
+ * Viz topology all render the same custom glyph/color without each
+ * caller re-deriving anything. Keys are normalized channel names (with
+ * leading '#'). */
+var cachedChannelIcons = {}; /* {"#general": image|emoji|text} */
+var cachedChannelColors = {}; /* {"#general": "#hex"} */
+
 /* Inline SVG icon generators for branding — official SciTeX snake */
 function getSnakeIcon(size, color) {
   size = size || 20;
@@ -391,17 +400,81 @@ function agentIdentity(a) {
   };
 }
 function channelIdentity(ch) {
-  var name = ch || "";
+  /* Accept either a string (legacy call sites) or an object
+   * {name, icon_emoji, icon_image, icon_text, color}. Pulls missing
+   * fields from cachedChannelIcons/Colors so a caller that only has
+   * the name still gets the same rendering as callers with the full
+   * record. */
+  var name = (ch && typeof ch === "object" ? ch.name : ch) || "";
+  var cachedIcon = cachedChannelIcons[name] || "";
+  var cachedColor = cachedChannelColors[name] || "";
+  var iconImage =
+    (ch && typeof ch === "object" && ch.icon_image) ||
+    (cachedIcon &&
+    (cachedIcon.indexOf("http") === 0 || cachedIcon.indexOf("/") === 0)
+      ? cachedIcon
+      : "");
+  var iconEmoji =
+    (ch && typeof ch === "object" && ch.icon_emoji) ||
+    (cachedIcon && !iconImage ? cachedIcon : "");
+  var iconText = (ch && typeof ch === "object" && ch.icon_text) || "";
+  var customColor = (ch && typeof ch === "object" && ch.color) || cachedColor;
+  var color = customColor || _identityColor(name);
   return {
     name: name,
     displayName: name,
-    color: _identityColor(name),
+    color: color,
     tooltip: name,
-    /* Channel glyph is always "#" — consistent across sidebar, pool
-     * chips and (implicitly) the canvas polygon label. Size arg is
-     * accepted for symmetry with agentIdentity.iconHtml. */
-    iconHtml: function (_size) {
+    /* Cascade: image > emoji > text > default "#" glyph. Size arg
+     * controls the pixel dimension for image avatars; emoji/text
+     * scale via font-size. */
+    iconHtml: function (size) {
+      size = size || 16;
+      if (iconImage) {
+        return (
+          '<img class="agent-avatar" src="' +
+          (typeof escapeHtml === "function"
+            ? escapeHtml(iconImage)
+            : iconImage) +
+          '" width="' +
+          size +
+          '" height="' +
+          size +
+          '" alt="">'
+        );
+      }
+      if (iconEmoji) {
+        return (
+          '<span class="agent-custom-icon" style="font-size:' +
+          Math.round(size * 0.9) +
+          'px">' +
+          iconEmoji +
+          "</span>"
+        );
+      }
+      if (iconText) {
+        return (
+          '<span class="agent-custom-icon" style="font-size:' +
+          Math.round(size * 0.7) +
+          'px">' +
+          (typeof escapeHtml === "function" ? escapeHtml(iconText) : iconText) +
+          "</span>"
+        );
+      }
       return '<span class="entity-icon entity-icon-channel">#</span>';
     },
   };
+}
+
+/* Cache maintainer — called from app.js after GET /api/channels/ and
+ * from the channel_identity WS broadcast so the three render surfaces
+ * all pick up custom icons without a full page reload. */
+function cacheChannelIdentity(ch) {
+  if (!ch || !ch.name) return;
+  var name = ch.name;
+  var icon = ch.icon_image || ch.icon_emoji || ch.icon_text || "";
+  if (icon) cachedChannelIcons[name] = icon;
+  else delete cachedChannelIcons[name];
+  if (ch.color) cachedChannelColors[name] = ch.color;
+  else delete cachedChannelColors[name];
 }

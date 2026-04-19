@@ -1417,6 +1417,20 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             }
         )
 
+    async def channel_identity(self, event):
+        """Forward channel identity updates (description + icon + color)."""
+        await self.send_json(
+            {
+                "type": "channel_identity",
+                "channel": event.get("channel", ""),
+                "description": event.get("description", ""),
+                "icon_emoji": event.get("icon_emoji", ""),
+                "icon_image": event.get("icon_image", ""),
+                "icon_text": event.get("icon_text", ""),
+                "color": event.get("color", ""),
+            }
+        )
+
     async def system_message(self, event):
         """Forward system messages to dashboard WebSocket client."""
         import datetime

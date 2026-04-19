@@ -75,26 +75,45 @@ def api_channels(request, slug=None):
     if request.method == "PATCH":
         body = json.loads(request.body)
         ch_name = normalize_channel_name(body.get("name", ""))
-        description = body.get("description", "")
         try:
             ch = Channel.objects.get(workspace=workspace, name=ch_name)
         except Channel.DoesNotExist:
             return JsonResponse({"error": "channel not found"}, status=404)
-        ch.description = description
-        ch.save(update_fields=["description"])
-        # Broadcast so all connected clients update their banner
+        changed = []
+        if "description" in body:
+            ch.description = body.get("description", "")
+            changed.append("description")
+        for field in ("icon_emoji", "icon_image", "icon_text", "color"):
+            if field in body:
+                setattr(ch, field, body.get(field) or "")
+                changed.append(field)
+        if changed:
+            ch.save(update_fields=changed)
+        # Broadcast identity so every client updates sidebar / pool chip / canvas.
         layer = get_channel_layer()
         group = f"workspace_{workspace.id}"
         async_to_sync(layer.group_send)(
             group,
             {
-                "type": "channel.description",
+                "type": "channel.identity",
                 "channel": ch_name,
-                "description": description,
+                "description": ch.description,
+                "icon_emoji": ch.icon_emoji,
+                "icon_image": ch.icon_image,
+                "icon_text": ch.icon_text,
+                "color": ch.color,
             },
         )
         return JsonResponse(
-            {"status": "ok", "channel": ch_name, "description": description}
+            {
+                "status": "ok",
+                "channel": ch_name,
+                "description": ch.description,
+                "icon_emoji": ch.icon_emoji,
+                "icon_image": ch.icon_image,
+                "icon_text": ch.icon_text,
+                "color": ch.color,
+            }
         )
 
     channels = Channel.objects.filter(workspace=workspace).order_by("name")
@@ -112,6 +131,10 @@ def api_channels(request, slug=None):
             {
                 "name": ch.name,
                 "description": ch.description,
+                "icon_emoji": ch.icon_emoji,
+                "icon_image": ch.icon_image,
+                "icon_text": ch.icon_text,
+                "color": ch.color,
                 "is_starred": p.is_starred if p else False,
                 "is_muted": p.is_muted if p else False,
                 "is_hidden": p.is_hidden if p else False,

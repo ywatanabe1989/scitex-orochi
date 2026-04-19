@@ -2107,6 +2107,21 @@ a.chat-link:hover {
   opacity: 0.75;
   filter: none;
 }
+
+/* Custom channel icon slot in the sidebar (todo#101). Thin fixed-width
+ * wrapper so rows with or without a custom icon still align their
+ * name column — same principle as .ch-ctx-glyph in the context menu. */
+.ch-identity-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2em;
+  margin-right: 4px;
+  flex: 0 0 auto;
+}
+.ch-identity-icon .entity-icon-channel {
+  opacity: 0.55;
+}
 .ch-pin:hover,
 .ch-watch:hover,
 .ch-eye:hover {

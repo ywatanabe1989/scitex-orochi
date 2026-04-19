@@ -386,6 +386,9 @@ document.addEventListener("DOMContentLoaded", function () {
             is_hidden: ch.is_hidden || false,
             notification_level: ch.notification_level || "all",
           };
+          if (typeof cacheChannelIdentity === "function") {
+            cacheChannelIdentity(ch);
+          }
         }
       });
       if (currentChannel) _updateChannelTopicBanner(currentChannel);
@@ -479,6 +482,39 @@ function _setChannelPref(ch, patch) {
     });
   }
   fetchStats();
+}
+
+/* Update a channel's custom icon/color via PATCH /api/channels/
+ * (todo#101). Accepts any subset of {icon_emoji, icon_image, icon_text,
+ * color}. The server broadcasts channel_identity so every connected
+ * client refreshes the three render surfaces in lockstep. */
+function _setChannelIcon(ch, patch) {
+  var normCh = ch.charAt(0) === "#" ? ch : "#" + ch;
+  if (typeof cacheChannelIdentity === "function") {
+    cacheChannelIdentity(
+      Object.assign(
+        {
+          name: normCh,
+          icon_emoji: cachedChannelIcons[normCh] || "",
+          icon_image: "",
+          icon_text: "",
+          color: cachedChannelColors[normCh] || "",
+        },
+        patch,
+      ),
+    );
+  }
+  fetch(apiUrl("/api/channels/"), {
+    method: "PATCH",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify(Object.assign({ name: normCh }, patch)),
+  }).catch(function (_) {});
+  if (typeof fetchStats === "function") fetchStats();
+  if (typeof renderActivityTab === "function") renderActivityTab();
 }
 
 /* Render the Starred section in the sidebar */
@@ -647,6 +683,13 @@ function _showChannelCtxMenu(ch, x, y) {
       _glyph(G_EMPTY) +
       "Nothing</div>",
     '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-item" data-action="set-icon">' +
+      _glyph("\uD83C\uDFA8") +
+      "Set icon\u2026</div>",
+    '<div class="ch-ctx-item" data-action="clear-icon">' +
+      _glyph(G_EMPTY) +
+      "Clear icon</div>",
+    '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-export" data-action="export">' +
       _glyph(G_EXPORT) +
       "Export channel\u2026</div>",
@@ -680,6 +723,20 @@ function _showChannelCtxMenu(ch, x, y) {
         _hideChannelCtxMenu();
         openChannelExport(ch);
         return;
+      } else if (action === "set-icon") {
+        _hideChannelCtxMenu();
+        if (typeof window.openEmojiPicker === "function") {
+          window.openEmojiPicker(function (emoji) {
+            _setChannelIcon(ch, { icon_emoji: emoji });
+          });
+        }
+        return;
+      } else if (action === "clear-icon") {
+        _setChannelIcon(ch, {
+          icon_emoji: "",
+          icon_image: "",
+          icon_text: "",
+        });
       } else if (action === "hide") _setChannelPref(ch, { is_hidden: !hidden });
       else if (action === "topo-hide") {
         if (typeof window._topoHide === "function") {
@@ -1754,6 +1811,28 @@ function handleMessage(msg) {
       _channelDescriptions[chName] = msg.description || "";
       if (chName === currentChannel) _updateChannelTopicBanner(chName);
     }
+  } else if (msg.type === "channel_identity") {
+    /* Live identity update: icon/color changed. Re-populate the
+     * channelIdentity caches and refresh the three render surfaces. */
+    var chIdName = msg.channel;
+    if (chIdName) {
+      _channelDescriptions[chIdName] = msg.description || "";
+      if (typeof cacheChannelIdentity === "function") {
+        cacheChannelIdentity({
+          name: chIdName,
+          icon_emoji: msg.icon_emoji || "",
+          icon_image: msg.icon_image || "",
+          icon_text: msg.icon_text || "",
+          color: msg.color || "",
+        });
+      }
+      if (chIdName === currentChannel) _updateChannelTopicBanner(chIdName);
+      /* Re-render sidebar + pool chips + canvas so the new icon shows
+       * without a page reload. fetchStats drives the sidebar; the
+       * Activity tab's next render cycle picks up the cache change. */
+      if (typeof fetchStats === "function") fetchStats();
+      if (typeof renderActivityTab === "function") renderActivityTab();
+    }
   }
 }
 
@@ -2529,6 +2608,15 @@ async function fetchStats() {
           ' draggable="true">' +
           '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
           starHtml +
+          /* Custom channel icon (todo#101): single source of truth
+           * via channelIdentity() — sidebar, pool chips, and canvas
+           * all read the same cachedChannelIcons map. Falls back to
+           * the default '#' glyph when no custom icon set. */
+          (typeof channelIdentity === "function"
+            ? '<span class="ch-identity-icon">' +
+              channelIdentity(norm).iconHtml(14) +
+              "</span>"
+            : "") +
           '<span class="ch-name">' +
           escapeHtml(nameLabel) +
           "</span>" +
