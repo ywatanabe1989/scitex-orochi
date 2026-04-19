@@ -393,11 +393,18 @@ function renderConnectivityMap() {
     container.querySelectorAll(".conn-node[data-host-name]"),
     function (g) {
       var host = g.getAttribute("data-host-name");
-      g.addEventListener("mouseenter", function () {
+      g.addEventListener("mouseenter", function (ev) {
         syncHostHover(host, true);
+        /* todo#86: show CPU/RAM/GPU/VRAM/Disk tooltip on machine node hover. */
+        if (typeof showMachineTooltip === "function")
+          showMachineTooltip(host, ev);
+      });
+      g.addEventListener("mousemove", function (ev) {
+        if (typeof moveMachineTooltip === "function") moveMachineTooltip(ev);
       });
       g.addEventListener("mouseleave", function () {
         syncHostHover(host, false);
+        if (typeof hideMachineTooltip === "function") hideMachineTooltip();
       });
     },
   );

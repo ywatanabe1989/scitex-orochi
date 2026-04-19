@@ -3,6 +3,114 @@
 
 var resourceData = {};
 
+/* todo#86: hover tooltip for machine nodes/sidebar rows. Shared singleton
+ * popover positioned near cursor, populated from resourceData[host]. */
+var _machineTooltipEl = null;
+function _machineTooltip() {
+  if (_machineTooltipEl) return _machineTooltipEl;
+  var el = document.createElement("div");
+  el.className = "machine-hover-tooltip";
+  el.setAttribute("role", "tooltip");
+  el.style.display = "none";
+  document.body.appendChild(el);
+  _machineTooltipEl = el;
+  return el;
+}
+
+function _fmtMetricPct(p) {
+  /* 0 treated as "unknown / stale" to match bar/donut rendering. */
+  if (!p || p <= 0) return { text: "\u2014", cls: "mh-tip-unknown" };
+  var rounded = Math.round(p);
+  var cls =
+    rounded > 80 ? "mh-tip-crit" : rounded > 60 ? "mh-tip-warn" : "mh-tip-ok";
+  return { text: rounded + "%", cls: cls };
+}
+
+function _machineMetricsHtml(host) {
+  var d = resourceData[host];
+  if (!d) return "";
+  var cpu = (d.cpu && d.cpu.percent) || 0;
+  var ram = (d.memory && d.memory.percent) || 0;
+  var gpu = 0;
+  var vram = 0;
+  if (d.gpu && d.gpu.length > 0) {
+    var g0 = d.gpu[0];
+    gpu = g0.utilization_percent || 0;
+    if (g0.memory_percent) {
+      vram = g0.memory_percent;
+    } else if (g0.memory_total_mb) {
+      vram = ((g0.memory_used_mb || 0) / g0.memory_total_mb) * 100;
+    }
+  }
+  var disk = 0;
+  if (d.disk) {
+    var dk = Object.keys(d.disk)[0];
+    if (dk) disk = d.disk[dk].percent || 0;
+  }
+  function row(label, value) {
+    var m = _fmtMetricPct(value);
+    return (
+      '<div class="mh-tip-row"><span class="mh-tip-label">' +
+      label +
+      '</span><span class="mh-tip-val ' +
+      m.cls +
+      '">' +
+      m.text +
+      "</span></div>"
+    );
+  }
+  return (
+    '<div class="mh-tip-host">' +
+    escapeHtml(host) +
+    "</div>" +
+    row("CPU", cpu) +
+    row("RAM", ram) +
+    row("GPU", gpu) +
+    row("VRAM", vram) +
+    row("Disk", disk)
+  );
+}
+
+function _positionMachineTooltip(el, evt) {
+  /* Prefer top-right of cursor; clamp inside viewport. */
+  var pad = 12;
+  var rect = el.getBoundingClientRect();
+  var vw = window.innerWidth;
+  var vh = window.innerHeight;
+  var x = evt.clientX + pad;
+  var y = evt.clientY + pad;
+  if (x + rect.width + pad > vw) x = evt.clientX - rect.width - pad;
+  if (y + rect.height + pad > vh) y = evt.clientY - rect.height - pad;
+  if (x < pad) x = pad;
+  if (y < pad) y = pad;
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+}
+
+function showMachineTooltip(host, evt) {
+  if (!host) return;
+  var html = _machineMetricsHtml(host);
+  if (!html) return;
+  var el = _machineTooltip();
+  el.innerHTML = html;
+  el.style.display = "block";
+  _positionMachineTooltip(el, evt);
+}
+
+function moveMachineTooltip(evt) {
+  if (!_machineTooltipEl || _machineTooltipEl.style.display === "none") return;
+  _positionMachineTooltip(_machineTooltipEl, evt);
+}
+
+function hideMachineTooltip() {
+  if (_machineTooltipEl) _machineTooltipEl.style.display = "none";
+}
+
+/* Expose for connectivity-map.js (SVG machine nodes). */
+window.showMachineTooltip = showMachineTooltip;
+window.moveMachineTooltip = moveMachineTooltip;
+window.hideMachineTooltip = hideMachineTooltip;
+
 /* Machines tab [Viz | Cards] view mode — persisted in localStorage.
  * "viz"   = connectivity-map (SSH mesh); resource cards hidden
  * "cards" = resource cards grid (default); connectivity-map hidden
@@ -17,10 +125,8 @@ try {
 function _applyMachinesViewVisibility() {
   var connEl = document.getElementById("connectivity-map");
   var gridEl = document.getElementById("resources-grid");
-  if (connEl)
-    connEl.style.display = _machinesView === "viz" ? "" : "none";
-  if (gridEl)
-    gridEl.style.display = _machinesView === "cards" ? "" : "none";
+  if (connEl) connEl.style.display = _machinesView === "viz" ? "" : "none";
+  if (gridEl) gridEl.style.display = _machinesView === "cards" ? "" : "none";
 }
 
 var _machinesControlsWired = false;
@@ -250,6 +356,15 @@ function renderResources() {
       );
     })
     .join("");
+  /* todo#86: hover tooltip on sidebar rows with CPU/RAM/GPU/VRAM/Disk. */
+  container.querySelectorAll(".res-card[data-machine]").forEach(function (el) {
+    var host = el.getAttribute("data-machine");
+    el.addEventListener("mouseenter", function (ev) {
+      showMachineTooltip(host, ev);
+    });
+    el.addEventListener("mousemove", moveMachineTooltip);
+    el.addEventListener("mouseleave", hideMachineTooltip);
+  });
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
