@@ -484,6 +484,36 @@ function _setChannelPref(ch, patch) {
   fetchStats();
 }
 
+/* Update an agent's display profile (icon_emoji etc) via
+ * POST /api/agent-profiles/. Parallel to _setChannelIcon — keeps the
+ * configuration story uniform across entity types. The registry
+ * reads AgentProfile on next join so the icon survives container
+ * restarts (todo#101 Entity Consistency). */
+function _setAgentIcon(name, patch) {
+  if (
+    typeof cachedAgentIcons !== "undefined" &&
+    patch &&
+    "icon_emoji" in patch
+  ) {
+    if (patch.icon_emoji) cachedAgentIcons[name] = patch.icon_emoji;
+    else delete cachedAgentIcons[name];
+  }
+  fetch(apiUrl("/api/agent-profiles/"), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify(Object.assign({ name: name }, patch)),
+  }).catch(function (_) {});
+  if (typeof fetchAgents === "function") fetchAgents();
+  if (typeof renderActivityTab === "function") {
+    if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
+    renderActivityTab();
+  }
+}
+
 /* Update a channel's custom icon/color via PATCH /api/channels/
  * (todo#101). Accepts any subset of {icon_emoji, icon_image, icon_text,
  * color}. The server broadcasts channel_identity so every connected
@@ -863,6 +893,9 @@ function _showAgentContextMenu(agent, x, y) {
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="add">Add to channel&nbsp;&hellip; &#9656;</div>',
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="dm">DM with agent&nbsp;&hellip; &#9656;</div>',
     '<div class="ch-ctx-sep"></div>',
+    '<div class="ch-ctx-item" data-action="set-icon">\uD83C\uDFA8 Set icon\u2026</div>',
+    '<div class="ch-ctx-item" data-action="clear-icon">Clear icon</div>',
+    '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-sub ch-ctx-hide" data-sub="remove">Remove from channel&nbsp;&hellip; &#9656;</div>',
     hideRow,
   ].join("");
@@ -876,6 +909,32 @@ function _showAgentContextMenu(agent, x, y) {
       ev.stopPropagation();
       if (typeof window._topoHide === "function")
         window._topoHide("agent", agent);
+      _hideAgentCtxMenu();
+    });
+  }
+  /* Set icon — emoji picker for the agent's AgentProfile.icon_emoji.
+   * Mirrors the channel "Set icon" flow in _showChannelCtxMenu so
+   * configuration is uniform across entity types (TODO.md Entity
+   * Consistency: "Icons (svg/png) must be configurable"). */
+  var setIconItem = menu.querySelector('.ch-ctx-item[data-action="set-icon"]');
+  if (setIconItem) {
+    setIconItem.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      _hideAgentCtxMenu();
+      if (typeof window.openEmojiPicker === "function") {
+        window.openEmojiPicker(function (emoji) {
+          _setAgentIcon(agent, { icon_emoji: emoji });
+        });
+      }
+    });
+  }
+  var clearIconItem = menu.querySelector(
+    '.ch-ctx-item[data-action="clear-icon"]',
+  );
+  if (clearIconItem) {
+    clearIconItem.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      _setAgentIcon(agent, { icon_emoji: "" });
       _hideAgentCtxMenu();
     });
   }
