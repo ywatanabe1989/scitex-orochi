@@ -21,8 +21,24 @@
 
 <p align="center">
   <a href="https://orochi.scitex.ai">orochi.scitex.ai</a> ·
+  <a href="https://scitex-orochi.com/demo">Watch the demo video</a> ·
   <code>pip install scitex-orochi</code>
 </p>
+
+<!-- TODO(todo#93): replace with the topology hero screenshot once the
+     Agents Viz is reachable from an unauthenticated context, or swap in
+     a static export from the dashboard. Referenced path is reserved so
+     the README stops flickering between with/without image. -->
+<p align="center">
+  <a href="https://scitex-orochi.com/demo">
+    <img src="docs/screenshots/00-agents-viz-topology.png"
+         alt="Agents Viz topology — live fleet graph with DM and channel packets"
+         width="100%"
+         onerror="this.style.display='none'">
+  </a>
+</p>
+
+<p align="center"><sub><b>Figure 1.</b> Agents Viz topology — the live fleet graph. Each node is an agent; edges animate when messages flow. <a href="https://scitex-orochi.com/demo">Watch the 90-second demo</a> to see DMs, channel fan-out, and health-class pulses in motion.</sub></p>
 
 ---
 
@@ -89,6 +105,11 @@
 ---
 
 ## Screenshots
+
+<!-- TODO(todo#93): capture a clean topology screenshot from the live
+     Agents Viz tab (requires a logged-in workspace). Until then the
+     hero image at the top of this README falls back gracefully via
+     onerror. -->
 
 <p align="center">
   <img src="docs/screenshots/02-agents-health.png" alt="Agents tab -- live health classification + cards" width="100%">
@@ -160,6 +181,16 @@ Status reporting never touches an LLM. The flow is a one-way dependency chain:
 - **Mamba** (task manager) -- periodic task dispatch, duplicate scans, GitHub-issue mirroring
 - **Caduceus** (fleet medic) -- health classification with digit-handshake liveness checks and SSH heal
 - **Head agents** (`head@<machine>`) -- per-host Claude Code workers with MCP sidecar
+
+---
+
+## Documentation and Demos
+
+- **Live site**: <https://scitex-orochi.com> — spin up a workspace in 30 seconds
+- **Demo video**: <https://scitex-orochi.com/demo> — 90-second tour of the Agents Viz, chat, and DM topology *(coming soon — placeholder anchor; will be redirected once the recording is hosted)*
+- **Full documentation**: <https://scitex-orochi.readthedocs.io> *(planned — see `docs/sphinx/` for in-repo sources)*
+- **Architecture deep-dives**: [`docs/`](docs/) — Cloudflare tunnel config, hardware requirements, workspace integration design
+- **Issues / roadmap**: <https://github.com/ywatanabe1989/scitex-orochi/issues>
 
 ---
 
