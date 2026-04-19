@@ -242,6 +242,16 @@ function _renderHookPanels(
 
 /* Per-agent full detail view */
 function _renderActivityAgentDetail(a, grid) {
+  /* SSH guard — when a live xterm session is running in this agent's
+   * pane, skip the heartbeat re-render. Otherwise innerHTML reset
+   * would destroy the xterm DOM node + its internal canvas/texture
+   * state, killing the user's shell session mid-typing. The detail
+   * fields go stale for the duration of the SSH session; Refresh /
+   * Close SSH restores live updates. */
+  if (_activityPaneSshState && _activityPaneSshState[a.name]) {
+    var _sshLive = grid.querySelector(".agent-detail-ssh-container");
+    if (_sshLive) return;
+  }
   /* Merge the registry row with any cached /detail/ payload so we
    * display the full CLAUDE.md and redacted pane_text when available,
    * while still rendering something immediately from the registry. */
@@ -620,6 +630,15 @@ function _renderActivityAgentDetail(a, grid) {
     var el = grid.querySelector("." + cls);
     if (el && el.scrollTop > 0) _savedScrollTops[cls] = el.scrollTop;
   });
+  /* Preserve an active SSH terminal across heartbeat re-renders — the
+   * xterm container lives in #agent-detail-pane-content and would
+   * otherwise be wiped by the innerHTML reset. Grab it before the
+   * reset and splice it back in after. */
+  var _preservedSsh = null;
+  if (_activityPaneSshState && _activityPaneSshState[a.name]) {
+    var _sshCur = grid.querySelector(".agent-detail-ssh-container");
+    if (_sshCur) _preservedSsh = _sshCur;
+  }
   grid.innerHTML =
     '<div class="agent-detail-view">' +
     headerHtml +
@@ -628,6 +647,15 @@ function _renderActivityAgentDetail(a, grid) {
     splitHtml +
     hooksHtml +
     "</div>";
+  if (_preservedSsh) {
+    /* Replace the fresh <pre> with the live xterm container. The SSH
+     * state (ws, term, fitAddon) is unchanged so input/output keep
+     * flowing without a reconnect. */
+    var _newPre = grid.querySelector("#agent-detail-pane-content");
+    if (_newPre && _newPre.parentNode) {
+      _newPre.parentNode.replaceChild(_preservedSsh, _newPre);
+    }
+  }
   var _restoreScroll = function () {
     _preserveScrollClasses.forEach(function (cls) {
       if (_savedScrollTops[cls] != null) {
@@ -641,11 +669,19 @@ function _renderActivityAgentDetail(a, grid) {
     requestAnimationFrame(_restoreScroll);
   }
   /* Scroll pane to bottom */
-  var pre = grid.querySelector(".agent-detail-pane");
+  var pre = grid.querySelector("pre.agent-detail-pane");
   if (pre) pre.scrollTop = pre.scrollHeight;
   _bindActivityPaneControls(grid, a.name, pane, paneFull);
   _bindActivityChannelControls(grid, a.name);
   _bindActivitySendInput(grid, a.name);
+  /* If SSH was preserved, reflect "Close SSH" on the fresh button. */
+  if (_preservedSsh) {
+    var _sshBtn = grid.querySelector('[data-act-pane-action="ssh"]');
+    if (_sshBtn) {
+      _sshBtn.classList.add("agent-detail-pane-btn-on");
+      _sshBtn.textContent = "Close SSH";
+    }
+  }
 }
 
 /* Web→agent interaction: Enter or Send click posts the text into the
@@ -816,16 +852,22 @@ function _activityPaneOpenSsh(grid, name, machine, btn) {
   }
   loadAssets()
     .then(function () {
-      /* Replace pre with an xterm container div. Store the original
-       * <pre> markup so a second SSH-click can restore it. */
+      /* Re-query pre inside .then — the outer reference can be stale
+       * if a heartbeat re-rendered the agent-detail-pane between the
+       * click and the resolved Promise. */
+      var liveGrid = document.querySelector(".activity-grid");
+      var livePre =
+        (liveGrid && liveGrid.querySelector("#agent-detail-pane-content")) ||
+        pre;
+      if (!livePre || !livePre.parentNode) return;
       if (!existing) {
         _activityPaneSshState[name] = {
           host: machine || "local",
           ws: null,
           term: null,
           fitAddon: null,
-          originalHtml: pre.innerHTML,
-          originalClass: pre.className,
+          originalHtml: livePre.innerHTML,
+          originalClass: livePre.className,
           originalTag: "pre",
         };
       }
@@ -833,7 +875,7 @@ function _activityPaneOpenSsh(grid, name, machine, btn) {
       container.className = "agent-detail-ssh-container";
       container.id = "agent-detail-pane-content";
       container.setAttribute("data-agent", name);
-      pre.parentNode.replaceChild(container, pre);
+      livePre.parentNode.replaceChild(container, livePre);
       /* eslint-disable no-undef */
       var term = new Terminal({
         fontFamily: 'Menlo, Monaco, "Courier New", monospace',
