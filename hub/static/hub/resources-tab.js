@@ -3,6 +3,40 @@
 
 var resourceData = {};
 
+/* Per-user machine icon overrides stored in localStorage. Keyed by
+ * machine short-label. Custom emoji only (image upload deferred —
+ * parallel to the channel canvas image fix). Right-click on a
+ * sidebar machine row opens the shared emoji picker to set; empty
+ * string clears back to the default 🖥. TODO.md Entity Consistency:
+ * "Icons (svg/png) must be configurable ... machine: which icon
+ * would be good?" — default 🖥, user can pick anything from the
+ * shared emoji picker. */
+var _MACHINE_ICON_KEY = "orochi.machineIcons";
+var _machineIcons = (function _loadMachineIcons() {
+  try {
+    var raw = localStorage.getItem(_MACHINE_ICON_KEY);
+    if (!raw) return {};
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_e) {
+    return {};
+  }
+})();
+function _persistMachineIcons() {
+  try {
+    localStorage.setItem(_MACHINE_ICON_KEY, JSON.stringify(_machineIcons));
+  } catch (_e) {
+    /* ignore quota / private-mode errors */
+  }
+}
+function setMachineIcon(name, emoji) {
+  if (emoji) _machineIcons[name] = emoji;
+  else delete _machineIcons[name];
+  _persistMachineIcons();
+  if (typeof renderResources === "function") renderResources();
+}
+window.setMachineIcon = setMachineIcon;
+
 /* todo#86: hover tooltip for machine nodes/sidebar rows. Shared singleton
  * popover positioned near cursor, populated from resourceData[host]. */
 var _machineTooltipEl = null;
@@ -346,7 +380,9 @@ function renderResources() {
         '<span class="res-conn res-conn-' +
         (healthy ? "ok" : "stale") +
         '"></span>' +
-        '<span class="res-machine-icon" aria-hidden="true">\uD83D\uDDA5\uFE0F</span>' +
+        '<span class="res-machine-icon" title="right-click to change" aria-hidden="true">' +
+        (_machineIcons[k] || "\uD83D\uDDA5\uFE0F") +
+        "</span>" +
         '<span class="res-star ' +
         (mStarred ? "res-star-on" : "res-star-off") +
         '" data-machine="' +
@@ -405,6 +441,18 @@ function renderResources() {
     });
     el.addEventListener("mousemove", moveMachineTooltip);
     el.addEventListener("mouseleave", hideMachineTooltip);
+    /* Right-click → emoji picker to customize the machine icon.
+     * Stored in localStorage so each user's pick survives reloads
+     * without a new Django model (TODO.md Entity Consistency). */
+    el.addEventListener("contextmenu", function (ev) {
+      ev.preventDefault();
+      hideMachineTooltip();
+      if (typeof window.openEmojiPicker === "function") {
+        window.openEmojiPicker(function (emoji) {
+          setMachineIcon(host, emoji);
+        });
+      }
+    });
   });
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
