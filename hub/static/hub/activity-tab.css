@@ -1146,6 +1146,28 @@
   filter: drop-shadow(0 0 3px #fbbf24);
 }
 
+/* Channel-hover highlight — applied by the grid-level mouseover
+ * delegation in activity-tab.js. Hovering a channel diamond adds
+ * .topo-edge-hover to every edge where data-channel (or data-dm-
+ * channel) matches, and .topo-agent-connected to the matching
+ * endpoint agent nodes. Gives instant visual feedback showing the
+ * network of that channel. ywatanabe 2026-04-19: "when hovered on
+ * a channel, all the lines from there should be highlighted as
+ * visual feedback to show the network". */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-hover {
+  stroke: #4ecdc4 !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2.8 !important;
+  filter: drop-shadow(0 0 4px #4ecdc4);
+}
+.activity-grid.activity-view-topology
+  .topo-agent.topo-agent-connected
+  .topo-agent-bg,
+.activity-grid.activity-view-topology .topo-agent.topo-agent-connected circle,
+.activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
+  filter: drop-shadow(0 0 5px #4ecdc4);
+}
+
 /* Floating popover anchored near an edge click — offers Unsubscribe.
  * Confirm-dialog feel: title, preview row ("<#channel> <- <agent>" with
  * agent color), danger-red primary, neutral Cancel. Opens with a 120ms

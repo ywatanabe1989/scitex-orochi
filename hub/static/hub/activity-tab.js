@@ -4504,6 +4504,73 @@ function _wireOverviewGridDelegation(grid) {
     ev.stopPropagation();
     _showAgentContextMenu(name, ev.clientX, ev.clientY);
   });
+  /* Channel-hover → highlight every edge connected to that channel +
+   * the endpoint agent nodes. Makes the network topology visually
+   * discoverable: hover a channel diamond, the fleet subscribed to it
+   * lights up. Uses mouseover/mouseout (bubbling) on the grid so the
+   * delegation survives SVG re-renders. ywatanabe 2026-04-19: "when
+   * hovered on a channel, all the lines from there should be
+   * highlighted as visual feedback to show the network". */
+  function _topoChannelHoverClear() {
+    var hovered = grid.querySelectorAll(
+      ".topo-edges line.topo-edge-hover, .topo-agent.topo-agent-connected",
+    );
+    for (var i = 0; i < hovered.length; i++) {
+      hovered[i].classList.remove("topo-edge-hover");
+      hovered[i].classList.remove("topo-agent-connected");
+    }
+  }
+  function _topoChannelHoverApply(chName) {
+    if (!chName) return;
+    var edges = grid.querySelectorAll(".topo-edges line");
+    var endpoints = {};
+    for (var i = 0; i < edges.length; i++) {
+      var ln = edges[i];
+      var lnCh = ln.getAttribute("data-channel");
+      var lnDmCh = ln.getAttribute("data-dm-channel");
+      if (lnCh === chName) {
+        ln.classList.add("topo-edge-hover");
+        var ag = ln.getAttribute("data-agent");
+        if (ag) endpoints[ag] = true;
+      } else if (lnDmCh === chName) {
+        ln.classList.add("topo-edge-hover");
+        var dmA = ln.getAttribute("data-dm-a");
+        var dmB = ln.getAttribute("data-dm-b");
+        if (dmA) endpoints[dmA] = true;
+        if (dmB) endpoints[dmB] = true;
+      }
+    }
+    Object.keys(endpoints).forEach(function (ep) {
+      var nodes = grid.querySelectorAll(
+        '.topo-agent[data-agent="' + ep.replace(/"/g, '\\"') + '"]',
+      );
+      for (var j = 0; j < nodes.length; j++) {
+        nodes[j].classList.add("topo-agent-connected");
+      }
+    });
+  }
+  grid.addEventListener("mouseover", function (ev) {
+    var chNode = ev.target.closest(".topo-channel[data-channel]");
+    if (!chNode || !grid.contains(chNode)) return;
+    var chName = chNode.getAttribute("data-channel");
+    if (!chName) return;
+    /* Skip re-apply if the cursor moves between children of the same
+     * channel node (e.g. polygon → text) — mouseover fires on each. */
+    if (chNode.dataset.topoHoverActive === "1") return;
+    _topoChannelHoverClear();
+    chNode.dataset.topoHoverActive = "1";
+    _topoChannelHoverApply(chName);
+  });
+  grid.addEventListener("mouseout", function (ev) {
+    var chNode = ev.target.closest(".topo-channel[data-channel]");
+    if (!chNode || !grid.contains(chNode)) return;
+    /* mouseout fires when leaving a child; only clear when the cursor
+     * has actually left the whole .topo-channel group. */
+    var related = ev.relatedTarget;
+    if (related && chNode.contains(related)) return;
+    delete chNode.dataset.topoHoverActive;
+    _topoChannelHoverClear();
+  });
   _overviewGridWired = true;
 }
 
