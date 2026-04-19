@@ -3190,6 +3190,19 @@ function _renderActivityTopology(visible, grid) {
               typeof _colorKeyFor === "function" ? _colorKeyFor(a) : a.name,
             )
           : "#eaf1fb";
+      /* Liveness LEDs + pin glyph — mirrors the canvas agent node so
+       * you can read ws/fn state straight from the pool without
+       * looking at the graph. Classes match the list view
+       * (.activity-led-ws-on/off, .activity-led-fn-<liveness>) so the
+       * colors stay in lockstep with every other agent surface.
+       * ywatanabe 2026-04-19: "Agents Pool > Should show indicators
+       * and pin as well" (todo#84). */
+      var pConnected = (a.status || "online") !== "offline";
+      var pLiveness =
+        a.liveness || a.status || (pConnected ? "online" : "offline");
+      var pPin = a.pinned
+        ? '<span class="topo-pool-chip-pin" title="pinned">\uD83D\uDCCC</span>'
+        : "";
       /* Color the NAME text, not a left-edge stripe. ywatanabe
        * 2026-04-19: "do not highlight left edge of cards; but update
        * colors of the agent text instead". */
@@ -3201,6 +3214,17 @@ function _renderActivityTopology(visible, grid) {
         '" title="' +
         escapeHtml(a.name) +
         '"><span class="topo-pool-chip-icon">\uD83E\uDD16</span>' +
+        '<span class="activity-led activity-led-ws activity-led-ws-' +
+        (pConnected ? "on" : "off") +
+        ' topo-pool-chip-led" title="WebSocket: ' +
+        (pConnected ? "connected" : "disconnected") +
+        '"></span>' +
+        '<span class="activity-led activity-led-fn activity-led-fn-' +
+        escapeHtml(pLiveness) +
+        ' topo-pool-chip-led" title="Liveness: ' +
+        escapeHtml(pLiveness) +
+        '"></span>' +
+        pPin +
         '<span class="topo-pool-chip-name" style="color:' +
         escapeHtml(poolAgentColor) +
         '">' +
@@ -3216,11 +3240,24 @@ function _renderActivityTopology(visible, grid) {
   Object.keys(window._channelPrefs || {}).forEach(function (c) {
     if (c && c.charAt(0) === "#") poolChSet[c] = true;
   });
+  var _poolChPrefs = window._channelPrefs || {};
   var poolChannelsHtml = Object.keys(poolChSet)
     .sort()
     .map(function (c) {
       var selCls = _topoPoolSelection.channels[c]
         ? " topo-pool-chip-selected"
+        : "";
+      /* Mirror canvas channel glyphs on the pool chip so starred/muted
+       * state is visible without hunting for the node. Canvas uses
+       * gold ★ for starred and grey 🔇 for muted; we inline the same
+       * marks. Starred is the channel-equivalent of agent-pinned (the
+       * "keep this on top" signal). ywatanabe 2026-04-19 todo#84. */
+      var _chPref = _poolChPrefs[c] || {};
+      var chPinGlyph = _chPref.is_starred
+        ? '<span class="topo-pool-chip-star" title="starred">\u2605</span>'
+        : "";
+      var chMuteGlyph = _chPref.is_muted
+        ? '<span class="topo-pool-chip-mute" title="muted">\uD83D\uDD07</span>'
         : "";
       return (
         '<div class="topo-pool-chip topo-pool-chip-channel' +
@@ -3229,9 +3266,12 @@ function _renderActivityTopology(visible, grid) {
         escapeHtml(c) +
         '" title="' +
         escapeHtml(c) +
-        '">' +
+        '"><span class="topo-pool-chip-icon">#</span>' +
+        chPinGlyph +
+        chMuteGlyph +
+        '<span class="topo-pool-chip-name">' +
         escapeHtml(c) +
-        "</div>"
+        "</span></div>"
       );
     })
     .join("");

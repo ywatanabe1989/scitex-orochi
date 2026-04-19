@@ -739,6 +739,42 @@
   color: #eaf1fb;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
+/* Pool chip state indicators — scaled-down mirror of the list view
+ * LEDs (.activity-led is 8px; chips get 6px so the ~22px-tall pill
+ * doesn't crowd). Color classes (.activity-led-ws-*, .activity-led-
+ * fn-*) are shared so green/yellow/orange/red stay in lockstep with
+ * the canvas + list view. Pin / star / mute glyphs inline before the
+ * name so the chip reads [icon][ws][fn][pin?][name]. ywatanabe
+ * 2026-04-19 todo#84 "Agents Pool > Should show indicators and pin
+ * as well". */
+.activity-grid.activity-view-topology .topo-pool-chip-led {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-pin {
+  font-size: 9px;
+  line-height: 1;
+  color: #fbbf24;
+  flex: 0 0 auto;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-star {
+  font-size: 10px;
+  line-height: 1;
+  color: #fbbf24;
+  flex: 0 0 auto;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-mute {
+  font-size: 10px;
+  line-height: 1;
+  color: #94a3b8;
+  flex: 0 0 auto;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 .activity-grid.activity-view-topology .topo-svg.topo-zooming {
   cursor: crosshair;
 }
