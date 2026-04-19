@@ -3520,6 +3520,9 @@ function _isDeadAgent(a) {
   var noAct = actSec == null || actSec > 180;
   return noTool && noAct;
 }
+/* Expose for app.js (sidebar ghost rule) and other modules — single
+ * source of truth for "dead agent" across every render surface. */
+window._isDeadAgent = _isDeadAgent;
 
 function _renderActivityTopology(visible, grid) {
   _topoApplyStickyEdges();
