@@ -3061,10 +3061,18 @@ function _renderActivityTopology(visible, grid) {
       bMaxY = Math.max(bMaxY, p.y + r + 6);
     });
     if (isFinite(bMinX)) {
+      /* Clamp viewBox to at least the SVG's rendered dimensions so a
+       * tight bbox (small ring layout) never magnifies nodes past 1x.
+       * Center the content within the clamped frame so padding is
+       * distributed evenly. ywatanabe 2026-04-19: initial render was
+       * ~4x-zoomed because bbox (~400x300) was much smaller than the
+       * SVG canvas (~1500x900). */
       var pad2 = 24;
-      var vbW = bMaxX - bMinX + pad2 * 2;
-      var vbH = bMaxY - bMinY + pad2 * 2;
-      vb = { x: bMinX - pad2, y: bMinY - pad2, w: vbW, h: vbH };
+      var vbW = Math.max(bMaxX - bMinX + pad2 * 2, W);
+      var vbH = Math.max(bMaxY - bMinY + pad2 * 2, H);
+      var cx = (bMinX + bMaxX) / 2;
+      var cy = (bMinY + bMaxY) / 2;
+      vb = { x: cx - vbW / 2, y: cy - vbH / 2, w: vbW, h: vbH };
     } else {
       vb = { x: 0, y: 0, w: W, h: H };
     }
