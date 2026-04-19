@@ -1982,8 +1982,29 @@ async function fetchAgents() {
         var ghostClass =
           !connected(a) && a.pinned ? " sidebar-agent-ghost" : "";
         var rawName = a.name || "";
-        var tooltip =
-          (a.agent_id || rawName) + " (" + (a.machine || "unknown") + ")";
+        /* todo#96: route identity (icon, color, display-name, tooltip)
+         * through the shared agentIdentity helper so the sidebar row,
+         * Activity pool chip and canvas node all agree. Falls back to
+         * the legacy inline derivation when the helper hasn't loaded
+         * yet (e.g. during very early bootstrap). */
+        var ident =
+          typeof agentIdentity === "function"
+            ? agentIdentity(a)
+            : {
+                displayName: hostedAgentName(a),
+                color:
+                  typeof _colorKeyFor === "function"
+                    ? getAgentColor(_colorKeyFor(a))
+                    : getAgentColor(a.name),
+                tooltip:
+                  (a.agent_id || rawName) +
+                  " (" +
+                  (a.machine || "unknown") +
+                  ")",
+                iconHtml: function () {
+                  return "";
+                },
+              };
         var chList = Array.isArray(a.channels) ? a.channels.join(",") : "";
         var pinOn = a.pinned ? " activity-pin-on" : "";
         var pinTitle = a.pinned
@@ -1997,7 +2018,7 @@ async function fetchAgents() {
           '" data-agent-channels="' +
           escapeHtml(chList) +
           '" draggable="true" title="' +
-          escapeHtml(tooltip) +
+          escapeHtml(ident.tooltip) +
           '">' +
           '<button type="button" class="activity-pin-btn pin-btn' +
           pinOn +
@@ -2009,6 +2030,9 @@ async function fetchAgents() {
           '" title="' +
           escapeHtml(pinTitle) +
           '">\uD83D\uDCCC</button>' +
+          '<span class="sidebar-agent-icon">' +
+          ident.iconHtml(14) +
+          "</span>" +
           '<span class="activity-led activity-led-ws activity-led-ws-' +
           (connected(a) ? "on" : "off") +
           '"></span>' +
@@ -2021,11 +2045,9 @@ async function fetchAgents() {
           escapeHtml(state.toUpperCase()) +
           "</span>" +
           '<span class="agent-name" style="color:' +
-          (typeof _colorKeyFor === "function"
-            ? getAgentColor(_colorKeyFor(a))
-            : getAgentColor(a.name)) +
+          ident.color +
           '">' +
-          escapeHtml(hostedAgentName(a)) +
+          escapeHtml(ident.displayName) +
           "</span>" +
           "</div>"
         );

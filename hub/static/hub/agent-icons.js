@@ -328,3 +328,80 @@ function renderMyAvatarButton() {
   var name = window.__orochiUserName || "";
   btn.innerHTML = getSenderIcon(name, false, 22);
 }
+
+/* ----- Shared identity helpers (todo#96) ----------------------------
+ *
+ * Single source of truth for "how does this agent / channel appear".
+ * Used by the left sidebar (app.js), the Activity pool chips
+ * (activity-tab.js) and the Activity canvas SVG nodes so the SAME
+ * entity wears the SAME icon, color, display-name and tooltip in
+ * every surface. Keeps layout-specific markup in each caller; only
+ * the identity fragment is centralized.
+ *
+ *   agentIdentity(agent)         -> { name, displayName, color, tooltip,
+ *                                     iconHtml(size) }
+ *   channelIdentity(channelName) -> { name, displayName, color, tooltip,
+ *                                     iconHtml(size) }
+ *
+ * `color` follows the user-selected "color by" option when the host
+ * app exposes _colorKeyFor (Activity tab); otherwise falls back to
+ * the agent/channel name hash via getAgentColor. `displayName` runs
+ * through hostedAgentName + cleanAgentName when available so the
+ * "head-mba@mba" duplication collapse stays consistent. */
+function _identityColor(key) {
+  return typeof getAgentColor === "function"
+    ? getAgentColor(key || "unknown")
+    : "#eaf1fb";
+}
+function _identityAgentColorKey(a) {
+  if (typeof _colorKeyFor === "function") return _colorKeyFor(a);
+  return (a && a.name) || "";
+}
+function _identityAgentDisplay(a) {
+  if (!a) return "";
+  if (typeof hostedAgentName === "function") return hostedAgentName(a);
+  if (typeof cleanAgentName === "function") return cleanAgentName(a.name || "");
+  return a.name || "";
+}
+function agentIdentity(a) {
+  var name = (a && a.name) || "";
+  var color = _identityColor(_identityAgentColorKey(a));
+  var displayName = _identityAgentDisplay(a);
+  var machine = (a && a.machine) || "";
+  var tooltip =
+    (a && a.agent_id) || name
+      ? ((a && a.agent_id) || name) + (machine ? " (" + machine + ")" : "")
+      : name;
+  return {
+    name: name,
+    displayName: displayName,
+    color: color,
+    tooltip: tooltip,
+    /* Gravatar-style cascade (image > emoji > text > snake SVG).
+     * Callers that need a plain inline glyph for SVG contexts can
+     * still use the 🤖 fallback directly — this HTML form is for
+     * HTML contexts (sidebar rows + pool chips). */
+    iconHtml: function (size) {
+      size = size || 16;
+      if (typeof getSenderIcon === "function") {
+        return getSenderIcon(name, true, size);
+      }
+      return '<span class="agent-custom-icon">\uD83E\uDD16</span>';
+    },
+  };
+}
+function channelIdentity(ch) {
+  var name = ch || "";
+  return {
+    name: name,
+    displayName: name,
+    color: _identityColor(name),
+    tooltip: name,
+    /* Channel glyph is always "#" — consistent across sidebar, pool
+     * chips and (implicitly) the canvas polygon label. Size arg is
+     * accepted for symmetry with agentIdentity.iconHtml. */
+    iconHtml: function (_size) {
+      return '<span class="entity-icon entity-icon-channel">#</span>';
+    },
+  };
+}
