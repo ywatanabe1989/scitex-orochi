@@ -559,6 +559,23 @@ function _renderStarredSection() {
             "</span>"
           : "") +
         "</span>";
+      var sPref = _channelPrefs[ch] || {};
+      var sMuteHtml =
+        '<span class="ch-mute ' +
+        (sPref.is_muted ? "ch-mute-on" : "ch-mute-off") +
+        '" data-ch="' +
+        escapeHtml(ch) +
+        '" title="' +
+        (sPref.is_muted ? "Unmute notifications" : "Mute notifications") +
+        '">' +
+        (sPref.is_muted ? "\uD83D\uDD07" : "\uD83D\uDD14") +
+        "</span>";
+      var sIconHtml =
+        typeof channelIdentity === "function"
+          ? '<span class="ch-identity-icon">' +
+            channelIdentity(ch).iconHtml(14) +
+            "</span>"
+          : "";
       return (
         '<div class="channel-item starred-item' +
         active +
@@ -570,6 +587,8 @@ function _renderStarredSection() {
         '<span class="ch-pin ch-pin-on" data-ch="' +
         escapeHtml(ch) +
         '" title="Unpin (will drop from top)">\uD83D\uDCCC</span>' +
+        sMuteHtml +
+        sIconHtml +
         '<span class="ch-name">' +
         escapeHtml(ch) +
         "</span>" +
