@@ -386,6 +386,15 @@ def api_messages(request, slug=None):
     if not text and not attachments:
         return JsonResponse({"error": "text or attachments required"}, status=400)
 
+    # Lazy-create DM channel + participants BEFORE the ACL check so
+    # agent↔agent and human↔agent DMs "just work" on first send without
+    # a pre-flight POST /api/dms/. check_write_allowed() denies writes
+    # to dm: channels that have no Channel row yet, so without this the
+    # very first message between a pair of principals would 403.
+    is_dm = ch_name.startswith("dm:")
+    if is_dm:
+        _ensure_dm_channel(workspace, ch_name)
+
     # Spec v3 §8 / todo#258: REST POST /messages/ previously bypassed
     # the channel write-ACL that AgentConsumer.receive_json enforces.
     # Mirror the same check here so DM confidentiality (and any
@@ -400,7 +409,11 @@ def api_messages(request, slug=None):
             {"error": "not allowed to write to this channel"}, status=403
         )
 
-    channel, _ = Channel.objects.get_or_create(workspace=workspace, name=ch_name)
+    channel, _ = Channel.objects.get_or_create(
+        workspace=workspace,
+        name=ch_name,
+        defaults={"kind": Channel.KIND_DM if is_dm else Channel.KIND_GROUP},
+    )
     msg = Message.objects.create(
         workspace=workspace,
         channel=channel,
@@ -410,8 +423,18 @@ def api_messages(request, slug=None):
         metadata=metadata,
     )
 
+    # Spec v3 §3.3 — DMs fan out via channel_<ws>_<name> only, never
+    # via the workspace group (which dashboards join without per-channel
+    # filtering). Mirror AgentConsumer.receive_json's DM routing so the
+    # REST path and WS path deliver DMs identically.
     layer = get_channel_layer()
-    group = f"workspace_{workspace.id}"
+    kind = "dm" if is_dm else "group"
+    if is_dm:
+        from hub.consumers import _sanitize_group
+
+        group = _sanitize_group(f"channel_{workspace.id}_{ch_name}")
+    else:
+        group = f"workspace_{workspace.id}"
     async_to_sync(layer.group_send)(
         group,
         {
@@ -420,6 +443,7 @@ def api_messages(request, slug=None):
             "sender": request.user.username,
             "sender_type": "human",
             "channel": ch_name,
+            "kind": kind,
             "text": text,
             "ts": msg.ts.isoformat(),
             "metadata": metadata,
@@ -2406,6 +2430,105 @@ def _dm_canonical_name(principal_keys):
     is naturally idempotent.
     """
     return "dm:" + "|".join(sorted(principal_keys))
+
+
+def _ensure_dm_channel(workspace, channel_name):
+    """Idempotently ensure a ``dm:<principal>|<principal>...`` channel exists.
+
+    Used by the message-post path so that agent↔agent and human↔agent DMs
+    "just work" on first send — no pre-flight ``POST /api/dms/`` required.
+
+    Parses the canonical ``dm:<type>:<identity>|...`` channel name,
+    resolves each principal to a :class:`WorkspaceMember` (creating the
+    synthetic ``agent-<name>`` Django user + membership for agent
+    principals that have never been seen before, mirroring
+    ``hub/views/auth.py``), then gets-or-creates the Channel row with
+    ``kind=KIND_DM`` and one ``DMParticipant`` per principal with
+    read-write permission.
+
+    Returns the Channel on success, ``None`` if the name cannot be
+    parsed. All database writes happen inside a single transaction so
+    partial state is impossible on failure.
+    """
+    from django.contrib.auth.models import User
+    from django.db import transaction
+
+    if not channel_name or not channel_name.startswith("dm:"):
+        return None
+
+    raw = channel_name[len("dm:") :]
+    if not raw:
+        return None
+    parts = [p for p in raw.split("|") if p]
+    if len(parts) < 2:
+        return None
+
+    # Parse into (principal_type, identity, username) triples and reject
+    # anything that doesn't fit the <type>:<identity> grammar.
+    parsed = []
+    for p in parts:
+        if ":" not in p:
+            return None
+        kind, _, identity = p.partition(":")
+        identity = identity.strip()
+        if not identity:
+            return None
+        if kind == "agent":
+            parsed.append(
+                (DMParticipant.PRINCIPAL_AGENT, identity, f"agent-{identity}")
+            )
+        elif kind == "human":
+            parsed.append((DMParticipant.PRINCIPAL_HUMAN, identity, identity))
+        else:
+            return None
+
+    canonical = _dm_canonical_name([f"{t}:{ident}" for (t, ident, _) in parsed])
+    if canonical != channel_name:
+        # Name is non-canonical (unsorted or duplicate). Bail rather
+        # than silently creating a second row under the wrong name; the
+        # caller is expected to always pass the canonical form.
+        return None
+
+    with transaction.atomic():
+        channel = Channel.objects.filter(workspace=workspace, name=canonical).first()
+        if channel is None:
+            channel = Channel(workspace=workspace, name=canonical, kind=Channel.KIND_DM)
+            channel.full_clean()
+            channel.save()
+        elif channel.kind != Channel.KIND_DM:
+            # Defensive: a legacy row created by the pre-fix code path
+            # may exist with kind="group". Upgrade it in place so ACL
+            # lookups start treating it as a DM.
+            channel.kind = Channel.KIND_DM
+            channel.save(update_fields=["kind"])
+
+        for principal_type, identity, username in parsed:
+            user, _ = User.objects.get_or_create(
+                username=username,
+                defaults={
+                    "email": (
+                        f"{username}@agents.orochi.local"
+                        if principal_type == DMParticipant.PRINCIPAL_AGENT
+                        else ""
+                    ),
+                    "is_active": True,
+                },
+            )
+            member, _ = WorkspaceMember.objects.get_or_create(
+                user=user,
+                workspace=workspace,
+                defaults={"role": "member"},
+            )
+            DMParticipant.objects.get_or_create(
+                channel=channel,
+                member=member,
+                defaults={
+                    "principal_type": principal_type,
+                    "identity_name": identity,
+                },
+            )
+
+    return channel
 
 
 def _principal_key_for_member(member):

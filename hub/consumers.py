@@ -639,14 +639,28 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 or ""
             )
 
+            # Lazy-create DM channel + participants so first-time DMs
+            # work from the WS path too — check_write_allowed() denies
+            # writes to dm: channels that have no Channel row yet, and
+            # the sending agent must be recorded as a participant for
+            # its own write to be allowed. Mirrors the REST path in
+            # hub/views/api.py::api_messages.
+            from asgiref.sync import sync_to_async as _sta
+
+            if ch_name.startswith("dm:"):
+                from hub.views.api import _ensure_dm_channel
+
+                await _sta(_ensure_dm_channel)(
+                    await _sta(Workspace.objects.get)(id=self.workspace_id),
+                    ch_name,
+                )
+
             # Channel ACL enforcement — check before persisting or broadcasting.
             # check_write_allowed is a sync call (file-cached, sub-ms) so safe to
             # call directly in the async consumer.
             # check_write_allowed may touch the DB for DM channels, so
             # route through sync_to_async. For non-DM channels it's a
             # cached yaml lookup (sub-ms).
-            from asgiref.sync import sync_to_async as _sta
-
             _allowed = await _sta(check_write_allowed)(
                 self.agent_name, ch_name, self.workspace_id
             )
@@ -875,8 +889,17 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
     def _save_message(self, channel_name, sender, content_text, metadata=None):
         try:
             workspace = Workspace.objects.get(id=self.workspace_id)
+            norm_name = normalize_channel_name(channel_name)
             channel, _ = Channel.objects.get_or_create(
-                workspace=workspace, name=normalize_channel_name(channel_name)
+                workspace=workspace,
+                name=norm_name,
+                defaults={
+                    "kind": (
+                        Channel.KIND_DM
+                        if norm_name.startswith("dm:")
+                        else Channel.KIND_GROUP
+                    )
+                },
             )
             msg = Message.objects.create(
                 workspace=workspace,
@@ -1005,6 +1028,20 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             metadata = dict(payload.get("metadata", {}) or {})
             if "attachments" in payload and "attachments" not in metadata:
                 metadata["attachments"] = payload.get("attachments") or []
+
+            # Lazy-create DM channel + participants on first send from
+            # the dashboard WS path so human↔agent DMs work without a
+            # pre-flight POST /api/dms/. Mirrors the AgentConsumer and
+            # REST api_messages paths.
+            if ch_name.startswith("dm:"):
+                from asgiref.sync import sync_to_async as _sta
+
+                from hub.views.api import _ensure_dm_channel
+
+                await _sta(_ensure_dm_channel)(
+                    await _sta(Workspace.objects.get)(id=self.workspace_id),
+                    ch_name,
+                )
 
             msg = await self._save_message(
                 channel_name=ch_name,
@@ -1362,8 +1399,17 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
     def _save_message(self, channel_name, sender, content_text, metadata=None):
         try:
             workspace = Workspace.objects.get(id=self.workspace_id)
+            norm_name = normalize_channel_name(channel_name)
             channel, _ = Channel.objects.get_or_create(
-                workspace=workspace, name=normalize_channel_name(channel_name)
+                workspace=workspace,
+                name=norm_name,
+                defaults={
+                    "kind": (
+                        Channel.KIND_DM
+                        if norm_name.startswith("dm:")
+                        else Channel.KIND_GROUP
+                    )
+                },
             )
             msg = Message.objects.create(
                 workspace=workspace,
