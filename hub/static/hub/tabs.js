@@ -70,6 +70,10 @@ function _activateTab(tab) {
     todoView.style.display = "block";
     todoView.style.flex = "1";
     fetchTodoList();
+    /* Viz is always rendered at the top of the TODO tab (todo#82).
+     * Re-activate it on tab re-entry so the poll timer restarts and a
+     * cached chart paints instantly from memory. */
+    if (typeof renderVizTab === "function") renderVizTab();
   } else if (tab === "agents-tab") {
     agentsTabView.style.display = "block";
     agentsTabView.style.flex = "1";

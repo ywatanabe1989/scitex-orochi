@@ -106,6 +106,56 @@
   stroke: #1f1f1f;
   stroke-width: 1;
 }
+/* Skeleton loader — painted immediately when the TODO tab mounts so the
+ * viz region has visible structure before /api/todo/stats/ returns
+ * (todo#82). Replaced in-place by the real chart once data arrives. */
+.viz-skeleton .viz-skel-chart {
+  width: 100%;
+  height: 260px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #161616 100%);
+  background-size: 200% 100%;
+  animation: viz-shimmer 1.4s ease-in-out infinite;
+}
+.viz-skeleton .viz-skel-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+.viz-skeleton .viz-skel-pill {
+  width: 120px;
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #161616 100%);
+  background-size: 200% 100%;
+  animation: viz-shimmer 1.4s ease-in-out infinite;
+}
+.viz-skeleton .viz-skel-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 18px;
+  margin-top: 14px;
+}
+.viz-skeleton .viz-skel-kpi {
+  height: 32px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #161616 0%, #1f1f1f 50%, #161616 100%);
+  background-size: 200% 100%;
+  animation: viz-shimmer 1.4s ease-in-out infinite;
+}
+.viz-skeleton .viz-skel-note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #555;
+}
+@keyframes viz-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
 .todo-grid {
   display: flex;
   flex-direction: column;
@@ -204,38 +254,8 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-/* [Viz | List] segmented switch at the leftmost position of the
- * TODO header. Mirrors .activity-view-switch on the Agents tab so
- * the visual language stays consistent. */
-.todo-view-switch {
-  display: inline-flex;
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-right: 8px;
-}
-.todo-view-switch-btn {
-  background: #0e0e0e;
-  color: #888;
-  border: none;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-family: inherit;
-  cursor: pointer;
-  border-right: 1px solid #2a2a2a;
-  letter-spacing: 0.3px;
-}
-.todo-view-switch-btn:last-child {
-  border-right: none;
-}
-.todo-view-switch-btn:hover {
-  background: #151515;
-  color: #ccc;
-}
-.todo-view-switch-btn.active {
-  background: #0f2a28;
-  color: #4ecdc4;
-}
+/* Viz/List segmented switch was removed in todo#82 — viz now always
+ * renders at the top of the TODO tab, list below. */
 .todo-state-btn {
   background: transparent;
   color: #888;

@@ -611,9 +611,9 @@ class TrackedRepo(models.Model):
     Releases view.
 
     Repos are per-workspace so each team can curate its own release feed.
-    The pair ``(owner, repo)`` is unique within a workspace. Ordering
-    preserves insertion order so the first-added repo is the default
-    selection (was previously ``scitex-orochi`` hard-coded in the JS).
+    The pair ``(owner, repo)`` is unique within a workspace. ``order`` is
+    the manual sort position managed by the drag-and-drop UI (todo#91);
+    ties fall back to insertion order via ``id``.
     """
 
     workspace = models.ForeignKey(
@@ -622,6 +622,7 @@ class TrackedRepo(models.Model):
     owner = models.CharField(max_length=100)
     repo = models.CharField(max_length=100)
     label = models.CharField(max_length=100, blank=True, default="")
+    order = models.IntegerField(default=0, db_index=True)
     added_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -633,7 +634,7 @@ class TrackedRepo(models.Model):
 
     class Meta:
         unique_together = ("workspace", "owner", "repo")
-        ordering = ["created_at", "id"]
+        ordering = ["order", "id"]
 
     def __str__(self):
         return f"{self.owner}/{self.repo}@{self.workspace.name}"

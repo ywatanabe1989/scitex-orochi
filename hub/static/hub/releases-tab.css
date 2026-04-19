@@ -22,6 +22,21 @@
   display: inline-flex;
   align-items: stretch;
   position: relative;
+  cursor: grab;
+}
+.releases-subtab-wrap.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+/* Drop indicators: a 2px vertical bar on the appropriate edge of the
+ * wrapper so the user sees exactly where the dragged tab will land
+ * (todo#91). Using box-shadow instead of a border keeps the hit-test
+ * geometry stable during the drag. */
+.releases-subtab-wrap.drag-over-before {
+  box-shadow: inset 2px 0 0 0 #4ecdc4;
+}
+.releases-subtab-wrap.drag-over-after {
+  box-shadow: inset -2px 0 0 0 #4ecdc4;
 }
 .releases-subtab-btn {
   background: none;

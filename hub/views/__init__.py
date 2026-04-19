@@ -67,6 +67,7 @@ from hub.views.telegram import telegram_webhook  # noqa: F401
 from hub.views.tracked_repos import (  # noqa: F401
     api_tracked_repo_detail,
     api_tracked_repos,
+    api_tracked_repos_reorder,
 )
 from hub.views.upload import (  # noqa: F401
     api_media_by_hash,

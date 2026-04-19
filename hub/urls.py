@@ -144,6 +144,13 @@ urlpatterns = [
         views.api_tracked_repos,
         name="api-tracked-repos",
     ),
+    # Drag-and-drop reorder (todo#91) — registered before the generic
+    # <int:repo_id>/ detail route so "reorder" isn't parsed as an ID.
+    path(
+        "api/tracked-repos/reorder/",
+        views.api_tracked_repos_reorder,
+        name="api-tracked-repos-reorder",
+    ),
     path(
         "api/tracked-repos/<int:repo_id>/",
         views.api_tracked_repo_detail,

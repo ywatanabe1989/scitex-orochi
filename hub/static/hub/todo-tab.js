@@ -277,66 +277,18 @@ function _updateTodoBtnCounts(issues) {
   });
 }
 
-/* Viz lives inside the TODO tab as a segmented [Viz | List] switch at
- * the leftmost position of the state-filter row. Clicking "Viz" swaps
- * the todo-grid for viz-content (the state-filter pills stay visible
- * but don't apply to the chart — they're just ignored). Selection is
- * persisted in localStorage["orochi.todoView"] (values: "list" | "viz",
- * default: "list"). The earlier attempt at a top-level Viz tab was
- * reverted at ywatanabe's request (msg 2026-04-18 15:58). */
-var _TODO_VIEW_KEY = "orochi.todoView";
-var _todoVizOn = false;
-
-function _loadTodoView() {
-  try {
-    var v = localStorage.getItem(_TODO_VIEW_KEY);
-    _todoVizOn = v === "viz";
-  } catch (e) {
-    _todoVizOn = false;
-  }
-}
-
-function _saveTodoView() {
-  try {
-    localStorage.setItem(_TODO_VIEW_KEY, _todoVizOn ? "viz" : "list");
-  } catch (e) {}
-}
-
-function _applyTodoVizMode() {
-  var grid = document.getElementById("todo-grid");
-  var viz = document.getElementById("viz-content");
-  var switchBtns = document.querySelectorAll(".todo-view-switch-btn");
-  if (_todoVizOn) {
-    if (grid) grid.classList.add("todo-viz-hidden");
-    if (viz) viz.classList.remove("todo-viz-hidden");
-    if (typeof renderVizTab === "function") renderVizTab();
-  } else {
-    if (grid) grid.classList.remove("todo-viz-hidden");
-    if (viz) viz.classList.add("todo-viz-hidden");
-    if (typeof stopVizTab === "function") stopVizTab();
-  }
-  switchBtns.forEach(function (btn) {
-    var view = btn.getAttribute("data-view");
-    var isActive =
-      (view === "viz" && _todoVizOn) || (view === "list" && !_todoVizOn);
-    btn.classList.toggle("active", isActive);
-  });
-}
+/* Viz lives inside the TODO tab and renders directly under the tab
+ * header row — always visible at the top, with the grouped list below.
+ * The previous segmented [Viz | List] toggle was removed per ywatanabe
+ * (todo#82, 2026-04-19): viz should render "under the tab" and load
+ * async so both are available without a mode switch. Skeleton paints
+ * immediately; the SVG replaces it once the /api/todo/stats/ round-trip
+ * completes (see viz-tab.js). */
 
 document.addEventListener("DOMContentLoaded", function () {
-  _loadTodoView();
-  var switchBtns = document.querySelectorAll(".todo-view-switch-btn");
-  switchBtns.forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      var view = btn.getAttribute("data-view");
-      var next = view === "viz";
-      if (next === _todoVizOn) return;
-      _todoVizOn = next;
-      _saveTodoView();
-      _applyTodoVizMode();
-    });
-  });
-  _applyTodoVizMode();
+  /* Viz is always visible — paint a skeleton right away so the tab
+   * shell renders fast even before the stats round-trip finishes. */
+  if (typeof renderVizTab === "function") renderVizTab();
   document.querySelectorAll(".todo-state-btn").forEach(function (btn) {
     btn.addEventListener("click", function (e) {
       var g = btn.getAttribute("data-group");

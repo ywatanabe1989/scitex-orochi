@@ -117,6 +117,22 @@ urlpatterns = [
         views.api_repo_changelog,
         name="api-repo-changelog",
     ),
+    # Tracked repos CRUD (todo#90) + reorder (todo#91)
+    path(
+        "api/tracked-repos/",
+        views.api_tracked_repos,
+        name="api-tracked-repos",
+    ),
+    path(
+        "api/tracked-repos/reorder/",
+        views.api_tracked_repos_reorder,
+        name="api-tracked-repos-reorder",
+    ),
+    path(
+        "api/tracked-repos/<int:repo_id>/",
+        views.api_tracked_repo_detail,
+        name="api-tracked-repo-detail",
+    ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
     path("api/todo/stats/", _todo_stats_view.api_todo_stats, name="api-todo-stats"),
