@@ -5,6 +5,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
 def _dynamic_version():
     """Compute version from git commit count (ywatanabe msg#12144).
 
@@ -20,20 +21,27 @@ def _dynamic_version():
     if env_ver:
         return env_ver
     import subprocess
+
     try:
-        count = subprocess.check_output(
-            ["git", "rev-list", "--count", "HEAD"],
-            cwd=str(BASE_DIR),
-            stderr=subprocess.DEVNULL,
-        ).strip().decode()
+        count = (
+            subprocess.check_output(
+                ["git", "rev-list", "--count", "HEAD"],
+                cwd=str(BASE_DIR),
+                stderr=subprocess.DEVNULL,
+            )
+            .strip()
+            .decode()
+        )
         return f"0.12.{count}"
     except Exception:
         pass
     try:
         from importlib.metadata import version as _pkg_version
+
         return _pkg_version("scitex-orochi")
     except Exception:
-        return "0.12.0"
+        return "0.13.0"
+
 
 OROCHI_VERSION = _dynamic_version()
 
@@ -266,8 +274,8 @@ SOCIALACCOUNT_PROVIDERS = {
 # MB; the per-route MAX_UPLOAD_SIZE in hub/views/upload.py enforces the
 # canonical limit.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024     # 5 MB stream-to-disk threshold
-DATA_UPLOAD_MAX_NUMBER_FIELDS = None              # disable form-field count cap
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB stream-to-disk threshold
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None  # disable form-field count cap
 
 # ── Web Push (VAPID) — todo#263 ───────────────────────────────────────
 # Generate a keypair with:
@@ -280,8 +288,8 @@ SCITEX_OROCHI_VAPID_SUBJECT = os.environ.get(
 )
 if not SCITEX_OROCHI_VAPID_PUBLIC or not SCITEX_OROCHI_VAPID_PRIVATE:
     import logging as _logging
+
     _logging.getLogger("orochi.push").warning(
         "VAPID keys not configured — web push notifications disabled. "
         "Set SCITEX_OROCHI_VAPID_PUBLIC and SCITEX_OROCHI_VAPID_PRIVATE."
     )
-
