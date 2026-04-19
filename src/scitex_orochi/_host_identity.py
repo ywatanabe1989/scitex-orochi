@@ -1,12 +1,13 @@
 """Host-identity resolver: decide local vs remote execution by name.
 
 Each machine declares the names that mean "me" in
-``~/.scitex/orochi/host-identity.yaml``. Code that decides whether to run
-a command locally or via SSH consults :func:`is_local`.
+``~/.scitex/host-identity.yaml`` (shared format with scitex-agent-container —
+both packages read the same file independently). Code that decides whether
+to run a command locally or via SSH consults :func:`is_local`.
 
 Example file::
 
-    # ~/.scitex/orochi/host-identity.yaml
+    # ~/.scitex/host-identity.yaml
     aliases:
       - mba
       - Yusukes-MacBook-Air
@@ -28,7 +29,7 @@ from typing import Iterable
 
 import yaml
 
-HOST_IDENTITY_PATH = Path.home() / ".scitex" / "orochi" / "host-identity.yaml"
+HOST_IDENTITY_PATH = Path.home() / ".scitex" / "host-identity.yaml"
 
 
 def _default_aliases() -> set[str]:
