@@ -2604,12 +2604,50 @@ function _renderActivityTopology(visible, grid) {
     });
   });
 
+  /* Human → subscribed-channel edges. We only draw a dashed line from
+   * the human node to channels the signed-in user is actually
+   * subscribed to (sidebar signal: _channelPrefs keys that are NOT
+   * DM pseudo-channels and NOT hidden). Intentionally excludes
+   * agents — humans and agents must not appear directly connected
+   * (ywatanabe 2026-04-19). Previous fan-out to *every* channel was
+   * removed in b313ae7; this restores only the subscribed subset. */
+  if (humanName && agentPos[humanName]) {
+    var hp = agentPos[humanName];
+    var prefsMap =
+      (typeof window !== "undefined" && window._channelPrefs) ||
+      (typeof _channelPrefs !== "undefined" ? _channelPrefs : {}) ||
+      {};
+    Object.keys(prefsMap).forEach(function (c) {
+      if (!c || c.indexOf("dm:") === 0) return;
+      var pref = prefsMap[c] || {};
+      if (pref.is_hidden) return;
+      if (!chSet[c]) return; /* channel not on current canvas */
+      var cp = chPos[c];
+      if (!cp) return;
+      edgesSvg +=
+        '<line class="topo-edge topo-edge-human" data-agent="' +
+        escapeHtml(humanName) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '" x1="' +
+        hp.x.toFixed(1) +
+        '" y1="' +
+        hp.y.toFixed(1) +
+        '" x2="' +
+        cp.x.toFixed(1) +
+        '" y2="' +
+        cp.y.toFixed(1) +
+        '" stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1"' +
+        ' stroke-dasharray="3 4"/>';
+    });
+  }
+
   /* DM edges intentionally NOT drawn on the canvas — per ywatanabe
    * 2026-04-19 "humans and agents must not be connected on topology".
-   * Human↔channel dashed lines remain; all DM edges (human↔agent,
-   * agent↔agent) are gone from the canvas. The DM packet animation
-   * still fires via _topoPulseEdge using _topoLastPositions, so
-   * messages visibly flow from sender to recipient without a
+   * Human↔subscribed-channel dashed lines are drawn above; all DM edges
+   * (human↔agent, agent↔agent) are gone from the canvas. The DM packet
+   * animation still fires via _topoPulseEdge using _topoLastPositions,
+   * so messages visibly flow from sender to recipient without a
    * pre-drawn edge. */
 
   /* Per-channel subscriber counts across the visible agents. Used to
