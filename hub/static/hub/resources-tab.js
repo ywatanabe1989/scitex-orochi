@@ -330,6 +330,12 @@ function renderResources() {
           d.slurm.total_jobs +
           " jobs</span>";
       }
+      /* Entity-consistency format (TODO.md "Entity Consistency"):
+       * machine: [icon] [star] [<host-label>]. Icon is a compact
+       * server glyph; star is a reserved placeholder slot (machines
+       * aren't pinnable yet but the slot keeps the column aligned
+       * with sidebar channel rows). */
+      var mStarred = !!(d && d._starred);
       return (
         '<div class="res-card res-card-compact" data-machine="' +
         escapeHtml(k) +
@@ -340,6 +346,16 @@ function renderResources() {
         '<span class="res-conn res-conn-' +
         (healthy ? "ok" : "stale") +
         '"></span>' +
+        '<span class="res-machine-icon" aria-hidden="true">\uD83D\uDDA5\uFE0F</span>' +
+        '<span class="res-star ' +
+        (mStarred ? "res-star-on" : "res-star-off") +
+        '" data-machine="' +
+        escapeHtml(k) +
+        '" title="' +
+        (mStarred ? "Unstar machine" : "Star machine (float to top)") +
+        '">' +
+        (mStarred ? "\u2605" : "\u2606") +
+        "</span>" +
         '<span class="res-host-name" style="color:' +
         color +
         '">' +

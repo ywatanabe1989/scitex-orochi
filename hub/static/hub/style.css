@@ -2294,6 +2294,41 @@ a.chat-link:hover {
 .res-card.res-card-compact .res-conn-stale {
   background: #ef4444;
 }
+/* Entity-consistency placeholders on the sidebar machine row
+ * (TODO.md "Entity Consistency"): fixed-width icon + star slots so
+ * host-names line up in a column, matching the channel row pattern. */
+.res-card.res-card-compact .res-machine-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.7;
+}
+.res-card.res-card-compact .res-star {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+.res-card.res-card-compact .res-star-off {
+  opacity: 0.2;
+}
+.res-card.res-card-compact:hover .res-star-off {
+  opacity: 0.55;
+}
+.res-card.res-card-compact .res-star-on {
+  opacity: 1;
+  color: #fbbf24;
+}
 .res-card.res-card-compact .res-host-name {
   flex: 0 0 auto;
   font-weight: 600;
