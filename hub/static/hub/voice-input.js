@@ -176,11 +176,21 @@
   }
 
   function _toggleVoice() {
-    /* Determine target textarea: prefer the currently-focused textarea if it
-     * opts in via [data-voice-input] or lives inside a known composer
-     * (thread panel, canvas compose popup). Falls back to #msg-input.
-     * Order matters: check opt-in attribute first so any future composer
-     * can participate without touching this function. */
+    /* Determine target textarea:
+     *   1. Currently-focused textarea if it opts in via [data-voice-input]
+     *      or lives inside a known composer (thread panel, canvas compose,
+     *      canvas topology compose modal).
+     *   2. If an open canvas compose popup exists, its textarea — even if
+     *      focus has moved to the mic button or another tab widget.
+     *      Prevents the main Chat #msg-input from stealing dictation when
+     *      the user is actively composing on the Agents Viz canvas.
+     *   3. #msg-input only when the Chat tab is actually active. On other
+     *      tabs (Agents/Viz, TODO, Machines, Files, Releases, Terminal,
+     *      Settings) a blind fall-through would dictate into an invisible
+     *      composer the user can't see — bail instead. ywatanabe
+     *      2026-04-19: "the main chat's input area is recognized as target
+     *      wrongly ... it may need conditional when it is in the Agents
+     *      tab Viz pane". */
     var focused = document.activeElement;
     var input = null;
     if (focused && focused.tagName === "TEXTAREA") {
@@ -194,7 +204,41 @@
         input = focused;
       }
     }
-    if (!input) input = document.getElementById("msg-input");
+    if (!input) {
+      var canvasCompose = document.getElementById("topo-channel-compose");
+      if (canvasCompose) {
+        var composeTa = canvasCompose.querySelector(
+          "textarea.tcc-input, textarea[data-voice-input]",
+        );
+        if (composeTa) {
+          input = composeTa;
+          try {
+            composeTa.focus();
+          } catch (_ignored) {}
+        }
+      }
+    }
+    if (!input) {
+      /* Only target the main Chat composer when the Chat tab is
+       * actually active — otherwise the user would dictate into an
+       * off-screen textarea. tabs.js exposes `window.activeTab`. */
+      var chatActive = true;
+      try {
+        if (typeof window.activeTab === "string") {
+          chatActive = window.activeTab === "chat";
+        }
+      } catch (_) {
+        chatActive = true; /* Fail open — preserve legacy behavior. */
+      }
+      if (chatActive) {
+        input = document.getElementById("msg-input");
+      }
+    }
+    if (!input) {
+      /* Nothing to dictate into. Bail before starting recognition so
+       * we don't leak a microphone session into the void. */
+      return;
+    }
 
     if (isListening) {
       _userStopped = true;
