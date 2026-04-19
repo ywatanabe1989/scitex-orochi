@@ -2604,62 +2604,13 @@ function _renderActivityTopology(visible, grid) {
     });
   });
 
-  /* DM edges — a visible dashed gold line directly connecting each pair
-   * (or tuple) of DM principals. Source of truth is window._channelPrefs
-   * (same map that drives the sidebar channel list). This replaces the
-   * old virtual-midpoint packet trick: the DM edge now exists as a real
-   * <line> in the DOM, and _topoPulseEdge fires a single-leg packet
-   * along it. ywatanabe 2026-04-19: "connect user and target with a
-   * visible LINE and propagate packet along it — no virtual midpoint,
-   * no tricks". Edges where either principal isn't on the graph (agent
-   * offline/hidden, or human not present) are skipped silently. */
-  var _dmPrefs = window._channelPrefs || {};
-  Object.keys(_dmPrefs).forEach(function (dmCh) {
-    if (!dmCh || dmCh.indexOf("dm:") !== 0) return;
-    if ((_dmPrefs[dmCh] || {}).is_hidden) return;
-    if (_topoHidden.channels[dmCh]) return;
-    /* Parse principals — same logic as _topoPulseEdge. */
-    var principals = [];
-    if (dmCh.indexOf("dm:group:") === 0) {
-      principals = dmCh.slice("dm:group:".length).split(",");
-    } else {
-      dmCh
-        .slice("dm:".length)
-        .split("|")
-        .forEach(function (part) {
-          if (!part) return;
-          if (part.indexOf("agent:") === 0) principals.push(part.slice(6));
-          else if (part.indexOf("human:") === 0) principals.push(part.slice(6));
-          else principals.push(part);
-        });
-    }
-    /* Draw an edge between every unordered pair of principals that
-     * are both present on the graph. For 2-party DMs this is the one
-     * line user↔agent. For group DMs it forms a small clique. */
-    for (var di = 0; di < principals.length; di++) {
-      for (var dj = di + 1; dj < principals.length; dj++) {
-        var pa = agentPos[principals[di]];
-        var pb = agentPos[principals[dj]];
-        if (!pa || !pb) continue;
-        edgesSvg +=
-          '<line class="topo-edge topo-edge-dm" data-dm-channel="' +
-          escapeHtml(dmCh) +
-          '" data-dm-a="' +
-          escapeHtml(principals[di]) +
-          '" data-dm-b="' +
-          escapeHtml(principals[dj]) +
-          '" x1="' +
-          pa.x.toFixed(1) +
-          '" y1="' +
-          pa.y.toFixed(1) +
-          '" x2="' +
-          pb.x.toFixed(1) +
-          '" y2="' +
-          pb.y.toFixed(1) +
-          '"/>';
-      }
-    }
-  });
+  /* DM edges intentionally NOT drawn on the canvas — per ywatanabe
+   * 2026-04-19 "humans and agents must not be connected on topology".
+   * Human↔channel dashed lines remain; all DM edges (human↔agent,
+   * agent↔agent) are gone from the canvas. The DM packet animation
+   * still fires via _topoPulseEdge using _topoLastPositions, so
+   * messages visibly flow from sender to recipient without a
+   * pre-drawn edge. */
 
   /* Per-channel subscriber counts across the visible agents. Used to
    * scale each channel diamond — "based on the number of agents, the
