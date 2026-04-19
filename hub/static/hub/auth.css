@@ -14,6 +14,18 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Short viewport (e.g. mobile landscape 390h): stop vertical-centering so
+   the logo/title don't clip above viewport when card > winHeight. */
+@media (max-height: 600px) {
+  body {
+    align-items: flex-start;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
 }
 
 .auth-card {
