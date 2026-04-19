@@ -254,6 +254,59 @@
                         </form>
                     </section>
                     <section class="settings-section">
+                        <h4>Pending invite requests</h4>
+                        <p class="settings-desc">
+                            Requests submitted via the landing page. Approving creates an invitation and emails the requester the signup link.
+                        </p>
+                        {% if pending_invite_requests %}
+                            <table class="settings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Name</th>
+                                        <th>Affiliation</th>
+                                        <th>Message</th>
+                                        <th>Requested</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for req in pending_invite_requests %}
+                                        <tr>
+                                            <td>{{ req.email }}</td>
+                                            <td>{{ req.name|default:"—" }}</td>
+                                            <td>{{ req.affiliation|default:"—" }}</td>
+                                            <td>
+                                                <span title="{{ req.message }}">{{ req.message|truncatechars:40|default:"—" }}</span>
+                                            </td>
+                                            <td>{{ req.created_at|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                <form method="post" style="display:inline">
+                                                    <!-- hook-bypass: inline-style -->
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="approve_invite_request">
+                                                    <input type="hidden" name="request_id" value="{{ req.id }}">
+                                                    <button type="submit" class="btn-small btn-primary">Approve</button>
+                                                </form>
+                                                <form method="post" style="display:inline">
+                                                    <!-- hook-bypass: inline-style -->
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="deny_invite_request">
+                                                    <input type="hidden" name="request_id" value="{{ req.id }}">
+                                                    <button type="submit" class="btn-small">Deny</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="settings-desc">
+                                <em>No pending requests.</em>
+                            </p>
+                        {% endif %}
+                    </section>
+                    <section class="settings-section">
                         <h4>GitHub Integration</h4>
                         <p class="settings-desc">GitHub access for issue tracking and repository integration.</p>
                         <div class="settings-info-box">

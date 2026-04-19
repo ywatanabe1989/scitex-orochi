@@ -3949,7 +3949,7 @@ function _renderActivityTopology(visible, grid) {
           (p.x - r - 12).toFixed(1) +
           '" y="' +
           (p.y - r + 4).toFixed(1) +
-          '" font-size="11" fill="#94a3b8">\uD83D\uDD15</text>'
+          '" font-size="9" fill="#94a3b8">\uD83D\uDD15</text>'
         : "";
       /* Custom channel icon — cascade: image URL → emoji → no glyph.
        * Symmetric to the agent canvas glyph in the same file: URL
@@ -4100,6 +4100,11 @@ function _renderActivityTopology(visible, grid) {
         '" stroke="#0a0a0a" stroke-width="0.5"><title>Liveness: ' +
         escapeHtml(liveness) +
         "</title></circle>";
+      /* Always reserve the star slot so every canvas pill has the same
+       * [icon][WS LED][FN LED][star][name] geometry — starred agents
+       * show ★, others leave the slot blank. Keeps pill widths
+       * consistent across the canvas (ywatanabe 2026-04-20: "cards in
+       * the canvas look different than others"). */
       var pinMark = a.pinned
         ? '<text class="topo-label-pin" x="' +
           (p.x + LED_R + GAP / 2 + 8).toFixed(1) +
@@ -4107,7 +4112,7 @@ function _renderActivityTopology(visible, grid) {
           (p.y + 4).toFixed(1) +
           '" fill="#fbbf24" font-size="13">\u2605</text>'
         : "";
-      var nameX = p.x + LED_R + GAP / 2 + (a.pinned ? 22 : 8);
+      var nameX = p.x + LED_R + GAP / 2 + 22;
       var selCls = _topoSelected[a.name] ? " topo-agent-selected" : "";
       var deadCls = isDead ? " topo-agent-dead" : "";
       /* Button-like badge background so the agent reads as clickable.
@@ -4223,6 +4228,42 @@ function _renderActivityTopology(visible, grid) {
     var hTextW = Math.max(40, hLabel.length * 6.5);
     var hBadgeLeft = hp.x - 18;
     var hBadgeWidth = 18 + 14 + hTextW + 6;
+    /* Human face glyph cascade: UserProfile icon_image (URL) renders
+     * as SVG <image>; icon_emoji renders as <text>; else default 👤.
+     * Uses cachedHumanIcons populated by fetchHumanProfiles in
+     * agent-icons.js. User report 2026-04-20: "I setup my face icon
+     * but it is not shown in the canvas". */
+    var _hi =
+      typeof cachedHumanIcons !== "undefined" && cachedHumanIcons[humanName]
+        ? cachedHumanIcons[humanName]
+        : "";
+    var _hiIsUrl = _hi && (_hi.indexOf("http") === 0 || _hi.indexOf("/") === 0);
+    var humanGlyph;
+    if (_hiIsUrl) {
+      var _imgSize = 16;
+      humanGlyph =
+        '<image class="topo-human-glyph topo-human-glyph-img" href="' +
+        escapeHtml(_hi) +
+        '" x="' +
+        (hp.x - 10 - _imgSize / 2 + 7).toFixed(1) +
+        '" y="' +
+        (hp.y - _imgSize / 2).toFixed(1) +
+        '" width="' +
+        _imgSize +
+        '" height="' +
+        _imgSize +
+        '" preserveAspectRatio="xMidYMid slice"/>';
+    } else {
+      var humanEmoji = _hi || "\uD83D\uDC64";
+      humanGlyph =
+        '<text class="topo-human-glyph" x="' +
+        (hp.x - 10).toFixed(1) +
+        '" y="' +
+        (hp.y + 4).toFixed(1) +
+        '" font-size="13">' +
+        humanEmoji +
+        "</text>";
+    }
     humanSvg =
       '<g class="topo-node topo-agent topo-human" data-agent="' +
       escapeHtml(humanName) +
@@ -4234,11 +4275,7 @@ function _renderActivityTopology(visible, grid) {
       '" width="' +
       hBadgeWidth.toFixed(1) +
       '" height="22" rx="11" ry="11"/>' +
-      '<text class="topo-human-glyph" x="' +
-      (hp.x - 10).toFixed(1) +
-      '" y="' +
-      (hp.y + 4).toFixed(1) +
-      '" font-size="13">\uD83D\uDC64</text>' +
+      humanGlyph +
       '<text class="topo-label topo-label-agent" x="' +
       (hp.x + 6).toFixed(1) +
       '" y="' +

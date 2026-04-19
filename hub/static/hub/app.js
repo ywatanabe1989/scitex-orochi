@@ -474,6 +474,20 @@ function _setChannelPref(ch, patch) {
             : "Hide channel (dim in list)",
         );
       }
+      /* Keep the bell/mute placeholder in sync on the same tick as
+       * star/eye so the whole row feels responsive. User request
+       * 2026-04-20: "from anywhere, buttons must be responsive
+       * (icon change, star/unstar, notification on/off)". */
+      var muteEl = el.querySelector(".ch-mute");
+      if (muteEl) {
+        muteEl.classList.toggle("ch-mute-on", !!pref.is_muted);
+        muteEl.classList.toggle("ch-mute-off", !pref.is_muted);
+        muteEl.textContent = pref.is_muted ? "\uD83D\uDD15" : "\uD83D\uDD14";
+        muteEl.setAttribute(
+          "title",
+          pref.is_muted ? "Unmute notifications" : "Mute notifications",
+        );
+      }
       el.classList.toggle("ch-starred", !!pref.is_starred);
       el.classList.toggle("ch-muted", !!pref.is_muted);
       el.classList.toggle("ch-hidden", !!pref.is_hidden);
@@ -482,6 +496,15 @@ function _setChannelPref(ch, patch) {
     });
   }
   fetchStats();
+  /* Canvas repaint — star/mute/hide flip the channel-node polygon
+   * class (topo-channel-starred/-muted) and the activity pool chip
+   * star/mute glyphs. Clear the topo sticky signature so the next
+   * render actually rebuilds the SVG instead of short-circuiting
+   * on the unchanged agent-data sig. */
+  if (typeof renderActivityTab === "function") {
+    if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
+    renderActivityTab();
+  }
 }
 
 /* Update an agent's display profile (icon_emoji etc) via
@@ -544,7 +567,13 @@ function _setChannelIcon(ch, patch) {
     body: JSON.stringify(Object.assign({ name: normCh }, patch)),
   }).catch(function (_) {});
   if (typeof fetchStats === "function") fetchStats();
-  if (typeof renderActivityTab === "function") renderActivityTab();
+  if (typeof renderActivityTab === "function") {
+    /* Bust the topology sticky-signature so the canvas repaints with
+     * the fresh icon/color instead of skipping the rebuild — signature
+     * doesn't capture icon/color changes. */
+    if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
+    renderActivityTab();
+  }
 }
 
 /* Render the Starred section in the sidebar */
