@@ -247,3 +247,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
+
+/* Expose the asset loader so the Agents List expanded-pane SSH button
+ * (activity-tab.js) can reuse the lazy xterm+fit-addon CDN load without
+ * duplicating that plumbing. TODO.md Web Terminal: "expected to
+ * implement in the Agents List expanded space". */
+window._termLoadAssets = _termLoadAssets;

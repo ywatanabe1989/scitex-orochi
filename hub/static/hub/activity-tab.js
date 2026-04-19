@@ -494,6 +494,17 @@ function _renderActivityAgentDetail(a, grid) {
     'data-act-pane-action="copy" data-agent="' +
     escapeHtml(a.name) +
     '" title="Copy pane text to clipboard">Copy</button>' +
+    /* SSH — swap the read-only scrollback for a live xterm connected
+     * to this agent's host. TODO.md "Web Terminal ... expected to
+     * implement in the Agents List expanded space". */
+    '<button type="button" class="agent-detail-pane-btn" ' +
+    'data-act-pane-action="ssh" data-agent="' +
+    escapeHtml(a.name) +
+    '" data-machine="' +
+    escapeHtml(a.machine || "") +
+    '" title="Open SSH terminal to ' +
+    escapeHtml(a.machine || "this host") +
+    '">SSH</button>' +
     "</span>" +
     "</div>" +
     '<pre class="agent-detail-pane" id="agent-detail-pane-content" data-agent="' +
@@ -766,6 +777,161 @@ function _bindActivityPaneControls(grid, name, pane, paneFull) {
         }
       });
     });
+  /* SSH — swap the read-only scrollback <pre> for a live xterm
+   * connected to this agent's host via /ws/terminal/<host>/. Reuses
+   * the lazy asset loader from terminal-tab.js. TODO.md Web Terminal
+   * "expected to implement in the Agents List expanded space". */
+  grid.querySelectorAll('[data-act-pane-action="ssh"]').forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var machine = btn.getAttribute("data-machine") || "";
+      _activityPaneOpenSsh(grid, name, machine, btn);
+    });
+  });
+}
+
+/* Per-agent terminal singleton — only one SSH session at a time per
+ * expanded pane. Kept in a module-level map so switching agents
+ * disposes the previous session cleanly. */
+var _activityPaneSshState = Object.create(null);
+
+function _activityPaneOpenSsh(grid, name, machine, btn) {
+  var loadAssets = window._termLoadAssets;
+  if (typeof loadAssets !== "function") {
+    alert("Terminal assets not available.");
+    return;
+  }
+  var pre = grid.querySelector("#agent-detail-pane-content");
+  if (!pre) return;
+  /* If this pane already has an SSH session, clicking toggles back to
+   * the scrollback view. */
+  var existing = _activityPaneSshState[name];
+  if (existing && existing.host === (machine || "local")) {
+    _activityPaneCloseSsh(name);
+    if (btn) {
+      btn.classList.remove("agent-detail-pane-btn-on");
+      btn.textContent = "SSH";
+    }
+    return;
+  }
+  loadAssets()
+    .then(function () {
+      /* Replace pre with an xterm container div. Store the original
+       * <pre> markup so a second SSH-click can restore it. */
+      if (!existing) {
+        _activityPaneSshState[name] = {
+          host: machine || "local",
+          ws: null,
+          term: null,
+          fitAddon: null,
+          originalHtml: pre.innerHTML,
+          originalClass: pre.className,
+          originalTag: "pre",
+        };
+      }
+      var container = document.createElement("div");
+      container.className = "agent-detail-ssh-container";
+      container.id = "agent-detail-pane-content";
+      container.setAttribute("data-agent", name);
+      pre.parentNode.replaceChild(container, pre);
+      /* eslint-disable no-undef */
+      var term = new Terminal({
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+        fontSize: 12,
+        theme: { background: "#0d1117", foreground: "#c9d1d9" },
+        cursorBlink: true,
+        scrollback: 2000,
+      });
+      var fit = new FitAddon.FitAddon();
+      /* eslint-enable no-undef */
+      term.loadAddon(fit);
+      term.open(container);
+      setTimeout(function () {
+        try {
+          fit.fit();
+        } catch (_) {}
+      }, 50);
+      var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+      var host = machine || "local";
+      var wsUrl =
+        proto +
+        "//" +
+        window.location.host +
+        "/ws/terminal/" +
+        encodeURIComponent(host) +
+        "/";
+      var ws = new WebSocket(wsUrl);
+      _activityPaneSshState[name].ws = ws;
+      _activityPaneSshState[name].term = term;
+      _activityPaneSshState[name].fitAddon = fit;
+      ws.onopen = function () {
+        try {
+          ws.send(
+            JSON.stringify({
+              type: "resize",
+              cols: term.cols,
+              rows: term.rows,
+            }),
+          );
+        } catch (_) {}
+        term.focus();
+      };
+      ws.onmessage = function (evt) {
+        var frame;
+        try {
+          frame = JSON.parse(evt.data);
+        } catch (_) {
+          return;
+        }
+        if (frame.type === "output") term.write(frame.data || "");
+        else if (frame.type === "status" && frame.state === "closed") {
+          try {
+            ws.close();
+          } catch (_) {}
+        }
+      };
+      term.onData(function (data) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: "input", data: data }));
+        }
+      });
+      term.onResize(function (sz) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(
+            JSON.stringify({ type: "resize", cols: sz.cols, rows: sz.rows }),
+          );
+        }
+      });
+      if (btn) {
+        btn.classList.add("agent-detail-pane-btn-on");
+        btn.textContent = "Close SSH";
+      }
+    })
+    .catch(function (err) {
+      alert("Failed to load terminal: " + (err && err.message));
+    });
+}
+
+function _activityPaneCloseSsh(name) {
+  var s = _activityPaneSshState[name];
+  if (!s) return;
+  try {
+    if (s.ws) s.ws.close();
+  } catch (_) {}
+  try {
+    if (s.term) s.term.dispose();
+  } catch (_) {}
+  /* Restore the <pre> element so the scrollback view returns. */
+  var container = document.getElementById("agent-detail-pane-content");
+  if (container && s.originalHtml != null) {
+    var pre = document.createElement("pre");
+    pre.className = s.originalClass || "agent-detail-pane";
+    pre.id = "agent-detail-pane-content";
+    pre.setAttribute("data-agent", name);
+    pre.innerHTML = s.originalHtml;
+    container.parentNode.replaceChild(pre, container);
+  }
+  delete _activityPaneSshState[name];
 }
 
 function _stopActivityFollow() {

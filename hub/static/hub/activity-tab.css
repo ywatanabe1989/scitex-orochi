@@ -1431,6 +1431,22 @@
 .activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
   filter: drop-shadow(0 0 5px #4ecdc4);
 }
+/* Agent-detail-pane SSH terminal container — replaces the read-only
+ * <pre> scrollback with a live xterm when the user clicks SSH.
+ * Fixed height matches the pane so layout doesn't jump. TODO.md
+ * Web Terminal "expected to implement in the Agents List expanded
+ * space". */
+.agent-detail-ssh-container {
+  height: 320px;
+  background: #0d1117;
+  border-radius: 3px;
+  padding: 4px;
+  overflow: hidden;
+}
+.agent-detail-ssh-container .xterm {
+  height: 100%;
+}
+
 /* Symmetric: hovering an agent highlights the channels it's subscribed
  * to. Same cyan glow as the agent highlight so the two hover flows
  * read as one discoverability feature. User request 2026-04-19. */
