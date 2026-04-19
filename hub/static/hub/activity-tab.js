@@ -46,7 +46,6 @@ async function _fetchActivityDetail(name) {
 
 /* Strip ANSI escape sequences for clean terminal display */
 function _stripAnsi(str) {
-  /* eslint-disable-next-line no-control-regex */
   return str
     .replace(/\x1B\[[0-9;]*[A-Za-z]/g, "")
     .replace(/\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)/g, "")
@@ -1084,6 +1083,26 @@ var _topoViewBoxHistory = []; /* back stack (undo) */
 var _topoViewBoxFuture = []; /* forward stack (redo) */
 var _topoZoomWired = false;
 var _topoLastPositions = { agents: {}, channels: {} };
+/* todo#67 — Time seekbar + play button for packet replay.
+ * _topoSeekEvents: ring buffer of recent pulses {ts, sender, channel, opts}.
+ * Default mode is "live" (seek head glued to latest). Dragging the slider
+ * enters "playback" — live pulses are suppressed so the viewer can step
+ * through history; press Play to auto-advance. Buffer is trimmed to the
+ * last TOPO_SEEK_WINDOW_MS (5 min) to keep memory bounded. */
+var TOPO_SEEK_WINDOW_MS = 5 * 60 * 1000; /* 5 minutes */
+var _topoSeekEvents = [];
+var _topoSeekMode = "live"; /* "live" | "playback" */
+var _topoSeekTime = 0; /* unix-ms playhead, only used in playback */
+var _topoSeekPlaying = false;
+var _topoSeekRafId = null;
+var _topoSeekLastFrameTs = 0;
+var _topoSeekSpeed = 1; /* playback speed multiplier */
+var _topoSeekWired = false;
+var _topoSeekReplayInProgress = false;
+/* Prevent the heartbeat re-render from stomping the slider that the user
+ * is actively dragging — we reconcile slider value from seek state only
+ * when not actively interacting. */
+var _topoSeekInteracting = false;
 /* Landing bubbles — short-lived speech-bubble DOM nodes attached to
  * the destination node when a packet arrives. Multiple arrivals at the
  * same node stack vertically; older bubbles lift up to make room.
@@ -1987,6 +2006,37 @@ function _topoPulseEdge(sender, channel, opts) {
       console.warn("[topo-pulse] bail: no channel", { sender, channel });
     return;
   }
+  /* todo#67 — Record this pulse into the seek buffer BEFORE deciding
+   * whether to live-spawn it. Replays triggered by the seekbar itself
+   * set _topoSeekReplayInProgress so they don't double-record. The
+   * buffer is trimmed to the last TOPO_SEEK_WINDOW_MS. */
+  if (!_topoSeekReplayInProgress) {
+    var _now = Date.now();
+    _topoSeekEvents.push({
+      ts: _now,
+      sender: sender || "",
+      channel: channel,
+      opts: opts
+        ? { isArtifact: !!opts.isArtifact, text: opts.text || "" }
+        : {},
+    });
+    var _cutoff = _now - TOPO_SEEK_WINDOW_MS;
+    while (_topoSeekEvents.length && _topoSeekEvents[0].ts < _cutoff) {
+      _topoSeekEvents.shift();
+    }
+    /* Refresh the seekbar readout so the timestamp label and slider
+     * range stretch to include the new event, but only when parked in
+     * live mode (otherwise we'd tug the user's playhead). */
+    if (_topoSeekMode === "live") {
+      _topoSeekUpdateUI();
+    }
+  }
+  /* While scrubbing / playing back, suppress live pulses so the
+   * historical view stays stable. Replays call through here too but
+   * set _topoSeekReplayInProgress=true to allow the spawn. */
+  if (_topoSeekMode === "playback" && !_topoSeekReplayInProgress) {
+    return;
+  }
   var svg = document.querySelector(".activity-view-topology .topo-svg");
   if (!svg) {
     if (_dbg)
@@ -2137,6 +2187,224 @@ function _topoPulseEdge(sender, channel, opts) {
   });
 }
 window._topoPulseEdge = _topoPulseEdge;
+
+/* ---------- todo#67 — Seekbar + play button (packet replay) ----------
+ *
+ * The topology SVG is live by default. The seekbar at the bottom of
+ * `.topo-wrap` shows the last TOPO_SEEK_WINDOW_MS (5 min) of recorded
+ * pulses. Dragging the slider puts the view into playback mode — live
+ * pulses are suppressed in _topoPulseEdge so the canvas doesn't fight
+ * the scrubbed timeline. Play steps the playhead forward in real time
+ * (or sped up) and replays each event that crosses the head. Hitting
+ * end-of-buffer, or clicking the "live" chip, returns to live mode.
+ *
+ * All listeners are delegated from the grid (the stable parent) because
+ * _renderActivityTopology rewrites the `.topo-wrap` innerHTML on every
+ * heartbeat — per-element bindings would be lost.
+ * ----------------------------------------------------------------- */
+
+function _topoSeekbarHtml() {
+  var mode = _topoSeekMode;
+  var playing = _topoSeekPlaying;
+  var playGlyph = playing ? "❚❚" : "▶";
+  var playTitle = playing ? "Pause" : "Play";
+  var liveCls =
+    "topo-seek-live" + (mode === "live" ? " topo-seek-live-on" : "");
+  /* Slider runs 0..1000 (permill of window). Actual ts is resolved in
+   * _topoSeekUpdateUI using the live buffer start/end. */
+  return (
+    '<div class="topo-seekbar" role="group" aria-label="Timeline scrubber">' +
+    '<button type="button" class="topo-seek-btn topo-seek-play" ' +
+    'data-topo-seek="toggle-play" title="' +
+    playTitle +
+    '">' +
+    playGlyph +
+    "</button>" +
+    '<button type="button" class="' +
+    liveCls +
+    '" data-topo-seek="live" title="Jump to live">LIVE</button>' +
+    '<input type="range" class="topo-seek-range" ' +
+    'min="0" max="1000" step="1" value="1000" ' +
+    'data-topo-seek="range" aria-label="Timeline position"/>' +
+    '<span class="topo-seek-label" data-topo-seek="label">—</span>' +
+    "</div>"
+  );
+}
+
+function _topoSeekBuffer() {
+  /* Returns {start, end} unix-ms bracketing the usable playback window.
+   * Falls back to "now" when empty so the UI has something to render. */
+  var n = _topoSeekEvents.length;
+  var now = Date.now();
+  if (!n) return { start: now - TOPO_SEEK_WINDOW_MS, end: now };
+  return {
+    start: _topoSeekEvents[0].ts,
+    end: Math.max(now, _topoSeekEvents[n - 1].ts),
+  };
+}
+
+function _topoSeekFormatLabel(ts, mode) {
+  if (mode === "live") return "live";
+  var d = new Date(ts);
+  var hh = String(d.getHours()).padStart(2, "0");
+  var mm = String(d.getMinutes()).padStart(2, "0");
+  var ss = String(d.getSeconds()).padStart(2, "0");
+  var deltaSec = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  var ago;
+  if (deltaSec < 60) ago = deltaSec + "s ago";
+  else ago = Math.floor(deltaSec / 60) + "m" + (deltaSec % 60) + "s ago";
+  return hh + ":" + mm + ":" + ss + " (" + ago + ")";
+}
+
+function _topoSeekUpdateUI() {
+  var bar = document.querySelector(".activity-view-topology .topo-seekbar");
+  if (!bar) return;
+  var range = bar.querySelector('[data-topo-seek="range"]');
+  var label = bar.querySelector('[data-topo-seek="label"]');
+  var live = bar.querySelector('[data-topo-seek="live"]');
+  var play =
+    bar.querySelector('[data-topo-seek="play"]') ||
+    bar.querySelector(".topo-seek-play");
+  var w = _topoSeekBuffer();
+  var span = Math.max(1, w.end - w.start);
+  if (_topoSeekMode === "live") {
+    /* Live mode: slider head glued to max (1000); label shows "live". */
+    if (range && !_topoSeekInteracting) range.value = "1000";
+    if (label) label.textContent = _topoSeekFormatLabel(w.end, "live");
+    if (live) live.classList.add("topo-seek-live-on");
+    bar.classList.remove("topo-seek-playback");
+  } else {
+    if (range && !_topoSeekInteracting) {
+      var permill = Math.round(((_topoSeekTime - w.start) / span) * 1000);
+      range.value = String(Math.max(0, Math.min(1000, permill)));
+    }
+    if (label)
+      label.textContent = _topoSeekFormatLabel(_topoSeekTime, "playback");
+    if (live) live.classList.remove("topo-seek-live-on");
+    bar.classList.add("topo-seek-playback");
+  }
+  if (play) {
+    play.textContent = _topoSeekPlaying ? "❚❚" : "▶";
+    play.title = _topoSeekPlaying ? "Pause" : "Play";
+  }
+}
+
+function _topoSeekEnterPlayback(ts) {
+  _topoSeekMode = "playback";
+  _topoSeekTime = ts;
+}
+
+function _topoSeekEnterLive() {
+  _topoSeekMode = "live";
+  _topoSeekStopPlay();
+  _topoSeekUpdateUI();
+}
+
+function _topoSeekReplayOne(ev) {
+  /* Re-invoke _topoPulseEdge for a historical event, with the replay
+   * guard flipped on so it doesn't double-record into the buffer and so
+   * the "suppress during playback" gate lets it through. */
+  _topoSeekReplayInProgress = true;
+  try {
+    _topoPulseEdge(ev.sender, ev.channel, ev.opts);
+  } finally {
+    _topoSeekReplayInProgress = false;
+  }
+}
+
+function _topoSeekStartPlay() {
+  if (_topoSeekPlaying) return;
+  /* If currently in live mode, snap playhead to start-of-buffer so
+   * pressing play from the live view replays the whole window. */
+  if (_topoSeekMode === "live") {
+    var w0 = _topoSeekBuffer();
+    _topoSeekEnterPlayback(w0.start);
+  }
+  _topoSeekPlaying = true;
+  _topoSeekLastFrameTs = 0;
+  function _tick(now) {
+    if (!_topoSeekPlaying) return;
+    if (!_topoSeekLastFrameTs) _topoSeekLastFrameTs = now;
+    var dt = (now - _topoSeekLastFrameTs) * _topoSeekSpeed;
+    _topoSeekLastFrameTs = now;
+    var prev = _topoSeekTime;
+    _topoSeekTime += dt;
+    var w = _topoSeekBuffer();
+    /* Fire every event that crossed the playhead in this frame. */
+    for (var i = 0; i < _topoSeekEvents.length; i++) {
+      var ev = _topoSeekEvents[i];
+      if (ev.ts > prev && ev.ts <= _topoSeekTime) {
+        _topoSeekReplayOne(ev);
+      }
+    }
+    if (_topoSeekTime >= w.end) {
+      /* Reached the live edge — auto-return to live mode. */
+      _topoSeekStopPlay();
+      _topoSeekEnterLive();
+      return;
+    }
+    _topoSeekUpdateUI();
+    _topoSeekRafId = requestAnimationFrame(_tick);
+  }
+  _topoSeekRafId = requestAnimationFrame(_tick);
+  _topoSeekUpdateUI();
+}
+
+function _topoSeekStopPlay() {
+  _topoSeekPlaying = false;
+  if (_topoSeekRafId != null) {
+    cancelAnimationFrame(_topoSeekRafId);
+    _topoSeekRafId = null;
+  }
+  _topoSeekUpdateUI();
+}
+
+function _topoSeekTogglePlay() {
+  if (_topoSeekPlaying) _topoSeekStopPlay();
+  else _topoSeekStartPlay();
+}
+
+function _wireTopoSeekbar(grid) {
+  if (_topoSeekWired || !grid) return;
+  _topoSeekWired = true;
+  /* Delegated click for buttons. */
+  grid.addEventListener("click", function (ev) {
+    var t = ev.target.closest && ev.target.closest("[data-topo-seek]");
+    if (!t) return;
+    if (!grid.contains(t)) return;
+    var act = t.getAttribute("data-topo-seek");
+    if (act === "toggle-play") {
+      _topoSeekTogglePlay();
+    } else if (act === "live") {
+      _topoSeekEnterLive();
+    }
+  });
+  /* Delegated range input — scrub = enter playback, update playhead. */
+  grid.addEventListener("input", function (ev) {
+    var t = ev.target;
+    if (!t || t.getAttribute("data-topo-seek") !== "range") return;
+    _topoSeekInteracting = true;
+    var w = _topoSeekBuffer();
+    var permill = Number(t.value) || 0;
+    var ts = w.start + ((w.end - w.start) * permill) / 1000;
+    /* Dragging to the far right returns to live mode; otherwise playback. */
+    if (permill >= 999) {
+      _topoSeekEnterLive();
+    } else {
+      _topoSeekStopPlay();
+      _topoSeekEnterPlayback(ts);
+    }
+    _topoSeekUpdateUI();
+  });
+  grid.addEventListener("change", function (ev) {
+    var t = ev.target;
+    if (!t || t.getAttribute("data-topo-seek") !== "range") return;
+    _topoSeekInteracting = false;
+  });
+  grid.addEventListener("pointerup", function () {
+    _topoSeekInteracting = false;
+  });
+}
 
 /* Drag-rectangle zoom + shift-drag pan + double-click reset on the
  * topology SVG. State lives in _topoViewBox so heartbeat-driven
@@ -3717,6 +3985,12 @@ function _renderActivityTopology(visible, grid) {
     poolChannelsHtml +
     "</div>" +
     "</div>";
+  /* todo#67 — Time seekbar + play button docked at the bottom of the
+   * topology canvas. Shows the last TOPO_SEEK_WINDOW_MS of pulse events;
+   * drag the slider to enter playback mode, press ▶ to replay forward
+   * from the playhead. All event listeners are attached via delegation
+   * in _wireTopoSeekbar so they survive heartbeat-driven re-renders. */
+  var seekBar = _topoSeekbarHtml();
   grid.innerHTML =
     '<div class="topo-wrap">' +
     hint +
@@ -3724,6 +3998,7 @@ function _renderActivityTopology(visible, grid) {
     pool +
     svg +
     actionBar +
+    seekBar +
     "</div>" +
     detailBox;
 
@@ -3733,6 +4008,8 @@ function _renderActivityTopology(visible, grid) {
    * every heartbeat and per-element listeners would be lost. */
   _wireOverviewGridDelegation(grid);
   _wireTopoZoomPan(grid, W, H);
+  _wireTopoSeekbar(grid);
+  _topoSeekUpdateUI();
   /* todo#79: after a fresh topology render, re-apply the pool-as-filter
    * dim classes so the persisted selection survives heartbeat re-renders
    * (without this, every 2s heartbeat would flash the full graph back
