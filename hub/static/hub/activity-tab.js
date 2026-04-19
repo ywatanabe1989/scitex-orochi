@@ -1368,6 +1368,12 @@ function _topoSaveHidden() {
       }),
     );
   } catch (_e) {}
+  /* If a memory slot is currently "recording", roll the hidden-set
+   * change into its snapshot too — the whole view is what M<slot>
+   * restores. */
+  if (typeof _topoAutoSaveActiveSlot === "function") {
+    _topoAutoSaveActiveSlot();
+  }
 }
 function _topoHiddenSignature() {
   return (
@@ -1642,6 +1648,33 @@ var _topoPoolMemories = (function _loadPoolMem() {
     return {};
   }
 })();
+/* Active memory slot — when non-null, every selection / hidden /
+ * filter change auto-saves into _topoPoolMemories[slot]. Click M1 to
+ * activate; click again to deactivate. User 2026-04-20 spec: "click
+ * M1 -> M1 must be highlighted -> last state of M1 filtering is
+ * saved as M1 automatically. No need to save". */
+var _TOPO_ACTIVE_MEM_KEY = "orochi.topoActiveMemSlot";
+var _topoActiveMemSlot = (function () {
+  try {
+    var v = parseInt(localStorage.getItem(_TOPO_ACTIVE_MEM_KEY) || "", 10);
+    return isFinite(v) && v >= 1 && v <= 5 ? v : null;
+  } catch (_) {
+    return null;
+  }
+})();
+function _topoPersistActiveMemSlot() {
+  try {
+    if (_topoActiveMemSlot == null)
+      localStorage.removeItem(_TOPO_ACTIVE_MEM_KEY);
+    else localStorage.setItem(_TOPO_ACTIVE_MEM_KEY, String(_topoActiveMemSlot));
+  } catch (_) {}
+}
+function _topoAutoSaveActiveSlot() {
+  if (_topoActiveMemSlot != null && typeof _topoPoolMemorySave === "function") {
+    _topoPoolMemorySave(_topoActiveMemSlot);
+  }
+}
+
 function _topoPoolPersistSelection() {
   try {
     localStorage.setItem(
@@ -1654,6 +1687,7 @@ function _topoPoolPersistSelection() {
   } catch (_e) {
     /* quota / private mode — selection still works for the session. */
   }
+  _topoAutoSaveActiveSlot();
 }
 function _topoPoolPersistMemories() {
   try {
@@ -1923,9 +1957,15 @@ function _topoPoolSelectionPaint(root) {
   var memBtns = host.querySelectorAll(".topo-pool-mem-btn[data-mem-slot]");
   for (var m = 0; m < memBtns.length; m++) {
     var slot = memBtns[m].getAttribute("data-mem-slot");
+    var slotN = parseInt(slot, 10);
     memBtns[m].classList.toggle(
       "topo-pool-mem-btn-filled",
       !!_topoPoolMemories[slot],
+    );
+    /* Highlight the active slot so users see which Mn is recording. */
+    memBtns[m].classList.toggle(
+      "topo-pool-mem-btn-active",
+      _topoActiveMemSlot === slotN,
     );
   }
   _topoPoolApplyCanvasFilter(host);
@@ -5780,12 +5820,27 @@ function _wireOverviewGridDelegation(grid) {
           _topoLastSig = "";
           if (typeof renderActivityTab === "function") renderActivityTab();
         } else {
-          /* plain click = recall. Clear the sticky sig so the canvas
-           * actually repaints with the restored filter state — user
-           * 2026-04-20: "memory button not working". Then run a full
-           * renderActivityTab so sidebar filter chips + hidden set +
-           * pool selection all sync on one tick. */
-          _topoPoolMemoryRecall(_slotN);
+          /* Plain click = ACTIVATE slot (toggle). While active the
+           * slot auto-saves every filter/selection change via
+           * _topoAutoSaveActiveSlot. Click same slot again to
+           * deactivate. User 2026-04-20 spec: "click M1 -> M1 must
+           * be highlighted -> last state of M1 filtering is saved as
+           * M1 automatically. No need to save". */
+          if (_topoActiveMemSlot === _slotN) {
+            _topoActiveMemSlot = null;
+          } else {
+            _topoActiveMemSlot = _slotN;
+            /* Recall the slot's saved state if it has contents. */
+            if (_topoPoolMemories[String(_slotN)]) {
+              _topoPoolMemoryRecall(_slotN);
+            } else {
+              /* Empty slot — seed it with the current state so
+               * subsequent changes accumulate into M<slotN> from the
+               * moment of activation. */
+              _topoPoolMemorySave(_slotN);
+            }
+          }
+          _topoPersistActiveMemSlot();
           _topoLastSig = "";
           if (typeof renderActivityTab === "function") renderActivityTab();
           _topoPoolSelectionPaint(grid);

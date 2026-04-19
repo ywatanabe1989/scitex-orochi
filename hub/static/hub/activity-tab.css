@@ -917,6 +917,17 @@
   background: #0f3329;
   font-weight: 700;
 }
+/* Active slot — user is currently "recording" into this Mn; every
+ * filter change auto-saves into it. Brighter cyan ring distinguishes
+ * it from merely "filled" slots. User 2026-04-20: "click M1 -> M1
+ * must be highlighted -> last state of M1 filtering is saved as M1
+ * automatically". */
+.activity-grid.activity-view-topology .topo-pool-mem-btn-active {
+  color: #0a0a0a !important;
+  background: #4ecdc4 !important;
+  border-color: #4ecdc4 !important;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.35);
+}
 .activity-grid.activity-view-topology .topo-pool-mem-btn-filled:hover {
   color: #6ee7b7;
   border-color: #34d399;
