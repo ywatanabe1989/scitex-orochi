@@ -175,6 +175,26 @@ def _load_dm_channel_names(workspace_id, member_id):
 
 
 @database_sync_to_async
+def _resolve_user_member_id(user_id, workspace_id):
+    """Resolve a Django user + workspace to a ``WorkspaceMember.id``.
+
+    Used by :class:`DashboardConsumer` at connect time so the dashboard
+    can subscribe to every DM channel the logged-in user participates
+    in (symmetric with :class:`AgentConsumer`'s connect-time DM
+    auto-subscribe in spec v3 §3.1). Returns ``None`` when there's no
+    matching membership (e.g. superuser viewing a workspace they aren't
+    explicitly a member of) — in that case the dashboard joins no DM
+    groups and must rely on the confidentiality filter.
+    """
+    if user_id is None or workspace_id is None:
+        return None
+    member = WorkspaceMember.objects.filter(
+        user_id=user_id, workspace_id=workspace_id
+    ).first()
+    return member.id if member else None
+
+
+@database_sync_to_async
 def _is_dm_participant_by_member(channel_name, workspace_id, member_id):
     """Check whether ``member_id`` is a participant of the given DM channel."""
     if member_id is None:
@@ -980,6 +1000,29 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_group = f"workspace_{self.workspace_id}"
         await self.channel_layer.group_add(self.workspace_group, self.channel_name)
 
+        # Spec v3 §3.1 — auto-subscribe to every DM channel this user is a
+        # participant of. Symmetric with :class:`AgentConsumer`. Without
+        # this, DMs broadcast to ``channel_<ws>_<dm-name>`` (and skipped
+        # on the workspace group per spec §3.3) never reach the dashboard
+        # WS, so users never see their own DMs animate or arrive —
+        # todo 2026-04-19 "DM not working: functionally, visually".
+        self.workspace_member_id = await _resolve_user_member_id(
+            user_id=getattr(self.user, "id", None),
+            workspace_id=self.workspace_id,
+        )
+        self._dm_channel_names = await _load_dm_channel_names(
+            self.workspace_id, self.workspace_member_id
+        )
+        for _ch_name in self._dm_channel_names:
+            _grp = _sanitize_group(f"channel_{self.workspace_id}_{_ch_name}")
+            await self.channel_layer.group_add(_grp, self.channel_name)
+        log.info(
+            "Dashboard %s auto-subscribed to %d DM channels (member_id=%s)",
+            getattr(self.user, "username", "token-user"),
+            len(self._dm_channel_names),
+            self.workspace_member_id,
+        )
+
         await self.accept()
         log.info(
             "Dashboard user %s connected to workspace %s",
@@ -1005,6 +1048,15 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
+        # Also discard every DM channel group this dashboard joined so
+        # the channel layer's membership doesn't leak references to a
+        # dead consumer (symmetric with AgentConsumer).
+        for _dm in getattr(self, "_dm_channel_names", []) or []:
+            _grp = _sanitize_group(f"channel_{self.workspace_id}_{_dm}")
+            try:
+                await self.channel_layer.group_discard(_grp, self.channel_name)
+            except Exception:
+                pass
 
     async def receive_json(self, content, **kwargs):
         msg_type = content.get("type")
@@ -1042,6 +1094,18 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                     await _sta(Workspace.objects.get)(id=self.workspace_id),
                     ch_name,
                 )
+
+                # Self-subscribe to the DM group so our own echo + any
+                # reply reaches this dashboard. Without this, a brand-new
+                # DM created by this send would not deliver back on the
+                # same WS (the connect-time auto-subscribe only covered
+                # DMs that existed at connect).
+                _dm_grp = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
+                await self.channel_layer.group_add(_dm_grp, self.channel_name)
+                if not hasattr(self, "_dm_channel_names"):
+                    self._dm_channel_names = []
+                if ch_name not in self._dm_channel_names:
+                    self._dm_channel_names.append(ch_name)
 
             msg = await self._save_message(
                 channel_name=ch_name,
@@ -1228,6 +1292,39 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "ts": event.get("ts"),
                 "metadata": event.get("metadata", {}),
             }
+        )
+
+    async def dm_subscribe(self, event):
+        """Handle ``dm.subscribe`` hint from ``_ensure_dm_channel``.
+
+        When a DM channel is lazily created (e.g. agent→human first
+        send while the human's dashboard is already open), the creator
+        broadcasts this event on the workspace group. Every connected
+        dashboard checks whether the current user is a participant; if
+        so, self-joins the ``channel_<ws>_<dm>`` group so subsequent
+        ``chat.message`` events reach this WS. Without this, the first
+        DM from an agent to an already-logged-in user would not arrive
+        until the user reconnected (page reload).
+        """
+        ch_name = event.get("channel", "")
+        participants = event.get("participant_usernames", []) or []
+        username = getattr(getattr(self, "user", None), "username", None)
+        if not ch_name or not username:
+            return
+        if username in (None, "", "dashboard"):
+            return
+        if username not in participants:
+            return
+        grp = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
+        await self.channel_layer.group_add(grp, self.channel_name)
+        if not hasattr(self, "_dm_channel_names"):
+            self._dm_channel_names = []
+        if ch_name not in self._dm_channel_names:
+            self._dm_channel_names.append(ch_name)
+        log.info(
+            "Dashboard %s auto-joined new DM %s via dm.subscribe hint",
+            username,
+            ch_name,
         )
 
     async def agent_presence(self, event):

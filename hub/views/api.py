@@ -2489,12 +2489,14 @@ def _ensure_dm_channel(workspace, channel_name):
         # caller is expected to always pass the canonical form.
         return None
 
+    created_new = False
     with transaction.atomic():
         channel = Channel.objects.filter(workspace=workspace, name=canonical).first()
         if channel is None:
             channel = Channel(workspace=workspace, name=canonical, kind=Channel.KIND_DM)
             channel.full_clean()
             channel.save()
+            created_new = True
         elif channel.kind != Channel.KIND_DM:
             # Defensive: a legacy row created by the pre-fix code path
             # may exist with kind="group". Upgrade it in place so ACL
@@ -2502,6 +2504,7 @@ def _ensure_dm_channel(workspace, channel_name):
             channel.kind = Channel.KIND_DM
             channel.save(update_fields=["kind"])
 
+        participant_usernames = []
         for principal_type, identity, username in parsed:
             user, _ = User.objects.get_or_create(
                 username=username,
@@ -2527,6 +2530,27 @@ def _ensure_dm_channel(workspace, channel_name):
                     "identity_name": identity,
                 },
             )
+            participant_usernames.append(username)
+
+    # Broadcast a subscribe-hint on the workspace group so any already-
+    # connected DashboardConsumer owned by a participant can self-join
+    # the dm:<...> group without reconnecting. Without this, an agent-
+    # initiated new DM to an already-logged-in user would not animate
+    # or arrive on the dashboard until the user refreshed the page.
+    # Best-effort — any failure falls back to the reconnect-refresh path.
+    if created_new:
+        try:
+            layer = get_channel_layer()
+            async_to_sync(layer.group_send)(
+                f"workspace_{workspace.id}",
+                {
+                    "type": "dm.subscribe",
+                    "channel": canonical,
+                    "participant_usernames": participant_usernames,
+                },
+            )
+        except Exception:
+            log.exception("dm.subscribe broadcast failed for %s", canonical)
 
     return channel
 
