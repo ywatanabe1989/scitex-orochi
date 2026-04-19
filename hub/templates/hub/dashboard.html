@@ -8,23 +8,24 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=125">
+    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=130">
     <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=104">
-    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=105">
+    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=106">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=100">
-    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=125">
-    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=103">
+    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=156">
+    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=121">
     <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/search-palette.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'hub/effects.css' %}?v=1">
     <!-- highlight.js — syntax highlighting for code blocks -->
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -60,37 +61,39 @@
                 <div id="filter-suggest" class="filter-suggest"></div>
                 <div id="filter-tags" class="filter-tags"></div>
             </div>
-            <h2 class="collapsible-heading channels-heading blockers-heading"
-                data-section="blockers">
-                <span class="blocker-flag">⚠</span> Blockers
-                <span class="sidebar-count blockers-count" id="sidebar-count-blockers"></span>
-            </h2>
-            <div id="blockers" class="sidebar-section blockers-section">
-                <p class="blockers-empty">No blockers</p>
+            <div class="sidebar-sections">
+                <h2 class="collapsible-heading channels-heading blockers-heading"
+                    data-section="blockers">
+                    <span class="blocker-flag">⚠</span> Blockers
+                    <span class="sidebar-count blockers-count" id="sidebar-count-blockers"></span>
+                </h2>
+                <div id="blockers" class="sidebar-section blockers-section">
+                    <p class="blockers-empty">No blockers</p>
+                </div>
+                <h2 class="collapsible-heading channels-heading" data-section="agents">
+                    Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
+                </h2>
+                <div id="agents" class="sidebar-section">
+                    <p id="no-agents">No agents connected</p>
+                </div>
+                <h2 class="collapsible-heading channels-heading" data-section="channels">
+                    Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
+                </h2>
+                <div id="channels" class="sidebar-section"></div>
+                <h2 class="collapsible-heading channels-heading dm-heading"
+                    data-section="dms">
+                    Direct messages <span class="sidebar-count" id="sidebar-count-dms"></span>
+                    <button type="button"
+                            id="new-dm-btn"
+                            class="new-dm-btn"
+                            title="Start a new DM">+</button>
+                </h2>
+                <div id="dms" class="sidebar-section"></div>
+                <h2 class="collapsible-heading channels-heading" data-section="machines">
+                    Machines <span class="sidebar-count" id="sidebar-count-machines"></span>
+                </h2>
+                <div id="resources" class="sidebar-section"></div>
             </div>
-            <h2 class="collapsible-heading channels-heading" data-section="agents">
-                Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
-            </h2>
-            <div id="agents" class="sidebar-section">
-                <p id="no-agents">No agents connected</p>
-            </div>
-            <h2 class="collapsible-heading channels-heading" data-section="channels">
-                Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
-            </h2>
-            <div id="channels" class="sidebar-section"></div>
-            <h2 class="collapsible-heading channels-heading dm-heading"
-                data-section="dms">
-                Direct messages <span class="sidebar-count" id="sidebar-count-dms"></span>
-                <button type="button"
-                        id="new-dm-btn"
-                        class="new-dm-btn"
-                        title="Start a new DM">+</button>
-            </h2>
-            <div id="dms" class="sidebar-section"></div>
-            <h2 class="collapsible-heading channels-heading" data-section="machines">
-                Machines <span class="sidebar-count" id="sidebar-count-machines"></span>
-            </h2>
-            <div id="resources" class="sidebar-section"></div>
             <div class="sidebar-signout">
                 <button type="button"
                         id="my-avatar-btn"
@@ -146,10 +149,26 @@
                 </div>
                 <div id="ch-members-list" class="ch-members-list"></div>
             </div>
+            <input id="chat-filter-input"
+                   class="chat-filter-input"
+                   placeholder="filter messages in this channel&hellip;"
+                   autocomplete="off"
+                   oninput="chatFilterApply(this.value)">
             <div id="messages" class="messages"></div>
+            <!-- hook-bypass: inline-style -->
             <div id="todo-view" class="todo-view" style="display:none">
-                <!-- hook-bypass: inline-style -->
-                <div class="todo-state-filter" id="todo-state-filter">
+                <div id="todo-stats" class="todo-stats"></div>
+                <div class="todo-state-filter">
+                    <div class="todo-view-switch" role="tablist" aria-label="todo view mode">
+                        <button type="button"
+                                class="todo-view-switch-btn"
+                                data-view="viz"
+                                title="velocity / dependency visualization">Viz</button>
+                        <button type="button"
+                                class="todo-view-switch-btn active"
+                                data-view="list"
+                                title="grouped list">List</button>
+                    </div>
                     <button type="button" class="todo-state-btn active" data-group="all">All</button>
                     <button type="button" class="todo-state-btn" data-group="high-priority">High</button>
                     <button type="button" class="todo-state-btn" data-group="medium-priority">Medium</button>
@@ -160,10 +179,6 @@
                     <span id="todo-last-updated"
                           class="todo-last-updated"
                           title="Last fetched from GitHub"></span>
-                    <button type="button"
-                            id="todo-viz-toggle"
-                            class="todo-viz-toggle"
-                            title="Show velocity chart">Viz</button>
                 </div>
                 <div id="todo-grid" class="todo-grid"></div>
                 <div id="viz-content" class="viz-content todo-viz-hidden"></div>
@@ -172,7 +187,24 @@
                 <div id="agents-grid" class="todo-grid"></div>
             </div>
             <div id="resources-view" class="todo-view" style="display:none">
-                <div id="connectivity-map" class="connectivity-section"></div>
+                <!-- hook-bypass: inline-style -->
+                <div id="machines-subtabs" class="machines-subtabs">
+                    <div class="machines-view-switch"
+                         role="tablist"
+                         aria-label="machines view mode">
+                        <button type="button"
+                                class="machines-view-switch-btn"
+                                data-view="viz"
+                                title="connectivity map (SSH mesh)">Viz</button>
+                        <button type="button"
+                                class="machines-view-switch-btn active"
+                                data-view="cards"
+                                title="resource cards grid">Cards</button>
+                    </div>
+                </div>
+                <div id="connectivity-map"
+                     class="connectivity-section"
+                     style="display:none"></div>
                 <div id="resources-grid" class="todo-grid"></div>
             </div>
             <div id="workspaces-view" class="todo-view" style="display:none">
@@ -181,6 +213,31 @@
             <div id="activity-view" class="todo-view" style="display:none">
                 <!-- hook-bypass: inline-style -->
                 <div id="activity-subtabs" class="activity-subtabs">
+                    <div class="activity-view-switch"
+                         role="tablist"
+                         aria-label="overview view mode">
+                        <button type="button"
+                                class="activity-view-switch-btn"
+                                data-view="topology"
+                                title="topology (agents ↔ channels map)">Viz</button>
+                        <button type="button"
+                                class="activity-view-switch-btn active"
+                                data-view="list"
+                                title="one-line rows">List</button>
+                    </div>
+                    <select id="activity-sort-select"
+                            class="activity-sort-select"
+                            title="sort order">
+                        <option value="name">sort: name</option>
+                        <option value="machine">sort: machine</option>
+                    </select>
+                    <select id="activity-color-select"
+                            class="activity-sort-select"
+                            title="name color keyed by">
+                        <option value="name">color: name</option>
+                        <option value="host">color: host</option>
+                        <option value="account">color: account</option>
+                    </select>
                     <span class="activity-summary activity-summary-inline"
                           id="activity-summary"></span>
                 </div>
@@ -198,15 +255,6 @@
                      sidebar Ctrl+K fuzzy filter covers the same use case
                      without the extra UI row. Controls are left-aligned. -->
                 <div class="files-toolbar files-toolbar-left-aligned">
-                    <div class="files-search-wrap">
-                        <span class="files-search-icon">&#128269;</span>
-                        <input type="search"
-                               id="files-search"
-                               class="files-search-input"
-                               placeholder="Fuzzy filter (space = AND)"
-                               oninput="filesSetQuery(this.value)"
-                               autocomplete="off">
-                    </div>
                     <div class="files-view-group" role="tablist" aria-label="View mode">
                         <button class="files-view-btn active"
                                 id="files-view-grid"
@@ -224,6 +272,15 @@
                                 id="files-view-details"
                                 title="Details"
                                 onclick="filesSetView('details')">&#8801;</button>
+                    </div>
+                    <div class="files-search-wrap">
+                        <span class="files-search-icon">&#128269;</span>
+                        <input type="search"
+                               id="files-search"
+                               class="files-search-input"
+                               placeholder="Fuzzy filter (space = AND)"
+                               oninput="filesSetQuery(this.value)"
+                               autocomplete="off">
                     </div>
                     <button class="files-view-btn"
                             id="files-view-preview"
@@ -365,13 +422,13 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
-    <script src="{% static 'hub/app.js' %}?v=132"></script>
-    <script src="{% static 'hub/dms.js' %}?v=2"></script>
+    <script src="{% static 'hub/app.js' %}?v=144"></script>
+    <script src="{% static 'hub/dms.js' %}?v=4"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
-    <script src="{% static 'hub/resources-tab.js' %}?v=100"></script>
-    <script src="{% static 'hub/todo-tab.js' %}?v=107"></script>
+    <script src="{% static 'hub/resources-tab.js' %}?v=102"></script>
+    <script src="{% static 'hub/todo-tab.js' %}?v=108"></script>
     <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
-    <script src="{% static 'hub/chat.js' %}?v=121"></script>
+    <script src="{% static 'hub/chat.js' %}?v=122"></script>
     <script src="{% static 'hub/mention.js' %}?v=101"></script>
     <script src="{% static 'hub/settings-tab.js' %}?v=104"></script>
     <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
@@ -379,8 +436,8 @@
     <script src="{% static 'hub/blockers.js' %}?v=1"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=110"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=100"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=125"></script>
-    <script src="{% static 'hub/viz-tab.js' %}?v=4"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=178"></script>
+    <script src="{% static 'hub/viz-tab.js' %}?v=5"></script>
     <script src="{% static 'hub/upload.js' %}?v=112"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=104"></script>
     <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
@@ -389,7 +446,7 @@
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>
     <script src="{% static 'hub/webcam.js' %}?v=1"></script>
     <script src="{% static 'hub/voice-input.js' %}?v=126"></script>
-    <script src="{% static 'hub/tabs.js' %}?v=107"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=108"></script>
     <script src="{% static 'hub/init.js' %}?v=100"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
     <script src="{% static 'hub/push.js' %}?v=99"></script>
@@ -458,32 +515,55 @@
                 <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
             </div>
         </div>
-    </div>
-    <!-- Channel topic edit modal (todo#402) -->
-    <div id="channel-topic-modal"
-         class="ch-topic-modal"
-         style="display:none"
-         role="dialog"
-         aria-modal="true"
-         aria-label="Edit channel topic">
-        <div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
-        <div class="ch-topic-card">
-            <div class="ch-topic-header">
-                <span>Edit channel topic</span>
-                <button type="button"
-                        class="ch-topic-close"
-                        onclick="closeChannelTopicEdit()">&times;</button>
-            </div>
-            <textarea id="channel-topic-input"
-                      class="ch-topic-input"
-                      rows="3"
-                      placeholder="Describe this channel's purpose..."></textarea>
-            <div class="ch-topic-footer">
-                <button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
-                <button type="button"
-                        class="ch-topic-cancel"
-                        onclick="closeChannelTopicEdit()">Cancel</button>
-            </div>
+        <div class="ch-export-body">
+            <label class="ch-export-label">
+                From
+                <input type="datetime-local" id="ch-export-from" class="ch-export-input">
+            </label>
+            <label class="ch-export-label">
+                To
+                <input type="datetime-local" id="ch-export-to" class="ch-export-input">
+            </label>
+            <label class="ch-export-label">
+                Format
+                <select id="ch-export-format" class="ch-export-input">
+                    <option value="json">JSON</option>
+                    <option value="md">Markdown</option>
+                    <option value="txt">Plain text</option>
+                </select>
+            </label>
+        </div>
+        <div class="ch-export-footer">
+            <button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
+            <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
         </div>
     </div>
+</div>
+<!-- Channel topic edit modal (todo#402) -->
+<div id="channel-topic-modal"
+     class="ch-topic-modal"
+     style="display:none"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Edit channel topic">
+    <div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
+    <div class="ch-topic-card">
+        <div class="ch-topic-header">
+            <span>Edit channel topic</span>
+            <button type="button"
+                    class="ch-topic-close"
+                    onclick="closeChannelTopicEdit()">&times;</button>
+        </div>
+        <textarea id="channel-topic-input"
+                  class="ch-topic-input"
+                  rows="3"
+                  placeholder="Describe this channel's purpose..."></textarea>
+        <div class="ch-topic-footer">
+            <button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
+            <button type="button"
+                    class="ch-topic-cancel"
+                    onclick="closeChannelTopicEdit()">Cancel</button>
+        </div>
+    </div>
+</div>
 {% endblock %}

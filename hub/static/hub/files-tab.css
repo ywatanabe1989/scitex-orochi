@@ -58,6 +58,10 @@
   border: 1px solid #2a2a2a;
   border-radius: 6px;
   overflow: hidden;
+  /* Leftmost in the files toolbar — mirrors Agents tab [Viz|List] placement
+   * (ywatanabe 2026-04-19). order:-1 keeps it first even if future markup
+   * changes push it later in DOM order. */
+  order: -1;
 }
 .files-view-group .files-view-btn {
   border-radius: 0;

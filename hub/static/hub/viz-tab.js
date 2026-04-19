@@ -181,20 +181,39 @@ function _renderVizPayload(data, container) {
     '<span><span class="viz-legend-dot" style="background:#f5a623"></span>backlog (opened − closed)</span>' +
     "</div>";
 
+  /* Chart first — ywatanabe 2026-04-19: "this is the most important
+   * graph" / "the most bottom figure should be in the top". KPIs and
+   * legend are secondary context; the time-series line chart gets
+   * priority visual real estate at the top. */
   container.innerHTML =
     '<div class="viz-card">' +
     "<h3>TODO progress (" +
     days +
     "-day window)</h3>" +
-    kpiHtml +
     svg +
     legend +
+    kpiHtml +
     '<p class="empty-notice" style="margin-top:8px;font-size:11px"><!-- hook-bypass: inline-style -->' +
     "Data refreshed " +
     escapeHtml(_fmtTs(data.ts)) +
     " · auto-refresh every 60s." +
     "</p>" +
     "</div>";
+}
+
+/* Background prefetch — ywatanabe 2026-04-19: "Vis in TODO quite slow;
+ * why? is it not possible to get info in background?". Kick off the
+ * /api/todo/stats/ fetch at page load so the cache is already warm by
+ * the time the user clicks TODO > Viz. The chart then paints instantly
+ * from cache instead of waiting for the round-trip. */
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", function () {
+    /* Delay 1s so we don't compete with the initial agents/stats/chat
+     * fetches for the first paint — Viz is background, not critical. */
+    setTimeout(function () {
+      if (typeof fetchVizPayload === "function") fetchVizPayload();
+    }, 1000);
+  });
 }
 
 function _fmtTs(iso) {

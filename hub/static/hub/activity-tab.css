@@ -259,18 +259,11 @@
   opacity: 0.6;
 }
 
-/* Fleet-core agents (YAML-defined canonical roles). Slightly heavier
- * left-border + a teal hairline on the top so core slots are scannable
- * at a glance vs ad-hoc registrations. */
-.activity-card.activity-card-core {
-  border-left-width: 4px;
-  box-shadow: inset 0 1px 0 rgba(78, 205, 196, 0.18);
-}
-
-/* Fleet-core agents that went stale: render as a shadow so the slot is
- * still visible (the user expects a head/healer to be present even
- * when it's briefly down) but clearly not responsive. */
-.activity-card.activity-card-shadow {
+/* Ghost state: pinned agents that have gone offline (WS disconnected).
+ * Kept visible so the user knows the slot is expected — but clearly
+ * not responsive. Non-pinned offline agents are hidden entirely by the
+ * renderer, not dimmed. */
+.activity-card.activity-card-ghost {
   opacity: 0.35;
   filter: grayscale(0.6);
   background: #0f0f0f;
@@ -332,15 +325,1042 @@
   font-style: italic;
 }
 
-/* Star marker for fleet-core agents. Placed between the status dot and
- * the name so the visual hierarchy is: liveness → role → identity. */
-.activity-core-star {
-  color: #fbbf24;
-  font-size: 12px;
-  margin-right: 2px;
+/* Overview toolbar controls (view switch + sort + color). Lives in the
+ * same .activity-subtabs container that used to hold the sub-tab bar.
+ * Filter input removed — Ctrl+K fuzzy search covers it globally. */
+
+/* [Viz | List] segmented switch — mirrors the TODO tab's state-filter
+ * pattern ywatanabe pointed at. Two buttons, active = teal tint. */
+.activity-view-switch {
+  display: inline-flex;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-right: 8px;
 }
-.activity-card-shadow .activity-core-star {
-  color: #574019;
+.activity-view-switch-btn {
+  background: #0e0e0e;
+  color: #888;
+  border: none;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  border-right: 1px solid #2a2a2a;
+  letter-spacing: 0.3px;
+}
+.activity-view-switch-btn:last-child {
+  border-right: none;
+}
+.activity-view-switch-btn:hover {
+  background: #151515;
+  color: #ccc;
+}
+.activity-view-switch-btn.active {
+  background: #0f2a28;
+  color: #4ecdc4;
+}
+
+.activity-filter-input,
+.activity-sort-select,
+.activity-view-select {
+  background: #0e0e0e;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.activity-filter-input {
+  flex: 0 1 240px;
+  min-width: 140px;
+}
+.activity-filter-input:focus,
+.activity-sort-select:focus,
+.activity-view-select:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+
+/* Per-row pin button. Always rendered — dimmed outline when not pinned,
+ * solid when pinned — so toggling never shifts any column position. */
+.activity-pin-btn {
+  background: transparent;
+  border: none;
+  color: #1a1a1a;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  width: 18px;
+  flex: 0 0 18px;
+  text-align: center;
+  transition: color 0.15s;
+  opacity: 0.6;
+}
+.activity-pin-btn:hover {
+  color: #666;
+  opacity: 1;
+}
+.activity-pin-btn.activity-pin-on {
+  color: #fbbf24;
+  opacity: 1;
+}
+
+/* List view: one-line dense rows. Grid switches layout via parent class.
+ * Left-to-right column order (fixed-width at the left so every row's
+ * name sits at the same x-position regardless of status):
+ *   [pin][ws-led][fn-led][state-badge][name@host] ... [age]
+ */
+.activity-grid.activity-view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+}
+.activity-grid.activity-view-list .activity-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  border-left: 3px solid #444;
+  background: transparent;
+  min-height: 28px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.activity-grid.activity-view-list .activity-card:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.activity-grid.activity-view-list .activity-card .activity-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Channels column — fixed width so every row's age sits at the same x
+ * and the name column on the left also wraps predictably. */
+.activity-grid.activity-view-list .activity-card .activity-channels {
+  flex: 0 0 240px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6a7d8c;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+}
+.activity-grid.activity-view-list .activity-card .activity-age {
+  flex: 0 0 60px;
+  text-align: right;
+  color: #888;
+  font-size: 11px;
+}
+
+/* Two small LEDs (WebSocket connection + functional liveness) rendered
+ * side-by-side after the pin button. Fixed size so the name column
+ * always starts at the same x. */
+.activity-led {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #333;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease;
+}
+.activity-led-ws-on {
+  background: #4ecdc4;
+}
+.activity-led-ws-off {
+  background: #555;
+}
+.activity-led-fn-online {
+  background: #4ecdc4;
+}
+.activity-led-fn-idle {
+  background: #ffd93d;
+}
+.activity-led-fn-stale {
+  background: #ff8c42;
+}
+.activity-led-fn-offline {
+  background: #555;
+}
+
+/* Fixed-width status badge. The width is intentionally locked so the
+ * name column aligns across rows regardless of which state label is
+ * rendered (RUNNING vs IDLE vs SELECTING have different character
+ * counts). */
+.activity-state {
+  flex: 0 0 auto;
+  width: 80px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  text-transform: uppercase;
+}
+.activity-state.activity-state-running {
+  background: #0f2a28;
+  color: #4ecdc4;
+  border-color: #1f4a47;
+}
+.activity-state.activity-state-idle {
+  background: #1a1a1a;
+  color: #888;
+}
+.activity-state.activity-state-selecting {
+  background: #2a2014;
+  color: #fbbf24;
+  border-color: #4a3a1a;
+}
+.activity-state.activity-state-offline {
+  background: #1a1a1a;
+  color: #555;
+  border-color: #2a2a2a;
+}
+.activity-state.activity-state-compacting {
+  background: #1a1626;
+  color: #a78bfa;
+  border-color: #3a2d5a;
+}
+
+/* Compact variant for sidebar rows — narrower badge so the 260px
+ * sidebar fits everything in one line. */
+.activity-state.activity-state-compact {
+  width: 52px;
+  padding: 1px 3px;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+}
+
+/* Sidebar agent row — mirrors overview list row but condensed. Lives
+ * outside .activity-grid so reuses the shared .activity-led / .activity-
+ * state / .activity-pin-btn styles plus its own flex layout. */
+.sidebar .agent-card.sidebar-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  min-height: 22px;
+  cursor: pointer;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.sidebar .agent-card.sidebar-agent-row:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.sidebar .agent-card.sidebar-agent-row .activity-pin-btn {
+  font-size: 11px;
+  width: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+}
+.sidebar .agent-card.sidebar-agent-row .activity-led {
+  width: 7px;
+  height: 7px;
+}
+.sidebar .agent-card.sidebar-agent-row .agent-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sidebar .agent-card.sidebar-agent-row.sidebar-agent-ghost {
+  opacity: 0.4;
+  filter: grayscale(0.6);
+}
+
+/* Tile view: compact grid of cards with name + dot only. */
+.activity-grid.activity-view-tiled {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+  padding: 12px;
+}
+.activity-grid.activity-view-tiled .activity-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.activity-grid.activity-view-tiled .activity-card:hover {
+  background: #171717;
+}
+
+/* Topology view — radial SVG of agents (outer ring) and channels
+ * (inner ring) with edges showing #channel membership. Click an agent
+ * node to toggle the inline detail panel (same hook list view uses). */
+.activity-grid.activity-view-topology {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px;
+}
+.activity-grid.activity-view-topology .topo-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-height: 420px;
+  position: relative;
+}
+.activity-grid.activity-view-topology .topo-hint {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 2;
+  font-size: 10px;
+  color: #555;
+  pointer-events: none;
+  background: rgba(10, 10, 10, 0.6);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.activity-grid.activity-view-topology .topo-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  cursor: default;
+  user-select: none;
+}
+/* Left-side pool — lists every agent and every channel as draggable
+ * chips. Floats over the left edge of the canvas; SVG sits behind
+ * it. ywatanabe 2026-04-19: "place channels pool; agents pool in the
+ * left side". */
+.activity-grid.activity-view-topology .topo-pool {
+  position: absolute;
+  left: 8px;
+  top: 40px;
+  bottom: 8px;
+  width: 170px;
+  z-index: 3;
+  overflow-y: auto;
+  background: rgba(10, 10, 10, 0.78);
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 11px;
+}
+.activity-grid.activity-view-topology .topo-pool-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-title {
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid #1f2937;
+  margin-bottom: 3px;
+}
+.activity-grid.activity-view-topology .topo-pool-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #0f1419;
+  border: 1px solid #273241;
+  border-radius: 10px;
+  cursor: grab;
+  color: #eaf1fb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-grid.activity-view-topology .topo-pool-chip:hover {
+  border-color: #4ecdc4;
+  background: #152028;
+}
+/* Pool chip multi-select — ctrl-click adds to the selection; the set is
+ * then drag-dropped onto any canvas node / pool chip to bulk-subscribe.
+ * Bright amber border matches the canvas lasso (.topo-agent-selected)
+ * so the two affordances read as the same concept. */
+.activity-grid.activity-view-topology .topo-pool-chip-selected {
+  border-color: #fbbf24;
+  background: #2a2013;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
+}
+.activity-grid.activity-view-topology .topo-pool-chip-selected:hover {
+  border-color: #fbbf24;
+  background: #3a2a18;
+}
+/* When a dragged bundle hovers a pool chip, it lights up the same way
+ * canvas drop targets do (topo-drop-target on .topo-channel polygon /
+ * .topo-agent circle). */
+.activity-grid.activity-view-topology .topo-pool-chip.topo-drop-target {
+  border-color: #4ecdc4 !important;
+  background: #102428 !important;
+  box-shadow: 0 0 0 2px #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-icon {
+  font-size: 10px;
+  filter: saturate(0.8);
+}
+.activity-grid.activity-view-topology .topo-pool-chip-channel {
+  color: #eaf1fb;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.activity-grid.activity-view-topology .topo-svg.topo-zooming {
+  cursor: crosshair;
+}
+.activity-grid.activity-view-topology .topo-svg.topo-panning {
+  cursor: grabbing;
+}
+.activity-grid.activity-view-topology .topo-ctrls {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+}
+.activity-grid.activity-view-topology .topo-ctrl-btn {
+  background: #0e0e0e;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 22px;
+  line-height: 1;
+}
+.activity-grid.activity-view-topology .topo-ctrl-btn:hover {
+  background: #161616;
+  color: #ccc;
+}
+.activity-grid.activity-view-topology .topo-agent,
+.activity-grid.activity-view-topology .topo-agent circle,
+.activity-grid.activity-view-topology .topo-agent text,
+.activity-grid.activity-view-topology .topo-agent rect {
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-agent .topo-agent-bg {
+  fill: #141414;
+  stroke: #2a2a2a;
+  stroke-width: 1;
+  transition:
+    fill 0.15s,
+    stroke 0.15s;
+}
+/* Brighten the node label so it reads clearly against the dark badge —
+ * the identity color still shows through but at higher luminance.
+ * ywatanabe 2026-04-19: "make the node text a bit lighter to make it
+ * more readable by enhancing contrast". */
+/* Agent label — let the inline `fill=<hash-color>` come through
+ * unmodified so every agent gets a distinct, consistent pastel.
+ * A light dark stroke halo improves contrast on the dark canvas
+ * without washing the hue to white. ywatanabe 2026-04-19: "agent
+ * names should be color coded" / "they are now in white and in
+ * blue for head-nas@... i am not sure why only it is". The prior
+ * `filter: brightness(1.5)` saturated most pastels toward white,
+ * leaving only bluer hashes recognizable. */
+.activity-grid.activity-view-topology .topo-label-agent {
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
+}
+/* Channel label — same brightness pass so the #name reads clearly
+ * against the dark canvas. ywatanabe 2026-04-19: "make it more
+ * readable, brighter color!". */
+.activity-grid.activity-view-topology .topo-label-ch {
+  fill: #eaf1fb !important;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+/* Dead agent — heartbeat ok but >3min no tool/action. Red border +
+ * subtle red tint on the badge so it's visible at a glance. LED
+ * already switches to #ef4444 via _topoSpawnPacket's FN_COLORS
+ * override. ywatanabe 2026-04-19 "please implement dead color, red
+ * with logics like 3 min no-reaction". */
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-bg {
+  stroke: #ef4444;
+  stroke-width: 1.5;
+  fill: #1a0f0f;
+}
+.activity-grid.activity-view-topology .topo-agent-dead .topo-label-agent {
+  fill: #ff6b6b !important;
+}
+/* Human user node — gold pill, distinct from agents. */
+.activity-grid.activity-view-topology .topo-human .topo-human-bg {
+  fill: #1a1410;
+  stroke: #fbbf24;
+  stroke-width: 1.5;
+}
+.activity-grid.activity-view-topology .topo-human:hover .topo-human-bg {
+  fill: #231912;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.55));
+}
+.activity-grid.activity-view-topology .topo-human .topo-human-glyph {
+  pointer-events: none;
+}
+/* Agent glyph — robot 🤖 prefix on each agent node, parallel to the
+ * human 👤. Pointer-events off so it doesn't steal clicks from the
+ * badge background. ywatanabe 2026-04-19: "add icon to agents with
+ * robotic one as well". */
+.activity-grid.activity-view-topology .topo-agent-glyph {
+  pointer-events: none;
+  user-select: none;
+  dominant-baseline: middle;
+}
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-glyph {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+.activity-grid.activity-view-topology .topo-agent:hover .topo-agent-bg {
+  fill: #1f1f1f;
+  stroke: #4ecdc4;
+  filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.55));
+}
+.activity-grid.activity-view-topology
+  .topo-agent.topo-agent-selected
+  .topo-agent-bg {
+  stroke: #fbbf24;
+  stroke-width: 2;
+}
+.activity-grid.activity-view-topology .topo-agent:hover circle,
+.activity-grid.activity-view-topology .topo-agent:hover text {
+  filter: brightness(1.25);
+}
+.activity-grid.activity-view-topology .topo-channel,
+.activity-grid.activity-view-topology .topo-channel polygon,
+.activity-grid.activity-view-topology .topo-channel text {
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-channel:hover polygon {
+  stroke: #4ecdc4;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 3px #4ecdc4);
+}
+/* Channel pref visuals — mirror the sidebar's star/mute state onto
+ * the topology so a glance at the map tells the user what's muted
+ * or starred without cross-referencing the sidebar. ywatanabe
+ * 2026-04-19: "mute channel does not change visual" / "star channel
+ * as well". */
+.activity-grid.activity-view-topology .topo-channel-starred polygon {
+  stroke: #fbbf24;
+  stroke-width: 1.8;
+}
+.activity-grid.activity-view-topology .topo-channel-starred .topo-label-ch {
+  fill: #fde68a !important;
+}
+.activity-grid.activity-view-topology .topo-channel-muted {
+  opacity: 0.4;
+}
+.activity-grid.activity-view-topology .topo-channel-muted polygon {
+  fill: #111 !important;
+  stroke: #333;
+}
+
+/* Message-passing animation: when a message lands the corresponding
+ * edge brightens and a glowing teal packet flies along it from sender
+ * to channel. The CSS drop-shadow gives the packet a soft bloom so it
+ * reads as "techky / modern" at a glance. */
+.activity-grid.activity-view-topology .topo-packet circle,
+.activity-grid.activity-view-topology .topo-packet ellipse,
+.activity-grid.activity-view-topology .topo-packet polygon {
+  filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 12px currentColor);
+}
+/* Message variant = teal capsule with comet tail. */
+.activity-grid.activity-view-topology .topo-packet-message {
+  color: #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-packet-message circle,
+.activity-grid.activity-view-topology .topo-packet-message ellipse,
+.activity-grid.activity-view-topology .topo-packet-message polygon {
+  fill: #4ecdc4;
+}
+/* Artifact variant = amber "babble" capsule for attachments. */
+.activity-grid.activity-view-topology .topo-packet-artifact {
+  color: #fbbf24;
+}
+.activity-grid.activity-view-topology .topo-packet-artifact circle,
+.activity-grid.activity-view-topology .topo-packet-artifact ellipse,
+.activity-grid.activity-view-topology .topo-packet-artifact polygon {
+  fill: #fbbf24;
+  filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 16px #fbbf24);
+}
+/* Babble — a small speech-bubble that rides along each in-flight
+ * packet showing the first ~60 chars of the message text (or 📎 for
+ * attachment-only packets). Fades out in sync with the packet via
+ * inline fill-opacity set by the rAF loop, so we just style the
+ * resting appearance here. pointer-events:none so the bubble never
+ * blocks hover/click on nodes behind it. */
+/* Landing bubble — short-lived speech bubble that appears attached to
+ * a destination node when a packet arrives. Stacks vertically above
+ * the node when multiple messages land in quick succession. Fade
+ * in/out keyframed here; stack lifecycle handled in JS. ywatanabe
+ * 2026-04-19: "after reaching to the target, as a bubble, the message
+ * should be shown and stacked and disappeared with timer like 1 s
+ * duration" / "in a fade in/out manner". */
+/* Timing: total 1.3s. Fade-in 0-150ms, HOLD 150-1150ms (1 full second
+ * at full opacity), fade-out 1150-1300ms. ywatanabe 2026-04-19: "1
+ * sec keep duration please". */
+@keyframes topo-landing-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  11.5% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  88.5% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.activity-grid.activity-view-topology .topo-landing {
+  pointer-events: none;
+  animation: topo-landing-fade 1.3s ease-out forwards;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.activity-grid.activity-view-topology .topo-landing-bg {
+  fill: rgba(14, 14, 14, 0.92);
+  stroke: #4ecdc4;
+  stroke-width: 1px;
+  pointer-events: none;
+}
+.activity-grid.activity-view-topology .topo-landing-text {
+  font:
+    10px -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  fill: #eaf1fb;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+/* Inline channel-compose popup — anchored near the clicked channel
+ * diamond on the topology. Minimal by default (text + send); expand
+ * chevron reveals attach/camera/sketch/voice; drag-drop files route
+ * to the Chat composer. */
+.topo-channel-compose {
+  position: fixed;
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 360px;
+  background: #0e0e0e;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 6px 6px 20px 6px;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(78, 205, 196, 0.2);
+  color: #e6e6e6;
+  font-size: 12px;
+  font-family: inherit;
+}
+.topo-channel-compose.tcc-drag-over {
+  border-color: #4ecdc4;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(78, 205, 196, 0.7);
+}
+.topo-channel-compose .tcc-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.topo-channel-compose .tcc-channel {
+  flex: 1 1 auto;
+  font-family: ui-monospace, monospace;
+  color: #4ecdc4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+/* Minimal compose: tiny chevron at bottom-right, everything else
+ * hidden by default. ywatanabe 2026-04-19: "just add a small chevron
+ * to the bottom to show other buttons". */
+.topo-channel-compose .tcc-expand {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  background: transparent;
+  border: 0;
+  color: #6a7785;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.topo-channel-compose .tcc-expand:hover {
+  color: #cbd5e1;
+  opacity: 1;
+}
+.topo-channel-compose .tcc-input {
+  width: 100%;
+  background: #0a0a0a;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.topo-channel-compose .tcc-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.topo-channel-compose .tcc-extras {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.topo-channel-compose .tcc-x {
+  background: #151515;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.topo-channel-compose .tcc-x:hover {
+  background: #1a1a1a;
+  border-color: #4ecdc4;
+}
+.topo-channel-compose .tcc-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.topo-channel-compose .tcc-send {
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 4px 14px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.topo-channel-compose .tcc-send:hover {
+  background: #1a4060;
+  color: #bfe1f1;
+}
+
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-live {
+  stroke: #4ecdc4 !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 1.8 !important;
+  filter: drop-shadow(0 0 3px #4ecdc4);
+  transition: stroke 0.15s ease-out;
+}
+
+/* Agent→channel edges are clickable for unsubscribe. Hover brightens
+ * stroke + thickens the line so it's discoverable; cursor becomes a
+ * pointer. ywatanabe 2026-04-19: "edges (lines) must be selectable to
+ * unsubscribe". */
+/* Bolder hit-area so edges are easy to click without precise aim.
+ * ywatanabe 2026-04-19: "hitarea for lines should be a bit bolder".
+ * Visible thickness also bumped slightly so the graph reads clearer. */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge {
+  cursor: pointer;
+  stroke-width: 2;
+  pointer-events: stroke;
+  transition:
+    stroke 0.12s ease-out,
+    stroke-opacity 0.12s ease-out,
+    stroke-width 0.12s ease-out;
+}
+.activity-grid.activity-view-topology .topo-edges line.topo-edge:hover {
+  stroke: #f59e0b !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 3.2 !important;
+  filter: drop-shadow(0 0 3px #f59e0b);
+}
+
+/* DM edges — dashed gold line directly between principals. Thinner and
+ * subtler than agent→channel edges so the DM topology reads as a
+ * lightweight side-channel. Hover brightens for affordance (same
+ * click-to-unsubscribe contract as the non-DM .topo-edge). ywatanabe
+ * 2026-04-19: "connect user and target with a visible LINE and
+ * propagate packet along it — no virtual midpoint, no tricks". */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-dm {
+  stroke: #fbbf24;
+  stroke-dasharray: 3 4;
+  stroke-opacity: 0.5;
+  stroke-width: 1.8;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-dm:hover {
+  stroke-opacity: 1 !important;
+  stroke-width: 2.6 !important;
+  filter: drop-shadow(0 0 3px #fbbf24);
+}
+
+/* Channel-hover highlight — applied by the grid-level mouseover
+ * delegation in activity-tab.js. Hovering a channel diamond adds
+ * .topo-edge-hover to every edge where data-channel (or data-dm-
+ * channel) matches, and .topo-agent-connected to the matching
+ * endpoint agent nodes. Gives instant visual feedback showing the
+ * network of that channel. ywatanabe 2026-04-19: "when hovered on
+ * a channel, all the lines from there should be highlighted as
+ * visual feedback to show the network". */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-hover {
+  stroke: #4ecdc4 !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2.8 !important;
+  filter: drop-shadow(0 0 4px #4ecdc4);
+}
+.activity-grid.activity-view-topology
+  .topo-agent.topo-agent-connected
+  .topo-agent-bg,
+.activity-grid.activity-view-topology .topo-agent.topo-agent-connected circle,
+.activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
+  filter: drop-shadow(0 0 5px #4ecdc4);
+}
+
+/* Floating popover anchored near an edge click — offers Unsubscribe.
+ * Confirm-dialog feel: title, preview row ("<#channel> <- <agent>" with
+ * agent color), danger-red primary, neutral Cancel. Opens with a 120ms
+ * opacity fade-in (animation + inline opacity transition both cover the
+ * case where a user has prefers-reduced-motion). */
+.topo-edge-menu {
+  z-index: 10050;
+  background: #101821;
+  color: #cbd5e1;
+  border: 1px solid #1f2a37;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity 120ms ease-out;
+  animation: topo-edge-menu-in 120ms ease-out both;
+}
+@keyframes topo-edge-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.topo-edge-menu-title {
+  color: #8acdee;
+  padding: 2px 4px 4px;
+  border-bottom: 1px solid #1f2a37;
+  font-weight: 600;
+  word-break: break-all;
+}
+.topo-edge-menu-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #0b1320;
+  border: 1px solid #1f2a37;
+  border-radius: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  flex-wrap: wrap;
+}
+.topo-edge-menu-preview-ch {
+  color: #ffffff;
+  font-weight: 700;
+}
+.topo-edge-menu-preview-arr {
+  color: #64748b;
+}
+.topo-edge-menu-preview-ag {
+  font-weight: 600;
+}
+.topo-edge-menu-btn {
+  background: #14324a;
+  color: #bfe1f1;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.topo-edge-menu-btn:hover {
+  background: #1a4060;
+  color: #e0f0f8;
+}
+.topo-edge-menu-btn.topo-edge-menu-btn-danger {
+  background: #7f1d1d;
+  color: #fee2e2;
+  border-color: #b91c1c;
+  font-weight: 600;
+}
+.topo-edge-menu-btn.topo-edge-menu-btn-danger:hover {
+  background: #b91c1c;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+.activity-grid.activity-view-topology .topo-label {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  pointer-events: none;
+  user-select: none;
+}
+.activity-grid.activity-view-topology .topo-label-ch {
+  fill: #ffffff !important;
+  font-size: 11px;
+  font-weight: 700;
+}
+.activity-grid.activity-view-topology .topo-agent:hover circle {
+  stroke-width: 3;
+}
+
+/* Drag-to-subscribe feedback — a flying ghost <text> follows the
+ * cursor during drag, and the hovered drop-target node gets a teal
+ * glow. Both are SVG-scoped so they don't leak into other tabs. */
+.activity-grid.activity-view-topology .topo-drag-ghost {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  fill: #4ecdc4;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 0 3px rgba(78, 205, 196, 0.7));
+  opacity: 0.95;
+}
+.activity-grid.activity-view-topology .topo-agent.topo-drop-target circle {
+  stroke: #4ecdc4 !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 6px #4ecdc4);
+}
+.activity-grid.activity-view-topology .topo-agent.topo-drop-target text {
+  filter: drop-shadow(0 0 4px #4ecdc4);
+}
+.activity-grid.activity-view-topology .topo-channel.topo-drop-target polygon {
+  stroke: #4ecdc4 !important;
+  stroke-width: 3 !important;
+  fill: rgba(78, 205, 196, 0.18) !important;
+  filter: drop-shadow(0 0 6px #4ecdc4);
+}
+.activity-grid.activity-view-topology .activity-inline-detail {
+  flex: 0 0 auto;
+  margin: 10px 0 0;
+}
+
+/* Inline expanded detail: inserted directly below the clicked row. */
+.activity-inline-detail {
+  background: #0e0e0e;
+  border: 1px solid #222;
+  border-radius: 4px;
+  margin: 4px 0 8px;
+  padding: 12px;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+/* Web→agent send row (under the terminal pane). Hitting Enter or
+ * clicking Send posts the text into the agent's DM channel so the
+ * agent sees it as a Claude Code message in its terminal context. */
+.activity-send-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.activity-send-input {
+  flex: 1 1 auto;
+  background: #0a0a0a;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.activity-send-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.activity-send-btn {
+  flex: 0 0 auto;
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.activity-send-btn:hover {
+  background: #1a4060;
+  color: #bfe1f1;
+}
+
+/* CLAUDE.md empty-state placeholder — less visual weight than the real
+ * content so the reader knows it's an absence, not corrupt data. */
+.agent-detail-claude-md-empty {
+  color: #666;
+  font-style: italic;
+  font-size: 11px;
+  background: #0a0a0a;
+  border: 1px dashed #2a2a2a;
+  padding: 8px;
 }
 
 @keyframes activity-pulse {
@@ -792,4 +1812,228 @@
   padding: 2px 8px;
   border-radius: 10px;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ── Topology: permission-direction arrows, lasso, multi-select,
+ *    group-post compose modal. Scoped prefix omitted on modal rules
+ *    because the overlay is rendered into <body>, not the grid. */
+.activity-grid.activity-view-topology .topo-arrow-head {
+  filter: drop-shadow(0 0 1.5px rgba(78, 205, 196, 0.9));
+}
+.activity-grid.activity-view-topology .topo-svg.topo-lassoing {
+  cursor: copy;
+}
+.activity-grid.activity-view-topology .topo-agent-selected circle {
+  stroke: #fbbf24;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 3px #fbbf24) drop-shadow(0 0 6px #fbbf24);
+}
+.activity-grid.activity-view-topology .topo-agent-selected text {
+  filter: drop-shadow(0 0 2px #fbbf24);
+  font-weight: 600;
+}
+.activity-grid.activity-view-topology .topo-actionbar {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translate(-50%, 12px);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 10, 10, 0.92);
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 4;
+  font-size: 12px;
+  color: #e8e8e8;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
+}
+.activity-grid.activity-view-topology .topo-actionbar.topo-actionbar-show {
+  display: flex;
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.activity-grid.activity-view-topology .topo-actionbar-count {
+  color: #fbbf24;
+  font-weight: 600;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn {
+  background: #fbbf24;
+  color: #111;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn:hover {
+  background: #ffd560;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn-ghost {
+  background: transparent;
+  color: #999;
+  font-weight: 400;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn-ghost:hover {
+  background: #222;
+  color: #ddd;
+}
+
+.topo-compose-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.topo-compose-modal {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  width: min(520px, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  color: #e8e8e8;
+  font-size: 13px;
+}
+.topo-compose-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #252525;
+}
+.topo-compose-title {
+  font-weight: 600;
+  color: #fbbf24;
+}
+.topo-compose-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 6px;
+}
+.topo-compose-close:hover {
+  color: #eee;
+}
+.topo-compose-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.topo-compose-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+.topo-compose-chip {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  color: #fbbf24;
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.topo-compose-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.topo-compose-text {
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e8e8e8;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.topo-compose-text:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.topo-compose-mode {
+  display: flex;
+  gap: 16px;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0;
+}
+.topo-compose-mode legend {
+  padding: 0 4px;
+}
+.topo-compose-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #ccc;
+}
+.topo-compose-channel-select {
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e8e8e8;
+  padding: 6px 8px;
+  font-size: 12px;
+  width: 100%;
+}
+.topo-compose-preview {
+  font-size: 11px;
+  color: #666;
+}
+.topo-compose-preview-body {
+  color: #4ecdc4;
+}
+.topo-compose-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #252525;
+}
+.topo-compose-btn {
+  background: #222;
+  color: #ddd;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.topo-compose-btn:hover {
+  background: #2a2a2a;
+}
+.topo-compose-btn-primary {
+  background: #4ecdc4;
+  color: #0a0a0a;
+  border-color: #4ecdc4;
+  font-weight: 600;
+}
+.topo-compose-btn-primary:hover {
+  background: #6bd8d0;
 }

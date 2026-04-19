@@ -1,0 +1,105 @@
+/* Message / DM / mention visual effects.
+ *
+ * All animations are CSS-only and one-shot. JS is responsible only for
+ * toggling the trigger class on the target element (and removing it once
+ * the animation finishes, so it can re-fire next time).
+ *
+ * Timings (kept in lockstep with the JS class-removal timers in
+ * chat.js / app.js):
+ *   .msg-arrived        0.3s ease-out, one-shot
+ *   .dm-pulse           1.2s, one-shot
+ *   .ch-pulse-mention   1.2s (red variant), one-shot
+ *   .badge-shake        0.4s, 3 oscillations, one-shot
+ */
+
+/* ─── 1. New post landing ──────────────────────────────────────────── */
+@keyframes msg-arrived-kf {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#messages .msg.msg-arrived {
+  animation: msg-arrived-kf 0.3s ease-out both;
+  will-change: opacity, transform;
+}
+
+/* ─── 2. Mention styling (persistent) ──────────────────────────────── */
+#messages .msg.msg-mention {
+  border-left: 2px solid #ef4444;
+  background-color: #2a1010;
+}
+
+/* ─── 3. DM sidebar pulse (teal ripple) ────────────────────────────── */
+@keyframes dm-pulse-kf {
+  0% {
+    box-shadow: 0 0 0 0 rgba(78, 205, 196, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(78, 205, 196, 0);
+  }
+}
+
+.dm-item.dm-pulse {
+  animation: dm-pulse-kf 1.2s ease-out 1;
+}
+
+/* ─── 4. Mention pulse on sidebar row (red ripple) ─────────────────── */
+@keyframes ch-pulse-mention-kf {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  100% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+.dm-item.ch-pulse-mention,
+.channel-item.ch-pulse-mention {
+  animation: ch-pulse-mention-kf 1.2s ease-out 1;
+}
+
+/* ─── 5. Unread-badge shake (used alongside mention pulse) ─────────── */
+@keyframes badge-shake-kf {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  16.66% {
+    transform: translateX(-2px);
+  }
+  33.33% {
+    transform: translateX(2px);
+  }
+  50% {
+    transform: translateX(-2px);
+  }
+  66.66% {
+    transform: translateX(2px);
+  }
+  83.33% {
+    transform: translateX(-2px);
+  }
+}
+
+.unread-badge.badge-shake {
+  animation: badge-shake-kf 0.4s ease-in-out 1;
+  display: inline-block;
+}
+
+/* Respect user motion preferences — disable animations but keep the
+ * persistent mention styling (border/bg) so mentions remain distinct. */
+@media (prefers-reduced-motion: reduce) {
+  #messages .msg.msg-arrived,
+  .dm-item.dm-pulse,
+  .dm-item.ch-pulse-mention,
+  .channel-item.ch-pulse-mention,
+  .unread-badge.badge-shake {
+    animation: none !important;
+  }
+}

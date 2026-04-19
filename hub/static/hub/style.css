@@ -31,10 +31,24 @@ body {
   flex-shrink: 0;
   background: #111;
   border-right: 1px solid #333;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px;
   display: flex;
   flex-direction: column;
+}
+.sidebar-brand,
+.wall-clock,
+.filter-bar {
+  flex: 0 0 auto;
+}
+.sidebar-sections {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.sidebar-signout {
+  flex: 0 0 auto;
 }
 .sidebar h2 {
   font-size: 13px;
@@ -2019,32 +2033,145 @@ a.chat-link:hover {
   background: #3cb371;
 }
 
-/* ── Channel star / mute / prefs (todo#391) ── */
-.ch-star {
-  font-size: 12px;
-  margin-right: 4px;
+/* ── Channel pin / watch / mute / prefs (todo#391 — pin+eye replaced ★) ── */
+/* Legacy .ch-star class kept as alias for older code paths; new markup
+ * uses .ch-pin (pinned-to-top / was is_starred) and .ch-watch (eye —
+ * toggles is_muted). */
+.ch-star,
+.ch-pin,
+.ch-watch,
+.ch-eye {
+  font-size: 11px;
+  margin-right: 3px;
   flex-shrink: 0;
-  transition: color 0.15s;
+  transition:
+    color 0.15s,
+    opacity 0.15s;
   line-height: 1;
+  cursor: pointer;
 }
-.ch-star-off {
-  color: transparent; /* invisible until hover */
+.ch-star-off,
+.ch-pin-off {
+  opacity: 0.15; /* near-invisible until hover */
+  filter: grayscale(1);
 }
-.channel-item:hover .ch-star-off {
-  color: #556;
+.channel-item:hover .ch-star-off,
+.channel-item:hover .ch-pin-off,
+.channel-item:hover .ch-watch-off,
+.channel-item:hover .ch-eye-on {
+  opacity: 0.7;
 }
 .ch-star-on {
   color: #f5a623;
 }
-.ch-star:hover {
-  color: #f5a623 !important;
+.ch-pin-on {
+  opacity: 1;
+  filter: none;
+}
+.ch-watch-on {
+  opacity: 0.85;
+}
+.ch-watch-off {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+/* Per-row hide/unhide eye icon (todo#418). ch-eye-on = channel is visible,
+ * icon dim until row hover; ch-eye-off = channel is hidden, icon stays
+ * semi-opaque so users can find the un-hide affordance on a dimmed row. */
+.ch-eye-on {
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+.ch-eye-off {
+  opacity: 0.75;
+  filter: none;
+}
+.ch-pin:hover,
+.ch-watch:hover,
+.ch-eye:hover {
+  opacity: 1 !important;
+  filter: none !important;
 }
 .ch-muted {
   opacity: 0.5;
 }
-.ch-muted::after {
-  content: " 🔇";
+
+/* Hidden channel rows — rendered inline at the bottom of the Channels
+ * section, dimmed so the list stays scannable. Clicking a dimmed row
+ * un-hides it (promotes back to the normal list on next render).
+ * No bulk toggle button — the dimmed rows ARE the affordance.
+ * See todo#418. */
+.channel-item.ch-hidden {
+  opacity: 0.4;
+  color: #6a7785;
+  cursor: pointer;
+}
+.channel-item.ch-hidden:hover {
+  opacity: 0.7;
+}
+/* Subtle separator above the first hidden row so users understand
+ * they're entering the "hidden" zone. */
+.ch-hidden-divider {
+  border-top: 1px dashed #2a2a2a;
+  margin: 6px 8px;
+}
+
+/* Machines sidebar — one-line compact row (ywatanabe 2026-04-19).
+ *   [conn-dot] name   CPU%  Mem used/total GB  Disk%
+ * Replaces the 3-stacked-bars layout. Everything fits in ~260px so the
+ * metric chips stay on a single line. */
+.res-card.res-card-compact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  min-height: 22px;
+  font-size: 11px;
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.res-card.res-card-compact:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.res-card.res-card-compact .res-conn {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ecdc4;
+}
+.res-card.res-card-compact .res-conn-stale {
+  background: #ef4444;
+}
+.res-card.res-card-compact .res-host-name {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+.res-card.res-card-compact .res-metrics {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+  align-items: center;
+}
+.res-card.res-card-compact .res-chip {
   font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: #151515;
+  border: 1px solid #242424;
+  color: #9aa5b1;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
 }
 
 /* Starred section heading */
@@ -2104,6 +2231,49 @@ a.chat-link:hover {
 
 .ch-ctx-item.ch-ctx-export {
   color: #6cf;
+}
+
+/* Agent-row context menu (right-click on sidebar / Agents tab) */
+.agent-ctx-menu,
+.agent-ctx-submenu {
+  min-width: 220px;
+}
+.agent-ctx-submenu {
+  min-width: 240px;
+}
+.ch-ctx-item.ch-ctx-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+}
+.ch-ctx-rowname {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ch-ctx-perm {
+  flex: 0 0 auto;
+  padding: 1px 7px;
+  border: 1px solid #2a4a60;
+  border-radius: 3px;
+  font-size: 11px;
+  color: #8ad;
+  background: #0a1824;
+  cursor: pointer;
+}
+.ch-ctx-perm:hover {
+  background: #1a3a50;
+  color: #fff;
+}
+.ch-ctx-perm.ch-ctx-perm-rw {
+  color: #4fa;
+  border-color: #2a6a4a;
+}
+.ch-ctx-perm.ch-ctx-perm-rw:hover {
+  background: #1a4a30;
+  color: #fff;
 }
 
 /* ── Channel export modal ── */
@@ -2430,4 +2600,33 @@ a.chat-link:hover {
 }
 .mermaid-raw {
   margin-top: 4px;
+}
+
+/* Chat sticky filter bar — client-side per-channel message filter.
+ * Sticks to top of the messages pane so it stays visible while scrolling.
+ * Per-channel: value is cleared whenever the user switches channels
+ * (see setCurrentChannel in app.js). ywatanabe 2026-04-19. */
+.chat-filter-input {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #101010;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #ddd;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  margin: 6px 12px 0 12px;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.chat-filter-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+  background: #141414;
+}
+.chat-filter-miss {
+  display: none !important;
 }

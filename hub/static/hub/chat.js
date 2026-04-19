@@ -3,6 +3,118 @@
    currentChannel, knownMessageKeys, messageKey, sendOrochiMessage,
    updateResourcePanel, token, apiUrl */
 
+/* Visual-effects state (see hub/static/hub/effects.css).
+ *
+ * `_initialLoadComplete` flips true after the first history-load pass
+ * finishes. Until then, appendMessage skips the `.msg-arrived` fade-in so
+ * historically-loaded messages don't animate on initial render. After the
+ * flag flips, only messages arriving AFTER page load (via WebSocket) get
+ * the fade. It stays true across channel switches — subsequent
+ * loadChannelHistory rebuilds are suppressed by an inline `_isLoadingHistory`
+ * guard around the loop instead. */
+var _initialLoadComplete = false;
+var _isLoadingHistory = false;
+
+/* Regex matcher for @<userName> and @me. Rebuilt lazily because `userName`
+ * isn't defined until app.js has parsed its var declaration. */
+var _mentionRegexCache = null;
+function _mentionRegex() {
+  if (_mentionRegexCache) return _mentionRegexCache;
+  var name = (typeof userName !== "undefined" && userName) || "";
+  var escName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  var pattern = "(^|[^\\w])@(me" + (escName ? "|" + escName : "") + ")\\b";
+  _mentionRegexCache = new RegExp(pattern, "i");
+  return _mentionRegexCache;
+}
+
+/* Briefly pulse a sidebar row (channel or DM). `variant` = "dm" (teal)
+ * or "mention" (red). Class is auto-removed on animationend so it can
+ * re-fire next arrival. */
+function _pulseSidebarRow(channel, variant) {
+  if (!channel) return;
+  var safe = channel.replace(/"/g, '\\"');
+  var rows = document.querySelectorAll(
+    '.dm-item[data-channel="' +
+      safe +
+      '"], .channel-item[data-channel="' +
+      safe +
+      '"]',
+  );
+  var cls = variant === "mention" ? "ch-pulse-mention" : "dm-pulse";
+  rows.forEach(function (row) {
+    row.classList.remove(cls);
+    void row.offsetWidth;
+    row.classList.add(cls);
+    var done = function () {
+      row.classList.remove(cls);
+      row.removeEventListener("animationend", done);
+    };
+    row.addEventListener("animationend", done);
+    if (variant === "mention") {
+      var badge = row.querySelector(".unread-badge");
+      if (badge) {
+        badge.classList.remove("badge-shake");
+        void badge.offsetWidth;
+        badge.classList.add("badge-shake");
+        var badgeDone = function () {
+          badge.classList.remove("badge-shake");
+          badge.removeEventListener("animationend", badgeDone);
+        };
+        badge.addEventListener("animationend", badgeDone);
+      }
+    }
+  });
+}
+window._pulseSidebarRow = _pulseSidebarRow;
+
+/* Chat sticky filter bar — client-side text filter over visible messages
+ * in the current channel. Resets on channel switch. */
+var _chatFilterQuery = "";
+var _chatFilterDebounce = null;
+function _chatFilterApplyNow(q) {
+  _chatFilterQuery = (q || "").trim().toLowerCase();
+  var container = document.getElementById("messages");
+  if (!container) return;
+  var rows = container.querySelectorAll(".message");
+  if (!_chatFilterQuery) {
+    rows.forEach(function (el) {
+      el.classList.remove("chat-filter-miss");
+      el.classList.remove("chat-filter-hit");
+    });
+    return;
+  }
+  for (var i = 0; i < rows.length; i++) {
+    var el = rows[i];
+    var txt = (el.textContent || "").toLowerCase();
+    if (txt.indexOf(_chatFilterQuery) !== -1) {
+      el.classList.add("chat-filter-hit");
+      el.classList.remove("chat-filter-miss");
+    } else {
+      el.classList.add("chat-filter-miss");
+      el.classList.remove("chat-filter-hit");
+    }
+  }
+}
+function chatFilterApply(q) {
+  if (_chatFilterDebounce) clearTimeout(_chatFilterDebounce);
+  _chatFilterDebounce = setTimeout(function () {
+    _chatFilterDebounce = null;
+    _chatFilterApplyNow(q);
+  }, 100);
+}
+function chatFilterReset() {
+  if (_chatFilterDebounce) {
+    clearTimeout(_chatFilterDebounce);
+    _chatFilterDebounce = null;
+  }
+  _chatFilterQuery = "";
+  var inp = document.getElementById("chat-filter-input");
+  if (inp) inp.value = "";
+  _chatFilterApplyNow("");
+}
+window.chatFilterApply = chatFilterApply;
+window.chatFilterReset = chatFilterReset;
+
 /* Voice-recording deferred message queue.
  * When window.isVoiceRecording is true, appendMessage defers the DOM update
  * here instead of immediately mutating the feed. The voice-input module calls
@@ -943,6 +1055,37 @@ function appendMessage(msg) {
     } catch (_) {}
   }
   container.appendChild(el);
+  /* Visual effects: fade-in + mention styling / sidebar pulses.
+   * Gated on `_initialLoadComplete` so historical backlogs and channel-switch
+   * history rebuilds don't animate. Own posts aren't faded (they're echoes
+   * of what the user just typed and animating them feels laggy) but mentions
+   * of the user still flash via the sidebar pulse below. */
+  var _isOwnPost = typeof userName !== "undefined" && senderName === userName;
+  if (_initialLoadComplete && !_isLoadingHistory && !_isOwnPost) {
+    el.classList.add("msg-arrived");
+    setTimeout(function () {
+      el.classList.remove("msg-arrived");
+    }, 400);
+  }
+  /* Mention detection: @<userName> or @me (case-insensitive). Persistent
+   * class — left border + bg tint via effects.css. Skip if this is the
+   * user's own message (you don't mention yourself). */
+  var _hasMention = !_isOwnPost && _mentionRegex().test(content);
+  if (_hasMention) {
+    el.classList.add("msg-mention");
+  }
+  /* Sidebar pulses — only for messages arriving AFTER initial load,
+   * and only if the message is in a non-focused channel. */
+  if (_initialLoadComplete && !_isLoadingHistory && channel) {
+    var _isFocused = channel === currentChannel;
+    if (!_isFocused) {
+      if (_hasMention) {
+        _pulseSidebarRow(channel, "mention");
+      } else if (channel.indexOf("dm:") === 0 && !_isOwnPost) {
+        _pulseSidebarRow(channel, "dm");
+      }
+    }
+  }
   /* Render any mermaid diagrams inside the newly appended message */
   _renderMermaidIn(el);
   /* todo#274 Part 2: re-apply multi-select feed filter so newly-arrived
@@ -951,6 +1094,17 @@ function appendMessage(msg) {
     try {
       applyFeedFilter();
     } catch (_) {}
+  }
+  /* Re-apply chat filter so newly-arrived messages respect the sticky
+   * filter input if the user has one typed. O(1) per incoming message
+   * (only tests the one new row). */
+  if (_chatFilterQuery) {
+    var _txt = (el.textContent || "").toLowerCase();
+    if (_txt.indexOf(_chatFilterQuery) !== -1) {
+      el.classList.add("chat-filter-hit");
+    } else {
+      el.classList.add("chat-filter-miss");
+    }
   }
   /* Auto-scroll: skip entirely during voice recording to prevent the
    * scrollTop write from interfering with the SpeechRecognition session.
@@ -1060,27 +1214,36 @@ async function loadHistory() {
 
     container.innerHTML = "";
     knownMessageKeys = {};
-    messages.forEach(function (row) {
-      var key = messageKey(row.sender, row.ts, row.content);
-      knownMessageKeys[key] = true;
-      appendMessage({
-        id: row.id,
-        type: "message",
-        sender: row.sender,
-        sender_type: row.sender_type,
-        ts: row.ts,
-        edited: row.edited || false,
-        edited_at: row.edited_at || null,
-        thread_count: row.thread_count || 0,
-        metadata: row.metadata || {},
-        payload: {
-          channel: row.channel,
-          content: row.content,
-          attachments:
-            (row.metadata && row.metadata.attachments) || row.attachments || [],
-        },
+    /* Suppress arrival animations / sidebar pulses for this bulk backlog. */
+    _isLoadingHistory = true;
+    try {
+      messages.forEach(function (row) {
+        var key = messageKey(row.sender, row.ts, row.content);
+        knownMessageKeys[key] = true;
+        appendMessage({
+          id: row.id,
+          type: "message",
+          sender: row.sender,
+          sender_type: row.sender_type,
+          ts: row.ts,
+          edited: row.edited || false,
+          edited_at: row.edited_at || null,
+          thread_count: row.thread_count || 0,
+          metadata: row.metadata || {},
+          payload: {
+            channel: row.channel,
+            content: row.content,
+            attachments:
+              (row.metadata && row.metadata.attachments) ||
+              row.attachments ||
+              [],
+          },
+        });
       });
-    });
+    } finally {
+      _isLoadingHistory = false;
+      _initialLoadComplete = true;
+    }
     container.scrollTop = container.scrollHeight;
 
     /* Restore textarea state if the DOM rebuild clobbered it */
@@ -1138,28 +1301,35 @@ async function fetchNewMessages() {
     if (!res.ok) return;
     var messages = await res.json();
     messages.reverse();
-    messages.forEach(function (row) {
-      var key = messageKey(row.sender, row.ts, row.content);
-      if (knownMessageKeys[key]) return;
-      knownMessageKeys[key] = true;
-      appendMessage({
-        id: row.id,
-        type: "message",
-        sender: row.sender,
-        sender_type: row.sender_type,
-        ts: row.ts,
-        edited: row.edited || false,
-        edited_at: row.edited_at || null,
-        thread_count: row.thread_count || 0,
-        metadata: row.metadata || {},
-        payload: {
-          channel: row.channel || currentChannel || "",
-          content: row.content,
-          attachments:
-            (row.metadata && row.metadata.attachments) || row.attachments || [],
-        },
+    _isLoadingHistory = true;
+    try {
+      messages.forEach(function (row) {
+        var key = messageKey(row.sender, row.ts, row.content);
+        if (knownMessageKeys[key]) return;
+        knownMessageKeys[key] = true;
+        appendMessage({
+          id: row.id,
+          type: "message",
+          sender: row.sender,
+          sender_type: row.sender_type,
+          ts: row.ts,
+          edited: row.edited || false,
+          edited_at: row.edited_at || null,
+          thread_count: row.thread_count || 0,
+          metadata: row.metadata || {},
+          payload: {
+            channel: row.channel || currentChannel || "",
+            content: row.content,
+            attachments:
+              (row.metadata && row.metadata.attachments) ||
+              row.attachments ||
+              [],
+          },
+        });
       });
-    });
+    } finally {
+      _isLoadingHistory = false;
+    }
   } catch (e) {
     console.warn("fetchNewMessages failed:", e);
   }
@@ -1198,27 +1368,36 @@ async function loadChannelHistory(channel) {
 
     container.innerHTML = "";
     knownMessageKeys = {};
-    messages.forEach(function (row) {
-      var key = messageKey(row.sender, row.ts, row.content);
-      knownMessageKeys[key] = true;
-      appendMessage({
-        id: row.id,
-        type: "message",
-        sender: row.sender,
-        sender_type: row.sender_type,
-        ts: row.ts,
-        edited: row.edited || false,
-        edited_at: row.edited_at || null,
-        thread_count: row.thread_count || 0,
-        metadata: row.metadata || {},
-        payload: {
-          channel: channel,
-          content: row.content,
-          attachments:
-            (row.metadata && row.metadata.attachments) || row.attachments || [],
-        },
+    /* Suppress arrival animations / sidebar pulses for this bulk backlog. */
+    _isLoadingHistory = true;
+    try {
+      messages.forEach(function (row) {
+        var key = messageKey(row.sender, row.ts, row.content);
+        knownMessageKeys[key] = true;
+        appendMessage({
+          id: row.id,
+          type: "message",
+          sender: row.sender,
+          sender_type: row.sender_type,
+          ts: row.ts,
+          edited: row.edited || false,
+          edited_at: row.edited_at || null,
+          thread_count: row.thread_count || 0,
+          metadata: row.metadata || {},
+          payload: {
+            channel: channel,
+            content: row.content,
+            attachments:
+              (row.metadata && row.metadata.attachments) ||
+              row.attachments ||
+              [],
+          },
+        });
       });
-    });
+    } finally {
+      _isLoadingHistory = false;
+      _initialLoadComplete = true;
+    }
     container.scrollTop = container.scrollHeight;
 
     /* Restore textarea state if the DOM rebuild clobbered it */

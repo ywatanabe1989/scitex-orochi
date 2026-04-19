@@ -2,7 +2,7 @@
  * activate. The previous v5 served cache-first, which shadowed every JS/CSS
  * fix we shipped today. Do not drop below the highest previously-deployed
  * value or old clients will keep serving stale assets. */
-const CACHE_NAME = "orochi-v202";
+const CACHE_NAME = "orochi-v203";
 const SHELL_ASSETS = ["/"];
 
 self.addEventListener("install", (event) => {
@@ -35,6 +35,14 @@ self.addEventListener("fetch", (event) => {
   }
 
   const url = new URL(event.request.url);
+  // Cache.put() rejects any non-http(s) scheme with:
+  //   "Request scheme 'chrome-extension' is unsupported"
+  // which floods the console when browser extensions re-fetch their own
+  // resources through our SW. Skip anything that's not http/https — the
+  // browser handles those requests natively. ywatanabe 2026-04-19.
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return;
+  }
 
   // Network-first for API calls and WebSocket upgrades
   if (url.pathname.startsWith("/api") || url.pathname.startsWith("/ws")) {
@@ -101,14 +109,14 @@ self.addEventListener("push", (event) => {
 
   /* Increment app icon badge count (Web App Badging API — iOS 16.4+ PWA, Chrome Android) */
   const badgePromise = self.registration.setAppBadge
-    ? self.registration.setAppBadge((data.badge_count || 1))
+    ? self.registration.setAppBadge(data.badge_count || 1)
     : Promise.resolve();
 
   event.waitUntil(
     Promise.all([
       self.registration.showNotification(title, options),
       badgePromise,
-    ])
+    ]),
   );
 });
 
@@ -131,7 +139,8 @@ self.addEventListener("notificationclick", (event) => {
         // Focus existing dashboard tab if open
         for (const client of windowClients) {
           if (client.url.includes(self.location.origin) && "focus" in client) {
-            if (self.registration.clearAppBadge) self.registration.clearAppBadge().catch(() => {});
+            if (self.registration.clearAppBadge)
+              self.registration.clearAppBadge().catch(() => {});
             return client.focus();
           }
         }
