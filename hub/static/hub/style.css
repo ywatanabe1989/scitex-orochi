@@ -2279,6 +2279,16 @@ a.chat-link:hover {
   padding: 7px 14px;
   cursor: pointer;
 }
+/* Fixed-width prefix slot so rows with and without a glyph share the
+ * same channel-name column. An empty .ch-ctx-glyph still occupies the
+ * column so labels line up. todo#99. */
+.ch-ctx-glyph {
+  display: inline-block;
+  width: 1.4em;
+  margin-right: 4px;
+  text-align: center;
+  color: inherit;
+}
 .ch-ctx-item:hover {
   background: #1a3040;
   color: #fff;

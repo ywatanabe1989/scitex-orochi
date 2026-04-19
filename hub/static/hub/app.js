@@ -606,32 +606,58 @@ function _showChannelCtxMenu(ch, x, y) {
   menu.className = "ch-ctx-menu";
   menu.style.cssText =
     "position:fixed;z-index:9999;left:" + x + "px;top:" + y + "px;";
+  /* Reserve a fixed-width glyph slot at the start of every row so the
+   * channel-name / label column lines up whether a row has a prefix
+   * (☆/★/🔇/🔔/⤓) or not. Without the empty placeholder, rows without a
+   * glyph start flush-left and names jitter into misaligned columns.
+   * todo#99. ywatanabe 2026-04-19. */
+  var G_STAR_OFF = "\u2606"; /* ☆ */
+  var G_STAR_ON = "\u2605"; /* ★ */
+  var G_MUTE_OFF = "\uD83D\uDD14"; /* 🔔 bell — mute OFF (will mute on click) */
+  var G_MUTE_ON = "\uD83D\uDD07"; /* 🔇 — currently muted */
+  var G_EXPORT = "\u2935"; /* ⤵ export */
+  var G_EMPTY = "";
+  function _glyph(g) {
+    return '<span class="ch-ctx-glyph">' + g + "</span>";
+  }
   menu.innerHTML = [
     '<div class="ch-ctx-item" data-action="star">' +
-      (starred ? "&#9733; Unstar" : "&#9734; Star channel") +
+      _glyph(starred ? G_STAR_ON : G_STAR_OFF) +
+      (starred ? "Unstar" : "Star channel") +
       "</div>",
     '<div class="ch-ctx-item" data-action="mute">' +
-      (muted ? "&#128276; Unmute" : "&#128263; Mute channel") +
+      _glyph(muted ? G_MUTE_ON : G_MUTE_OFF) +
+      (muted ? "Unmute" : "Mute channel") +
       "</div>",
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-label">Notifications</div>',
     '<div class="ch-ctx-item ch-ctx-notif' +
       (notif === "all" ? " ch-ctx-active" : "") +
-      '" data-action="notif-all">All messages</div>',
+      '" data-action="notif-all">' +
+      _glyph(G_EMPTY) +
+      "All messages</div>",
     '<div class="ch-ctx-item ch-ctx-notif' +
       (notif === "mentions" ? " ch-ctx-active" : "") +
-      '" data-action="notif-mentions">@ Mentions only</div>',
+      '" data-action="notif-mentions">' +
+      _glyph(G_EMPTY) +
+      "@ Mentions only</div>",
     '<div class="ch-ctx-item ch-ctx-notif' +
       (notif === "nothing" ? " ch-ctx-active" : "") +
-      '" data-action="notif-nothing">Nothing</div>',
+      '" data-action="notif-nothing">' +
+      _glyph(G_EMPTY) +
+      "Nothing</div>",
     '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item ch-ctx-export" data-action="export">&#10515; Export channel\u2026</div>',
+    '<div class="ch-ctx-item ch-ctx-export" data-action="export">' +
+      _glyph(G_EXPORT) +
+      "Export channel\u2026</div>",
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
+      _glyph(G_EMPTY) +
       (hidden ? "Show channel" : "Hide channel") +
       "</div>",
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="topo-hide">' +
+      _glyph(G_EMPTY) +
       "Hide node (Viz topology)" +
       "</div>",
   ].join("");
