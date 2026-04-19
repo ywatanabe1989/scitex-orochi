@@ -2300,8 +2300,111 @@ async function fetchStats() {
         break;
       }
     }
-    chContainer.innerHTML = displayChannels
-      .map(function (entry, i) {
+    /* todo#71: tree-structured channel hierarchy via "/" path segments.
+     * Channels named like "proj/ripple-wm" are grouped under a collapsible
+     * "proj" folder header. Starred (pinned) channels remain flat at the
+     * top — pinning means "always visible". Hidden channels also stay flat
+     * at the bottom (already visually separated by the divider).
+     *
+     * No backend change. `mkdir` is a no-op (folder appears when first
+     * child is added). `mv` is just a channel rename (deferred until a
+     * rename API exists). Collapse state persists in localStorage so
+     * refreshes keep the user's folders closed/open as they left them. */
+    var _treeCollapsed = {};
+    try {
+      var _raw = localStorage.getItem("orochi.channelTreeCollapsed");
+      if (_raw) _treeCollapsed = JSON.parse(_raw) || {};
+    } catch (_) {
+      _treeCollapsed = {};
+    }
+    /* Parse "#proj/ripple-wm" -> { folder: "proj", leaf: "#ripple-wm" }.
+     * Returns null if the channel has no folder (top-level). Only splits
+     * on the FIRST "/" to keep it simple — deeply nested trees can be
+     * added later if needed. */
+    function _splitChannelPath(norm) {
+      if (typeof norm !== "string" || norm.length === 0) return null;
+      /* Strip leading "#" then look for "/" */
+      var bare = norm.charAt(0) === "#" ? norm.slice(1) : norm;
+      var slash = bare.indexOf("/");
+      if (slash <= 0 || slash === bare.length - 1) return null;
+      return {
+        folder: bare.slice(0, slash),
+        leaf: "#" + bare.slice(slash + 1),
+      };
+    }
+    /* Walk displayChannels in sorted order and emit an interleaved list of
+     * folder-header rows + channel rows. Only non-starred, non-hidden
+     * channels are tree-ified; starred stays pinned flat at the top, and
+     * hidden stays dimmed flat at the bottom. */
+    var _currentFolder = null;
+    var _renderRows = [];
+    for (var _ri = 0; _ri < displayChannels.length; _ri++) {
+      var _e = displayChannels[_ri];
+      var _epref = _channelPrefs[_e.norm] || _channelPrefs[_e.raw] || {};
+      var _isStarred = !!_epref.is_starred;
+      var _isHidden = !!_e.hidden;
+      var _split =
+        !_isStarred && !_isHidden ? _splitChannelPath(_e.norm) : null;
+      if (_split) {
+        if (_currentFolder !== _split.folder) {
+          _currentFolder = _split.folder;
+          _renderRows.push({
+            type: "folder",
+            prefix: _split.folder,
+            collapsed: !!_treeCollapsed[_split.folder],
+          });
+        }
+        if (_treeCollapsed[_split.folder]) {
+          /* Child hidden by collapsed folder — skip rendering the row. */
+          continue;
+        }
+        _renderRows.push({
+          type: "channel",
+          entry: _e,
+          origIdx: _ri,
+          inFolder: _split.folder,
+          leafLabel: _split.leaf,
+        });
+      } else {
+        _currentFolder = null;
+        _renderRows.push({
+          type: "channel",
+          entry: _e,
+          origIdx: _ri,
+          inFolder: null,
+          leafLabel: _e.norm,
+        });
+      }
+    }
+    chContainer.innerHTML = _renderRows
+      .map(function (row) {
+        if (row.type === "folder") {
+          var chev = row.collapsed ? "\u25B8" : "\u25BE"; /* ▸ ▾ */
+          var ficon = row.collapsed
+            ? "\uD83D\uDCC1"
+            : "\uD83D\uDCC2"; /* 📁 📂 */
+          return (
+            '<div class="channel-folder' +
+            (row.collapsed ? " collapsed" : "") +
+            '" data-folder="' +
+            escapeHtml(row.prefix) +
+            '" title="Click to ' +
+            (row.collapsed ? "expand" : "collapse") +
+            ' folder">' +
+            '<span class="ch-folder-chev">' +
+            chev +
+            "</span>" +
+            '<span class="ch-folder-icon">' +
+            ficon +
+            "</span>" +
+            '<span class="ch-folder-name">' +
+            escapeHtml(row.prefix) +
+            "/</span>" +
+            "</div>"
+          );
+        }
+        var entry = row.entry;
+        var i = row.origIdx;
         var c = entry.raw;
         var norm = entry.norm;
         var active = currentChannel === c ? " active" : "";
@@ -2353,13 +2456,19 @@ async function fetchStats() {
           "</span>";
         var starred = pref.is_starred ? " ch-starred" : "";
         var hiddenCls = entry.hidden ? " ch-hidden" : "";
+        var inFolderCls = row.inFolder ? " ch-in-folder" : "";
         var divider =
           i === firstHiddenIdx
             ? '<div class="ch-hidden-divider" aria-hidden="true"></div>'
             : "";
         var rowTitle = entry.hidden
           ? ' title="Hidden \u2014 click to un-hide"'
-          : "";
+          : row.inFolder
+            ? ' title="' + escapeHtml(entry.norm) + '"'
+            : "";
+        /* Label: full "#proj/ripple-wm" at top level; short "#ripple-wm"
+         * when rendered as a child of the proj/ folder header (todo#71). */
+        var nameLabel = row.inFolder ? row.leafLabel : entry.norm;
         return (
           divider +
           '<div class="channel-item' +
@@ -2367,22 +2476,59 @@ async function fetchStats() {
           muted +
           starred +
           hiddenCls +
+          inFolderCls +
           '" data-channel="' +
           escapeHtml(c) +
           '"' +
           (entry.hidden ? ' data-hidden="1"' : "") +
+          (row.inFolder
+            ? ' data-folder="' + escapeHtml(row.inFolder) + '"'
+            : "") +
           rowTitle +
           ' draggable="true">' +
           '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
           starHtml +
           '<span class="ch-name">' +
-          escapeHtml(entry.norm) +
+          escapeHtml(nameLabel) +
           "</span>" +
           badgeHtml +
           "</div>"
         );
       })
       .join("");
+    /* todo#71: wire folder-header click -> toggle collapse + persist.
+     * Handler is attached BEFORE the .channel-item forEach so the folder
+     * rows live in the same DOM snapshot. Clicking a folder re-runs
+     * fetchStats() via the localStorage round-trip so the next render
+     * reflects the new collapse state immediately. */
+    chContainer.querySelectorAll(".channel-folder").forEach(function (fEl) {
+      fEl.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var prefix = fEl.getAttribute("data-folder") || "";
+        if (!prefix) return;
+        var store = {};
+        try {
+          var raw = localStorage.getItem("orochi.channelTreeCollapsed");
+          if (raw) store = JSON.parse(raw) || {};
+        } catch (_) {
+          store = {};
+        }
+        if (store[prefix]) {
+          delete store[prefix];
+        } else {
+          store[prefix] = true;
+        }
+        try {
+          localStorage.setItem(
+            "orochi.channelTreeCollapsed",
+            JSON.stringify(store),
+          );
+        } catch (_) {}
+        /* Bust the throttle so the next fetchStats actually re-renders. */
+        chContainer._lastStatsJson = null;
+        fetchStats();
+      });
+    });
     chContainer.querySelectorAll(".channel-item").forEach(function (el) {
       /* Restore selected state from before re-render */
       var elCh = el.getAttribute("data-channel");

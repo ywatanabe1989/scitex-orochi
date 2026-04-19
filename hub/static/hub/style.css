@@ -2137,6 +2137,58 @@ a.chat-link:hover {
   margin: 6px 8px;
 }
 
+/* Tree-structured channel hierarchy (todo#71).
+ * Channels named like "proj/ripple-wm" are grouped under a collapsible
+ * "proj/" folder header. The header is a regular row that clicks to
+ * toggle collapse; children are indented and display only the leaf
+ * portion of their name (e.g. "#ripple-wm"). */
+.channel-folder {
+  font-size: 12px;
+  color: #8a8f96;
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.channel-folder:hover {
+  background: #1a1a1a;
+  color: #cfd4da;
+}
+.ch-folder-chev {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+  color: #666;
+  flex-shrink: 0;
+}
+.channel-folder:hover .ch-folder-chev {
+  color: #aaa;
+}
+.ch-folder-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ch-folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+.channel-folder.collapsed {
+  color: #6a7078;
+}
+/* Indent rows that live inside a folder so the tree visually nests. */
+.channel-item.ch-in-folder {
+  margin-left: 14px;
+}
+
 /* Machines sidebar — one-line compact row (ywatanabe 2026-04-19).
  *   [conn-dot] name   CPU%  Mem used/total GB  Disk%
  * Replaces the 3-stacked-bars layout. Everything fits in ~260px so the
