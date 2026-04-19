@@ -1086,6 +1086,24 @@ function appendMessage(msg) {
       }
     }
   }
+  /* Lazy-create DM sidebar refresh (todo#418 follow-up): when a message
+   * arrives on a dm:<...> channel that the sidebar hasn't listed yet,
+   * the 10s poll in dms.js would leave the row invisible for up to 10s
+   * after the backend lazily created the DM on first send. Kick
+   * fetchDms() immediately so the new row appears right away. Covers
+   * both inbound (someone DMs me) and own-send (I send to a new DM)
+   * paths — fetchDms() is idempotent and JSON-diffed internally. */
+  if (channel && channel.indexOf("dm:") === 0) {
+    var _dmRowPresent =
+      document.querySelector(
+        '.dm-item[data-channel="' + channel.replace(/"/g, '\\"') + '"]',
+      ) !== null;
+    if (!_dmRowPresent && typeof window.fetchDms === "function") {
+      try {
+        window.fetchDms();
+      } catch (_) {}
+    }
+  }
   /* Render any mermaid diagrams inside the newly appended message */
   _renderMermaidIn(el);
   /* todo#274 Part 2: re-apply multi-select feed filter so newly-arrived
