@@ -571,6 +571,18 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "mem_used_percent": payload.get("mem_used_percent"),
                 "mem_total_mb": payload.get("mem_total_mb"),
                 "disk_used_percent": payload.get("disk_used_percent"),
+                # Slurm cluster aggregates (todo#87). None on non-slurm hosts.
+                "resource_source": payload.get("resource_source"),
+                "cluster_nodes": payload.get("cluster_nodes"),
+                "cluster_cpus_allocated": payload.get("cluster_cpus_allocated"),
+                "cluster_cpus_total": payload.get("cluster_cpus_total"),
+                "cluster_mem_free_mb": payload.get("cluster_mem_free_mb"),
+                "cluster_mem_total_mb": payload.get("cluster_mem_total_mb"),
+                "cluster_gpus_total": payload.get("cluster_gpus_total"),
+                "cluster_gpus_allocated": payload.get("cluster_gpus_allocated"),
+                "slurm_total_jobs": payload.get("slurm_total_jobs"),
+                "slurm_running": payload.get("slurm_running"),
+                "slurm_pending": payload.get("slurm_pending"),
             }
 
             # Update in-memory registry

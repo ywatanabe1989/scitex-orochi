@@ -565,6 +565,39 @@ async function fetchResources() {
         _loadAvg: [r.load_avg_1m || 0, r.load_avg_5m || 0, r.load_avg_15m || 0],
         _memFreeMb: r.mem_free_mb || 0,
         _memTotalMb: r.mem_total_mb || 0,
+        // Slurm cluster aggregates (todo#87). Populated only when the
+        // host reports `resource_source == "slurm"` — login-node metrics
+        // are replaced with cluster-wide CPU/RAM at the agent, so the
+        // existing cpu/memory bars above now reflect cluster busy%.
+        _resourceSource: r.resource_source || "local",
+        slurm:
+          r.resource_source === "slurm"
+            ? {
+                total_jobs: r.slurm_total_jobs || 0,
+                running: r.slurm_running || 0,
+                pending: r.slurm_pending || 0,
+                cluster_nodes: r.cluster_nodes || 0,
+                cluster_cpus_total: r.cluster_cpus_total || 0,
+                cluster_cpus_allocated: r.cluster_cpus_allocated || 0,
+              }
+            : null,
+        gpu:
+          r.cluster_gpus_total > 0
+            ? [
+                {
+                  utilization_percent:
+                    r.cluster_gpus_total > 0
+                      ? Math.round(
+                          ((r.cluster_gpus_allocated || 0) /
+                            r.cluster_gpus_total) *
+                            100,
+                        )
+                      : 0,
+                  total: r.cluster_gpus_total,
+                  allocated: r.cluster_gpus_allocated || 0,
+                },
+              ]
+            : null,
       };
     });
     renderResources();

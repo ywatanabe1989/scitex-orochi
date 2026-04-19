@@ -2407,6 +2407,18 @@ def api_resources(request):
                     "mem_total_mb": metrics.get("mem_total_mb", 0),
                     "mem_free_mb": metrics.get("mem_free_mb", 0),
                     "disk_used_percent": metrics.get("disk_used_percent", 0),
+                    # Slurm cluster aggregates (todo#87) — absent on non-slurm hosts
+                    "resource_source": metrics.get("resource_source", "local"),
+                    "cluster_nodes": metrics.get("cluster_nodes", 0),
+                    "cluster_cpus_allocated": metrics.get("cluster_cpus_allocated", 0),
+                    "cluster_cpus_total": metrics.get("cluster_cpus_total", 0),
+                    "cluster_mem_free_mb": metrics.get("cluster_mem_free_mb", 0),
+                    "cluster_mem_total_mb": metrics.get("cluster_mem_total_mb", 0),
+                    "cluster_gpus_total": metrics.get("cluster_gpus_total", 0),
+                    "cluster_gpus_allocated": metrics.get("cluster_gpus_allocated", 0),
+                    "slurm_total_jobs": metrics.get("slurm_total_jobs", 0),
+                    "slurm_running": metrics.get("slurm_running", 0),
+                    "slurm_pending": metrics.get("slurm_pending", 0),
                 },
             }
 
@@ -2425,6 +2437,17 @@ def api_resources(request):
                 "mem_total_mb",
                 "mem_free_mb",
                 "disk_used_percent",
+                "resource_source",
+                "cluster_nodes",
+                "cluster_cpus_allocated",
+                "cluster_cpus_total",
+                "cluster_mem_free_mb",
+                "cluster_mem_total_mb",
+                "cluster_gpus_total",
+                "cluster_gpus_allocated",
+                "slurm_total_jobs",
+                "slurm_running",
+                "slurm_pending",
             ):
                 val = metrics.get(key)
                 if val:

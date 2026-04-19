@@ -436,6 +436,19 @@ class OrochiServer:
         "mem_total_mb",
         "mem_used_percent",
         "disk_used_percent",
+        # Slurm cluster aggregates (todo#87). Present only on hosts where
+        # ``sinfo`` is on PATH; absent keys are ignored downstream.
+        "resource_source",
+        "cluster_nodes",
+        "cluster_cpus_allocated",
+        "cluster_cpus_total",
+        "cluster_mem_free_mb",
+        "cluster_mem_total_mb",
+        "cluster_gpus_total",
+        "cluster_gpus_allocated",
+        "slurm_total_jobs",
+        "slurm_running",
+        "slurm_pending",
     }
 
     async def _handle_heartbeat(self, msg: Message) -> None:
