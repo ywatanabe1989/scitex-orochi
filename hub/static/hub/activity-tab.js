@@ -4129,28 +4129,45 @@ function _renderActivityTopology(visible, grid) {
        * the glyph center aligns with the LEDs and the text baseline.
        * ywatanabe 2026-04-19: "icons must have aligned in vertical
        * axis with text and indicators". */
-      /* Custom agent icon — prefer the AgentProfile-configured emoji
+      /* Custom agent icon — prefer the AgentProfile-configured value
        * from cachedAgentIcons (populated by fetchAgents) so the
        * canvas node matches what the sidebar row and Agents-tab
-       * card show. Fall back to the default 🤖 when no custom icon
-       * is set or when the cached value is an image URL (SVG <image>
-       * rendering deferred). TODO.md Entity Consistency: "Icons
-       * (svg/png) must be configurable with default allocations".  */
-      var agentEmoji = "\uD83E\uDD16";
-      if (typeof cachedAgentIcons !== "undefined" && cachedAgentIcons[a.name]) {
-        var _ai = cachedAgentIcons[a.name];
-        if (_ai && _ai.indexOf("http") !== 0 && _ai.indexOf("/") !== 0) {
-          agentEmoji = _ai;
-        }
+       * card show. Cascade: image URL → emoji → 🤖 fallback. Image
+       * URLs render via SVG <image>; emoji via <text>.
+       * TODO.md Entity Consistency: "Icons (svg/png) must be
+       * configurable with default allocations". */
+      var agentGlyph = "";
+      var _ai =
+        typeof cachedAgentIcons !== "undefined"
+          ? cachedAgentIcons[a.name] || ""
+          : "";
+      var _aiIsUrl =
+        _ai && (_ai.indexOf("http") === 0 || _ai.indexOf("/") === 0);
+      if (_aiIsUrl) {
+        var _imgSize = 14;
+        agentGlyph =
+          '<image class="topo-agent-glyph-img" href="' +
+          escapeHtml(_ai) +
+          '" x="' +
+          (agentIconX - _imgSize / 2).toFixed(1) +
+          '" y="' +
+          (p.y - _imgSize / 2).toFixed(1) +
+          '" width="' +
+          _imgSize +
+          '" height="' +
+          _imgSize +
+          '" preserveAspectRatio="xMidYMid slice"/>';
+      } else {
+        var agentEmoji = _ai || "\uD83E\uDD16";
+        agentGlyph =
+          '<text class="topo-agent-glyph" x="' +
+          agentIconX.toFixed(1) +
+          '" y="' +
+          p.y.toFixed(1) +
+          '" font-size="12" dominant-baseline="central" text-anchor="middle">' +
+          agentEmoji +
+          "</text>";
       }
-      var agentGlyph =
-        '<text class="topo-agent-glyph" x="' +
-        agentIconX.toFixed(1) +
-        '" y="' +
-        p.y.toFixed(1) +
-        '" font-size="12" dominant-baseline="central" text-anchor="middle">' +
-        agentEmoji +
-        "</text>";
       return (
         '<g class="topo-node topo-agent' +
         selCls +
