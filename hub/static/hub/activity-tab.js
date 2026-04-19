@@ -2604,6 +2604,37 @@ function _renderActivityTopology(visible, grid) {
     });
   });
 
+  /* Human → every channel edge. The signed-in human can in principle
+   * post to any channel (and often reads most), so we draw an edge
+   * from the human node to every channel diamond. Lines are dashed
+   * + fainter so they read as "possible path" rather than a firm
+   * subscription. Packets animating along them still travel at full
+   * opacity. */
+  if (humanName) {
+    var hap = agentPos[humanName];
+    if (hap) {
+      channels.forEach(function (c) {
+        var cp = chPos[c];
+        if (!cp) return;
+        edgesSvg +=
+          '<line data-agent="' +
+          escapeHtml(humanName) +
+          '" data-channel="' +
+          escapeHtml(c) +
+          '" x1="' +
+          hap.x.toFixed(1) +
+          '" y1="' +
+          hap.y.toFixed(1) +
+          '" x2="' +
+          cp.x.toFixed(1) +
+          '" y2="' +
+          cp.y.toFixed(1) +
+          '" stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1"' +
+          ' stroke-dasharray="3 4"/>';
+      });
+    }
+  }
+
   /* DM edges — a visible dashed gold line directly connecting each pair
    * (or tuple) of DM principals. Source of truth is window._channelPrefs
    * (same map that drives the sidebar channel list). This replaces the
