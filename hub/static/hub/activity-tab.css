@@ -912,14 +912,15 @@
   border-color: #4ecdc4;
 }
 .activity-grid.activity-view-topology .topo-pool-mem-btn-filled {
-  color: #10b981;
-  border-color: #065f46;
-  background: #06231d;
-}
-.activity-grid.activity-view-topology .topo-pool-mem-btn-filled:hover {
   color: #34d399;
   border-color: #10b981;
-  background: #08322a;
+  background: #0f3329;
+  font-weight: 700;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-filled:hover {
+  color: #6ee7b7;
+  border-color: #34d399;
+  background: #164638;
 }
 /* todo#98 — slot with a user-assigned label: widen slightly so short
  * names fit, and switch to a softer cyan accent so labeled slots read

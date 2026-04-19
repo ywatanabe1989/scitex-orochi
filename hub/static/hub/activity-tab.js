@@ -4313,12 +4313,20 @@ function _renderActivityTopology(visible, grid) {
     }
     /* Button face: keep "M1".."M5" when empty/unlabeled, or show the
      * user-chosen label when present. Truncate aggressively so a long
-     * label never blows out the compact action row. */
-    var _memFace = _memLabel
-      ? _memLabel.length > 6
-        ? _memLabel.slice(0, 5) + "…"
-        : _memLabel
-      : "M" + _ms;
+     * label never blows out the compact action row. Filled unlabeled
+     * slots get a small count suffix ("M1·3") so users can see at a
+     * glance which slots hold data and how much — the color alone was
+     * too subtle (2026-04-19 user report: "memory saving is not
+     * working yet"). */
+    var _memFace;
+    if (_memLabel) {
+      _memFace =
+        _memLabel.length > 6 ? _memLabel.slice(0, 5) + "\u2026" : _memLabel;
+    } else if (_mem && _memCount > 0) {
+      _memFace = "M" + _ms + "\u00b7" + _memCount;
+    } else {
+      _memFace = "M" + _ms;
+    }
     memBtnsHtml +=
       '<button type="button" class="topo-pool-mem-btn' +
       (_mem ? " topo-pool-mem-btn-filled" : "") +
@@ -5387,13 +5395,20 @@ function _wireOverviewGridDelegation(grid) {
         ev.stopPropagation();
         return;
       }
-      if (ev.shiftKey) {
-        _topoPoolSelectRange(poolChip);
-      } else if (ev.ctrlKey || ev.metaKey) {
-        _topoPoolSelectToggle(pcKind, pcName);
-        _topoPoolSelAnchor = { kind: pcKind, name: pcName };
-      } else {
+      /* Plain click now toggles membership — the selection set is the
+       * filter (logical AND across selected elements), so clicking a
+       * chip just adds/removes that chip. Shift still isolates
+       * ("select only this") for quick focus. Ctrl+click preserved
+       * for muscle-memory users; does the same toggle. ywatanabe
+       * 2026-04-19: "just simply on/off for each element and keep
+       * such a state in filtering". */
+      if (ev.shiftKey && !ev.altKey) {
         _topoPoolSelectOnly(pcKind, pcName);
+        _topoPoolSelAnchor = { kind: pcKind, name: pcName };
+      } else if (ev.altKey) {
+        _topoPoolSelectRange(poolChip);
+      } else {
+        _topoPoolSelectToggle(pcKind, pcName);
         _topoPoolSelAnchor = { kind: pcKind, name: pcName };
       }
       _topoPoolSelectionPaint(grid);
