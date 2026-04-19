@@ -1,4 +1,25 @@
 /* Orochi Dashboard -- core layout (old design 007eb89 + new features) */
+
+/* Design tokens (todo#88)
+ * ----------------------
+ * Minimum interactive-control sizes. Keep dense-UI friendly (32px) but
+ * ensure tap targets on touch devices remain usable. Individual tabs can
+ * opt in by applying `min-width: var(--btn-min-w); min-height: var(--btn-min-h);`
+ * — we intentionally do NOT set these globally on every <button> to avoid
+ * regressing bespoke inline controls (e.g. composer icon buttons that have
+ * their own sizing). Start with Files tab; other tabs opt in incrementally.
+ */
+:root {
+  --btn-min-w: 32px;
+  --btn-min-h: 32px;
+  --btn-font-size: 13px;
+  --btn-padding-x: 10px;
+  --btn-padding-y: 6px;
+  --toolbar-padding-x: 16px;
+  --toolbar-padding-y-top: 6px;
+  --toolbar-padding-y-bottom: 8px;
+}
+
 * {
   margin: 0;
   padding: 0;
