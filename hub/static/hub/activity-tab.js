@@ -3951,6 +3951,29 @@ function _renderActivityTopology(visible, grid) {
           (p.y - r + 4).toFixed(1) +
           '" font-size="11" fill="#94a3b8">\uD83D\uDD15</text>'
         : "";
+      /* Custom channel icon — render the same emoji that the sidebar
+       * + pool chips show (todo#101 entity consistency). Only emoji
+       * variant is surfaced on canvas; icon_image would require a
+       * separate <image> element + async URL fetch, deferred for a
+       * later iteration. */
+      var chIconEmoji = "";
+      if (typeof cachedChannelIcons !== "undefined" && cachedChannelIcons[c]) {
+        var _ci = cachedChannelIcons[c];
+        if (_ci && _ci.indexOf("http") !== 0 && _ci.indexOf("/") !== 0) {
+          chIconEmoji = _ci;
+        }
+      }
+      var iconGlyph = chIconEmoji
+        ? '<text class="topo-ch-emoji" x="' +
+          p.x.toFixed(1) +
+          '" y="' +
+          (p.y + 4).toFixed(1) +
+          '" font-size="' +
+          Math.max(11, Math.round(r * 1.2)) +
+          '" text-anchor="middle" dominant-baseline="middle">' +
+          chIconEmoji +
+          "</text>"
+        : "";
       return (
         '<g class="' +
         chCls +
@@ -3962,6 +3985,7 @@ function _renderActivityTopology(visible, grid) {
         '<polygon points="' +
         pts +
         '" fill="#1a1a1a" stroke="#444" stroke-width="1"/>' +
+        iconGlyph +
         starGlyph +
         muteGlyph +
         '<text class="topo-label topo-label-ch" x="' +
