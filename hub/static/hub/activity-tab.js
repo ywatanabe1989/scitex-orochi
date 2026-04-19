@@ -3917,16 +3917,37 @@ function _topoShowEdgeMenu(agent, channel, clientX, clientY) {
   requestAnimationFrame(function () {
     if (_topoEdgeMenuEl === menu) menu.style.opacity = "1";
   });
-  menu.addEventListener("click", function (ev) {
-    var btn = ev.target.closest("[data-topo-edge-action]");
+  /* Bind the action handler directly to each button (not via click
+   * delegation on the parent menu). Delegated click on the menu was
+   * unreliable in the wild: right-click-to-open puts the DOM into a
+   * state where the subsequent left-click on Unsubscribe sometimes
+   * never reached our bubble-phase listener — users reported
+   * "unsubscribe not working from right click edge -> unsubscribe".
+   * Per-button listeners fire deterministically on `click` AND
+   * `pointerdown` (fallback for flaky pointer stacks), so the action
+   * runs even if one of the two phases is intercepted upstream.
+   * ywatanabe 2026-04-19. */
+  function _topoEdgeMenuHandleAction(ev) {
+    var btn = ev.currentTarget;
     if (!btn) return;
     var action = btn.getAttribute("data-topo-edge-action");
+    ev.preventDefault();
     ev.stopPropagation();
+    /* Guard against double-fire (pointerdown + click on same button). */
+    if (btn.__topoActionFired) return;
+    btn.__topoActionFired = true;
     if (action === "unsubscribe") {
       _topoDoEdgeUnsubscribe(agent, channel);
     }
     _topoCloseEdgeMenu();
-  });
+  }
+  var actionBtns = menu.querySelectorAll("[data-topo-edge-action]");
+  for (var ai = 0; ai < actionBtns.length; ai++) {
+    actionBtns[ai].addEventListener("click", _topoEdgeMenuHandleAction);
+    /* Also fire on pointerdown — triggers before mouseup/click so
+     * nothing that runs on click-bubble can cancel the action. */
+    actionBtns[ai].addEventListener("pointerdown", _topoEdgeMenuHandleAction);
+  }
   /* Dismiss on outside click (mousedown catches it earlier than click,
    * so the menu can't flicker on drag-select) / Escape. Defer to next
    * tick so the current click that opened the menu doesn't immediately
