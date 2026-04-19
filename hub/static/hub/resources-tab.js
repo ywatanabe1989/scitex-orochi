@@ -132,7 +132,13 @@ function _applyMachinesViewVisibility() {
 var _machinesControlsWired = false;
 function _wireMachinesControls() {
   if (_machinesControlsWired) return;
-  var viewSwitch = document.querySelector(".machines-view-switch");
+  /* Scope the query — another .machines-view-switch was added inside
+   * #todo-view for the TODO Viz/List toggle (todo#102). Without the
+   * #resources-view prefix the selector matched the TODO one first
+   * and the Machines tab switcher silently no-op'd. */
+  var viewSwitch = document.querySelector(
+    "#resources-view .machines-view-switch",
+  );
   if (!viewSwitch) return;
   function _setBtnActive() {
     viewSwitch
