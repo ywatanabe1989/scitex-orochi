@@ -1382,7 +1382,20 @@ function _topoSelectAdd(name) {
  * act as named presets (recall on click, save via shift-click / the
  * +Save button). */
 var _TOPO_POOL_SEL_KEY = "orochi.topoPoolSelection";
-var _TOPO_POOL_MEM_KEY = "orochi.topoPoolMemories";
+/* Memory slots are scoped by workspace so switching workspaces doesn't
+ * show the wrong presets. Falls back to the legacy unscoped key on
+ * first read so existing snapshots aren't nuked after upgrade. todo#98
+ * "Memory slots snapshot current filter state" — each slot now captures
+ * pool selection + sidebar filter input + activeTags chips + per-entity
+ * hidden set, so recall restores the *whole* view. */
+var _TOPO_POOL_MEM_KEY_LEGACY = "orochi.topoPoolMemories";
+function _topoMemWorkspaceKey() {
+  var ws =
+    (typeof window !== "undefined" &&
+      (window.__orochiWorkspace || window.__orochiWorkspaceName)) ||
+    "default";
+  return "orochi.memoryslots." + String(ws);
+}
 var _TOPO_POOL_MEM_MAX = 5;
 var _topoPoolSelection = (function _loadPoolSel() {
   var empty = {
@@ -1407,7 +1420,13 @@ var _topoPoolSelection = (function _loadPoolSel() {
 })();
 var _topoPoolMemories = (function _loadPoolMem() {
   try {
-    var raw = localStorage.getItem(_TOPO_POOL_MEM_KEY);
+    var raw = localStorage.getItem(_topoMemWorkspaceKey());
+    if (!raw) {
+      /* todo#98 back-compat: bootstrap from legacy unscoped key so users
+       * who saved slots pre-upgrade don't silently lose them. Migrate by
+       * writing the data under the new namespaced key on next persist. */
+      raw = localStorage.getItem(_TOPO_POOL_MEM_KEY_LEGACY);
+    }
     if (!raw) return {};
     var parsed = JSON.parse(raw);
     return parsed && typeof parsed === "object" ? parsed : {};
@@ -1430,7 +1449,10 @@ function _topoPoolPersistSelection() {
 }
 function _topoPoolPersistMemories() {
   try {
-    localStorage.setItem(_TOPO_POOL_MEM_KEY, JSON.stringify(_topoPoolMemories));
+    localStorage.setItem(
+      _topoMemWorkspaceKey(),
+      JSON.stringify(_topoPoolMemories),
+    );
   } catch (_e) {
     /* ignore */
   }
@@ -1531,19 +1553,70 @@ function _topoPoolSelectRange(targetChip) {
 }
 /* Save / recall / list memory presets. Slot numbers are 1-based
  * (displayed as M1..M5). Save overwrites; recall replaces the current
- * selection with the slot contents. */
-function _topoPoolMemorySave(slot) {
-  if (!slot || slot < 1 || slot > _TOPO_POOL_MEM_MAX) return;
-  _topoPoolMemories[String(slot)] = {
+ * selection with the slot contents.
+ *
+ * todo#98 — snapshot structure is {agents, channels, hidden, filter,
+ * label, savedAt}. The extended fields are optional so older slots
+ * (agents+channels only) still recall correctly. */
+function _topoPoolMemorySnapshot() {
+  /* Sidebar filter state: raw #filter-input text + parsed activeTags.
+   * Raw text captures is:<flag> tokens and free-form search words;
+   * activeTags captures the agent/host/channel/label/project chips
+   * rendered as pill tokens. Both are needed because the two stores
+   * diverge by design (todo#72). */
+  var input = null;
+  try {
+    input = document.getElementById("filter-input");
+  } catch (_e) {}
+  var rawInput =
+    (input && typeof input.value === "string" && input.value) || "";
+  var tags = [];
+  try {
+    if (typeof activeTags !== "undefined" && Array.isArray(activeTags)) {
+      for (var i = 0; i < activeTags.length; i++) {
+        var t = activeTags[i];
+        if (t && typeof t.type === "string" && typeof t.value === "string") {
+          tags.push({ type: t.type, value: t.value });
+        }
+      }
+    }
+  } catch (_e) {}
+  return {
     agents: Object.keys(_topoPoolSelection.agents),
     channels: Object.keys(_topoPoolSelection.channels),
+    hidden: {
+      agents: Object.keys(_topoHidden.agents || {}),
+      channels: Object.keys(_topoHidden.channels || {}),
+    },
+    filter: { input: rawInput, tags: tags },
     savedAt: Date.now(),
   };
+}
+function _topoPoolMemorySave(slot) {
+  if (!slot || slot < 1 || slot > _TOPO_POOL_MEM_MAX) return;
+  /* Preserve existing label on overwrite so users don't lose the name
+   * they gave a slot when they refresh its contents. */
+  var prev = _topoPoolMemories[String(slot)] || {};
+  var snap = _topoPoolMemorySnapshot();
+  if (prev.label) snap.label = prev.label;
+  _topoPoolMemories[String(slot)] = snap;
   _topoPoolPersistMemories();
+}
+function _topoPoolMemoryRename(slot, label) {
+  var mem = _topoPoolMemories[String(slot)];
+  if (!mem) return false;
+  if (label && typeof label === "string") {
+    mem.label = label.slice(0, 32);
+  } else {
+    delete mem.label;
+  }
+  _topoPoolPersistMemories();
+  return true;
 }
 function _topoPoolMemoryRecall(slot) {
   var mem = _topoPoolMemories[String(slot)];
   if (!mem) return false;
+  /* Pool selection. */
   _topoPoolSelection = {
     agents: Object.create(null),
     channels: Object.create(null),
@@ -1555,6 +1628,52 @@ function _topoPoolMemoryRecall(slot) {
     _topoPoolSelection.channels[n] = true;
   });
   _topoPoolPersistSelection();
+  /* Hidden set (right-click→Hide). Slots saved before todo#98 lack
+   * this field; skip the apply rather than nuke whatever the user
+   * currently has hidden. */
+  if (mem.hidden && typeof mem.hidden === "object") {
+    _topoHidden = { agents: {}, channels: {} };
+    (mem.hidden.agents || []).forEach(function (n) {
+      _topoHidden.agents[n] = true;
+    });
+    (mem.hidden.channels || []).forEach(function (n) {
+      _topoHidden.channels[n] = true;
+    });
+    _topoSaveHidden();
+    _topoLastSig = "";
+  }
+  /* Sidebar filter: restore raw input + activeTags, then re-run the
+   * global filter + chip sync. Guarded by typeof checks because the
+   * sidebar may not be present on every render path. */
+  if (mem.filter && typeof mem.filter === "object") {
+    try {
+      if (typeof activeTags !== "undefined" && Array.isArray(activeTags)) {
+        activeTags.length = 0;
+        var fTags = mem.filter.tags;
+        if (Array.isArray(fTags)) {
+          for (var k = 0; k < fTags.length; k++) {
+            var ft = fTags[k];
+            if (ft && ft.type && typeof ft.value === "string") {
+              activeTags.push({ type: ft.type, value: ft.value });
+            }
+          }
+        }
+        if (typeof renderTags === "function") renderTags();
+        if (typeof syncFilterVisuals === "function") syncFilterVisuals();
+      }
+    } catch (_e) {}
+    try {
+      var fi = document.getElementById("filter-input");
+      if (fi) {
+        fi.value =
+          (mem.filter.input &&
+            typeof mem.filter.input === "string" &&
+            mem.filter.input) ||
+          "";
+        fi.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    } catch (_e) {}
+  }
   return true;
 }
 function _topoPoolMemoryDelete(slot) {
@@ -2224,7 +2343,10 @@ function _topoSeekbarHtml() {
   var liveCls =
     "topo-seek-live" + (mode === "live" ? " topo-seek-live-on" : "");
   /* Slider runs 0..1000 (permill of window). Actual ts is resolved in
-   * _topoSeekUpdateUI using the live buffer start/end. */
+   * _topoSeekUpdateUI using the live buffer start/end.
+   * todo#97 — The .topo-seek-track-wrap groups the heatmap <canvas> and
+   * the <input type=range> so the density bar stays pixel-aligned with
+   * the scrubber track regardless of flex sizing. */
   return (
     '<div class="topo-seekbar" role="group" aria-label="Timeline scrubber">' +
     '<button type="button" class="topo-seek-btn topo-seek-play" ' +
@@ -2236,12 +2358,125 @@ function _topoSeekbarHtml() {
     '<button type="button" class="' +
     liveCls +
     '" data-topo-seek="live" title="Jump to live">LIVE</button>' +
+    '<div class="topo-seek-track-wrap">' +
+    '<canvas class="topo-seek-heatmap" ' +
+    'data-topo-seek="heatmap" aria-hidden="true"></canvas>' +
     '<input type="range" class="topo-seek-range" ' +
     'min="0" max="1000" step="1" value="1000" ' +
     'data-topo-seek="range" aria-label="Timeline position"/>' +
+    "</div>" +
     '<span class="topo-seek-label" data-topo-seek="label">—</span>' +
     "</div>"
   );
+}
+
+/* todo#97 — Engagement density heatmap on the seekbar track.
+ * Bins _topoSeekEvents into TOPO_SEEK_HEAT_BINS buckets across the same
+ * [start, end] window the slider spans, then paints each bucket as a
+ * vertical column on the heatmap canvas with intensity proportional to
+ * the bucket count. The painted image is cached and only recomputed
+ * when the event buffer length or the buffer window edges change, and
+ * at most once per TOPO_SEEK_HEAT_THROTTLE_MS. */
+var TOPO_SEEK_HEAT_BINS = 200;
+var TOPO_SEEK_HEAT_THROTTLE_MS = 250;
+var _topoSeekHeatLastSig = "";
+var _topoSeekHeatLastPaint = 0;
+
+function _topoSeekHeatColor(intensity) {
+  /* Viridis-like 5-stop ramp (dark purple -> teal -> yellow). intensity
+   * in [0, 1]; returns an rgba string with alpha that grows with the
+   * bucket count so empty bins fade into the track background. */
+  if (intensity <= 0) return "rgba(0,0,0,0)";
+  var i = Math.max(0, Math.min(1, intensity));
+  var stops = [
+    [68, 1, 84] /* 0.00 deep purple */,
+    [59, 82, 139] /* 0.25 blue */,
+    [33, 144, 141] /* 0.50 teal */,
+    [94, 201, 98] /* 0.75 green */,
+    [253, 231, 37] /* 1.00 yellow */,
+  ];
+  var f = i * (stops.length - 1);
+  var lo = Math.floor(f);
+  var hi = Math.min(stops.length - 1, lo + 1);
+  var t = f - lo;
+  var r = Math.round(stops[lo][0] + (stops[hi][0] - stops[lo][0]) * t);
+  var g = Math.round(stops[lo][1] + (stops[hi][1] - stops[lo][1]) * t);
+  var b = Math.round(stops[lo][2] + (stops[hi][2] - stops[lo][2]) * t);
+  /* Alpha ramps in so near-empty bins don't smear across the track. */
+  var a = 0.35 + 0.55 * i;
+  return "rgba(" + r + "," + g + "," + b + "," + a.toFixed(3) + ")";
+}
+
+function _topoSeekHeatCompute(winStart, winEnd, bins) {
+  var n = _topoSeekEvents.length;
+  var out = new Array(bins);
+  for (var k = 0; k < bins; k++) out[k] = 0;
+  if (!n || winEnd <= winStart) return { counts: out, max: 0 };
+  var span = winEnd - winStart;
+  var max = 0;
+  for (var j = 0; j < n; j++) {
+    var ts = _topoSeekEvents[j].ts;
+    if (ts < winStart || ts > winEnd) continue;
+    var rel = (ts - winStart) / span;
+    var idx = Math.min(bins - 1, Math.max(0, Math.floor(rel * bins)));
+    out[idx] += 1;
+    if (out[idx] > max) max = out[idx];
+  }
+  return { counts: out, max: max };
+}
+
+function _topoSeekHeatPaint(canvas, force) {
+  if (!canvas) return;
+  var now =
+    typeof performance !== "undefined" && performance.now
+      ? performance.now()
+      : Date.now();
+  if (!force && now - _topoSeekHeatLastPaint < TOPO_SEEK_HEAT_THROTTLE_MS) {
+    return;
+  }
+  var w = _topoSeekBuffer();
+  /* Signature short-circuits wasted repaints — length + window edges
+   * fully determine the histogram, so if nothing changed we skip. */
+  var sig = _topoSeekEvents.length + ":" + w.start + ":" + w.end;
+  if (!force && sig === _topoSeekHeatLastSig) return;
+  _topoSeekHeatLastSig = sig;
+  _topoSeekHeatLastPaint = now;
+  var rect = canvas.getBoundingClientRect();
+  var cssW = Math.max(1, Math.round(rect.width));
+  var cssH = Math.max(1, Math.round(rect.height));
+  var dpr = window.devicePixelRatio || 1;
+  /* Only resize the backing store when the CSS size changes, to avoid
+   * clearing + re-scaling on every heartbeat. */
+  var targetW = Math.round(cssW * dpr);
+  var targetH = Math.round(cssH * dpr);
+  if (canvas.width !== targetW || canvas.height !== targetH) {
+    canvas.width = targetW;
+    canvas.height = targetH;
+  }
+  var ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssW, cssH);
+  var hist = _topoSeekHeatCompute(w.start, w.end, TOPO_SEEK_HEAT_BINS);
+  if (!hist.max) return;
+  /* Sqrt-scaled intensity so a handful of active bins don't wash out
+   * neighbouring low-activity ones. */
+  var colW = cssW / TOPO_SEEK_HEAT_BINS;
+  for (var k = 0; k < TOPO_SEEK_HEAT_BINS; k++) {
+    var c = hist.counts[k];
+    if (!c) continue;
+    var intensity = Math.sqrt(c / hist.max);
+    ctx.fillStyle = _topoSeekHeatColor(intensity);
+    /* +1 on width hides sub-pixel seams between adjacent columns. */
+    ctx.fillRect(Math.floor(k * colW), 0, Math.ceil(colW) + 1, cssH);
+  }
+}
+
+function _topoSeekHeatRefresh(force) {
+  var bar = document.querySelector(".activity-view-topology .topo-seekbar");
+  if (!bar) return;
+  var canvas = bar.querySelector('[data-topo-seek="heatmap"]');
+  _topoSeekHeatPaint(canvas, !!force);
 }
 
 function _topoSeekBuffer() {
@@ -2300,6 +2535,12 @@ function _topoSeekUpdateUI() {
     play.textContent = _topoSeekPlaying ? "❚❚" : "▶";
     play.title = _topoSeekPlaying ? "Pause" : "Play";
   }
+  /* todo#97 — Keep the engagement heatmap in lockstep with every UI
+   * refresh. _topoSeekHeatPaint internally throttles + short-circuits
+   * when nothing meaningful changed, so calling it from every update
+   * is cheap. */
+  var canvas = bar.querySelector('[data-topo-seek="heatmap"]');
+  if (canvas) _topoSeekHeatPaint(canvas, false);
 }
 
 function _topoSeekEnterPlayback(ts) {
@@ -2416,6 +2657,12 @@ function _wireTopoSeekbar(grid) {
   });
   grid.addEventListener("pointerup", function () {
     _topoSeekInteracting = false;
+  });
+  /* todo#97 — Force a repaint on window resize so the heatmap canvas
+   * tracks the flexed track width. Bound once because this wiring is
+   * idempotent-guarded by _topoSeekWired. */
+  window.addEventListener("resize", function () {
+    _topoSeekHeatRefresh(true);
   });
 }
 
@@ -3535,7 +3782,23 @@ function _renderActivityTopology(visible, grid) {
   var agentSvg = visible
     .map(function (a) {
       var p = agentPos[a.name];
-      var color = getAgentColor(_colorKeyFor(a));
+      /* todo#96: shared identity helper — color + display-name +
+       * tooltip come from the same source as the sidebar row and
+       * pool chip so the SAME agent always looks the same. */
+      var _ident =
+        typeof agentIdentity === "function"
+          ? agentIdentity(a)
+          : {
+              color: getAgentColor(_colorKeyFor(a)),
+              displayName:
+                typeof hostedAgentName === "function"
+                  ? hostedAgentName(a)
+                  : cleanAgentName
+                    ? cleanAgentName(a.name)
+                    : a.name,
+              tooltip: a.name || "",
+            };
+      var color = _ident.color;
       var connected = (a.status || "online") !== "offline";
       var liveness =
         a.liveness || a.status || (connected ? "online" : "offline");
@@ -3559,12 +3822,7 @@ function _renderActivityTopology(visible, grid) {
       var wsColor = connected ? "#4ecdc4" : "#555";
       var fnColor = FN_COLORS[liveness] || "#555";
       if (isDead) fnColor = "#ef4444";
-      var nameText =
-        typeof hostedAgentName === "function"
-          ? hostedAgentName(a)
-          : cleanAgentName
-            ? cleanAgentName(a.name)
-            : a.name;
+      var nameText = _ident.displayName;
       /* Two small LEDs centered on the ring position, then the label to
        * the right. Gap between LEDs = 10px so they read as a pair, not
        * a single smear. */
@@ -3652,6 +3910,11 @@ function _renderActivityTopology(visible, grid) {
         '" data-agent="' +
         escapeHtml(a.name) +
         '">' +
+        /* todo#96: shared tooltip — same "<id> (<machine>)" string as
+         * the sidebar agent row so hover text agrees across surfaces. */
+        "<title>" +
+        escapeHtml(_ident.tooltip) +
+        "</title>" +
         bg +
         agentGlyph +
         wsLed +
@@ -3864,20 +4127,30 @@ function _renderActivityTopology(visible, grid) {
       var selCls = _topoPoolSelection.agents[a.name]
         ? " topo-pool-chip-selected"
         : "";
-      /* Per-agent color accent on pool chip — matches the topology
-       * node label fill and the list-view activity-name color so the
-       * SAME agent wears the SAME color in every surface. Key source
-       * is _colorKeyFor(a) (respects the "color by: name/host/account"
-       * dropdown), identical to the canvas label path. Border-left
-       * only — body text stays #eaf1fb so dark-on-pastel doesn't
-       * crush contrast. ywatanabe 2026-04-19 "why the colors not
-       * synched????". */
-      var poolAgentColor =
-        typeof getAgentColor === "function"
-          ? getAgentColor(
-              typeof _colorKeyFor === "function" ? _colorKeyFor(a) : a.name,
-            )
-          : "#eaf1fb";
+      /* todo#96: shared identity helper — color + display-name +
+       * tooltip + icon HTML come from the same source as the sidebar
+       * agent row and the canvas node. Replaces the ad-hoc "🤖" glyph
+       * and the raw a.name tooltip with the unified agentIdentity()
+       * cascade (image > emoji > text > snake SVG) and the
+       * "<id> (<machine>)" hover text. */
+      var _ident =
+        typeof agentIdentity === "function"
+          ? agentIdentity(a)
+          : {
+              displayName: a.name,
+              color:
+                typeof getAgentColor === "function"
+                  ? getAgentColor(
+                      typeof _colorKeyFor === "function"
+                        ? _colorKeyFor(a)
+                        : a.name,
+                    )
+                  : "#eaf1fb",
+              tooltip: a.name,
+              iconHtml: function () {
+                return "\uD83E\uDD16";
+              },
+            };
       /* Liveness LEDs + pin glyph — mirrors the canvas agent node so
        * you can read ws/fn state straight from the pool without
        * looking at the graph. Classes match the list view
@@ -3900,8 +4173,10 @@ function _renderActivityTopology(visible, grid) {
         '" data-agent="' +
         escapeHtml(a.name) +
         '" title="' +
-        escapeHtml(a.name) +
-        '"><span class="topo-pool-chip-icon">\uD83E\uDD16</span>' +
+        escapeHtml(_ident.tooltip) +
+        '"><span class="topo-pool-chip-icon">' +
+        _ident.iconHtml(12) +
+        "</span>" +
         '<span class="activity-led activity-led-ws activity-led-ws-' +
         (pConnected ? "on" : "off") +
         ' topo-pool-chip-led" title="WebSocket: ' +
@@ -3914,9 +4189,9 @@ function _renderActivityTopology(visible, grid) {
         '"></span>' +
         pPin +
         '<span class="topo-pool-chip-name" style="color:' +
-        escapeHtml(poolAgentColor) +
+        escapeHtml(_ident.color) +
         '">' +
-        escapeHtml(a.name) +
+        escapeHtml(_ident.displayName) +
         "</span></div>"
       );
     })
@@ -3947,18 +4222,26 @@ function _renderActivityTopology(visible, grid) {
       var chMuteGlyph = _chPref.is_muted
         ? '<span class="topo-pool-chip-mute" title="muted">\uD83D\uDD07</span>'
         : "";
+      /* todo#96: shared channel identity — same "#" glyph + tooltip
+       * shape used by sidebar channel rows. Keeps the hash prefix
+       * consistent whether the channel name itself already starts
+       * with "#" or not. */
+      var _chIdent =
+        typeof channelIdentity === "function"
+          ? channelIdentity(c)
+          : { displayName: c, tooltip: c };
       return (
         '<div class="topo-pool-chip topo-pool-chip-channel' +
         selCls +
         '" data-channel="' +
         escapeHtml(c) +
         '" title="' +
-        escapeHtml(c) +
+        escapeHtml(_chIdent.tooltip) +
         '"><span class="topo-pool-chip-icon">#</span>' +
         chPinGlyph +
         chMuteGlyph +
         '<span class="topo-pool-chip-name">' +
-        escapeHtml(c) +
+        escapeHtml(_chIdent.displayName) +
         "</span></div>"
       );
     })
@@ -3976,22 +4259,57 @@ function _renderActivityTopology(visible, grid) {
     var _memCount = _mem
       ? (_mem.agents || []).length + (_mem.channels || []).length
       : 0;
-    var _memTitle = _mem
-      ? "Recall M" +
+    var _memHidCount =
+      _mem && _mem.hidden
+        ? (_mem.hidden.agents || []).length +
+          (_mem.hidden.channels || []).length
+        : 0;
+    var _memFilterActive = !!(
+      _mem &&
+      _mem.filter &&
+      ((_mem.filter.input && _mem.filter.input.length) ||
+        (Array.isArray(_mem.filter.tags) && _mem.filter.tags.length))
+    );
+    var _memLabel = _mem && _mem.label ? String(_mem.label) : "";
+    /* Tooltip surfaces the full snapshot composition so users can tell
+     * slots apart without recalling them. todo#98. */
+    var _memTitle;
+    if (_mem) {
+      var parts = [];
+      parts.push(_memCount + " selected");
+      if (_memHidCount) parts.push(_memHidCount + " hidden");
+      if (_memFilterActive) parts.push("filter");
+      _memTitle =
+        "Recall M" +
         _ms +
+        (_memLabel ? " — " + _memLabel : "") +
         " (" +
-        _memCount +
-        " items). Shift+click to overwrite, right-click to clear."
-      : "M" + _ms + " (empty). Shift+click to save current selection.";
+        parts.join(", ") +
+        "). Shift+click to overwrite, right-click to rename or clear.";
+    } else {
+      _memTitle =
+        "M" +
+        _ms +
+        " (empty). Click +Save or shift-click this slot to snapshot the current view.";
+    }
+    /* Button face: keep "M1".."M5" when empty/unlabeled, or show the
+     * user-chosen label when present. Truncate aggressively so a long
+     * label never blows out the compact action row. */
+    var _memFace = _memLabel
+      ? _memLabel.length > 6
+        ? _memLabel.slice(0, 5) + "…"
+        : _memLabel
+      : "M" + _ms;
     memBtnsHtml +=
       '<button type="button" class="topo-pool-mem-btn' +
       (_mem ? " topo-pool-mem-btn-filled" : "") +
+      (_memLabel ? " topo-pool-mem-btn-labeled" : "") +
       '" data-mem-slot="' +
       _ms +
       '" title="' +
       escapeHtml(_memTitle) +
-      '">M' +
-      _ms +
+      '">' +
+      escapeHtml(_memFace) +
       "</button>";
   }
   var _selCountInit = _topoPoolSelectionSize();
@@ -4044,6 +4362,12 @@ function _renderActivityTopology(visible, grid) {
   _wireTopoZoomPan(grid, W, H);
   _wireTopoSeekbar(grid);
   _topoSeekUpdateUI();
+  /* todo#97 — Force a heatmap paint after layout settles. The initial
+   * _topoSeekUpdateUI may run before the canvas gets its flexed width,
+   * so schedule one more forced paint on rAF when dimensions are real. */
+  requestAnimationFrame(function () {
+    _topoSeekHeatRefresh(true);
+  });
   /* todo#79: after a fresh topology render, re-apply the pool-as-filter
    * dim classes so the persisted selection survives heartbeat re-renders
    * (without this, every 2s heartbeat would flash the full graph back
@@ -5459,10 +5783,13 @@ function _wireOverviewGridDelegation(grid) {
    * .topo-channel + .topo-agent hit-test order doesn't misroute. */
   grid.addEventListener("contextmenu", function (ev) {
     if (ev.shiftKey) return;
-    /* Right-click on a memory slot button → clear that slot. todo#79
-     * "Memory 1,2,... (to keep the same criteria for selected)" — this
-     * is the delete-a-preset affordance so users aren't stuck with five
-     * stale snapshots forever. */
+    /* Right-click on a memory slot button → rename (or clear by entering
+     * an empty name). todo#98: memory slots now snapshot the full filter
+     * state, so giving them a human label makes them actually usable as
+     * presets. Cancel = no change, "" = clear/delete. Empty slots are
+     * a no-op on right-click (nothing to rename). todo#79 "Memory 1,2,…
+     * (to keep the same criteria for selected)" is preserved — clearing
+     * still works by entering an empty label. */
     var memBtnCtx = ev.target.closest(".topo-pool-mem-btn[data-mem-slot]");
     if (memBtnCtx && grid.contains(memBtnCtx)) {
       var slotStrCtx = memBtnCtx.getAttribute("data-mem-slot");
@@ -5470,8 +5797,30 @@ function _wireOverviewGridDelegation(grid) {
       if (slotCtx >= 1 && slotCtx <= _TOPO_POOL_MEM_MAX) {
         ev.preventDefault();
         ev.stopPropagation();
-        if (_topoPoolMemories[String(slotCtx)]) {
-          _topoPoolMemoryDelete(slotCtx);
+        var existingMem = _topoPoolMemories[String(slotCtx)];
+        if (existingMem) {
+          var curLabel =
+            existingMem.label && typeof existingMem.label === "string"
+              ? existingMem.label
+              : "";
+          /* prompt() is synchronous and ugly but matches the "one-pass,
+           * don't break existing" constraint — no modal plumbing needed. */
+          var answer = null;
+          try {
+            answer = window.prompt(
+              "Rename M" + slotCtx + " (leave empty to clear the slot):",
+              curLabel,
+            );
+          } catch (_pe) {
+            answer = null;
+          }
+          if (answer === null) return; /* user hit Cancel */
+          var trimmed = String(answer).trim();
+          if (trimmed === "") {
+            _topoPoolMemoryDelete(slotCtx);
+          } else {
+            _topoPoolMemoryRename(slotCtx, trimmed);
+          }
           _topoLastSig = "";
           if (typeof renderActivityTab === "function") renderActivityTab();
         }

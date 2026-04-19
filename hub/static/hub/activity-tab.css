@@ -579,6 +579,28 @@
   width: 7px;
   height: 7px;
 }
+/* todo#96: shared identity icon — displayed flush-left after the pin
+ * button so the sidebar row mirrors the pool chip's [icon][leds][name]
+ * order. Flex-shrink 0 keeps the glyph size stable when the name is
+ * long. */
+.sidebar .agent-card.sidebar-agent-row .sidebar-agent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  line-height: 1;
+}
+.sidebar .agent-card.sidebar-agent-row .sidebar-agent-icon .agent-avatar {
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+}
+.sidebar .agent-card.sidebar-agent-row .sidebar-agent-icon .orochi-icon {
+  width: 14px;
+  height: 14px;
+}
 .sidebar .agent-card.sidebar-agent-row .agent-name {
   flex: 1 1 auto;
   overflow: hidden;
@@ -845,6 +867,24 @@
   color: #34d399;
   border-color: #10b981;
   background: #08322a;
+}
+/* todo#98 — slot with a user-assigned label: widen slightly so short
+ * names fit, and switch to a softer cyan accent so labeled slots read
+ * as "named preset" distinct from plain M1..M5 snapshots. */
+.activity-grid.activity-view-topology .topo-pool-mem-btn-labeled {
+  color: #5eead4;
+  border-color: #0f766e;
+  background: #072b28;
+  min-width: 34px;
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-labeled:hover {
+  color: #99f6e4;
+  border-color: #14b8a6;
+  background: #0a3d38;
 }
 .activity-grid.activity-view-topology .topo-pool-mem-save {
   margin-left: auto;
@@ -2103,6 +2143,30 @@
   color: #4ecdc4;
   box-shadow: 0 0 6px rgba(78, 205, 196, 0.4) inset;
 }
+/* todo#97 — Wrap the <input type=range> with the heatmap <canvas> so
+ * the density bar is pixel-aligned with the scrubber track. The canvas
+ * sits just below the track gradient and lets pointer events pass
+ * through so only the slider catches scrubs. */
+.activity-grid.activity-view-topology .topo-seek-track-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 14px;
+}
+.activity-grid.activity-view-topology .topo-seek-heatmap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 8px;
+  pointer-events: none;
+  border-radius: 2px;
+  opacity: 0.9;
+  z-index: 0;
+}
 .activity-grid.activity-view-topology .topo-seek-range {
   flex: 1 1 auto;
   -webkit-appearance: none;
@@ -2116,6 +2180,8 @@
   border-radius: 2px;
   outline: none;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
 }
 .activity-grid.activity-view-topology
   .topo-seekbar.topo-seek-playback
