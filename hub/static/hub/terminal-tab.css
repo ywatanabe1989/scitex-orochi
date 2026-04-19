@@ -1,0 +1,104 @@
+/* Web-terminal tab styling (todo#47).
+ *
+ * Layout: host-picker bar along the top, status strip, then a full-width
+ * xterm container. xterm.js owns its own internal styling; we only
+ * control the outer frame + picker/status affordances. */
+
+#terminal-view.todo-view {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  background: #0a0a0a;
+}
+
+.terminal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #222;
+  background: #111;
+}
+
+.terminal-toolbar .terminal-label {
+  color: #8a8a8a;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+}
+
+.terminal-host-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.terminal-host-btn {
+  background: #1b1b1b;
+  color: #d0d0d0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.terminal-host-btn:hover {
+  background: #262626;
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+
+.terminal-close-btn {
+  background: #2a1414;
+  color: #ffaaaa;
+  border: 1px solid #552222;
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.terminal-close-btn:hover {
+  background: #3a1e1e;
+  color: #ffcaca;
+}
+
+.terminal-status {
+  font-size: 11px;
+  padding: 4px 12px;
+  color: #888;
+  border-bottom: 1px solid #1a1a1a;
+  background: #0f0f0f;
+  font-family: Menlo, Monaco, "Courier New", monospace;
+}
+
+.terminal-status.connecting {
+  color: #e0c878;
+}
+
+.terminal-status.ok,
+.terminal-status.connected {
+  color: #4ecdc4;
+}
+
+.terminal-status.closed {
+  color: #c87878;
+}
+
+#terminal-xterm-container {
+  flex: 1;
+  min-height: 400px;
+  background: #111;
+  padding: 6px;
+  overflow: hidden;
+}
+
+#terminal-xterm-container .xterm {
+  height: 100%;
+}

@@ -19,6 +19,7 @@ function _activateTab(tab) {
   var activityView = document.getElementById("activity-view");
   var filesView = document.getElementById("files-view");
   var releasesView = document.getElementById("releases-view");
+  var terminalView = document.getElementById("terminal-view");
   var settingsView = document.getElementById("settings-view");
   messagesEl.style.display = "none";
   if (chatFilterEl) chatFilterEl.style.display = "none";
@@ -34,6 +35,7 @@ function _activateTab(tab) {
   if (activityView) activityView.style.display = "none";
   if (filesView) filesView.style.display = "none";
   if (releasesView) releasesView.style.display = "none";
+  if (terminalView) terminalView.style.display = "none";
   if (settingsView) settingsView.style.display = "none";
   /* Viz lives inside #todo-view; its poll is owned by todo-tab.js.
    * When the TODO tab is left, todo-tab.js stops the viz poll. */
@@ -112,6 +114,12 @@ function _activateTab(tab) {
       releasesView.style.flex = "1";
     }
     if (typeof fetchReleases === "function") fetchReleases();
+  } else if (tab === "terminal") {
+    if (terminalView) {
+      terminalView.style.display = "flex";
+      terminalView.style.flex = "1";
+    }
+    if (typeof renderTerminalTab === "function") renderTerminalTab();
   } else if (tab === "settings" && settingsView) {
     settingsView.style.display = "block";
     settingsView.style.flex = "1";

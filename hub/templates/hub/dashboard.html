@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=103">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=121">
+    <link rel="stylesheet" href="{% static 'hub/terminal-tab.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/search-palette.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/effects.css' %}?v=1">
@@ -145,6 +146,7 @@
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
                 <button class="tab-btn" data-tab="releases">Releases</button>
+                <button class="tab-btn" data-tab="terminal">Terminal</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
             <div id="channel-topic-banner"
@@ -342,6 +344,20 @@
                         aria-label="Next">&#10095;</button>
                 <div id="img-viewer-caption" class="img-viewer-caption"></div>
             </div>
+            <!-- Web terminal tab (todo#47) -->
+            <!-- hook-bypass: inline-style -->
+            <div id="terminal-view" class="todo-view" style="display:none">
+                <div class="terminal-toolbar">
+                    <span class="terminal-label">Open shell on</span>
+                    <div id="terminal-host-picker" class="terminal-host-picker"></div>
+                    <button type="button"
+                            id="terminal-close-btn"
+                            class="terminal-close-btn"
+                            title="Close terminal session">Close</button>
+                </div>
+                <div id="terminal-status" class="terminal-status">idle - pick a host to open a shell</div>
+                <div id="terminal-xterm-container"></div>
+            </div>
             {% if is_admin %}
                 <div id="settings-view" class="todo-view" style="display:none">
                     <div id="settings-content" class="settings-tab-content">
@@ -446,7 +462,7 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
-    <script src="{% static 'hub/app.js' %}?v=146"></script>
+    <script src="{% static 'hub/app.js' %}?v=147"></script>
     <script src="{% static 'hub/dms.js' %}?v=4"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=103"></script>
@@ -471,6 +487,7 @@
     <script src="{% static 'hub/sketch.js' %}?v=99"></script>
     <script src="{% static 'hub/webcam.js' %}?v=1"></script>
     <script src="{% static 'hub/voice-input.js' %}?v=127"></script>
+    <script src="{% static 'hub/terminal-tab.js' %}?v=1"></script>
     <script src="{% static 'hub/tabs.js' %}?v=108"></script>
     <script src="{% static 'hub/init.js' %}?v=100"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
