@@ -1725,12 +1725,15 @@
 }
 
 /* ── Per-agent sub-tab bar (todo#420) ── */
+/* Horizontal padding mirrors .tab-bar / .todo-state-filter / .files-toolbar
+ * so toolbar controls align vertically with the 16px-padded content
+ * grids below them (ywatanabe 2026-04-19). */
 .activity-subtabs {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 6px 0 8px;
+  padding: 6px 16px 8px;
   border-bottom: 1px solid #333;
   margin-bottom: 10px;
 }
