@@ -414,7 +414,7 @@
 }
 .purge-btn:hover {
   background: #ef4444;
-  color: #fff;
+  color: #f8f7f5;
 }
 .agents-registry-table {
   width: 100%;
@@ -984,10 +984,10 @@
 .agent-detail-pane-btn.agent-detail-pane-btn-on {
   background: #4ecdc4;
   border-color: #4ecdc4;
-  color: #fff;
+  color: #f8f7f5;
 }
 .agent-detail-pane-btn-on:hover:not(:disabled) {
   background: #3db5ac;
   border-color: #3db5ac;
-  color: #fff;
+  color: #f8f7f5;
 }

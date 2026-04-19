@@ -299,7 +299,7 @@
 }
 .webcam-btn-capture {
   background: #ef4444;
-  color: #fff;
+  color: #f8f7f5;
   border-color: #ef4444;
   font-weight: bold;
 }
@@ -400,7 +400,7 @@
 }
 .badge-admin {
   background: #ef4444;
-  color: #fff;
+  color: #f8f7f5;
   padding: 1px 5px;
   border-radius: 8px;
   font-size: 9px;
@@ -408,7 +408,7 @@
 }
 .badge-member {
   background: #0f3460;
-  color: #fff;
+  color: #f8f7f5;
   padding: 1px 5px;
   border-radius: 8px;
   font-size: 9px;

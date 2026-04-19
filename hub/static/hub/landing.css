@@ -47,7 +47,7 @@ body.landing {
   align-items: center;
   gap: 10px;
   font-weight: 600;
-  color: #fff;
+  color: #f8f7f5;
   font-size: 1.05rem;
   text-decoration: none;
 }
@@ -76,7 +76,7 @@ body.landing {
 .hero h1 {
   font-size: 2.6rem;
   margin: 0 0 16px;
-  color: #fff;
+  color: #f8f7f5;
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
@@ -177,7 +177,7 @@ body.landing {
 .lbtn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: #f8f7f5;
 }
 .lbtn-primary:hover {
   background: var(--accent-hover);
@@ -224,7 +224,7 @@ body.landing {
   stroke-linejoin: round;
 }
 .feature-card h3 {
-  color: #fff;
+  color: #f8f7f5;
   margin: 0 0 6px;
   font-size: 1.05rem;
 }
@@ -244,7 +244,7 @@ body.landing {
   text-align: center;
 }
 .join h2 {
-  color: #fff;
+  color: #f8f7f5;
   margin: 0 0 8px;
   font-size: 1.3rem;
 }

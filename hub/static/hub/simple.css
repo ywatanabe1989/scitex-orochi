@@ -24,7 +24,7 @@ body {
   width: 100%;
 }
 .card h1 {
-  color: #fff;
+  color: #f8f7f5;
   margin-bottom: 0.3rem;
   font-size: 1.8rem;
 }
@@ -118,7 +118,7 @@ a {
 .btn-primary {
   background: #4a9eff;
   border-color: #4a9eff;
-  color: #fff;
+  color: #f8f7f5;
 }
 .btn-primary:hover {
   background: #3a8eef;

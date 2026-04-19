@@ -1047,13 +1047,21 @@
  * already switches to #ef4444 via _topoSpawnPacket's FN_COLORS
  * override. ywatanabe 2026-04-19 "please implement dead color, red
  * with logics like 3 min no-reaction". */
-.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-bg {
-  stroke: rgba(239, 68, 68, 0.7);
-  stroke-width: 0.9;
-  fill: #1a0f0f;
+/* Dead agent visual — user 2026-04-20: "Functionally dead and
+ * registered agents must be shown in shadow (this is a global rule).
+ * Dead agents but not registered ones should just not be rendered".
+ * Unregistered dead agents are filtered out at render time; this
+ * styling handles the pinned/registered dead case — dim the whole
+ * pill (opacity + grayscale) so it reads as a ghost/shadow instead
+ * of the previous red-border treatment. */
+.activity-grid.activity-view-topology .topo-agent-dead {
+  opacity: 0.45;
+  filter: grayscale(0.85);
 }
-.activity-grid.activity-view-topology .topo-agent-dead .topo-label-agent {
-  fill: #ff6b6b !important;
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-bg {
+  stroke: rgba(150, 165, 180, 0.25);
+  stroke-width: 0.75;
+  fill: #141414;
 }
 /* Human user node — gold pill, distinct from agents. Thinner stroke
  * + lower alpha so the pill reads as a hint, not a hard frame.
@@ -1542,7 +1550,7 @@
   flex-wrap: wrap;
 }
 .topo-edge-menu-preview-ch {
-  color: #ffffff;
+  color: #f8f7f5;
   font-weight: 700;
 }
 .topo-edge-menu-preview-arr {
@@ -1574,7 +1582,7 @@
 }
 .topo-edge-menu-btn.topo-edge-menu-btn-danger:hover {
   background: #b91c1c;
-  color: #ffffff;
+  color: #f8f7f5;
   border-color: #ef4444;
 }
 .activity-grid.activity-view-topology .topo-label {
@@ -1584,7 +1592,7 @@
   user-select: none;
 }
 .activity-grid.activity-view-topology .topo-label-ch {
-  fill: #ffffff !important;
+  fill: #f8f7f5 !important;
   font-size: 11px;
   font-weight: 700;
 }
@@ -2248,7 +2256,7 @@
 .activity-grid.activity-view-topology .topo-seek-btn:hover,
 .activity-grid.activity-view-topology .topo-seek-live:hover {
   background: #161616;
-  color: #fff;
+  color: #f8f7f5;
 }
 .activity-grid.activity-view-topology .topo-seek-live.topo-seek-live-on {
   background: #0e2b2b;

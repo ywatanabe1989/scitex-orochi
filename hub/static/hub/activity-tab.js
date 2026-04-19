@@ -3498,13 +3498,40 @@ function _topoSignature(visible) {
  * to toggle the inline detail panel (same hook the list view uses;
  * re-uses _renderActivityAgentDetail + _fetchActivityDetail so state
  * survives heartbeat-driven re-renders). */
+/* Classify an agent's "dead" state — heartbeat fresh but no tool/
+ * action reaction in ~3min (same logic inlined in the node render).
+ * Exposed as a helper so the filter + the render use identical
+ * criteria. User 2026-04-20: "Functionally dead and registered
+ * agents must be shown in shadow; dead agents but not registered
+ * should just not be rendered". */
+function _isDeadAgent(a) {
+  if (!a) return false;
+  var connected = (a.status || "online") !== "offline";
+  if (!connected) return false;
+  var toolSec =
+    typeof _secondsSinceIso === "function"
+      ? _secondsSinceIso(a.last_tool_at)
+      : null;
+  var actSec =
+    typeof _secondsSinceIso === "function"
+      ? _secondsSinceIso(a.last_action)
+      : null;
+  var noTool = toolSec == null || toolSec > 180;
+  var noAct = actSec == null || actSec > 180;
+  return noTool && noAct;
+}
+
 function _renderActivityTopology(visible, grid) {
   _topoApplyStickyEdges();
   /* Filter out agents the user hid via right-click. Edges involving
    * hidden agents collapse automatically because they're dropped from
    * the visible loop. Human node is protected inside _topoHide. */
   visible = visible.filter(function (a) {
-    return !_topoHidden.agents[a.name];
+    if (_topoHidden.agents[a.name]) return false;
+    /* Dead agents render only when pinned (kept as ghost/shadow);
+     * unpinned dead agents are dropped entirely from the canvas. */
+    if (_isDeadAgent(a) && !a.pinned) return false;
+    return true;
   });
   var sig = _topoSignature(visible);
   var existingSvg = grid.querySelector(".topo-svg");
@@ -4828,7 +4855,11 @@ function _renderActivityCards(agents, grid) {
 
   var visible = all.filter(function (a) {
     var connected = (a.status || "online") !== "offline";
-    return connected || !!a.pinned;
+    if (!connected && !a.pinned) return false;
+    /* Dead unpinned agents are hidden entirely (global rule); dead
+     * pinned agents render as shadow via .activity-card-dead-ghost. */
+    if (_isDeadAgent(a) && !a.pinned) return false;
+    return true;
   });
 
   if (!visible.length) {
@@ -4877,7 +4908,15 @@ function _renderActivityCards(agents, grid) {
       var rawName = a.name || "";
       var liveness = a.liveness || a.status || "online";
       var connected = (a.status || "online") !== "offline";
-      var ghostClass = !connected && a.pinned ? " activity-card-ghost" : "";
+      /* Ghost (shadow) treatment for two pinned cases:
+       *   - not connected (the original offline-ghost case)
+       *   - functionally dead (heartbeat fresh, no tool/action in 3min)
+       * Both read as "slot expected but not responsive". Unpinned
+       * variants are already filtered out upstream. */
+      var ghostClass =
+        (!connected && a.pinned) || (_isDeadAgent(a) && a.pinned)
+          ? " activity-card-ghost"
+          : "";
       var idleStr = _formatIdle(a.idle_seconds);
       var color = getAgentColor(_colorKeyFor(a));
       var channels = Array.isArray(a.channels) ? a.channels : [];

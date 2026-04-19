@@ -1046,6 +1046,13 @@ a.chat-link:hover {
   background: rgba(239, 68, 68, 0.15);
   animation: voice-pulse 1.4s ease-in-out infinite;
 }
+/* Generalized — any textarea/input that opts into voice via
+ * data-voice-input (or happens to be msg-input / thread-input) gets
+ * the same red blinking border while recording. User 2026-04-20:
+ * "Voice input should show the visual feedback; red on the border
+ * of input area" — applied consistently across Chat composer,
+ * thread panel, and Canvas compose popup. */
+.voice-recording,
 #msg-input.voice-recording,
 #thread-input.voice-recording {
   border-color: #ef4444;
@@ -1087,7 +1094,10 @@ a.chat-link:hover {
   letter-spacing: 0.5px;
   vertical-align: middle;
 }
-/* todo#339/#340: red blinking input border while voice recording */
+/* todo#339/#340: red blinking input border while voice recording.
+ * Generalized to any .voice-recording element so the canvas compose
+ * popup textarea also gets the feedback. */
+.voice-recording,
 #msg-input.voice-recording {
   border: 2px solid #ef4444 !important;
   box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
@@ -1428,7 +1438,7 @@ a.chat-link:hover {
   content: "\270E";
   position: absolute;
   font-size: 10px;
-  color: #fff;
+  color: #f8f7f5;
   background: rgba(0, 0, 0, 0.6);
   border-radius: 50%;
   width: 16px;
@@ -1661,12 +1671,12 @@ a.chat-link:hover {
 .msg-edit-save:hover {
   background: #2a6e5a;
   border-color: #4ecdc4;
-  color: #fff;
+  color: #f8f7f5;
 }
 
 .msg-edit-cancel:hover {
   background: #333;
-  color: #fff;
+  color: #f8f7f5;
 }
 
 /* Delete animation */
@@ -1700,7 +1710,7 @@ a.chat-link:hover {
 }
 .new-dm-btn:hover {
   background: #1a1a1a;
-  color: #fff;
+  color: #f8f7f5;
 }
 .dm-item {
   font-size: 12px;
@@ -1717,7 +1727,7 @@ a.chat-link:hover {
 .dm-item.active {
   background: #1a1a1a;
   font-weight: bold;
-  color: #fff;
+  color: #f8f7f5;
 }
 .dm-item .dm-principal-badge {
   display: inline-block;
@@ -1787,7 +1797,7 @@ a.chat-link:hover {
   cursor: pointer;
 }
 .dm-modal-close:hover {
-  color: #fff;
+  color: #f8f7f5;
 }
 #new-dm-search {
   background: #0d0d0d;
@@ -1974,7 +1984,7 @@ a.chat-link:hover {
   padding: 0;
 }
 .ch-topic-close:hover {
-  color: #fff;
+  color: #f8f7f5;
 }
 .ch-topic-input {
   background: #0f1d2a;
@@ -2001,7 +2011,7 @@ a.chat-link:hover {
   background: #1a7abf;
   border: none;
   border-radius: 4px;
-  color: #fff;
+  color: #f8f7f5;
   cursor: pointer;
   font-size: 13px;
   padding: 6px 16px;
@@ -2404,7 +2414,7 @@ a.chat-link:hover {
 }
 .ch-ctx-item:hover {
   background: #1a3040;
-  color: #fff;
+  color: #f8f7f5;
 }
 .ch-ctx-item.ch-ctx-active {
   color: #4cf;
@@ -2461,7 +2471,7 @@ a.chat-link:hover {
 }
 .ch-ctx-perm:hover {
   background: #1a3a50;
-  color: #fff;
+  color: #f8f7f5;
 }
 .ch-ctx-perm.ch-ctx-perm-rw {
   color: #4fa;
@@ -2469,7 +2479,7 @@ a.chat-link:hover {
 }
 .ch-ctx-perm.ch-ctx-perm-rw:hover {
   background: #1a4a30;
-  color: #fff;
+  color: #f8f7f5;
 }
 
 /* ── Channel export modal ── */
@@ -2517,7 +2527,7 @@ a.chat-link:hover {
   padding: 0 2px;
 }
 .ch-export-close:hover {
-  color: #fff;
+  color: #f8f7f5;
 }
 .ch-export-body {
   padding: 16px;
@@ -2557,7 +2567,7 @@ a.chat-link:hover {
   background: #1a7acc;
   border: none;
   border-radius: 4px;
-  color: #fff;
+  color: #f8f7f5;
   cursor: pointer;
   font-size: 13px;
   padding: 7px 16px;
