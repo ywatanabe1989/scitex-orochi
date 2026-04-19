@@ -2561,7 +2561,11 @@ async function fetchStats() {
         /* Star = float-to-top (pinned). ★ filled for starred, ☆ outline
          * for unstarred. Replaces the earlier 📌 pin emoji so both canvas
          * pool chips and this list use a single standardized icon. */
-        var starHtml =
+        /* Entity-consistency order from TODO.md:
+         *   channel: [icon] [star] [hide] [notification] [#name]
+         * Three control glyphs kept as separate slots so they can be
+         * interleaved with the identity icon below. */
+        var pinGlyphHtml =
           '<span class="ch-pin ' +
           (pref.is_starred ? "ch-pin-on" : "ch-pin-off") +
           '" data-ch="' +
@@ -2570,25 +2574,8 @@ async function fetchStats() {
           (pref.is_starred ? "Unstar" : "Star (float to top)") +
           '">' +
           (pref.is_starred ? "\u2605" : "\u2606") +
-          "</span>" +
-          /* Notification (mute) placeholder — always reserved so the
-           * channel-name column stays aligned whether the row is
-           * muted or not. Click toggles mute via _setChannelPref so
-           * the user can flip it without opening the context menu.
-           * User request 2026-04-19: "channels should have placeholder
-           * for icon, star, and notification". */
-          '<span class="ch-mute ' +
-          (pref.is_muted ? "ch-mute-on" : "ch-mute-off") +
-          '" data-ch="' +
-          escapeHtml(norm) +
-          '" title="' +
-          (pref.is_muted ? "Unmute notifications" : "Mute notifications") +
-          '">' +
-          (pref.is_muted ? "\uD83D\uDD15" : "\uD83D\uDD14") +
-          "</span>" +
-          /* Per-row hide/unhide toggle (todo#418) — 👁 visible / 🚫 hidden.
-           * Click stops propagation so the row's own click handler does
-           * not also fire. */
+          "</span>";
+        var hideGlyphHtml =
           '<span class="ch-eye ' +
           (pref.is_hidden ? "ch-eye-off" : "ch-eye-on") +
           '" data-ch="' +
@@ -2599,6 +2586,16 @@ async function fetchStats() {
             : "Hide channel (dim in list)") +
           '">' +
           (pref.is_hidden ? "\uD83D\uDEAB" : "\uD83D\uDC41") +
+          "</span>";
+        var muteGlyphHtml =
+          '<span class="ch-mute ' +
+          (pref.is_muted ? "ch-mute-on" : "ch-mute-off") +
+          '" data-ch="' +
+          escapeHtml(norm) +
+          '" title="' +
+          (pref.is_muted ? "Unmute notifications" : "Mute notifications") +
+          '">' +
+          (pref.is_muted ? "\uD83D\uDD15" : "\uD83D\uDD14") +
           "</span>";
         var unread = channelUnread[c] || channelUnread[norm] || 0;
         var badgeHtml =
@@ -2642,16 +2639,18 @@ async function fetchStats() {
           rowTitle +
           ' draggable="true">' +
           '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
-          starHtml +
-          /* Custom channel icon (todo#101): single source of truth
-           * via channelIdentity() — sidebar, pool chips, and canvas
-           * all read the same cachedChannelIcons map. Falls back to
-           * the default '#' glyph when no custom icon set. */
+          /* [icon] [star] [hide] [notification] [#name] — entity
+           * consistency spec. channelIdentity() is the single source
+           * of truth for the icon; the three control glyphs stay in
+           * the fixed order below. */
           (typeof channelIdentity === "function"
             ? '<span class="ch-identity-icon">' +
               channelIdentity(norm).iconHtml(14) +
               "</span>"
             : "") +
+          pinGlyphHtml +
+          hideGlyphHtml +
+          muteGlyphHtml +
           '<span class="ch-name">' +
           escapeHtml(nameLabel) +
           "</span>" +

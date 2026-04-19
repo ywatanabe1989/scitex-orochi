@@ -2335,7 +2335,13 @@ a.chat-link:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90px;
+  max-width: 160px;
+}
+.res-card.res-card-compact .res-host-fqdn {
+  opacity: 0.55;
+  font-weight: 400;
+  font-size: 0.85em;
+  margin-left: 2px;
 }
 .res-card.res-card-compact .res-metrics {
   display: inline-flex;

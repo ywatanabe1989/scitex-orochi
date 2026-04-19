@@ -356,10 +356,29 @@ function renderResources() {
         '">' +
         (mStarred ? "\u2605" : "\u2606") +
         "</span>" +
+        /* Spec: machine: [icon] [star] [<host-label> (<canonical-$HOSTNAME>)]
+         * — show the canonical FQDN in parentheses after the short
+         * label when it differs meaningfully from the label. Uses
+         * the same collapse rules as the Machine detail view
+         * (.local/.localdomain suffixes aren't "different"). */
         '<span class="res-host-name" style="color:' +
         color +
         '">' +
         escapeHtml(k) +
+        (function () {
+          var fqdn =
+            (d && (d._fqdn || d._machineFqdn || d.hostname_canonical)) || "";
+          if (!fqdn || fqdn === k) return "";
+          var redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
+          for (var _r = 0; _r < redundant.length; _r++) {
+            if (fqdn === k + redundant[_r]) return "";
+          }
+          return (
+            ' <span class="res-host-fqdn" title="canonical hostname">(' +
+            escapeHtml(fqdn) +
+            ")</span>"
+          );
+        })() +
         "</span>" +
         '<span class="res-metrics">' +
         '<span class="res-chip" title="CPU %">' +
