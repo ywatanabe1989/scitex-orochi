@@ -84,7 +84,7 @@ spec:
     enabled: true
     interval: 30
     timeout: 5
-    method: screen-alive
+    method: multiplexer-alive
 
   restart:
     policy: on-failure
