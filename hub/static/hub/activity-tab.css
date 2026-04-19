@@ -1048,18 +1048,20 @@
  * override. ywatanabe 2026-04-19 "please implement dead color, red
  * with logics like 3 min no-reaction". */
 .activity-grid.activity-view-topology .topo-agent-dead .topo-agent-bg {
-  stroke: #ef4444;
-  stroke-width: 1.5;
+  stroke: rgba(239, 68, 68, 0.7);
+  stroke-width: 0.9;
   fill: #1a0f0f;
 }
 .activity-grid.activity-view-topology .topo-agent-dead .topo-label-agent {
   fill: #ff6b6b !important;
 }
-/* Human user node — gold pill, distinct from agents. */
+/* Human user node — gold pill, distinct from agents. Thinner stroke
+ * + lower alpha so the pill reads as a hint, not a hard frame.
+ * ywatanabe 2026-04-19: "the border of agents/user are too bold".  */
 .activity-grid.activity-view-topology .topo-human .topo-human-bg {
   fill: #1a1410;
-  stroke: #fbbf24;
-  stroke-width: 1.5;
+  stroke: rgba(251, 191, 36, 0.55);
+  stroke-width: 0.75;
 }
 .activity-grid.activity-view-topology .topo-human:hover .topo-human-bg {
   fill: #231912;
@@ -1090,7 +1092,7 @@
   .topo-agent.topo-agent-selected
   .topo-agent-bg {
   stroke: #fbbf24;
-  stroke-width: 2;
+  stroke-width: 1.1;
 }
 .activity-grid.activity-view-topology .topo-agent:hover circle,
 .activity-grid.activity-view-topology .topo-agent:hover text {
