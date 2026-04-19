@@ -54,6 +54,19 @@ urlpatterns = [
         views.api_channel_export,
         name="api-channel-export",
     ),
+    # Channel rename (todo#71 drag-to-move + folder rename).
+    # rename-prefix/ must come before <int:channel_id>/rename/ so the
+    # literal "rename-prefix" isn't parsed as an integer id.
+    path(
+        "api/channels/rename-prefix/",
+        views.api_channel_rename_prefix,
+        name="api-channel-rename-prefix",
+    ),
+    path(
+        "api/channels/<int:channel_id>/rename/",
+        views.api_channel_rename,
+        name="api-channel-rename",
+    ),
     path("api/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"),
     path("api/channel-members/", views.api_channel_members, name="api-channel-members"),
     path("api/messages/", views.api_messages, name="api-messages"),
