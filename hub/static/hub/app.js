@@ -873,6 +873,10 @@ function _showAgentContextMenu(agent, x, y) {
           );
         });
       } else if (kind === "dm") {
+        /* One-click DM: the backend lazy-creates the channel on first
+         * send (commit 3dac12f), so we skip the RO/RW permission picker
+         * and just navigate to the Chat tab with the canonical channel
+         * selected. ywatanabe 2026-04-19: DM submenu was overkill. */
         var others = agents
           .filter(function (a) {
             return a && a.name && a.name !== agent;
@@ -884,18 +888,17 @@ function _showAgentContextMenu(agent, x, y) {
         var html2 = others
           .map(function (a) {
             var nm = escapeHtml(a.name);
-            return permRow("@" + nm, {
-              ro: { other: nm, dir: "ro" },
-              rw: { other: nm, dir: "rw" },
-            });
+            return (
+              '<div class="ch-ctx-item" data-pick="1" data-other="' +
+              nm +
+              '">@' +
+              nm +
+              "</div>"
+            );
           })
           .join("");
         openSub(item, html2, function (p) {
-          _agentDmCreate(
-            agent,
-            p.getAttribute("data-other"),
-            p.getAttribute("data-dir"),
-          );
+          _openAgentDmSimple(agent, p.getAttribute("data-other"));
         });
       } else if (kind === "remove") {
         var rm = curChannels
@@ -988,6 +991,24 @@ function _agentSubscribe(agentName, channel, permission) {
       _showMiniToast("Subscribe failed: " + e.message, "err");
     });
 }
+
+/* Open the canonical agent↔agent DM channel in the Chat tab without
+ * calling /api/dms/. The backend lazy-creates the channel on first
+ * message send (commit 3dac12f), so this is a pure navigation op:
+ *   - canonical channel name: dm:agent:<A>|agent:<B> with names sorted
+ *   - select it as current channel, load history (empty until first send)
+ *   - switch to Chat tab
+ * ywatanabe 2026-04-19: DM submenu RO/RW picker was overkill — clicking
+ * "@other-agent" should just open the conversation. */
+function _openAgentDmSimple(agentA, agentB) {
+  if (!agentA || !agentB || agentA === agentB) return;
+  var pair = [agentA, agentB].sort();
+  var channel = "dm:agent:" + pair[0] + "|agent:" + pair[1];
+  if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
+  if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
+  if (typeof _activateTab === "function") _activateTab("chat");
+}
+window._openAgentDmSimple = _openAgentDmSimple;
 
 /* Create a DM channel between two agents with a direction policy.
  * dir = "rw": both agents subscribed read-write (bidirectional)

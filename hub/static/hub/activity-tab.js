@@ -1167,6 +1167,54 @@ function _topoUnhideAll() {
 window._topoHide = _topoHide;
 window._topoUnhide = _topoUnhide;
 window._topoUnhideAll = _topoUnhideAll;
+
+/* Manual position overrides — user-dragged node coordinates that
+ * supersede the ring-layout slot for that node. Persisted to
+ * localStorage under "orochi.topoPositions". Key format:
+ *   "agent:<name>" or "channel:<name>"
+ * Value: { x: <svg x>, y: <svg y> }.
+ * ywatanabe 2026-04-19: canvas drag-to-reposition — dragging a node
+ * on the canvas and dropping on empty SVG space pins it at the drop
+ * coordinate; ring layout is only the default, not a force.
+ * Shape: { "agent:<name>": {x, y}, "channel:<name>": {x, y} }. */
+var _topoManualPositions = {};
+try {
+  var _topoPosRaw = localStorage.getItem("orochi.topoPositions");
+  if (_topoPosRaw) {
+    var _topoPosParsed = JSON.parse(_topoPosRaw);
+    if (_topoPosParsed && typeof _topoPosParsed === "object") {
+      _topoManualPositions = _topoPosParsed;
+    }
+  }
+} catch (_e) {}
+function _topoManualKey(kind, name) {
+  return String(kind || "") + ":" + String(name || "");
+}
+function _topoSaveManualPositions() {
+  try {
+    localStorage.setItem(
+      "orochi.topoPositions",
+      JSON.stringify(_topoManualPositions),
+    );
+  } catch (_e) {}
+}
+function _topoSetManualPosition(kind, name, x, y) {
+  if (!kind || !name) return;
+  if (typeof x !== "number" || typeof y !== "number") return;
+  _topoManualPositions[_topoManualKey(kind, name)] = { x: x, y: y };
+  _topoSaveManualPositions();
+  _topoLastSig = "";
+}
+function _topoClearManualPosition(kind, name) {
+  delete _topoManualPositions[_topoManualKey(kind, name)];
+  _topoSaveManualPositions();
+  _topoLastSig = "";
+}
+function _topoManualPositionsSignature() {
+  return "mp:" + Object.keys(_topoManualPositions).sort().join(",");
+}
+window._topoSetManualPosition = _topoSetManualPosition;
+window._topoClearManualPosition = _topoClearManualPosition;
 function _topoApplyStickyEdges() {
   /* Merge sticky edges into window.__lastAgents so _renderActivity-
    * Topology (and every other consumer of a.channels) sees them as
@@ -2430,6 +2478,7 @@ function _topoSignature(visible) {
     "prefs:" + prefSig,
     "sticky:" + stickySig,
     _topoHiddenSignature(),
+    _topoManualPositionsSignature(),
   ];
   for (var i = 0; i < visible.length; i++) {
     var a = visible[i];
@@ -2567,6 +2616,21 @@ function _renderActivityTopology(visible, grid) {
   var chPos = {};
   channels.forEach(function (c, i) {
     chPos[c] = _pt(rInner, i, channels.length);
+  });
+  /* Apply manual position overrides — user-dragged nodes on the canvas
+   * pin at their drop coordinate, superseding the ring slot. Keys live
+   * in _topoManualPositions and are keyed by "<kind>:<name>". */
+  if (humanName) {
+    var _mpH = _topoManualPositions[_topoManualKey("agent", humanName)];
+    if (_mpH) agentPos[humanName] = { x: _mpH.x, y: _mpH.y };
+  }
+  visible.forEach(function (a) {
+    var _mpA = _topoManualPositions[_topoManualKey("agent", a.name)];
+    if (_mpA) agentPos[a.name] = { x: _mpA.x, y: _mpA.y };
+  });
+  channels.forEach(function (c) {
+    var _mpC = _topoManualPositions[_topoManualKey("channel", c)];
+    if (_mpC) chPos[c] = { x: _mpC.x, y: _mpC.y };
   });
   /* Stash for the message-pulse animator (_topoPulseEdge). Re-computed
    * on every render so a window-resize or agent add/remove still
@@ -4460,6 +4524,25 @@ function _wireOverviewGridDelegation(grid) {
          * drag isn't an accidental re-apply. */
         if (s.source === "pool" && items.length > 1) _topoPoolSelectClear();
         _topoLastSig = ""; /* force re-render with new edges */
+        renderActivityTab();
+      }
+    }
+    /* Canvas drag-to-reposition — if the drag started from a canvas
+     * .topo-agent/.topo-channel node (not a pool chip) and was dropped
+     * on empty SVG space (no valid subscribe target, no shift/ctrl/
+     * meta), pin the node at the drop coordinate via a manual position
+     * override. Additive path: does not disturb subscribe-drag (which
+     * set target) or rectangle-zoom (handled by _wireTopoZoomPan with
+     * a short-circuit on .topo-agent/.topo-channel targets).
+     * ywatanabe 2026-04-19: canvas drag should also allow the user to
+     * rearrange the topology freely. */
+    if (s.moved && !target && s.source === "canvas" && s.kind && s.name) {
+      var _dropP = _topoSvgPoint(s.svg, ev.clientX, ev.clientY);
+      /* Keep drops strictly inside the SVG viewport — elementsFromPoint
+       * wouldn't have picked the SVG at all if the cursor left it, so
+       * this is mostly defensive against edge-case negative coords. */
+      if (_dropP && isFinite(_dropP.x) && isFinite(_dropP.y)) {
+        _topoSetManualPosition(s.kind, s.name, _dropP.x, _dropP.y);
         renderActivityTab();
       }
     }
