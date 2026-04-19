@@ -753,9 +753,54 @@
   background: #102428 !important;
   box-shadow: 0 0 0 2px #4ecdc4;
 }
+/* Fixed-width icon slot so channel names line up in a column whether
+ * the channel has a custom icon or the default '#' glyph (todo#101,
+ * column alignment request). Inner children (img / emoji / '#') are
+ * centered and clamped to the slot to keep width constant. */
 .activity-grid.activity-view-topology .topo-pool-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
   font-size: 10px;
+  line-height: 1;
   filter: saturate(0.8);
+  overflow: hidden;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-icon img.agent-avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-icon .agent-custom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+/* Marker slot (star / mute / empty placeholder) — always reserved so
+ * the subsequent name column stays aligned across chips regardless of
+ * starred/muted state. Every chip renders [icon][star][mute][name],
+ * with empty star-off / mute-off placeholders taking up the same
+ * width as the glyphs they'd otherwise hold. */
+.activity-grid.activity-view-topology .topo-pool-chip-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  font-size: 10px;
+  line-height: 1;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-star-off,
+.activity-grid.activity-view-topology .topo-pool-chip-mute-off {
+  /* Placeholder — keeps slot width but no glyph rendered. */
 }
 .activity-grid.activity-view-topology .topo-pool-chip-channel {
   color: #eaf1fb;

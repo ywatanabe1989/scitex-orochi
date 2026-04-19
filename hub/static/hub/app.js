@@ -2550,10 +2550,24 @@ async function fetchStats() {
           '">' +
           (pref.is_starred ? "\u2605" : "\u2606") +
           "</span>" +
+          /* Notification (mute) placeholder — always reserved so the
+           * channel-name column stays aligned whether the row is
+           * muted or not. Click toggles mute via _setChannelPref so
+           * the user can flip it without opening the context menu.
+           * User request 2026-04-19: "channels should have placeholder
+           * for icon, star, and notification". */
+          '<span class="ch-mute ' +
+          (pref.is_muted ? "ch-mute-on" : "ch-mute-off") +
+          '" data-ch="' +
+          escapeHtml(norm) +
+          '" title="' +
+          (pref.is_muted ? "Unmute notifications" : "Mute notifications") +
+          '">' +
+          (pref.is_muted ? "\uD83D\uDD07" : "\uD83D\uDD14") +
+          "</span>" +
           /* Per-row hide/unhide toggle (todo#418) — 👁 visible / 🚫 hidden.
            * Click stops propagation so the row's own click handler does
-           * not also fire. Single eye (the earlier ch-watch mute duplicate
-           * was removed — mute still reachable via right-click menu). */
+           * not also fire. */
           '<span class="ch-eye ' +
           (pref.is_hidden ? "ch-eye-off" : "ch-eye-on") +
           '" data-ch="' +
@@ -2682,6 +2696,19 @@ async function fetchStats() {
           _setChannelPref(norm, { is_muted: !curPref.is_muted });
         });
       }
+      /* Bell/mute placeholder click — toggle is_muted. Placeholder is
+       * always rendered (reserved slot) so channel-name columns line up
+       * whether the row is muted or not. */
+      var muteEl = el.querySelector(".ch-mute");
+      if (muteEl) {
+        muteEl.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          ev.preventDefault();
+          var norm = muteEl.getAttribute("data-ch");
+          var curPref = _channelPrefs[norm] || {};
+          _setChannelPref(norm, { is_muted: !curPref.is_muted });
+        });
+      }
       /* Hide/unhide icon click — toggle is_hidden (todo#418). */
       var eyeEl = el.querySelector(".ch-eye");
       if (eyeEl) {
@@ -2745,6 +2772,7 @@ async function fetchStats() {
         if (
           ev.target.classList.contains("ch-pin") ||
           ev.target.classList.contains("ch-watch") ||
+          ev.target.classList.contains("ch-mute") ||
           ev.target.classList.contains("ch-eye") ||
           ev.target.classList.contains("ch-drag-handle")
         )

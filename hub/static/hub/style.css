@@ -2107,20 +2107,77 @@ a.chat-link:hover {
   opacity: 0.75;
   filter: none;
 }
+/* Notification / mute placeholder — user request 2026-04-19: every
+ * channel row reserves fixed-width slots for star + notification so
+ * the name column stays aligned whether the flag is set or not. */
+.ch-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  margin-right: 2px;
+}
+.ch-mute-on {
+  opacity: 0.9;
+  color: #94a3b8;
+}
+.ch-mute-off {
+  opacity: 0.15;
+}
+.channel-item:hover .ch-mute-off {
+  opacity: 0.55;
+}
+.ch-pin,
+.ch-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  line-height: 1;
+}
 
-/* Custom channel icon slot in the sidebar (todo#101). Thin fixed-width
- * wrapper so rows with or without a custom icon still align their
- * name column — same principle as .ch-ctx-glyph in the context menu. */
+/* Custom channel icon slot in the sidebar (todo#101). Fixed-width
+ * wrapper — MUST clamp both width and flex-basis so rows with an
+ * emoji glyph, an image avatar, or the default '#' placeholder all
+ * line up the channel-name column. Without the flex-basis clamp, a
+ * wide emoji pushes the name right and column alignment breaks. */
 .ch-identity-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.2em;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
   margin-right: 4px;
-  flex: 0 0 auto;
+  overflow: hidden;
+  line-height: 1;
 }
 .ch-identity-icon .entity-icon-channel {
   opacity: 0.55;
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+.ch-identity-icon .agent-custom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+.ch-identity-icon img.agent-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: cover;
 }
 .ch-pin:hover,
 .ch-watch:hover,

@@ -285,9 +285,56 @@ function _updateTodoBtnCounts(issues) {
  * immediately; the SVG replaces it once the /api/todo/stats/ round-trip
  * completes (see viz-tab.js). */
 
+/* View mode switcher for TODO tab ([ Viz | List ]). User requested
+ * an explicit toggle so each mode gets the full canvas instead of
+ * stacking both (todo#102). Default to List — the pills+grid is the
+ * primary workflow; Viz is a periodic check. Persists in localStorage. */
+var _TODO_VIEW_KEY = "orochi.todoViewMode";
+function _todoViewMode() {
+  try {
+    var v = localStorage.getItem(_TODO_VIEW_KEY);
+    return v === "viz" ? "viz" : "list";
+  } catch (_) {
+    return "list";
+  }
+}
+function _applyTodoViewMode(mode) {
+  var isViz = mode === "viz";
+  var viz = document.getElementById("viz-content");
+  var stats = document.getElementById("todo-stats");
+  var grid = document.getElementById("todo-grid");
+  var pills = document.querySelector("#todo-view .todo-state-filter");
+  if (viz) viz.style.display = isViz ? "" : "none";
+  if (stats) stats.style.display = isViz ? "none" : "";
+  if (grid) grid.style.display = isViz ? "none" : "";
+  if (pills) pills.style.display = isViz ? "none" : "";
+  document
+    .querySelectorAll("#todo-view [data-todo-view]")
+    .forEach(function (btn) {
+      btn.classList.toggle(
+        "active",
+        btn.getAttribute("data-todo-view") === mode,
+      );
+    });
+  if (isViz && typeof renderVizTab === "function") renderVizTab();
+}
+function _wireTodoViewSwitch() {
+  document
+    .querySelectorAll("#todo-view [data-todo-view]")
+    .forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var mode = btn.getAttribute("data-todo-view") || "list";
+        try {
+          localStorage.setItem(_TODO_VIEW_KEY, mode);
+        } catch (_) {}
+        _applyTodoViewMode(mode);
+      });
+    });
+  _applyTodoViewMode(_todoViewMode());
+}
+
 document.addEventListener("DOMContentLoaded", function () {
-  /* Viz is always visible — paint a skeleton right away so the tab
-   * shell renders fast even before the stats round-trip finishes. */
+  _wireTodoViewSwitch();
   if (typeof renderVizTab === "function") renderVizTab();
   document.querySelectorAll(".todo-state-btn").forEach(function (btn) {
     btn.addEventListener("click", function (e) {

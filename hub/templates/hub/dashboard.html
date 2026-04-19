@@ -192,6 +192,20 @@
             <div id="messages" class="messages"></div>
             <!-- hook-bypass: inline-style -->
             <div id="todo-view" class="todo-view" style="display:none">
+                <div class="todo-view-switch-wrap">
+                    <div class="machines-view-switch"
+                         role="tablist"
+                         aria-label="TODO view mode">
+                        <button type="button"
+                                class="machines-view-switch-btn"
+                                data-todo-view="viz"
+                                title="progress chart + KPIs">Viz</button>
+                        <button type="button"
+                                class="machines-view-switch-btn active"
+                                data-todo-view="list"
+                                title="issue list grouped by priority">List</button>
+                    </div>
+                </div>
                 <div class="todo-state-filter">
                     <button type="button" class="todo-state-btn active" data-group="all">All</button>
                     <button type="button" class="todo-state-btn" data-group="high-priority">High</button>

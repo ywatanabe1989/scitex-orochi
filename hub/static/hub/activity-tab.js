@@ -4216,20 +4216,32 @@ function _renderActivityTopology(visible, grid) {
        * marks. Starred is the channel-equivalent of agent-pinned (the
        * "keep this on top" signal). ywatanabe 2026-04-19 todo#84. */
       var _chPref = _poolChPrefs[c] || {};
-      var chPinGlyph = _chPref.is_starred
-        ? '<span class="topo-pool-chip-star" title="starred">\u2605</span>'
-        : "";
-      var chMuteGlyph = _chPref.is_muted
-        ? '<span class="topo-pool-chip-mute" title="muted">\uD83D\uDD07</span>'
-        : "";
-      /* todo#96: shared channel identity — same "#" glyph + tooltip
-       * shape used by sidebar channel rows. Keeps the hash prefix
-       * consistent whether the channel name itself already starts
-       * with "#" or not. */
+      /* todo#101/#102: every channel chip reserves the same two
+       * prefix slots — custom-icon and star/mute marker — so the
+       * channel-name column stays aligned whether the channel has an
+       * icon/marker or not. Empty placeholder spans keep each chip
+       * the same total prefix width. */
       var _chIdent =
         typeof channelIdentity === "function"
           ? channelIdentity(c)
-          : { displayName: c, tooltip: c };
+          : {
+              displayName: c,
+              tooltip: c,
+              iconHtml: function () {
+                return "#";
+              },
+            };
+      /* Two separate placeholder slots — star + notification (mute) —
+       * so every channel chip has the same [icon][star][mute][name]
+       * prefix geometry, placeholders render empty when the flag is
+       * off. User request 2026-04-19: "channels should have
+       * placeholder for icon, star, and notification". */
+      var chStarGlyph = _chPref.is_starred
+        ? '<span class="topo-pool-chip-marker topo-pool-chip-star" title="starred">\u2605</span>'
+        : '<span class="topo-pool-chip-marker topo-pool-chip-star-off" aria-hidden="true"></span>';
+      var chMuteGlyph = _chPref.is_muted
+        ? '<span class="topo-pool-chip-marker topo-pool-chip-mute" title="muted">\uD83D\uDD07</span>'
+        : '<span class="topo-pool-chip-marker topo-pool-chip-mute-off" aria-hidden="true"></span>';
       return (
         '<div class="topo-pool-chip topo-pool-chip-channel' +
         selCls +
@@ -4237,8 +4249,10 @@ function _renderActivityTopology(visible, grid) {
         escapeHtml(c) +
         '" title="' +
         escapeHtml(_chIdent.tooltip) +
-        '"><span class="topo-pool-chip-icon">#</span>' +
-        chPinGlyph +
+        '"><span class="topo-pool-chip-icon">' +
+        _chIdent.iconHtml(14) +
+        "</span>" +
+        chStarGlyph +
         chMuteGlyph +
         '<span class="topo-pool-chip-name">' +
         escapeHtml(_chIdent.displayName) +
