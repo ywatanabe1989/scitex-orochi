@@ -1916,6 +1916,10 @@ def api_agents_register(request):
             "pid": body.get("pid") or 0,
             "ppid": body.get("ppid") or 0,
             "context_pct": body.get("context_pct"),
+            # YAML-declared compact policy (strategy / trigger_at_percent /
+            # live percent reading from the sac sensor). None when the agent
+            # has context_management.strategy=noop or unconfigured.
+            "context_management": body.get("context_management"),
             "skills_loaded": body.get("skills_loaded") or [],
             "started_at": body.get("started_at", ""),
             "version": body.get("version", ""),

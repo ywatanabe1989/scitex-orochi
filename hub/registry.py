@@ -96,6 +96,14 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if info.get("context_pct") is not None
                 else prev.get("context_pct")
             ),
+            # YAML compact policy block from sac status. Preserve across
+            # heartbeats so the Agents tab keeps showing the threshold even
+            # when an individual heartbeat omits it (legacy clients).
+            "context_management": (
+                info.get("context_management")
+                if info.get("context_management") is not None
+                else prev.get("context_management")
+            ),
             "skills_loaded": (
                 list(info.get("skills_loaded"))
                 if isinstance(info.get("skills_loaded"), (list, tuple))
@@ -688,6 +696,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "pid": a.get("pid") or 0,
                 "ppid": a.get("ppid") or 0,
                 "context_pct": a.get("context_pct"),
+                "context_management": a.get("context_management"),
                 "skills_loaded": list(a.get("skills_loaded") or []),
                 "started_at": a.get("started_at", ""),
                 "version": a.get("version", ""),

@@ -86,6 +86,10 @@ def _wrap_with_orochi_fields(
         "pid": int(status.get("pid") or 0),
         "ppid": int(status.get("ppid") or 0),
         "context_pct": status.get("context_pct"),
+        # YAML-declared compact policy from sac status (None when noop /
+        # unconfigured). Surfaced in the Agents tab next to the live
+        # context_pct so operators can see the threshold each agent uses.
+        "context_management": status.get("context_management"),
         "current_task": status.get("current_task") or "",
         "current_tool": status.get("current_tool") or "",
         "subagent_count": int(status.get("subagent_count") or 0),

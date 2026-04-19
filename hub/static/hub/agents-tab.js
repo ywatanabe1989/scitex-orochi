@@ -1332,7 +1332,7 @@ function buildAgentRow(a) {
     escapeHtml(a.multiplexer || "-") +
     "</td>" +
     '<td class="ctx-cell">' +
-    renderContextBadge(a.context_pct) +
+    renderContextBadge(a.context_pct, a.context_management) +
     "</td>" +
     '<td class="skills-cell">' +
     renderSkillsBadge(a.skills_loaded) +
@@ -1444,21 +1444,51 @@ function toggleClaudeMd(btn) {
   }
 }
 
-function renderContextBadge(pct) {
-  if (pct == null) return '<span class="muted-cell">-</span>';
+function renderContextBadge(pct, cm) {
+  if (pct == null) return renderCompactPolicySuffix("-", cm);
   var n = Number(pct);
-  if (isNaN(n)) return '<span class="muted-cell">-</span>';
+  if (isNaN(n)) return renderCompactPolicySuffix("-", cm);
+  // Color thresholds bias on the YAML-declared trigger when present so an
+  // agent configured to compact at 60% turns red sooner than the default 80.
+  var trigger =
+    cm && cm.trigger_at_percent != null ? Number(cm.trigger_at_percent) : 80;
+  var warn = Math.max(10, trigger - 20);
   var color;
-  if (n < 50) color = "#4ecdc4";
-  else if (n < 80) color = "#ffd93d";
+  if (n < warn) color = "#4ecdc4";
+  else if (n < trigger) color = "#ffd93d";
   else color = "#ef4444";
-  return (
-    '<span class="ctx-badge" title="Context window used" ' +
-    'style="background:' +
+  var title =
+    cm && cm.strategy && cm.strategy !== "noop"
+      ? "Context window used (auto-" + cm.strategy + " at " + trigger + "%)"
+      : "Context window used";
+  var badge =
+    '<span class="ctx-badge" title="' +
+    title +
+    '" style="background:' +
     color +
     ";color:#111;padding:1px 6px;" +
     'border-radius:10px;font-size:11px;font-weight:600">ctx ' +
     n.toFixed(1) +
+    "%</span>";
+  return renderCompactPolicySuffix(badge, cm);
+}
+
+// Append a small "/<trigger>%" suffix when the agent has a compact/restart
+// policy declared in YAML, so operators can see the threshold at a glance.
+function renderCompactPolicySuffix(badge, cm) {
+  if (!cm || !cm.strategy || cm.strategy === "noop") return badge;
+  var trig = cm.trigger_at_percent;
+  if (trig == null) return badge;
+  var glyph = cm.strategy === "restart" ? "↻" : "↺";
+  return (
+    badge +
+    ' <span class="ctx-policy" title="auto-' +
+    cm.strategy +
+    " at " +
+    trig +
+    '%" style="color:#888;font-size:10px;margin-left:2px">' +
+    glyph +
+    Number(trig).toFixed(0) +
     "%</span>"
   );
 }

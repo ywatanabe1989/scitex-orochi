@@ -275,7 +275,19 @@ function _renderActivityAgentDetail(a, grid) {
   var q7 = a.quota_7d_used_pct != null ? Number(a.quota_7d_used_pct) : null;
   var subCnt = a.subagent_count != null ? Number(a.subagent_count) : null;
   var chips = [];
-  if (ctxPct != null) chips.push("ctx " + ctxPct.toFixed(1) + "%");
+  var cm = a.context_management || null;
+  var cmTrig =
+    cm && cm.strategy && cm.strategy !== "noop" && cm.trigger_at_percent != null
+      ? Number(cm.trigger_at_percent)
+      : null;
+  if (ctxPct != null) {
+    var ctxChip = "ctx " + ctxPct.toFixed(1) + "%";
+    if (cmTrig != null) {
+      var glyph = cm.strategy === "restart" ? "↻" : "↺";
+      ctxChip += " " + glyph + cmTrig.toFixed(0) + "%";
+    }
+    chips.push(ctxChip);
+  }
   if (q5 != null) chips.push("5h " + q5.toFixed(0) + "%");
   if (q7 != null) chips.push("7d " + q7.toFixed(0) + "%");
   if (subCnt != null) chips.push("subagents " + subCnt);
