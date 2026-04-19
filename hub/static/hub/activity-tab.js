@@ -3841,7 +3841,7 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     "Paste image/file to attach\n" +
     "Click ▾ for attach / camera / sketch / voice";
   pop.innerHTML =
-    '<textarea class="tcc-input" rows="2" placeholder="message #' +
+    '<textarea class="tcc-input" data-voice-input rows="2" placeholder="message #' +
     escapeHtml(channel).replace(/^#/, "") +
     '" title="' +
     tccShortcuts.replace(/"/g, "&quot;") +
@@ -3897,6 +3897,30 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     close();
   }
   input.addEventListener("keydown", function (ev) {
+    /* Voice-toggle shortcuts — same as Chat composer. Keep these BEFORE
+     * the plain-Enter branch so Ctrl+Enter / Alt+Enter don't fall through
+     * to send(). Ctrl+M and Alt+V also toggle voice. */
+    if (ev.key === "Enter" && (ev.ctrlKey || ev.altKey)) {
+      ev.preventDefault();
+      ev.stopPropagation(); /* prevent global voice handler from double-firing */
+      if (typeof window.toggleVoiceInput === "function") {
+        input.focus(); /* ensure _toggleVoice sees our textarea as active */
+        window.toggleVoiceInput();
+      }
+      return;
+    }
+    if (
+      (ev.ctrlKey && (ev.key === "m" || ev.key === "M")) ||
+      (ev.altKey && (ev.key === "v" || ev.key === "V"))
+    ) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (typeof window.toggleVoiceInput === "function") {
+        input.focus();
+        window.toggleVoiceInput();
+      }
+      return;
+    }
     if (ev.key === "Enter" && !ev.shiftKey) {
       ev.preventDefault();
       send();
@@ -3987,8 +4011,13 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     if (typeof openSketchPanel === "function") openSketchPanel();
   });
   pop.querySelector(".tcc-voice").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof startVoiceInput === "function") startVoiceInput();
+    /* Dictate into THIS popup's textarea — don't route to Chat.
+     * Focus the popup textarea so _toggleVoice's selector-based
+     * target resolution picks it up, then toggle. */
+    if (typeof window.toggleVoiceInput === "function") {
+      input.focus();
+      window.toggleVoiceInput();
+    }
   });
   /* Drop files onto popup → route to Chat with attachments primed. */
   pop.addEventListener("dragover", function (ev) {

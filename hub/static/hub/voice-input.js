@@ -7,7 +7,8 @@
 
   /* On iOS/iPadOS, hide custom mic buttons and let the native keyboard mic
    * handle voice input. The native mic is more reliable and familiar on iOS. */
-  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  var isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   if (isIOS) return;
 
@@ -41,7 +42,9 @@
     langBtn.textContent = VOICE_LANGS[langIdx].label;
     langBtn.addEventListener("click", function () {
       _cycleLang();
-      try { document.getElementById("msg-input").focus(); } catch (_) {}
+      try {
+        document.getElementById("msg-input").focus();
+      } catch (_) {}
     });
   }
 
@@ -68,17 +71,22 @@
     window.isVoiceRecording = false;
     /* Flush any messages that were deferred during recording */
     if (typeof window._flushVoiceQueue === "function") {
-      try { window._flushVoiceQueue(); } catch (_) {}
+      try {
+        window._flushVoiceQueue();
+      } catch (_) {}
     }
     btn.classList.remove("voice-active");
     var threadBtn = document.getElementById("thread-voice-btn");
     if (threadBtn) threadBtn.classList.remove("voice-active");
-    btn.title = "Voice input · " + VOICE_LANGS[langIdx].label +
+    btn.title =
+      "Voice input · " +
+      VOICE_LANGS[langIdx].label +
       " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
     /* Remove recording indicator from both main and thread textareas */
     var input = document.getElementById("msg-input");
     if (input) input.classList.remove("voice-recording");
-    if (_voiceTarget && _voiceTarget !== input) _voiceTarget.classList.remove("voice-recording");
+    if (_voiceTarget && _voiceTarget !== input)
+      _voiceTarget.classList.remove("voice-recording");
   }
 
   function _createRecognition() {
@@ -115,7 +123,9 @@
         _restartAfterStop = false;
         _suppressResults = false;
         recognition = _createRecognition();
-        try { recognition.start(); } catch (_) {}
+        try {
+          recognition.start();
+        } catch (_) {}
         return;
       }
       if (isListening && !_userStopped) {
@@ -126,7 +136,9 @@
           if (myGen !== _generation) return; /* superseded by a newer toggle */
           if (!_userStopped) {
             recognition = _createRecognition();
-            try { recognition.start(); } catch (_) {
+            try {
+              recognition.start();
+            } catch (_) {
               _setStoppedUI();
             }
           }
@@ -164,10 +176,25 @@
   }
 
   function _toggleVoice() {
-    /* Determine target textarea: thread reply textarea if focused, else main */
+    /* Determine target textarea: prefer the currently-focused textarea if it
+     * opts in via [data-voice-input] or lives inside a known composer
+     * (thread panel, canvas compose popup). Falls back to #msg-input.
+     * Order matters: check opt-in attribute first so any future composer
+     * can participate without touching this function. */
     var focused = document.activeElement;
-    var threadTextarea = focused && focused.closest && focused.closest(".thread-panel") ? focused : null;
-    var input = (threadTextarea && threadTextarea.tagName === "TEXTAREA") ? threadTextarea : document.getElementById("msg-input");
+    var input = null;
+    if (focused && focused.tagName === "TEXTAREA") {
+      if (
+        focused.hasAttribute("data-voice-input") ||
+        (focused.closest &&
+          (focused.closest(".thread-panel") ||
+            focused.closest("#topo-channel-compose") ||
+            focused.closest(".topo-compose-modal")))
+      ) {
+        input = focused;
+      }
+    }
+    if (!input) input = document.getElementById("msg-input");
 
     if (isListening) {
       _userStopped = true;
@@ -177,14 +204,18 @@
       _generation++;
       _setStoppedUI();
       if (recognition) {
-        try { recognition.abort(); } catch (_) {}
+        try {
+          recognition.abort();
+        } catch (_) {}
       }
       recognition = null;
       _voiceTarget = null;
     } else {
       /* Discard old instance (abort is safe even on already-ended instances) */
       if (recognition) {
-        try { recognition.abort(); } catch (_) {}
+        try {
+          recognition.abort();
+        } catch (_) {}
         recognition = null;
       }
       _voiceTarget = input;
@@ -201,7 +232,9 @@
     }
     /* Always hand focus back to the textarea. */
     if (input) {
-      try { input.focus(); } catch (_) {}
+      try {
+        input.focus();
+      } catch (_) {}
     }
   }
 
@@ -211,9 +244,12 @@
     if (langBtn) langBtn.textContent = VOICE_LANGS[langIdx].label;
     btn.title =
       (isListening ? "Stop voice input" : "Voice input") +
-      " · " + VOICE_LANGS[langIdx].label +
+      " · " +
+      VOICE_LANGS[langIdx].label +
       " · right-click to change language · Ctrl+M to toggle";
-    try { localStorage.setItem(LANG_KEY, VOICE_LANGS[langIdx].code); } catch (_) {}
+    try {
+      localStorage.setItem(LANG_KEY, VOICE_LANGS[langIdx].code);
+    } catch (_) {}
   }
 
   window.toggleVoiceInput = _toggleVoice;
@@ -225,35 +261,51 @@
     _cycleLang();
   });
 
-  document.addEventListener("keydown", function (e) {
-    /* Escape always stops voice — emergency exit regardless of focus/thread state */
-    if (e.key === "Escape" && isListening) {
-      /* Don't preventDefault — let other Escape handlers (modal close etc.) also fire */
-      _toggleVoice();
-      return;
-    }
-    if (
-      (e.ctrlKey && (e.key === "m" || e.key === "M")) ||
-      (e.altKey && (e.key === "v" || e.key === "V"))
-    ) {
-      e.preventDefault();
-      _toggleVoice();
-      return;
-    }
-    if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
-      /* Skip if focus is in thread panel — thread's own keydown handler manages this */
-      var focused = document.activeElement;
-      var inThread = focused && focused.closest && focused.closest(".thread-panel");
-      if (inThread) return;
-      if (typeof activeTab !== "undefined" && activeTab === "chat") {
+  document.addEventListener(
+    "keydown",
+    function (e) {
+      /* Escape always stops voice — emergency exit regardless of focus/thread state */
+      if (e.key === "Escape" && isListening) {
+        /* Don't preventDefault — let other Escape handlers (modal close etc.) also fire */
+        _toggleVoice();
+        return;
+      }
+      if (
+        (e.ctrlKey && (e.key === "m" || e.key === "M")) ||
+        (e.altKey && (e.key === "v" || e.key === "V"))
+      ) {
         e.preventDefault();
         _toggleVoice();
+        return;
       }
-    }
-  }, true);
+      if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
+        /* Skip if focus is in thread panel — thread's own keydown handler manages this */
+        var focused = document.activeElement;
+        var inThread =
+          focused && focused.closest && focused.closest(".thread-panel");
+        if (inThread) return;
+        /* Skip if focus is in canvas compose popup — its own keydown handler
+         * intercepts Ctrl+Enter (for voice) / plain Enter (for send). */
+        var inCanvasCompose =
+          focused &&
+          focused.closest &&
+          focused.closest("#topo-channel-compose");
+        if (inCanvasCompose) return;
+        var inTopoGroupCompose =
+          focused && focused.closest && focused.closest(".topo-compose-modal");
+        if (inTopoGroupCompose) return;
+        if (typeof activeTab !== "undefined" && activeTab === "chat") {
+          e.preventDefault();
+          _toggleVoice();
+        }
+      }
+    },
+    true,
+  );
 
   btn.title =
-    "Voice input · " + VOICE_LANGS[langIdx].label +
+    "Voice input · " +
+    VOICE_LANGS[langIdx].label +
     " · right-click to change language · Alt+Enter / Ctrl+Enter / Ctrl+M to toggle";
 
   window.voiceInputResetAfterSend = function () {
@@ -265,7 +317,9 @@
        * as the restart-trigger rather than a stale stop. The _restartAfterStop
        * path in the end handler checks this correctly. */
       if (recognition) {
-        try { recognition.stop(); } catch (_) {}
+        try {
+          recognition.stop();
+        } catch (_) {}
       }
     }
   };
