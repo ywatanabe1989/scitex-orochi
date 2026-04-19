@@ -1366,8 +1366,10 @@ function _markerAttrsForPerm(perm) {
 function _repaintTopoArrows() {
   var svg = document.querySelector(".activity-view-topology .topo-svg");
   if (!svg) return;
+  /* Only visible edges carry marker-start/marker-end; the .topo-edge-hit
+   * overlays are transparent and should not accumulate marker attrs. */
   var lines = svg.querySelectorAll(
-    ".topo-edges line[data-agent][data-channel]",
+    ".topo-edges line.topo-edge[data-agent][data-channel]",
   );
   for (var i = 0; i < lines.length; i++) {
     var ln = lines[i];
@@ -1624,9 +1626,11 @@ function _topoLandingBubble(svgRoot, target, text) {
   }, _TOPO_LANDING_DUR_MS);
 }
 
-/* Briefly brighten the line matching the given endpoints. */
+/* Briefly brighten the line matching the given endpoints. Skip the
+ * invisible .topo-edge-hit overlays — adding .topo-edge-live there
+ * would suddenly make the transparent hit strip flash cyan. */
 function _topoFlashEdge(edges, a, b, delay, dur) {
-  var lines = edges.querySelectorAll("line");
+  var lines = edges.querySelectorAll("line:not(.topo-edge-hit)");
   for (var i = 0; i < lines.length; i++) {
     var ln = lines[i];
     var x1 = Number(ln.getAttribute("x1"));
@@ -2576,7 +2580,17 @@ function _renderActivityTopology(visible, grid) {
 
   /* Edges — iterate visible agents, intersect with the channel set.
    * Each <line> carries data-channel/data-agent so _repaintTopoArrows()
-   * can re-apply marker-start/marker-end without touching geometry. */
+   * can re-apply marker-start/marker-end without touching geometry.
+   *
+   * We emit a PAIR per edge: an invisible 12px-wide .topo-edge-hit
+   * overlay (fires click/hover events) followed by the visible .topo-edge
+   * (decorative only — pointer-events:none). The hit overlay carries the
+   * data-* attributes because event delegation keys off it; the visible
+   * line is brightened via the CSS adjacent-sibling selector
+   * `.topo-edge-hit:hover + .topo-edge`. Emitting the hit overlay FIRST
+   * ensures the sibling combinator lights up the correct visible line.
+   * ywatanabe 2026-04-19: "hitarea of edges should be a bit broader" —
+   * the earlier stroke-width 1→2 bump was insufficient. */
   var edgesSvg = "";
   visible.forEach(function (a) {
     var ap = agentPos[a.name];
@@ -2585,12 +2599,8 @@ function _renderActivityTopology(visible, grid) {
       if (!ap || !cp) return;
       var perm = _topoChannelPerms[_permKey(c, a.name)] || "read-write";
       var markers = _markerAttrsForPerm(perm);
-      edgesSvg +=
-        '<line class="topo-edge" data-agent="' +
-        escapeHtml(a.name) +
-        '" data-channel="' +
-        escapeHtml(c) +
-        '" x1="' +
+      var coords =
+        ' x1="' +
         ap.x.toFixed(1) +
         '" y1="' +
         ap.y.toFixed(1) +
@@ -2598,7 +2608,23 @@ function _renderActivityTopology(visible, grid) {
         cp.x.toFixed(1) +
         '" y2="' +
         cp.y.toFixed(1) +
-        '" stroke="#2a3a40" stroke-opacity="0.6" stroke-width="1"' +
+        '"';
+      edgesSvg +=
+        '<line class="topo-edge-hit" data-agent="' +
+        escapeHtml(a.name) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '"' +
+        coords +
+        "/>";
+      edgesSvg +=
+        '<line class="topo-edge" data-agent="' +
+        escapeHtml(a.name) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '"' +
+        coords +
+        ' stroke="#2a3a40" stroke-opacity="0.6" stroke-width="1"' +
         markers +
         "/>";
     });
@@ -2624,12 +2650,8 @@ function _renderActivityTopology(visible, grid) {
       if (!chSet[c]) return; /* channel not on current canvas */
       var cp = chPos[c];
       if (!cp) return;
-      edgesSvg +=
-        '<line class="topo-edge topo-edge-human" data-agent="' +
-        escapeHtml(humanName) +
-        '" data-channel="' +
-        escapeHtml(c) +
-        '" x1="' +
+      var hCoords =
+        ' x1="' +
         hp.x.toFixed(1) +
         '" y1="' +
         hp.y.toFixed(1) +
@@ -2637,7 +2659,25 @@ function _renderActivityTopology(visible, grid) {
         cp.x.toFixed(1) +
         '" y2="' +
         cp.y.toFixed(1) +
-        '" stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1"' +
+        '"';
+      /* Hit overlay first (wide invisible target) + visible dashed edge.
+       * Same pairing rationale as the agent→channel case above. */
+      edgesSvg +=
+        '<line class="topo-edge-hit topo-edge-hit-human" data-agent="' +
+        escapeHtml(humanName) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '"' +
+        hCoords +
+        "/>";
+      edgesSvg +=
+        '<line class="topo-edge topo-edge-human" data-agent="' +
+        escapeHtml(humanName) +
+        '" data-channel="' +
+        escapeHtml(c) +
+        '"' +
+        hCoords +
+        ' stroke="#fbbf24" stroke-opacity="0.25" stroke-width="1"' +
         ' stroke-dasharray="3 4"/>';
     });
   }
@@ -4003,15 +4043,19 @@ function _wireOverviewGridDelegation(grid) {
       return;
     }
     /* Topology edge click → unsubscribe popover. Edges are bare <line>
-     * elements inside <g class="topo-edges">; only agent→channel edges
-     * carry .topo-edge (human→channel dashed guides are skipped so the
-     * signed-in human can't "unsubscribe" themselves from a channel
-     * they never explicitly joined). */
-    var topoEdge = ev.target.closest(".topo-edges line.topo-edge");
-    if (topoEdge && grid.contains(topoEdge)) {
+     * elements inside <g class="topo-edges">; the wide invisible
+     * .topo-edge-hit overlay is what actually receives the click (the
+     * visible .topo-edge is pointer-events:none, decorative only).
+     * Human→channel dashed guides get the same overlay (.topo-edge-hit-
+     * human) but skip the popover — we don't want a "unsubscribe" on a
+     * line between the signed-in human and a channel they already
+     * joined deliberately. */
+    var topoEdgeHit = ev.target.closest(".topo-edges line.topo-edge-hit");
+    if (topoEdgeHit && grid.contains(topoEdgeHit)) {
+      if (topoEdgeHit.classList.contains("topo-edge-hit-human")) return;
       if (ev.shiftKey || ev.ctrlKey || ev.metaKey) return;
-      var eAgent = topoEdge.getAttribute("data-agent");
-      var eCh = topoEdge.getAttribute("data-channel");
+      var eAgent = topoEdgeHit.getAttribute("data-agent");
+      var eCh = topoEdgeHit.getAttribute("data-channel");
       if (eAgent && eCh) {
         ev.preventDefault();
         ev.stopPropagation();
@@ -4458,16 +4502,20 @@ function _wireOverviewGridDelegation(grid) {
     /* Right-click on an agent→channel edge → same unsubscribe popover
      * as the left-click path. Channel/agent nodes are resolved by later
      * branches so the order here matters — edge check first, since a
-     * line never overlaps a diamond/circle hit box. */
-    var topoEdge = ev.target.closest(".topo-edges line.topo-edge");
-    if (topoEdge && grid.contains(topoEdge)) {
-      var eAgent = topoEdge.getAttribute("data-agent");
-      var eCh = topoEdge.getAttribute("data-channel");
-      if (eAgent && eCh) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        _topoShowEdgeMenu(eAgent, eCh, ev.clientX, ev.clientY);
-        return;
+     * line never overlaps a diamond/circle hit box. Hit overlay is the
+     * event target (visible .topo-edge is pointer-events:none); skip
+     * human→channel dashed edges. */
+    var topoEdgeHitCtx = ev.target.closest(".topo-edges line.topo-edge-hit");
+    if (topoEdgeHitCtx && grid.contains(topoEdgeHitCtx)) {
+      if (!topoEdgeHitCtx.classList.contains("topo-edge-hit-human")) {
+        var eAgent = topoEdgeHitCtx.getAttribute("data-agent");
+        var eCh = topoEdgeHitCtx.getAttribute("data-channel");
+        if (eAgent && eCh) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          _topoShowEdgeMenu(eAgent, eCh, ev.clientX, ev.clientY);
+          return;
+        }
       }
     }
     var topoCh = ev.target.closest(".topo-channel[data-channel]");
@@ -4536,7 +4584,10 @@ function _wireOverviewGridDelegation(grid) {
   }
   function _topoChannelHoverApply(chName) {
     if (!chName) return;
-    var edges = grid.querySelectorAll(".topo-edges line");
+    /* Only visible edges — skip .topo-edge-hit overlays. Adding
+     * .topo-edge-hover to a transparent overlay would make the CSS
+     * `stroke:#4ecdc4 !important` rule suddenly paint it cyan. */
+    var edges = grid.querySelectorAll(".topo-edges line:not(.topo-edge-hit)");
     var endpoints = {};
     for (var i = 0; i < edges.length; i++) {
       var ln = edges[i];

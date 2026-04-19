@@ -1111,27 +1111,51 @@
   transition: stroke 0.15s ease-out;
 }
 
-/* Agent→channel edges are clickable for unsubscribe. Hover brightens
- * stroke + thickens the line so it's discoverable; cursor becomes a
- * pointer. ywatanabe 2026-04-19: "edges (lines) must be selectable to
- * unsubscribe". */
-/* Bolder hit-area so edges are easy to click without precise aim.
- * ywatanabe 2026-04-19: "hitarea for lines should be a bit bolder".
- * Visible thickness also bumped slightly so the graph reads clearer. */
+/* Agent→channel edges are clickable for unsubscribe. The visible line
+ * stays thin for aesthetics; a separate invisible 12px-wide
+ * .topo-edge-hit overlay (rendered immediately before the visible line
+ * in SVG source order) swallows the pointer events. Hover over the hit
+ * overlay brightens the visible line via the CSS adjacent-sibling
+ * combinator, so the user sees the affordance they expect from the
+ * edge they aimed at. ywatanabe 2026-04-19: "hitarea of edges should
+ * be a bit broader" — previous stroke-width 1→2 bump was insufficient. */
 .activity-grid.activity-view-topology .topo-edges line.topo-edge {
-  cursor: pointer;
   stroke-width: 2;
-  pointer-events: stroke;
+  pointer-events: none;
   transition:
     stroke 0.12s ease-out,
     stroke-opacity 0.12s ease-out,
     stroke-width 0.12s ease-out;
 }
-.activity-grid.activity-view-topology .topo-edges line.topo-edge:hover {
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-hit {
+  stroke: transparent;
+  stroke-width: 12;
+  fill: none;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+/* Hover the wide hit overlay → brighten the adjacent visible edge.
+ * Relies on the JS emitting the pair in [hit, visible] order inside
+ * the <g class="topo-edges"> group. */
+.activity-grid.activity-view-topology
+  .topo-edges
+  line.topo-edge-hit:hover
+  + line.topo-edge {
   stroke: #f59e0b !important;
   stroke-opacity: 1 !important;
   stroke-width: 3.2 !important;
   filter: drop-shadow(0 0 3px #f59e0b);
+}
+/* Human→channel dashed hit overlay uses a softer gold hover to match
+ * its resting dashed-gold palette (keeps the visual language
+ * consistent with the rest of the human-subscription guides). */
+.activity-grid.activity-view-topology
+  .topo-edges
+  line.topo-edge-hit-human:hover
+  + line.topo-edge-human {
+  stroke-opacity: 1 !important;
+  stroke-width: 2.4 !important;
+  filter: drop-shadow(0 0 3px #fbbf24);
 }
 
 /* DM edges — dashed gold line directly between principals. Thinner and
