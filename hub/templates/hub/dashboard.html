@@ -9,7 +9,7 @@
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
     <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=132">
-    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=104">
+    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=105">
     <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=106">
     <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
@@ -53,6 +53,7 @@
                 <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
             <div id="wall-clock" class="wall-clock"></div>
+            <!-- hook-bypass: inline-style -->
             <div class="filter-bar" style="position:relative">
                 <input type="text"
                        id="filter-input"
@@ -60,6 +61,38 @@
                        autocomplete="off">
                 <div id="filter-suggest" class="filter-suggest"></div>
                 <div id="filter-tags" class="filter-tags"></div>
+                <div id="sidebar-filter-chips"
+                     class="sidebar-filter-chips"
+                     title="Toggle to add/remove an is:&lt;flag&gt; token in the search field">
+                    <button type="button"
+                            class="sidebar-filter-chip"
+                            data-is="starred"
+                            aria-pressed="false"
+                            title="is:starred — only starred channels/DMs">
+                        <span class="chip-glyph">★</span>starred
+                    </button>
+                    <button type="button"
+                            class="sidebar-filter-chip"
+                            data-is="unread"
+                            aria-pressed="false"
+                            title="is:unread — only channels/DMs with unread messages">
+                        <span class="chip-glyph">●</span>unread
+                    </button>
+                    <button type="button"
+                            class="sidebar-filter-chip"
+                            data-is="muted"
+                            aria-pressed="false"
+                            title="is:muted — only muted channels/DMs">
+                        <span class="chip-glyph">🔕</span>muted
+                    </button>
+                    <button type="button"
+                            class="sidebar-filter-chip"
+                            data-is="dm"
+                            aria-pressed="false"
+                            title="is:dm — only direct messages">
+                        <span class="chip-glyph">✉</span>dm
+                    </button>
+                </div>
             </div>
             <div class="sidebar-sections">
                 <h2 class="collapsible-heading channels-heading blockers-heading"
@@ -433,7 +466,7 @@
     <script src="{% static 'hub/mention.js' %}?v=101"></script>
     <script src="{% static 'hub/settings-tab.js' %}?v=104"></script>
     <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
-    <script src="{% static 'hub/filter.js' %}?v=101"></script>
+    <script src="{% static 'hub/filter.js' %}?v=102"></script>
     <script src="{% static 'hub/blockers.js' %}?v=1"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=110"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=101"></script>

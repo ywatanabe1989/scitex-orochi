@@ -20,14 +20,41 @@ function parseFilterInput(raw) {
   var tags = [];
   var textParts = [];
   parts.forEach(function (p) {
-    var m = p.match(/^(agent|host|channel|label|project):(.+)$/i);
+    var m = p.match(/^(agent|host|channel|label|project|is):(.+)$/i);
     if (m) {
-      tags.push({ type: m[1].toLowerCase(), value: m[2] });
+      tags.push({ type: m[1].toLowerCase(), value: m[2].toLowerCase() });
     } else if (p) {
       textParts.push(p);
     }
   });
   return { tags: tags, text: textParts.join(" ") };
+}
+
+/* Known "is:<flag>" state filters for channels/DMs. Evaluated against
+ * _channelPrefs + channelUnread (todo#72). */
+var IS_FLAGS = ["starred", "pinned", "muted", "unread", "hidden", "dm"];
+
+function _channelMatchesIsFlag(el, flag) {
+  /* Resolve the channel key for this sidebar row. */
+  var ch =
+    el.getAttribute("data-channel") ||
+    (el.textContent ? el.textContent.trim() : "");
+  if (!ch) return false;
+  var norm = ch.charAt(0) === "#" || ch.indexOf("dm:") === 0 ? ch : "#" + ch;
+  var prefs =
+    (typeof _channelPrefs !== "undefined" &&
+      (_channelPrefs[norm] || _channelPrefs[ch])) ||
+    {};
+  if (flag === "starred" || flag === "pinned") return !!prefs.is_starred;
+  if (flag === "muted") return !!prefs.is_muted;
+  if (flag === "hidden") return !!prefs.is_hidden;
+  if (flag === "unread") {
+    if (typeof channelUnread === "undefined") return false;
+    var n = channelUnread[ch] || channelUnread[norm] || 0;
+    return n > 0;
+  }
+  if (flag === "dm") return ch.indexOf("dm:") === 0;
+  return false;
 }
 
 function addTag(type, value) {
@@ -256,8 +283,20 @@ function matchesAllTags(tags, text) {
   if (tags.length === 0) return true;
   var lower = text.toLowerCase();
   return tags.every(function (tag) {
+    /* "is:" state tags are evaluated per-row in channel/dm filters,
+     * not via free-text match. Accept here so non-channel rows still
+     * pass through when the only active tag is is:<flag>. */
+    if (tag.type === "is") return true;
     return _fm(tag.value.toLowerCase(), lower);
   });
+}
+
+function _isTagsFrom(allTags) {
+  var out = [];
+  allTags.forEach(function (t) {
+    if (t.type === "is") out.push(t.value.toLowerCase());
+  });
+  return out;
 }
 
 function runFilter() {
@@ -362,12 +401,28 @@ function filterSidebarElements(qWords, allTags) {
         ? ""
         : "none";
   });
+  var isFlags = _isTagsFrom(allTags);
   document.querySelectorAll("#channels .channel-item").forEach(function (el) {
     var text = el.textContent;
-    el.style.display =
-      _matchAllWords(qWords, text) && matchesAllTags(allTags, text)
-        ? ""
-        : "none";
+    var show = _matchAllWords(qWords, text) && matchesAllTags(allTags, text);
+    if (show && isFlags.length > 0) {
+      show = isFlags.every(function (f) {
+        return _channelMatchesIsFlag(el, f);
+      });
+    }
+    el.style.display = show ? "" : "none";
+  });
+  document.querySelectorAll("#dms .dm-item").forEach(function (el) {
+    var text = el.textContent;
+    var show = _matchAllWords(qWords, text) && matchesAllTags(allTags, text);
+    if (show && isFlags.length > 0) {
+      show = isFlags.every(function (f) {
+        /* DMs honor starred/pinned/muted/unread/dm; treat "hidden" as no-op. */
+        if (f === "hidden") return false;
+        return _channelMatchesIsFlag(el, f);
+      });
+    }
+    el.style.display = show ? "" : "none";
   });
   document.querySelectorAll("#resources .res-card").forEach(function (el) {
     var text = el.textContent;
@@ -438,4 +493,77 @@ function filterSidebarElements(qWords, allTags) {
           ? ""
           : "none";
     });
+  _syncFilterChips();
+}
+
+/* ---------------- Sidebar filter chips (todo#72) ----------------
+ * Small toggle buttons immediately under #filter-input that write
+ * "is:<flag>" tokens into the search field (and remove them on second
+ * click). Two-way binding: typing is:<flag> by hand lights up the chip.
+ * The chips remain user-visible proof of what is being filtered. */
+
+function _currentInputTokens() {
+  /* Return {is: Set<flag>} present in the raw search input (not the
+   * chip-tag list, which is rendered separately). */
+  var raw = (filterInput && filterInput.value) || "";
+  var parsed = parseFilterInput(raw.trim());
+  var set = {};
+  parsed.tags.forEach(function (t) {
+    if (t.type === "is") set[t.value.toLowerCase()] = true;
+  });
+  return set;
+}
+
+function _syncFilterChips() {
+  var bar = document.getElementById("sidebar-filter-chips");
+  if (!bar) return;
+  var inInput = _currentInputTokens();
+  var inTags = {};
+  activeTags.forEach(function (t) {
+    if (t.type === "is") inTags[t.value.toLowerCase()] = true;
+  });
+  bar.querySelectorAll(".sidebar-filter-chip").forEach(function (chip) {
+    var f = chip.getAttribute("data-is");
+    var on = !!(inInput[f] || inTags[f]);
+    chip.classList.toggle("active", on);
+    chip.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
+function _toggleIsToken(flag) {
+  /* Flip is:<flag> membership directly in the raw #filter-input value
+   * (not in activeTags) so users see the token literally — matches the
+   * "filters auto-fill the search field" requirement of todo#72. */
+  if (!filterInput) return;
+  var raw = filterInput.value || "";
+  var token = "is:" + flag;
+  /* Word-boundary replace to avoid nuking is:<other>. */
+  var re = new RegExp("(?:^|\\s)" + token + "(?=\\s|$)", "i");
+  if (re.test(raw)) {
+    raw = raw.replace(re, " ").replace(/\s+/g, " ").trim();
+  } else {
+    raw = (raw ? raw + " " : "") + token;
+  }
+  filterInput.value = raw;
+  /* Fire input event so existing listener reruns filter + suggestions. */
+  filterInput.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function _initFilterChips() {
+  var bar = document.getElementById("sidebar-filter-chips");
+  if (!bar) return;
+  bar.addEventListener("click", function (e) {
+    var chip = e.target.closest(".sidebar-filter-chip");
+    if (!chip) return;
+    var f = chip.getAttribute("data-is");
+    if (!f) return;
+    _toggleIsToken(f);
+  });
+  _syncFilterChips();
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", _initFilterChips);
+} else {
+  _initFilterChips();
 }

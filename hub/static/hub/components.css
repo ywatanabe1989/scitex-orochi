@@ -134,6 +134,50 @@
   margin-right: 4px;
 }
 
+/* Sidebar quick-filter chips (todo#72). Clicking a chip adds/removes
+ * an `is:<flag>` token in #filter-input so the search field stays the
+ * single source of truth — users can see exactly what is filtered and
+ * extend it with free-text AND keywords. */
+.sidebar-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.sidebar-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #151515;
+  border: 1px solid #333;
+  color: #888;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+.sidebar-filter-chip:hover {
+  background: #1f1f1f;
+  color: #ccc;
+  border-color: #555;
+}
+.sidebar-filter-chip.active {
+  background: #1a2a2a;
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+.sidebar-filter-chip .chip-glyph {
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.85;
+}
+
 /* Agent cards */
 .agent-card {
   background: #1a1a1a;
