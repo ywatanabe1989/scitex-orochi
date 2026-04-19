@@ -4692,6 +4692,30 @@ function _renderActivityCards(agents, grid) {
     offline: "not connected",
   };
 
+  /* Preserve a live SSH inline-detail block across heartbeat
+   * re-renders — otherwise grid.innerHTML = ... below would wipe the
+   * xterm DOM and kill the shell session. If the currently-expanded
+   * agent has an active SSH session, snapshot its inline-detail
+   * element and splice it back in after the grid is rebuilt. */
+  var _preservedInlineDetail = null;
+  if (
+    _overviewExpanded &&
+    _activityPaneSshState &&
+    _activityPaneSshState[_overviewExpanded]
+  ) {
+    var _liveInline = grid.querySelector(
+      '.activity-inline-detail[data-detail-for="' +
+        String(_overviewExpanded).replace(/"/g, '\\"') +
+        '"]',
+    );
+    if (
+      _liveInline &&
+      _liveInline.querySelector(".agent-detail-ssh-container")
+    ) {
+      _preservedInlineDetail = _liveInline;
+    }
+  }
+
   grid.innerHTML = visible
     .map(function (a) {
       var rawName = a.name || "";
@@ -4810,7 +4834,13 @@ function _renderActivityCards(agents, grid) {
         String(_overviewExpanded).replace(/"/g, '\\"') +
         '"]',
     );
-    if (agent && inlineBox) {
+    /* SSH active: splice the preserved inline-detail (with its live
+     * xterm) back in place of the fresh loading placeholder, and
+     * SKIP the detail re-render so the DOM node the xterm lives in
+     * is not replaced. */
+    if (_preservedInlineDetail && inlineBox && inlineBox.parentNode) {
+      inlineBox.parentNode.replaceChild(_preservedInlineDetail, inlineBox);
+    } else if (agent && inlineBox) {
       _renderActivityAgentDetail(agent, inlineBox);
       _fetchActivityDetail(agent.name);
     }
