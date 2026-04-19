@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=101">
-    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=163">
+    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=164">
     <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=106">
     <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=103">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
@@ -263,6 +263,13 @@
                         <option value="host">color: host</option>
                         <option value="account">color: account</option>
                     </select>
+                    <select id="activity-size-select"
+                            class="activity-sort-select"
+                            title="topology channel node size">
+                        <option value="equal">size: equal</option>
+                        <option value="subscribers">size: subscribers</option>
+                        <option value="posts">size: posts</option>
+                    </select>
                     <span class="activity-summary activity-summary-inline"
                           id="activity-summary"></span>
                 </div>
@@ -477,7 +484,7 @@
     <script src="{% static 'hub/blockers.js' %}?v=1"></script>
     <script src="{% static 'hub/agents-tab.js' %}?v=110"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=101"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=188"></script>
+    <script src="{% static 'hub/activity-tab.js' %}?v=189"></script>
     <script src="{% static 'hub/viz-tab.js' %}?v=6"></script>
     <script src="{% static 'hub/upload.js' %}?v=112"></script>
     <script src="{% static 'hub/files-tab.js' %}?v=105"></script>

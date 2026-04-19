@@ -59,6 +59,12 @@ var _overviewSort = "name";
 var _overviewView = "list";
 var _overviewColor = "name";
 var _overviewExpanded = null;
+/* Topology channel-node size mode. "equal" = fixed radius; "subscribers" =
+ * scaled by sqrt(n_agents_subscribed). "posts" is reserved — /api/stats
+ * does not yet expose per-channel post counts, so the dropdown advertises
+ * it for parity with future backend work but falls through to "equal"
+ * today (ywatanabe 2026-04-19 todo#95). */
+var _topoSizeBy = "subscribers";
 try {
   var _savedSort = localStorage.getItem("orochi.overviewSort");
   if (_savedSort === "name" || _savedSort === "machine")
@@ -77,6 +83,13 @@ try {
     _savedColor === "account"
   )
     _overviewColor = _savedColor;
+  var _savedSize = localStorage.getItem("orochi.topoSizeBy");
+  if (
+    _savedSize === "equal" ||
+    _savedSize === "subscribers" ||
+    _savedSize === "posts"
+  )
+    _topoSizeBy = _savedSize;
 } catch (_e) {
   /* localStorage may be unavailable — fall back to defaults */
 }
@@ -3144,8 +3157,19 @@ function _renderActivityTopology(visible, grid) {
     agentPos[a.name] = _pt(rOuter, i + (humanName ? 1 : 0), nSlots);
   });
   var chPos = {};
+  /* Phase-offset the inner ring by half a channel-slot (Δθ = π/N) so
+   * radial user→channel lines land BETWEEN outer-ring agent positions
+   * rather than passing through them. Without this, a human→channel
+   * line looks like a 3-node chain (human → outer-agent → channel)
+   * when the channel sits behind an agent at the same angle.
+   * ywatanabe 2026-04-19 todo#95. */
   channels.forEach(function (c, i) {
-    chPos[c] = _pt(rInner, i, channels.length);
+    var n = Math.max(1, channels.length);
+    var theta = ((i + 0.5) / n) * Math.PI * 2 - Math.PI / 2;
+    chPos[c] = {
+      x: cx + rInner * Math.cos(theta),
+      y: cy + rInner * Math.sin(theta),
+    };
   });
   /* Apply manual position overrides — user-dragged nodes on the canvas
    * pin at their drop coordinate, superseding the ring slot. Keys live
@@ -3419,14 +3443,24 @@ function _renderActivityTopology(visible, grid) {
     });
   });
   /* Channel diamonds (rotated squares) with label above. Size scales
-   * with subscriber count: r ranges 8 (1 agent) to 22 (7+ agents)
-   * following sqrt so visual area grows sub-linearly and busy hubs
-   * don't completely overpower the layout. */
+   * per user-selected "size:" dropdown (todo#95):
+   *   equal       — fixed r = 12
+   *   subscribers — r = 8 + sqrt(count-1)*5, clamped [8,22]
+   *   posts       — reserved; /api/stats does not yet expose post counts,
+   *                 falls through to equal until backend support lands
+   * sqrt is chosen over linear so visual AREA grows sub-linearly and one
+   * busy hub doesn't overpower the layout. */
   var chSvg = channels
     .map(function (c) {
       var p = chPos[c];
       var count = chAgentCounts[c] || 1;
-      var r = Math.min(22, 8 + Math.sqrt(count - 1) * 5);
+      var r;
+      if (_topoSizeBy === "subscribers") {
+        r = Math.min(22, 8 + Math.sqrt(Math.max(0, count - 1)) * 5);
+      } else {
+        /* equal + posts (deferred) */
+        r = 12;
+      }
       var labelText = c + " (" + count + ")";
       var pts =
         p.x +
@@ -5603,6 +5637,7 @@ function _wireOverviewControls() {
   var sortSelect = document.getElementById("activity-sort-select");
   var viewSwitch = document.querySelector(".activity-view-switch");
   var colorSelect = document.getElementById("activity-color-select");
+  var sizeSelect = document.getElementById("activity-size-select");
   if (!sortSelect || !viewSwitch) return;
   sortSelect.value = _overviewSort;
   /* Legacy localStorage value "tiled" -> fall back to "list" since the
@@ -5610,6 +5645,7 @@ function _wireOverviewControls() {
   if (_overviewView !== "list" && _overviewView !== "topology")
     _overviewView = "list";
   if (colorSelect) colorSelect.value = _overviewColor;
+  if (sizeSelect) sizeSelect.value = _topoSizeBy;
   /* Filter input removed — users filter via the global Ctrl+K fuzzy
    * search which already applies across every tab (ywatanabe 2026-04-
    * 19: "filtering should be always Ctrl K in the scope"). The module
@@ -5651,6 +5687,19 @@ function _wireOverviewControls() {
       try {
         localStorage.setItem("orochi.overviewColor", _overviewColor);
       } catch (_e) {}
+      renderActivityTab();
+    });
+  }
+  if (sizeSelect) {
+    sizeSelect.addEventListener("change", function () {
+      _topoSizeBy = sizeSelect.value;
+      try {
+        localStorage.setItem("orochi.topoSizeBy", _topoSizeBy);
+      } catch (_e) {}
+      /* Invalidate topology signature cache so the channel radii
+       * actually recompute on the next render (topology short-circuits
+       * when the signature string hasn't changed). */
+      _topoLastSig = "";
       renderActivityTab();
     });
   }
