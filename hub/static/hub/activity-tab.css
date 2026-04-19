@@ -668,6 +668,12 @@
   flex-direction: column;
   gap: 10px;
   font-size: 11px;
+  /* Drag-to-subscribe starts with mousedown on a chip; without this,
+   * the browser's default drag-selects text across the pool + canvas
+   * siblings. ywatanabe 2026-04-19: "dragging a pool chip wrongly
+   * text-selects adjacent elements". */
+  user-select: none;
+  -webkit-user-select: none;
 }
 .activity-grid.activity-view-topology .topo-pool-section {
   display: flex;
@@ -697,6 +703,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .activity-grid.activity-view-topology .topo-pool-chip:hover {
   border-color: #4ecdc4;

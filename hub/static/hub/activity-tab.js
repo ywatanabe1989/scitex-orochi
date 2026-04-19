@@ -4182,6 +4182,14 @@ function _wireOverviewGridDelegation(grid) {
       name = poolChip.getAttribute(
         kind === "channel" ? "data-channel" : "data-agent",
       );
+      /* Block native text-selection that would otherwise sweep across
+       * the pool + adjacent canvas elements as soon as the mouse moves.
+       * CSS user-select:none covers the chip itself, but the selection
+       * can still start from the mousedown target and extend into
+       * siblings; preventDefault here is what actually cancels it.
+       * ywatanabe 2026-04-19: "dragging a pool chip wrongly text-
+       * selects adjacent elements". */
+      ev.preventDefault();
     } else {
       return;
     }
@@ -4470,6 +4478,33 @@ function _wireOverviewGridDelegation(grid) {
       ev.preventDefault();
       ev.stopPropagation();
       _showChannelCtxMenu(ch, ev.clientX, ev.clientY);
+      return;
+    }
+    /* Left-pool chips — channel chip first (checked before agent chip
+     * because a single chip element carries exactly one of the two
+     * class+data-attr pairs, so the order is informational, not a
+     * hit-test priority). ywatanabe 2026-04-19: "right-click on a pool
+     * chip should open the same menu as right-clicking the canvas
+     * node". Without this branch the browser falls through to its
+     * native Copy/Search/AdBlock context menu. */
+    var poolChipCh = ev.target.closest(".topo-pool-chip-channel[data-channel]");
+    if (poolChipCh && grid.contains(poolChipCh)) {
+      if (typeof _showChannelCtxMenu !== "function") return;
+      var pcCh = poolChipCh.getAttribute("data-channel");
+      if (!pcCh) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      _showChannelCtxMenu(pcCh, ev.clientX, ev.clientY);
+      return;
+    }
+    var poolChipAg = ev.target.closest(".topo-pool-chip-agent[data-agent]");
+    if (poolChipAg && grid.contains(poolChipAg)) {
+      if (typeof _showAgentContextMenu !== "function") return;
+      var pcAg = poolChipAg.getAttribute("data-agent");
+      if (!pcAg) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      _showAgentContextMenu(pcAg, ev.clientX, ev.clientY);
       return;
     }
     var card = ev.target.closest(".activity-card[data-agent]");
