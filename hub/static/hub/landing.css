@@ -96,6 +96,59 @@ body.landing {
   flex-wrap: wrap;
 }
 
+/* Invite-request form — replaces the Option A mailto CTA so incoming
+ * requests land in the InviteRequest model instead of an inbox. The
+ * form sits below the hero; the Request-invite button scrolls to it. */
+.invite-request-form {
+  margin: 28px auto 0;
+  max-width: 460px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 20px 22px;
+  text-align: left;
+}
+.invite-request-form h3 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+.invite-request-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  opacity: 0.72;
+}
+.invite-required {
+  color: #f5a623;
+  margin-left: 2px;
+}
+.invite-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.invite-field-row label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+.invite-field-row input,
+.invite-field-row textarea {
+  background: #0b0b0b;
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  padding: 7px 10px;
+  font: inherit;
+}
+.invite-field-row input:focus,
+.invite-field-row textarea:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.invite-request-form .lbtn {
+  margin-top: 6px;
+}
+
 /* Buttons (landing-scoped so they don't clash with simple.css .btn) */
 .lbtn {
   display: inline-flex;

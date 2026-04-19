@@ -36,9 +36,56 @@
             {% endif %}
             <div class="hero-ctas">
                 <a href="{% url 'signin' %}" class="lbtn lbtn-primary">Sign in</a>
-                <a href="mailto:ywata1989@gmail.com?subject=SciTeX%20Orochi%20Invite%20Request&body=Hi%2C%0A%0AI%27d%20like%20access%20to%20SciTeX%20Orochi.%0A%0AName%3A%0AAffiliation%3A%0AUse%20case%3A%0A%0AThanks%21"
-                   class="lbtn">Request invite</a>
+                <button type="button"
+                        class="lbtn"
+                        onclick="document.getElementById('invite-request-form').scrollIntoView({behavior:'smooth', block:'center'}); document.getElementById('invite-request-email').focus();">
+                    Request invite
+                </button>
             </div>
+            <form id="invite-request-form"
+                  method="post"
+                  action="{% url 'request-invite' %}"
+                  class="invite-request-form">
+                {% csrf_token %}
+                <h3>Request an invite</h3>
+                <p class="invite-request-hint">
+                    An admin will review and reach out. Tell us who you are and what you&rsquo;d like to try.
+                </p>
+                <div class="invite-field-row">
+                    <label for="invite-request-email">
+                        Email<span class="invite-required">*</span>
+                    </label>
+                    <input id="invite-request-email"
+                           name="email"
+                           type="email"
+                           required
+                           autocomplete="email"
+                           placeholder="you@example.com">
+                </div>
+                <div class="invite-field-row">
+                    <label for="invite-request-name">Name</label>
+                    <input id="invite-request-name"
+                           name="name"
+                           type="text"
+                           autocomplete="name"
+                           placeholder="First Last">
+                </div>
+                <div class="invite-field-row">
+                    <label for="invite-request-affiliation">Affiliation</label>
+                    <input id="invite-request-affiliation"
+                           name="affiliation"
+                           type="text"
+                           placeholder="Lab / company / university">
+                </div>
+                <div class="invite-field-row">
+                    <label for="invite-request-message">Use case</label>
+                    <textarea id="invite-request-message"
+                              name="message"
+                              rows="3"
+                              placeholder="What would you like to use SciTeX Orochi for?"></textarea>
+                </div>
+                <button type="submit" class="lbtn lbtn-primary">Send request</button>
+            </form>
         </section>
         <section class="features" aria-label="Features">
             <div class="feature-card">
@@ -114,7 +161,7 @@
                    target="_blank"
                    rel="noopener">GitHub</a>
                 ·
-                <a href="mailto:ywata1989@gmail.com?subject=SciTeX%20Orochi%20Invite%20Request">Request invite</a>
+                <a href="#invite-request-form">Request invite</a>
             </p>
             <p class="copyright">© SciTeX Orochi — AI agent communication hub</p>
         </footer>

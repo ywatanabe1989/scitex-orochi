@@ -61,6 +61,7 @@ from hub.views.landing import (  # noqa: F401
     find_workspace_view,
     landing_page,
     redirect_old_workspace_url,
+    request_invite_view,
 )
 from hub.views.registry import (  # noqa: F401
     api_registry_agent_detail,

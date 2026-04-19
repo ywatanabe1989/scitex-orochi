@@ -98,6 +98,57 @@ class WorkspaceMember(models.Model):
         return f"{self.user} in {self.workspace} ({self.role})"
 
 
+class InviteRequest(models.Model):
+    """External user invite request submitted from the public landing
+    page. Queues a pending row; an admin reviews and approves (which
+    creates a WorkspaceInvitation) or denies. TODO.md Real-world
+    applicability "External User ... invite users in a secured,
+    permission-controlled manner" (Option B). Replaces the Option A
+    mailto CTA with an in-app form so requests are tracked in the DB
+    instead of an inbox.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_APPROVED = "approved"
+    STATUS_DENIED = "denied"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_DENIED, "Denied"),
+    ]
+
+    email = models.EmailField()
+    name = models.CharField(max_length=150, blank=True, default="")
+    affiliation = models.CharField(max_length=200, blank=True, default="")
+    message = models.TextField(blank=True, default="")
+    status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True
+    )
+    requested_workspace = models.CharField(max_length=100, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="invite_requests_reviewed",
+    )
+    resulting_invite = models.ForeignKey(
+        "WorkspaceInvitation",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="from_request",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.email} ({self.status})"
+
+
 class UserProfile(models.Model):
     """Per-user display settings (icon, colour) for logged-in humans.
 
