@@ -775,6 +775,101 @@
   text-overflow: ellipsis;
   min-width: 0;
 }
+/* Pool action strip — Select All / Deselect All / memory slots. Sits at
+ * the top of the pool above the Agents section so the pool reads as a
+ * filter panel, not just a chip list. todo#79 "Pools as filters ...
+ * Select All / Deselect All / Memory 1,2,...". */
+.activity-grid.activity-view-topology .topo-pool-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid #1f2937;
+  margin-bottom: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.activity-grid.activity-view-topology .topo-pool-act-btn {
+  background: #0e0e0e;
+  color: #cbd5e1;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.activity-grid.activity-view-topology .topo-pool-act-btn:hover {
+  background: #161616;
+  color: #eaf1fb;
+  border-color: #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-pool-selcount {
+  color: #fbbf24;
+  font-size: 9px;
+  margin-left: auto;
+  font-weight: 600;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-row {
+  gap: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn,
+.activity-grid.activity-view-topology .topo-pool-mem-save {
+  background: #0e0e0e;
+  color: #64748b;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+  min-width: 22px;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn:hover,
+.activity-grid.activity-view-topology .topo-pool-mem-save:hover {
+  background: #161616;
+  color: #eaf1fb;
+  border-color: #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-filled {
+  color: #10b981;
+  border-color: #065f46;
+  background: #06231d;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-filled:hover {
+  color: #34d399;
+  border-color: #10b981;
+  background: #08322a;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-save {
+  margin-left: auto;
+  color: #4ecdc4;
+  border-color: #1f3a3a;
+}
+/* todo#79: canvas filter — when the pool selection is non-empty, non-
+ * selected, non-neighbor nodes + non-incident edges get dimmed to ~8%
+ * opacity and become non-interactive so the filtered graph reads as
+ * the "focus view" for the chosen criteria. Kept as a CSS class (not
+ * display:none) so the positions stay stable and the heartbeat flash
+ * is minimal when the selection is cleared. */
+.activity-grid.activity-view-topology .topo-pool-filtered-out {
+  opacity: 0.08;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.activity-grid.activity-view-topology
+  .topo-svg-pool-filtered
+  .topo-pool-filtered-out.topo-edge-hit {
+  /* Hit overlays have 0 visual weight anyway; just kill pointer events
+   * so filtered edges can't intercept hover/click on un-filtered ones
+   * underneath. */
+  opacity: 0;
+}
 .activity-grid.activity-view-topology .topo-svg.topo-zooming {
   cursor: crosshair;
 }

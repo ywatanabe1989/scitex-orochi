@@ -1341,11 +1341,68 @@ function _topoSelectAdd(name) {
  * Separate from _topoSelected (which is the canvas lasso selection) so
  * the two affordances don't step on each other. ywatanabe 2026-04-19:
  * "ctrl click should allow multiple select" / "drag and drop should be
- * implemented between pools as well" / "multiple subscription". */
-var _topoPoolSelection = {
-  agents: Object.create(null),
-  channels: Object.create(null),
-};
+ * implemented between pools as well" / "multiple subscription".
+ *
+ * todo#79: "Pools as filters" — when selection is non-empty the canvas
+ * is filtered to selected entities + their direct neighbors + incident
+ * edges; everything else is dimmed/hidden. Selection is persisted to
+ * localStorage so it survives reload, and up to 5 memory slots (M1..M5)
+ * act as named presets (recall on click, save via shift-click / the
+ * +Save button). */
+var _TOPO_POOL_SEL_KEY = "orochi.topoPoolSelection";
+var _TOPO_POOL_MEM_KEY = "orochi.topoPoolMemories";
+var _TOPO_POOL_MEM_MAX = 5;
+var _topoPoolSelection = (function _loadPoolSel() {
+  var empty = {
+    agents: Object.create(null),
+    channels: Object.create(null),
+  };
+  try {
+    var raw = localStorage.getItem(_TOPO_POOL_SEL_KEY);
+    if (!raw) return empty;
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return empty;
+    (parsed.agents || []).forEach(function (n) {
+      if (typeof n === "string") empty.agents[n] = true;
+    });
+    (parsed.channels || []).forEach(function (n) {
+      if (typeof n === "string") empty.channels[n] = true;
+    });
+  } catch (_e) {
+    /* localStorage unavailable or malformed — fall back to empty set. */
+  }
+  return empty;
+})();
+var _topoPoolMemories = (function _loadPoolMem() {
+  try {
+    var raw = localStorage.getItem(_TOPO_POOL_MEM_KEY);
+    if (!raw) return {};
+    var parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (_e) {
+    return {};
+  }
+})();
+function _topoPoolPersistSelection() {
+  try {
+    localStorage.setItem(
+      _TOPO_POOL_SEL_KEY,
+      JSON.stringify({
+        agents: Object.keys(_topoPoolSelection.agents),
+        channels: Object.keys(_topoPoolSelection.channels),
+      }),
+    );
+  } catch (_e) {
+    /* quota / private mode — selection still works for the session. */
+  }
+}
+function _topoPoolPersistMemories() {
+  try {
+    localStorage.setItem(_TOPO_POOL_MEM_KEY, JSON.stringify(_topoPoolMemories));
+  } catch (_e) {
+    /* ignore */
+  }
+}
 function _topoPoolSelectionSize() {
   return (
     Object.keys(_topoPoolSelection.agents).length +
@@ -1360,21 +1417,131 @@ function _topoPoolSelectToggle(kind, name) {
   var bucket = kind === "channel" ? "channels" : "agents";
   if (_topoPoolSelection[bucket][name]) delete _topoPoolSelection[bucket][name];
   else _topoPoolSelection[bucket][name] = true;
+  _topoPoolPersistSelection();
 }
 function _topoPoolSelectClear() {
   _topoPoolSelection = {
     agents: Object.create(null),
     channels: Object.create(null),
   };
+  _topoPoolPersistSelection();
 }
 function _topoPoolSelectOnly(kind, name) {
-  _topoPoolSelectClear();
+  _topoPoolSelection = {
+    agents: Object.create(null),
+    channels: Object.create(null),
+  };
   var bucket = kind === "channel" ? "channels" : "agents";
   _topoPoolSelection[bucket][name] = true;
+  _topoPoolPersistSelection();
+}
+/* Select all agents + channels currently rendered as chips in the pool
+ * (we scope to the visible chip set rather than the full universe so
+ * hidden chips stay out unless the user explicitly unhides them). */
+function _topoPoolSelectAll(grid) {
+  var host = grid || document;
+  var chips = host.querySelectorAll(".topo-pool-chip");
+  _topoPoolSelection = {
+    agents: Object.create(null),
+    channels: Object.create(null),
+  };
+  for (var i = 0; i < chips.length; i++) {
+    var chip = chips[i];
+    var ag = chip.getAttribute("data-agent");
+    var ch = chip.getAttribute("data-channel");
+    if (ag) _topoPoolSelection.agents[ag] = true;
+    else if (ch) _topoPoolSelection.channels[ch] = true;
+  }
+  _topoPoolPersistSelection();
+}
+/* Shift-click range-select within a single pool section. Walks sibling
+ * chips between the last-clicked anchor and the target; adds the whole
+ * inclusive range to the selection (additive so it composes with prior
+ * ctrl-click picks). The anchor is tracked per-session only. */
+var _topoPoolSelAnchor = null;
+function _topoPoolSelectRange(targetChip) {
+  if (!targetChip) return;
+  var section = targetChip.closest(".topo-pool-section");
+  if (!section) return;
+  var chips = Array.prototype.slice.call(
+    section.querySelectorAll(".topo-pool-chip"),
+  );
+  var tgtIdx = chips.indexOf(targetChip);
+  if (tgtIdx < 0) return;
+  var anchorIdx = -1;
+  if (_topoPoolSelAnchor) {
+    for (var i = 0; i < chips.length; i++) {
+      var c = chips[i];
+      var ag = c.getAttribute("data-agent");
+      var ch = c.getAttribute("data-channel");
+      if (
+        (_topoPoolSelAnchor.kind === "agent" &&
+          ag === _topoPoolSelAnchor.name) ||
+        (_topoPoolSelAnchor.kind === "channel" &&
+          ch === _topoPoolSelAnchor.name)
+      ) {
+        anchorIdx = i;
+        break;
+      }
+    }
+  }
+  if (anchorIdx < 0) anchorIdx = tgtIdx;
+  var lo = Math.min(anchorIdx, tgtIdx);
+  var hi = Math.max(anchorIdx, tgtIdx);
+  for (var j = lo; j <= hi; j++) {
+    var ch2 = chips[j];
+    var ag2 = ch2.getAttribute("data-agent");
+    var c2 = ch2.getAttribute("data-channel");
+    if (ag2) _topoPoolSelection.agents[ag2] = true;
+    else if (c2) _topoPoolSelection.channels[c2] = true;
+  }
+  _topoPoolPersistSelection();
+}
+/* Save / recall / list memory presets. Slot numbers are 1-based
+ * (displayed as M1..M5). Save overwrites; recall replaces the current
+ * selection with the slot contents. */
+function _topoPoolMemorySave(slot) {
+  if (!slot || slot < 1 || slot > _TOPO_POOL_MEM_MAX) return;
+  _topoPoolMemories[String(slot)] = {
+    agents: Object.keys(_topoPoolSelection.agents),
+    channels: Object.keys(_topoPoolSelection.channels),
+    savedAt: Date.now(),
+  };
+  _topoPoolPersistMemories();
+}
+function _topoPoolMemoryRecall(slot) {
+  var mem = _topoPoolMemories[String(slot)];
+  if (!mem) return false;
+  _topoPoolSelection = {
+    agents: Object.create(null),
+    channels: Object.create(null),
+  };
+  (mem.agents || []).forEach(function (n) {
+    _topoPoolSelection.agents[n] = true;
+  });
+  (mem.channels || []).forEach(function (n) {
+    _topoPoolSelection.channels[n] = true;
+  });
+  _topoPoolPersistSelection();
+  return true;
+}
+function _topoPoolMemoryDelete(slot) {
+  if (!_topoPoolMemories[String(slot)]) return;
+  delete _topoPoolMemories[String(slot)];
+  _topoPoolPersistMemories();
+}
+function _topoPoolMemoryNextFreeSlot() {
+  for (var s = 1; s <= _TOPO_POOL_MEM_MAX; s++) {
+    if (!_topoPoolMemories[String(s)]) return s;
+  }
+  return 0;
 }
 /* Walk the DOM and re-apply .topo-pool-chip-selected to chips that are
  * in the current selection. Called after every selection mutation so
- * the highlight stays in sync without waiting for a full re-render. */
+ * the highlight stays in sync without waiting for a full re-render.
+ * Also applies the canvas filter (hide non-selected non-neighbor nodes
+ * + non-incident edges) when selection is non-empty — todo#79 "Pools
+ * as filters". */
 function _topoPoolSelectionPaint(root) {
   var host = root || document;
   var chips = host.querySelectorAll(".topo-pool-chip");
@@ -1387,6 +1554,97 @@ function _topoPoolSelectionPaint(root) {
       : !!(ch && _topoPoolSelection.channels[ch]);
     chip.classList.toggle("topo-pool-chip-selected", sel);
   }
+  /* Update the memory-strip counter + memory button filled state so
+   * the UI reflects current selection size / occupied slots. */
+  var counter = host.querySelector(".topo-pool-selcount");
+  if (counter) {
+    var n = _topoPoolSelectionSize();
+    counter.textContent = n === 0 ? "" : n + " selected";
+  }
+  var memBtns = host.querySelectorAll(".topo-pool-mem-btn[data-mem-slot]");
+  for (var m = 0; m < memBtns.length; m++) {
+    var slot = memBtns[m].getAttribute("data-mem-slot");
+    memBtns[m].classList.toggle(
+      "topo-pool-mem-btn-filled",
+      !!_topoPoolMemories[slot],
+    );
+  }
+  _topoPoolApplyCanvasFilter(host);
+}
+/* Apply filter classes to SVG canvas nodes + edges. When selection is
+ * empty: clear all filter classes (show everything). Non-empty: compute
+ * the neighborhood of the selection (a selected agent pulls in all its
+ * channels; a selected channel pulls in all its agents), then mark any
+ * node / edge not in that neighborhood with .topo-pool-filtered-out so
+ * CSS can dim + hide it. Uses only DOM traversal (no re-layout) so the
+ * canvas zoom / pan state is preserved. */
+function _topoPoolApplyCanvasFilter(root) {
+  var host = root || document;
+  var svg = host.querySelector(".topo-svg");
+  if (!svg) return;
+  var selA = _topoPoolSelection.agents;
+  var selC = _topoPoolSelection.channels;
+  var selSize = Object.keys(selA).length + Object.keys(selC).length;
+  var agents = svg.querySelectorAll(".topo-agent[data-agent]");
+  var channels = svg.querySelectorAll(".topo-channel[data-channel]");
+  var edges = svg.querySelectorAll(
+    ".topo-edge[data-agent][data-channel], .topo-edge-hit[data-agent][data-channel]",
+  );
+  if (selSize === 0) {
+    for (var a0 = 0; a0 < agents.length; a0++) {
+      agents[a0].classList.remove("topo-pool-filtered-out");
+    }
+    for (var c0 = 0; c0 < channels.length; c0++) {
+      channels[c0].classList.remove("topo-pool-filtered-out");
+    }
+    for (var e0 = 0; e0 < edges.length; e0++) {
+      edges[e0].classList.remove("topo-pool-filtered-out");
+    }
+    svg.classList.remove("topo-svg-pool-filtered");
+    return;
+  }
+  /* Compute the neighborhood: selected entities + all direct neighbors
+   * reachable through a subscribed edge. We derive neighbors from edge
+   * endpoints already in the DOM so we don't need the agent/channel
+   * data model here. */
+  var keepA = Object.create(null);
+  var keepC = Object.create(null);
+  Object.keys(selA).forEach(function (n) {
+    keepA[n] = true;
+  });
+  Object.keys(selC).forEach(function (n) {
+    keepC[n] = true;
+  });
+  for (var ei = 0; ei < edges.length; ei++) {
+    var ed = edges[ei];
+    var eAg = ed.getAttribute("data-agent");
+    var eCh = ed.getAttribute("data-channel");
+    if (!eAg || !eCh) continue;
+    if (selA[eAg]) keepC[eCh] = true;
+    if (selC[eCh]) keepA[eAg] = true;
+  }
+  /* Apply visibility classes */
+  for (var ai = 0; ai < agents.length; ai++) {
+    var an = agents[ai].getAttribute("data-agent");
+    agents[ai].classList.toggle("topo-pool-filtered-out", !keepA[an]);
+  }
+  for (var ci = 0; ci < channels.length; ci++) {
+    var cn = channels[ci].getAttribute("data-channel");
+    channels[ci].classList.toggle("topo-pool-filtered-out", !keepC[cn]);
+  }
+  for (var gi = 0; gi < edges.length; gi++) {
+    var g = edges[gi];
+    var gAg = g.getAttribute("data-agent");
+    var gCh = g.getAttribute("data-channel");
+    /* Edge stays only if BOTH endpoints survive AND at least one end is
+     * actually in the selection (so neighbor↔neighbor edges don't leak
+     * in — we want the star-graph around the selection, not its full
+     * subgraph). */
+    var inSel = selA[gAg] || selC[gCh];
+    var visible = keepA[gAg] && keepC[gCh] && inSel;
+    g.classList.toggle("topo-pool-filtered-out", !visible);
+  }
+  svg.classList.add("topo-svg-pool-filtered");
 }
 
 /* Map a permission string to the SVG attribute fragment that places
@@ -2535,6 +2793,10 @@ function _renderActivityTopology(visible, grid) {
         _renderActivityAgentDetail(agent0, inlineBox0);
       }
     }
+    /* Re-assert pool filter on every heartbeat so newly-born nodes
+     * that slip in without changing the signature (rare but possible)
+     * still get the correct dim treatment. */
+    _topoPoolApplyCanvasFilter(grid);
     return;
   }
   _topoLastSig = sig;
@@ -3399,8 +3661,55 @@ function _renderActivityTopology(visible, grid) {
       );
     })
     .join("");
+  /* Pool action strip — Select All / Deselect All / M1..M5 / +Save.
+   * Memory slot chips show filled state (green dot) when occupied;
+   * click to recall, shift-click to overwrite with the current
+   * selection, right-click to delete. The +Save button saves to the
+   * next free slot (or does nothing once all 5 are full — user can
+   * shift-click an existing slot to overwrite). todo#79
+   * "Pools as filters ... Select All / Deselect All / Memory 1,2,...". */
+  var memBtnsHtml = "";
+  for (var _ms = 1; _ms <= _TOPO_POOL_MEM_MAX; _ms++) {
+    var _mem = _topoPoolMemories[String(_ms)];
+    var _memCount = _mem
+      ? (_mem.agents || []).length + (_mem.channels || []).length
+      : 0;
+    var _memTitle = _mem
+      ? "Recall M" +
+        _ms +
+        " (" +
+        _memCount +
+        " items). Shift+click to overwrite, right-click to clear."
+      : "M" + _ms + " (empty). Shift+click to save current selection.";
+    memBtnsHtml +=
+      '<button type="button" class="topo-pool-mem-btn' +
+      (_mem ? " topo-pool-mem-btn-filled" : "") +
+      '" data-mem-slot="' +
+      _ms +
+      '" title="' +
+      escapeHtml(_memTitle) +
+      '">M' +
+      _ms +
+      "</button>";
+  }
+  var _selCountInit = _topoPoolSelectionSize();
+  var poolActions =
+    '<div class="topo-pool-actions">' +
+    '<div class="topo-pool-actions-row">' +
+    '<button type="button" class="topo-pool-act-btn" data-pool-action="select-all" title="Select every visible chip">All</button>' +
+    '<button type="button" class="topo-pool-act-btn" data-pool-action="deselect-all" title="Clear pool selection (shows all)">None</button>' +
+    '<span class="topo-pool-selcount">' +
+    (_selCountInit === 0 ? "" : _selCountInit + " selected") +
+    "</span>" +
+    "</div>" +
+    '<div class="topo-pool-actions-row topo-pool-mem-row">' +
+    memBtnsHtml +
+    '<button type="button" class="topo-pool-mem-save" data-pool-action="save-next" title="Save current selection to next free memory slot">+</button>' +
+    "</div>" +
+    "</div>";
   var pool =
     '<div class="topo-pool">' +
+    poolActions +
     '<div class="topo-pool-section"><div class="topo-pool-title">Agents</div>' +
     poolAgentsHtml +
     "</div>" +
@@ -3424,6 +3733,11 @@ function _renderActivityTopology(visible, grid) {
    * every heartbeat and per-element listeners would be lost. */
   _wireOverviewGridDelegation(grid);
   _wireTopoZoomPan(grid, W, H);
+  /* todo#79: after a fresh topology render, re-apply the pool-as-filter
+   * dim classes so the persisted selection survives heartbeat re-renders
+   * (without this, every 2s heartbeat would flash the full graph back
+   * in before the user's filter is re-applied). */
+  _topoPoolSelectionPaint(grid);
 
   if (_overviewExpanded) {
     var agent = (window.__lastAgents || []).find(function (x) {
@@ -4328,11 +4642,58 @@ function _wireOverviewGridDelegation(grid) {
         return;
       }
     }
+    /* Pool action-strip buttons — Select All / Deselect All / memory
+     * slots / +Save. Handled before the chip click block so buttons
+     * nested inside the pool don't also get read as chip clicks.
+     * todo#79 "Pools as filters ... Memory 1,2,...". */
+    var poolActBtn = ev.target.closest(
+      ".topo-pool-act-btn, .topo-pool-mem-save",
+    );
+    if (poolActBtn && grid.contains(poolActBtn)) {
+      var _action = poolActBtn.getAttribute("data-pool-action");
+      if (_action === "select-all") {
+        _topoPoolSelectAll(grid);
+      } else if (_action === "deselect-all") {
+        _topoPoolSelectClear();
+      } else if (_action === "save-next") {
+        var _slot = _topoPoolMemoryNextFreeSlot();
+        if (_slot > 0 && _topoPoolSelectionSize() > 0) {
+          _topoPoolMemorySave(_slot);
+          _topoLastSig = "";
+          if (typeof renderActivityTab === "function") renderActivityTab();
+          ev.stopPropagation();
+          return;
+        }
+      }
+      _topoPoolSelectionPaint(grid);
+      ev.stopPropagation();
+      return;
+    }
+    var poolMemBtn = ev.target.closest(".topo-pool-mem-btn[data-mem-slot]");
+    if (poolMemBtn && grid.contains(poolMemBtn)) {
+      var _slotStr = poolMemBtn.getAttribute("data-mem-slot");
+      var _slotN = parseInt(_slotStr, 10);
+      if (_slotN >= 1 && _slotN <= _TOPO_POOL_MEM_MAX) {
+        if (ev.shiftKey) {
+          /* shift-click = save current selection to this slot */
+          _topoPoolMemorySave(_slotN);
+          _topoLastSig = "";
+          if (typeof renderActivityTab === "function") renderActivityTab();
+        } else {
+          /* plain click = recall */
+          _topoPoolMemoryRecall(_slotN);
+          _topoPoolSelectionPaint(grid);
+        }
+      }
+      ev.stopPropagation();
+      return;
+    }
     /* Left-pool chip click: ctrl/meta = toggle membership in the pool
-     * selection set; plain click = clear + select only this chip.
-     * Drag-to-subscribe between chips is handled by the mousedown/
-     * mouseup block further down. Suppress the click that follows a
-     * just-completed drag so the drop doesn't also mutate selection. */
+     * selection set; shift = range-select within the section; plain
+     * click = clear + select only this chip. Drag-to-subscribe between
+     * chips is handled by the mousedown/mouseup block further down.
+     * Suppress the click that follows a just-completed drag so the
+     * drop doesn't also mutate selection. */
     var poolChip = ev.target.closest(".topo-pool-chip");
     if (poolChip && grid.contains(poolChip)) {
       if (_topoDragState && _topoDragState.suppressClick) {
@@ -4360,7 +4721,7 @@ function _wireOverviewGridDelegation(grid) {
         (pcKind === "agent" && _topoHidden.agents[pcName]) ||
         (pcKind === "channel" && _topoHidden.channels[pcName]) ||
         prefHidden;
-      if (isHidden && !(ev.ctrlKey || ev.metaKey)) {
+      if (isHidden && !(ev.ctrlKey || ev.metaKey) && !ev.shiftKey) {
         if (typeof _topoUnhide === "function") _topoUnhide(pcKind, pcName);
         if (prefHidden && typeof _setChannelPref === "function") {
           _setChannelPref(pcName, { is_hidden: false });
@@ -4370,10 +4731,14 @@ function _wireOverviewGridDelegation(grid) {
         ev.stopPropagation();
         return;
       }
-      if (ev.ctrlKey || ev.metaKey) {
+      if (ev.shiftKey) {
+        _topoPoolSelectRange(poolChip);
+      } else if (ev.ctrlKey || ev.metaKey) {
         _topoPoolSelectToggle(pcKind, pcName);
+        _topoPoolSelAnchor = { kind: pcKind, name: pcName };
       } else {
         _topoPoolSelectOnly(pcKind, pcName);
+        _topoPoolSelAnchor = { kind: pcKind, name: pcName };
       }
       _topoPoolSelectionPaint(grid);
       ev.stopPropagation();
@@ -4783,6 +5148,25 @@ function _wireOverviewGridDelegation(grid) {
    * .topo-channel + .topo-agent hit-test order doesn't misroute. */
   grid.addEventListener("contextmenu", function (ev) {
     if (ev.shiftKey) return;
+    /* Right-click on a memory slot button → clear that slot. todo#79
+     * "Memory 1,2,... (to keep the same criteria for selected)" — this
+     * is the delete-a-preset affordance so users aren't stuck with five
+     * stale snapshots forever. */
+    var memBtnCtx = ev.target.closest(".topo-pool-mem-btn[data-mem-slot]");
+    if (memBtnCtx && grid.contains(memBtnCtx)) {
+      var slotStrCtx = memBtnCtx.getAttribute("data-mem-slot");
+      var slotCtx = parseInt(slotStrCtx, 10);
+      if (slotCtx >= 1 && slotCtx <= _TOPO_POOL_MEM_MAX) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        if (_topoPoolMemories[String(slotCtx)]) {
+          _topoPoolMemoryDelete(slotCtx);
+          _topoLastSig = "";
+          if (typeof renderActivityTab === "function") renderActivityTab();
+        }
+        return;
+      }
+    }
     /* Right-click on an agent→channel edge → same unsubscribe popover
      * as the left-click path. Channel/agent nodes are resolved by later
      * branches so the order here matters — edge check first, since a
