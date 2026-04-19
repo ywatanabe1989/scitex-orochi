@@ -1326,6 +1326,9 @@ def api_releases(request):
 
 _changelog_cache = {}  # key: "owner/repo" -> (expires_ts, payload_dict)
 _CHANGELOG_TTL = 300  # 5 minutes
+# Fallback allowlist — kept so existing deployments still work before the
+# 0022_trackedrepo migration runs. Real authorization is DB-backed via
+# TrackedRepo (todo#90).
 _CHANGELOG_ALLOWED = {
     "ywatanabe1989/scitex-orochi",
     "ywatanabe1989/scitex-cloud",
@@ -1335,6 +1338,23 @@ _CHANGELOG_ALLOWED = {
 }
 
 
+def _is_changelog_allowed(request, owner: str, repo: str) -> bool:
+    """Allow the repo if it is either in the static fallback list or present
+    in the current workspace's TrackedRepo table."""
+    key = f"{owner}/{repo}"
+    if key in _CHANGELOG_ALLOWED:
+        return True
+    try:
+        from hub.models import TrackedRepo
+
+        workspace = get_workspace(request)
+        return TrackedRepo.objects.filter(
+            workspace=workspace, owner=owner, repo=repo
+        ).exists()
+    except Exception:
+        return False
+
+
 @login_required
 @require_GET
 def api_repo_changelog(request, owner, repo):
@@ -1342,7 +1362,8 @@ def api_repo_changelog(request, owner, repo):
 
     Returns {"content": "<markdown>", "owner": ..., "repo": ...} on success.
     Cached in-process for 5 minutes per (owner, repo) to avoid GitHub rate limits.
-    Only repos in the allowlist are accessible.
+    Only repos registered via TrackedRepo (or in the legacy static allowlist)
+    are accessible.
     """
     import base64
     import json
@@ -1350,7 +1371,7 @@ def api_repo_changelog(request, owner, repo):
     import urllib.request
 
     key = f"{owner}/{repo}"
-    if key not in _CHANGELOG_ALLOWED:
+    if not _is_changelog_allowed(request, owner, repo):
         return JsonResponse(
             {"error": f"repo not allowed: {key}", "code": "not_allowed"},
             status=403,

@@ -64,6 +64,10 @@ from hub.views.registry import (  # noqa: F401
 )
 from hub.views.status import api_status, status_page  # noqa: F401
 from hub.views.telegram import telegram_webhook  # noqa: F401
+from hub.views.tracked_repos import (  # noqa: F401
+    api_tracked_repo_detail,
+    api_tracked_repos,
+)
 from hub.views.upload import (  # noqa: F401
     api_media_by_hash,
     api_upload,

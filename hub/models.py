@@ -604,3 +604,40 @@ class WorkspaceInvitation(models.Model):
 
     def __str__(self):
         return f"Invite {self.email} to {self.workspace.name}"
+
+
+class TrackedRepo(models.Model):
+    """A GitHub repository whose CHANGELOG.md appears as a sub-tab in the
+    Releases view.
+
+    Repos are per-workspace so each team can curate its own release feed.
+    The pair ``(owner, repo)`` is unique within a workspace. Ordering
+    preserves insertion order so the first-added repo is the default
+    selection (was previously ``scitex-orochi`` hard-coded in the JS).
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="tracked_repos"
+    )
+    owner = models.CharField(max_length=100)
+    repo = models.CharField(max_length=100)
+    label = models.CharField(max_length=100, blank=True, default="")
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tracked_repos",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("workspace", "owner", "repo")
+        ordering = ["created_at", "id"]
+
+    def __str__(self):
+        return f"{self.owner}/{self.repo}@{self.workspace.name}"
+
+    @property
+    def display_label(self) -> str:
+        return self.label or self.repo

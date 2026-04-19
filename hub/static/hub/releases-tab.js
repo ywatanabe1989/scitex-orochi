@@ -1,7 +1,10 @@
-/* Releases tab — per-repo CHANGELOG.md sub-tabs.
+/* Releases tab — per-repo CHANGELOG.md sub-tabs with CRUD (todo#90).
  *
  * UI mirrors the Settings tab sub-tab pattern (settings-mode-tabs):
- *   [ scitex-orochi ] [ scitex-cloud ] [ scitex-python ] [ scitex ] ...
+ *   [ scitex-orochi ] [ scitex-cloud ] ...  [+ Add Repo]
+ * Each sub-tab also carries a small "×" delete control (revealed on
+ * hover) so users can remove repos they no longer want to follow.
+ *
  * The active sub-tab fetches CHANGELOG.md from
  *   GET /api/repo/<owner>/<repo>/changelog/
  * and renders it as HTML using a small built-in markdown renderer.
@@ -9,20 +12,14 @@
  * The endpoint caches GitHub responses for 5 minutes server-side; we also
  * cache fetched markdown in-memory client-side so re-clicking a sub-tab is
  * instant and does not re-hit the network.
+ *
+ * Repo list is loaded from GET /api/tracked-repos/. Add via
+ * POST /api/tracked-repos/ with `{url: "https://github.com/owner/repo"}`.
+ * Delete via DELETE /api/tracked-repos/<id>/.
  */
-/* globals: apiUrl, escapeHtml */
+/* globals: apiUrl, escapeHtml, getCookie */
 
-var REPOS = [
-  { owner: "ywatanabe1989", repo: "scitex-orochi", label: "scitex-orochi" },
-  { owner: "ywatanabe1989", repo: "scitex-cloud", label: "scitex-cloud" },
-  { owner: "ywatanabe1989", repo: "scitex-python", label: "scitex-python" },
-  { owner: "ywatanabe1989", repo: "scitex", label: "scitex" },
-  {
-    owner: "ywatanabe1989",
-    repo: "scitex-agent-container",
-    label: "scitex-agent-container",
-  },
-];
+var REPOS = []; // populated from /api/tracked-repos/
 
 var changelogCache = {}; // key "owner/repo" -> rendered HTML
 var releasesInitialized = false;
@@ -35,13 +32,16 @@ function renderMarkdown(md) {
 
   // Extract fenced code blocks first so their contents are not transformed.
   var codeBlocks = [];
-  md = md.replace(/```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```/g, function (_, lang, code) {
-    var idx = codeBlocks.length;
-    codeBlocks.push(
-      '<pre class="md-code"><code>' + escapeHtml(code) + "</code></pre>",
-    );
-    return "\u0000CODEBLOCK" + idx + "\u0000";
-  });
+  md = md.replace(
+    /```([a-zA-Z0-9_+-]*)\n([\s\S]*?)```/g,
+    function (_, lang, code) {
+      var idx = codeBlocks.length;
+      codeBlocks.push(
+        '<pre class="md-code"><code>' + escapeHtml(code) + "</code></pre>",
+      );
+      return "\u0000CODEBLOCK" + idx + "\u0000";
+    },
+  );
 
   // Escape everything else, then re-introduce inline syntax.
   md = escapeHtml(md);
@@ -136,6 +136,45 @@ function renderMarkdown(md) {
   return html;
 }
 
+function _getCsrf() {
+  if (typeof getCookie === "function") {
+    var c = getCookie("csrftoken");
+    if (c) return c;
+  }
+  var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
+function fetchTrackedRepos() {
+  return fetch(apiUrl("/api/tracked-repos/"), {
+    credentials: "same-origin",
+  })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    })
+    .then(function (r) {
+      if (r.ok && r.data && Array.isArray(r.data.repos)) {
+        REPOS = r.data.repos.map(function (x) {
+          return {
+            id: x.id,
+            owner: x.owner,
+            repo: x.repo,
+            label: x.label || x.repo,
+          };
+        });
+      } else {
+        REPOS = [];
+      }
+      return REPOS;
+    })
+    .catch(function () {
+      REPOS = [];
+      return REPOS;
+    });
+}
+
 function renderSubtabs() {
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
@@ -143,31 +182,156 @@ function renderSubtabs() {
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   var bar = document.getElementById("releases-subtabs");
   if (!bar) return;
-  bar.innerHTML = REPOS.map(function (r) {
+
+  var tabsHtml = REPOS.map(function (r) {
     var key = r.owner + "/" + r.repo;
     var cls =
       "settings-mode-btn releases-subtab-btn" +
       (key === activeRepoKey ? " active" : "");
     return (
+      '<span class="releases-subtab-wrap">' +
       '<button type="button" class="' +
       cls +
       '" data-repo-key="' +
       escapeHtml(key) +
       '">' +
-      escapeHtml(r.label) +
-      "</button>"
+      escapeHtml(r.label || r.repo) +
+      "</button>" +
+      '<button type="button" class="releases-subtab-del" ' +
+      'data-repo-id="' +
+      r.id +
+      '" data-repo-key="' +
+      escapeHtml(key) +
+      '" title="Remove ' +
+      escapeHtml(key) +
+      '" aria-label="Remove ' +
+      escapeHtml(key) +
+      '">×</button>' +
+      "</span>"
     );
   }).join("");
+
+  tabsHtml +=
+    '<button type="button" class="releases-add-btn" id="releases-add-btn" ' +
+    'title="Track a new GitHub repo">+ Add Repo</button>';
+
+  bar.innerHTML = tabsHtml;
+
   bar.querySelectorAll(".releases-subtab-btn").forEach(function (btn) {
     btn.addEventListener("click", function () {
       var key = btn.getAttribute("data-repo-key");
       selectRepo(key);
     });
   });
+  bar.querySelectorAll(".releases-subtab-del").forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      var id = btn.getAttribute("data-repo-id");
+      var key = btn.getAttribute("data-repo-key");
+      deleteRepo(id, key);
+    });
+  });
+  var addBtn = bar.querySelector("#releases-add-btn");
+  if (addBtn) {
+    addBtn.addEventListener("click", openAddRepoDialog);
+  }
+
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
-    try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+    try {
+      msgInput.setSelectionRange(savedStart, savedEnd);
+    } catch (_) {}
   }
+}
+
+function openAddRepoDialog() {
+  var url = window.prompt(
+    "Add a GitHub repo to the Releases tab.\n\n" +
+      "Enter a GitHub URL or 'owner/repo':",
+    "https://github.com/",
+  );
+  if (!url) return;
+  url = url.trim();
+  if (!url || url === "https://github.com/") return;
+
+  fetch(apiUrl("/api/tracked-repos/"), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": _getCsrf(),
+    },
+    body: JSON.stringify({ url: url }),
+  })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    })
+    .then(function (r) {
+      if (!r.ok) {
+        window.alert(
+          "Failed to add repo: " +
+            ((r.data && r.data.error) || "HTTP " + r.status),
+        );
+        return;
+      }
+      return fetchTrackedRepos().then(function () {
+        if (r.data && r.data.repo) {
+          activeRepoKey = r.data.repo.key;
+        }
+        renderSubtabs();
+        if (activeRepoKey) loadChangelog(activeRepoKey);
+      });
+    })
+    .catch(function (e) {
+      window.alert("Network error: " + e);
+    });
+}
+
+function deleteRepo(id, key) {
+  if (!id) return;
+  if (!window.confirm("Remove " + key + " from the Releases tab?")) return;
+
+  fetch(apiUrl("/api/tracked-repos/" + id + "/"), {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: {
+      "X-CSRFToken": _getCsrf(),
+    },
+  })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    })
+    .then(function (r) {
+      if (!r.ok) {
+        window.alert(
+          "Failed to remove repo: " +
+            ((r.data && r.data.error) || "HTTP " + r.status),
+        );
+        return;
+      }
+      delete changelogCache[key];
+      if (activeRepoKey === key) activeRepoKey = null;
+      return fetchTrackedRepos().then(function () {
+        if (!activeRepoKey && REPOS.length) {
+          activeRepoKey = REPOS[0].owner + "/" + REPOS[0].repo;
+        }
+        renderSubtabs();
+        var content = document.getElementById("releases-content");
+        if (activeRepoKey) {
+          loadChangelog(activeRepoKey);
+        } else if (content) {
+          content.innerHTML =
+            '<p class="empty-notice">No tracked repos. Click "+ Add Repo" to track a GitHub repository.</p>';
+        }
+      });
+    })
+    .catch(function (e) {
+      window.alert("Network error: " + e);
+    });
 }
 
 function selectRepo(key) {
@@ -175,10 +339,7 @@ function selectRepo(key) {
   var bar = document.getElementById("releases-subtabs");
   if (bar) {
     bar.querySelectorAll(".releases-subtab-btn").forEach(function (btn) {
-      btn.classList.toggle(
-        "active",
-        btn.getAttribute("data-repo-key") === key,
-      );
+      btn.classList.toggle("active", btn.getAttribute("data-repo-key") === key);
     });
   }
   loadChangelog(key);
@@ -192,7 +353,9 @@ function loadChangelog(key) {
   var _restoreFocus = function () {
     if (inputHasFocus && document.activeElement !== msgInput) {
       msgInput.focus();
-      try { msgInput.setSelectionRange(savedStart, savedEnd); } catch (_) {}
+      try {
+        msgInput.setSelectionRange(savedStart, savedEnd);
+      } catch (_) {}
     }
   };
   var content = document.getElementById("releases-content");
@@ -239,14 +402,17 @@ function loadChangelog(key) {
           renderMarkdown(r.data.content) +
           "</div>";
         changelogCache[key] = html;
-      } else if (r.status === 404 || (r.data && r.data.error && /404/.test(r.data.error))) {
+      } else if (
+        r.status === 404 ||
+        (r.data && r.data.error && /404/.test(r.data.error))
+      ) {
         html =
           '<div class="empty-notice">' +
-          '<p>📋 No <code>CHANGELOG.md</code> in this repository yet.</p>' +
+          "<p>📋 No <code>CHANGELOG.md</code> in this repository yet.</p>" +
           '<p style="opacity:0.7;font-size:13px;">' +
-          'Add a <code>CHANGELOG.md</code> file to the repo root to populate this view. ' +
+          "Add a <code>CHANGELOG.md</code> file to the repo root to populate this view. " +
           'Format: <a href="https://keepachangelog.com/" target="_blank" rel="noopener">Keep a Changelog</a>.' +
-          '</p></div>';
+          "</p></div>";
       } else {
         var msg =
           (r.data && r.data.error) ||
@@ -256,7 +422,9 @@ function loadChangelog(key) {
       content.innerHTML = html;
       if (_ihf && document.activeElement !== _mi) {
         _mi.focus();
-        try { _mi.setSelectionRange(_ss, _se); } catch (_) {}
+        try {
+          _mi.setSelectionRange(_ss, _se);
+        } catch (_) {}
       }
     })
     .catch(function (e) {
@@ -271,7 +439,9 @@ function loadChangelog(key) {
         "</p>";
       if (_ihf && document.activeElement !== _mi) {
         _mi.focus();
-        try { _mi.setSelectionRange(_ss, _se); } catch (_) {}
+        try {
+          _mi.setSelectionRange(_ss, _se);
+        } catch (_) {}
       }
     });
 }
@@ -279,9 +449,19 @@ function loadChangelog(key) {
 function initReleasesTab() {
   if (releasesInitialized) return;
   releasesInitialized = true;
-  activeRepoKey = REPOS[0].owner + "/" + REPOS[0].repo; // scitex-orochi default
-  renderSubtabs();
-  loadChangelog(activeRepoKey);
+  fetchTrackedRepos().then(function () {
+    if (REPOS.length) {
+      activeRepoKey = REPOS[0].owner + "/" + REPOS[0].repo;
+    }
+    renderSubtabs();
+    var content = document.getElementById("releases-content");
+    if (activeRepoKey) {
+      loadChangelog(activeRepoKey);
+    } else if (content) {
+      content.innerHTML =
+        '<p class="empty-notice">No tracked repos. Click "+ Add Repo" to track a GitHub repository.</p>';
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", function () {

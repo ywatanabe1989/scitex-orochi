@@ -138,6 +138,17 @@ urlpatterns = [
         views.api_repo_changelog,
         name="api-repo-changelog",
     ),
+    # Tracked repos CRUD (todo#90)
+    path(
+        "api/tracked-repos/",
+        views.api_tracked_repos,
+        name="api-tracked-repos",
+    ),
+    path(
+        "api/tracked-repos/<int:repo_id>/",
+        views.api_tracked_repo_detail,
+        name="api-tracked-repo-detail",
+    ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),
     # TODO stats (scitex-orochi#171) — trailing slash to match fleet convention

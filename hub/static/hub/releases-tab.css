@@ -5,21 +5,30 @@
   max-width: 900px;
 }
 
-/* Sub-tabs (mirror .settings-mode-tabs styling for visual consistency) */
+/* Sub-tabs (mirror .settings-mode-tabs styling for visual consistency).
+ * Horizontal padding 16px matches .tab-bar / .activity-subtabs /
+ * .todo-state-filter / .files-toolbar / .machines-subtabs (be184d2) so the
+ * sub-tab row aligns with the 16px-padded content below (todo#90). */
 .releases-subtabs {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   margin: 0;
-  padding: 12px 16px 0 16px;
+  padding: 6px 16px 8px 16px;
   border-bottom: 1px solid #2a2a2a;
+}
+.releases-subtab-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  position: relative;
 }
 .releases-subtab-btn {
   background: none;
   color: #888;
   border: none;
   border-bottom: 2px solid transparent;
-  padding: 8px 16px;
+  padding: 8px 14px 8px 14px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -31,6 +40,46 @@
 .releases-subtab-btn.active {
   color: #4ecdc4;
   border-bottom-color: #4ecdc4;
+}
+.releases-subtab-del {
+  background: none;
+  color: #555;
+  border: none;
+  padding: 0 6px;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  align-self: center;
+  border-radius: 3px;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    background 0.15s;
+}
+.releases-subtab-wrap:hover .releases-subtab-del,
+.releases-subtab-del:focus {
+  opacity: 1;
+}
+.releases-subtab-del:hover {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+}
+.releases-add-btn {
+  background: rgba(78, 205, 196, 0.1);
+  color: #4ecdc4;
+  border: 1px dashed rgba(78, 205, 196, 0.4);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all 0.15s;
+}
+.releases-add-btn:hover {
+  background: rgba(78, 205, 196, 0.2);
+  border-color: #4ecdc4;
 }
 
 /* Rendered markdown area */
