@@ -820,10 +820,18 @@
   flex: 0 0 6px;
 }
 .activity-grid.activity-view-topology .topo-pool-chip-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
   font-size: 9px;
   line-height: 1;
   color: #fbbf24;
-  flex: 0 0 auto;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-pin-off {
+  /* Placeholder — reserves slot width so name columns align. */
 }
 .activity-grid.activity-view-topology .topo-pool-chip-star {
   font-size: 10px;

@@ -4161,9 +4161,13 @@ function _renderActivityTopology(visible, grid) {
       var pConnected = (a.status || "online") !== "offline";
       var pLiveness =
         a.liveness || a.status || (pConnected ? "online" : "offline");
+      /* Always render the pin slot so agent-name columns stay aligned
+       * whether the agent is pinned or not — same placeholder pattern
+       * as the channel chip star/mute slots. User request 2026-04-19:
+       * "use placeholder … to keep consistency". */
       var pPin = a.pinned
         ? '<span class="topo-pool-chip-pin" title="pinned">\uD83D\uDCCC</span>'
-        : "";
+        : '<span class="topo-pool-chip-pin topo-pool-chip-pin-off" aria-hidden="true"></span>';
       /* Color the NAME text, not a left-edge stripe. ywatanabe
        * 2026-04-19: "do not highlight left edge of cards; but update
        * colors of the agent text instead". */
