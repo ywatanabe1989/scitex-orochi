@@ -5780,8 +5780,14 @@ function _wireOverviewGridDelegation(grid) {
           _topoLastSig = "";
           if (typeof renderActivityTab === "function") renderActivityTab();
         } else {
-          /* plain click = recall */
+          /* plain click = recall. Clear the sticky sig so the canvas
+           * actually repaints with the restored filter state — user
+           * 2026-04-20: "memory button not working". Then run a full
+           * renderActivityTab so sidebar filter chips + hidden set +
+           * pool selection all sync on one tick. */
           _topoPoolMemoryRecall(_slotN);
+          _topoLastSig = "";
+          if (typeof renderActivityTab === "function") renderActivityTab();
           _topoPoolSelectionPaint(grid);
         }
       }
