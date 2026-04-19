@@ -568,7 +568,7 @@ function _renderStarredSection() {
         '" title="' +
         (sPref.is_muted ? "Unmute notifications" : "Mute notifications") +
         '">' +
-        (sPref.is_muted ? "\uD83D\uDD07" : "\uD83D\uDD14") +
+        (sPref.is_muted ? "\uD83D\uDD15" : "\uD83D\uDD14") +
         "</span>";
       var sIconHtml =
         typeof channelIdentity === "function"
@@ -586,7 +586,7 @@ function _renderStarredSection() {
         '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
         '<span class="ch-pin ch-pin-on" data-ch="' +
         escapeHtml(ch) +
-        '" title="Unpin (will drop from top)">\uD83D\uDCCC</span>' +
+        '" title="Unstar (will drop from top)">\u2605</span>' +
         sMuteHtml +
         sIconHtml +
         '<span class="ch-name">' +
@@ -669,7 +669,7 @@ function _showChannelCtxMenu(ch, x, y) {
   var G_STAR_OFF = "\u2606"; /* ☆ */
   var G_STAR_ON = "\u2605"; /* ★ */
   var G_MUTE_OFF = "\uD83D\uDD14"; /* 🔔 bell — mute OFF (will mute on click) */
-  var G_MUTE_ON = "\uD83D\uDD07"; /* 🔇 — currently muted */
+  var G_MUTE_ON = "\uD83D\uDD15"; /* 🔕 bell-with-slash — currently muted */
   var G_EXPORT = "\u2935"; /* ⤵ export */
   var G_EMPTY = "";
   function _glyph(g) {
@@ -2106,8 +2106,8 @@ async function fetchAgents() {
         var chList = Array.isArray(a.channels) ? a.channels.join(",") : "";
         var pinOn = a.pinned ? " activity-pin-on" : "";
         var pinTitle = a.pinned
-          ? "Unpin"
-          : "Pin (keeps as ghost when offline, floats to top)";
+          ? "Unstar"
+          : "Star (keeps as ghost when offline, floats to top)";
         return (
           '<div class="agent-card sidebar-agent-row' +
           ghostClass +
@@ -2127,7 +2127,9 @@ async function fetchAgents() {
           (a.pinned ? "false" : "true") +
           '" title="' +
           escapeHtml(pinTitle) +
-          '">\uD83D\uDCCC</button>' +
+          '">' +
+          (a.pinned ? "\u2605" : "\u2606") +
+          "</button>" +
           '<span class="sidebar-agent-icon">' +
           ident.iconHtml(14) +
           "</span>" +
@@ -2582,7 +2584,7 @@ async function fetchStats() {
           '" title="' +
           (pref.is_muted ? "Unmute notifications" : "Mute notifications") +
           '">' +
-          (pref.is_muted ? "\uD83D\uDD07" : "\uD83D\uDD14") +
+          (pref.is_muted ? "\uD83D\uDD15" : "\uD83D\uDD14") +
           "</span>" +
           /* Per-row hide/unhide toggle (todo#418) — 👁 visible / 🚫 hidden.
            * Click stops propagation so the row's own click handler does

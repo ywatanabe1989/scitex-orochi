@@ -3741,7 +3741,7 @@ function _renderActivityTopology(visible, grid) {
           (p.x - r - 12).toFixed(1) +
           '" y="' +
           (p.y - r + 4).toFixed(1) +
-          '" font-size="11" fill="#94a3b8">\uD83D\uDD07</text>'
+          '" font-size="11" fill="#94a3b8">\uD83D\uDD15</text>'
         : "";
       return (
         '<g class="' +
@@ -3859,7 +3859,7 @@ function _renderActivityTopology(visible, grid) {
           (p.x + LED_R + GAP / 2 + 8).toFixed(1) +
           '" y="' +
           (p.y + 4).toFixed(1) +
-          '" fill="#fbbf24" font-size="11">\uD83D\uDCCC</text>'
+          '" fill="#fbbf24" font-size="13">\u2605</text>'
         : "";
       var nameX = p.x + LED_R + GAP / 2 + (a.pinned ? 22 : 8);
       var selCls = _topoSelected[a.name] ? " topo-agent-selected" : "";
@@ -4161,12 +4161,13 @@ function _renderActivityTopology(visible, grid) {
       var pConnected = (a.status || "online") !== "offline";
       var pLiveness =
         a.liveness || a.status || (pConnected ? "online" : "offline");
-      /* Always render the pin slot so agent-name columns stay aligned
-       * whether the agent is pinned or not — same placeholder pattern
-       * as the channel chip star/mute slots. User request 2026-04-19:
-       * "use placeholder … to keep consistency". */
+      /* Always render the star slot so agent-name columns stay aligned
+       * whether the agent is starred or not — same placeholder pattern
+       * as the channel chip star/mute slots. ywatanabe 2026-04-19:
+       * "we do not use pin at all; just use star". Class name
+       * .topo-pool-chip-pin kept for CSS stability; glyph is now ★. */
       var pPin = a.pinned
-        ? '<span class="topo-pool-chip-pin" title="pinned">\uD83D\uDCCC</span>'
+        ? '<span class="topo-pool-chip-pin" title="starred">\u2605</span>'
         : '<span class="topo-pool-chip-pin topo-pool-chip-pin-off" aria-hidden="true"></span>';
       /* Color the NAME text, not a left-edge stripe. ywatanabe
        * 2026-04-19: "do not highlight left edge of cards; but update
@@ -4244,7 +4245,7 @@ function _renderActivityTopology(visible, grid) {
         ? '<span class="topo-pool-chip-marker topo-pool-chip-star" title="starred">\u2605</span>'
         : '<span class="topo-pool-chip-marker topo-pool-chip-star-off" aria-hidden="true"></span>';
       var chMuteGlyph = _chPref.is_muted
-        ? '<span class="topo-pool-chip-marker topo-pool-chip-mute" title="muted">\uD83D\uDD07</span>'
+        ? '<span class="topo-pool-chip-marker topo-pool-chip-mute" title="muted">\uD83D\uDD15</span>'
         : '<span class="topo-pool-chip-marker topo-pool-chip-mute-off" aria-hidden="true"></span>';
       return (
         '<div class="topo-pool-chip topo-pool-chip-channel' +
@@ -4496,8 +4497,8 @@ function _renderActivityCards(agents, grid) {
       );
       var pinOn = a.pinned ? " activity-pin-on" : "";
       var pinTitle = a.pinned
-        ? "Unpin (will hide when offline)"
-        : "Pin (keeps as ghost when offline, floats to top)";
+        ? "Unstar (will hide when offline)"
+        : "Star (keeps as ghost when offline, floats to top)";
       var livenessHint = LIVENESS_HINTS[liveness] || liveness;
       var wsHint = connected ? "WebSocket connected" : "WebSocket disconnected";
       var state = _computeAgentState(a);
@@ -4527,7 +4528,9 @@ function _renderActivityCards(agents, grid) {
         (a.pinned ? "false" : "true") +
         '" title="' +
         escapeHtml(pinTitle) +
-        '">\uD83D\uDCCC</button>' +
+        '">' +
+        (a.pinned ? "\u2605" : "\u2606") +
+        "</button>" +
         '<span class="activity-led activity-led-ws activity-led-ws-' +
         (connected ? "on" : "off") +
         '" title="' +
@@ -5981,6 +5984,85 @@ function _wireOverviewGridDelegation(grid) {
     if (related && chNode.contains(related)) return;
     delete chNode.dataset.topoHoverActive;
     _topoChannelHoverClear();
+  });
+
+  /* Agent-hover → highlight every edge connected to that agent + the
+   * endpoint channel nodes + any DM peer agent. Mirrors the channel
+   * hover above so the discoverability story is symmetric: hover a
+   * channel, agents light up; hover an agent, channels light up.
+   * User request 2026-04-19. */
+  function _topoAgentHoverClear() {
+    var hovered = grid.querySelectorAll(
+      ".topo-edges line.topo-edge-hover, .topo-channel.topo-channel-connected, .topo-agent.topo-agent-connected",
+    );
+    for (var i = 0; i < hovered.length; i++) {
+      hovered[i].classList.remove("topo-edge-hover");
+      hovered[i].classList.remove("topo-channel-connected");
+      hovered[i].classList.remove("topo-agent-connected");
+    }
+  }
+  function _topoAgentHoverApply(agName) {
+    if (!agName) return;
+    var edges = grid.querySelectorAll(".topo-edges line:not(.topo-edge-hit)");
+    var connectedChannels = {};
+    var connectedAgents = {};
+    for (var i = 0; i < edges.length; i++) {
+      var ln = edges[i];
+      var ag = ln.getAttribute("data-agent");
+      var dmA = ln.getAttribute("data-dm-a");
+      var dmB = ln.getAttribute("data-dm-b");
+      var matched = false;
+      if (ag === agName) {
+        matched = true;
+        var lnCh = ln.getAttribute("data-channel");
+        if (lnCh) connectedChannels[lnCh] = true;
+      }
+      if (dmA === agName || dmB === agName) {
+        matched = true;
+        /* DM edges: both participants count as connected so the peer
+         * agent lights up too, and the synthetic DM channel node (if
+         * any) gets highlighted. */
+        var lnDmCh = ln.getAttribute("data-dm-channel");
+        if (lnDmCh) connectedChannels[lnDmCh] = true;
+        if (dmA && dmA !== agName) connectedAgents[dmA] = true;
+        if (dmB && dmB !== agName) connectedAgents[dmB] = true;
+      }
+      if (matched) ln.classList.add("topo-edge-hover");
+    }
+    Object.keys(connectedChannels).forEach(function (c) {
+      var nodes = grid.querySelectorAll(
+        '.topo-channel[data-channel="' + c.replace(/"/g, '\\"') + '"]',
+      );
+      for (var j = 0; j < nodes.length; j++) {
+        nodes[j].classList.add("topo-channel-connected");
+      }
+    });
+    Object.keys(connectedAgents).forEach(function (p) {
+      var anodes = grid.querySelectorAll(
+        '.topo-agent[data-agent="' + p.replace(/"/g, '\\"') + '"]',
+      );
+      for (var k = 0; k < anodes.length; k++) {
+        anodes[k].classList.add("topo-agent-connected");
+      }
+    });
+  }
+  grid.addEventListener("mouseover", function (ev) {
+    var agNode = ev.target.closest(".topo-agent[data-agent]");
+    if (!agNode || !grid.contains(agNode)) return;
+    var agName = agNode.getAttribute("data-agent");
+    if (!agName) return;
+    if (agNode.dataset.topoAgentHoverActive === "1") return;
+    _topoAgentHoverClear();
+    agNode.dataset.topoAgentHoverActive = "1";
+    _topoAgentHoverApply(agName);
+  });
+  grid.addEventListener("mouseout", function (ev) {
+    var agNode = ev.target.closest(".topo-agent[data-agent]");
+    if (!agNode || !grid.contains(agNode)) return;
+    var related = ev.relatedTarget;
+    if (related && agNode.contains(related)) return;
+    delete agNode.dataset.topoAgentHoverActive;
+    _topoAgentHoverClear();
   });
   _overviewGridWired = true;
 }

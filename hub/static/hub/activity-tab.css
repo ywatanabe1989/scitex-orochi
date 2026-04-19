@@ -1428,6 +1428,21 @@
 .activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
   filter: drop-shadow(0 0 5px #4ecdc4);
 }
+/* Symmetric: hovering an agent highlights the channels it's subscribed
+ * to. Same cyan glow as the agent highlight so the two hover flows
+ * read as one discoverability feature. User request 2026-04-19. */
+.activity-grid.activity-view-topology
+  .topo-channel.topo-channel-connected
+  polygon,
+.activity-grid.activity-view-topology
+  .topo-channel.topo-channel-connected
+  circle,
+.activity-grid.activity-view-topology .topo-channel.topo-channel-connected rect,
+.activity-grid.activity-view-topology
+  .topo-channel.topo-channel-connected
+  text {
+  filter: drop-shadow(0 0 5px #4ecdc4);
+}
 
 /* Floating popover anchored near an edge click — offers Unsubscribe.
  * Confirm-dialog feel: title, preview row ("<#channel> <- <agent>" with

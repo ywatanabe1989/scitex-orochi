@@ -921,7 +921,7 @@ function _buildOverviewHtml(agents) {
   var tableHtml =
     '<table class="agents-registry-table">' +
     "<thead><tr>" +
-    "<th>Pin</th><th></th><th>Icon</th><th>Status</th><th>Agent ID</th>" +
+    "<th>Star</th><th></th><th>Icon</th><th>Status</th><th>Agent ID</th>" +
     "<th>Role</th><th>Host / Machine</th><th>Model</th><th>Mux</th>" +
     "<th>Ctx</th><th>Skills</th><th>PID</th><th>Channels</th>" +
     "<th>Project</th><th>Workdir</th><th>Pane</th><th>Task</th><th>Subagents</th>" +
@@ -1262,11 +1262,16 @@ function buildAgentRow(a) {
       return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
     })
     .join("");
-  var pinIcon = a.pinned ? "\uD83D\uDCCC" : "\uD83D\uDCCD";
-  var pinTitle = a.pinned ? "Unpin" : "Pin";
+  /* Star (pinned-to-top) — replaces the earlier pin terminology
+   * site-wide. ywatanabe 2026-04-19: "we do not use pin at all; just
+   * use star". Glyph: ★ filled for starred, ☆ outline otherwise.
+   * data-pin-name / pin-btn / togglePinAgent retain their names for
+   * backend/registry stability; the USER-FACING label is Star. */
+  var pinIcon = a.pinned ? "\u2605" : "\u2606";
+  var pinTitle = a.pinned ? "Unstar" : "Star";
   var pinBtnHtml =
-    '<button class="pin-btn' +
-    (a.pinned ? " pinned" : "") +
+    '<button class="pin-btn star-btn' +
+    (a.pinned ? " pinned starred" : "") +
     '" data-pin-name="' +
     escapeHtml(a.name) +
     '" title="' +

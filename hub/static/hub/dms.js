@@ -73,8 +73,10 @@
             '" data-ch="' +
             escapeHtml(ch) +
             '" title="' +
-            (pinned ? "Unpin" : "Pin (float to top)") +
-            '">\uD83D\uDCCC</span>' +
+            (pinned ? "Unstar" : "Star (float to top)") +
+            '">' +
+            (pinned ? "\u2605" : "\u2606") +
+            "</span>" +
             '<span class="ch-watch ' +
             (muted ? "ch-watch-off" : "ch-watch-on") +
             '" data-ch="' +
