@@ -1431,6 +1431,21 @@
 .activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
   filter: drop-shadow(0 0 5px #4ecdc4);
 }
+/* Channel badge — matches the agent pill styling so channels read as
+ * first-class identities on the canvas (user 2026-04-20: "channels
+ * are not shown in badges? bordered identities"). Thin muted stroke
+ * + subtle background, same as .topo-agent-bg. */
+.activity-grid.activity-view-topology .topo-channel .topo-channel-bg {
+  fill: #141414;
+  stroke: rgba(150, 165, 180, 0.35);
+  stroke-width: 0.75;
+}
+.activity-grid.activity-view-topology .topo-channel:hover .topo-channel-bg {
+  fill: #1f1f1f;
+  stroke: #4ecdc4;
+  filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.55));
+}
+
 /* Circular crop for SVG canvas avatars — mirrors the HTML <img
  * class="agent-avatar"> 50% border-radius so images look like the
  * rest of the UI (round profile-picture style). User request

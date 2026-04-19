@@ -4002,10 +4002,29 @@ function _renderActivityTopology(visible, grid) {
         iconGlyph +
         starGlyph +
         muteGlyph +
+        /* Bordered badge behind the channel label — matches the
+         * agent pill aesthetic so channels read as first-class
+         * identities (user 2026-04-20: "channels are not shown in
+         * badges? bordered identities"). Width estimated from label
+         * length; centered horizontally above the diamond. */
+        (function () {
+          var _chLabelW = Math.max(40, labelText.length * 6.5);
+          var _chLabelX = p.x - _chLabelW / 2 - 6;
+          var _chLabelY = p.y - r - 18;
+          return (
+            '<rect class="topo-channel-bg" x="' +
+            _chLabelX.toFixed(1) +
+            '" y="' +
+            _chLabelY.toFixed(1) +
+            '" width="' +
+            (_chLabelW + 12).toFixed(1) +
+            '" height="20" rx="10" ry="10"/>'
+          );
+        })() +
         '<text class="topo-label topo-label-ch" x="' +
         p.x +
         '" y="' +
-        (p.y - r - 6).toFixed(1) +
+        (p.y - r - 4).toFixed(1) +
         '" text-anchor="middle">' +
         escapeHtml(labelText) +
         "</text>" +
@@ -4176,16 +4195,45 @@ function _renderActivityTopology(visible, grid) {
           '" height="' +
           _imgSize +
           '" preserveAspectRatio="xMidYMid slice"/>';
-      } else {
-        var agentEmoji = _ai || "\uD83E\uDD16";
+      } else if (_ai) {
+        /* User-assigned emoji via AgentProfile.icon_emoji. */
         agentGlyph =
           '<text class="topo-agent-glyph" x="' +
           agentIconX.toFixed(1) +
           '" y="' +
           p.y.toFixed(1) +
           '" font-size="12" dominant-baseline="central" text-anchor="middle">' +
-          agentEmoji +
+          _ai +
           "</text>";
+      } else {
+        /* Default: scitex S-shaped snake SVG from the CENTRAL source
+         * (getSnakeIcon in agent-icons.js). User 2026-04-20: "please
+         * use central, single-source-of-icons". Wrap the returned
+         * SVG in a <g translate> so it lands at the right position
+         * inside the parent canvas SVG. Nested <svg> is valid and
+         * establishes its own viewport from the inner viewBox. */
+        var _snakeSize = 14;
+        var _snakeColor =
+          (_ident && _ident.color) ||
+          (typeof getAgentColor === "function"
+            ? getAgentColor(a.name)
+            : "#4ecdc4");
+        var _snakeMarkup =
+          typeof getSnakeIcon === "function"
+            ? getSnakeIcon(_snakeSize, _snakeColor)
+            : "";
+        /* getSnakeIcon returns an <svg> with its own width/height but
+         * no x/y. Insert x/y via a single regex so the canvas can
+         * position it without touching the source helper. */
+        _snakeMarkup = _snakeMarkup.replace(
+          /<svg /,
+          '<svg x="' +
+            (agentIconX - _snakeSize / 2).toFixed(1) +
+            '" y="' +
+            (p.y - _snakeSize / 2).toFixed(1) +
+            '" ',
+        );
+        agentGlyph = _snakeMarkup;
       }
       return (
         '<g class="topo-node topo-agent' +
