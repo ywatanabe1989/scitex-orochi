@@ -1107,8 +1107,13 @@
  * stroke + thickens the line so it's discoverable; cursor becomes a
  * pointer. ywatanabe 2026-04-19: "edges (lines) must be selectable to
  * unsubscribe". */
+/* Bolder hit-area so edges are easy to click without precise aim.
+ * ywatanabe 2026-04-19: "hitarea for lines should be a bit bolder".
+ * Visible thickness also bumped slightly so the graph reads clearer. */
 .activity-grid.activity-view-topology .topo-edges line.topo-edge {
   cursor: pointer;
+  stroke-width: 2;
+  pointer-events: stroke;
   transition:
     stroke 0.12s ease-out,
     stroke-opacity 0.12s ease-out,
@@ -1117,7 +1122,7 @@
 .activity-grid.activity-view-topology .topo-edges line.topo-edge:hover {
   stroke: #f59e0b !important;
   stroke-opacity: 1 !important;
-  stroke-width: 2.4 !important;
+  stroke-width: 3.2 !important;
   filter: drop-shadow(0 0 3px #f59e0b);
 }
 
@@ -1131,12 +1136,13 @@
   stroke: #fbbf24;
   stroke-dasharray: 3 4;
   stroke-opacity: 0.5;
-  stroke-width: 1;
+  stroke-width: 1.8;
   pointer-events: stroke;
+  cursor: pointer;
 }
 .activity-grid.activity-view-topology .topo-edges line.topo-edge-dm:hover {
   stroke-opacity: 1 !important;
-  stroke-width: 1.6 !important;
+  stroke-width: 2.6 !important;
   filter: drop-shadow(0 0 3px #fbbf24);
 }
 
