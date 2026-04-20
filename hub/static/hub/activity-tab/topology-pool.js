@@ -188,16 +188,31 @@ function _topoBuildPoolHtml(visible, channels) {
     } else {
       _memFace = "M" + _ms;
     }
+    /* Dirty marker — slot is the active one AND current selection
+     * diverges from the saved snapshot. Solid bullet (U+25CF) appended
+     * to the face so users know which slot needs a Save click
+     * (2026-04-20 explicit-save pass). */
+    var _memDirty =
+      typeof _topoPoolMemoryIsDirty === "function" &&
+      _topoActiveMemSlot === _ms &&
+      _topoPoolMemoryIsDirty(_ms);
+    var _memDirtyDot = _memDirty ? " \u25CF" : "";
     memBtnsHtml +=
       '<button type="button" class="topo-pool-mem-btn' +
       (_mem ? " topo-pool-mem-btn-filled" : "") +
       (_memLabel ? " topo-pool-mem-btn-labeled" : "") +
+      (_memDirty ? " topo-pool-mem-btn-dirty" : "") +
       '" data-mem-slot="' +
       _ms +
       '" title="' +
-      escapeHtml(_memTitle) +
+      escapeHtml(
+        _memDirty
+          ? _memTitle + "\n\nUnsaved changes - click Save to persist"
+          : _memTitle,
+      ) +
       '">' +
       escapeHtml(_memFace) +
+      _memDirtyDot +
       "</button>";
   }
   var _selCountInit = _topoPoolSelectionSize();
@@ -212,7 +227,7 @@ function _topoBuildPoolHtml(visible, channels) {
     "</div>" +
     '<div class="topo-pool-actions-row topo-pool-mem-row">' +
     memBtnsHtml +
-    '<button type="button" class="topo-pool-mem-save" data-pool-action="save-next" title="Save current selection to next free memory slot">+</button>' +
+    '<button type="button" class="topo-pool-mem-save" data-pool-action="save-next" title="Save current selection to next free memory slot (or to the active slot if one is active)">+ Save</button>' +
     "</div>" +
     "</div>";
   var pool =

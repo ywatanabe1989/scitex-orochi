@@ -20,7 +20,6 @@ function _topoSelectAdd(name) {
   if (name) _topoSelected[name] = true;
 }
 
-
 function _topoPersistActiveMemSlot() {
   try {
     if (_topoActiveMemSlot == null)
@@ -28,10 +27,47 @@ function _topoPersistActiveMemSlot() {
     else localStorage.setItem(_TOPO_ACTIVE_MEM_KEY, String(_topoActiveMemSlot));
   } catch (_) {}
 }
+/* Auto-save REMOVED 2026-04-20 per user directive: "explicit save only,
+ * NO auto-save". The previous behavior silently overwrote the active
+ * slot on every selection change, which made accidental clobbering
+ * trivial. Explicit Save button is the only persistence path now.
+ * _topoPoolMemoryIsDirty() below is what the UI uses to signal unsaved
+ * state on a slot chip / Save button. */
 function _topoAutoSaveActiveSlot() {
-  if (_topoActiveMemSlot != null && typeof _topoPoolMemorySave === "function") {
-    _topoPoolMemorySave(_topoActiveMemSlot);
+  /* intentional no-op — retained as a stub so call sites that used to
+   * trigger auto-save (e.g. _topoSaveHidden in state.js) keep working
+   * without becoming "unsaved dirt" producers mid-operation. */
+}
+
+/* Dirty-state check: compare the current _topoPoolSelection to the
+ * saved snapshot in the given memory slot. Used by sidebar Memory
+ * section + pool memory strip to show a dirty dot on slots whose
+ * contents no longer match the live selection (so users see at a
+ * glance which slots need a Save click). Returns true if dirty. */
+function _topoPoolMemoryIsDirty(slot) {
+  var mem = _topoPoolMemories[String(slot)];
+  if (!mem) return false;
+  var savedA = {};
+  (mem.agents || []).forEach(function (n) {
+    savedA[n] = true;
+  });
+  var savedC = {};
+  (mem.channels || []).forEach(function (n) {
+    savedC[n] = true;
+  });
+  var liveA = _topoPoolSelection.agents || {};
+  var liveC = _topoPoolSelection.channels || {};
+  var liveAKeys = Object.keys(liveA);
+  var liveCKeys = Object.keys(liveC);
+  if (liveAKeys.length !== Object.keys(savedA).length) return true;
+  if (liveCKeys.length !== Object.keys(savedC).length) return true;
+  for (var i = 0; i < liveAKeys.length; i++) {
+    if (!savedA[liveAKeys[i]]) return true;
   }
+  for (var j = 0; j < liveCKeys.length; j++) {
+    if (!savedC[liveCKeys[j]]) return true;
+  }
+  return false;
 }
 
 function _topoPoolPersistSelection() {
@@ -46,7 +82,10 @@ function _topoPoolPersistSelection() {
   } catch (_e) {
     /* quota / private mode — selection still works for the session. */
   }
-  _topoAutoSaveActiveSlot();
+  /* No auto-save — see _topoAutoSaveActiveSlot() stub above. */
+  if (typeof _syncMemoryDirtyIndicators === "function") {
+    _syncMemoryDirtyIndicators();
+  }
 }
 function _topoPoolPersistMemories() {
   try {
@@ -328,9 +367,66 @@ function _topoPoolSelectionPaint(root) {
       "topo-pool-mem-btn-active",
       _topoActiveMemSlot === slotN,
     );
+    /* Dirty dot — active slot whose saved snapshot diverges from the
+     * current selection. User spec 2026-04-20: "no auto-save" + small
+     * unsaved indicator so users know which slot needs a Save click. */
+    var dirty = _topoActiveMemSlot === slotN && _topoPoolMemoryIsDirty(slotN);
+    memBtns[m].classList.toggle("topo-pool-mem-btn-dirty", dirty);
+    if (dirty) {
+      memBtns[m].setAttribute(
+        "data-dirty-title",
+        "Unsaved changes — click Save to persist",
+      );
+    } else {
+      memBtns[m].removeAttribute("data-dirty-title");
+    }
   }
   _topoPoolApplyCanvasFilter(host);
+  /* Sidebar Memory section mirrors pool chip state — keep both in
+   * lockstep. Sidebar renderer lives in app/sidebar-memory.js. */
+  if (typeof _syncMemoryDirtyIndicators === "function") {
+    _syncMemoryDirtyIndicators();
+  }
 }
+/* Cross-surface sync: both pool chips AND the sidebar Memory section
+ * render memory slot buttons and a Save/unsaved indicator. This helper
+ * walks EVERY matching chip (ignoring which DOM subtree hosts it) and
+ * reconciles the filled/active/dirty classes + data-dirty-title. Called
+ * from _topoPoolSelectionPaint above and from sidebar-memory.js after
+ * its own renders. */
+function _syncMemoryDirtyIndicators() {
+  var all = document.querySelectorAll(
+    ".topo-pool-mem-btn[data-mem-slot], .sidebar-mem-btn[data-mem-slot]",
+  );
+  for (var i = 0; i < all.length; i++) {
+    var btn = all[i];
+    var slot = btn.getAttribute("data-mem-slot");
+    var slotN = parseInt(slot, 10);
+    btn.classList.toggle("topo-pool-mem-btn-filled", !!_topoPoolMemories[slot]);
+    btn.classList.toggle("sidebar-mem-btn-filled", !!_topoPoolMemories[slot]);
+    btn.classList.toggle(
+      "topo-pool-mem-btn-active",
+      _topoActiveMemSlot === slotN,
+    );
+    btn.classList.toggle(
+      "sidebar-mem-btn-active",
+      _topoActiveMemSlot === slotN,
+    );
+    var dirty = _topoActiveMemSlot === slotN && _topoPoolMemoryIsDirty(slotN);
+    btn.classList.toggle("topo-pool-mem-btn-dirty", dirty);
+    btn.classList.toggle("sidebar-mem-btn-dirty", dirty);
+    if (dirty) {
+      btn.setAttribute(
+        "data-dirty-title",
+        "Unsaved changes — click Save to persist",
+      );
+    } else {
+      btn.removeAttribute("data-dirty-title");
+    }
+  }
+}
+window._topoPoolMemoryIsDirty = _topoPoolMemoryIsDirty;
+window._syncMemoryDirtyIndicators = _syncMemoryDirtyIndicators;
 /* Apply filter classes to SVG canvas nodes + edges. When selection is
  * empty: clear all filter classes (show everything). Non-empty: compute
  * the neighborhood of the selection (a selected agent pulls in all its
@@ -406,5 +502,3 @@ function _topoPoolApplyCanvasFilter(root) {
   }
   svg.classList.add("topo-svg-pool-filtered");
 }
-
-

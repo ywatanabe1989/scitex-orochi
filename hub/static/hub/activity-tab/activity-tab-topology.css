@@ -283,16 +283,27 @@
   background: #0f3329;
   font-weight: 700;
 }
-/* Active slot — user is currently "recording" into this Mn; every
- * filter change auto-saves into it. Brighter cyan ring distinguishes
- * it from merely "filled" slots. User 2026-04-20: "click M1 -> M1
- * must be highlighted -> last state of M1 filtering is saved as M1
- * automatically". */
+/* Active slot — user is currently targeting this Mn (recall/save
+ * ops operate on the active slot by default). Brighter cyan ring
+ * distinguishes it from merely "filled" slots. 2026-04-20 reversal:
+ * activation no longer triggers auto-save; the user must click Save
+ * to persist. */
 .activity-grid.activity-view-topology .topo-pool-mem-btn-active {
   color: #0a0a0a !important;
   background: #4ecdc4 !important;
   border-color: #4ecdc4 !important;
   box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.35);
+}
+/* Dirty — active slot whose saved snapshot diverges from the live
+ * selection. Amber ring indicates "unsaved changes"; user sees which
+ * slot needs a Save click (2026-04-20 explicit-save pass). The same
+ * style applies to the sidebar Memory section buttons via the
+ * .sidebar-mem-btn-dirty alias kept in lockstep by
+ * _syncMemoryDirtyIndicators(). */
+.activity-grid.activity-view-topology .topo-pool-mem-btn-dirty,
+.sidebar-mem-btn-dirty {
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.55) !important;
+  border-color: #fbbf24 !important;
 }
 .activity-grid.activity-view-topology .topo-pool-mem-btn-filled:hover {
   color: #6ee7b7;

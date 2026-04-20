@@ -3,7 +3,6 @@
  * actions, pool chip selection, topology agent/channel clicks, action
  * bar. Helper wired from grid-delegation.js. */
 
-
 function _ovgWireClick(grid) {
   grid.addEventListener("click", function (ev) {
     var pinBtn = ev.target.closest(".activity-pin-btn[data-pin-name]");
@@ -81,8 +80,16 @@ function _ovgWireClick(grid) {
       } else if (_action === "deselect-all") {
         _topoPoolSelectClear();
       } else if (_action === "save-next") {
-        var _slot = _topoPoolMemoryNextFreeSlot();
-        if (_slot > 0 && _topoPoolSelectionSize() > 0) {
+        /* Explicit-save semantics (2026-04-20): if a slot is active,
+         * "Save" persists the current selection into THAT slot (clears
+         * the dirty dot). Otherwise fall back to the next free slot.
+         * This makes the Save button feel like a real save, not just
+         * "snapshot-to-next". */
+        var _slot =
+          _topoActiveMemSlot != null
+            ? _topoActiveMemSlot
+            : _topoPoolMemoryNextFreeSlot();
+        if (_slot > 0) {
           _topoPoolMemorySave(_slot);
           _topoLastSig = "";
           if (typeof renderActivityTab === "function") renderActivityTab();
@@ -105,25 +112,21 @@ function _ovgWireClick(grid) {
           _topoLastSig = "";
           if (typeof renderActivityTab === "function") renderActivityTab();
         } else {
-          /* Plain click = ACTIVATE slot (toggle). While active the
-           * slot auto-saves every filter/selection change via
-           * _topoAutoSaveActiveSlot. Click same slot again to
-           * deactivate. User 2026-04-20 spec: "click M1 -> M1 must
-           * be highlighted -> last state of M1 filtering is saved as
-           * M1 automatically. No need to save". */
+          /* Plain click = RECALL slot + make it active (or deactivate
+           * if already active). User 2026-04-20 reversal of the old
+           * auto-save behavior: "NO auto-save; explicit save only".
+           * Clicking an empty slot activates but does NOT seed it with
+           * the current selection - the user must hit Save (or
+           * shift-click) to persist. Active-slot highlight still
+           * indicates which slot the +Save button targets. */
           if (_topoActiveMemSlot === _slotN) {
             _topoActiveMemSlot = null;
           } else {
             _topoActiveMemSlot = _slotN;
-            /* Recall the slot's saved state if it has contents. */
             if (_topoPoolMemories[String(_slotN)]) {
               _topoPoolMemoryRecall(_slotN);
-            } else {
-              /* Empty slot — seed it with the current state so
-               * subsequent changes accumulate into M<slotN> from the
-               * moment of activation. */
-              _topoPoolMemorySave(_slotN);
             }
+            /* Empty slot: do NOT auto-seed - user must click Save. */
           }
           _topoPersistActiveMemSlot();
           _topoLastSig = "";
