@@ -5,10 +5,13 @@ FROM node:20-slim AS frontend-build
 
 WORKDIR /build
 
-# Install JS deps first so the layer caches when source changes but
-# package.json doesn't.
-COPY hub/frontend/package.json hub/frontend/package-lock.json* ./
-RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+# Install JS deps. We deliberately do NOT copy package-lock.json into
+# the image: rollup/vite ship native binaries per (os, arch) and a
+# lockfile generated on x86 won't pull arm64 binaries when mba builds.
+# `npm install` (no lockfile) resolves the right native dep for the
+# build host.
+COPY hub/frontend/package.json ./
+RUN npm install --no-audit --no-fund
 
 # Copy TS sources + config and build.
 COPY hub/frontend/ ./
