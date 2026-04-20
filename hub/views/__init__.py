@@ -89,3 +89,4 @@ from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
     workspace_settings_view,
 )
+from hub.views.workspace_icon import api_workspace_icon  # noqa: F401
