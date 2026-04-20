@@ -3,6 +3,8 @@ __pycache__/
 *.pyo
 *.egg-info/
 dist/
+# Vite build artifacts are generated in the Dockerfile's node build
+# stage (see deployment/docker/Dockerfile). Don't track them in git.
 build/
 .eggs/
 *.db
