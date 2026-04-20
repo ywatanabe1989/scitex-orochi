@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/state.js — module-level state, config, localStorage bootstrap
  * for the canonical Agents UI renderer (split from activity-tab.js).
  * Classic-script semantics; no ES modules; every var stays global.

@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/utils.js — generic helpers for the Agents UI.
  * Pure functions: strip ANSI, formatters, liveness labels/order,
  * task parse, computeAgentState, health + issue linkify, isDeadAgent. */

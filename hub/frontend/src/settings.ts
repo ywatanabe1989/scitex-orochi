@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Token masking toggle for workspace settings */
 function toggleToken(btn) {
   var code = btn.previousElementSibling;

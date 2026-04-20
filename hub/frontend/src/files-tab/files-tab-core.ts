@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Files tab — core: state, query, preview pane, mime helpers, image viewer */
 /* globals: apiUrl, escapeHtml, timeAgo, getAgentColor, cleanAgentName */
 

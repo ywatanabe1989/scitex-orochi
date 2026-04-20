@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /**
  * channel-badge.js — single source of truth for the channel badge UI.
  *
@@ -132,7 +130,12 @@
       (m.isStarred ? "\u2605" : "\u2606") +
       "</span>";
 
-    // Eye — optional (showEye opt). Renders 👁 when visible, 🚫 when hidden.
+    // Eye — optional (showEye opt). Mirrors the bell pattern (🔔 / 🔕):
+    // the SAME 👁 glyph is used in BOTH states, with a red diagonal
+    // strike overlaid via CSS when hidden. Previously we swapped to
+    // 🚫 (prohibition) which didn't match the bell pattern. ywatanabe
+    // 2026-04-20: "eye hidden should use the same glyph with a red
+    // strike, matching the bell".
     var eyeHtml = "";
     if (showEye) {
       eyeHtml =
@@ -144,9 +147,7 @@
         _escape(m.norm) +
         '" title="' +
         (m.isHidden ? "Show channel (un-hide)" : "Hide channel (dim in list)") +
-        '">' +
-        (m.isHidden ? "\uD83D\uDEAB" : "\uD83D\uDC41") +
-        "</span>";
+        '">\uD83D\uDC41</span>';
     }
 
     // Mute — always visible placeholder so the column geometry is stable.
@@ -195,6 +196,10 @@
   // ── SVG renderer: topology canvas ──────────────────────────────────
   // Emits a <g class="topo-channel" data-channel="..."> group with:
   //   diamond polygon + icon + star + eye + mute + label rect + label.
+  // Canonical element order: icon + star + eye + mute + name — IDENTICAL
+  // to renderChannelBadgeHtml above, so sidebar / pool / canvas all read
+  // left-to-right the same way. ywatanabe 2026-04-20: "ALL channel badge
+  // MUST have the SAME UI and functionalities".
   // pos = {x, y, r}; r optional (default 12).
   function renderChannelBadgeSvg(name, pos, opts) {
     opts = opts || {};
@@ -281,19 +286,50 @@
       (m.isStarred ? "\u2605" : "\u2606") +
       "</text>";
 
-    // Eye — optional.
+    // Eye — optional. Mirrors the bell pattern: same 👁 glyph in both
+    // states, with a red diagonal stroke overlaid when hidden (no
+    // Unicode crossed-eye exists, so we draw a <line> across the text
+    // bbox). Glyph is wrapped in a <g class="topo-ch-eye"> so the
+    // stroke shares the click target.
     var eyeGlyph = "";
     if (showEye) {
-      eyeGlyph =
-        '<text class="topo-ch-eye ch-eye" data-channel="' +
-        _escape(m.norm) +
-        '" x="' +
-        (x - r - 12).toFixed(1) +
+      var eyeX = (x - r - 12).toFixed(1);
+      var eyeY = (y + r + 8).toFixed(1);
+      var eyeText =
+        '<text x="' +
+        eyeX +
         '" y="' +
-        (y + r + 8).toFixed(1) +
-        '" font-size="9" fill="#94a3b8" style="cursor:pointer">' +
-        (m.isHidden ? "\uD83D\uDEAB" : "\uD83D\uDC41") +
-        "</text>";
+        eyeY +
+        '" font-size="9" fill="#94a3b8">\uD83D\uDC41</text>';
+      var eyeStrike = "";
+      if (m.isHidden) {
+        // Diagonal red strike across the glyph's bbox. Glyph is ~9px
+        // tall + ~10px wide at font-size=9; strike goes from top-left
+        // to bottom-right of that bbox.
+        var sx1 = (x - r - 15).toFixed(1);
+        var sy1 = (parseFloat(eyeY) - 7).toFixed(1);
+        var sx2 = (x - r - 5).toFixed(1);
+        var sy2 = (parseFloat(eyeY) + 2).toFixed(1);
+        eyeStrike =
+          '<line x1="' +
+          sx1 +
+          '" y1="' +
+          sy1 +
+          '" x2="' +
+          sx2 +
+          '" y2="' +
+          sy2 +
+          '" stroke="#ef4444" stroke-width="2" stroke-linecap="round" pointer-events="none"/>';
+      }
+      eyeGlyph =
+        '<g class="topo-ch-eye ch-eye' +
+        (m.isHidden ? " ch-eye-off" : " ch-eye-on") +
+        '" data-channel="' +
+        _escape(m.norm) +
+        '" style="cursor:pointer">' +
+        eyeText +
+        eyeStrike +
+        "</g>";
     }
 
     // Mute — only rendered when muted (keeps diamond uncluttered).

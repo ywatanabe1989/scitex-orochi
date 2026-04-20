@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /**
  * Element Inspector — console collector, page structure exporter, and
  * the top-level ElementInspector class that wires everything together.

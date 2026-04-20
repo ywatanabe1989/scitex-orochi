@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Web-terminal tab (todo#47).
  *
  * xterm.js front-end for the /ws/terminal/<host>/ WebSocket backend.

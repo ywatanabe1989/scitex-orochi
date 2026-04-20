@@ -1,9 +1,6 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/controls.js — sort/view/color/size dropdown wiring
  * + universal Escape-cancel for the topology canvas. */
-
 
 var _overviewControlsWired = false;
 function _wireOverviewControls() {
@@ -42,6 +39,11 @@ function _wireOverviewControls() {
       localStorage.setItem("orochi.overviewSort", _overviewSort);
     } catch (_e) {}
     renderActivityTab();
+    /* The sort dropdown now also drives the sidebar AGENTS list
+     * (ywatanabe 2026-04-21). Re-run fetchAgents on the existing
+     * cached payload so the new order takes effect without waiting
+     * for the next heartbeat. */
+    if (typeof fetchAgents === "function") fetchAgents();
   });
   viewSwitch.addEventListener("click", function (ev) {
     var btn = ev.target.closest(".activity-view-switch-btn[data-view]");
@@ -62,6 +64,8 @@ function _wireOverviewControls() {
         localStorage.setItem("orochi.overviewColor", _overviewColor);
       } catch (_e) {}
       renderActivityTab();
+      /* Sidebar color keying also follows this dropdown now. */
+      if (typeof fetchAgents === "function") fetchAgents();
     });
   }
   if (sizeSelect) {
@@ -140,4 +144,3 @@ function _wireTopoEscCancel() {
     { capture: true },
   );
 }
-

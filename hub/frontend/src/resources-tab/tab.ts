@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Resource Monitor Panel + Resources Tab — part 2: renderers, card
  * builder, machine aliases, fetchResources. Split from resources-tab.js
  * (697 lines) — depends on resources-tab/panel.js (resourceData,

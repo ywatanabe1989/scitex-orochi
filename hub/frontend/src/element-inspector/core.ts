@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /**
  * Element Inspector — core utilities, notifications, debug-info collector,
  * overlay manager, and label renderer.

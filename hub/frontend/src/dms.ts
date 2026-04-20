@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Direct messages sidebar + new-DM picker (todo#60 PR 4)
  *
  * Renders a "Direct messages" sidebar section below #channels by polling

@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Agents Tab — indicator-lamp bank (HB/RT/PN/MCP/HL) + pane-state badge.
  * Loaded after state.js (livenessColor, paneStateColor) and before
  * detail.js, which calls _renderIndicatorLamps from inside _renderAgentDetail.

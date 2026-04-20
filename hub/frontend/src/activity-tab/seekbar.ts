@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/seekbar.js — timeline seekbar + engagement heatmap
  * + play/pause + live/playback toggle for packet replay. */
 

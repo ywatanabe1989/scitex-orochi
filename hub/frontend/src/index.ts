@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Orochi Hub dashboard bundle entry point.
 //
 // Imports every dashboard module in the exact load order used by
@@ -9,7 +10,11 @@
 // script semantics where top-level `var`/`function` become
 // accessible across files through the shared window/global scope.
 //
-// Generated 2026-04-20 during big-bang TS migration.
+// sw-register.js is intentionally NOT imported here — it stays as a
+// classic <script> tag in dashboard.html so service-worker
+// registration is isolated from the bundle.
+//
+// Generated from hub/templates/hub/dashboard.html ordering.
 
 import "./config";
 import "./agent-icons";
@@ -83,6 +88,8 @@ import "./activity-tab/grid-hover";
 import "./activity-tab/grid-delegation";
 import "./activity-tab/controls";
 import "./activity-tab/init";
+import "./app/sidebar-memory-options";
+import "./app/sidebar-memory-handlers";
 import "./app/sidebar-memory";
 import "./viz-tab";
 import "./upload";
@@ -100,7 +107,6 @@ import "./terminal-tab";
 import "./tabs";
 import "./init";
 import "./sidebar-fold";
-import "./sw-register";
 import "./push";
 import "./element-inspector/core";
 import "./element-inspector/overlay";

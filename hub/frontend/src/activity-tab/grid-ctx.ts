@@ -1,11 +1,8 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/grid-ctx.js — delegated contextmenu (right-click)
  * handler for the overview grid: memory slot rename/delete, edge
  * unsubscribe popover, channel/agent/pool context menus. Helper wired
  * from grid-delegation.js. */
-
 
 function _ovgWireContextmenu(grid) {
   /* Delegated right-click on overview cards, topology agent nodes, and
@@ -16,50 +13,12 @@ function _ovgWireContextmenu(grid) {
    * .topo-channel + .topo-agent hit-test order doesn't misroute. */
   grid.addEventListener("contextmenu", function (ev) {
     if (ev.shiftKey) return;
-    /* Right-click on a memory slot button → rename (or clear by entering
-     * an empty name). todo#98: memory slots now snapshot the full filter
-     * state, so giving them a human label makes them actually usable as
-     * presets. Cancel = no change, "" = clear/delete. Empty slots are
-     * a no-op on right-click (nothing to rename). todo#79 "Memory 1,2,…
-     * (to keep the same criteria for selected)" is preserved — clearing
-     * still works by entering an empty label. */
-    var memBtnCtx = ev.target.closest(".topo-pool-mem-btn[data-mem-slot]");
-    if (memBtnCtx && grid.contains(memBtnCtx)) {
-      var slotStrCtx = memBtnCtx.getAttribute("data-mem-slot");
-      var slotCtx = parseInt(slotStrCtx, 10);
-      if (slotCtx >= 1 && slotCtx <= _TOPO_POOL_MEM_MAX) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        var existingMem = _topoPoolMemories[String(slotCtx)];
-        if (existingMem) {
-          var curLabel =
-            existingMem.label && typeof existingMem.label === "string"
-              ? existingMem.label
-              : "";
-          /* prompt() is synchronous and ugly but matches the "one-pass,
-           * don't break existing" constraint — no modal plumbing needed. */
-          var answer = null;
-          try {
-            answer = window.prompt(
-              "Rename M" + slotCtx + " (leave empty to clear the slot):",
-              curLabel,
-            );
-          } catch (_pe) {
-            answer = null;
-          }
-          if (answer === null) return; /* user hit Cancel */
-          var trimmed = String(answer).trim();
-          if (trimmed === "") {
-            _topoPoolMemoryDelete(slotCtx);
-          } else {
-            _topoPoolMemoryRename(slotCtx, trimmed);
-          }
-          _topoLastSig = "";
-          if (typeof renderActivityTab === "function") renderActivityTab();
-        }
-        return;
-      }
-    }
+    /* NOTE: the legacy M1-M5 chip right-click rename flow used to live
+     * here. The pool now exposes memory via a <select> dropdown that
+     * mirrors the sidebar — rename/clear is handled by the sidebar's
+     * own contextmenu on the sidebar chips (legacy flow still present
+     * for the chip row template variant). 2026-04-20 pool/sidebar
+     * unification pass. */
     /* Right-click on an agent→channel edge → same unsubscribe popover
      * as the left-click path. Channel/agent nodes are resolved by later
      * branches so the order here matters — edge check first, since a

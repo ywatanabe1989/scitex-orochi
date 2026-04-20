@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/hooks-panel.js — hook-event panels (recent tools,
  * prompts, Agent calls, background tasks, tool counts). */
 

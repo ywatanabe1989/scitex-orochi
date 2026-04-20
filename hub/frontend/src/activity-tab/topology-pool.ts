@@ -1,10 +1,25 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology-pool.js — left-side agents + channels pool,
  * memory slot buttons, pool-action strip (Select All / None / M1..M5 / +Save). */
 
 function _topoBuildPoolHtml(visible, channels) {
+  /* ywatanabe 2026-04-21: "drop the pools themselves (hide them); we
+   * have the sidebar and it is enough; no duplication please". The
+   * sidebar Agents/Channels/Filtering sections provide every operation
+   * the canvas pool used to. Return an empty, display:none placeholder
+   * so downstream code that queries `.topo-pool` / `.topo-pool-chip-*`
+   * selectors doesn't blow up with null refs. If we confirm nothing
+   * depends on the pool being in the DOM we can return "" later. */
+  if (visible && channels) {
+    /* Keep the function signature live; caller still passes args. */
+  }
+  return '<div class="topo-pool" style="display:none"></div>';
+}
+
+/* Legacy pool builder — kept for reference in case a future change
+ * wants the in-canvas pool back. Never invoked from runtime because
+ * _topoBuildPoolHtml above short-circuits. */
+function _topoBuildPoolHtmlLegacy(visible, channels) {
   /* Left-side pool — all agents and all channels as chips so the user
    * can see the full universe at a glance even when the canvas is
    * zoomed / cluttered. ywatanabe 2026-04-19: "place channels pool;
@@ -129,108 +144,33 @@ function _topoBuildPoolHtml(visible, channels) {
       );
     })
     .join("");
-  /* Pool action strip — Select All / Deselect All / M1..M5 / +Save.
-   * Memory slot chips show filled state (green dot) when occupied;
-   * click to recall, shift-click to overwrite with the current
-   * selection, right-click to delete. The +Save button saves to the
-   * next free slot (or does nothing once all 5 are full — user can
-   * shift-click an existing slot to overwrite). todo#79
-   * "Pools as filters ... Select All / Deselect All / Memory 1,2,...". */
-  var memBtnsHtml = "";
-  for (var _ms = 1; _ms <= _TOPO_POOL_MEM_MAX; _ms++) {
-    var _mem = _topoPoolMemories[String(_ms)];
-    var _memCount = _mem
-      ? (_mem.agents || []).length + (_mem.channels || []).length
-      : 0;
-    var _memHidCount =
-      _mem && _mem.hidden
-        ? (_mem.hidden.agents || []).length +
-          (_mem.hidden.channels || []).length
-        : 0;
-    var _memFilterActive = !!(
-      _mem &&
-      _mem.filter &&
-      ((_mem.filter.input && _mem.filter.input.length) ||
-        (Array.isArray(_mem.filter.tags) && _mem.filter.tags.length))
-    );
-    var _memLabel = _mem && _mem.label ? String(_mem.label) : "";
-    /* Tooltip surfaces the full snapshot composition so users can tell
-     * slots apart without recalling them. todo#98. */
-    var _memTitle;
-    if (_mem) {
-      var parts = [];
-      parts.push(_memCount + " selected");
-      if (_memHidCount) parts.push(_memHidCount + " hidden");
-      if (_memFilterActive) parts.push("filter");
-      _memTitle =
-        "Recall M" +
-        _ms +
-        (_memLabel ? " — " + _memLabel : "") +
-        " (" +
-        parts.join(", ") +
-        "). Shift+click to overwrite, right-click to rename or clear.";
-    } else {
-      _memTitle =
-        "M" +
-        _ms +
-        " (empty). Click +Save or shift-click this slot to snapshot the current view.";
-    }
-    /* Button face: keep "M1".."M5" when empty/unlabeled, or show the
-     * user-chosen label when present. Truncate aggressively so a long
-     * label never blows out the compact action row. Filled unlabeled
-     * slots get a small count suffix ("M1·3") so users can see at a
-     * glance which slots hold data and how much — the color alone was
-     * too subtle (2026-04-19 user report: "memory saving is not
-     * working yet"). */
-    var _memFace;
-    if (_memLabel) {
-      _memFace =
-        _memLabel.length > 6 ? _memLabel.slice(0, 5) + "\u2026" : _memLabel;
-    } else if (_mem && _memCount > 0) {
-      _memFace = "M" + _ms + "\u00b7" + _memCount;
-    } else {
-      _memFace = "M" + _ms;
-    }
-    /* Dirty marker — slot is the active one AND current selection
-     * diverges from the saved snapshot. Solid bullet (U+25CF) appended
-     * to the face so users know which slot needs a Save click
-     * (2026-04-20 explicit-save pass). */
-    var _memDirty =
-      typeof _topoPoolMemoryIsDirty === "function" &&
-      _topoActiveMemSlot === _ms &&
-      _topoPoolMemoryIsDirty(_ms);
-    var _memDirtyDot = _memDirty ? " \u25CF" : "";
-    memBtnsHtml +=
-      '<button type="button" class="topo-pool-mem-btn' +
-      (_mem ? " topo-pool-mem-btn-filled" : "") +
-      (_memLabel ? " topo-pool-mem-btn-labeled" : "") +
-      (_memDirty ? " topo-pool-mem-btn-dirty" : "") +
-      '" data-mem-slot="' +
-      _ms +
-      '" title="' +
-      escapeHtml(
-        _memDirty
-          ? _memTitle + "\n\nUnsaved changes - click Save to persist"
-          : _memTitle,
-      ) +
-      '">' +
-      escapeHtml(_memFace) +
-      _memDirtyDot +
-      "</button>";
-  }
-  var _selCountInit = _topoPoolSelectionSize();
+  /* Pool memory control — single <select> dropdown + Save button.
+   * EXACT same structure as the sidebar Memory section (see
+   * dashboard.html lines ~110-123 and app/sidebar-memory.js), so both
+   * surfaces read/write the same _topoPoolMemories + _topoActiveMemSlot
+   * state and auto-sync. The options are populated by
+   * sidebar-memory.js::renderSidebarMemory (which mirrors into both
+   * selects). Replaces the legacy M1-M5 chip row + All/None buttons
+   * (2026-04-20 unification pass — ywatanabe: "the pool strip must
+   * use the exact same control as the sidebar").
+   *
+   * NOTE: the dropdown `id="topo-pool-mem-select"` is distinct from the
+   * sidebar's `sidebar-mem-select` so both can coexist in the DOM.
+   * Both carry class `sidebar-mem-select` so the existing CSS in
+   * app/sidebar-memory.css styles both. */
+  /* Pool memory dropdown + Save button are DUPLICATED in the sidebar
+   * FILTERING section (ywatanabe 2026-04-21: "hide them first; maybe
+   * we don't need them as we have sidebar"). Rendered but display:none
+   * so the sidebar-memory.js helpers that still populate
+   * #topo-pool-mem-select don't crash. Remove entirely later if the
+   * sidebar-only layout confirms correct. */
   var poolActions =
-    '<div class="topo-pool-actions">' +
-    '<div class="topo-pool-actions-row">' +
-    '<button type="button" class="topo-pool-act-btn" data-pool-action="select-all" title="Select every visible chip">All</button>' +
-    '<button type="button" class="topo-pool-act-btn" data-pool-action="deselect-all" title="Clear pool selection (shows all)">None</button>' +
-    '<span class="topo-pool-selcount">' +
-    (_selCountInit === 0 ? "" : _selCountInit + " selected") +
-    "</span>" +
+    '<div class="topo-pool-actions" style="display:none">' +
+    '<div class="sidebar-memory-picker">' +
+    '<select id="topo-pool-mem-select" class="sidebar-mem-select" title="Switch active memory slot. + Create new takes the next free slot."></select>' +
     "</div>" +
-    '<div class="topo-pool-actions-row topo-pool-mem-row">' +
-    memBtnsHtml +
-    '<button type="button" class="topo-pool-mem-save" data-pool-action="save-next" title="Save current selection to next free memory slot (or to the active slot if one is active)">+ Save</button>' +
+    '<div class="sidebar-memory-actions">' +
+    '<button type="button" class="sidebar-mem-btn sidebar-mem-save" data-action="save" title="Save current selection to the active memory slot">Save</button>' +
     "</div>" +
     "</div>";
   var pool =

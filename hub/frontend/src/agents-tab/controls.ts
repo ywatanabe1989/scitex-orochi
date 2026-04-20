@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Agents Tab — sub-tab bar, content rendering, pane controls,
  * follow-mode polling, and channel-subscription controls.
  * Depends on state.js (selected tab, caches, follow vars) and

@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology-signature.js — signature digest that lets
  * _renderActivityTopology short-circuit repaints when nothing
  * structurally changed. */

@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Visualization tab — line plot of TODO progress stats.
  *
  * Pulls the same aggregate payload as the TODO tab (/api/todo/stats/)

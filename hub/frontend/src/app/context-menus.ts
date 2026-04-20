@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Context menu for channel items — right-click shows pref options */
 function _addChannelContextMenu(el) {
   el.addEventListener("contextmenu", function (ev) {

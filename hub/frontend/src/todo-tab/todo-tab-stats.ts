@@ -1,6 +1,4 @@
 // @ts-nocheck
-// Migrated classic-script file. Types intentionally loose during
-// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* TODO stats dashboard (#171) — totals / burn-down / label breakdown
  * / by-repo / starvation. Backend: GET /api/todo/stats/ cached 60s.   */
 /* globals: escapeHtml */
