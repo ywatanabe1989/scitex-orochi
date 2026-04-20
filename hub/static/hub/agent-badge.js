@@ -238,11 +238,16 @@
   // ── Composed badge (canonical layout) ─────────────────────────────
   function renderAgentBadge(a, opts) {
     opts = opts || {};
+    /* Canonical order per ywatanabe 2026-04-20:
+     *   icon + 4 LEDs + name@hostname + star
+     * (previous order was icon + star + LEDs + name; reordered so the
+     * star sits at the tail where it's a stable interaction target and
+     * the name reads left-to-right as "icon 4-LEDs name".) */
     var icon = renderAgentIcon(a, opts.iconSize);
-    var star = renderAgentStar(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    return icon + star + leds + name;
+    var star = renderAgentStar(a);
+    return icon + leds + name + star;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────
