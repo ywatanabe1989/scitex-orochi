@@ -1946,16 +1946,21 @@ class GroupMentionExpansionTest(TestCase):
     EXPECTED_TOKENS = {"heads", "healers", "mambas", "all", "agents"}
 
     def test_consumers_group_patterns_has_expected_tokens(self):
-        """consumers.py still declares all five group tokens."""
+        """The consumers package still declares all five group tokens.
+
+        After the consumers.py → consumers/ package split, GROUP_PATTERNS
+        lives in the dashboard ``message`` handler at
+        ``hub/consumers/_dashboard_message.py``.
+        """
         from pathlib import Path
 
-        src = (Path(__file__).resolve().parent / "consumers.py").read_text(
-            encoding="utf-8"
-        )
+        src = (
+            Path(__file__).resolve().parent / "consumers" / "_dashboard_message.py"
+        ).read_text(encoding="utf-8")
         self.assertIn(
             "GROUP_PATTERNS = {",
             src,
-            "consumers.py lost the GROUP_PATTERNS dict (526c490 regression)",
+            "consumers package lost the GROUP_PATTERNS dict (526c490 regression)",
         )
         for token in self.EXPECTED_TOKENS:
             self.assertIn(

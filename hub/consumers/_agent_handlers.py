@@ -1,0 +1,243 @@
+"""Per-frame handler functions for :class:`hub.consumers.AgentConsumer`.
+
+Pulled out of ``_agent.py`` so the consumer class itself stays under the
+512-line cap. Each handler is a free async function that takes the
+consumer instance as its first argument; the consumer's ``receive_json``
+just dispatches to them.
+"""
+
+from __future__ import annotations
+
+import time
+
+from hub.models import normalize_channel_name
+
+from ._groups import _sanitize_group
+from ._helpers import _load_agent_channel_subs, _persist_agent_subscription
+
+
+async def handle_register(consumer, content):
+    """Hydrate channel subscriptions + agent metadata, then announce."""
+    payload = content.get("payload", {})
+    legacy_channels = list(content.get("channels") or payload.get("channels", []) or [])
+    persisted = await _load_agent_channel_subs(
+        consumer.workspace_id, consumer.agent_name
+    )
+    channels = list(dict.fromkeys([*persisted, *legacy_channels]))
+    # Spec v3 §3.1 — DM channels auto-subscribed at connect must also
+    # appear in agent_meta["channels"] so the chat_message filter
+    # forwards DM events.
+    for dm_name in getattr(consumer, "_dm_channel_names", []) or []:
+        if dm_name not in channels:
+            channels.insert(0, dm_name)
+    for ch_name in channels:
+        group = _sanitize_group(f"channel_{consumer.workspace_id}_{ch_name}")
+        await consumer.channel_layer.group_add(group, consumer.channel_name)
+
+    consumer.agent_meta = {
+        "agent_id": payload.get("agent_id", consumer.agent_name),
+        "project": payload.get("project", ""),
+        "machine": payload.get("machine", ""),
+        # todo#55: canonical FQDN from the heartbeat (display-only).
+        "hostname_canonical": payload.get("hostname_canonical", ""),
+        "role": payload.get("role", ""),
+        "model": payload.get("model", ""),
+        "workdir": payload.get("workdir", ""),
+        "icon": payload.get("icon", ""),
+        "icon_emoji": payload.get("icon_emoji", ""),
+        "icon_text": payload.get("icon_text", ""),
+        "color": payload.get("color", ""),
+        "multiplexer": payload.get("multiplexer", ""),
+        "channels": channels,
+        "claude_md": payload.get("claude_md", ""),
+    }
+
+    from hub.registry import register_agent
+
+    register_agent(consumer.agent_name, consumer.workspace_id, consumer.agent_meta)
+
+    await consumer.channel_layer.group_send(
+        consumer.workspace_group,
+        {
+            "type": "agent.info",
+            "agent": consumer.agent_name,
+            "info": consumer.agent_meta,
+        },
+    )
+
+    await consumer.send_json({"type": "registered", "channels": channels})
+
+
+async def handle_subscription(consumer, content, subscribe: bool):
+    """Add or remove a persistent channel subscription for the agent."""
+    payload = content.get("payload", {})
+    raw_name = payload.get("channel") or content.get("channel") or ""
+    if not raw_name:
+        await consumer.send_json(
+            {
+                "type": "error",
+                "code": "channel_required",
+                "message": "subscribe/unsubscribe requires a channel name",
+            }
+        )
+        return
+    ch_name = normalize_channel_name(raw_name)
+    ok = await _persist_agent_subscription(
+        consumer.workspace_id, consumer.agent_name, ch_name, subscribe
+    )
+    if not ok:
+        await consumer.send_json(
+            {
+                "type": "error",
+                "code": "subscription_failed",
+                "message": f"could not update subscription for {ch_name}",
+            }
+        )
+        return
+    group = _sanitize_group(f"channel_{consumer.workspace_id}_{ch_name}")
+    if subscribe:
+        await consumer.channel_layer.group_add(group, consumer.channel_name)
+    else:
+        await consumer.channel_layer.group_discard(group, consumer.channel_name)
+    subs = list(getattr(consumer, "agent_meta", {}).get("channels", []) or [])
+    if subscribe and ch_name not in subs:
+        subs.append(ch_name)
+    if not subscribe and ch_name in subs:
+        subs.remove(ch_name)
+    if hasattr(consumer, "agent_meta"):
+        consumer.agent_meta["channels"] = subs
+    from hub.registry import register_agent
+
+    register_agent(
+        consumer.agent_name,
+        consumer.workspace_id,
+        getattr(consumer, "agent_meta", {"channels": subs}),
+    )
+    await consumer.channel_layer.group_send(
+        consumer.workspace_group,
+        {
+            "type": "agent.info",
+            "agent": consumer.agent_name,
+            "info": getattr(consumer, "agent_meta", {}),
+        },
+    )
+    await consumer.send_json(
+        {
+            "type": "subscribed" if subscribe else "unsubscribed",
+            "channel": ch_name,
+            "channels": subs,
+        }
+    )
+
+
+async def handle_pong(consumer, content):
+    """Compute RTT for hub→agent ping echo and broadcast to dashboards."""
+    payload = content.get("payload") or {}
+    sent_ts = payload.get("ts") or content.get("ts")
+    if isinstance(sent_ts, (int, float)):
+        rtt_ms = max(0.0, (time.time() - float(sent_ts)) * 1000.0)
+        from hub.registry import update_pong
+
+        update_pong(consumer.agent_name, rtt_ms)
+        await consumer.channel_layer.group_send(
+            consumer.workspace_group,
+            {
+                "type": "agent.pong",
+                "agent": consumer.agent_name,
+                "rtt_ms": rtt_ms,
+                "ts": time.time(),
+            },
+        )
+
+
+async def handle_heartbeat(consumer, content):
+    """Persist resource metrics + optional narrative fields, then broadcast."""
+    payload = content.get("payload", {})
+    consumer.agent_metrics = {
+        "cpu_count": payload.get("cpu_count"),
+        "load_avg_1m": payload.get("load_avg_1m"),
+        "mem_used_percent": payload.get("mem_used_percent"),
+        "mem_total_mb": payload.get("mem_total_mb"),
+        "disk_used_percent": payload.get("disk_used_percent"),
+        # Slurm cluster aggregates (todo#87). None on non-slurm hosts.
+        "resource_source": payload.get("resource_source"),
+        "cluster_nodes": payload.get("cluster_nodes"),
+        "cluster_cpus_allocated": payload.get("cluster_cpus_allocated"),
+        "cluster_cpus_total": payload.get("cluster_cpus_total"),
+        "cluster_mem_free_mb": payload.get("cluster_mem_free_mb"),
+        "cluster_mem_total_mb": payload.get("cluster_mem_total_mb"),
+        "cluster_gpus_total": payload.get("cluster_gpus_total"),
+        "cluster_gpus_allocated": payload.get("cluster_gpus_allocated"),
+        "slurm_total_jobs": payload.get("slurm_total_jobs"),
+        "slurm_running": payload.get("slurm_running"),
+        "slurm_pending": payload.get("slurm_pending"),
+    }
+
+    from hub.registry import (
+        set_current_task,
+        set_subagent_count,
+        update_heartbeat,
+    )
+
+    update_heartbeat(consumer.agent_name, consumer.agent_metrics)
+
+    # Allow lightweight clients to piggyback narrative fields on
+    # the heartbeat rather than sending separate task_update /
+    # subagents_update frames.
+    if "current_task" in payload:
+        set_current_task(consumer.agent_name, str(payload.get("current_task") or ""))
+    if "subagent_count" in payload:
+        try:
+            set_subagent_count(
+                consumer.agent_name, int(payload.get("subagent_count") or 0)
+            )
+        except (TypeError, ValueError):
+            pass
+
+    await consumer.channel_layer.group_send(
+        consumer.workspace_group,
+        {
+            "type": "agent.info",
+            "agent": consumer.agent_name,
+            "info": getattr(consumer, "agent_meta", {}),
+            "metrics": consumer.agent_metrics,
+        },
+    )
+
+
+async def handle_task_update(consumer, content):
+    """Agent reports its current task — visible in the Activity tab."""
+    payload = content.get("payload", {})
+    task = payload.get("task", "")
+    from hub.registry import mark_activity, set_current_task
+
+    set_current_task(consumer.agent_name, task)
+    mark_activity(consumer.agent_name, action=task)
+    await consumer.channel_layer.group_send(
+        consumer.workspace_group,
+        {
+            "type": "agent.info",
+            "agent": consumer.agent_name,
+            "info": getattr(consumer, "agent_meta", {}),
+            "metrics": getattr(consumer, "agent_metrics", {}),
+        },
+    )
+
+
+async def handle_subagents_update(consumer, content):
+    """Agent reports its current subagent tree."""
+    # payload = { "subagents": [ {name, task, status}, ... ] }
+    payload = content.get("payload", {})
+    from hub.registry import mark_activity, set_subagents
+
+    set_subagents(consumer.agent_name, payload.get("subagents") or [])
+    mark_activity(consumer.agent_name)
+    await consumer.channel_layer.group_send(
+        consumer.workspace_group,
+        {
+            "type": "agent.info",
+            "agent": consumer.agent_name,
+            "info": getattr(consumer, "agent_meta", {}),
+            "metrics": getattr(consumer, "agent_metrics", {}),
+        },
+    )
