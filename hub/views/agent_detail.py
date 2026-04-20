@@ -145,7 +145,20 @@ def api_agent_detail(request, name: str):
         {
           "name": str,
           "role": str,
-          "machine": str,
+          "machine": str,                # YAML config label (join key)
+          # #257 canonical heartbeat metadata — authoritative per-process
+          # truth. Empty/None for legacy clients that haven't been
+          # upgraded; UI falls back to `machine` until populated.
+          "hostname": str,               # `hostname(1)` of the running process
+          "hostname_canonical": str,     # FQDN via socket.getfqdn()
+          "uname": str,                  # `uname -a` output
+          "instance_id": str,            # UUID set once at agent boot
+          "start_ts_unix": float | None, # Process start, epoch float
+          "is_proxy": bool,              # True if rank > 0 in priority list
+          "priority_rank": int | None,   # 0-based index in YAML host: list
+          "priority_list": [str, ...],   # Full host: list from YAML
+          "launch_method": str,          # sac | sac-ssh | sbatch | manual-* | unknown
+          "heartbeat_seq": int | None,   # Monotonic per process
           "model": str,
           "uptime_seconds": int | None,
           "registered_at": iso8601 | None,
@@ -207,6 +220,23 @@ def api_agent_detail(request, name: str):
         # todo#55: canonical FQDN reported by the heartbeat, displayed
         # next to the short `machine` label in the detail header.
         "hostname_canonical": agent.get("hostname_canonical", ""),
+        # ── #257 canonical heartbeat metadata ─────────────────────────
+        # `hostname` is the authoritative `hostname(1)` of the running
+        # process. The dashboard's `@host` label MUST be rendered from
+        # this, not from `machine` (YAML config) — fabricated/cached
+        # labels were the root of the ghost-mba bug (#256). Empty for
+        # legacy clients that haven't been upgraded; UI falls back to
+        # `machine` until the heartbeat carries it.
+        "hostname": agent.get("hostname", ""),
+        "uname": agent.get("uname", ""),
+        "instance_id": agent.get("instance_id", ""),
+        "start_ts_unix": agent.get("start_ts_unix"),
+        "is_proxy": bool(agent.get("is_proxy")),
+        "priority_rank": agent.get("priority_rank"),
+        "priority_list": list(agent.get("priority_list") or []),
+        "launch_method": agent.get("launch_method", ""),
+        "heartbeat_seq": agent.get("heartbeat_seq"),
+        # ── /#257 ─────────────────────────────────────────────────────
         "model": agent.get("model", ""),
         "uptime_seconds": uptime_seconds,
         "registered_at": agent.get("registered_at"),

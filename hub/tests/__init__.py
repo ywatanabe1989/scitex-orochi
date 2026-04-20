@@ -22,6 +22,7 @@ from hub.tests.models.test_identity import *  # noqa: F401,F403
 from hub.tests.models.test_messaging import *  # noqa: F401,F403
 from hub.tests.models.test_reexports import *  # noqa: F401,F403
 from hub.tests.registry.test_active_sessions import *  # noqa: F401,F403
+from hub.tests.registry.test_canonical_metadata import *  # noqa: F401,F403
 from hub.tests.registry.test_heartbeat import *  # noqa: F401,F403
 from hub.tests.registry.test_reexports import *  # noqa: F401,F403
 from hub.tests.test_auth import *  # noqa: F401,F403

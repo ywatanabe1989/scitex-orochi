@@ -32,6 +32,80 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # heartbeats that omit the field (older clients).
             "hostname_canonical": info.get("hostname_canonical", "")
             or prev.get("hostname_canonical", ""),
+            # ── #257 canonical heartbeat metadata ─────────────────────
+            # `hostname` is what `hostname(1)` returns on the running
+            # process — single source of truth for "where am I", per
+            # ywatanabe msg #14726/#14730: never display a fabricated or
+            # cached @host label. Distinct from `machine` (YAML config
+            # label) and `hostname_canonical` (FQDN via getfqdn()).
+            # If the heartbeat omits it, fall through to the previous
+            # value rather than wiping — older clients that haven't
+            # been upgraded yet keep working.
+            "hostname": info.get("hostname", "") or prev.get("hostname", ""),
+            # `uname -a` output. Lets the dashboard surface kernel /
+            # arch info in the agent detail pane (HANDOFF.md #1 spec).
+            "uname": info.get("uname", "") or prev.get("uname", ""),
+            # Process start time as unix epoch (float). Distinct from
+            # `started_at` (ISO string) — the unix form is the
+            # authoritative tiebreaker for singleton enforcement
+            # (HANDOFF #255: oldest start_ts wins when two processes
+            # claim the same name). Preserved across re-registers so
+            # the WS reconnect doesn't reset the clock.
+            "start_ts_unix": (
+                info.get("start_ts_unix")
+                if info.get("start_ts_unix") is not None
+                else prev.get("start_ts_unix")
+            ),
+            # Per-process UUID generated once at agent boot. Lets the
+            # hub distinguish two processes claiming the same agent
+            # name (the ghost-mba bug from #256). Preserved — a new
+            # instance_id from a heartbeat means a different process
+            # took over (or a fast restart happened).
+            "instance_id": info.get("instance_id", "")
+            or prev.get("instance_id", ""),
+            # Whether this instance considers itself a non-primary
+            # proxy (rank > 0 in its YAML priority list). True means
+            # the agent should be silent in public channels per
+            # HANDOFF §2 rule #2 (non-primary silence). Kept as bool
+            # — older clients that don't report it default to False
+            # so they keep posting normally.
+            "is_proxy": bool(info.get("is_proxy"))
+            if info.get("is_proxy") is not None
+            else bool(prev.get("is_proxy")),
+            # 0-based index in the YAML `host:` priority list (0 =
+            # primary). Lets the dashboard sort multiple instances of
+            # the same agent by priority and lets the hub pick the
+            # winner when two connect simultaneously.
+            "priority_rank": (
+                info.get("priority_rank")
+                if info.get("priority_rank") is not None
+                else prev.get("priority_rank")
+            ),
+            # Full priority list from YAML — useful for the Agents
+            # tab detail pane to show "would prefer to run on X / Y /
+            # Z but currently on N". List of hostnames.
+            "priority_list": (
+                list(info["priority_list"])
+                if isinstance(info.get("priority_list"), (list, tuple))
+                else (prev.get("priority_list") or [])
+            ),
+            # How the agent process was started: sac | sac-ssh |
+            # sbatch | manual-tmux | manual-direct | unknown. The
+            # launcher sets SCITEX_AGENT_LAUNCH_METHOD env var; the
+            # agent reads it once at boot and reports here. Lets a
+            # human glance at the dashboard and know how to restart.
+            "launch_method": info.get("launch_method", "")
+            or prev.get("launch_method", ""),
+            # Monotonically incrementing heartbeat sequence number per
+            # process. Reset to 0 on each new instance_id. Lets the
+            # hub detect missed heartbeats / clock skew without
+            # comparing wall times.
+            "heartbeat_seq": (
+                info.get("heartbeat_seq")
+                if info.get("heartbeat_seq") is not None
+                else prev.get("heartbeat_seq", 0)
+            ),
+            # ── /#257 ─────────────────────────────────────────────────
             "role": info.get("role", ""),
             "model": info.get("model", ""),
             "multiplexer": info.get("multiplexer", ""),
