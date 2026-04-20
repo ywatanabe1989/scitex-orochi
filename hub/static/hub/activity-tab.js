@@ -4628,16 +4628,8 @@ function _renderActivityTopology(visible, grid) {
         '"><span class="topo-pool-chip-icon">' +
         _ident.iconHtml(12) +
         "</span>" +
-        '<span class="activity-led activity-led-ws activity-led-ws-' +
-        (pConnected ? "on" : "off") +
-        ' topo-pool-chip-led" title="WebSocket: ' +
-        (pConnected ? "connected" : "disconnected") +
-        '"></span>' +
-        '<span class="activity-led activity-led-fn activity-led-fn-' +
-        escapeHtml(pLiveness) +
-        ' topo-pool-chip-led" title="Liveness: ' +
-        escapeHtml(pLiveness) +
-        '"></span>' +
+        // Single source of truth — see renderAgentLeds() in app.js
+        renderAgentLeds(a, { extraClass: "topo-pool-chip-led" }) +
         pPin +
         '<span class="topo-pool-chip-name" style="color:' +
         escapeHtml(_ident.color) +
@@ -5021,23 +5013,8 @@ function _renderActivityCards(agents, grid) {
         '">' +
         (a.pinned ? "\u2605" : "\u2606") +
         "</button>" +
-        '<span class="activity-led activity-led-ws activity-led-ws-' +
-        (connected ? "on" : "off") +
-        '" title="' +
-        escapeHtml(wsHint) +
-        '"></span>' +
-        '<span class="activity-led activity-led-fn activity-led-fn-' +
-        liveness +
-        '" title="' +
-        escapeHtml(livenessHint) +
-        '"></span>' +
-        '<span class="activity-state activity-state-' +
-        state +
-        '" title="' +
-        escapeHtml(stateHint) +
-        '">' +
-        escapeHtml(stateLabel) +
-        "</span>" +
+        // Single source of truth — see renderAgentLeds() in app.js
+        renderAgentLeds(a) +
         '<span class="activity-name" style="color:' +
         color +
         '">' +
