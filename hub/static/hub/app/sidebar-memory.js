@@ -10,8 +10,62 @@
  * agent SVG badge 39d2a50; Change 3 = no-autosave + dirty dot 6921695).
  */
 
-/* Build the HTML for the M1..M5 chip row. Kept as a pure string
- * builder so innerHTML assignment is a single write. */
+/* Build the <option> list for the memory dropdown. Each occupied slot
+ * shows "M<n> · label · count" (dirty-dot suffix when the active slot
+ * has unsaved edits); empty slots show "M<n> (empty)". A trailing
+ * "+ Create new" option jumps to the next free slot + prompts for a
+ * label. */
+function _buildSidebarMemoryDropdownOptions() {
+  var max = typeof _TOPO_POOL_MEM_MAX !== "undefined" ? _TOPO_POOL_MEM_MAX : 5;
+  var active = _topoActiveMemSlot;
+  var parts = [];
+  /* "No memory" — the unselected / unfiltered baseline. */
+  var noneSel = active == null ? ' selected="selected"' : "";
+  parts.push('<option value=""' + noneSel + ">No memory</option>");
+  var firstFree = 0;
+  for (var slot = 1; slot <= max; slot++) {
+    var mem = _topoPoolMemories ? _topoPoolMemories[String(slot)] : null;
+    if (!mem && firstFree === 0) firstFree = slot;
+    var label = mem && mem.label ? String(mem.label) : "";
+    var count = mem
+      ? (mem.agents || []).length + (mem.channels || []).length
+      : 0;
+    var isActive = active === slot;
+    var dirty =
+      isActive &&
+      typeof _topoPoolMemoryIsDirty === "function" &&
+      _topoPoolMemoryIsDirty(slot);
+    var face;
+    if (mem) {
+      face = "M" + slot;
+      if (label) face += " \u00b7 " + label;
+      if (count > 0) face += " (" + count + ")";
+    } else {
+      face = "M" + slot + " (empty)";
+    }
+    if (dirty) face += " \u25CF";
+    var sel = isActive ? ' selected="selected"' : "";
+    parts.push(
+      '<option value="' +
+        slot +
+        '"' +
+        sel +
+        ">" +
+        escapeHtml(face) +
+        "</option>",
+    );
+  }
+  /* "+ Create new" — disabled when all slots are full. */
+  if (firstFree > 0) {
+    parts.push('<option value="__new__">+ Create new</option>');
+  } else {
+    parts.push('<option value="__full__" disabled>(all slots full)</option>');
+  }
+  return parts.join("");
+}
+
+/* Build the HTML for the M1..M5 chip row. LEGACY — kept in case other
+ * call-sites reference it; not used by the dropdown renderer. */
 function _buildSidebarMemoryChipsHtml() {
   var html = "";
   var max = typeof _TOPO_POOL_MEM_MAX !== "undefined" ? _TOPO_POOL_MEM_MAX : 5;
