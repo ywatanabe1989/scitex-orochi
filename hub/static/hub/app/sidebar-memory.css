@@ -180,12 +180,12 @@
  * styling as the memory picker above. Two dropdowns in a row, ~50%
  * width each. ywatanabe 2026-04-21: "sort and color should be in the
  * sidebar as well". */
-#agents .sidebar-agent-controls {
+.sidebar-agent-controls {
   display: flex;
   gap: 4px;
-  margin-bottom: 6px;
+  margin: 2px 0 6px;
 }
-#agents .sidebar-agent-select {
+.sidebar-agent-select {
   flex: 1 1 0;
   min-width: 0;
   padding: 3px 6px;
@@ -196,8 +196,8 @@
   border-radius: 3px;
   cursor: pointer;
 }
-#agents .sidebar-agent-select:hover,
-#agents .sidebar-agent-select:focus {
+.sidebar-agent-select:hover,
+.sidebar-agent-select:focus {
   border-color: #4ecdc4;
   outline: none;
 }
