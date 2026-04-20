@@ -140,8 +140,14 @@ function _topoBuildPoolHtml(visible, channels) {
    * sidebar's `sidebar-mem-select` so both can coexist in the DOM.
    * Both carry class `sidebar-mem-select` so the existing CSS in
    * app/sidebar-memory.css styles both. */
+  /* Pool memory dropdown + Save button are DUPLICATED in the sidebar
+   * FILTERING section (ywatanabe 2026-04-21: "hide them first; maybe
+   * we don't need them as we have sidebar"). Rendered but display:none
+   * so the sidebar-memory.js helpers that still populate
+   * #topo-pool-mem-select don't crash. Remove entirely later if the
+   * sidebar-only layout confirms correct. */
   var poolActions =
-    '<div class="topo-pool-actions">' +
+    '<div class="topo-pool-actions" style="display:none">' +
     '<div class="sidebar-memory-picker">' +
     '<select id="topo-pool-mem-select" class="sidebar-mem-select" title="Switch active memory slot. + Create new takes the next free slot."></select>' +
     "</div>" +
