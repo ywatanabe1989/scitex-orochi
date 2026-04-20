@@ -26,7 +26,6 @@ class ChannelMembersAdminApiTest(TestCase):
     """Phase 3 admin API — POST subscribe, DELETE unsubscribe, PATCH perm."""
 
     def setUp(self):
-        from hub.models import Channel, ChannelMembership
 
         self.ChannelMembership = ChannelMembership
         self.Channel = Channel
@@ -110,14 +109,41 @@ class ChannelMembersAdminApiTest(TestCase):
         )
 
     def test_non_admin_rejected(self):
+        """Non-admin members cannot subscribe HUMAN users to channels.
+
+        Subscribing agent-* targets is allowed for any workspace member
+        (drag-agent-to-channel UX, see commit d47397b); cross-human
+        subscriptions still require admin/staff.
+        """
+        # Another human in the workspace.
+        other_human = User.objects.create_user(username="human-target", password="x")
+        WorkspaceMember.objects.create(
+            workspace=self.ws, user=other_human, role="member"
+        )
         self.client.force_login(self.plain)
         resp = self.client.post(
             "/api/channel-members/",
-            data=json.dumps({"channel": "#nope", "username": "agent-worker-x"}),
+            data=json.dumps({"channel": "#nope", "username": "human-target"}),
             content_type="application/json",
             HTTP_HOST=self.host,
         )
         self.assertEqual(resp.status_code, 403)
+
+    def test_non_admin_can_subscribe_agent(self):
+        """Non-admin members CAN subscribe agent-* targets.
+
+        Codifies the drag-agent-to-channel relaxation (commit d47397b)
+        so it doesn't silently regress.
+        """
+        self.client.force_login(self.plain)
+        resp = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps({"channel": "#drag-target", "username": "agent-worker-x"}),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()["status"], "ok")
 
     def test_delete_missing_channel_is_idempotent(self):
         self.client.force_login(self.admin)
