@@ -14,9 +14,15 @@ from hub.views._helpers import bare_url, get_workspace, workspace_url
 
 
 @login_required
-def workspace_dashboard(request):
-    """Main dashboard view for a workspace (served on subdomain)."""
-    workspace = get_workspace(request)
+def workspace_dashboard(request, slug=None):
+    """Main dashboard view for a workspace (served on subdomain).
+
+    ``slug`` is supplied by the path-based ``/workspace/<slug>/`` route in
+    :mod:`hub.urls` (used by tests and the bare-domain fallback). On
+    workspace subdomains the middleware resolves ``request.workspace``
+    and ``slug`` is ``None``.
+    """
+    workspace = get_workspace(request, slug=slug)
 
     if not request.user.is_superuser:
         if not WorkspaceMember.objects.filter(
@@ -65,9 +71,14 @@ def workspace_dashboard(request):
 
 
 @login_required
-def workspace_settings_view(request):
-    """Workspace settings — manage tokens, members."""
-    workspace = get_workspace(request)
+def workspace_settings_view(request, slug=None):
+    """Workspace settings — manage tokens, members.
+
+    ``slug`` is supplied by the path-based ``/workspace/<slug>/settings/``
+    route in :mod:`hub.urls`; on workspace subdomains it's ``None`` and
+    the workspace is resolved from ``request.workspace``.
+    """
+    workspace = get_workspace(request, slug=slug)
 
     membership = WorkspaceMember.objects.filter(
         user=request.user, workspace=workspace
