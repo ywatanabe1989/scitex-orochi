@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Chat module -- markdown / mention / link / code-block content rendering.
  * Extracted from appendMessage() so chat-render.js stays under the JS
  * line limit. Pure helper: takes raw content text, returns the

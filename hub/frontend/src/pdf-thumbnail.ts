@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* PDF thumbnail renderer — lazily loads pdf.js from CDN and renders the
  * first page of a PDF to a data-URL image. Used by Files tab and chat
  * attachment renderer so PDFs show a first-page preview instead of a

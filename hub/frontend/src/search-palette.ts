@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Search Palette — Ctrl+K / Cmd+K global command palette (todo#365)
  *
  * Depends on: app.js (apiUrl, token), mention.js (fuzzyMatch >= 0 → _fm)

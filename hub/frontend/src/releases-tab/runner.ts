@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Releases tab — per-repo CHANGELOG.md sub-tabs with CRUD (todo#90).
  *
  * UI mirrors the Settings tab sub-tab pattern (settings-mode-tabs):

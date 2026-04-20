@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Agents Tab — overview table, registry row builder, context/skills
  * badges, refresh loop, purge action.
  * Loaded last: defines _buildOverviewHtml (used by controls.js

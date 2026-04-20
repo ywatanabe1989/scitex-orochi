@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Channel-tree render + per-row handler helpers live in
  * sidebar-channel-tree.js (loaded before this file in dashboard.html).
  * fetchStats() is the public entry point called from init.js and the

@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology.js — canvas topology renderer.
  * _renderActivityTopology: filter visible agents, compute ring layout,
  * emit edges + channel diamonds + agent pills + human node, autofit

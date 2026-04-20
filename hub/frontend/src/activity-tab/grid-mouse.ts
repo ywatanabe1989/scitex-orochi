@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/grid-mouse.js — delegated dblclick / mousedown /
  * mousemove / mouseup / window.blur handlers for the overview grid.
  * Implements the drag-to-subscribe + optimistic edge add + canvas

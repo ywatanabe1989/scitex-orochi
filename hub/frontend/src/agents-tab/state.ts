@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Agents Tab — shared state, detail-fetch, and small formatters.
  * Loaded first; later sub-files (detail.js, controls.js, overview.js)
  * depend on the globals declared here. */

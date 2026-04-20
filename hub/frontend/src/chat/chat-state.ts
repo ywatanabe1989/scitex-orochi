@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Chat module -- message display, history, filtering */
 /* globals: escapeHtml, getAgentColor, timeAgo, cachedAgentNames, userName,
    currentChannel, knownMessageKeys, messageKey, sendOrochiMessage,

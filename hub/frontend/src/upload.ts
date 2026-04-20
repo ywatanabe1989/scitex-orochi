@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* File upload — attach, drag-drop, clipboard paste (multi-file) with
  * staged preview. Files picked via paste/drag/file-picker are held in a
  * pending tray next to the textarea and only sent when the user presses

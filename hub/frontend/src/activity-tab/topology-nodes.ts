@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology-nodes.js — SVG emission for channel diamonds,
  * agent pills, and the human user node. */
 
@@ -33,14 +35,10 @@ function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs) {
         r = 12;
       }
       /* Single source of truth — channel-badge.js renderChannelBadgeSvg.
-       * Canonical element order: icon + star + eye + mute + name,
-       * IDENTICAL to the HTML renderer used by the sidebar row and
-       * pool chip, so all three sites (sidebar / pool / canvas) read
-       * left-to-right the same way and carry the same star/eye/mute
-       * UI + click behavior via body-level delegation (ywatanabe
+       * Same star/eye/mute UI + identical click behavior (via body
+       * delegation) as the sidebar row and pool chip (ywatanabe
        * 2026-04-20: "ALL channel badge MUST have the SAME UI and
-       * functionalities"). No inline glyph/star/eye/mute emission
-       * here — the SSoT owns the full channel visual. */
+       * functionalities"). */
       if (typeof renderChannelBadgeSvg === "function") {
         return renderChannelBadgeSvg(
           c,

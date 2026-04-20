@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology-pulse.js — message-pass animation entry
  * point. Records events into the seek buffer, routes DMs via virtual-
  * midpoint single-leg flights, otherwise fires the classic two-leg

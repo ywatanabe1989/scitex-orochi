@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 async function loadHistory() {
   /* If a channel is currently selected, delegate to loadChannelHistory so we
    * only fetch that channel's messages.  This prevents a race/flash where the

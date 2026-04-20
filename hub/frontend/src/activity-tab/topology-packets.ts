@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology-packets.js — packet animation on topology
  * edges: spawnPacket with rAF flight, landing bubble at destination,
  * flashEdge for brief endpoint highlight. */

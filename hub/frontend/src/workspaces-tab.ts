@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Workspaces Tab -- workspace cards */
 /* globals: escapeHtml, getAgentColor, activeTab, apiUrl */
 

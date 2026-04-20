@@ -510,24 +510,17 @@
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
       window.__orochiWorkspaceIconImage = "{{ workspace.icon_image|escapejs }}";
     </script>
-    <!-- hook-bypass: inline-script — mermaid init + highlight.js init -->
-    <!-- Single IIFE bundle produced by `cd hub/frontend && npm run build`.
-         Replaces ~100 individual <script> tags. IIFE format preserves the
-         classic-script global semantics: each module's top-level
-         `var`/`function` becomes window-accessible, so cross-file
-         references work without per-file shim refactors. The Python
-         `vite_bundle` template tag resolves the hashed bundle filename
-         from hub/static/hub/dist/.vite/manifest.json at request time. -->
-<script src="{% vite_bundle 'src/index.ts' %}"></script>
-<!-- Service worker registration stays classic — intentionally outside
-         the bundle so SW lifecycle is isolated from dashboard code. -->
-<script src="{% static 'hub/sw-register.js' %}?v=99"></script>
-<!-- mermaid.js — diagram rendering for ```mermaid code blocks -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-<script>mermaid.initialize({startOnLoad: false, theme: 'dark'});</script>
-<!-- highlight.js — load after DOM scripts so it can highlight existing blocks -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script>
+    {# Orochi Hub dashboard — single Vite/TS bundle replacing the ~100 #}
+    {# per-file classic-script tags. See hub/frontend/src/index.ts for #}
+    {# load order and hub/frontend/README for the build workflow. #}
+    {% vite_bundle "src/index.ts" as orochi_bundle %}
+    {% if orochi_bundle %}<script src="{{ orochi_bundle }}"></script>{% endif %}
+    <!-- mermaid.js — diagram rendering for ```mermaid code blocks -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad: false, theme: 'dark'});</script>
+    <!-- highlight.js — load after DOM scripts so it can highlight existing blocks -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script>
     /* Auto-highlight all code blocks (including dynamically added ones via MutationObserver) */
     if (typeof hljs !== 'undefined') {
       document.addEventListener('DOMContentLoaded', function () {
@@ -546,75 +539,94 @@
         obs.observe(document.body, { childList: true, subtree: true });
       });
     }
-</script>
-<!-- Channel export modal -->
-<div id="channel-export-modal" class="ch-export-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Export channel">
-<div class="ch-export-backdrop" onclick="closeChannelExport()"></div>
-<div class="ch-export-card">
-<div class="ch-export-header">
-<span id="ch-export-title">Export channel</span>
-<button type="button" class="ch-export-close" onclick="closeChannelExport()">&times;</button>
-</div>
-<div class="ch-export-body">
-<label class="ch-export-label">
-From
-<input type="datetime-local" id="ch-export-from" class="ch-export-input">
-</label>
-<label class="ch-export-label">
-To
-<input type="datetime-local" id="ch-export-to" class="ch-export-input">
-</label>
-<label class="ch-export-label">
-Format
-<select id="ch-export-format" class="ch-export-input">
-<option value="json">JSON</option>
-<option value="md">Markdown</option>
-<option value="txt">Plain text</option>
-</select>
-</label>
-</div>
-<div class="ch-export-footer">
-<button type="button" class="ch-export-download" onclick="doChannelExport()">&#10515; Download</button>
-<button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
-</div>
-</div>
-<div class="ch-export-body">
-<label class="ch-export-label">
-From
-<input type="datetime-local" id="ch-export-from" class="ch-export-input">
-</label>
-<label class="ch-export-label">
-To
-<input type="datetime-local" id="ch-export-to" class="ch-export-input">
-</label>
-<label class="ch-export-label">
-Format
-<select id="ch-export-format" class="ch-export-input">
-<option value="json">JSON</option>
-<option value="md">Markdown</option>
-<option value="txt">Plain text</option>
-</select>
-</label>
-</div>
-<div class="ch-export-footer">
-<button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
-<button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
-</div>
-</div>
+    </script>
+    {# element-inspector, search-palette, feed-scroll-btns, feed-nav are #}
+    {# part of the Vite bundle loaded above. #}
+    <!-- Channel export modal -->
+    <div id="channel-export-modal"
+         class="ch-export-modal"
+         style="display:none"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Export channel">
+        <div class="ch-export-backdrop" onclick="closeChannelExport()"></div>
+        <div class="ch-export-card">
+            <div class="ch-export-header">
+                <span id="ch-export-title">Export channel</span>
+                <button type="button" class="ch-export-close" onclick="closeChannelExport()">&times;</button>
+            </div>
+            <div class="ch-export-body">
+                <label class="ch-export-label">
+                    From
+                    <input type="datetime-local" id="ch-export-from" class="ch-export-input">
+                </label>
+                <label class="ch-export-label">
+                    To
+                    <input type="datetime-local" id="ch-export-to" class="ch-export-input">
+                </label>
+                <label class="ch-export-label">
+                    Format
+                    <select id="ch-export-format" class="ch-export-input">
+                        <option value="json">JSON</option>
+                        <option value="md">Markdown</option>
+                        <option value="txt">Plain text</option>
+                    </select>
+                </label>
+            </div>
+            <div class="ch-export-footer">
+                <button type="button" class="ch-export-download" onclick="doChannelExport()">&#10515; Download</button>
+                <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
+            </div>
+        </div>
+        <div class="ch-export-body">
+            <label class="ch-export-label">
+                From
+                <input type="datetime-local" id="ch-export-from" class="ch-export-input">
+            </label>
+            <label class="ch-export-label">
+                To
+                <input type="datetime-local" id="ch-export-to" class="ch-export-input">
+            </label>
+            <label class="ch-export-label">
+                Format
+                <select id="ch-export-format" class="ch-export-input">
+                    <option value="json">JSON</option>
+                    <option value="md">Markdown</option>
+                    <option value="txt">Plain text</option>
+                </select>
+            </label>
+        </div>
+        <div class="ch-export-footer">
+            <button type="button" class="ch-export-download" onclick="doChannelExport()">&#8681; Download</button>
+            <button type="button" class="ch-export-cancel" onclick="closeChannelExport()">Cancel</button>
+        </div>
+    </div>
 </div>
 <!-- Channel topic edit modal (todo#402) -->
-<div id="channel-topic-modal" class="ch-topic-modal" style="display:none" role="dialog" aria-modal="true" aria-label="Edit channel topic">
-<div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
-<div class="ch-topic-card">
-<div class="ch-topic-header">
-<span>Edit channel topic</span>
-<button type="button" class="ch-topic-close" onclick="closeChannelTopicEdit()">&times;</button>
-</div>
-<textarea id="channel-topic-input" class="ch-topic-input" rows="3" placeholder="Describe this channel's purpose..."></textarea>
-<div class="ch-topic-footer">
-<button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
-<button type="button" class="ch-topic-cancel" onclick="closeChannelTopicEdit()">Cancel</button>
-</div>
-</div>
+<div id="channel-topic-modal"
+     class="ch-topic-modal"
+     style="display:none"
+     role="dialog"
+     aria-modal="true"
+     aria-label="Edit channel topic">
+    <div class="ch-topic-backdrop" onclick="closeChannelTopicEdit()"></div>
+    <div class="ch-topic-card">
+        <div class="ch-topic-header">
+            <span>Edit channel topic</span>
+            <button type="button"
+                    class="ch-topic-close"
+                    onclick="closeChannelTopicEdit()">&times;</button>
+        </div>
+        <textarea id="channel-topic-input"
+                  class="ch-topic-input"
+                  rows="3"
+                  placeholder="Describe this channel's purpose..."></textarea>
+        <div class="ch-topic-footer">
+            <button type="button" class="ch-topic-save" onclick="saveChannelTopic()">Save</button>
+            <button type="button"
+                    class="ch-topic-cancel"
+                    onclick="closeChannelTopicEdit()">Cancel</button>
+        </div>
+    </div>
 </div>
 {% endblock %}

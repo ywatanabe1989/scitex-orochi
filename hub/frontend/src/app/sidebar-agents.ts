@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Sidebar agents + stats fetching */
 async function fetchAgents() {
   try {
@@ -94,48 +96,20 @@ async function fetchAgents() {
     var sidebarVisible = agents.filter(function (a) {
       return connected(a) || !!a.pinned;
     });
-    /* Starred first (like channels), then apply the sort-dropdown
-     * selection (name / machine) within each group. ywatanabe
-     * 2026-04-21: "starred agents should be placed upper" +
-     * "functionally, no; please make it functional" (sort dropdown
-     * must actually sort the sidebar list, not just the Agents tab). */
-    var sortBy =
-      typeof _overviewSort === "string" && _overviewSort
-        ? _overviewSort
-        : "name";
-    var sortKey = function (a) {
-      if (sortBy === "machine") {
-        return (a.machine || "") + "\u0001" + (a.name || "");
-      }
-      /* Default "name" — use the same display-name that renders in the
-       * badge so visual order matches what the user reads. */
-      var dn =
-        typeof hostedAgentName === "function"
-          ? hostedAgentName(a)
-          : a.name || "";
-      return String(dn || "").toLowerCase();
-    };
-    sidebarVisible.sort(function (a, b) {
-      var pa = a.pinned ? 0 : 1;
-      var pb = b.pinned ? 0 : 1;
-      if (pa !== pb) return pa - pb;
-      var ka = sortKey(a);
-      var kb = sortKey(b);
-      if (ka < kb) return -1;
-      if (ka > kb) return 1;
-      return 0;
-    });
     container.innerHTML = sidebarVisible
       .map(function (a) {
         var liveness = a.liveness || (connected(a) ? "online" : "offline");
         var state = _computeStateLocal(a);
-        /* Per ywatanabe 2026-04-21: the whole point of starring is to
-         * keep the agent prominently visible; dimming a starred agent
-         * contradicts that. Keep starred rows at full opacity even when
-         * disconnected. The ghost class only still applies to non-
-         * starred rows that are rendered as "shadow" for the other
-         * visibility paths — but those don't pass the filter above. */
-        var ghostClass = "";
+        /* Ghost (shadow) rule — user 2026-04-20 global rule:
+         * functionally dead or offline but pinned → shadow. Mirrors
+         * the canvas + list-view .activity-card-ghost treatment so
+         * head-spartan is dimmed consistently across every surface. */
+        var _sidebarDead =
+          typeof _isDeadAgent === "function" ? _isDeadAgent(a) : false;
+        var ghostClass =
+          (!connected(a) || _sidebarDead) && a.pinned
+            ? " sidebar-agent-ghost"
+            : "";
         var rawName = a.name || "";
         /* todo#96: route identity (icon, color, display-name, tooltip)
          * through the shared agentIdentity helper so the sidebar row,

@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Threading — state, attachment tray, content linkify, permalink, URL sync */
 /* globals: apiUrl, escapeHtml */
 

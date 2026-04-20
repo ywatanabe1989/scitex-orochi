@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 function appendSystemMessage(msg) {
   var el = document.createElement("div");
   el.className = "msg msg-system";

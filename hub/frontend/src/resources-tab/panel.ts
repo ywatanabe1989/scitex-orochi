@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Resource Monitor Panel + Resources Tab — part 1: state, icons, tooltip,
  * machines-view switch, donut/bar helpers, updateResourcePanel.
  * Split from resources-tab.js (697 lines) — see resources-tab/tab.js for

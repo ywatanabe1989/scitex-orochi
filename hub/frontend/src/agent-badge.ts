@@ -1,4 +1,6 @@
 // @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /**
  * agent-badge.js — single source of truth for the agent badge UI.
  *
@@ -239,17 +241,16 @@
   // ── Composed badge (canonical layout) ─────────────────────────────
   function renderAgentBadge(a, opts) {
     opts = opts || {};
-    /* Canonical order per ywatanabe 2026-04-21:
-     *   icon + star + 4 LEDs + name@hostname
-     * Matches the channel badge (icon + star + eye + mute + name), so
-     * star sits in the same column position across both entity types.
-     * renderAgentStar always emits a placeholder span for non-starred
-     * agents so column alignment holds. */
+    /* Canonical order per ywatanabe 2026-04-20:
+     *   icon + 4 LEDs + name@hostname + star
+     * (previous order was icon + star + LEDs + name; reordered so the
+     * star sits at the tail where it's a stable interaction target and
+     * the name reads left-to-right as "icon 4-LEDs name".) */
     var icon = renderAgentIcon(a, opts.iconSize);
-    var star = renderAgentStar(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    return icon + star + leds + name;
+    var star = renderAgentStar(a);
+    return icon + leds + name + star;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────
