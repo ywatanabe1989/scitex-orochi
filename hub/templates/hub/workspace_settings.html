@@ -132,20 +132,13 @@
                     </section>
                     <section class="settings-section">
                         <h4>Workspace Icon</h4>
-                        <p class="settings-desc">Click the icon to choose an emoji.</p>
-                        <div class="ws-icon-preview ws-icon-clickable"
+                        <p class="settings-desc">Click the icon to pick an emoji, or upload an image below.</p>
+                        <div class="ws-icon-preview ws-icon-clickable ws-icon-preview-box"
                              id="ws-icon-preview"
-                             title="Click to change icon"
-                             style="cursor:pointer;
-                                    font-size:48px;
-                                    width:64px;
-                                    height:64px;
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    background:#1a1a1a;
-                                    border-radius:8px">
-                            {% if workspace.icon %}
+                             title="Click to change icon">
+                            {% if workspace.icon_image %}
+                                <img src="{{ workspace.icon_image }}" alt="" class="ws-icon-preview-image">
+                            {% elif workspace.icon %}
                                 {{ workspace.icon }}
                             {% else %}
                                 🐍
@@ -155,6 +148,20 @@
                             {% csrf_token %}
                             <input type="hidden" name="action" value="set_icon">
                             <input type="hidden" name="icon" value="" id="icon-input">
+                        </form>
+                        <form method="post"
+                              action="/api/workspace/icon/"
+                              enctype="multipart/form-data"
+                              class="settings-form settings-form-icon-upload">
+                            {% csrf_token %}
+                            <input type="file" name="file" accept="image/*" id="ws-icon-file-input">
+                            <button type="submit" class="btn-small btn-primary">Upload image</button>
+                            {% if workspace.icon_image %}
+                                <button type="button"
+                                        class="btn-small"
+                                        id="ws-icon-remove-btn"
+                                        title="Remove uploaded image (keeps emoji)">Remove image</button>
+                            {% endif %}
                         </form>
                     </section>
                     <section class="settings-section">
@@ -386,6 +393,7 @@
     <!-- hook-bypass: inline-script — Django template vars must be injected server-side -->
     <script>
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
+      window.__orochiWorkspaceIconImage = "{{ workspace.icon_image|escapejs }}";
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
       window.__orochiCsrfToken = "{{ csrf_token }}";
     </script>

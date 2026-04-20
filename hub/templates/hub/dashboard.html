@@ -546,6 +546,7 @@
       window.__orochiUserName = "{{ request.user.username|escapejs }}";
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
+      window.__orochiWorkspaceIconImage = "{{ workspace.icon_image|escapejs }}";
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>

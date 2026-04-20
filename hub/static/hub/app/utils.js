@@ -1,4 +1,3 @@
-
 var cachedAgentNames = [];
 var historyLoaded = false;
 var knownMessageKeys = {};
@@ -53,6 +52,32 @@ function getWorkspaceColor(name) {
 
 function getWorkspaceIcon(name, size) {
   size = size || 20;
+  /* Render cascade:
+   *   1. uploaded image (window.__orochiWorkspaceIconImage) → <img>
+   *   2. emoji (window.__orochiWorkspaceIcon)               → handled by callers
+   *   3. coloured square with first letter                  → default below.
+   * The emoji branch stays in the call sites (init.js / emoji-picker /
+   * settings.js) so this helper only needs to distinguish image vs
+   * first-letter fallback. */
+  var imgUrl = window.__orochiWorkspaceIconImage || "";
+  if (imgUrl) {
+    var radiusPx = Math.round(size * 0.22);
+    return (
+      '<img class="ws-icon-img" src="' +
+      escapeHtml(imgUrl) +
+      '" alt="" width="' +
+      size +
+      '" height="' +
+      size +
+      '" style="width:' +
+      size +
+      "px;height:" +
+      size +
+      "px;border-radius:" +
+      radiusPx +
+      'px;object-fit:cover;display:block" />'
+    );
+  }
   var color = getWorkspaceColor(name);
   var letter = (name || "W").charAt(0).toUpperCase();
   var fontSize = Math.round(size * 0.55);
@@ -351,4 +376,3 @@ function sendOrochiMessage(msgData) {
       console.error("REST send error:", e);
     });
 }
-

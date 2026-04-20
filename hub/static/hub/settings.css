@@ -378,6 +378,33 @@
   background: #3b1c1c;
 }
 
+/* Upload + remove image actions row (above the emoji grid). */
+.emoji-picker-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.emoji-picker-upload,
+.emoji-picker-remove-image {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  color: #ccc;
+  background: #22252a;
+  border: 1px solid #444;
+}
+
+.emoji-picker-upload:hover,
+.emoji-picker-remove-image:hover {
+  background: #2a2d31;
+  border-color: #666;
+}
+
+.emoji-picker-file {
+  display: none;
+}
+
 /* Clickable icon preview */
 .ws-icon-clickable {
   cursor: pointer;
@@ -385,6 +412,41 @@
 
 .settings-form-icon {
   margin-top: 0.8rem;
+}
+
+/* Workspace icon preview — base box (emoji fallback sizing) */
+.ws-icon-preview-box {
+  cursor: pointer;
+  font-size: 48px;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.ws-icon-preview-box .ws-icon-preview-image {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+
+/* Image-upload form for workspace icon */
+.settings-form-icon-upload {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.settings-form-icon-upload input[type="file"] {
+  color: inherit;
 }
 
 /* Token action buttons — plain text style */
@@ -407,7 +469,6 @@
   border-color: #4ecdc4;
 }
 
-
 /* Push notification toggle (todo#389) */
 #push-toggle {
   padding: 6px 14px;
@@ -415,7 +476,9 @@
   border: 1px solid #555;
   cursor: pointer;
   font-size: 13px;
-  transition: background 0.15s, border-color 0.15s;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
   background: #1a1a1a;
   color: #ccc;
 }

@@ -12,6 +12,11 @@ class Workspace(models.Model):
     name = models.SlugField(max_length=100, unique=True)
     description = models.TextField(blank=True, default="")
     icon = models.CharField(max_length=10, blank=True, default="")  # emoji
+    # Uploaded image URL. Cascade for rendering: icon_image > icon (emoji)
+    # > first-letter coloured square. Parallel to UserProfile.icon_image /
+    # AgentProfile.icon_image so all three entity types share the same
+    # image-upload contract.
+    icon_image = models.CharField(max_length=500, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

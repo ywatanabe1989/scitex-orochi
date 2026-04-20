@@ -122,6 +122,12 @@ urlpatterns = [
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/agents/avatar/", views.api_agents_avatar, name="api-agents-avatar"),
+    # Workspace icon image upload (parallel to agent/user avatars).
+    path(
+        "api/workspace/icon/",
+        views.api_workspace_icon,
+        name="api-workspace-icon",
+    ),
     # Per-user (human) profile + avatar — todo#50
     path("api/user-profile/", views.api_user_profile, name="api-user-profile"),
     path(
