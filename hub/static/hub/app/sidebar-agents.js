@@ -93,15 +93,36 @@ async function fetchAgents() {
     var sidebarVisible = agents.filter(function (a) {
       return connected(a) || !!a.pinned;
     });
-    /* Starred first (like channels), then the rest in the order the
-     * backend sent them. ywatanabe 2026-04-21: "starred agents should
-     * be placed upper places like in channels". Stable sort — pinned
-     * vs pinned preserves prior order so the within-starred list
-     * doesn't jitter on every heartbeat. */
+    /* Starred first (like channels), then apply the sort-dropdown
+     * selection (name / machine) within each group. ywatanabe
+     * 2026-04-21: "starred agents should be placed upper" +
+     * "functionally, no; please make it functional" (sort dropdown
+     * must actually sort the sidebar list, not just the Agents tab). */
+    var sortBy =
+      typeof _overviewSort === "string" && _overviewSort
+        ? _overviewSort
+        : "name";
+    var sortKey = function (a) {
+      if (sortBy === "machine") {
+        return (a.machine || "") + "\u0001" + (a.name || "");
+      }
+      /* Default "name" — use the same display-name that renders in the
+       * badge so visual order matches what the user reads. */
+      var dn =
+        typeof hostedAgentName === "function"
+          ? hostedAgentName(a)
+          : a.name || "";
+      return String(dn || "").toLowerCase();
+    };
     sidebarVisible.sort(function (a, b) {
       var pa = a.pinned ? 0 : 1;
       var pb = b.pinned ? 0 : 1;
-      return pa - pb;
+      if (pa !== pb) return pa - pb;
+      var ka = sortKey(a);
+      var kb = sortKey(b);
+      if (ka < kb) return -1;
+      if (ka > kb) return 1;
+      return 0;
     });
     container.innerHTML = sidebarVisible
       .map(function (a) {
