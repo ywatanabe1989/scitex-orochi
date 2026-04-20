@@ -87,6 +87,48 @@ body {
   border-bottom: 1px solid #333;
   text-align: center;
 }
+/* Compact single-row brand — logo + workspace selector + product name
+ * + version + conn-status in one 28-px-tall strip. Replaces the
+ * stacked two-line layout that ate ~110 px of sidebar height. */
+.sidebar-brand.sidebar-brand-compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px 6px;
+  margin-bottom: 6px;
+  text-align: left;
+}
+.sidebar-brand.sidebar-brand-compact .brand-logo-sm {
+  width: 22px;
+  height: 22px;
+}
+.sidebar-brand.sidebar-brand-compact .brand-logo-sm .header-icon,
+.sidebar-brand.sidebar-brand-compact .brand-logo-sm img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+.sidebar-brand.sidebar-brand-compact .workspace-selector {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 4px;
+}
+.sidebar-brand.sidebar-brand-compact .brand-product-inline {
+  font-size: 11px;
+  color: #888;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  flex: 0 0 auto;
+}
+.sidebar-brand.sidebar-brand-compact .brand-version {
+  font-size: 10px;
+  color: #555;
+  margin-left: -2px;
+}
+.sidebar-brand.sidebar-brand-compact .status {
+  margin-left: auto;
+}
 .wall-clock {
   font-size: 11px;
   color: #888;

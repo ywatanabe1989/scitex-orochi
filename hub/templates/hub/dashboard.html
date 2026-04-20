@@ -8,7 +8,7 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style/style-base.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'hub/style/style-base.css' %}?v=135">
     <link rel="stylesheet" href="{% static 'hub/style/style-main.css' %}?v=134">
     <link rel="stylesheet"
           href="{% static 'hub/style/style-messages.css' %}?v=134">
@@ -84,18 +84,15 @@
                 class="sidebar-toggle"
                 aria-label="Toggle sidebar">&#9776;</button>
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-logo" id="brand-logo"></div>
-                <div class="brand-info">
-                    <h2 class="workspace-title brand-product-name">
-                        SciTeX Orochi <span class="brand-version" id="orochi-version"></span>
-                    </h2>
-                    <div class="workspace-selector" id="workspace-selector">
-                        <span class="ws-icon" id="ws-icon-slot"></span>
-                        <span class="ws-name">{{ workspace.name }}</span>
-                        <span class="ws-caret">&#9662;</span>
-                    </div>
+            <div class="sidebar-brand sidebar-brand-compact">
+                <div class="brand-logo brand-logo-sm" id="brand-logo"></div>
+                <div class="workspace-selector" id="workspace-selector">
+                    <span class="ws-icon" id="ws-icon-slot"></span>
+                    <span class="ws-name">{{ workspace.name }}</span>
+                    <span class="ws-caret">&#9662;</span>
                 </div>
+                <span class="brand-product-inline" title="SciTeX Orochi">Orochi</span>
+                <span class="brand-version" id="orochi-version"></span>
                 <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
             <div id="wall-clock" class="wall-clock"></div>
@@ -141,22 +138,9 @@
                 </div>
             </div>
             <div class="sidebar-sections">
-                <h2 class="collapsible-heading channels-heading blockers-heading"
-                    data-section="blockers">
-                    <span class="blocker-flag">⚠</span> Blockers
-                    <span class="sidebar-count blockers-count" id="sidebar-count-blockers"></span>
-                </h2>
-                <div id="blockers" class="sidebar-section blockers-section">
-                    <p class="blockers-empty">No blockers</p>
-                </div>
-                <h2 class="collapsible-heading channels-heading" data-section="agents">
-                    Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
-                </h2>
-                <div id="agents" class="sidebar-section">
-                    <p id="no-agents">No agents connected</p>
-                </div>
                 <h2 class="collapsible-heading channels-heading"
-                    data-section="sidebar-memory">Memory</h2>
+                    data-section="sidebar-memory"
+                    title="Memory slots span agents, channels, and machines">Memory</h2>
                 <div id="sidebar-memory" class="sidebar-section">
                     <div class="sidebar-memory-slots">
                         <!-- M1-M5 chips rendered by sidebar-memory.js -->
@@ -175,6 +159,12 @@
                                 data-action="save"
                                 title="Save current selection to the active memory slot">Save</button>
                     </div>
+                </div>
+                <h2 class="collapsible-heading channels-heading" data-section="agents">
+                    Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
+                </h2>
+                <div id="agents" class="sidebar-section">
+                    <p id="no-agents">No agents connected</p>
                 </div>
                 <h2 class="collapsible-heading channels-heading" data-section="channels">
                     Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
@@ -602,7 +592,6 @@
     <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
     <script src="{% static 'hub/filter/state.js' %}?v=102"></script>
     <script src="{% static 'hub/filter/runner.js' %}?v=102"></script>
-    <script src="{% static 'hub/blockers.js' %}?v=1"></script>
     <script src="{% static 'hub/agents-tab/state.js' %}?v=111"></script>
     <script src="{% static 'hub/agents-tab/lamps.js' %}?v=111"></script>
     <script src="{% static 'hub/agents-tab/detail.js' %}?v=111"></script>
