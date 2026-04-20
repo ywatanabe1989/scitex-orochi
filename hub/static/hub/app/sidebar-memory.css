@@ -121,6 +121,40 @@
   border-color: #4ecdc4;
 }
 
+/* Clear (🚫) icon-only button. Narrow, same emoji-as-glyph styling
+ * as other sidebar icon buttons. */
+#sidebar-memory .sidebar-mem-clear {
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* Inline help affordance next to the "Memory" heading — a circled
+ * question mark that surfaces every interaction rule via browser
+ * tooltip (newline-preserving). Simpler than adding a popover. */
+.sidebar-mem-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  border: 1px solid #555;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: #888;
+  cursor: help;
+  user-select: none;
+  white-space: pre-line;
+}
+.sidebar-mem-help:hover,
+.sidebar-mem-help:focus {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+  outline: none;
+}
+
 /* Transient hint bubble for "Pick an M-slot first". Anchored via
  * inline position:fixed in JS. */
 .sidebar-mem-hint {

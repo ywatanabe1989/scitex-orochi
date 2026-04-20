@@ -113,6 +113,11 @@ function renderSidebarMemory() {
       "sidebar-mem-btn-armed",
       hasSel || _topoActiveMemSlot != null,
     );
+    /* Dynamic label — "Save to M{n}" when a slot is active makes
+     * the target obvious; falls back to "Save" with a hint on
+     * click when no slot is picked. */
+    saveBtn.textContent =
+      _topoActiveMemSlot != null ? "Save to M" + _topoActiveMemSlot : "Save";
   }
 }
 window.renderSidebarMemory = renderSidebarMemory;

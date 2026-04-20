@@ -3,13 +3,14 @@
    fetchResources, fetchWorkspaces, wsConnected, startRestPolling,
    getSnakeLogo, refreshAgentNames */
 
-/* Inject Orochi logo into sidebar brand */
+/* Inject Orochi logo into sidebar brand. Size/radius come from CSS
+ * (.brand-logo-sm .header-icon rule in style-base.css) so the compact
+ * header can shrink it to 22px without fighting inline styles. */
 (function () {
   var brandLogo = document.getElementById("brand-logo");
   if (brandLogo) {
     brandLogo.innerHTML =
-      '<img src="/static/hub/orochi-icon.png" alt="Orochi" ' +
-      'style="width:100px;height:100px;border-radius:8px;">';
+      '<img class="header-icon" src="/static/hub/orochi-icon.png" alt="Orochi">';
   }
 })();
 
