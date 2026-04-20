@@ -1,6 +1,5 @@
 {% extends "hub/base.html" %}
 {% load static %}
-{% load vite %}
 {% block title %}{{ workspace.name }} - SciTeX Orochi{% endblock %}
 {% block extra_css %}
     <meta name="theme-color" content="#4ecdc4">
@@ -504,11 +503,118 @@
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
       window.__orochiWorkspaceIconImage = "{{ workspace.icon_image|escapejs }}";
     </script>
-    {# Orochi Hub dashboard — single Vite/TS bundle replacing the ~100 #}
-    {# per-file classic-script tags. See hub/frontend/src/index.ts for #}
-    {# load order and hub/frontend/README for the build workflow. #}
-    {% vite_bundle "src/index.ts" as orochi_bundle %}
-    {% if orochi_bundle %}<script src="{{ orochi_bundle }}"></script>{% endif %}
+    <script src="{% static 'hub/config.js' %}?v=117"></script>
+    <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
+    <!-- Single source of truth for the agent badge (icon, star, 4 LEDs,
+         name, host). Loaded BEFORE app.js / activity-tab.js / agents-tab.js
+         so renderAgentBadge() is in scope at first render. NEVER inline a
+         badge in any of those files — call renderAgentBadge() instead.
+         See dashboard-development-discipline.md rule 1. -->
+    <script src="{% static 'hub/agent-badge.js' %}?v=1"></script>
+    <!-- SVG variant of the agent badge — renderAgentBadgeSvg for the
+         topology canvas (both agent and human nodes). Parallel to
+         renderChannelBadgeSvg. Split out of agent-badge.js to stay
+         under the 512-line .js hook cap. Must load AFTER agent-badge.js
+         (shares agentIdentity/getAgentColor helpers) but BEFORE
+         activity-tab/topology-nodes.js. -->
+    <script src="{% static 'hub/agent-badge-svg.js' %}?v=1"></script>
+    <!-- Single source of truth for the channel badge (icon, star, eye,
+         mute, name, unread). Parallel to agent-badge.js. Loaded BEFORE
+         app/* and activity-tab/* so renderChannelBadgeHtml / Svg are in
+         scope at first render. Star/eye/mute/icon-change click handlers
+         are wired via document.body delegation from this file — no
+         site-local wiring required. -->
+    <script src="{% static 'hub/channel-badge.js' %}?v=1"></script>
+    <script src="{% static 'hub/app/state.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/members.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/channel-prefs.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/context-menus.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/agent-actions.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/utils.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/websocket.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-agents.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-channel-tree.js' %}?v=150"></script>
+    <script src="{% static 'hub/app/sidebar-stats.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/keyboard.js' %}?v=149"></script>
+    <script src="{% static 'hub/dms.js' %}?v=4"></script>
+    <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
+    <script src="{% static 'hub/resources-tab/panel.js' %}?v=104"></script>
+    <script src="{% static 'hub/resources-tab/tab.js' %}?v=104"></script>
+    <script src="{% static 'hub/todo-tab/todo-tab-helpers.js' %}?v=110"></script>
+    <script src="{% static 'hub/todo-tab/todo-tab-list.js' %}?v=110"></script>
+    <script src="{% static 'hub/todo-tab/todo-tab-stats.js' %}?v=110"></script>
+    <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
+    <script src="{% static 'hub/pdf-thumbnail.js' %}?v=1"></script>
+    <script src="{% static 'hub/chat/chat-state.js' %}?v=125"></script>
+    <script src="{% static 'hub/chat/chat-attachments.js' %}?v=125"></script>
+    <script src="{% static 'hub/chat/chat-markdown.js' %}?v=125"></script>
+    <script src="{% static 'hub/chat/chat-render.js' %}?v=125"></script>
+    <script src="{% static 'hub/chat/chat-history.js' %}?v=125"></script>
+    <script src="{% static 'hub/chat/chat-composer.js' %}?v=125"></script>
+    <script src="{% static 'hub/chat/chat-actions.js' %}?v=125"></script>
+    <script src="{% static 'hub/mention.js' %}?v=101"></script>
+    <script src="{% static 'hub/settings-tab.js' %}?v=104"></script>
+    <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
+    <script src="{% static 'hub/filter/state.js' %}?v=102"></script>
+    <script src="{% static 'hub/filter/runner.js' %}?v=102"></script>
+    <script src="{% static 'hub/agents-tab/state.js' %}?v=111"></script>
+    <script src="{% static 'hub/agents-tab/lamps.js' %}?v=111"></script>
+    <script src="{% static 'hub/agents-tab/detail.js' %}?v=111"></script>
+    <script src="{% static 'hub/agents-tab/controls.js' %}?v=111"></script>
+    <script src="{% static 'hub/agents-tab/overview.js' %}?v=111"></script>
+    <script src="{% static 'hub/connectivity-map.js' %}?v=101"></script>
+    <!-- Activity tab (canonical Agents UI renderer) — split into focused
+         sub-files. ALL share the same cache-bust version. Load order:
+         state → utils → data → per-view renderers → topology helpers →
+         topology → grid handlers → controls → init. -->
+    <script src="{% static 'hub/activity-tab/state.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/utils.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/data.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/hooks-panel.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/detail.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/detail-bind.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/channel-controls.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/multiselect.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-arrows.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-packets.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-pulse.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/seekbar.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/zoompan.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/compose.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-signature.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-edges.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-nodes.js' %}?v=192"></script>
+    <script src="{% static 'hub/activity-tab/topology-pool.js' %}?v=191"></script>
+    <script src="{% static 'hub/activity-tab/topology.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/row.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/click.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/edge-menu.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-click.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-mouse.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-ctx.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-hover.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-delegation.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/controls.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/init.js' %}?v=190"></script>
+    <script src="{% static 'hub/app/sidebar-memory.js' %}?v=3"></script>
+    <script src="{% static 'hub/viz-tab.js' %}?v=6"></script>
+    <script src="{% static 'hub/upload.js' %}?v=112"></script>
+    <script src="{% static 'hub/files-tab/files-tab-core.js' %}?v=106"></script>
+    <script src="{% static 'hub/files-tab/files-tab-grid.js' %}?v=106"></script>
+    <script src="{% static 'hub/releases-tab/state.js' %}?v=104"></script>
+    <script src="{% static 'hub/releases-tab/runner.js' %}?v=104"></script>
+    <script src="{% static 'hub/reactions.js' %}?v=107"></script>
+    <script src="{% static 'hub/threads/state.js' %}?v=123"></script>
+    <script src="{% static 'hub/threads/panel.js' %}?v=123"></script>
+    <script src="{% static 'hub/sketch.js' %}?v=99"></script>
+    <script src="{% static 'hub/webcam.js' %}?v=1"></script>
+    <script src="{% static 'hub/voice-input.js' %}?v=127"></script>
+    <script src="{% static 'hub/terminal-tab.js' %}?v=1"></script>
+    <script src="{% static 'hub/tabs.js' %}?v=108"></script>
+    <script src="{% static 'hub/init.js' %}?v=101"></script>
+    <script src="{% static 'hub/sidebar-fold.js' %}?v=1"></script>
+    <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
+    <script src="{% static 'hub/push.js' %}?v=99"></script>
     <!-- mermaid.js — diagram rendering for ```mermaid code blocks -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script>mermaid.initialize({startOnLoad: false, theme: 'dark'});</script>
@@ -534,8 +640,15 @@
       });
     }
     </script>
-    {# element-inspector, search-palette, feed-scroll-btns, feed-nav are #}
-    {# part of the Vite bundle loaded above. #}
+    <script src="{% static 'hub/element-inspector/core.js' %}?v=2"></script>
+    <script src="{% static 'hub/element-inspector/overlay.js' %}?v=2"></script>
+    <script src="{% static 'hub/element-inspector/picker.js' %}?v=2"></script>
+    <script src="{% static 'hub/element-inspector/scanner.js' %}?v=2"></script>
+    <script src="{% static 'hub/element-inspector/selection.js' %}?v=2"></script>
+    <script src="{% static 'hub/element-inspector/main.js' %}?v=2"></script>
+    <script src="{% static 'hub/search-palette.js' %}?v=1"></script>
+    <script src="{% static 'hub/feed-scroll-btns.js' %}?v=1"></script>
+    <script src="{% static 'hub/feed-nav.js' %}?v=3"></script>
     <!-- Channel export modal -->
     <div id="channel-export-modal"
          class="ch-export-modal"
