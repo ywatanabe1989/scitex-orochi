@@ -1,0 +1,180 @@
+/* Orochi Dashboard -- role badges, sender, filter bar, sidebar chips
+ * Split from components.css (todo: 512-line limit). */
+
+/* Role badges */
+.role-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+}
+.badge-agent {
+  background: #4ecdc4;
+  color: #0a0a0a;
+}
+.badge-human {
+  background: #c4a6e8;
+  color: #0a0a0a;
+}
+.you-tag {
+  font-size: 10px;
+  color: #7ec8e3;
+  opacity: 0.8;
+  margin-left: 4px;
+}
+
+/* Sender name color */
+.msg .sender {
+  font-weight: bold;
+}
+
+/* Filter bar tags & suggestions */
+.filter-bar input {
+  width: 100%;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.filter-bar input:focus {
+  border-color: #4ecdc4;
+}
+.filter-bar input::placeholder {
+  color: #555;
+}
+.filter-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.filter-tags:empty {
+  display: none;
+}
+.filter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #1a2a2a;
+  border: 1px solid #4ecdc4;
+  color: #4ecdc4;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.filter-tag:hover {
+  background: #2a3a3a;
+}
+.filter-tag .tag-remove {
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.7;
+}
+.filter-tag .tag-remove:hover {
+  opacity: 1;
+}
+.filter-tag[data-type="agent"] {
+  border-color: #c4a6e8;
+  color: #c4a6e8;
+  background: #1a1a2a;
+}
+.filter-tag[data-type="channel"] {
+  border-color: #7ec8e3;
+  color: #7ec8e3;
+  background: #1a1a2a;
+}
+.filter-tag[data-type="host"] {
+  border-color: #ffb374;
+  color: #ffb374;
+  background: #2a1a0a;
+}
+.filter-tag[data-type="label"] {
+  border-color: #a8e6a3;
+  color: #a8e6a3;
+  background: #0a2a0a;
+}
+.filter-suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 100;
+  display: none;
+}
+.filter-suggest.visible {
+  display: block;
+}
+.filter-suggest-item {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #aaa;
+  cursor: pointer;
+}
+.filter-suggest-item:hover,
+.filter-suggest-item.selected {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+.filter-suggest-item .suggest-type {
+  color: #4ecdc4;
+  font-size: 10px;
+  margin-right: 4px;
+}
+
+/* Sidebar quick-filter chips (todo#72). Clicking a chip adds/removes
+ * an `is:<flag>` token in #filter-input so the search field stays the
+ * single source of truth — users can see exactly what is filtered and
+ * extend it with free-text AND keywords. */
+.sidebar-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.sidebar-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #151515;
+  border: 1px solid #333;
+  color: #888;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+.sidebar-filter-chip:hover {
+  background: #1f1f1f;
+  color: #ccc;
+  border-color: #555;
+}
+.sidebar-filter-chip.active {
+  background: #1a2a2a;
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+.sidebar-filter-chip .chip-glyph {
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.85;
+}

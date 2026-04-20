@@ -1,0 +1,277 @@
+/* Orochi Dashboard -- agent cards, agents registry table, idle badge
+ * Split from components.css (todo: 512-line limit). */
+
+/* Agent cards */
+.agent-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+.agent-card:hover {
+  background: #222;
+  border-color: #4ecdc4;
+}
+.agent-card .name {
+  color: #4ecdc4;
+  font-weight: bold;
+  font-size: 13px;
+}
+.agent-card .meta {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+.agent-card .task {
+  font-size: 11px;
+  color: #ffd93d;
+  margin-top: 4px;
+}
+.agent-card .status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.agent-card .status-dot.online {
+  background: #4ecdc4;
+}
+.agent-card .status-dot.busy {
+  background: #ffd93d;
+}
+.agent-card .status-dot.offline {
+  background: #666;
+}
+.agent-card.offline,
+.agent-card.inactive {
+  opacity: 0.4;
+}
+.task-card.inactive {
+  opacity: 0.4;
+}
+
+/* Agents Registry Table */
+.agents-summary {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.purge-btn {
+  margin-left: 8px;
+  padding: 2px 10px;
+  font-size: 11px;
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.purge-btn:hover {
+  background: #ef4444;
+  color: #f8f7f5;
+}
+.agents-registry-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.agents-registry-table th {
+  text-align: left;
+  color: #888;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #333;
+  white-space: nowrap;
+}
+.agents-registry-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #1a1a1a;
+  color: #ccc;
+  vertical-align: middle;
+}
+.agents-registry-table tbody tr:hover {
+  background: #222;
+}
+.agents-count {
+  color: #aaa;
+  font-size: 12px;
+  margin-right: 12px;
+}
+.machine-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  margin-right: 6px;
+}
+.machine-ok {
+  background: rgba(78, 205, 196, 0.13);
+  color: #4ecdc4;
+  border: 1px solid rgba(78, 205, 196, 0.27);
+}
+.machine-warn {
+  background: rgba(255, 217, 61, 0.13);
+  color: #ffd93d;
+  border: 1px solid rgba(255, 217, 61, 0.27);
+}
+.machine-off {
+  background: rgba(239, 68, 68, 0.13);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.27);
+}
+.agent-row {
+  cursor: pointer;
+}
+.agent-inactive {
+  opacity: 0.5;
+}
+.agent-id-cell {
+  font-weight: 600;
+}
+.monospace-cell {
+  font-family: monospace;
+  font-size: 12px;
+}
+.muted-cell {
+  color: #888;
+  font-size: 12px;
+}
+.small-cell {
+  font-size: 12px;
+}
+.claude-md-btn {
+  background: #2a2a3e;
+  color: #8be9fd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.claude-md-btn:hover {
+  background: #3a3a5e;
+}
+.claude-md-content {
+  background: #1a1a2e;
+  color: #ccc;
+  padding: 12px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 4px 0;
+}
+.task-cell {
+  color: #ffd93d;
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.subagent-badge {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  margin: 1px 2px;
+}
+.subagent-running {
+  background: rgba(255, 217, 61, 0.15);
+  color: #ffd93d;
+  border: 1px solid rgba(255, 217, 61, 0.3);
+}
+.subagent-done {
+  background: rgba(78, 205, 196, 0.1);
+  color: #888;
+  border: 1px solid rgba(78, 205, 196, 0.2);
+}
+.ch-badge {
+  background: #333;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 3px;
+}
+.ch-badge-interactive {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.ch-badge-remove {
+  background: transparent;
+  color: #999;
+  border: none;
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+}
+.ch-badge-remove:hover {
+  color: #ef4444;
+}
+.ch-add-btn {
+  background: #2a2a2a;
+  color: #4ecdc4;
+  border: 1px dashed #4ecdc4;
+  border-radius: 3px;
+  padding: 0 6px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 18px;
+}
+.ch-add-btn:hover {
+  background: #333;
+}
+.status-dot-inline {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+  background: #4ecdc4;
+}
+.agent-inactive .status-dot-inline {
+  background: #ef4444;
+}
+.status-label {
+  font-size: 12px;
+}
+/* Idle badge for last-activity column */
+.idle-badge {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.idle-badge.idle-online {
+  color: #4ecdc4;
+}
+.idle-badge.idle-idle {
+  color: #ffd93d;
+  background: rgba(255, 217, 61, 0.1);
+}
+.idle-badge.idle-stale {
+  color: #ff8c42;
+  background: rgba(255, 140, 66, 0.12);
+}
+.idle-badge.idle-offline {
+  color: #ef4444;
+}
+.empty-notice {
+  color: #555;
+  font-size: 13px;
+  font-style: italic;
+}
