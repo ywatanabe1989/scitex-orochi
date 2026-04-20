@@ -192,6 +192,10 @@
   // ── SVG renderer: topology canvas ──────────────────────────────────
   // Emits a <g class="topo-channel" data-channel="..."> group with:
   //   diamond polygon + icon + star + eye + mute + label rect + label.
+  // Canonical element order: icon + star + eye + mute + name — IDENTICAL
+  // to renderChannelBadgeHtml above, so sidebar / pool / canvas all read
+  // left-to-right the same way. ywatanabe 2026-04-20: "ALL channel badge
+  // MUST have the SAME UI and functionalities".
   // pos = {x, y, r}; r optional (default 12).
   function renderChannelBadgeSvg(name, pos, opts) {
     opts = opts || {};
