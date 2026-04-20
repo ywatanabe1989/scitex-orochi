@@ -35,7 +35,12 @@ def _manifest_path() -> Path:
 
 @lru_cache(maxsize=1)
 def _load_manifest_cached(mtime: float) -> dict:
-    """Load the Vite manifest; cache keyed on mtime so reloads pick up rebuilds."""
+    """Load the Vite manifest; cache keyed on mtime so reloads pick up rebuilds.
+
+    ``mtime`` is the cache key (lru_cache busts when it changes on disk).
+    The body treats it as a sentinel — no-op reference so linters see a use.
+    """
+    _ = mtime
     path = _manifest_path()
     with path.open("r") as f:
         return json.load(f)
