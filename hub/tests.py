@@ -1969,7 +1969,11 @@ class GroupMentionExpansionTest(TestCase):
         from pathlib import Path
 
         src = (
-            Path(__file__).resolve().parent / "static" / "hub" / "chat.js"
+            Path(__file__).resolve().parent
+            / "static"
+            / "hub"
+            / "chat"
+            / "chat-markdown.js"
         ).read_text(encoding="utf-8")
         self.assertIn(
             "MENTION_GROUP_TOKENS",
