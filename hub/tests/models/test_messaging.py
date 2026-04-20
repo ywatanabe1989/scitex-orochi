@@ -1,4 +1,5 @@
-"""Tests for the Orochi hub Django app."""
+"""Tests for hub/models/_messaging.py and hub/models/_helpers.py —
+Channel, Message, normalize_channel_name."""
 
 import json  # noqa: F401
 from unittest.mock import MagicMock, patch  # noqa: F401
@@ -22,17 +23,7 @@ from hub.models import (  # noqa: F401
 )
 
 
-class WorkspaceModelTest(TestCase):
-    def test_create_workspace(self):
-        ws = Workspace.objects.create(name="test-ws", description="Test workspace")
-        self.assertEqual(str(ws), "test-ws")
-
-    def test_workspace_token_auto_generated(self):
-        ws = Workspace.objects.create(name="test-ws")
-        token = WorkspaceToken.objects.create(workspace=ws, label="agent-1")
-        self.assertTrue(token.token.startswith("wks_"))
-        self.assertEqual(len(token.token), 36)  # "wks_" + 32 hex chars
-
+class ChannelMessageModelTest(TestCase):
     def test_channel_unique_per_workspace(self):
         ws = Workspace.objects.create(name="test-ws")
         Channel.objects.create(workspace=ws, name="#general")

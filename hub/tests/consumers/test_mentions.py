@@ -46,7 +46,7 @@ class GroupMentionExpansionTest(TestCase):
         from pathlib import Path
 
         src = (
-            Path(__file__).resolve().parents[1] / "consumers" / "_dashboard_message.py"
+            Path(__file__).resolve().parents[2] / "consumers" / "_dashboard_message.py"
         ).read_text(encoding="utf-8")
         self.assertIn(
             "GROUP_PATTERNS = {",
@@ -65,7 +65,7 @@ class GroupMentionExpansionTest(TestCase):
         from pathlib import Path
 
         src = (
-            Path(__file__).resolve().parents[1]
+            Path(__file__).resolve().parents[2]
             / "static"
             / "hub"
             / "chat"
