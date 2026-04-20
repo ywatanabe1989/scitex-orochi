@@ -66,72 +66,20 @@ function _ovgWireClick(grid) {
         return;
       }
     }
-    /* Pool action-strip buttons — Select All / Deselect All / memory
-     * slots / +Save. Handled before the chip click block so buttons
-     * nested inside the pool don't also get read as chip clicks.
-     * todo#79 "Pools as filters ... Memory 1,2,...". */
-    var poolActBtn = ev.target.closest(
-      ".topo-pool-act-btn, .topo-pool-mem-save",
+    /* Pool Save button — identical to the sidebar's Save button
+     * (same `data-action="save"` contract). Delegates to the shared
+     * _memSaveActionHandler so both surfaces show the same "Pick an
+     * M-slot first" hint when no slot is active. Handled before the
+     * chip click block so this button doesn't also get read as a chip
+     * click. 2026-04-20 pool/sidebar unification pass. */
+    var poolSaveBtn = ev.target.closest(
+      '.topo-pool-actions .sidebar-memory-actions button[data-action="save"]',
     );
-    if (poolActBtn && grid.contains(poolActBtn)) {
-      var _action = poolActBtn.getAttribute("data-pool-action");
-      if (_action === "select-all") {
-        _topoPoolSelectAll(grid);
-      } else if (_action === "deselect-all") {
-        _topoPoolSelectClear();
-      } else if (_action === "save-next") {
-        /* Explicit-save semantics (2026-04-20): if a slot is active,
-         * "Save" persists the current selection into THAT slot (clears
-         * the dirty dot). Otherwise fall back to the next free slot.
-         * This makes the Save button feel like a real save, not just
-         * "snapshot-to-next". */
-        var _slot =
-          _topoActiveMemSlot != null
-            ? _topoActiveMemSlot
-            : _topoPoolMemoryNextFreeSlot();
-        if (_slot > 0) {
-          _topoPoolMemorySave(_slot);
-          _topoLastSig = "";
-          if (typeof renderActivityTab === "function") renderActivityTab();
-          ev.stopPropagation();
-          return;
-        }
-      }
-      _topoPoolSelectionPaint(grid);
-      ev.stopPropagation();
-      return;
-    }
-    var poolMemBtn = ev.target.closest(".topo-pool-mem-btn[data-mem-slot]");
-    if (poolMemBtn && grid.contains(poolMemBtn)) {
-      var _slotStr = poolMemBtn.getAttribute("data-mem-slot");
-      var _slotN = parseInt(_slotStr, 10);
-      if (_slotN >= 1 && _slotN <= _TOPO_POOL_MEM_MAX) {
-        if (ev.shiftKey) {
-          /* shift-click = save current selection to this slot */
-          _topoPoolMemorySave(_slotN);
-          _topoLastSig = "";
-          if (typeof renderActivityTab === "function") renderActivityTab();
-        } else {
-          /* Plain click = RECALL slot + make it active (or deactivate
-           * if already active). User 2026-04-20 reversal of the old
-           * auto-save behavior: "NO auto-save; explicit save only".
-           * Clicking an empty slot activates but does NOT seed it with
-           * the current selection - the user must hit Save (or
-           * shift-click) to persist. Active-slot highlight still
-           * indicates which slot the +Save button targets. */
-          if (_topoActiveMemSlot === _slotN) {
-            _topoActiveMemSlot = null;
-          } else {
-            _topoActiveMemSlot = _slotN;
-            if (_topoPoolMemories[String(_slotN)]) {
-              _topoPoolMemoryRecall(_slotN);
-            }
-            /* Empty slot: do NOT auto-seed - user must click Save. */
-          }
-          _topoPersistActiveMemSlot();
-          _topoLastSig = "";
-          if (typeof renderActivityTab === "function") renderActivityTab();
-          _topoPoolSelectionPaint(grid);
+    if (poolSaveBtn && grid.contains(poolSaveBtn)) {
+      if (typeof _memSaveActionHandler === "function") {
+        var _ok = _memSaveActionHandler(poolSaveBtn);
+        if (_ok && typeof _sidebarMemoryRefreshBothSurfaces === "function") {
+          _sidebarMemoryRefreshBothSurfaces();
         }
       }
       ev.stopPropagation();

@@ -4,14 +4,34 @@
  * (guard flag) and defines the standalone _topoSvgPoint helper used
  * by both zoom/pan and drag gestures. */
 
-
 function _wireOverviewGridDelegation(grid) {
   if (_overviewGridWired || !grid) return;
   _ovgWireClick(grid);
   _ovgWireMouse(grid);
   _ovgWireContextmenu(grid);
   _ovgWireHover(grid);
+  _ovgWireChange(grid);
   _overviewGridWired = true;
+}
+
+/* Delegated `change` listener — the pool's memory dropdown
+ * (#topo-pool-mem-select) re-renders on every topology refresh, so a
+ * fresh listener on each render would leak. Delegation on the grid
+ * catches the event regardless of how many times the <select> is
+ * re-created. Routes through the shared _memSelectOnChange so both
+ * surfaces have IDENTICAL switching semantics (2026-04-20
+ * pool/sidebar unification). */
+function _ovgWireChange(grid) {
+  grid.addEventListener("change", function (ev) {
+    var poolSel = ev.target.closest("#topo-pool-mem-select");
+    if (poolSel && grid.contains(poolSel)) {
+      if (typeof _memSelectOnChange === "function") {
+        _memSelectOnChange(poolSel);
+      }
+      ev.stopPropagation();
+      return;
+    }
+  });
 }
 
 /* Standalone copy of the client→SVG-point transform (the one inside
