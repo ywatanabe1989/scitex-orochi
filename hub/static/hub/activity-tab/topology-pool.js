@@ -2,6 +2,23 @@
  * memory slot buttons, pool-action strip (Select All / None / M1..M5 / +Save). */
 
 function _topoBuildPoolHtml(visible, channels) {
+  /* ywatanabe 2026-04-21: "drop the pools themselves (hide them); we
+   * have the sidebar and it is enough; no duplication please". The
+   * sidebar Agents/Channels/Filtering sections provide every operation
+   * the canvas pool used to. Return an empty, display:none placeholder
+   * so downstream code that queries `.topo-pool` / `.topo-pool-chip-*`
+   * selectors doesn't blow up with null refs. If we confirm nothing
+   * depends on the pool being in the DOM we can return "" later. */
+  if (visible && channels) {
+    /* Keep the function signature live; caller still passes args. */
+  }
+  return '<div class="topo-pool" style="display:none"></div>';
+}
+
+/* Legacy pool builder — kept for reference in case a future change
+ * wants the in-canvas pool back. Never invoked from runtime because
+ * _topoBuildPoolHtml above short-circuits. */
+function _topoBuildPoolHtmlLegacy(visible, channels) {
   /* Left-side pool — all agents and all channels as chips so the user
    * can see the full universe at a glance even when the canvas is
    * zoomed / cluttered. ywatanabe 2026-04-19: "place channels pool;
