@@ -4902,11 +4902,17 @@ function _renderActivityCards(agents, grid) {
 
   var visible = all.filter(function (a) {
     var connected = (a.status || "online") !== "offline";
-    if (!connected && !a.pinned) return false;
-    /* Dead unpinned agents are hidden entirely (global rule); dead
-     * pinned agents render as shadow via .activity-card-dead-ghost. */
-    if (_isDeadAgent(a) && !a.pinned) return false;
-    return true;
+    /* If the agent is connected (WS up), it MUST be listed — even if
+     * unpinned and even if other indicators are unhealthy. ywatanabe
+     * 2026-04-20: "if agent is connected via websocket, they should
+     * keep listed in the Agents tab even when they are not registered;
+     * This is quite natural... Even though they are not starred yet."
+     * Hide-on-dead behaviour applied only to fully-disconnected
+     * unpinned agents — for those, dead-ghost rendering is reserved
+     * for pinned (operator explicitly cares about the slot). */
+    if (connected) return true;
+    if (a.pinned) return true;
+    return false;
   });
 
   if (!visible.length) {
