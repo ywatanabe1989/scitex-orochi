@@ -198,6 +198,11 @@ orochi.add_command(heartbeat_push)
 orochi.add_command(docs)
 orochi.add_command(skills)
 
+# Host identity (local-vs-remote resolver)
+from scitex_orochi._cli.commands.host_identity_cmd import host_identity
+
+orochi.add_command(host_identity)
+
 
 def main() -> None:
     try:

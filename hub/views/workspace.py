@@ -14,9 +14,15 @@ from hub.views._helpers import bare_url, get_workspace, workspace_url
 
 
 @login_required
-def workspace_dashboard(request):
-    """Main dashboard view for a workspace (served on subdomain)."""
-    workspace = get_workspace(request)
+def workspace_dashboard(request, slug=None):
+    """Main dashboard view for a workspace (served on subdomain).
+
+    ``slug`` is supplied by the path-based ``/workspace/<slug>/`` route in
+    :mod:`hub.urls` (used by tests and the bare-domain fallback). On
+    workspace subdomains the middleware resolves ``request.workspace``
+    and ``slug`` is ``None``.
+    """
+    workspace = get_workspace(request, slug=slug)
 
     if not request.user.is_superuser:
         if not WorkspaceMember.objects.filter(
@@ -65,9 +71,14 @@ def workspace_dashboard(request):
 
 
 @login_required
-def workspace_settings_view(request):
-    """Workspace settings — manage tokens, members."""
-    workspace = get_workspace(request)
+def workspace_settings_view(request, slug=None):
+    """Workspace settings — manage tokens, members.
+
+    ``slug`` is supplied by the path-based ``/workspace/<slug>/settings/``
+    route in :mod:`hub.urls`; on workspace subdomains it's ``None`` and
+    the workspace is resolved from ``request.workspace``.
+    """
+    workspace = get_workspace(request, slug=slug)
 
     membership = WorkspaceMember.objects.filter(
         user=request.user, workspace=workspace
@@ -76,7 +87,7 @@ def workspace_settings_view(request):
     if not is_admin:
         return render(request, "hub/no_access.html", status=403)
 
-    from hub.models import WorkspaceInvitation
+    from hub.models import InviteRequest, WorkspaceInvitation
 
     if request.method == "POST":
         response = _handle_settings_post(request, workspace)
@@ -88,6 +99,9 @@ def workspace_settings_view(request):
     invitations = WorkspaceInvitation.objects.filter(
         workspace=workspace, accepted=False
     )
+    pending_invite_requests = InviteRequest.objects.filter(
+        status=InviteRequest.STATUS_PENDING
+    ).order_by("-created_at")
     return render(
         request,
         "hub/workspace_settings.html",
@@ -96,6 +110,7 @@ def workspace_settings_view(request):
             "tokens": tokens,
             "members": members,
             "invitations": invitations,
+            "pending_invite_requests": pending_invite_requests,
             "is_admin": is_admin,
         },
     )
@@ -197,4 +212,60 @@ def _handle_settings_post(request, workspace):
         else:
             workspace.delete()
             return redirect(bare_url("/"))
+    elif action in ("approve_invite_request", "deny_invite_request"):
+        from hub.models import InviteRequest
+
+        req_id = request.POST.get("request_id")
+        try:
+            req = InviteRequest.objects.get(
+                id=req_id, status=InviteRequest.STATUS_PENDING
+            )
+        except InviteRequest.DoesNotExist:
+            messages.error(request, "Invite request not found or already reviewed.")
+            return None
+        if action == "deny_invite_request":
+            req.status = InviteRequest.STATUS_DENIED
+            req.reviewed_at = timezone.now()
+            req.reviewed_by = request.user
+            req.save(update_fields=["status", "reviewed_at", "reviewed_by"])
+            messages.success(request, f"Denied invite request from {req.email}.")
+        else:
+            invite, created = WorkspaceInvitation.objects.get_or_create(
+                workspace=workspace,
+                email=req.email,
+                defaults={"invited_by": request.user},
+            )
+            req.status = InviteRequest.STATUS_APPROVED
+            req.reviewed_at = timezone.now()
+            req.reviewed_by = request.user
+            req.resulting_invite = invite
+            req.save(
+                update_fields=[
+                    "status",
+                    "reviewed_at",
+                    "reviewed_by",
+                    "resulting_invite",
+                ]
+            )
+            invite_link = workspace_url(workspace.name, f"/invite/{invite.token}/")
+            try:
+                from django.core.mail import send_mail
+
+                send_mail(
+                    subject=f"Invitation to {workspace.name} on Orochi",
+                    message=(
+                        f"Your invite request to '{workspace.name}' on "
+                        f"Orochi was approved.\n\nSign up here: "
+                        f"{invite_link}"
+                    ),
+                    from_email=None,
+                    recipient_list=[req.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+            messages.success(
+                request,
+                f"Approved {req.email}. Invite link: {invite_link}",
+            )
     return None

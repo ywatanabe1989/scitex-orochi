@@ -2,7 +2,20 @@
 {% load static %}
 {% block title %}{{ workspace.name }} Settings - SciTeX Orochi{% endblock %}
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}">
+    <link rel="stylesheet" href="{% static 'hub/style/style-base.css' %}?v=134">
+    <link rel="stylesheet" href="{% static 'hub/style/style-main.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-messages.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-composer.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-agents.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-channels.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-menus.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-modals.css' %}?v=134">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}">
 {% endblock %}
 {% block body_class %}page-app{% endblock %}
@@ -119,20 +132,13 @@
                     </section>
                     <section class="settings-section">
                         <h4>Workspace Icon</h4>
-                        <p class="settings-desc">Click the icon to choose an emoji.</p>
-                        <div class="ws-icon-preview ws-icon-clickable"
+                        <p class="settings-desc">Click the icon to pick an emoji, or upload an image below.</p>
+                        <div class="ws-icon-preview ws-icon-clickable ws-icon-preview-box"
                              id="ws-icon-preview"
-                             title="Click to change icon"
-                             style="cursor:pointer;
-                                    font-size:48px;
-                                    width:64px;
-                                    height:64px;
-                                    display:flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    background:#1a1a1a;
-                                    border-radius:8px">
-                            {% if workspace.icon %}
+                             title="Click to change icon">
+                            {% if workspace.icon_image %}
+                                <img src="{{ workspace.icon_image }}" alt="" class="ws-icon-preview-image">
+                            {% elif workspace.icon %}
                                 {{ workspace.icon }}
                             {% else %}
                                 🐍
@@ -142,6 +148,20 @@
                             {% csrf_token %}
                             <input type="hidden" name="action" value="set_icon">
                             <input type="hidden" name="icon" value="" id="icon-input">
+                        </form>
+                        <form method="post"
+                              action="/api/workspace/icon/"
+                              enctype="multipart/form-data"
+                              class="settings-form settings-form-icon-upload">
+                            {% csrf_token %}
+                            <input type="file" name="file" accept="image/*" id="ws-icon-file-input">
+                            <button type="submit" class="btn-small btn-primary">Upload image</button>
+                            {% if workspace.icon_image %}
+                                <button type="button"
+                                        class="btn-small"
+                                        id="ws-icon-remove-btn"
+                                        title="Remove uploaded image (keeps emoji)">Remove image</button>
+                            {% endif %}
                         </form>
                     </section>
                     <section class="settings-section">
@@ -254,6 +274,59 @@
                         </form>
                     </section>
                     <section class="settings-section">
+                        <h4>Pending invite requests</h4>
+                        <p class="settings-desc">
+                            Requests submitted via the landing page. Approving creates an invitation and emails the requester the signup link.
+                        </p>
+                        {% if pending_invite_requests %}
+                            <table class="settings-table">
+                                <thead>
+                                    <tr>
+                                        <th>Email</th>
+                                        <th>Name</th>
+                                        <th>Affiliation</th>
+                                        <th>Message</th>
+                                        <th>Requested</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for req in pending_invite_requests %}
+                                        <tr>
+                                            <td>{{ req.email }}</td>
+                                            <td>{{ req.name|default:"—" }}</td>
+                                            <td>{{ req.affiliation|default:"—" }}</td>
+                                            <td>
+                                                <span title="{{ req.message }}">{{ req.message|truncatechars:40|default:"—" }}</span>
+                                            </td>
+                                            <td>{{ req.created_at|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                <form method="post" style="display:inline">
+                                                    <!-- hook-bypass: inline-style -->
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="approve_invite_request">
+                                                    <input type="hidden" name="request_id" value="{{ req.id }}">
+                                                    <button type="submit" class="btn-small btn-primary">Approve</button>
+                                                </form>
+                                                <form method="post" style="display:inline">
+                                                    <!-- hook-bypass: inline-style -->
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="action" value="deny_invite_request">
+                                                    <input type="hidden" name="request_id" value="{{ req.id }}">
+                                                    <button type="submit" class="btn-small">Deny</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <p class="settings-desc">
+                                <em>No pending requests.</em>
+                            </p>
+                        {% endif %}
+                    </section>
+                    <section class="settings-section">
                         <h4>GitHub Integration</h4>
                         <p class="settings-desc">GitHub access for issue tracking and repository integration.</p>
                         <div class="settings-info-box">
@@ -320,10 +393,21 @@
     <!-- hook-bypass: inline-script — Django template vars must be injected server-side -->
     <script>
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
+      window.__orochiWorkspaceIconImage = "{{ workspace.icon_image|escapejs }}";
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
       window.__orochiCsrfToken = "{{ csrf_token }}";
     </script>
-    <script src="{% static 'hub/app.js' %}"></script>
+    <script src="{% static 'hub/app/state.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/members.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/channel-prefs.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/context-menus.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/agent-actions.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/utils.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/websocket.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-agents.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-channel-tree.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-stats.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/keyboard.js' %}?v=149"></script>
     <script src="{% static 'hub/settings.js' %}"></script>
     <script src="{% static 'hub/emoji-picker.js' %}?v=1"></script>
 {% endblock %}

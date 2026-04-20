@@ -1,0 +1,75 @@
+/* Sidebar fold button — desktop affordance to collapse the sidebar and
+ * reclaim its width for the main content area. Pinned to the sidebar's
+ * right edge; clicking toggles .sidebar-folded on .container. State is
+ * persisted in localStorage["orochi.sidebarFolded"] (handled in JS).
+ *
+ * Parallel to (but independent of) #sidebar-toggle, which is the mobile
+ * hamburger. This button is hidden on mobile (see @media below) so the
+ * hamburger can own the narrow-viewport case without overlap.
+ */
+
+/* Anchor the absolutely-positioned fold button against the container. */
+.container {
+  position: relative;
+}
+
+.sidebar-fold-toggle {
+  position: absolute;
+  top: 50%;
+  /* Sidebar default width is 280px (see style-base.css .sidebar).
+     * Keep this in sync if that width changes. The translate(-50%)
+     * centers the 18px button on the sidebar's right edge. */
+  left: 280px;
+  transform: translate(-50%, -50%);
+  width: 18px;
+  height: 44px;
+  background: #1a1a1a;
+  color: #888;
+  border: 1px solid #333;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  z-index: 30;
+  transition:
+    left 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+.sidebar-fold-toggle:hover {
+  color: #4ecdc4;
+  background: #0f3f3a;
+}
+.sidebar-fold-toggle:focus {
+  outline: none;
+  color: #4ecdc4;
+}
+
+/* Collapsed state — sidebar slides out of view; button sticks to the
+ * left edge of the viewport so the un-fold affordance stays reachable. */
+.container.sidebar-folded #sidebar {
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border-right: 0;
+}
+.container.sidebar-folded .sidebar-fold-toggle {
+  left: 0;
+  transform: translate(0, -50%);
+  border-left: 1px solid #333;
+  border-radius: 0 6px 6px 0;
+}
+.container.sidebar-folded .main {
+  flex: 1 1 auto;
+}
+
+/* Mobile: hide the desktop fold button; the hamburger (#sidebar-toggle)
+ * handles sidebar visibility at narrow viewports. */
+@media (max-width: 768px) {
+  .sidebar-fold-toggle {
+    display: none;
+  }
+}

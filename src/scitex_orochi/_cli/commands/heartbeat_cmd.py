@@ -86,6 +86,10 @@ def _wrap_with_orochi_fields(
         "pid": int(status.get("pid") or 0),
         "ppid": int(status.get("ppid") or 0),
         "context_pct": status.get("context_pct"),
+        # YAML-declared compact policy from sac status (None when noop /
+        # unconfigured). Surfaced in the Agents tab next to the live
+        # context_pct so operators can see the threshold each agent uses.
+        "context_management": status.get("context_management"),
         "current_task": status.get("current_task") or "",
         "current_tool": status.get("current_tool") or "",
         "subagent_count": int(status.get("subagent_count") or 0),
@@ -167,8 +171,53 @@ def _post_register(hub: str, body: dict[str, Any]) -> tuple[int, str]:
         raise click.ClickException(f"hub unreachable: {e.reason}")
 
 
+def _list_local_agents() -> list[str]:
+    """Enumerate locally-running agent session names by shelling out to
+    ``scitex-agent-container list --json``. Replaces the legacy
+    ``agent_meta.py --push`` enumeration that walked ``tmux ls`` /
+    ``screen -ls`` directly — sac is the source of truth for which
+    agent sessions are local now.
+
+    Returns the list of agent names whose registry entry says
+    ``location == "LOCAL"``. Empty list on any failure (no sac, no
+    agents) — caller treats that as "nothing to push this cycle".
+    """
+    try:
+        proc = subprocess.run(
+            ["scitex-agent-container", "list", "--json"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
+    if proc.returncode != 0:
+        return []
+    try:
+        data = json.loads(proc.stdout or "[]")
+    except json.JSONDecodeError:
+        return []
+    rows = data.get("agents", data) if isinstance(data, dict) else data
+    out: list[str] = []
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+        if str(r.get("location", "")).upper() != "LOCAL":
+            continue
+        n = r.get("name") or r.get("agent_id")
+        if n:
+            out.append(str(n))
+    return out
+
+
 @click.command("heartbeat-push")
-@click.argument("name", required=True)
+@click.argument("name", required=False)
+@click.option(
+    "--all",
+    "push_all",
+    is_flag=True,
+    help="Push heartbeats for every locally-running agent (sac list --json).",
+)
 @click.option(
     "--token",
     envvar="SCITEX_OROCHI_TOKEN",
@@ -197,7 +246,8 @@ def _post_register(hub: str, body: dict[str, Any]) -> tuple[int, str]:
 )
 @click.option("--verbose", is_flag=True, help="Print each push result to stderr.")
 def heartbeat_push(
-    name: str,
+    name: str | None,
+    push_all: bool,
     token: str,
     hub: str,
     channels: tuple[str, ...],
@@ -207,21 +257,36 @@ def heartbeat_push(
     """Push one (or a loop of) heartbeat to the Orochi hub from
     scitex-agent-container's ``status`` CLI output.
 
-    The pusher is deterministic: it shells out to
-    ``scitex-agent-container status <name> --json`` and POSTs the result
-    (plus token + optional channel override) to
-    ``/api/agents/register/``. No LLM, no MCP — just a subprocess and
-    an HTTP request.
+    Two modes:
+
+    * ``heartbeat-push <name>`` — push a single agent's heartbeat.
+    * ``heartbeat-push --all``  — push every locally-running agent.
+      Replaces the deprecated ``scripts/client/agent_meta.py --push``
+      daemon, with the benefit of going through ``sac status --json``
+      so the latest pane-state classifier (auth_error wordings,
+      compose_pending fix, etc.) lands on every cycle.
+
+    The pusher is deterministic: shells out to ``scitex-agent-container``
+    and POSTs the result (plus token + optional channel override) to
+    ``/api/agents/register/``. No LLM, no MCP — just subprocess + HTTP.
     """
+    if not push_all and not name:
+        raise click.UsageError("Provide an agent NAME or --all.")
+    if push_all and name:
+        raise click.UsageError("--all is mutually exclusive with NAME.")
     ch_list = list(channels) if channels else None
 
-    def _once() -> int:
-        status = _run_agent_container_status(name)
+    def _push_one(agent_name: str) -> int:
+        try:
+            status = _run_agent_container_status(agent_name)
+        except click.ClickException as e:
+            click.echo(f"[heartbeat-push] {agent_name}: {e.format_message()}", err=True)
+            return 1
         body = _wrap_with_orochi_fields(status, token=token, channels=ch_list)
         code, resp = _post_register(hub, body)
         if verbose:
             click.echo(
-                f"[heartbeat-push] {name} -> {hub} HTTP {code} "
+                f"[heartbeat-push] {agent_name} -> {hub} HTTP {code} "
                 f"pane_state={body.get('pane_state')} "
                 f"context={body.get('context_pct')} "
                 f"quota_5h={body.get('quota_5h_used_pct')} "
@@ -232,6 +297,20 @@ def heartbeat_push(
             click.echo(resp[:500], err=True)
             return 1
         return 0
+
+    def _once() -> int:
+        if push_all:
+            agents = _list_local_agents()
+            if not agents:
+                if verbose:
+                    click.echo(
+                        "[heartbeat-push --all] no local agents this cycle",
+                        err=True,
+                    )
+                return 0
+            errs = sum(_push_one(a) for a in agents)
+            return 1 if errs else 0
+        return _push_one(name or "")
 
     if loop_seconds <= 0:
         sys.exit(_once())

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.13.0"
+version = "0.14.0"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -35,11 +35,15 @@ dependencies = [
     "websockets>=12.0",
     "pywebpush>=1.14",
     "py-vapid>=1.9",
+    # todo#47 — web-terminal SSH backend. Pure-Python asyncio SSH client
+    # so the terminal consumer can stream into fleet hosts without
+    # shelling out to the openssh binary.
+    "asyncssh>=2.14",
 ]
 
 [project.optional-dependencies]
 mcp = ["fastmcp>=2.0"]
-agent-container = ["scitex-agent-container>=0.4.3"]
+agent-container = ["scitex-agent-container>=0.8.0"]
 telegram = ["claude-code-telegrammer>=0.2.0"]
 dev = [
     "pytest>=7.0",

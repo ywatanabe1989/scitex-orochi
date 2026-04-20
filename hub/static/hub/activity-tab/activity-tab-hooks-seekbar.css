@@ -1,0 +1,443 @@
+/* ── Hook-event panels (recent tools / prompts / agent calls / bg tasks) ── */
+.hook-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.hook-panel {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.hook-panel-wide {
+  grid-column: 1 / -1;
+}
+.hook-panel-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #8b949e;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.hook-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px;
+  max-height: 160px;
+  overflow: auto;
+}
+.hook-row {
+  display: flex;
+  gap: 6px;
+  padding: 2px 0;
+  color: #c9d1d9;
+  line-height: 1.35;
+}
+.hook-ts {
+  color: #6e7681;
+  flex: 0 0 auto;
+  min-width: 58px;
+}
+.hook-txt {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hook-empty {
+  color: #6e7681;
+  font-style: italic;
+  padding: 4px 0;
+}
+.hook-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.hook-count-chip {
+  background: #21262d;
+  border: 1px solid #30363d;
+  color: #c9d1d9;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ── Topology: permission-direction arrows, lasso, multi-select,
+ *    group-post compose modal. Scoped prefix omitted on modal rules
+ *    because the overlay is rendered into <body>, not the grid. */
+.activity-grid.activity-view-topology .topo-arrow-head {
+  filter: drop-shadow(0 0 1.5px rgba(78, 205, 196, 0.9));
+}
+.activity-grid.activity-view-topology .topo-svg.topo-lassoing {
+  cursor: copy;
+}
+.activity-grid.activity-view-topology .topo-agent-selected circle {
+  stroke: #fbbf24;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 0 3px #fbbf24) drop-shadow(0 0 6px #fbbf24);
+}
+.activity-grid.activity-view-topology .topo-agent-selected text {
+  filter: drop-shadow(0 0 2px #fbbf24);
+  font-weight: 600;
+}
+.activity-grid.activity-view-topology .topo-actionbar {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translate(-50%, 12px);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 10, 10, 0.92);
+  border: 1px solid #fbbf24;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 4;
+  font-size: 12px;
+  color: #e8e8e8;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out;
+}
+.activity-grid.activity-view-topology .topo-actionbar.topo-actionbar-show {
+  display: flex;
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.activity-grid.activity-view-topology .topo-actionbar-count {
+  color: #fbbf24;
+  font-weight: 600;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn {
+  background: #fbbf24;
+  color: #111;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn:hover {
+  background: #ffd560;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn-ghost {
+  background: transparent;
+  color: #999;
+  font-weight: 400;
+}
+.activity-grid.activity-view-topology .topo-actionbar-btn-ghost:hover {
+  background: #222;
+  color: #ddd;
+}
+
+/* ---------- todo#67 — Seekbar + play button ----------
+ * Docked at the bottom of .topo-wrap, spans the available width after
+ * the left-side pool. Live chip highlights in cyan when glued to the
+ * latest moment; a scrubbed slider switches to an amber accent so it's
+ * obvious you're looking at history, not real time. */
+.activity-grid.activity-view-topology .topo-seekbar {
+  position: absolute;
+  left: 186px; /* leaves room for the 170px pool + gap */
+  right: 8px;
+  bottom: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(10, 10, 10, 0.82);
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 11px;
+  color: #9ca3af;
+  backdrop-filter: blur(4px);
+}
+.activity-grid.activity-view-topology .topo-seek-btn,
+.activity-grid.activity-view-topology .topo-seek-live {
+  background: #0e0e0e;
+  color: #cbd5e1;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1.3;
+  min-width: 28px;
+}
+.activity-grid.activity-view-topology .topo-seek-btn:hover,
+.activity-grid.activity-view-topology .topo-seek-live:hover {
+  background: #161616;
+  color: #f8f7f5;
+}
+.activity-grid.activity-view-topology .topo-seek-live.topo-seek-live-on {
+  background: #0e2b2b;
+  border-color: #0f6e63;
+  color: #4ecdc4;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.4) inset;
+}
+/* todo#97 — Wrap the <input type=range> with the heatmap <canvas> so
+ * the density bar is pixel-aligned with the scrubber track. The canvas
+ * sits just below the track gradient and lets pointer events pass
+ * through so only the slider catches scrubs. */
+.activity-grid.activity-view-topology .topo-seek-track-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 14px;
+}
+.activity-grid.activity-view-topology .topo-seek-heatmap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 8px;
+  pointer-events: none;
+  border-radius: 2px;
+  opacity: 0.9;
+  z-index: 0;
+}
+.activity-grid.activity-view-topology .topo-seek-range {
+  flex: 1 1 auto;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    rgba(78, 205, 196, 0.35),
+    rgba(78, 205, 196, 0.15)
+  );
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+.activity-grid.activity-view-topology
+  .topo-seekbar.topo-seek-playback
+  .topo-seek-range {
+  background: linear-gradient(
+    to right,
+    rgba(251, 191, 36, 0.5),
+    rgba(251, 191, 36, 0.15)
+  );
+}
+.activity-grid.activity-view-topology .topo-seek-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4ecdc4;
+  border: 2px solid #0b1f1d;
+  cursor: grab;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.7);
+}
+.activity-grid.activity-view-topology
+  .topo-seekbar.topo-seek-playback
+  .topo-seek-range::-webkit-slider-thumb {
+  background: #fbbf24;
+  border-color: #2b200a;
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.7);
+}
+.activity-grid.activity-view-topology .topo-seek-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #4ecdc4;
+  border: 2px solid #0b1f1d;
+  cursor: grab;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.7);
+}
+.activity-grid.activity-view-topology
+  .topo-seekbar.topo-seek-playback
+  .topo-seek-range::-moz-range-thumb {
+  background: #fbbf24;
+  border-color: #2b200a;
+}
+.activity-grid.activity-view-topology .topo-seek-label {
+  min-width: 140px;
+  text-align: right;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+}
+.activity-grid.activity-view-topology
+  .topo-seekbar.topo-seek-playback
+  .topo-seek-label {
+  color: #fbbf24;
+}
+/* Give the SVG a bit of breathing room at the bottom so the seekbar
+ * doesn't crop node labels on the lowest row. */
+.activity-grid.activity-view-topology .topo-svg {
+  padding-bottom: 34px;
+  box-sizing: border-box;
+}
+
+.topo-compose-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.topo-compose-modal {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  width: min(520px, 94vw);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  color: #e8e8e8;
+  font-size: 13px;
+}
+.topo-compose-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #252525;
+}
+.topo-compose-title {
+  font-weight: 600;
+  color: #fbbf24;
+}
+.topo-compose-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 6px;
+}
+.topo-compose-close:hover {
+  color: #eee;
+}
+.topo-compose-body {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.topo-compose-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+.topo-compose-chip {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  color: #fbbf24;
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.topo-compose-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.topo-compose-text {
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e8e8e8;
+  padding: 8px 10px;
+  font-size: 13px;
+  resize: vertical;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+.topo-compose-text:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.topo-compose-mode {
+  display: flex;
+  gap: 16px;
+  border: 1px solid #252525;
+  border-radius: 4px;
+  padding: 6px 10px;
+  margin: 0;
+}
+.topo-compose-mode legend {
+  padding: 0 4px;
+}
+.topo-compose-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #ccc;
+}
+.topo-compose-channel-select {
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e8e8e8;
+  padding: 6px 8px;
+  font-size: 12px;
+  width: 100%;
+}
+.topo-compose-preview {
+  font-size: 11px;
+  color: #666;
+}
+.topo-compose-preview-body {
+  color: #4ecdc4;
+}
+.topo-compose-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid #252525;
+}
+.topo-compose-btn {
+  background: #222;
+  color: #ddd;
+  border: 1px solid #3a3a3a;
+  border-radius: 4px;
+  padding: 6px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.topo-compose-btn:hover {
+  background: #2a2a2a;
+}
+.topo-compose-btn-primary {
+  background: #4ecdc4;
+  color: #0a0a0a;
+  border-color: #4ecdc4;
+  font-weight: 600;
+}
+.topo-compose-btn-primary:hover {
+  background: #6bd8d0;
+}

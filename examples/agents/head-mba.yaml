@@ -57,7 +57,7 @@ spec:
   health:
     enabled: true
     interval: 30
-    method: screen-alive
+    method: multiplexer-alive
 
   restart:
     policy: on-failure

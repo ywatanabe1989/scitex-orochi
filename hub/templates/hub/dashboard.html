@@ -1,5 +1,6 @@
 {% extends "hub/base.html" %}
 {% load static %}
+{% load vite %}
 {% block title %}{{ workspace.name }} - SciTeX Orochi{% endblock %}
 {% block extra_css %}
     <meta name="theme-color" content="#4ecdc4">
@@ -8,24 +9,71 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style.css' %}?v=130">
-    <link rel="stylesheet" href="{% static 'hub/components.css' %}?v=104">
-    <link rel="stylesheet" href="{% static 'hub/todo-tab.css' %}?v=106">
-    <link rel="stylesheet" href="{% static 'hub/attachments.css' %}?v=100">
+    <link rel="stylesheet" href="{% static 'hub/style/style-base.css' %}?v=136">
+    <link rel="stylesheet" href="{% static 'hub/style/style-main.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-messages.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-composer.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-agents.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-channels.css' %}?v=136">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-menus.css' %}?v=135">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-modals.css' %}?v=134">
+    <link rel="stylesheet"
+          href="{% static 'hub/components/components-badges-filter.css' %}?v=105">
+    <link rel="stylesheet"
+          href="{% static 'hub/components/components-agent-cards.css' %}?v=105">
+    <link rel="stylesheet"
+          href="{% static 'hub/components/components-messages.css' %}?v=105">
+    <link rel="stylesheet"
+          href="{% static 'hub/components/components-agent-detail.css' %}?v=105">
+    <link rel="stylesheet"
+          href="{% static 'hub/components/components-mcp-viewer.css' %}?v=105">
+    <link rel="stylesheet"
+          href="{% static 'hub/todo-tab/todo-tab-list.css' %}?v=108">
+    <link rel="stylesheet"
+          href="{% static 'hub/todo-tab/todo-tab-stats.css' %}?v=108">
+    <link rel="stylesheet"
+          href="{% static 'hub/attachments/attachments-media.css' %}?v=101">
+    <link rel="stylesheet"
+          href="{% static 'hub/attachments/attachments-cards.css' %}?v=101">
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=100">
+    <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=102">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
-    <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=100">
-    <link rel="stylesheet" href="{% static 'hub/activity-tab.css' %}?v=156">
-    <link rel="stylesheet" href="{% static 'hub/files-tab.css' %}?v=104">
-    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=100">
+    <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=101">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-core.css' %}?v=165">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-list.css' %}?v=166">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-topology.css' %}?v=165">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-topology-nodes.css' %}?v=165">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-compose-edges.css' %}?v=165">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-detail-pane.css' %}?v=165">
+    <link rel="stylesheet"
+          href="{% static 'hub/activity-tab/activity-tab-hooks-seekbar.css' %}?v=165">
+    <link rel="stylesheet"
+          href="{% static 'hub/files-tab/files-tab-grid.css' %}?v=106">
+    <link rel="stylesheet"
+          href="{% static 'hub/files-tab/files-tab-modals.css' %}?v=106">
+    <link rel="stylesheet" href="{% static 'hub/releases-tab.css' %}?v=103">
     <link rel="stylesheet" href="{% static 'hub/reactions.css' %}?v=115">
     <link rel="stylesheet" href="{% static 'hub/threads.css' %}?v=121">
+    <link rel="stylesheet" href="{% static 'hub/terminal-tab.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/search-palette.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/effects.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'hub/sidebar-fold.css' %}?v=1">
     <!-- highlight.js — syntax highlighting for code blocks -->
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -38,41 +86,63 @@
                 class="sidebar-toggle"
                 aria-label="Toggle sidebar">&#9776;</button>
         <div class="sidebar" id="sidebar">
-            <div class="sidebar-brand">
-                <div class="brand-logo" id="brand-logo"></div>
-                <div class="brand-info">
-                    <h2 class="workspace-title brand-product-name">
-                        SciTeX Orochi <span class="brand-version" id="orochi-version"></span>
-                    </h2>
-                    <div class="workspace-selector" id="workspace-selector">
-                        <span class="ws-icon" id="ws-icon-slot"></span>
-                        <span class="ws-name">{{ workspace.name }}</span>
-                        <span class="ws-caret">&#9662;</span>
-                    </div>
+            <div class="sidebar-brand sidebar-brand-compact">
+                <div class="brand-logo brand-logo-sm" id="brand-logo"></div>
+                <div class="workspace-selector" id="workspace-selector">
+                    <span class="ws-icon" id="ws-icon-slot"></span>
+                    <span class="ws-name">{{ workspace.name }}</span>
+                    <span class="ws-caret">&#9662;</span>
                 </div>
+                <span class="brand-product-inline" title="SciTeX Orochi">Orochi</span>
+                <span class="brand-version" id="orochi-version"></span>
                 <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
             <div id="wall-clock" class="wall-clock"></div>
-            <div class="filter-bar" style="position:relative">
-                <input type="text"
-                       id="filter-input"
-                       placeholder="Ctrl+K — fuzzy search (space = AND)"
-                       autocomplete="off">
-                <div id="filter-suggest" class="filter-suggest"></div>
-                <div id="filter-tags" class="filter-tags"></div>
-            </div>
+            <!-- hook-bypass: inline-style -->
             <div class="sidebar-sections">
-                <h2 class="collapsible-heading channels-heading blockers-heading"
-                    data-section="blockers">
-                    <span class="blocker-flag">⚠</span> Blockers
-                    <span class="sidebar-count blockers-count" id="sidebar-count-blockers"></span>
+                <h2 class="collapsible-heading channels-heading"
+                    data-section="sidebar-memory">
+                    Filtering
+                    <span class="sidebar-mem-help"
+                          tabindex="0"
+                          aria-label="Filtering help"
+                          title="Memory slots span agents, channels, and machines.  Click M1–M5 to recall a saved snapshot (the pill lights up). Click Save to M-n to overwrite the active slot with the current selection. Shift-click a slot = save directly to that slot. Right-click a slot = rename or clear it. ● on a slot = unsaved changes vs its snapshot. Click Clear (🚫) to unset the active slot and show everything.">?</span>
                 </h2>
-                <div id="blockers" class="sidebar-section blockers-section">
-                    <p class="blockers-empty">No blockers</p>
+                <div id="sidebar-memory" class="sidebar-section">
+                    <div class="sidebar-memory-picker">
+                        <select id="sidebar-mem-select"
+                                class="sidebar-mem-select"
+                                title="Switch active memory slot. + Create new takes the next free slot.">
+                            <!-- options rendered by sidebar-memory.js -->
+                        </select>
+                    </div>
+                    <div class="sidebar-memory-actions">
+                        <button class="sidebar-mem-btn sidebar-mem-save"
+                                data-action="save"
+                                title="Save current selection to the active memory slot">Save</button>
+                    </div>
                 </div>
                 <h2 class="collapsible-heading channels-heading" data-section="agents">
                     Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
                 </h2>
+                <!-- Sort/color controls live OUTSIDE #agents because
+                     sidebar-agents.js rewrites #agents.innerHTML on
+                     every heartbeat and would otherwise wipe them. -->
+                <div class="sidebar-agent-controls">
+                    <select id="activity-sort-select"
+                            class="sidebar-agent-select"
+                            title="sort order">
+                        <option value="name">sort: name</option>
+                        <option value="machine">sort: machine</option>
+                    </select>
+                    <select id="activity-color-select"
+                            class="sidebar-agent-select"
+                            title="name color keyed by">
+                        <option value="name">color: name</option>
+                        <option value="host">color: host</option>
+                        <option value="account">color: account</option>
+                    </select>
+                </div>
                 <div id="agents" class="sidebar-section">
                     <p id="no-agents">No agents connected</p>
                 </div>
@@ -82,7 +152,7 @@
                 <div id="channels" class="sidebar-section"></div>
                 <h2 class="collapsible-heading channels-heading dm-heading"
                     data-section="dms">
-                    Direct messages <span class="sidebar-count" id="sidebar-count-dms"></span>
+                    DM <span class="sidebar-count" id="sidebar-count-dms"></span>
                     <button type="button"
                             id="new-dm-btn"
                             class="new-dm-btn"
@@ -104,6 +174,10 @@
                 <a href="/signout/" class="signout-link">Sign out</a>
             </div>
         </div>
+        <button id="sidebar-fold"
+                class="sidebar-fold-toggle"
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar (Ctrl+B)">&lsaquo;</button>
         <div class="main">
             <div class="tab-bar">
                 <button class="tab-btn active" data-tab="chat">Chat</button>
@@ -112,6 +186,7 @@
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
                 <button class="tab-btn" data-tab="releases">Releases</button>
+                <button class="tab-btn" data-tab="terminal">Terminal</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
             <div id="channel-topic-banner"
@@ -157,18 +232,21 @@
             <div id="messages" class="messages"></div>
             <!-- hook-bypass: inline-style -->
             <div id="todo-view" class="todo-view" style="display:none">
-                <div id="todo-stats" class="todo-stats"></div>
-                <div class="todo-state-filter">
-                    <div class="todo-view-switch" role="tablist" aria-label="todo view mode">
+                <div class="todo-view-switch-wrap">
+                    <div class="machines-view-switch"
+                         role="tablist"
+                         aria-label="TODO view mode">
                         <button type="button"
-                                class="todo-view-switch-btn"
-                                data-view="viz"
-                                title="velocity / dependency visualization">Viz</button>
+                                class="machines-view-switch-btn"
+                                data-todo-view="viz"
+                                title="progress chart + KPIs">Viz</button>
                         <button type="button"
-                                class="todo-view-switch-btn active"
-                                data-view="list"
-                                title="grouped list">List</button>
+                                class="machines-view-switch-btn active"
+                                data-todo-view="list"
+                                title="issue list grouped by priority">List</button>
                     </div>
+                </div>
+                <div class="todo-state-filter">
                     <button type="button" class="todo-state-btn active" data-group="all">All</button>
                     <button type="button" class="todo-state-btn" data-group="high-priority">High</button>
                     <button type="button" class="todo-state-btn" data-group="medium-priority">Medium</button>
@@ -180,8 +258,9 @@
                           class="todo-last-updated"
                           title="Last fetched from GitHub"></span>
                 </div>
+                <div id="viz-content" class="viz-content"></div>
+                <div id="todo-stats" class="todo-stats"></div>
                 <div id="todo-grid" class="todo-grid"></div>
-                <div id="viz-content" class="viz-content todo-viz-hidden"></div>
             </div>
             <div id="agents-tab-view" class="todo-view" style="display:none">
                 <div id="agents-grid" class="todo-grid"></div>
@@ -225,18 +304,13 @@
                                 data-view="list"
                                 title="one-line rows">List</button>
                     </div>
-                    <select id="activity-sort-select"
+                    <!-- sort + color dropdowns moved to the sidebar (ywatanabe 2026-04-21) -->
+                    <select id="activity-size-select"
                             class="activity-sort-select"
-                            title="sort order">
-                        <option value="name">sort: name</option>
-                        <option value="machine">sort: machine</option>
-                    </select>
-                    <select id="activity-color-select"
-                            class="activity-sort-select"
-                            title="name color keyed by">
-                        <option value="name">color: name</option>
-                        <option value="host">color: host</option>
-                        <option value="account">color: account</option>
+                            title="topology channel node size">
+                        <option value="equal">size: equal</option>
+                        <option value="subscribers">size: subscribers</option>
+                        <option value="posts">size: posts</option>
                     </select>
                     <span class="activity-summary activity-summary-inline"
                           id="activity-summary"></span>
@@ -319,6 +393,20 @@
                         aria-label="Next">&#10095;</button>
                 <div id="img-viewer-caption" class="img-viewer-caption"></div>
             </div>
+            <!-- Web terminal tab (todo#47) -->
+            <!-- hook-bypass: inline-style -->
+            <div id="terminal-view" class="todo-view" style="display:none">
+                <div class="terminal-toolbar">
+                    <span class="terminal-label">Open shell on</span>
+                    <div id="terminal-host-picker" class="terminal-host-picker"></div>
+                    <button type="button"
+                            id="terminal-close-btn"
+                            class="terminal-close-btn"
+                            title="Close terminal session">Close</button>
+                </div>
+                <div id="terminal-status" class="terminal-status">idle - pick a host to open a shell</div>
+                <div id="terminal-xterm-container"></div>
+            </div>
             {% if is_admin %}
                 <div id="settings-view" class="todo-view" style="display:none">
                     <div id="settings-content" class="settings-tab-content">
@@ -341,6 +429,7 @@
                 <div id="mention-dropdown" class="mention-dropdown"></div>
                 <div class="input-bar-row">
                     <textarea id="msg-input"
+                              data-voice-input
                               placeholder="Type a message..."
                               autocomplete="off"
                               rows="3"></textarea>
@@ -419,37 +508,33 @@
       window.__orochiUserName = "{{ request.user.username|escapejs }}";
       window.__orochiWorkspaceName = "{{ workspace.name|escapejs }}";
       window.__orochiWorkspaceIcon = "{{ workspace.icon|escapejs }}";
+      window.__orochiWorkspaceIconImage = "{{ workspace.icon_image|escapejs }}";
     </script>
-    <script src="{% static 'hub/config.js' %}?v=117"></script>
-    <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
-    <script src="{% static 'hub/app.js' %}?v=144"></script>
-    <script src="{% static 'hub/dms.js' %}?v=4"></script>
-    <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
-    <script src="{% static 'hub/resources-tab.js' %}?v=102"></script>
-    <script src="{% static 'hub/todo-tab.js' %}?v=108"></script>
-    <script src="{% static 'hub/workspaces-tab.js' %}?v=99"></script>
-    <script src="{% static 'hub/chat.js' %}?v=122"></script>
-    <script src="{% static 'hub/mention.js' %}?v=101"></script>
-    <script src="{% static 'hub/settings-tab.js' %}?v=104"></script>
-    <script src="{% static 'hub/emoji-picker.js' %}?v=99"></script>
-    <script src="{% static 'hub/filter.js' %}?v=101"></script>
-    <script src="{% static 'hub/blockers.js' %}?v=1"></script>
-    <script src="{% static 'hub/agents-tab.js' %}?v=110"></script>
-    <script src="{% static 'hub/connectivity-map.js' %}?v=100"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=178"></script>
-    <script src="{% static 'hub/viz-tab.js' %}?v=5"></script>
-    <script src="{% static 'hub/upload.js' %}?v=112"></script>
-    <script src="{% static 'hub/files-tab.js' %}?v=104"></script>
-    <script src="{% static 'hub/releases-tab.js' %}?v=100"></script>
-    <script src="{% static 'hub/reactions.js' %}?v=107"></script>
-    <script src="{% static 'hub/threads.js' %}?v=122"></script>
-    <script src="{% static 'hub/sketch.js' %}?v=99"></script>
-    <script src="{% static 'hub/webcam.js' %}?v=1"></script>
-    <script src="{% static 'hub/voice-input.js' %}?v=126"></script>
-    <script src="{% static 'hub/tabs.js' %}?v=108"></script>
-    <script src="{% static 'hub/init.js' %}?v=100"></script>
-    <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
-    <script src="{% static 'hub/push.js' %}?v=99"></script>
+    <!-- Single source of truth for the agent badge (icon, star, 4 LEDs,
+         name, host). Loaded BEFORE app.js / activity-tab.js / agents-tab.js
+         so renderAgentBadge() is in scope at first render. NEVER inline a
+         badge in any of those files — call renderAgentBadge() instead.
+         See dashboard-development-discipline.md rule 1. -->
+    <!-- SVG variant of the agent badge — renderAgentBadgeSvg for the
+         topology canvas (both agent and human nodes). Parallel to
+         renderChannelBadgeSvg. Split out of agent-badge.js to stay
+         under the 512-line .js hook cap. Must load AFTER agent-badge.js
+         (shares agentIdentity/getAgentColor helpers) but BEFORE
+         activity-tab/topology-nodes.js. -->
+    <!-- Single source of truth for the channel badge (icon, star, eye,
+         mute, name, unread). Parallel to agent-badge.js. Loaded BEFORE
+         app/* and activity-tab/* so renderChannelBadgeHtml / Svg are in
+         scope at first render. Star/eye/mute/icon-change click handlers
+         are wired via document.body delegation from this file — no
+         site-local wiring required. -->
+    <!-- Activity tab (canonical Agents UI renderer) — split into focused
+         sub-files. ALL share the same cache-bust version. Load order:
+         state → utils → data → per-view renderers → topology helpers →
+         topology → grid handlers → controls → init. -->
+    {# Single Vite ES-module bundle replacing ~100 per-file classic-script tags. #}
+    {# Load order + imports live in hub/frontend/src/index.ts. #}
+    {% vite_bundle "src/index.ts" as orochi_bundle %}
+    {% if orochi_bundle %}<script type="module" src="{{ orochi_bundle }}"></script>{% endif %}
     <!-- mermaid.js — diagram rendering for ```mermaid code blocks -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
     <script>mermaid.initialize({startOnLoad: false, theme: 'dark'});</script>
@@ -475,10 +560,6 @@
       });
     }
     </script>
-    <script src="{% static 'hub/element-inspector.js' %}?v=1"></script>
-    <script src="{% static 'hub/search-palette.js' %}?v=1"></script>
-    <script src="{% static 'hub/feed-scroll-btns.js' %}?v=1"></script>
-    <script src="{% static 'hub/feed-nav.js' %}?v=3"></script>
     <!-- Channel export modal -->
     <div id="channel-export-modal"
          class="ch-export-modal"

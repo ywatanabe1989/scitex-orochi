@@ -339,16 +339,15 @@ belongs here for reference):
    **non-action**, not a forgotten step. (Correction credit:
    head-nas msg#12242 caught the over-specification in the
    original v1 of this skill.)
-3. **src_mcp.json draft** with `SCITEX_OROCHI_CHANNELS` set to
-   **`#proj-<topic>` only** — a single-channel subscription.
-   The proj-agent is deliberately invisible to `#agent`,
-   `#progress`, `#escalation`, `#general`, and `#ywatanabe`.
-   This is the **narrow-subscription policy** set by
-   ywatanabe msg#12286 and the red-as-red permission model
-   (msg#12290). Cross-fleet coordination for a proj-agent
-   reaches it via DM from `head-mba` / `fleet-lead` or via
-   the one channel it owns; there is no fleet-wide broadcast
-   path.
+3. **src_mcp.json draft** — do NOT set `SCITEX_OROCHI_CHANNELS`
+   (the env var was removed; channel subscriptions are hub-DB
+   authoritative now). After first boot, subscribe the proj-agent
+   to **`#proj-<topic>` only** via the hub UI or MCP `subscribe`
+   tool. The proj-agent is deliberately invisible to `#agent`,
+   `#progress`, `#escalation`, `#general`, and `#ywatanabe` —
+   narrow-subscription policy. Cross-fleet coordination reaches
+   it via DM from `lead` or via the one channel it owns; no
+   fleet-wide broadcast.
 4. **transfer dir** `~/.scitex/orochi/transfer/proj-<topic>/`
    (note: `proj-` prefix, matching the canonical channel
    and agent naming from ywatanabe msg#12286) with

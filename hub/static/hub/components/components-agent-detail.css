@@ -1,0 +1,312 @@
+/* Orochi Dashboard -- sub-tab bar, per-agent detail, LEDs, header actions, terminal toggles
+ * Split from components.css (todo: 512-line limit). */
+
+/* ── Agent sub-tab bar (todo#420) ── */
+.agent-subtab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0;
+  border-bottom: 1px solid #2a2a2a;
+  margin-bottom: 14px;
+}
+.agent-subtab {
+  background: transparent;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 16px;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+  margin-bottom: -1px;
+}
+.agent-subtab:hover {
+  color: #ccc;
+  background: #181818;
+}
+.agent-subtab-active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+  background: transparent;
+  font-weight: 600;
+}
+.agent-subtab-offline {
+  opacity: 0.45;
+}
+.agent-tab-content {
+  width: 100%;
+}
+
+/* ── Per-agent detail view ── */
+.agent-detail-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+.agent-detail-header {
+  font-size: 14px;
+  color: #ddd;
+  padding: 10px 14px;
+  background: #161616;
+  border: 1px solid #222;
+  border-radius: 6px;
+}
+.agent-detail-header-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* todo#57: multi-lamp connectivity indicator bank */
+.agent-detail-lamps {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.agent-detail-lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  cursor: help;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #888;
+  line-height: 1;
+}
+.agent-detail-lamp-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 3px currentColor;
+}
+.agent-detail-lamp-label {
+  font-weight: 600;
+}
+.agent-detail-header-title {
+  font-weight: 600;
+  color: #4ecdc4;
+  font-size: 15px;
+}
+.agent-detail-task {
+  color: #aaa;
+  font-size: 12px;
+  font-style: italic;
+}
+.agent-detail-actions {
+  margin-left: auto;
+}
+.agent-detail-dm-btn {
+  background: #222;
+  color: #4ecdc4;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.agent-detail-dm-btn:hover {
+  background: #2a2a2a;
+  border-color: #4ecdc4;
+}
+.agent-detail-meta {
+  font-size: 12px;
+  color: #888;
+  margin-left: 8px;
+}
+.agent-detail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 4px 16px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #888;
+}
+.agent-detail-meta-grid > span > strong {
+  color: #ccc;
+  font-weight: 500;
+  margin-right: 4px;
+}
+.agent-detail-pane-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.agent-detail-pane-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.pane-raw-toggle {
+  background: transparent;
+  color: #666;
+  border: 1px solid #333;
+  border-radius: 3px;
+  padding: 1px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
+}
+.pane-raw-toggle:hover {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+.agent-detail-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  align-items: stretch;
+}
+.agent-detail-split-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.agent-detail-split-col > .agent-detail-pane-wrap,
+.agent-detail-split-col > .agent-detail-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.agent-detail-split-col .agent-detail-pane,
+.agent-detail-split-col .agent-detail-claude-md {
+  flex: 1 1 auto;
+}
+@media (max-width: 1000px) {
+  .agent-detail-split {
+    grid-template-columns: 1fr;
+  }
+}
+.agent-detail-pane-wrap {
+  flex: 1 1 auto;
+  width: 100%;
+}
+.agent-detail-pane {
+  background: #0d1117;
+  color: #c9d1d9;
+  padding: 14px 18px;
+  border-radius: 6px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre;
+  overflow: auto;
+  max-height: calc(100vh - 320px);
+  min-height: 320px;
+  border: 1px solid #222;
+  tab-size: 8;
+  width: 100%;
+  box-sizing: border-box;
+}
+.agent-detail-section {
+  margin-top: 4px;
+  width: 100%;
+}
+.agent-detail-claude-md {
+  background: #1a1a2e;
+  color: #ccc;
+  padding: 14px 18px;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: calc(100vh - 320px);
+  min-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #333;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* todo#420: per-agent detail header actions (DM quick-action) + pane source badge */
+.agent-detail-actions {
+  float: right;
+}
+.agent-detail-dm-btn {
+  background: #1f2937;
+  color: #9ecbff;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.agent-detail-dm-btn:hover {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+.agent-detail-pane-source {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #555;
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+/* todo#47 — Refresh/Copy buttons in the terminal-output label row.
+ * Low-visual-weight pill buttons so the pane itself stays dominant. */
+.agent-detail-pane-controls {
+  float: right;
+  display: inline-flex;
+  gap: 4px;
+}
+.agent-detail-pane-btn {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 8px;
+  background: transparent;
+  color: #666;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.agent-detail-pane-btn:hover:not(:disabled) {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+.agent-detail-pane-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+/* todo#47 — active/engaged state for toggle buttons (Follow, Expand).
+ * Teal fill matches the hover color and the RT lamp so the "this is
+ * live-updating" cue is consistent across the viewer. */
+.agent-detail-pane-btn-on,
+.agent-detail-pane-btn.agent-detail-pane-btn-on {
+  background: #4ecdc4;
+  border-color: #4ecdc4;
+  color: #f8f7f5;
+}
+.agent-detail-pane-btn-on:hover:not(:disabled) {
+  background: #3db5ac;
+  border-color: #3db5ac;
+  color: #f8f7f5;
+}

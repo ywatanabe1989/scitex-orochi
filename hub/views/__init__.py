@@ -51,12 +51,17 @@ from hub.views.auth import (  # noqa: F401
     signup_view,
 )
 from hub.views.avatar import api_agents_avatar  # noqa: F401
+from hub.views.channels_rename import (  # noqa: F401
+    api_channel_rename,
+    api_channel_rename_prefix,
+)
 from hub.views.discover import api_discover  # noqa: F401
 from hub.views.github import github_issue_title, github_issues  # noqa: F401
 from hub.views.landing import (  # noqa: F401
     find_workspace_view,
     landing_page,
     redirect_old_workspace_url,
+    request_invite_view,
 )
 from hub.views.registry import (  # noqa: F401
     api_registry_agent_detail,
@@ -64,6 +69,11 @@ from hub.views.registry import (  # noqa: F401
 )
 from hub.views.status import api_status, status_page  # noqa: F401
 from hub.views.telegram import telegram_webhook  # noqa: F401
+from hub.views.tracked_repos import (  # noqa: F401
+    api_tracked_repo_detail,
+    api_tracked_repos,
+    api_tracked_repos_reorder,
+)
 from hub.views.upload import (  # noqa: F401
     api_media_by_hash,
     api_upload,
@@ -79,3 +89,4 @@ from hub.views.workspace import (  # noqa: F401
     workspace_dashboard,
     workspace_settings_view,
 )
+from hub.views.workspace_icon import api_workspace_icon  # noqa: F401

@@ -1,0 +1,411 @@
+/* Files tab — media grid and previews */
+.files-view {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Explorer-style toolbar: mime filter (left) + search + view switcher (right)
+ *
+ * Horizontal padding (16px) matches .tab-bar / .activity-subtabs /
+ * .todo-state-filter / .releases-subtabs / .machines-subtabs (be184d2).
+ * Vertical padding 6px/8px mirrors .activity-subtabs so the toolbar row
+ * has the same breathing room as sibling tab toolbars (todo#88). */
+.files-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: var(--toolbar-padding-y-top, 6px) var(--toolbar-padding-x, 16px)
+    var(--toolbar-padding-y-bottom, 8px);
+  border-bottom: 1px solid #2a2a2a;
+  flex-wrap: wrap;
+}
+.files-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.files-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.files-search-icon {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+  font-size: 12px;
+  pointer-events: none;
+}
+.files-search-input {
+  background: #101010;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #ddd;
+  /* Match min-height of sibling toolbar buttons so the search field
+   * aligns with the view-mode toggle (todo#88). */
+  min-height: var(--btn-min-h, 32px);
+  padding: 5px 10px 5px 26px;
+  font-size: 12px;
+  width: 220px;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.files-search-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+  background: #141414;
+}
+.files-view-group {
+  display: inline-flex;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  overflow: hidden;
+  /* Leftmost in the files toolbar — mirrors Agents tab [Viz|List] placement
+   * (ywatanabe 2026-04-19). order:-1 keeps it first even if future markup
+   * changes push it later in DOM order. */
+  order: -1;
+}
+.files-view-group .files-view-btn {
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid #2a2a2a;
+}
+.files-view-group .files-view-btn:last-child {
+  border-right: none;
+}
+
+.files-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.files-body > #files-grid {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+.files-preview-pane {
+  width: 340px;
+  border-left: 1px solid #222;
+  background: #0f0f0f;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.files-preview-hidden {
+  display: none !important;
+}
+.files-preview-empty {
+  color: #666;
+  font-size: 12px;
+  text-align: center;
+  margin-top: 40px;
+}
+.files-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.files-preview-name {
+  flex: 1;
+  color: #ddd;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.files-preview-open {
+  color: #4ecdc4;
+  text-decoration: none;
+  font-size: var(--btn-font-size, 13px);
+  border: 1px solid #2a3a3a;
+  border-radius: 4px;
+  /* Preview-pane "Open" control — bump to minimum tap target (todo#88). */
+  min-height: var(--btn-min-h, 32px);
+  padding: var(--btn-padding-y, 6px) var(--btn-padding-x, 10px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.files-preview-open:hover {
+  background: rgba(78, 205, 196, 0.1);
+}
+.files-preview-media-wrap {
+  background: #0a0a0a;
+  border: 1px solid #1f1f1f;
+  border-radius: 4px;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.files-preview-media {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+}
+.files-preview-pdf {
+  width: 100%;
+  height: 320px;
+  border: 0;
+}
+.files-preview-meta {
+  font-size: 11px;
+  color: #aaa;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 4px 10px;
+  margin: 0;
+}
+.files-preview-meta dt {
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 10px;
+}
+.files-preview-meta dd {
+  margin: 0;
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tiles view — medium icon on left, 3-line meta on right (Explorer "Tiles") */
+.files-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+  padding: 12px 16px;
+}
+.files-tile {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+  min-width: 0;
+}
+.files-tile:hover {
+  border-color: #4ecdc4;
+  background: #181818;
+}
+.files-tile-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 3px;
+  flex-shrink: 0;
+  background: #0a0a0a;
+}
+.files-tile-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  background: #0a0a0a;
+  border-radius: 3px;
+}
+.files-tile-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.files-tile-name {
+  font-size: 12px;
+  color: #ddd;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.files-tile-meta {
+  font-size: 10px;
+  color: #888;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.files-tile-sub {
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-filter-bar {
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+  border-bottom: none;
+  flex-wrap: wrap;
+}
+
+.files-filter-btn {
+  background: transparent;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  /* Tab-style filter button — min-height matches token so it aligns
+   * vertically with the view-mode buttons in the toolbar (todo#88). */
+  min-height: var(--btn-min-h, 32px);
+  padding: 8px 16px;
+  font-size: var(--btn-font-size, 13px);
+  cursor: pointer;
+  white-space: nowrap;
+  margin-bottom: -1px;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
+}
+
+.files-filter-btn:hover {
+  color: #ccc;
+  background: #181818;
+}
+
+.files-filter-btn.active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+  background: transparent;
+  font-weight: 600;
+}
+
+.files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  padding: 16px;
+}
+
+.file-card {
+  background: #141414;
+  border: 1px solid #222;
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s;
+}
+
+.file-card:hover {
+  border-color: #4ecdc4;
+}
+
+.file-preview {
+  width: 100%;
+  height: 140px;
+  background: #0a0a0a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.file-preview-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+}
+
+.file-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.file-preview-video,
+.file-preview-audio {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.file-preview-audio {
+  width: 90%;
+}
+
+.file-icon-pdf {
+  width: 60px;
+  height: 75px;
+  background: #d32f2f;
+  color: #f8f7f5;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.file-icon-generic {
+  font-size: 48px;
+  color: #666;
+}
+
+.file-info {
+  padding: 10px 12px;
+  border-top: 1px solid #222;
+}
+
+.file-name {
+  font-size: 12px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name a {
+  color: #4ecdc4;
+  text-decoration: none;
+}
+
+.file-name a:hover {
+  text-decoration: underline;
+}
+
+.file-meta {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 2px;
+}
+
+.file-sender {
+  font-weight: 600;
+}
+
+.file-meta-small {
+  font-size: 9px;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+

@@ -21,6 +21,12 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Landing
     path("", views.landing_page, name="index"),
+    path("", views.landing_page, name="landing"),
+    path(
+        "request-invite/",
+        views.request_invite_view,
+        name="request-invite",
+    ),
     # Auth
     path("signin/", views.signin_view, name="signin"),
     path("signup/", views.signup_view, name="signup"),

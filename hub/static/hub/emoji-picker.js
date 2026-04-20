@@ -76,6 +76,44 @@
     header.textContent = "Choose workspace icon";
     picker.appendChild(header);
 
+    /* Upload-image + remove-image actions (icon_image cascade). */
+    var actions = document.createElement("div");
+    actions.className = "emoji-picker-actions";
+
+    var uploadBtn = document.createElement("button");
+    uploadBtn.type = "button";
+    uploadBtn.className = "emoji-picker-btn emoji-picker-upload";
+    uploadBtn.textContent = "\uD83D\uDCC2 Upload image";
+    uploadBtn.title = "Upload an image file (max 2 MB)";
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.className = "emoji-picker-file";
+    fileInput.addEventListener("change", function () {
+      var f = fileInput.files && fileInput.files[0];
+      if (f) {
+        uploadIconImage(f);
+      }
+    });
+    uploadBtn.addEventListener("click", function () {
+      fileInput.click();
+    });
+    actions.appendChild(uploadBtn);
+    actions.appendChild(fileInput);
+
+    if (window.__orochiWorkspaceIconImage) {
+      var removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "emoji-picker-btn emoji-picker-remove-image";
+      removeBtn.textContent = "\u2715 Remove image";
+      removeBtn.title = "Delete the uploaded image (keeps emoji)";
+      removeBtn.addEventListener("click", function () {
+        clearIconImage();
+      });
+      actions.appendChild(removeBtn);
+    }
+    picker.appendChild(actions);
+
     var grid = document.createElement("div");
     grid.className = "emoji-picker-grid";
 
@@ -150,24 +188,125 @@
       });
   }
 
+  function renderImageIcon(url, size) {
+    var radius = Math.round(size * 0.22);
+    var s = escapeHtmlSafe(url);
+    return (
+      '<img class="ws-icon-img" src="' +
+      s +
+      '" alt="" ' +
+      'width="' +
+      size +
+      '" height="' +
+      size +
+      '" ' +
+      'style="width:' +
+      size +
+      "px;height:" +
+      size +
+      "px;" +
+      "border-radius:" +
+      radius +
+      'px;object-fit:cover;display:block" />'
+    );
+  }
+
+  function escapeHtmlSafe(s) {
+    var d = document.createElement("div");
+    d.textContent = s || "";
+    return d.innerHTML;
+  }
+
   function updateVisibleIcons(emoji) {
     var wsName = window.__orochiWorkspaceName || "workspace";
+    var imgUrl = window.__orochiWorkspaceIconImage || "";
 
     /* Sidebar icon slot */
     var wsIconSlot = document.getElementById("ws-icon-slot");
     if (wsIconSlot) {
-      wsIconSlot.innerHTML = emoji
-        ? '<span class="ws-emoji-icon">' + emoji + "</span>"
-        : getWorkspaceIcon(wsName, 16);
+      if (imgUrl) {
+        wsIconSlot.innerHTML = renderImageIcon(imgUrl, 16);
+      } else if (emoji) {
+        wsIconSlot.innerHTML =
+          '<span class="ws-emoji-icon">' + emoji + "</span>";
+      } else {
+        wsIconSlot.innerHTML = getWorkspaceIcon(wsName, 16);
+      }
     }
 
     /* Settings preview if visible */
     var preview = document.getElementById("ws-icon-preview");
     if (preview) {
-      preview.innerHTML = emoji
-        ? '<span class="ws-emoji-icon ws-emoji-icon-lg">' + emoji + "</span>"
-        : getWorkspaceIcon(wsName, 64);
+      if (imgUrl) {
+        preview.innerHTML = renderImageIcon(imgUrl, 64);
+      } else if (emoji) {
+        preview.innerHTML =
+          '<span class="ws-emoji-icon ws-emoji-icon-lg">' + emoji + "</span>";
+      } else {
+        preview.innerHTML = getWorkspaceIcon(wsName, 64);
+      }
     }
+  }
+
+  function uploadIconImage(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type || "")) {
+      alert("Only image files are allowed.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image too large (max 2 MB).");
+      return;
+    }
+    var formData = new FormData();
+    formData.append("file", file);
+    fetch("/api/workspace/icon/", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": csrfToken },
+      body: formData,
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          console.error("workspace icon upload failed:", res.status);
+          return res
+            .json()
+            .then(function (e) {
+              alert((e && e.error) || "Upload failed");
+            })
+            .catch(function () {
+              alert("Upload failed");
+            });
+        }
+        return res.json().then(function (body) {
+          window.__orochiWorkspaceIconImage = body.url || "";
+          updateVisibleIcons(window.__orochiWorkspaceIcon || "");
+          close();
+        });
+      })
+      .catch(function (e) {
+        console.error("workspace icon upload error:", e);
+      });
+  }
+
+  function clearIconImage() {
+    fetch("/api/workspace/icon/?clear=1", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "X-CSRFToken": csrfToken },
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          console.error("workspace icon clear failed:", res.status);
+          return;
+        }
+        window.__orochiWorkspaceIconImage = "";
+        updateVisibleIcons(window.__orochiWorkspaceIcon || "");
+        close();
+      })
+      .catch(function (e) {
+        console.error("workspace icon clear error:", e);
+      });
   }
 
   /* Wire up sidebar icon click */

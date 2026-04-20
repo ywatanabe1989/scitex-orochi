@@ -124,12 +124,19 @@
 
 /* Machines tab [Viz|Cards] switch — mirrors the Agents tab
  * .activity-view-switch pattern for visual consistency. Leftmost control
- * in the Machines toolbar. (ywatanabe 2026-04-19) */
+ * in the Machines toolbar. (ywatanabe 2026-04-19)
+ *
+ * Horizontal padding is 0 here because the parent `#resources-view.todo-view`
+ * already supplies 16px of wrapper padding (see todo-tab.css `.todo-view`).
+ * Setting it to 16px here stacked on top of the wrapper's 16px and pushed
+ * the Viz/Cards switcher to 32px from the viewport — 16px out of line with
+ * the grid/map content below it and with the equivalent switchers on the
+ * Agents Viz / TODO / Files tabs, all of which sit 16px from the edge. */
 .machines-subtabs {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 12px;
+  padding: 6px 0;
   border-bottom: 1px solid #2a2a2a;
 }
 .machines-view-switch {

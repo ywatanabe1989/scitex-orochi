@@ -51,12 +51,18 @@ function _vizSig(data) {
 
 function renderVizTab() {
   var container = document.getElementById("viz-content");
-  if (container && _vizCachedData) {
+  if (!container) return;
+  if (_vizCachedData) {
     /* Instant paint from cache — user sees the chart before the network
      * call returns. Force the signature write by resetting first so a
      * re-activation after the section was hidden still paints. */
     _vizRenderedSig = "";
     _renderVizPayload(_vizCachedData, container);
+  } else if (!container.innerHTML) {
+    /* No cache yet — paint a skeleton so the tab shell renders
+     * immediately. The real chart replaces this as soon as the async
+     * /api/todo/stats/ round-trip returns (todo#82). */
+    container.innerHTML = _buildVizSkeleton();
   }
   /* Refetch if the cache is older than the poll interval. */
   if (Date.now() - _vizCachedAt > _VIZ_FRESH_MS) {
@@ -64,6 +70,29 @@ function renderVizTab() {
   }
   if (_vizPollTimer) clearInterval(_vizPollTimer);
   _vizPollTimer = setInterval(fetchVizPayload, _VIZ_FRESH_MS);
+}
+
+function _buildVizSkeleton() {
+  /* Lightweight placeholder — matches the real card geometry so the
+   * layout doesn't jump when the SVG arrives. Pure CSS shimmer. */
+  return (
+    '<div class="viz-card viz-skeleton" aria-busy="true">' +
+    "<h3>TODO progress</h3>" +
+    '<div class="viz-skel-chart"></div>' +
+    '<div class="viz-skel-legend">' +
+    '<span class="viz-skel-pill"></span>' +
+    '<span class="viz-skel-pill"></span>' +
+    '<span class="viz-skel-pill"></span>' +
+    "</div>" +
+    '<div class="viz-skel-kpis">' +
+    '<span class="viz-skel-kpi"></span>' +
+    '<span class="viz-skel-kpi"></span>' +
+    '<span class="viz-skel-kpi"></span>' +
+    '<span class="viz-skel-kpi"></span>' +
+    "</div>" +
+    '<p class="empty-notice viz-skel-note">Loading visualization&hellip;</p>' +
+    "</div>"
+  );
 }
 
 function stopVizTab() {

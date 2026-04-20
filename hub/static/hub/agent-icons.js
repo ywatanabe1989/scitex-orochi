@@ -11,6 +11,15 @@ var cachedAgentColors = {}; /* {name: hex color string} */
 var cachedHumanIcons = {};
 var cachedHumanColors = {};
 
+/* Per-channel icon + color caches — populated by fetchChannels() in app.js
+ * when GET /api/channels/ returns. channelIdentity() reads these as the
+ * single source of truth so sidebar rows, Activity pool chips and the
+ * Viz topology all render the same custom glyph/color without each
+ * caller re-deriving anything. Keys are normalized channel names (with
+ * leading '#'). */
+var cachedChannelIcons = {}; /* {"#general": image|emoji|text} */
+var cachedChannelColors = {}; /* {"#general": "#hex"} */
+
 /* Inline SVG icon generators for branding — official SciTeX snake */
 function getSnakeIcon(size, color) {
   size = size || 20;
@@ -327,4 +336,145 @@ function renderMyAvatarButton() {
   if (!btn) return;
   var name = window.__orochiUserName || "";
   btn.innerHTML = getSenderIcon(name, false, 22);
+}
+
+/* ----- Shared identity helpers (todo#96) ----------------------------
+ *
+ * Single source of truth for "how does this agent / channel appear".
+ * Used by the left sidebar (app.js), the Activity pool chips
+ * (activity-tab.js) and the Activity canvas SVG nodes so the SAME
+ * entity wears the SAME icon, color, display-name and tooltip in
+ * every surface. Keeps layout-specific markup in each caller; only
+ * the identity fragment is centralized.
+ *
+ *   agentIdentity(agent)         -> { name, displayName, color, tooltip,
+ *                                     iconHtml(size) }
+ *   channelIdentity(channelName) -> { name, displayName, color, tooltip,
+ *                                     iconHtml(size) }
+ *
+ * `color` follows the user-selected "color by" option when the host
+ * app exposes _colorKeyFor (Activity tab); otherwise falls back to
+ * the agent/channel name hash via getAgentColor. `displayName` runs
+ * through hostedAgentName + cleanAgentName when available so the
+ * "head-mba@mba" duplication collapse stays consistent. */
+function _identityColor(key) {
+  return typeof getAgentColor === "function"
+    ? getAgentColor(key || "unknown")
+    : "#eaf1fb";
+}
+function _identityAgentColorKey(a) {
+  if (typeof _colorKeyFor === "function") return _colorKeyFor(a);
+  return (a && a.name) || "";
+}
+function _identityAgentDisplay(a) {
+  if (!a) return "";
+  if (typeof hostedAgentName === "function") return hostedAgentName(a);
+  if (typeof cleanAgentName === "function") return cleanAgentName(a.name || "");
+  return a.name || "";
+}
+function agentIdentity(a) {
+  var name = (a && a.name) || "";
+  var color = _identityColor(_identityAgentColorKey(a));
+  var displayName = _identityAgentDisplay(a);
+  var machine = (a && a.machine) || "";
+  var tooltip =
+    (a && a.agent_id) || name
+      ? ((a && a.agent_id) || name) + (machine ? " (" + machine + ")" : "")
+      : name;
+  return {
+    name: name,
+    displayName: displayName,
+    color: color,
+    tooltip: tooltip,
+    /* Gravatar-style cascade (image > emoji > text > snake SVG).
+     * Callers that need a plain inline glyph for SVG contexts can
+     * still use the 🤖 fallback directly — this HTML form is for
+     * HTML contexts (sidebar rows + pool chips). */
+    iconHtml: function (size) {
+      size = size || 16;
+      if (typeof getSenderIcon === "function") {
+        return getSenderIcon(name, true, size);
+      }
+      return '<span class="agent-custom-icon">\uD83E\uDD16</span>';
+    },
+  };
+}
+function channelIdentity(ch) {
+  /* Accept either a string (legacy call sites) or an object
+   * {name, icon_emoji, icon_image, icon_text, color}. Pulls missing
+   * fields from cachedChannelIcons/Colors so a caller that only has
+   * the name still gets the same rendering as callers with the full
+   * record. */
+  var name = (ch && typeof ch === "object" ? ch.name : ch) || "";
+  var cachedIcon = cachedChannelIcons[name] || "";
+  var cachedColor = cachedChannelColors[name] || "";
+  var iconImage =
+    (ch && typeof ch === "object" && ch.icon_image) ||
+    (cachedIcon &&
+    (cachedIcon.indexOf("http") === 0 || cachedIcon.indexOf("/") === 0)
+      ? cachedIcon
+      : "");
+  var iconEmoji =
+    (ch && typeof ch === "object" && ch.icon_emoji) ||
+    (cachedIcon && !iconImage ? cachedIcon : "");
+  var iconText = (ch && typeof ch === "object" && ch.icon_text) || "";
+  var customColor = (ch && typeof ch === "object" && ch.color) || cachedColor;
+  var color = customColor || _identityColor(name);
+  return {
+    name: name,
+    displayName: name,
+    color: color,
+    tooltip: name,
+    /* Cascade: image > emoji > text > default "#" glyph. Size arg
+     * controls the pixel dimension for image avatars; emoji/text
+     * scale via font-size. */
+    iconHtml: function (size) {
+      size = size || 16;
+      if (iconImage) {
+        return (
+          '<img class="agent-avatar" src="' +
+          (typeof escapeHtml === "function"
+            ? escapeHtml(iconImage)
+            : iconImage) +
+          '" width="' +
+          size +
+          '" height="' +
+          size +
+          '" alt="">'
+        );
+      }
+      if (iconEmoji) {
+        return (
+          '<span class="agent-custom-icon" style="font-size:' +
+          Math.round(size * 0.9) +
+          'px">' +
+          iconEmoji +
+          "</span>"
+        );
+      }
+      if (iconText) {
+        return (
+          '<span class="agent-custom-icon" style="font-size:' +
+          Math.round(size * 0.7) +
+          'px">' +
+          (typeof escapeHtml === "function" ? escapeHtml(iconText) : iconText) +
+          "</span>"
+        );
+      }
+      return '<span class="entity-icon entity-icon-channel">#</span>';
+    },
+  };
+}
+
+/* Cache maintainer — called from app.js after GET /api/channels/ and
+ * from the channel_identity WS broadcast so the three render surfaces
+ * all pick up custom icons without a full page reload. */
+function cacheChannelIdentity(ch) {
+  if (!ch || !ch.name) return;
+  var name = ch.name;
+  var icon = ch.icon_image || ch.icon_emoji || ch.icon_text || "";
+  if (icon) cachedChannelIcons[name] = icon;
+  else delete cachedChannelIcons[name];
+  if (ch.color) cachedChannelColors[name] = ch.color;
+  else delete cachedChannelColors[name];
 }

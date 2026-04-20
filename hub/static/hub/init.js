@@ -3,25 +3,35 @@
    fetchResources, fetchWorkspaces, wsConnected, startRestPolling,
    getSnakeLogo, refreshAgentNames */
 
-/* Inject Orochi logo into sidebar brand */
+/* Inject Orochi logo into sidebar brand. Size/radius come from CSS
+ * (.brand-logo-sm .header-icon rule in style-base.css) so the compact
+ * header can shrink it to 22px without fighting inline styles. */
 (function () {
   var brandLogo = document.getElementById("brand-logo");
   if (brandLogo) {
     brandLogo.innerHTML =
-      '<img src="/static/hub/orochi-icon.png" alt="Orochi" ' +
-      'style="width:100px;height:100px;border-radius:8px;">';
+      '<img class="header-icon" src="/static/hub/orochi-icon.png" alt="Orochi">';
   }
 })();
 
-/* Inject workspace icon into sidebar selector */
+/* Inject workspace icon into sidebar selector.
+ * Render cascade: uploaded image > emoji > first-letter coloured square.
+ * getWorkspaceIcon() handles branches (1) and (3); the emoji branch is
+ * handled here because it's a simple text span. */
 (function () {
   var wsIconSlot = document.getElementById("ws-icon-slot");
   var wsName = window.__orochiWorkspaceName || "workspace";
+  var wsIconImage = window.__orochiWorkspaceIconImage || "";
   var wsIcon = window.__orochiWorkspaceIcon || "";
   if (wsIconSlot) {
-    wsIconSlot.innerHTML = wsIcon
-      ? '<span class="ws-emoji-icon">' + wsIcon + "</span>"
-      : getWorkspaceIcon(wsName, 16);
+    if (wsIconImage) {
+      wsIconSlot.innerHTML = getWorkspaceIcon(wsName, 16);
+    } else if (wsIcon) {
+      wsIconSlot.innerHTML =
+        '<span class="ws-emoji-icon">' + wsIcon + "</span>";
+    } else {
+      wsIconSlot.innerHTML = getWorkspaceIcon(wsName, 16);
+    }
   }
 })();
 
@@ -35,8 +45,13 @@
   if (!el) return;
   function tick() {
     el.textContent = new Date().toLocaleString(undefined, {
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
     });
   }
   tick();

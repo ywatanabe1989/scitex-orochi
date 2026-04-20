@@ -1,0 +1,218 @@
+/* app/sidebar-memory.css — styling for the sidebar Memory section
+ * (M1..M5 chips + None / Select all / Deselect all / Save action
+ * strip). Colors mirror the Agents-tab pool strip in
+ * activity-tab-topology.css so both surfaces read as one affordance.
+ *
+ * Change 2 of the 2026-04-20 explicit-save memory-UX pass. */
+
+#sidebar-memory {
+  padding: 4px 8px 8px;
+}
+#sidebar-memory .sidebar-memory-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-bottom: 4px;
+}
+#sidebar-memory .sidebar-mem-chip,
+#sidebar-memory .sidebar-mem-btn {
+  background: #0e0e0e;
+  color: #64748b;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+  min-width: 26px;
+  font-family: inherit;
+}
+#sidebar-memory .sidebar-mem-chip:hover,
+#sidebar-memory .sidebar-mem-btn:hover {
+  background: #161616;
+  color: #eaf1fb;
+  border-color: #4ecdc4;
+}
+/* Filled = slot holds a snapshot. Green accent matches the pool's
+ * .topo-pool-mem-btn-filled so the two surfaces are recognizably the
+ * same control. */
+#sidebar-memory .sidebar-mem-chip-filled,
+#sidebar-memory .sidebar-mem-btn-filled {
+  color: #34d399;
+  border-color: #10b981;
+  background: #0f3329;
+  font-weight: 700;
+}
+#sidebar-memory .sidebar-mem-chip-filled:hover,
+#sidebar-memory .sidebar-mem-btn-filled:hover {
+  color: #6ee7b7;
+  border-color: #34d399;
+  background: #164638;
+}
+/* Active chip — this is the slot the Save button targets. Matches
+ * .topo-pool-mem-btn-active (bright cyan fill + ring). */
+#sidebar-memory .sidebar-mem-chip-active,
+#sidebar-memory .sidebar-mem-btn-active {
+  color: #0a0a0a !important;
+  background: #4ecdc4 !important;
+  border-color: #4ecdc4 !important;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.35);
+}
+/* Labeled chip — softer cyan so named presets are distinct from
+ * plain M<n> snapshots. Matches .topo-pool-mem-btn-labeled. */
+#sidebar-memory .sidebar-mem-chip-labeled {
+  color: #5eead4;
+  border-color: #0f766e;
+  background: #072b28;
+  min-width: 34px;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#sidebar-memory .sidebar-mem-chip-labeled:hover {
+  color: #99f6e4;
+  border-color: #14b8a6;
+  background: #0a3d38;
+}
+/* Dirty ring styling is also reused from activity-tab-topology.css
+ * (.sidebar-mem-btn-dirty alias is defined there alongside the pool's
+ * .topo-pool-mem-btn-dirty so the two surfaces light up identically).
+ * The sidebar-local alias below only covers the chip-level class name
+ * we also stamp, in case the topology CSS isn't loaded on a page that
+ * still has the sidebar. */
+#sidebar-memory .sidebar-mem-chip-dirty,
+.sidebar-mem-chip-dirty {
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.55) !important;
+  border-color: #fbbf24 !important;
+}
+
+/* Action row: None / Select all / Deselect all / Save — wraps below
+ * the chip row. Compact, consistent with the filter-chip row above
+ * the sidebar sections. */
+#sidebar-memory .sidebar-memory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+#sidebar-memory .sidebar-memory-actions .sidebar-mem-btn {
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 500;
+  min-width: 0;
+}
+/* Save gets the same cyan accent the pool's +Save button uses. */
+#sidebar-memory .sidebar-mem-save {
+  color: #4ecdc4;
+  border-color: #1f3a3a;
+  margin-left: auto;
+}
+#sidebar-memory .sidebar-mem-save:hover {
+  color: #eaf1fb;
+  background: #0f3f3a;
+  border-color: #4ecdc4;
+}
+/* "Armed" = there's something worth saving. Subtle brighten so the
+ * Save button reads as active even when no M-slot is picked yet. */
+#sidebar-memory .sidebar-mem-save.sidebar-mem-btn-armed {
+  color: #5eead4;
+  border-color: #4ecdc4;
+}
+
+/* Clear (🚫) icon-only button. Narrow, same emoji-as-glyph styling
+ * as other sidebar icon buttons. */
+#sidebar-memory .sidebar-mem-clear {
+  padding: 2px 6px;
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* Inline help affordance next to the "Memory" heading — a circled
+ * question mark that surfaces every interaction rule via browser
+ * tooltip (newline-preserving). Simpler than adding a popover. */
+.sidebar-mem-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  border: 1px solid #555;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: #888;
+  cursor: help;
+  user-select: none;
+  white-space: pre-line;
+}
+.sidebar-mem-help:hover,
+.sidebar-mem-help:focus {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+  outline: none;
+}
+
+/* Dropdown picker — replaces the legacy chip row. Compact native
+ * <select> styled to match the sidebar's dark look. */
+#sidebar-memory .sidebar-memory-picker {
+  margin-bottom: 4px;
+}
+#sidebar-memory .sidebar-mem-select {
+  width: 100%;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: #e0e0e0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#sidebar-memory .sidebar-mem-select:hover,
+#sidebar-memory .sidebar-mem-select:focus {
+  border-color: #4ecdc4;
+  outline: none;
+}
+
+/* Sidebar agent controls (sort / color) — same compact dropdown
+ * styling as the memory picker above. Two dropdowns in a row, ~50%
+ * width each. ywatanabe 2026-04-21: "sort and color should be in the
+ * sidebar as well". */
+.sidebar-agent-controls {
+  display: flex;
+  gap: 4px;
+  margin: 2px 0 6px;
+}
+.sidebar-agent-select {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: #e0e0e0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.sidebar-agent-select:hover,
+.sidebar-agent-select:focus {
+  border-color: #4ecdc4;
+  outline: none;
+}
+
+/* Transient hint bubble for "Pick an M-slot first". Anchored via
+ * inline position:fixed in JS. */
+.sidebar-mem-hint {
+  background: #1a1a1a;
+  color: #fbbf24;
+  border: 1px solid #fbbf24;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}

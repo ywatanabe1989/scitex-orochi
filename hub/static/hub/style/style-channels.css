@@ -1,0 +1,410 @@
+/* Composer target channel indicator (todo#364) */
+.composer-target {
+  display: none;
+}
+.composer-target #composer-target-name {
+  color: #4ecdc4;
+  font-weight: 500;
+}
+.composer-target.is-dm #composer-target-name {
+  color: #9a7aec;
+}
+.composer-target.is-reply {
+  color: #7a9ab0;
+}
+.composer-target.is-reply #composer-target-name {
+  color: #f0a060;
+}
+
+/* Channel topic banner (todo#402) */
+.channel-topic-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 14px;
+  background: #1a2a3a;
+  border-bottom: 1px solid #1e3040;
+  font-size: 12px;
+  color: #8aacbe;
+  min-height: 26px;
+}
+#channel-topic-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.channel-topic-edit-btn {
+  background: none;
+  border: none;
+  color: #4ac;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.channel-topic-edit-btn:hover {
+  opacity: 1;
+}
+.channel-export-btn {
+  background: none;
+  border: none;
+  color: #4cf;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+.channel-export-btn:hover {
+  opacity: 1;
+}
+
+/* Channel topic edit modal (todo#402) */
+.ch-topic-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ch-topic-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+.ch-topic-card {
+  position: relative;
+  background: #1a2634;
+  border: 1px solid #2a4a5a;
+  border-radius: 8px;
+  width: min(480px, 90vw);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1;
+}
+.ch-topic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: #cde;
+  font-size: 14px;
+}
+.ch-topic-close {
+  background: none;
+  border: none;
+  color: #8ab;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  padding: 0;
+}
+.ch-topic-close:hover {
+  color: #f8f7f5;
+}
+.ch-topic-input {
+  background: #0f1d2a;
+  border: 1px solid #2a4a5a;
+  border-radius: 5px;
+  color: #cde;
+  font-size: 13px;
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 70px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.ch-topic-input:focus {
+  outline: none;
+  border-color: #4ac;
+}
+.ch-topic-footer {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.ch-topic-save {
+  background: #1a7abf;
+  border: none;
+  border-radius: 4px;
+  color: #f8f7f5;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 16px;
+}
+.ch-topic-save:hover {
+  background: #228fd8;
+}
+.ch-topic-cancel {
+  background: none;
+  border: 1px solid #2a4a5a;
+  border-radius: 4px;
+  color: #8ab;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 16px;
+}
+.ch-topic-cancel:hover {
+  background: #1a2a3a;
+}
+
+/* Channel member pills in topic banner (todo#402 subscriber list) */
+.channel-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 0 1 auto;
+  margin-left: 8px;
+  overflow: hidden;
+}
+.ch-mem-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: #0d1f30;
+  border: 1px solid #1e3344;
+  border-radius: 10px;
+  padding: 1px 7px 1px 5px;
+  font-size: 10px;
+  color: #7aacbe;
+  white-space: nowrap;
+}
+.ch-mem-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a4a5a;
+  flex-shrink: 0;
+}
+.ch-mem-dot.ch-mem-online {
+  background: #3cb371;
+}
+
+/* ── Channel pin / watch / mute / prefs (todo#391 — pin+eye replaced ★) ── */
+/* Legacy .ch-star class kept as alias for older code paths; new markup
+ * uses .ch-pin (pinned-to-top / was is_starred) and .ch-watch (eye —
+ * toggles is_muted). */
+.ch-star,
+.ch-pin,
+.ch-watch,
+.ch-eye,
+.ch-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  font-size: 11px;
+  line-height: 1;
+  margin-right: 2px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    opacity 0.15s;
+}
+.ch-star-off,
+.ch-pin-off {
+  opacity: 0.15; /* near-invisible until hover */
+  filter: grayscale(1);
+}
+.channel-item:hover .ch-star-off,
+.channel-item:hover .ch-pin-off,
+.channel-item:hover .ch-watch-off,
+.channel-item:hover .ch-eye-on {
+  opacity: 0.7;
+}
+.ch-star-on {
+  color: #f5a623;
+}
+.ch-pin-on {
+  opacity: 1;
+  filter: none;
+}
+.ch-watch-on {
+  opacity: 0.85;
+}
+.ch-watch-off {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+/* Per-row hide/unhide eye icon (todo#418). ch-eye-on = channel is visible,
+ * icon dim until row hover; ch-eye-off = channel is hidden, icon stays
+ * semi-opaque so users can find the un-hide affordance on a dimmed row.
+ *
+ * Mirrors the bell pattern — same 👁 glyph in BOTH states, with a red
+ * diagonal strike drawn via ::after pseudo-element when hidden (no
+ * Unicode crossed-eye exists, so we overlay). ywatanabe 2026-04-20:
+ * "eye hidden should use the same glyph with a red strike, matching
+ * the bell". */
+.ch-eye-on {
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+.ch-eye-off {
+  opacity: 0.75;
+  filter: none;
+  position: relative;
+}
+.ch-eye-off::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  height: 2px;
+  background: #ef4444;
+  transform: rotate(-20deg);
+  transform-origin: center;
+  border-radius: 1px;
+  pointer-events: none;
+}
+/* Notification / mute placeholder — user request 2026-04-19: every
+ * channel row reserves fixed-width slots for star + notification so
+ * the name column stays aligned whether the flag is set or not. */
+/* .ch-mute sizing consolidated into the .ch-star/.ch-pin/.ch-watch/
+ * .ch-eye rule above (ywatanabe 2026-04-21: "bell is too large
+ * compared to other icons"). */
+.ch-mute-on {
+  opacity: 0.9;
+  color: #94a3b8;
+}
+.ch-mute-off {
+  opacity: 0.15;
+}
+.channel-item:hover .ch-mute-off {
+  opacity: 0.55;
+}
+.ch-pin,
+.ch-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  line-height: 1;
+}
+
+/* Custom channel icon slot in the sidebar (todo#101). Fixed-width
+ * wrapper — MUST clamp both width and flex-basis so rows with an
+ * emoji glyph, an image avatar, or the default '#' placeholder all
+ * line up the channel-name column. Without the flex-basis clamp, a
+ * wide emoji pushes the name right and column alignment breaks. */
+.ch-identity-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin-right: 4px;
+  overflow: hidden;
+  line-height: 1;
+}
+.ch-identity-icon .entity-icon-channel {
+  opacity: 0.55;
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+.ch-identity-icon .agent-custom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+.ch-identity-icon img.agent-avatar {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.ch-pin:hover,
+.ch-watch:hover,
+.ch-eye:hover {
+  opacity: 1 !important;
+  filter: none !important;
+}
+.ch-muted {
+  opacity: 0.5;
+}
+
+/* Hidden channel rows — rendered inline at the bottom of the Channels
+ * section, dimmed so the list stays scannable. Clicking a dimmed row
+ * un-hides it (promotes back to the normal list on next render).
+ * No bulk toggle button — the dimmed rows ARE the affordance.
+ * See todo#418. */
+.channel-item.ch-hidden {
+  opacity: 0.4;
+  color: #6a7785;
+  cursor: pointer;
+}
+.channel-item.ch-hidden:hover {
+  opacity: 0.7;
+}
+/* Subtle separator above the first hidden row so users understand
+ * they're entering the "hidden" zone. */
+.ch-hidden-divider {
+  border-top: 1px dashed #2a2a2a;
+  margin: 6px 8px;
+}
+
+/* Tree-structured channel hierarchy (todo#71).
+ * Channels named like "proj/ripple-wm" are grouped under a collapsible
+ * "proj/" folder header. The header is a regular row that clicks to
+ * toggle collapse; children are indented and display only the leaf
+ * portion of their name (e.g. "#ripple-wm"). */
+.channel-folder {
+  font-size: 12px;
+  color: #8a8f96;
+  margin-bottom: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.channel-folder:hover {
+  background: #1a1a1a;
+  color: #cfd4da;
+}
+.ch-folder-chev {
+  display: inline-block;
+  width: 10px;
+  font-size: 10px;
+  color: #666;
+  flex-shrink: 0;
+}
+.channel-folder:hover .ch-folder-chev {
+  color: #aaa;
+}
+.ch-folder-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.ch-folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+.channel-folder.collapsed {
+  color: #6a7078;
+}
+/* Indent rows that live inside a folder so the tree visually nests. */
+.channel-item.ch-in-folder {
+  margin-left: 14px;
+}

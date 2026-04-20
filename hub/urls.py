@@ -76,6 +76,19 @@ urlpatterns = [
         views.api_channel_export,
         name="api-channel-export",
     ),
+    # Channel rename (todo#71 drag-to-move + folder rename).
+    # rename-prefix/ must come before <int:channel_id>/rename/ so the
+    # literal "rename-prefix" isn't parsed as an integer id.
+    path(
+        "api/workspace/<slug:slug>/channels/rename-prefix/",
+        views.api_channel_rename_prefix,
+        name="api-channel-rename-prefix",
+    ),
+    path(
+        "api/workspace/<slug:slug>/channels/<int:channel_id>/rename/",
+        views.api_channel_rename,
+        name="api-channel-rename",
+    ),
     path("api/workspace/<slug:slug>/stats/", views.api_stats, name="api-stats"),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
@@ -109,6 +122,12 @@ urlpatterns = [
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     path("api/agent-profiles/", views.api_agent_profiles, name="api-agent-profiles"),
     path("api/agents/avatar/", views.api_agents_avatar, name="api-agents-avatar"),
+    # Workspace icon image upload (parallel to agent/user avatars).
+    path(
+        "api/workspace/icon/",
+        views.api_workspace_icon,
+        name="api-workspace-icon",
+    ),
     # Per-user (human) profile + avatar — todo#50
     path("api/user-profile/", views.api_user_profile, name="api-user-profile"),
     path(
@@ -137,6 +156,24 @@ urlpatterns = [
         "api/repo/<str:owner>/<str:repo>/changelog/",
         views.api_repo_changelog,
         name="api-repo-changelog",
+    ),
+    # Tracked repos CRUD (todo#90)
+    path(
+        "api/tracked-repos/",
+        views.api_tracked_repos,
+        name="api-tracked-repos",
+    ),
+    # Drag-and-drop reorder (todo#91) — registered before the generic
+    # <int:repo_id>/ detail route so "reorder" isn't parsed as an ID.
+    path(
+        "api/tracked-repos/reorder/",
+        views.api_tracked_repos_reorder,
+        name="api-tracked-repos-reorder",
+    ),
+    path(
+        "api/tracked-repos/<int:repo_id>/",
+        views.api_tracked_repo_detail,
+        name="api-tracked-repo-detail",
     ),
     path("api/threads/", views.api_threads, name="api-threads"),
     path("api/resources/", views.api_resources, name="api-resources"),

@@ -14,6 +14,18 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* Short viewport (e.g. mobile landscape 390h): stop vertical-centering so
+   the logo/title don't clip above viewport when card > winHeight. */
+@media (max-height: 600px) {
+  body {
+    align-items: flex-start;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
 }
 
 .auth-card {
@@ -35,7 +47,7 @@ body {
 .auth-card h1 {
   text-align: center;
   margin-bottom: 0.3rem;
-  color: #fff;
+  color: #f8f7f5;
   font-size: 1.5rem;
 }
 
@@ -64,7 +76,7 @@ body {
   border: 1px solid #444;
   border-radius: 4px;
   background: #1a1d21;
-  color: #fff;
+  color: #f8f7f5;
   font-size: 1rem;
 }
 
@@ -133,7 +145,7 @@ body {
 
 .btn-primary {
   background: #4a9eff;
-  color: #fff;
+  color: #f8f7f5;
 }
 
 .btn-primary:hover {
@@ -142,7 +154,7 @@ body {
 
 .btn-sso {
   background: #2ea44f;
-  color: #fff;
+  color: #f8f7f5;
   margin-bottom: 0.5rem;
 }
 
@@ -203,7 +215,7 @@ body {
 
 .btn-scitex {
   background: #2ea44f;
-  color: #fff;
+  color: #f8f7f5;
   border-color: #2ea44f;
 }
 

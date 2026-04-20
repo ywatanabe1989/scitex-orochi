@@ -54,7 +54,9 @@ function copyToken(btn) {
   btns.forEach(function (btn) {
     btn.addEventListener("click", function () {
       var mode = btn.getAttribute("data-mode");
-      btns.forEach(function (b) { b.classList.toggle("active", b === btn); });
+      btns.forEach(function (b) {
+        b.classList.toggle("active", b === btn);
+      });
       panes.forEach(function (p) {
         p.style.display = p.getAttribute("data-mode") === mode ? "" : "none";
       });
@@ -62,14 +64,21 @@ function copyToken(btn) {
   });
 })();
 
-/* Render workspace icon preview on settings page */
+/* Render workspace icon preview on settings page.
+ * Cascade: uploaded image > emoji > first-letter square. */
 (function () {
   var preview = document.getElementById("ws-icon-preview");
   if (!preview || typeof getWorkspaceIcon !== "function") return;
   var nameEl = document.querySelector(".workspace-name");
   var wsName = nameEl ? nameEl.textContent.trim() : "workspace";
+  var wsIconImage = window.__orochiWorkspaceIconImage || "";
   var wsIcon = window.__orochiWorkspaceIcon || "";
-  preview.innerHTML = wsIcon
-    ? '<span class="ws-emoji-icon ws-emoji-icon-lg">' + wsIcon + "</span>"
-    : getWorkspaceIcon(wsName, 64);
+  if (wsIconImage) {
+    preview.innerHTML = getWorkspaceIcon(wsName, 64);
+  } else if (wsIcon) {
+    preview.innerHTML =
+      '<span class="ws-emoji-icon ws-emoji-icon-lg">' + wsIcon + "</span>";
+  } else {
+    preview.innerHTML = getWorkspaceIcon(wsName, 64);
+  }
 })();
