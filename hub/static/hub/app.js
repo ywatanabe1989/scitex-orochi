@@ -2145,11 +2145,6 @@ async function fetchAgents() {
       // into the yellow "selecting" bucket alongside y_n_prompt.
       if (pane === "auth_error") return "auth_error";
       if (pane === "mcp_broken") return "mcp_broken";
-      // Initial-waiting: freshly booted agent that has never received work.
-      // Distinct from "idle" (worked then stopped) because the
-      // troubleshooting steps differ — waiting may need a wakeup ping or
-      // a channel-subscription check; idle may just need more work.
-      if (pane === "waiting") return "waiting";
       if (
         pane === "y_n_prompt" ||
         pane === "compose_pending_unsent" ||
@@ -2165,6 +2160,12 @@ async function fetchAgents() {
             1000
           : null;
       if (lastToolSec != null && lastToolSec < 30) return "running";
+      // Waiting: freshly registered, never recorded a tool call. Derived
+      // from hub-side hook events (PreToolUse), NOT pane text scraping —
+      // no claude-hud / statusline dependency. last_tool_at is null until
+      // the first PreToolUse hook fires, so a connected agent with no
+      // tool history is provably "alive but never worked".
+      if (lastToolSec == null) return "waiting";
       return "idle";
     };
     var sidebarVisible = agents.filter(function (a) {
@@ -2240,12 +2241,27 @@ async function fetchAgents() {
           "</span>" +
           '<span class="activity-led activity-led-ws activity-led-ws-' +
           (connected(a) ? "on" : "off") +
+          '" title="' +
+          escapeHtml(
+            "WebSocket — " +
+              (connected(a) ? "connected" : "disconnected") +
+              " (transport-layer liveness; green = sidecar holds an open WS to the hub)",
+          ) +
           '"></span>' +
           '<span class="activity-led activity-led-fn activity-led-fn-' +
           liveness +
           '" title="' +
           escapeHtml(
-            state.toUpperCase() + " — functional state (" + liveness + ")",
+            "Functional state — " +
+              state.toUpperCase() +
+              " (pane classifier: " +
+              (a.pane_state || "unknown") +
+              ")\n" +
+              "  green = running / online\n" +
+              "  yellow = idle (worked, then stopped)\n" +
+              "  blue = waiting (booted, never received work)\n" +
+              "  red = auth_error / mcp_broken (alive but cannot do work)\n" +
+              "  orange = stale (no recent heartbeat)",
           ) +
           '"></span>' +
           '<span class="agent-name" style="color:' +
