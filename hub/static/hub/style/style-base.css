@@ -1,0 +1,405 @@
+/* Orochi Dashboard -- core layout (old design 007eb89 + new features) */
+
+/* Design tokens (todo#88)
+ * ----------------------
+ * Minimum interactive-control sizes. Keep dense-UI friendly (32px) but
+ * ensure tap targets on touch devices remain usable. Individual tabs can
+ * opt in by applying `min-width: var(--btn-min-w); min-height: var(--btn-min-h);`
+ * — we intentionally do NOT set these globally on every <button> to avoid
+ * regressing bespoke inline controls (e.g. composer icon buttons that have
+ * their own sizing). Start with Files tab; other tabs opt in incrementally.
+ */
+:root {
+  --btn-min-w: 32px;
+  --btn-min-h: 32px;
+  --btn-font-size: 13px;
+  --btn-padding-x: 10px;
+  --btn-padding-y: 6px;
+  --toolbar-padding-x: 16px;
+  --toolbar-padding-y-top: 6px;
+  --toolbar-padding-y-bottom: 8px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html,
+body {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  background: #0a0a0a;
+  color: #e0e0e0;
+  overflow-x: hidden;
+  max-width: 100vw;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.container {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  width: 100%;
+}
+/* Sidebar */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: #111;
+  border-right: 1px solid #333;
+  overflow: hidden;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-brand,
+.wall-clock,
+.filter-bar {
+  flex: 0 0 auto;
+}
+.sidebar-sections {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.sidebar-signout {
+  flex: 0 0 auto;
+}
+.sidebar h2 {
+  font-size: 13px;
+  color: #888;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.sidebar-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #333;
+  text-align: center;
+}
+.wall-clock {
+  font-size: 11px;
+  color: #888;
+  text-align: center;
+  font-family: "Consolas", "Monaco", monospace;
+  padding: 2px 0 4px;
+}
+.sidebar-brand .header-icon {
+  height: 100px;
+  width: 100px;
+  object-fit: contain;
+}
+.brand-logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.brand-product-name {
+  font-size: 14px;
+  letter-spacing: 0.3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.workspace-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #888;
+  cursor: pointer;
+  padding: 2px 0;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.workspace-selector:hover {
+  color: #ccc;
+}
+.ws-icon {
+  display: flex;
+  align-items: center;
+}
+.ws-icon .ws-icon-svg {
+  border-radius: 3px;
+}
+.ws-name {
+  font-weight: 600;
+  color: #aaa;
+}
+.workspace-selector:hover .ws-name {
+  color: #e0e0e0;
+}
+.ws-caret {
+  font-size: 9px;
+  color: #666;
+  margin-left: 2px;
+}
+/* Workspace Dropdown */
+.ws-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 6px;
+  z-index: 200;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.ws-dropdown-loading {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #666;
+}
+.ws-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #aaa;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.ws-dropdown-item:hover {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+.ws-dropdown-item.active {
+  background: #1a2a28;
+  color: #4ecdc4;
+}
+.ws-dropdown-item.active .ws-dropdown-name {
+  font-weight: 600;
+}
+.ws-dropdown-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #666;
+}
+.ws-dropdown-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws-dropdown-create {
+  border-top: 1px solid #333;
+  color: #4ecdc4;
+}
+.ws-dropdown-create:hover {
+  color: #5eded6;
+}
+.brand-info {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.workspace-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #e0e0e0;
+  text-transform: none;
+  margin-bottom: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Higher specificity to override .sidebar h2 which would gray out the product name */
+.sidebar h2.workspace-title {
+  color: #e0e0e0;
+}
+.workspace-subtitle {
+  font-size: 11px;
+  color: #666;
+}
+.brand-version {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: #d0d0d0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3px;
+}
+.brand-new-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #0a0a0a;
+  background: #4ecdc4;
+  border-radius: 8px;
+  letter-spacing: 0.5px;
+  text-transform: none;
+  opacity: 1 !important;
+  animation: brand-new-pulse 2s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes brand-new-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+/* Connection status indicator — compact state-aware dot in the brand row.
+ * Invisible-ish when fine (small muted dot), prominent when broken. */
+.sidebar-brand .status {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  cursor: help;
+  text-transform: lowercase;
+  color: #555;
+}
+.sidebar-brand .status::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #555;
+  flex-shrink: 0;
+}
+.sidebar-brand .status.conn-ok {
+  color: #4ecdc4;
+  background: rgba(78, 205, 196, 0.08);
+}
+.sidebar-brand .status.conn-ok::before {
+  background: #4ecdc4;
+  box-shadow: 0 0 4px #4ecdc4;
+}
+.sidebar-brand .status.conn-poll {
+  color: #ffd93d;
+  background: rgba(255, 217, 61, 0.1);
+}
+.sidebar-brand .status.conn-poll::before {
+  background: #ffd93d;
+}
+.sidebar-brand .status.conn-down {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  animation: conn-pulse 1.6s ease-in-out infinite;
+}
+.sidebar-brand .status.conn-down::before {
+  background: #ef4444;
+}
+@keyframes conn-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+/* Back-compat aliases — older code-paths may still flip these classes */
+.sidebar-brand .status.connected {
+  color: #4ecdc4;
+}
+.sidebar-brand .status.rest-mode {
+  color: #ffd93d;
+}
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: #888;
+}
+.sidebar-footer a {
+  color: #4ecdc4;
+  text-decoration: none;
+  font-size: 12px;
+}
+.sidebar-footer a:hover {
+  text-decoration: underline;
+}
+.channels-heading {
+  margin-top: 20px;
+}
+.channel-item {
+  font-size: 12px;
+  color: #aaa;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.unread-badge {
+  background: #4ecdc4;
+  color: #111;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: 8px;
+  min-width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  margin-left: auto; /* push to the right edge */
+}
+/* Channel name — fills flex space between star and badge */
+.ch-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* Badge slot — always reserves space to prevent layout shift */
+.ch-badge-slot {
+  min-width: 20px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.agent-card,
+.machine-item {
+  cursor: pointer;
+}
+.channel-item:hover {
+  background: #1a1a1a;
+}
+.channel-item.active {
+  background: #1a1a1a;
+  font-weight: bold;
+}
+#no-agents {
+  color: #555;
+  font-style: italic;
+  font-size: 12px;
+}

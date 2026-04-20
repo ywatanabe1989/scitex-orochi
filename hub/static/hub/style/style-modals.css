@@ -1,0 +1,246 @@
+/* ── Channel members panel (todo#407) ── */
+.channel-members-btn {
+  background: none;
+  border: 1px solid #1e3a4a;
+  border-radius: 12px;
+  color: #6ad;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+.channel-members-btn:hover {
+  background: #1a2a3a;
+  color: #8cf;
+}
+.ch-members-panel {
+  position: absolute;
+  top: 68px; /* below banner */
+  right: 0;
+  width: 260px;
+  background: #0a1828;
+  border: 1px solid #1e3a4a;
+  border-top: none;
+  z-index: 500;
+  max-height: 50vh;
+  overflow-y: auto;
+  box-shadow: -4px 4px 16px rgba(0, 0, 0, 0.5);
+}
+.ch-members-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e3a4a;
+  font-size: 12px;
+  font-weight: bold;
+  color: #8cf;
+  background: #0d1e2e;
+}
+.ch-members-close-btn {
+  background: none;
+  border: none;
+  color: #567;
+  cursor: pointer;
+  font-size: 14px;
+}
+.ch-members-close-btn:hover {
+  color: #aaa;
+}
+.ch-members-section-label {
+  padding: 6px 12px 3px;
+  font-size: 10px;
+  color: #3cb371;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.ch-members-ro-label {
+  color: #e88;
+}
+.ch-members-row {
+  padding: 5px 12px;
+  font-size: 12px;
+  color: #ccc;
+}
+.ch-members-row:hover {
+  background: #111d2a;
+}
+.ch-members-ro {
+  opacity: 0.7;
+}
+.ch-members-ro-badge {
+  background: #3a1a1a;
+  color: #e88;
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 10px;
+  margin-left: 4px;
+}
+.ch-members-loading {
+  padding: 12px;
+  color: #567;
+  font-size: 12px;
+}
+
+/* ── Channel drag-and-drop (msg#10370) ── */
+.ch-drag-handle {
+  color: #334;
+  cursor: grab;
+  font-size: 14px;
+  padding: 0 3px 0 0;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+.channel-item:hover .ch-drag-handle {
+  opacity: 1;
+}
+.ch-dragging {
+  opacity: 0.4;
+  background: #0d1a28 !important;
+}
+.ch-drop-target {
+  border-top: 2px solid #4af;
+}
+
+/* ── Drag-and-drop agent ↔ channel subscription (todo#49) ── */
+.agent-card[draggable="true"] {
+  cursor: grab;
+}
+.agent-card.agent-dragging {
+  opacity: 0.5;
+  background: #0d1a28 !important;
+}
+.channel-item.drop-target-agent-add {
+  outline: 2px solid #22c55e;
+  outline-offset: -2px;
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+.channel-item.drop-target-agent-remove {
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+.channel-item .ch-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: #93c5fd;
+  opacity: 0.9;
+  padding-left: 4px;
+}
+#orochi-mini-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  z-index: 99999;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.18s;
+  pointer-events: none;
+  max-width: 80vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#orochi-mini-toast.visible {
+  opacity: 1;
+}
+#orochi-mini-toast.ok {
+  border-color: #22c55e;
+}
+#orochi-mini-toast.err {
+  border-color: #ef4444;
+  color: #fecaca;
+}
+
+/* Mermaid diagram container */
+.mermaid-container {
+  margin: 8px 0;
+}
+.mermaid-rendered {
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 12px;
+  overflow: hidden;
+  max-height: 280px;
+  cursor: pointer;
+}
+.mermaid-rendered svg {
+  max-width: 100%;
+  max-height: 260px;
+  height: auto;
+}
+.mermaid-rendered img.mermaid-img {
+  max-width: 100%;
+  max-height: 260px;
+  height: auto;
+  display: block;
+}
+.mermaid-rendered:hover {
+  outline: 1px solid #4ecdc4;
+}
+@media (max-width: 640px) {
+  .mermaid-rendered {
+    max-height: 180px;
+  }
+  .mermaid-rendered svg {
+    max-height: 160px;
+  }
+  .mermaid-rendered img.mermaid-img {
+    max-height: 160px;
+  }
+}
+.mermaid-toggle {
+  font-size: 11px;
+  color: #4ecdc4;
+  background: none;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.mermaid-toggle:hover {
+  border-color: #4ecdc4;
+}
+.mermaid-raw {
+  margin-top: 4px;
+}
+
+/* Chat sticky filter bar — client-side per-channel message filter.
+ * Sticks to top of the messages pane so it stays visible while scrolling.
+ * Per-channel: value is cleared whenever the user switches channels
+ * (see setCurrentChannel in app.js). ywatanabe 2026-04-19. */
+.chat-filter-input {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #101010;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  color: #ddd;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  margin: 6px 12px 0 12px;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.chat-filter-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+  background: #141414;
+}
+.chat-filter-miss {
+  display: none !important;
+}
