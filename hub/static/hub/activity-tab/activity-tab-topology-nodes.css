@@ -1,0 +1,282 @@
+/* todo#79: canvas filter — when the pool selection is non-empty, non-
+ * selected, non-neighbor nodes + non-incident edges get dimmed to ~8%
+ * opacity and become non-interactive so the filtered graph reads as
+ * the "focus view" for the chosen criteria. Kept as a CSS class (not
+ * display:none) so the positions stay stable and the heartbeat flash
+ * is minimal when the selection is cleared. */
+.activity-grid.activity-view-topology .topo-pool-filtered-out {
+  opacity: 0.08;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.activity-grid.activity-view-topology
+  .topo-svg-pool-filtered
+  .topo-pool-filtered-out.topo-edge-hit {
+  /* Hit overlays have 0 visual weight anyway; just kill pointer events
+   * so filtered edges can't intercept hover/click on un-filtered ones
+   * underneath. */
+  opacity: 0;
+}
+.activity-grid.activity-view-topology .topo-svg.topo-zooming {
+  cursor: crosshair;
+}
+.activity-grid.activity-view-topology .topo-svg.topo-panning {
+  cursor: grabbing;
+}
+.activity-grid.activity-view-topology .topo-ctrls {
+  position: absolute;
+  top: 4px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  gap: 3px;
+}
+.activity-grid.activity-view-topology .topo-ctrl-btn {
+  background: #0e0e0e;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+  min-width: 22px;
+  line-height: 1;
+}
+.activity-grid.activity-view-topology .topo-ctrl-btn:hover {
+  background: #161616;
+  color: #ccc;
+}
+.activity-grid.activity-view-topology .topo-agent,
+.activity-grid.activity-view-topology .topo-agent circle,
+.activity-grid.activity-view-topology .topo-agent text,
+.activity-grid.activity-view-topology .topo-agent rect {
+  cursor: pointer;
+}
+/* Agent badge border — kept subtle so it reads as a pill hint rather
+ * than a hard frame. ywatanabe 2026-04-19 (todo#81): "Border of agents
+ * are too bold". Previous stroke `#2a2a2a` at 1px felt heavy against
+ * the dark canvas; softened to a muted cool-grey at ~0.35 alpha with
+ * a 0.75px line. */
+.activity-grid.activity-view-topology .topo-agent .topo-agent-bg {
+  fill: #141414;
+  stroke: rgba(150, 165, 180, 0.35);
+  stroke-width: 0.75;
+  transition:
+    fill 0.15s,
+    stroke 0.15s;
+}
+/* Brighten the node label so it reads clearly against the dark badge —
+ * the identity color still shows through but at higher luminance.
+ * ywatanabe 2026-04-19: "make the node text a bit lighter to make it
+ * more readable by enhancing contrast". */
+/* Agent label — let the inline `fill=<hash-color>` come through
+ * unmodified so every agent gets a distinct, consistent pastel.
+ * A light dark stroke halo improves contrast on the dark canvas
+ * without washing the hue to white. ywatanabe 2026-04-19: "agent
+ * names should be color coded" / "they are now in white and in
+ * blue for head-nas@... i am not sure why only it is". The prior
+ * `filter: brightness(1.5)` saturated most pastels toward white,
+ * leaving only bluer hashes recognizable. */
+.activity-grid.activity-view-topology .topo-label-agent {
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1.6px;
+  stroke-linejoin: round;
+}
+/* Channel label — same brightness pass so the #name reads clearly
+ * against the dark canvas. ywatanabe 2026-04-19: "make it more
+ * readable, brighter color!". */
+.activity-grid.activity-view-topology .topo-label-ch {
+  fill: #eaf1fb !important;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.35);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+/* Dead agent — heartbeat ok but >3min no tool/action. Red border +
+ * subtle red tint on the badge so it's visible at a glance. LED
+ * already switches to #ef4444 via _topoSpawnPacket's FN_COLORS
+ * override. ywatanabe 2026-04-19 "please implement dead color, red
+ * with logics like 3 min no-reaction". */
+/* Dead agent visual — user 2026-04-20: "Functionally dead and
+ * registered agents must be shown in shadow (this is a global rule).
+ * Dead agents but not registered ones should just not be rendered".
+ * Unregistered dead agents are filtered out at render time; this
+ * styling handles the pinned/registered dead case — dim the whole
+ * pill (opacity + grayscale) so it reads as a ghost/shadow instead
+ * of the previous red-border treatment. */
+.activity-grid.activity-view-topology .topo-agent-dead {
+  opacity: 0.45;
+  filter: grayscale(0.85);
+}
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-bg {
+  stroke: rgba(150, 165, 180, 0.25);
+  stroke-width: 0.75;
+  fill: #141414;
+}
+/* Human user node — gold pill, distinct from agents. Thinner stroke
+ * + lower alpha so the pill reads as a hint, not a hard frame.
+ * ywatanabe 2026-04-19: "the border of agents/user are too bold".  */
+.activity-grid.activity-view-topology .topo-human .topo-human-bg {
+  fill: #1a1410;
+  stroke: rgba(251, 191, 36, 0.55);
+  stroke-width: 0.75;
+}
+.activity-grid.activity-view-topology .topo-human:hover .topo-human-bg {
+  fill: #231912;
+  filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.55));
+}
+.activity-grid.activity-view-topology .topo-human .topo-human-glyph {
+  pointer-events: none;
+}
+/* Agent glyph — robot 🤖 prefix on each agent node, parallel to the
+ * human 👤. Pointer-events off so it doesn't steal clicks from the
+ * badge background. ywatanabe 2026-04-19: "add icon to agents with
+ * robotic one as well". */
+.activity-grid.activity-view-topology .topo-agent-glyph {
+  pointer-events: none;
+  user-select: none;
+  dominant-baseline: middle;
+}
+.activity-grid.activity-view-topology .topo-agent-dead .topo-agent-glyph {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+.activity-grid.activity-view-topology .topo-agent:hover .topo-agent-bg {
+  fill: #1f1f1f;
+  stroke: #4ecdc4;
+  filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.55));
+}
+.activity-grid.activity-view-topology
+  .topo-agent.topo-agent-selected
+  .topo-agent-bg {
+  stroke: #fbbf24;
+  stroke-width: 1.1;
+}
+.activity-grid.activity-view-topology .topo-agent:hover circle,
+.activity-grid.activity-view-topology .topo-agent:hover text {
+  filter: brightness(1.25);
+}
+.activity-grid.activity-view-topology .topo-channel,
+.activity-grid.activity-view-topology .topo-channel polygon,
+.activity-grid.activity-view-topology .topo-channel text {
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-channel:hover polygon {
+  stroke: #4ecdc4;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 3px #4ecdc4);
+}
+/* Channel pref visuals — mirror the sidebar's star/mute state onto
+ * the topology so a glance at the map tells the user what's muted
+ * or starred without cross-referencing the sidebar. ywatanabe
+ * 2026-04-19: "mute channel does not change visual" / "star channel
+ * as well". */
+.activity-grid.activity-view-topology .topo-channel-starred polygon {
+  stroke: #fbbf24;
+  stroke-width: 1.8;
+}
+.activity-grid.activity-view-topology .topo-channel-starred .topo-label-ch {
+  fill: #fde68a !important;
+}
+.activity-grid.activity-view-topology .topo-channel-muted {
+  opacity: 0.4;
+}
+.activity-grid.activity-view-topology .topo-channel-muted polygon {
+  fill: #111 !important;
+  stroke: #333;
+}
+
+/* Message-passing animation: when a message lands the corresponding
+ * edge brightens and a glowing teal packet flies along it from sender
+ * to channel. The CSS drop-shadow gives the packet a soft bloom so it
+ * reads as "techky / modern" at a glance. */
+.activity-grid.activity-view-topology .topo-packet circle,
+.activity-grid.activity-view-topology .topo-packet ellipse,
+.activity-grid.activity-view-topology .topo-packet polygon {
+  filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 12px currentColor);
+}
+/* Message variant = teal capsule with comet tail. */
+.activity-grid.activity-view-topology .topo-packet-message {
+  color: #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-packet-message circle,
+.activity-grid.activity-view-topology .topo-packet-message ellipse,
+.activity-grid.activity-view-topology .topo-packet-message polygon {
+  fill: #4ecdc4;
+}
+/* Artifact variant = amber "babble" capsule for attachments. */
+.activity-grid.activity-view-topology .topo-packet-artifact {
+  color: #fbbf24;
+}
+.activity-grid.activity-view-topology .topo-packet-artifact circle,
+.activity-grid.activity-view-topology .topo-packet-artifact ellipse,
+.activity-grid.activity-view-topology .topo-packet-artifact polygon {
+  fill: #fbbf24;
+  filter: drop-shadow(0 0 5px #fbbf24) drop-shadow(0 0 16px #fbbf24);
+}
+/* Babble — a small speech-bubble that rides along each in-flight
+ * packet showing the first ~60 chars of the message text (or 📎 for
+ * attachment-only packets). Fades out in sync with the packet via
+ * inline fill-opacity set by the rAF loop, so we just style the
+ * resting appearance here. pointer-events:none so the bubble never
+ * blocks hover/click on nodes behind it. */
+/* Landing bubble — short-lived speech bubble that appears attached to
+ * a destination node when a packet arrives. Stacks vertically above
+ * the node when multiple messages land in quick succession. Fade
+ * in/out keyframed here; stack lifecycle handled in JS. ywatanabe
+ * 2026-04-19: "after reaching to the target, as a bubble, the message
+ * should be shown and stacked and disappeared with timer like 1 s
+ * duration" / "in a fade in/out manner". */
+/* Timing: total 1.3s. Fade-in 0-150ms, HOLD 150-1150ms (1 full second
+ * at full opacity), fade-out 1150-1300ms. ywatanabe 2026-04-19: "1
+ * sec keep duration please". */
+@keyframes topo-landing-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  11.5% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  88.5% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.activity-grid.activity-view-topology .topo-landing {
+  pointer-events: none;
+  animation: topo-landing-fade 1.3s ease-out forwards;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.activity-grid.activity-view-topology .topo-landing-bg {
+  fill: rgba(14, 14, 14, 0.92);
+  stroke: #4ecdc4;
+  stroke-width: 1px;
+  pointer-events: none;
+}
+.activity-grid.activity-view-topology .topo-landing-text {
+  font:
+    10px -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  fill: #eaf1fb;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}

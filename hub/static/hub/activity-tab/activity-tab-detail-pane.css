@@ -1,0 +1,471 @@
+/* Drag-to-subscribe feedback — a flying ghost <text> follows the
+ * cursor during drag, and the hovered drop-target node gets a teal
+ * glow. Both are SVG-scoped so they don't leak into other tabs. */
+.activity-grid.activity-view-topology .topo-drag-ghost {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  fill: #4ecdc4;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 0 3px rgba(78, 205, 196, 0.7));
+  opacity: 0.95;
+}
+.activity-grid.activity-view-topology .topo-agent.topo-drop-target circle {
+  stroke: #4ecdc4 !important;
+  stroke-width: 3 !important;
+  filter: drop-shadow(0 0 6px #4ecdc4);
+}
+.activity-grid.activity-view-topology .topo-agent.topo-drop-target text {
+  filter: drop-shadow(0 0 4px #4ecdc4);
+}
+.activity-grid.activity-view-topology .topo-channel.topo-drop-target polygon {
+  stroke: #4ecdc4 !important;
+  stroke-width: 3 !important;
+  fill: rgba(78, 205, 196, 0.18) !important;
+  filter: drop-shadow(0 0 6px #4ecdc4);
+}
+.activity-grid.activity-view-topology .activity-inline-detail {
+  flex: 0 0 auto;
+  margin: 10px 0 0;
+}
+
+/* Inline expanded detail: inserted directly below the clicked row. */
+.activity-inline-detail {
+  background: #0e0e0e;
+  border: 1px solid #222;
+  border-radius: 4px;
+  margin: 4px 0 8px;
+  padding: 12px;
+  max-height: 70vh;
+  overflow: auto;
+}
+
+/* Web→agent send row (under the terminal pane). Hitting Enter or
+ * clicking Send posts the text into the agent's DM channel so the
+ * agent sees it as a Claude Code message in its terminal context. */
+.activity-send-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.activity-send-input {
+  flex: 1 1 auto;
+  background: #0a0a0a;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: inherit;
+}
+.activity-send-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.activity-send-btn {
+  flex: 0 0 auto;
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.activity-send-btn:hover {
+  background: #1a4060;
+  color: #bfe1f1;
+}
+
+/* CLAUDE.md empty-state placeholder — less visual weight than the real
+ * content so the reader knows it's an absence, not corrupt data. */
+.agent-detail-claude-md-empty {
+  color: #666;
+  font-style: italic;
+  font-size: 11px;
+  background: #0a0a0a;
+  border: 1px dashed #2a2a2a;
+  padding: 8px;
+}
+
+@keyframes activity-pulse {
+  0%,
+  100% {
+    background: #141414;
+  }
+  50% {
+    background: #1d1212;
+  }
+}
+
+.activity-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.activity-dot-online {
+  background: #4ecdc4;
+  box-shadow: 0 0 4px #4ecdc4;
+}
+.activity-dot-idle {
+  background: #f59e0b;
+}
+.activity-dot-stale {
+  background: #ef4444;
+}
+.activity-dot-offline {
+  background: #444;
+}
+
+.activity-name {
+  font-weight: 700;
+  font-size: 13px;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-liveness {
+  font-size: 10px;
+  color: #888;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.activity-meta {
+  font-size: 10px;
+  color: #666;
+  margin: 4px 0 6px;
+}
+
+.activity-task {
+  font-size: 11px;
+  color: #ccc;
+  background: #0f0f0f;
+  border: 1px solid #1e1e1e;
+  border-radius: 3px;
+  padding: 6px 8px;
+  word-wrap: break-word;
+  line-height: 1.4;
+  margin-top: 6px;
+  overflow: hidden;
+}
+
+.activity-task-empty {
+  color: #555;
+  font-style: italic;
+}
+
+.activity-task .issue-link {
+  color: #4ecdc4;
+}
+
+.activity-preview {
+  font-size: 10px;
+  color: #666;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed #1f1f1f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-preview-label {
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Subagent tree under each activity card */
+.activity-subagents {
+  list-style: none;
+  margin: 6px 0 0 0;
+  padding: 0 0 0 10px;
+  border-left: 1px dashed #2a2a2a;
+}
+.activity-subagent {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10px;
+  color: #bbb;
+  padding: 2px 0;
+}
+.activity-subagent-branch {
+  color: #444;
+  flex-shrink: 0;
+  font-family: monospace;
+}
+.activity-subagent-name {
+  color: #9ca3af;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.activity-subagent-task {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-subagent-done .activity-subagent-name {
+  color: #4ecdc4;
+}
+.activity-subagent-failed .activity-subagent-name {
+  color: #ef4444;
+}
+
+/* Fallback task display when no structured current_task — shows the
+ * last_message_preview in the same slot so cards never look empty. */
+.activity-task-fallback {
+  color: #888;
+  font-style: italic;
+  font-size: 11px;
+}
+
+/* caduceus health line per agent card */
+.activity-health {
+  margin-top: 6px;
+  font-size: 10px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  border-left: 3px solid #444;
+  color: #bbb;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-health-icon {
+  margin-right: 2px;
+}
+.activity-health-status {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-right: 2px;
+}
+.activity-health-healthy {
+  border-left-color: #4ecdc4;
+  color: #4ecdc4;
+}
+.activity-health-idle {
+  border-left-color: #f59e0b;
+}
+.activity-health-stale {
+  border-left-color: #ef4444;
+  color: #ef4444;
+}
+.activity-health-stuck_prompt {
+  border-left-color: #ef4444;
+  color: #ef4444;
+  animation: activity-pulse 2s ease-in-out infinite;
+}
+.activity-health-dead {
+  border-left-color: #7a1f1f;
+  color: #ef4444;
+}
+.activity-health-ghost {
+  border-left-color: #6b21a8;
+  color: #c084fc;
+}
+.activity-health-remediating {
+  border-left-color: #4ecdc4;
+  color: #4ecdc4;
+  animation: activity-pulse 1.4s ease-in-out infinite;
+}
+
+/* Rich-field chip row added 2026-04-12 (todo#?) — surfaces ctx %, model,
+ * multiplexer, subagent count, skills count, pid as small inline pills on
+ * each agent activity card. Each chip is rendered only when its underlying
+ * field is non-null in the registry payload. */
+.activity-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 4px;
+}
+.activity-chip {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.05);
+  color: #b0b0b0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.activity-chip-model {
+  color: #d8b4fe;
+  border-color: rgba(216, 180, 254, 0.3);
+}
+.activity-chip-mux {
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.3);
+}
+.activity-chip-ctx.ctx-ok {
+  color: #4ecdc4;
+  border-color: rgba(78, 205, 196, 0.4);
+}
+.activity-chip-ctx.ctx-warn {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+.activity-chip-ctx.ctx-hot {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.5);
+}
+.activity-chip-subs {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.3);
+}
+.activity-chip-subs-active {
+  color: #0b0b0b;
+  background: #fbbf24;
+  border-color: #fbbf24;
+  font-weight: 700;
+}
+.activity-chip-subs-idle {
+  color: #666;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  font-style: italic;
+  padding: 1px 6px;
+  font-size: 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.activity-chip-skills {
+  color: #a3e635;
+  border-color: rgba(163, 230, 53, 0.3);
+}
+.activity-chip-channels {
+  color: #7dd3fc;
+  border-color: rgba(125, 211, 252, 0.3);
+}
+.activity-chip-uptime {
+  color: #c4b5fd;
+  border-color: rgba(196, 181, 253, 0.25);
+}
+.activity-chip-pid {
+  color: #888;
+}
+
+/* Hero task row: the main "what is this agent doing right now" line. */
+.activity-task-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.activity-tool-name {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: #0b0b0b;
+  background: #d8b4fe;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.activity-tool-arg {
+  flex: 1;
+  min-width: 0;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #e8e8e8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-tool-prose {
+  flex: 1;
+  min-width: 0;
+  font-style: italic;
+  font-size: 11px;
+  color: #cfcfcf;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.activity-task-age {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+  padding: 0 4px;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  background: #0b0b0b;
+}
+
+/* "Stuck" state used to paint a purple gradient + border, but
+ * ywatanabe at msg#6601 said the unexplained purple was confusing
+ * ("なんか紫とかない？いみわからんのだけど"). The status pills
+ * (online/idle/stale/offline) already encode liveness; stuck is just
+ * a more severe form of stale and doesn't need its own color. Keep
+ * the class so the data stays attached to the DOM, but visually
+ * collapse it into the .activity-stale border. */
+.activity-card.activity-stuck {
+  /* Inherits border from .activity-stale; no extra color. */
+}
+.activity-card.activity-stuck .activity-task-age {
+  /* Inherits muted age color. */
+}
+
+/* Per-card copy-to-clipboard button */
+.activity-copy-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #666;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
+}
+.activity-copy-btn:hover {
+  color: #ccc;
+  border-color: #333;
+}
+.activity-copy-btn.activity-copy-ok {
+  color: #4ecdc4;
+  border-color: #4ecdc4;
+}
+
+/* ── Per-agent sub-tab bar (todo#420) ── */
+/* Horizontal padding mirrors .tab-bar / .todo-state-filter / .files-toolbar
+ * so toolbar controls align vertically with the 16px-padded content
+ * grids below them (ywatanabe 2026-04-19). */
+.activity-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px 8px;
+  border-bottom: 1px solid #333;
+  margin-bottom: 10px;
+}
+.activity-summary-inline {
+  margin-left: auto;
+  font-size: 12px;
+  color: #888;
+}

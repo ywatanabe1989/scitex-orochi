@@ -1,0 +1,372 @@
+/* Inline channel-compose popup — anchored near the clicked channel
+ * diamond on the topology. Minimal by default (text + send); expand
+ * chevron reveals attach/camera/sketch/voice; drag-drop files route
+ * to the Chat composer. */
+.topo-channel-compose {
+  position: fixed;
+  z-index: 1000;
+  min-width: 280px;
+  max-width: 360px;
+  background: #0e0e0e;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  padding: 6px 6px 20px 6px;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(78, 205, 196, 0.2);
+  color: #e6e6e6;
+  font-size: 12px;
+  font-family: inherit;
+}
+.topo-channel-compose.tcc-drag-over {
+  border-color: #4ecdc4;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(78, 205, 196, 0.7);
+}
+.topo-channel-compose .tcc-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.topo-channel-compose .tcc-channel {
+  flex: 1 1 auto;
+  font-family: ui-monospace, monospace;
+  color: #4ecdc4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+/* Minimal compose: tiny chevron at bottom-right, everything else
+ * hidden by default. ywatanabe 2026-04-19: "just add a small chevron
+ * to the bottom to show other buttons". */
+.topo-channel-compose .tcc-expand {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  background: transparent;
+  border: 0;
+  color: #6a7785;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px 4px;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.topo-channel-compose .tcc-expand:hover {
+  color: #cbd5e1;
+  opacity: 1;
+}
+.topo-channel-compose .tcc-input {
+  width: 100%;
+  background: #0a0a0a;
+  color: #e6e6e6;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.topo-channel-compose .tcc-input:focus {
+  outline: none;
+  border-color: #4ecdc4;
+}
+.topo-channel-compose .tcc-extras {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+.topo-channel-compose .tcc-x {
+  background: #151515;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.topo-channel-compose .tcc-x:hover {
+  background: #1a1a1a;
+  border-color: #4ecdc4;
+}
+.topo-channel-compose .tcc-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+.topo-channel-compose .tcc-send {
+  background: #14324a;
+  color: #8acdee;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 4px 14px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.topo-channel-compose .tcc-send:hover {
+  background: #1a4060;
+  color: #bfe1f1;
+}
+
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-live {
+  stroke: #4ecdc4 !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 1.8 !important;
+  filter: drop-shadow(0 0 3px #4ecdc4);
+  transition: stroke 0.15s ease-out;
+}
+
+/* Agent→channel edges are clickable for unsubscribe. The visible line
+ * stays thin for aesthetics; a separate invisible 12px-wide
+ * .topo-edge-hit overlay (rendered immediately before the visible line
+ * in SVG source order) swallows the pointer events. Hover over the hit
+ * overlay brightens the visible line via the CSS adjacent-sibling
+ * combinator, so the user sees the affordance they expect from the
+ * edge they aimed at. ywatanabe 2026-04-19: "hitarea of edges should
+ * be a bit broader" — previous stroke-width 1→2 bump was insufficient. */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge {
+  stroke-width: 2;
+  pointer-events: none;
+  transition:
+    stroke 0.12s ease-out,
+    stroke-opacity 0.12s ease-out,
+    stroke-width 0.12s ease-out;
+}
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-hit {
+  stroke: transparent;
+  stroke-width: 12;
+  fill: none;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+/* Hover the wide hit overlay → brighten the adjacent visible edge.
+ * Relies on the JS emitting the pair in [hit, visible] order inside
+ * the <g class="topo-edges"> group. */
+.activity-grid.activity-view-topology
+  .topo-edges
+  line.topo-edge-hit:hover
+  + line.topo-edge {
+  stroke: #f59e0b !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 3.2 !important;
+  filter: drop-shadow(0 0 3px #f59e0b);
+}
+/* Human→channel dashed hit overlay uses a softer gold hover to match
+ * its resting dashed-gold palette (keeps the visual language
+ * consistent with the rest of the human-subscription guides). */
+.activity-grid.activity-view-topology
+  .topo-edges
+  line.topo-edge-hit-human:hover
+  + line.topo-edge-human {
+  stroke-opacity: 1 !important;
+  stroke-width: 2.4 !important;
+  filter: drop-shadow(0 0 3px #fbbf24);
+}
+
+/* DM edges — dashed gold line directly between principals. Thinner and
+ * subtler than agent→channel edges so the DM topology reads as a
+ * lightweight side-channel. Hover brightens for affordance (same
+ * click-to-unsubscribe contract as the non-DM .topo-edge). ywatanabe
+ * 2026-04-19: "connect user and target with a visible LINE and
+ * propagate packet along it — no virtual midpoint, no tricks". */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-dm {
+  stroke: #fbbf24;
+  stroke-dasharray: 3 4;
+  stroke-opacity: 0.5;
+  stroke-width: 1.8;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-dm:hover {
+  stroke-opacity: 1 !important;
+  stroke-width: 2.6 !important;
+  filter: drop-shadow(0 0 3px #fbbf24);
+}
+
+/* Channel-hover highlight — applied by the grid-level mouseover
+ * delegation in activity-tab.js. Hovering a channel diamond adds
+ * .topo-edge-hover to every edge where data-channel (or data-dm-
+ * channel) matches, and .topo-agent-connected to the matching
+ * endpoint agent nodes. Gives instant visual feedback showing the
+ * network of that channel. ywatanabe 2026-04-19: "when hovered on
+ * a channel, all the lines from there should be highlighted as
+ * visual feedback to show the network". */
+.activity-grid.activity-view-topology .topo-edges line.topo-edge-hover {
+  stroke: #4ecdc4 !important;
+  stroke-opacity: 1 !important;
+  stroke-width: 2.8 !important;
+  filter: drop-shadow(0 0 4px #4ecdc4);
+}
+.activity-grid.activity-view-topology
+  .topo-agent.topo-agent-connected
+  .topo-agent-bg,
+.activity-grid.activity-view-topology .topo-agent.topo-agent-connected circle,
+.activity-grid.activity-view-topology .topo-agent.topo-agent-connected rect {
+  filter: drop-shadow(0 0 5px #4ecdc4);
+}
+/* Channel badge — matches the agent pill styling so channels read as
+ * first-class identities on the canvas (user 2026-04-20: "channels
+ * are not shown in badges? bordered identities"). Thin muted stroke
+ * + subtle background, same as .topo-agent-bg. */
+.activity-grid.activity-view-topology .topo-channel .topo-channel-bg {
+  fill: #141414;
+  stroke: rgba(150, 165, 180, 0.35);
+  stroke-width: 0.75;
+}
+.activity-grid.activity-view-topology .topo-channel:hover .topo-channel-bg {
+  fill: #1f1f1f;
+  stroke: #4ecdc4;
+  filter: drop-shadow(0 0 4px rgba(78, 205, 196, 0.55));
+}
+
+/* Circular crop for SVG canvas avatars — mirrors the HTML <img
+ * class="agent-avatar"> 50% border-radius so images look like the
+ * rest of the UI (round profile-picture style). User request
+ * 2026-04-20: "icon should be trimmed in a circle shape". Applies
+ * to agent, channel, and human canvas images. */
+.activity-grid.activity-view-topology .topo-agent-glyph-img,
+.activity-grid.activity-view-topology .topo-ch-icon-img,
+.activity-grid.activity-view-topology .topo-human-glyph-img {
+  clip-path: circle(50% at 50% 50%);
+}
+
+/* Agent-detail-pane SSH terminal container — replaces the read-only
+ * <pre> scrollback with a live xterm when the user clicks SSH.
+ * Fixed height matches the pane so layout doesn't jump. TODO.md
+ * Web Terminal "expected to implement in the Agents List expanded
+ * space". */
+.agent-detail-ssh-container {
+  height: 320px;
+  background: #0d1117;
+  border-radius: 3px;
+  padding: 4px;
+  overflow: hidden;
+}
+.agent-detail-ssh-container .xterm {
+  height: 100%;
+}
+
+/* Symmetric: hovering an agent highlights the channels it's subscribed
+ * to. Same cyan glow as the agent highlight so the two hover flows
+ * read as one discoverability feature. User request 2026-04-19. */
+.activity-grid.activity-view-topology
+  .topo-channel.topo-channel-connected
+  polygon,
+.activity-grid.activity-view-topology
+  .topo-channel.topo-channel-connected
+  circle,
+.activity-grid.activity-view-topology .topo-channel.topo-channel-connected rect,
+.activity-grid.activity-view-topology
+  .topo-channel.topo-channel-connected
+  text {
+  filter: drop-shadow(0 0 5px #4ecdc4);
+}
+
+/* Floating popover anchored near an edge click — offers Unsubscribe.
+ * Confirm-dialog feel: title, preview row ("<#channel> <- <agent>" with
+ * agent color), danger-red primary, neutral Cancel. Opens with a 120ms
+ * opacity fade-in (animation + inline opacity transition both cover the
+ * case where a user has prefers-reduced-motion). */
+.topo-edge-menu {
+  z-index: 10050;
+  background: #101821;
+  color: #cbd5e1;
+  border: 1px solid #1f2a37;
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: opacity 120ms ease-out;
+  animation: topo-edge-menu-in 120ms ease-out both;
+}
+@keyframes topo-edge-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.topo-edge-menu-title {
+  color: #8acdee;
+  padding: 2px 4px 4px;
+  border-bottom: 1px solid #1f2a37;
+  font-weight: 600;
+  word-break: break-all;
+}
+.topo-edge-menu-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: #0b1320;
+  border: 1px solid #1f2a37;
+  border-radius: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  flex-wrap: wrap;
+}
+.topo-edge-menu-preview-ch {
+  color: #f8f7f5;
+  font-weight: 700;
+}
+.topo-edge-menu-preview-arr {
+  color: #64748b;
+}
+.topo-edge-menu-preview-ag {
+  font-weight: 600;
+}
+.topo-edge-menu-btn {
+  background: #14324a;
+  color: #bfe1f1;
+  border: 1px solid #1f486b;
+  border-radius: 3px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.topo-edge-menu-btn:hover {
+  background: #1a4060;
+  color: #e0f0f8;
+}
+.topo-edge-menu-btn.topo-edge-menu-btn-danger {
+  background: #7f1d1d;
+  color: #fee2e2;
+  border-color: #b91c1c;
+  font-weight: 600;
+}
+.topo-edge-menu-btn.topo-edge-menu-btn-danger:hover {
+  background: #b91c1c;
+  color: #f8f7f5;
+  border-color: #ef4444;
+}
+.activity-grid.activity-view-topology .topo-label {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  pointer-events: none;
+  user-select: none;
+}
+.activity-grid.activity-view-topology .topo-label-ch {
+  fill: #f8f7f5 !important;
+  font-size: 11px;
+  font-weight: 700;
+}
+.activity-grid.activity-view-topology .topo-agent:hover circle {
+  stroke-width: 3;
+}

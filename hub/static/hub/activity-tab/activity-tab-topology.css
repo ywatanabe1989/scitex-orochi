@@ -1,0 +1,324 @@
+/* Topology view — radial SVG of agents (outer ring) and channels
+ * (inner ring) with edges showing #channel membership. Click an agent
+ * node to toggle the inline detail panel (same hook list view uses). */
+.activity-grid.activity-view-topology {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12px;
+}
+.activity-grid.activity-view-topology .topo-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  min-height: 420px;
+  position: relative;
+}
+.activity-grid.activity-view-topology .topo-hint {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 2;
+  font-size: 10px;
+  color: #555;
+  pointer-events: none;
+  background: rgba(10, 10, 10, 0.6);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+.activity-grid.activity-view-topology .topo-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  cursor: default;
+  user-select: none;
+}
+/* Left-side pool — lists every agent and every channel as draggable
+ * chips. Floats over the left edge of the canvas; SVG sits behind
+ * it. ywatanabe 2026-04-19: "place channels pool; agents pool in the
+ * left side". */
+.activity-grid.activity-view-topology .topo-pool {
+  position: absolute;
+  left: 8px;
+  top: 40px;
+  bottom: 8px;
+  width: 170px;
+  z-index: 3;
+  overflow-y: auto;
+  background: rgba(10, 10, 10, 0.78);
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 11px;
+  /* Drag-to-subscribe starts with mousedown on a chip; without this,
+   * the browser's default drag-selects text across the pool + canvas
+   * siblings. ywatanabe 2026-04-19: "dragging a pool chip wrongly
+   * text-selects adjacent elements". */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.activity-grid.activity-view-topology .topo-pool-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-title {
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 0 2px 2px;
+  border-bottom: 1px solid #1f2937;
+  margin-bottom: 3px;
+}
+.activity-grid.activity-view-topology .topo-pool-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  background: #0f1419;
+  border: 1px solid #273241;
+  border-radius: 10px;
+  cursor: grab;
+  color: #eaf1fb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.activity-grid.activity-view-topology .topo-pool-chip:hover {
+  border-color: #4ecdc4;
+  background: #152028;
+}
+/* Pool chip multi-select — ctrl-click adds to the selection; the set is
+ * then drag-dropped onto any canvas node / pool chip to bulk-subscribe.
+ * Bright amber border matches the canvas lasso (.topo-agent-selected)
+ * so the two affordances read as the same concept. */
+.activity-grid.activity-view-topology .topo-pool-chip-selected {
+  border-color: #fbbf24;
+  background: #2a2013;
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4);
+}
+.activity-grid.activity-view-topology .topo-pool-chip-selected:hover {
+  border-color: #fbbf24;
+  background: #3a2a18;
+}
+/* When a dragged bundle hovers a pool chip, it lights up the same way
+ * canvas drop targets do (topo-drop-target on .topo-channel polygon /
+ * .topo-agent circle). */
+.activity-grid.activity-view-topology .topo-pool-chip.topo-drop-target {
+  border-color: #4ecdc4 !important;
+  background: #102428 !important;
+  box-shadow: 0 0 0 2px #4ecdc4;
+}
+/* Fixed-width icon slot so channel names line up in a column whether
+ * the channel has a custom icon or the default '#' glyph (todo#101,
+ * column alignment request). Inner children (img / emoji / '#') are
+ * centered and clamped to the slot to keep width constant. */
+.activity-grid.activity-view-topology .topo-pool-chip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  font-size: 10px;
+  line-height: 1;
+  filter: saturate(0.8);
+  overflow: hidden;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-icon img.agent-avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-icon .agent-custom-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  line-height: 1;
+}
+/* Marker slot (star / mute / empty placeholder) — always reserved so
+ * the subsequent name column stays aligned across chips regardless of
+ * starred/muted state. Every chip renders [icon][star][mute][name],
+ * with empty star-off / mute-off placeholders taking up the same
+ * width as the glyphs they'd otherwise hold. */
+.activity-grid.activity-view-topology .topo-pool-chip-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  font-size: 10px;
+  line-height: 1;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-star-off,
+.activity-grid.activity-view-topology .topo-pool-chip-mute-off {
+  /* Placeholder — keeps slot width but no glyph rendered. */
+}
+.activity-grid.activity-view-topology .topo-pool-chip-channel {
+  color: #eaf1fb;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+/* Pool chip state indicators — scaled-down mirror of the list view
+ * LEDs (.activity-led is 8px; chips get 6px so the ~22px-tall pill
+ * doesn't crowd). Color classes (.activity-led-ws-*, .activity-led-
+ * fn-*) are shared so green/yellow/orange/red stay in lockstep with
+ * the canvas + list view. Pin / star / mute glyphs inline before the
+ * name so the chip reads [icon][ws][fn][pin?][name]. ywatanabe
+ * 2026-04-19 todo#84 "Agents Pool > Should show indicators and pin
+ * as well". */
+.activity-grid.activity-view-topology .topo-pool-chip-led {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-pin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  font-size: 9px;
+  line-height: 1;
+  color: #fbbf24;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-pin-off {
+  /* Placeholder — reserves slot width so name columns align. */
+}
+.activity-grid.activity-view-topology .topo-pool-chip-star {
+  font-size: 10px;
+  line-height: 1;
+  color: #fbbf24;
+  flex: 0 0 auto;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-mute {
+  font-size: 10px;
+  line-height: 1;
+  color: #94a3b8;
+  flex: 0 0 auto;
+}
+.activity-grid.activity-view-topology .topo-pool-chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+/* Pool action strip — Select All / Deselect All / memory slots. Sits at
+ * the top of the pool above the Agents section so the pool reads as a
+ * filter panel, not just a chip list. todo#79 "Pools as filters ...
+ * Select All / Deselect All / Memory 1,2,...". */
+.activity-grid.activity-view-topology .topo-pool-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 4px;
+  border-bottom: 1px solid #1f2937;
+  margin-bottom: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-wrap: wrap;
+}
+.activity-grid.activity-view-topology .topo-pool-act-btn {
+  background: #0e0e0e;
+  color: #cbd5e1;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 10px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.activity-grid.activity-view-topology .topo-pool-act-btn:hover {
+  background: #161616;
+  color: #eaf1fb;
+  border-color: #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-pool-selcount {
+  color: #fbbf24;
+  font-size: 9px;
+  margin-left: auto;
+  font-weight: 600;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-row {
+  gap: 2px;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn,
+.activity-grid.activity-view-topology .topo-pool-mem-save {
+  background: #0e0e0e;
+  color: #64748b;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.2;
+  min-width: 22px;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn:hover,
+.activity-grid.activity-view-topology .topo-pool-mem-save:hover {
+  background: #161616;
+  color: #eaf1fb;
+  border-color: #4ecdc4;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-filled {
+  color: #34d399;
+  border-color: #10b981;
+  background: #0f3329;
+  font-weight: 700;
+}
+/* Active slot — user is currently "recording" into this Mn; every
+ * filter change auto-saves into it. Brighter cyan ring distinguishes
+ * it from merely "filled" slots. User 2026-04-20: "click M1 -> M1
+ * must be highlighted -> last state of M1 filtering is saved as M1
+ * automatically". */
+.activity-grid.activity-view-topology .topo-pool-mem-btn-active {
+  color: #0a0a0a !important;
+  background: #4ecdc4 !important;
+  border-color: #4ecdc4 !important;
+  box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.35);
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-filled:hover {
+  color: #6ee7b7;
+  border-color: #34d399;
+  background: #164638;
+}
+/* todo#98 — slot with a user-assigned label: widen slightly so short
+ * names fit, and switch to a softer cyan accent so labeled slots read
+ * as "named preset" distinct from plain M1..M5 snapshots. */
+.activity-grid.activity-view-topology .topo-pool-mem-btn-labeled {
+  color: #5eead4;
+  border-color: #0f766e;
+  background: #072b28;
+  min-width: 34px;
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-btn-labeled:hover {
+  color: #99f6e4;
+  border-color: #14b8a6;
+  background: #0a3d38;
+}
+.activity-grid.activity-view-topology .topo-pool-mem-save {
+  margin-left: auto;
+  color: #4ecdc4;
+  border-color: #1f3a3a;
+}

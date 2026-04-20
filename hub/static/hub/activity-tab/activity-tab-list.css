@@ -1,0 +1,277 @@
+/* List view: one-line dense rows. Grid switches layout via parent class.
+ * Left-to-right column order (fixed-width at the left so every row's
+ * name sits at the same x-position regardless of status):
+ *   [pin][ws-led][fn-led][state-badge][name@host] ... [age]
+ */
+.activity-grid.activity-view-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+}
+.activity-grid.activity-view-list .activity-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  border-left: 3px solid #444;
+  background: transparent;
+  min-height: 28px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.activity-grid.activity-view-list .activity-card:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.activity-grid.activity-view-list .activity-card .activity-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Channels column — fixed width so every row's age sits at the same x
+ * and the name column on the left also wraps predictably. */
+.activity-grid.activity-view-list .activity-card .activity-channels {
+  flex: 0 0 240px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #6a7d8c;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+}
+.activity-grid.activity-view-list .activity-card .activity-age {
+  flex: 0 0 60px;
+  text-align: right;
+  color: #888;
+  font-size: 11px;
+}
+
+/* Two small LEDs (WebSocket connection + functional liveness) rendered
+ * side-by-side after the pin button. Fixed size so the name column
+ * always starts at the same x. */
+.activity-led {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #333;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.3);
+  transition: background 0.2s ease;
+}
+.activity-led-ws-on {
+  background: #4ecdc4;
+}
+.activity-led-ws-off {
+  background: #555;
+}
+.activity-led-fn-online {
+  background: #4ecdc4;
+}
+.activity-led-fn-idle {
+  background: #ffd93d;
+}
+.activity-led-fn-stale {
+  background: #ff8c42;
+}
+.activity-led-fn-offline {
+  background: #555;
+}
+
+/* Fixed-width status badge. The width is intentionally locked so the
+ * name column aligns across rows regardless of which state label is
+ * rendered (RUNNING vs IDLE vs SELECTING have different character
+ * counts). */
+.activity-state {
+  flex: 0 0 auto;
+  width: 80px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #1a1a1a;
+  color: #888;
+  border: 1px solid #2a2a2a;
+  text-transform: uppercase;
+}
+.activity-state.activity-state-running {
+  background: #0f2a28;
+  color: #4ecdc4;
+  border-color: #1f4a47;
+}
+.activity-state.activity-state-idle {
+  background: #1a1a1a;
+  color: #888;
+}
+.activity-state.activity-state-selecting {
+  background: #2a2014;
+  color: #fbbf24;
+  border-color: #4a3a1a;
+}
+.activity-state.activity-state-offline {
+  background: #1a1a1a;
+  color: #555;
+  border-color: #2a2a2a;
+}
+.activity-state.activity-state-compacting {
+  background: #1a1626;
+  color: #a78bfa;
+  border-color: #3a2d5a;
+}
+/* auth_error / mcp_broken — functional failure: connected at WS layer
+ * but the agent cannot do work. Distinct red so it can't be confused
+ * with the yellow "selecting" bucket where user attention is wanted. */
+.activity-state.activity-state-auth_error,
+.activity-state.activity-state-mcp_broken {
+  background: #2a0f0f;
+  color: #ef4444;
+  border-color: #4a1f1f;
+}
+/* waiting — freshly booted, never received work. Differentiated from
+ * idle (worked then stopped) because troubleshooting steps differ
+ * (waiting may need a wakeup ping or channel-subscription check). */
+.activity-state.activity-state-waiting {
+  background: #0f1a2a;
+  color: #60a5fa;
+  border-color: #1f2f4a;
+}
+/* Functional-lamp variants for the new states (sidebar/list rows
+ * render the lamp via `.activity-led-fn-<state>`). Mirror the badge
+ * palette so dot color and badge color agree. */
+.activity-led-fn-auth_error,
+.activity-led-fn-mcp_broken {
+  background: #ef4444;
+}
+.activity-led-fn-waiting {
+  background: #60a5fa;
+}
+/* Indicator 2: Ping (round-trip via WS pong). Green = fresh pong,
+ * yellow = stale, grey = none yet. */
+.activity-led-ping-on {
+  background: #4ecdc4;
+}
+.activity-led-ping-warn {
+  background: #ffd93d;
+}
+.activity-led-ping-off {
+  background: #555;
+}
+/* Indicator 4: Remote functional liveness (nonce echo by peer host).
+ * Pending until publisher lands; then green/yellow/red. */
+.activity-led-echo-on {
+  background: #4ecdc4;
+}
+.activity-led-echo-warn {
+  background: #ffd93d;
+}
+.activity-led-echo-fail {
+  background: #ef4444;
+}
+.activity-led-echo-pending {
+  background: #555;
+  outline: 1px dashed #777;
+  outline-offset: -1px;
+}
+
+/* Compact variant for sidebar rows — narrower badge so the 260px
+ * sidebar fits everything in one line. */
+.activity-state.activity-state-compact {
+  width: 52px;
+  padding: 1px 3px;
+  font-size: 9px;
+  letter-spacing: 0.3px;
+}
+
+/* Sidebar agent row — mirrors overview list row but condensed. Lives
+ * outside .activity-grid so reuses the shared .activity-led / .activity-
+ * state / .activity-pin-btn styles plus its own flex layout. */
+.sidebar .agent-card.sidebar-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  min-height: 22px;
+  cursor: pointer;
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid transparent;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+.sidebar .agent-card.sidebar-agent-row:hover {
+  background: #171717;
+  border-color: #2a2a2a;
+}
+.sidebar .agent-card.sidebar-agent-row .activity-pin-btn {
+  font-size: 11px;
+  width: 14px;
+  flex: 0 0 14px;
+  padding: 0;
+}
+.sidebar .agent-card.sidebar-agent-row .activity-led {
+  width: 7px;
+  height: 7px;
+}
+/* todo#96: shared identity icon — displayed flush-left after the pin
+ * button so the sidebar row mirrors the pool chip's [icon][leds][name]
+ * order. Flex-shrink 0 keeps the glyph size stable when the name is
+ * long. */
+.sidebar .agent-card.sidebar-agent-row .sidebar-agent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 14px;
+  width: 14px;
+  height: 14px;
+  line-height: 1;
+}
+.sidebar .agent-card.sidebar-agent-row .sidebar-agent-icon .agent-avatar {
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+}
+.sidebar .agent-card.sidebar-agent-row .sidebar-agent-icon .orochi-icon {
+  width: 14px;
+  height: 14px;
+}
+.sidebar .agent-card.sidebar-agent-row .agent-name {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sidebar .agent-card.sidebar-agent-row.sidebar-agent-ghost {
+  opacity: 0.4;
+  filter: grayscale(0.6);
+}
+
+/* Tile view: compact grid of cards with name + dot only. */
+.activity-grid.activity-view-tiled {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+  padding: 12px;
+}
+.activity-grid.activity-view-tiled .activity-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.activity-grid.activity-view-tiled .activity-card:hover {
+  background: #171717;
+}
