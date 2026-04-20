@@ -1,7 +1,6 @@
 /* activity-tab/topology-pool.js — left-side agents + channels pool,
  * memory slot buttons, pool-action strip (Select All / None / M1..M5 / +Save). */
 
-
 function _topoBuildPoolHtml(visible, channels) {
   /* Left-side pool — all agents and all channels as chips so the user
    * can see the full universe at a glance even when the canvas is
@@ -95,53 +94,35 @@ function _topoBuildPoolHtml(visible, channels) {
       var selCls = _topoPoolSelection.channels[c]
         ? " topo-pool-chip-selected"
         : "";
-      /* Mirror canvas channel glyphs on the pool chip so starred/muted
-       * state is visible without hunting for the node. Canvas uses
-       * gold ★ for starred and grey 🔇 for muted; we inline the same
-       * marks. Starred is the channel-equivalent of agent-pinned (the
-       * "keep this on top" signal). ywatanabe 2026-04-19 todo#84. */
-      var _chPref = _poolChPrefs[c] || {};
-      /* todo#101/#102: every channel chip reserves the same two
-       * prefix slots — custom-icon and star/mute marker — so the
-       * channel-name column stays aligned whether the channel has an
-       * icon/marker or not. Empty placeholder spans keep each chip
-       * the same total prefix width. */
-      var _chIdent =
+      /* Single source of truth — channel-badge.js renderChannelBadgeHtml.
+       * Same call surface as the sidebar row and canvas node so chip
+       * ↔ row ↔ node UI stays identical (ywatanabe 2026-04-20: "ALL
+       * channel badge MUST have the SAME UI and functionalities").
+       * Star/eye/mute clicks route through the body-level delegation
+       * wired in attachChannelBadgeHandlers(). */
+      var _tooltip =
         typeof channelIdentity === "function"
-          ? channelIdentity(c)
-          : {
-              displayName: c,
-              tooltip: c,
-              iconHtml: function () {
-                return "#";
-              },
-            };
-      /* Two separate placeholder slots — star + notification (mute) —
-       * so every channel chip has the same [icon][star][mute][name]
-       * prefix geometry, placeholders render empty when the flag is
-       * off. User request 2026-04-19: "channels should have
-       * placeholder for icon, star, and notification". */
-      var chStarGlyph = _chPref.is_starred
-        ? '<span class="topo-pool-chip-marker topo-pool-chip-star" title="starred">\u2605</span>'
-        : '<span class="topo-pool-chip-marker topo-pool-chip-star-off" aria-hidden="true"></span>';
-      var chMuteGlyph = _chPref.is_muted
-        ? '<span class="topo-pool-chip-marker topo-pool-chip-mute" title="muted">\uD83D\uDD15</span>'
-        : '<span class="topo-pool-chip-marker topo-pool-chip-mute-off" aria-hidden="true"></span>';
+          ? channelIdentity(c).tooltip || c
+          : c;
+      var badgeInner =
+        typeof renderChannelBadgeHtml === "function"
+          ? renderChannelBadgeHtml(c, {
+              context: "pool",
+              showEye: true,
+              showUnread: false,
+              iconSize: 14,
+            })
+          : "";
       return (
-        '<div class="topo-pool-chip topo-pool-chip-channel' +
+        '<div class="topo-pool-chip topo-pool-chip-channel ch-badge ch-badge-pool' +
         selCls +
         '" data-channel="' +
         escapeHtml(c) +
         '" title="' +
-        escapeHtml(_chIdent.tooltip) +
-        '"><span class="topo-pool-chip-icon">' +
-        _chIdent.iconHtml(14) +
-        "</span>" +
-        chStarGlyph +
-        chMuteGlyph +
-        '<span class="topo-pool-chip-name">' +
-        escapeHtml(_chIdent.displayName) +
-        "</span></div>"
+        escapeHtml(_tooltip) +
+        '">' +
+        badgeInner +
+        "</div>"
       );
     })
     .join("");

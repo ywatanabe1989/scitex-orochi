@@ -533,6 +533,13 @@
          badge in any of those files — call renderAgentBadge() instead.
          See dashboard-development-discipline.md rule 1. -->
     <script src="{% static 'hub/agent-badge.js' %}?v=1"></script>
+    <!-- Single source of truth for the channel badge (icon, star, eye,
+         mute, name, unread). Parallel to agent-badge.js. Loaded BEFORE
+         app/* and activity-tab/* so renderChannelBadgeHtml / Svg are in
+         scope at first render. Star/eye/mute/icon-change click handlers
+         are wired via document.body delegation from this file — no
+         site-local wiring required. -->
+    <script src="{% static 'hub/channel-badge.js' %}?v=1"></script>
     <script src="{% static 'hub/app/state.js' %}?v=149"></script>
     <script src="{% static 'hub/app/members.js' %}?v=149"></script>
     <script src="{% static 'hub/app/channel-prefs.js' %}?v=149"></script>
@@ -541,7 +548,7 @@
     <script src="{% static 'hub/app/utils.js' %}?v=149"></script>
     <script src="{% static 'hub/app/websocket.js' %}?v=149"></script>
     <script src="{% static 'hub/app/sidebar-agents.js' %}?v=149"></script>
-    <script src="{% static 'hub/app/sidebar-channel-tree.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-channel-tree.js' %}?v=150"></script>
     <script src="{% static 'hub/app/sidebar-stats.js' %}?v=149"></script>
     <script src="{% static 'hub/app/keyboard.js' %}?v=149"></script>
     <script src="{% static 'hub/dms.js' %}?v=4"></script>
@@ -592,8 +599,8 @@
     <script src="{% static 'hub/activity-tab/compose.js' %}?v=190"></script>
     <script src="{% static 'hub/activity-tab/topology-signature.js' %}?v=190"></script>
     <script src="{% static 'hub/activity-tab/topology-edges.js' %}?v=190"></script>
-    <script src="{% static 'hub/activity-tab/topology-nodes.js' %}?v=190"></script>
-    <script src="{% static 'hub/activity-tab/topology-pool.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-nodes.js' %}?v=191"></script>
+    <script src="{% static 'hub/activity-tab/topology-pool.js' %}?v=191"></script>
     <script src="{% static 'hub/activity-tab/topology.js' %}?v=190"></script>
     <script src="{% static 'hub/activity-tab/row.js' %}?v=190"></script>
     <script src="{% static 'hub/activity-tab/click.js' %}?v=190"></script>

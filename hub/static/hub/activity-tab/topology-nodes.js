@@ -1,7 +1,6 @@
 /* activity-tab/topology-nodes.js — SVG emission for channel diamonds,
  * agent pills, and the human user node. */
 
-
 function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs) {
   /* Per-channel subscriber counts across the visible agents. Used to
    * scale each channel diamond — "based on the number of agents, the
@@ -32,120 +31,22 @@ function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs) {
         /* equal + posts (deferred) */
         r = 12;
       }
-      var labelText = c + " (" + count + ")";
-      var pts =
-        p.x +
-        "," +
-        (p.y - r) +
-        " " +
-        (p.x + r) +
-        "," +
-        p.y +
-        " " +
-        p.x +
-        "," +
-        (p.y + r) +
-        " " +
-        (p.x - r) +
-        "," +
-        p.y;
-      var _pref = _chPrefs[c] || {};
-      var chCls = " topo-node topo-channel";
-      if (_pref.is_starred) chCls += " topo-channel-starred";
-      if (_pref.is_muted) chCls += " topo-channel-muted";
-      var starGlyph = _pref.is_starred
-        ? '<text class="topo-ch-star" x="' +
-          (p.x + r + 2).toFixed(1) +
-          '" y="' +
-          (p.y - r + 4).toFixed(1) +
-          '" font-size="11" fill="#fbbf24">★</text>'
-        : "";
-      var muteGlyph = _pref.is_muted
-        ? '<text class="topo-ch-mute" x="' +
-          (p.x - r - 12).toFixed(1) +
-          '" y="' +
-          (p.y - r + 4).toFixed(1) +
-          '" font-size="9" fill="#94a3b8">\uD83D\uDD15</text>'
-        : "";
-      /* Custom channel icon — cascade: image URL → emoji → no glyph.
-       * Symmetric to the agent canvas glyph in the same file: URL
-       * renders via <image>; emoji via <text>. todo#101 entity
-       * consistency. */
-      var iconGlyph = "";
-      var _ci =
-        typeof cachedChannelIcons !== "undefined"
-          ? cachedChannelIcons[c] || ""
-          : "";
-      var _ciIsUrl =
-        _ci && (_ci.indexOf("http") === 0 || _ci.indexOf("/") === 0);
-      if (_ciIsUrl) {
-        var _chImg = Math.max(14, Math.round(r * 1.6));
-        iconGlyph =
-          '<image class="topo-ch-icon-img" href="' +
-          escapeHtml(_ci) +
-          '" x="' +
-          (p.x - _chImg / 2).toFixed(1) +
-          '" y="' +
-          (p.y - _chImg / 2).toFixed(1) +
-          '" width="' +
-          _chImg +
-          '" height="' +
-          _chImg +
-          '" preserveAspectRatio="xMidYMid slice"/>';
-      } else if (_ci) {
-        iconGlyph =
-          '<text class="topo-ch-emoji" x="' +
-          p.x.toFixed(1) +
-          '" y="' +
-          (p.y + 4).toFixed(1) +
-          '" font-size="' +
-          Math.max(11, Math.round(r * 1.2)) +
-          '" text-anchor="middle" dominant-baseline="middle">' +
-          _ci +
-          "</text>";
+      /* Single source of truth — channel-badge.js renderChannelBadgeSvg.
+       * Same star/eye/mute UI + identical click behavior (via body
+       * delegation) as the sidebar row and pool chip (ywatanabe
+       * 2026-04-20: "ALL channel badge MUST have the SAME UI and
+       * functionalities"). */
+      if (typeof renderChannelBadgeSvg === "function") {
+        return renderChannelBadgeSvg(
+          c,
+          { x: p.x, y: p.y, r: r },
+          { showEye: true, showUnread: false, count: count },
+        );
       }
-      return (
-        '<g class="' +
-        chCls +
-        '" data-channel="' +
-        escapeHtml(c) +
-        '" data-agent-count="' +
-        count +
-        '">' +
-        '<polygon points="' +
-        pts +
-        '" fill="#1a1a1a" stroke="#444" stroke-width="1"/>' +
-        iconGlyph +
-        starGlyph +
-        muteGlyph +
-        /* Bordered badge behind the channel label — matches the
-         * agent pill aesthetic so channels read as first-class
-         * identities (user 2026-04-20: "channels are not shown in
-         * badges? bordered identities"). Width estimated from label
-         * length; centered horizontally above the diamond. */
-        (function () {
-          var _chLabelW = Math.max(40, labelText.length * 6.5);
-          var _chLabelX = p.x - _chLabelW / 2 - 6;
-          var _chLabelY = p.y - r - 18;
-          return (
-            '<rect class="topo-channel-bg" x="' +
-            _chLabelX.toFixed(1) +
-            '" y="' +
-            _chLabelY.toFixed(1) +
-            '" width="' +
-            (_chLabelW + 12).toFixed(1) +
-            '" height="20" rx="10" ry="10"/>'
-          );
-        })() +
-        '<text class="topo-label topo-label-ch" x="' +
-        p.x +
-        '" y="' +
-        (p.y - r - 4).toFixed(1) +
-        '" text-anchor="middle">' +
-        escapeHtml(labelText) +
-        "</text>" +
-        "</g>"
-      );
+      /* Fallback shouldn't fire once channel-badge.js is loaded;
+       * kept minimal so the canvas still renders if the helper is
+       * missing for any reason. */
+      return "";
     })
     .join("");
 

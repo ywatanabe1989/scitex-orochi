@@ -102,52 +102,10 @@ function _renderChannelRowHtml(row, ctx) {
   var active = ctx.currentChannel === c ? " active" : "";
   var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
   var muted = pref.is_muted ? " ch-muted" : "";
-  /* Star = float-to-top (pinned). ★ filled for starred, ☆ outline
-   * for unstarred. Replaces the earlier 📌 pin emoji so both canvas
-   * pool chips and this list use a single standardized icon. */
-  /* Entity-consistency order from TODO.md:
-   *   channel: [icon] [star] [hide] [notification] [#name]
-   * Three control glyphs kept as separate slots so they can be
-   * interleaved with the identity icon below. */
-  var pinGlyphHtml =
-    '<span class="ch-pin ' +
-    (pref.is_starred ? "ch-pin-on" : "ch-pin-off") +
-    '" data-ch="' +
-    escapeHtml(norm) +
-    '" title="' +
-    (pref.is_starred ? "Unstar" : "Star (float to top)") +
-    '">' +
-    (pref.is_starred ? "\u2605" : "\u2606") +
-    "</span>";
-  var hideGlyphHtml =
-    '<span class="ch-eye ' +
-    (pref.is_hidden ? "ch-eye-off" : "ch-eye-on") +
-    '" data-ch="' +
-    escapeHtml(norm) +
-    '" title="' +
-    (pref.is_hidden ? "Show channel (un-hide)" : "Hide channel (dim in list)") +
-    '">' +
-    (pref.is_hidden ? "\uD83D\uDEAB" : "\uD83D\uDC41") +
-    "</span>";
-  var muteGlyphHtml =
-    '<span class="ch-mute ' +
-    (pref.is_muted ? "ch-mute-on" : "ch-mute-off") +
-    '" data-ch="' +
-    escapeHtml(norm) +
-    '" title="' +
-    (pref.is_muted ? "Unmute notifications" : "Mute notifications") +
-    '">' +
-    (pref.is_muted ? "\uD83D\uDD15" : "\uD83D\uDD14") +
-    "</span>";
-  var unread = channelUnread[c] || channelUnread[norm] || 0;
-  var badgeHtml =
-    '<span class="ch-badge-slot">' +
-    (unread > 0
-      ? '<span class="unread-badge">' +
-        (unread > 99 ? "99+" : unread) +
-        "</span>"
-      : "") +
-    "</span>";
+  /* Inner badge markup (icon/star/eye/mute/name/unread) comes from
+   * channel-badge.js — single source of truth shared with the pool
+   * chip + canvas SVG. Star/eye/mute clicks are handled by the
+   * body-level delegation wired in attachChannelBadgeHandlers(). */
   var starred = pref.is_starred ? " ch-starred" : "";
   var hiddenCls = entry.hidden ? " ch-hidden" : "";
   var inFolderCls = row.inFolder ? " ch-in-folder" : "";
@@ -163,9 +121,26 @@ function _renderChannelRowHtml(row, ctx) {
   /* Label: full "#proj/ripple-wm" at top level; short "#ripple-wm"
    * when rendered as a child of the proj/ folder header (todo#71). */
   var nameLabel = row.inFolder ? row.leafLabel : entry.norm;
+  /* Single source of truth for the inner badge markup — icon / star /
+   * eye / mute / name / unread. Identical call surface as the pool
+   * chip and the SVG node so clicks + geometry stay in lockstep.
+   * See channel-badge.js. The outer .channel-item wrapper keeps the
+   * sidebar-only classes (active/muted/starred/hidden/in-folder) that
+   * CSS and drag/drop already depend on. */
+  var badgeInner =
+    typeof renderChannelBadgeHtml === "function"
+      ? renderChannelBadgeHtml(c, {
+          context: "sidebar",
+          showEye: true,
+          showUnread: true,
+          draggable: true,
+          label: nameLabel,
+          iconSize: 14,
+        })
+      : "";
   return (
     divider +
-    '<div class="channel-item' +
+    '<div class="channel-item ch-badge ch-badge-sidebar' +
     active +
     muted +
     starred +
@@ -178,23 +153,7 @@ function _renderChannelRowHtml(row, ctx) {
     (row.inFolder ? ' data-folder="' + escapeHtml(row.inFolder) + '"' : "") +
     rowTitle +
     ' draggable="true">' +
-    '<span class="ch-drag-handle" title="Drag to reorder">&#8942;</span>' +
-    /* [icon] [star] [hide] [notification] [#name] — entity
-     * consistency spec. channelIdentity() is the single source
-     * of truth for the icon; the three control glyphs stay in
-     * the fixed order below. */
-    (typeof channelIdentity === "function"
-      ? '<span class="ch-identity-icon">' +
-        channelIdentity(norm).iconHtml(14) +
-        "</span>"
-      : "") +
-    pinGlyphHtml +
-    hideGlyphHtml +
-    muteGlyphHtml +
-    '<span class="ch-name">' +
-    escapeHtml(nameLabel) +
-    "</span>" +
-    badgeHtml +
+    badgeInner +
     "</div>"
   );
 }
