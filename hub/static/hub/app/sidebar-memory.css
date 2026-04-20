@@ -155,6 +155,27 @@
   outline: none;
 }
 
+/* Dropdown picker — replaces the legacy chip row. Compact native
+ * <select> styled to match the sidebar's dark look. */
+#sidebar-memory .sidebar-memory-picker {
+  margin-bottom: 4px;
+}
+#sidebar-memory .sidebar-mem-select {
+  width: 100%;
+  padding: 3px 6px;
+  font-size: 11px;
+  color: #e0e0e0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#sidebar-memory .sidebar-mem-select:hover,
+#sidebar-memory .sidebar-mem-select:focus {
+  border-color: #4ecdc4;
+  outline: none;
+}
+
 /* Transient hint bubble for "Pick an M-slot first". Anchored via
  * inline position:fixed in JS. */
 .sidebar-mem-hint {

@@ -149,9 +149,18 @@ function _buildSidebarMemoryChipsHtml() {
 function renderSidebarMemory() {
   var host = document.getElementById("sidebar-memory");
   if (!host) return;
+  /* Dropdown picker (current UI) — replaced the 5-chip row per
+   * ywatanabe 2026-04-20: "use dropdown instead of buttons". */
+  var selectEl = host.querySelector("#sidebar-mem-select");
+  if (selectEl) {
+    selectEl.innerHTML = _buildSidebarMemoryDropdownOptions();
+  }
+  /* Legacy chip row (if the template still has one — never true post-
+   * 2026-04-20 template). */
   var slotsEl = host.querySelector(".sidebar-memory-slots");
-  if (!slotsEl) return;
-  slotsEl.innerHTML = _buildSidebarMemoryChipsHtml();
+  if (slotsEl && !selectEl) {
+    slotsEl.innerHTML = _buildSidebarMemoryChipsHtml();
+  }
   /* Keep "Save" disabled-looking when nothing selected AND no active
    * slot, so the button's affordance tracks whether there's something
    * to persist. We don't actually disable the button — a click still
@@ -223,6 +232,107 @@ function _wireSidebarMemory() {
   if (!host) return;
   if (host._mwWired) return;
   host._mwWired = true;
+
+  /* Dropdown change — switches active slot. Guards:
+   *   - If the current active slot is dirty, confirm() before leaving
+   *     (otherwise a casual switch silently loses edits since we're on
+   *     an explicit-save contract — ywatanabe 2026-04-20).
+   *   - "__new__" takes the next free slot and prompts for a label; the
+   *     new slot starts empty so the user can Save into it.
+   *   - "" (No memory) deactivates + clears the pool selection. */
+  var selectEl = host.querySelector("#sidebar-mem-select");
+  if (selectEl) {
+    selectEl.addEventListener("change", function (ev) {
+      var val = selectEl.value;
+      var prevSlot = _topoActiveMemSlot;
+      var prevDirty =
+        prevSlot != null &&
+        typeof _topoPoolMemoryIsDirty === "function" &&
+        _topoPoolMemoryIsDirty(prevSlot);
+      if (prevDirty) {
+        var ok = false;
+        try {
+          ok = window.confirm(
+            "M" + prevSlot + " has unsaved changes. Discard them and switch?",
+          );
+        } catch (_e) {
+          ok = false;
+        }
+        if (!ok) {
+          /* Revert the dropdown value — re-render restores it. */
+          _sidebarMemoryRefreshBothSurfaces();
+          return;
+        }
+      }
+      if (val === "") {
+        _topoActiveMemSlot = null;
+        if (typeof _topoPoolSelectClear === "function") {
+          _topoPoolSelectClear();
+        }
+      } else if (val === "__new__") {
+        var max =
+          typeof _TOPO_POOL_MEM_MAX !== "undefined" ? _TOPO_POOL_MEM_MAX : 5;
+        var free = 0;
+        for (var i = 1; i <= max; i++) {
+          if (!(_topoPoolMemories && _topoPoolMemories[String(i)])) {
+            free = i;
+            break;
+          }
+        }
+        if (free === 0) {
+          _sidebarMemoryShowHint(selectEl, "All slots full");
+          _sidebarMemoryRefreshBothSurfaces();
+          return;
+        }
+        var label = null;
+        try {
+          label = window.prompt(
+            "Name for M" + free + " (blank = unnamed):",
+            "",
+          );
+        } catch (_e) {
+          label = null;
+        }
+        if (label === null) {
+          _sidebarMemoryRefreshBothSurfaces();
+          return;
+        }
+        _topoActiveMemSlot = free;
+        if (typeof _topoPoolSelectClear === "function") {
+          _topoPoolSelectClear();
+        }
+        if (
+          String(label).trim() !== "" &&
+          typeof _topoPoolMemoryRename === "function"
+        ) {
+          /* Create the slot with an empty snapshot so rename has
+           * something to attach to, then rename. Save remains the
+           * user's explicit action (no auto-save contract). */
+          if (typeof _topoPoolMemorySave === "function") {
+            _topoPoolMemorySave(free);
+          }
+          _topoPoolMemoryRename(free, String(label).trim());
+        }
+      } else {
+        var slotN = parseInt(val, 10);
+        if (slotN >= 1) {
+          _topoActiveMemSlot = slotN;
+          if (
+            _topoPoolMemories &&
+            _topoPoolMemories[String(slotN)] &&
+            typeof _topoPoolMemoryRecall === "function"
+          ) {
+            _topoPoolMemoryRecall(slotN);
+          }
+        }
+      }
+      if (typeof _topoPersistActiveMemSlot === "function") {
+        _topoPersistActiveMemSlot();
+      }
+      _sidebarMemoryRefreshBothSurfaces();
+      ev.stopPropagation();
+    });
+  }
 
   host.addEventListener("click", function (ev) {
     var chip = ev.target.closest(".sidebar-mem-btn[data-mem-slot]");
