@@ -149,6 +149,35 @@ function _ovgWireClick(grid) {
       ev.stopPropagation();
       return;
     }
+    /* Topology view — agent icon glyph click opens the avatar/emoji
+     * picker (same entry as the sidebar-row icon click + right-click
+     * "Set icon" context item). Must run BEFORE the general agent-node
+     * click dispatch below so a click on the glyph doesn't also fall
+     * through to the 1/2/3-click counter (which would start a DM or
+     * expand the detail card). ywatanabe 2026-04-20 Entity Consistency:
+     * canvas / sidebar / pool chips all share the same icon-change UI.
+     *
+     * Human node uses openHumanAvatarPicker (no agent arg); regular
+     * agents use openAvatarPicker(name). Matches the sidebar-row path
+     * in app/sidebar-agents.js. */
+    var topoGlyph = ev.target.closest(
+      ".topo-agent-glyph, .topo-agent-glyph-img, .topo-human-glyph, .topo-human-glyph-img",
+    );
+    if (topoGlyph && grid.contains(topoGlyph)) {
+      var glyphHost = topoGlyph.closest(".topo-agent[data-agent]");
+      if (glyphHost) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        var glyphName = glyphHost.getAttribute("data-agent");
+        var isHumanNode = glyphHost.classList.contains("topo-human");
+        if (isHumanNode && typeof openHumanAvatarPicker === "function") {
+          openHumanAvatarPicker();
+        } else if (glyphName && typeof openAvatarPicker === "function") {
+          openAvatarPicker(glyphName);
+        }
+        return;
+      }
+    }
     /* Topology view — agent node click dispatch. Modifiers take
      * precedence over the 1/2/3-click timer:
      *   shift+click          → toggle multi-select membership
