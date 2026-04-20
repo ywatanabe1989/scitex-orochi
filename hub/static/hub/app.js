@@ -2139,11 +2139,20 @@ async function fetchAgents() {
     var _computeStateLocal = function (a) {
       var pane = a.pane_state || "";
       if (pane === "compacting" || pane === "auto_compact") return "compacting";
+      // auth_error and mcp_broken are functional failures — agent is alive
+      // at the network/heartbeat layer but cannot do work. Surface as
+      // their own state so the dashboard renders red rather than blending
+      // into the yellow "selecting" bucket alongside y_n_prompt.
+      if (pane === "auth_error") return "auth_error";
+      if (pane === "mcp_broken") return "mcp_broken";
+      // Initial-waiting: freshly booted agent that has never received work.
+      // Distinct from "idle" (worked then stopped) because the
+      // troubleshooting steps differ — waiting may need a wakeup ping or
+      // a channel-subscription check; idle may just need more work.
+      if (pane === "waiting") return "waiting";
       if (
         pane === "y_n_prompt" ||
         pane === "compose_pending_unsent" ||
-        pane === "auth_error" ||
-        pane === "mcp_broken" ||
         pane === "stuck"
       )
         return "selecting";
@@ -2234,12 +2243,11 @@ async function fetchAgents() {
           '"></span>' +
           '<span class="activity-led activity-led-fn activity-led-fn-' +
           liveness +
+          '" title="' +
+          escapeHtml(
+            state.toUpperCase() + " — functional state (" + liveness + ")",
+          ) +
           '"></span>' +
-          '<span class="activity-state activity-state-compact activity-state-' +
-          state +
-          '">' +
-          escapeHtml(state.toUpperCase()) +
-          "</span>" +
           '<span class="agent-name" style="color:' +
           ident.color +
           '">' +

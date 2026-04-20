@@ -537,6 +537,33 @@
   color: #a78bfa;
   border-color: #3a2d5a;
 }
+/* auth_error / mcp_broken — functional failure: connected at WS layer
+ * but the agent cannot do work. Distinct red so it can't be confused
+ * with the yellow "selecting" bucket where user attention is wanted. */
+.activity-state.activity-state-auth_error,
+.activity-state.activity-state-mcp_broken {
+  background: #2a0f0f;
+  color: #ef4444;
+  border-color: #4a1f1f;
+}
+/* waiting — freshly booted, never received work. Differentiated from
+ * idle (worked then stopped) because troubleshooting steps differ
+ * (waiting may need a wakeup ping or channel-subscription check). */
+.activity-state.activity-state-waiting {
+  background: #0f1a2a;
+  color: #60a5fa;
+  border-color: #1f2f4a;
+}
+/* Functional-lamp variants for the new states (sidebar/list rows
+ * render the lamp via `.activity-led-fn-<state>`). Mirror the badge
+ * palette so dot color and badge color agree. */
+.activity-led-fn-auth_error,
+.activity-led-fn-mcp_broken {
+  background: #ef4444;
+}
+.activity-led-fn-waiting {
+  background: #60a5fa;
+}
 
 /* Compact variant for sidebar rows — narrower badge so the 260px
  * sidebar fits everything in one line. */

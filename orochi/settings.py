@@ -7,32 +7,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _dynamic_version():
-    """Compute version from git commit count (ywatanabe msg#12144).
+    """Compute version, preferring pyproject.toml so docker cp + restart
+    reflects the latest version without needing rebuild or env injection.
 
     Resolution order:
-    1. SCITEX_OROCHI_VERSION env var (injected at deploy time in containers
-       where git is unavailable — set to 0.12.<commit-count> by the deploy
-       script so the version stays accurate without needing git in the image).
-    2. git rev-list --count HEAD (works on bare host).
-    3. importlib.metadata (installed package version, stale after docker cp).
+    1. SCITEX_OROCHI_VERSION env var (deploy-script override).
+    2. pyproject.toml ``[project] version`` parsed directly — works inside
+       a docker container where git is absent and the editable-install
+       dist-info may be stale (docker cp updated the source but not the
+       installed metadata).
+    3. importlib.metadata (installed package version).
     4. Hard-coded fallback.
+
+    The earlier git-based ``0.12.<commit-count>`` form was misleading
+    because the ``0.12.`` prefix was hardcoded — minor/major bumps in
+    pyproject.toml never reached the dashboard label. Replaced with
+    direct pyproject.toml parsing so a docker cp of pyproject.toml +
+    container restart is enough to refresh the version display.
     """
     env_ver = os.environ.get("SCITEX_OROCHI_VERSION", "").strip()
     if env_ver:
         return env_ver
-    import subprocess
-
     try:
-        count = (
-            subprocess.check_output(
-                ["git", "rev-list", "--count", "HEAD"],
-                cwd=str(BASE_DIR),
-                stderr=subprocess.DEVNULL,
-            )
-            .strip()
-            .decode()
-        )
-        return f"0.12.{count}"
+        pyproject = BASE_DIR / "pyproject.toml"
+        for line in pyproject.read_text().splitlines():
+            line = line.strip()
+            if line.startswith("version"):
+                # version = "0.14.0"  →  0.14.0
+                v = line.split("=", 1)[1].strip().strip('"').strip("'")
+                if v:
+                    return v
+                break
     except Exception:
         pass
     try:
@@ -40,7 +45,7 @@ def _dynamic_version():
 
         return _pkg_version("scitex-orochi")
     except Exception:
-        return "0.13.0"
+        return "0.0.0"
 
 
 OROCHI_VERSION = _dynamic_version()
