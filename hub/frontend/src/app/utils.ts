@@ -164,7 +164,13 @@ export function hostedAgentName(a) {
   var name = a && a.name ? a.name : "";
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
-  var host = a && a.machine ? a.machine : "";
+  /* #256 — host label MUST come from the live `hostname(1)` reported
+   * in the heartbeat (#257), NOT from the YAML config `machine` field.
+   * Pre-fix, an agent_handlers `machine: mba` line in YAML caused the
+   * dashboard to show `proj-neurovista@mba` even when no process was
+   * running on mba (the ghost-mba bug). Falls back to `machine` for
+   * legacy agents whose heartbeat hasn't been upgraded yet. */
+  var host = a && a.hostname ? a.hostname : a && a.machine ? a.machine : "";
   /* Always pipe the constructed "<name>@<host>" string through
    * cleanAgentName so the role-host suffix gets collapsed
    * (head-mba@mba → head@mba). The earlier form returned the raw
@@ -381,7 +387,11 @@ export function sendOrochiMessage(msgData) {
 }
 
 // Expose cross-file mutable state via globalThis:
-(globalThis as any).cachedAgentNames = (typeof cachedAgentNames !== 'undefined' ? cachedAgentNames : undefined);
-(globalThis as any).historyLoaded = (typeof historyLoaded !== 'undefined' ? historyLoaded : undefined);
-(globalThis as any).knownMessageKeys = (typeof knownMessageKeys !== 'undefined' ? knownMessageKeys : undefined);
-(globalThis as any).unreadCount = (typeof unreadCount !== 'undefined' ? unreadCount : undefined);
+(globalThis as any).cachedAgentNames =
+  typeof cachedAgentNames !== "undefined" ? cachedAgentNames : undefined;
+(globalThis as any).historyLoaded =
+  typeof historyLoaded !== "undefined" ? historyLoaded : undefined;
+(globalThis as any).knownMessageKeys =
+  typeof knownMessageKeys !== "undefined" ? knownMessageKeys : undefined;
+(globalThis as any).unreadCount =
+  typeof unreadCount !== "undefined" ? unreadCount : undefined;
