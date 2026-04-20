@@ -572,7 +572,39 @@
     <script src="{% static 'hub/agents-tab/controls.js' %}?v=111"></script>
     <script src="{% static 'hub/agents-tab/overview.js' %}?v=111"></script>
     <script src="{% static 'hub/connectivity-map.js' %}?v=101"></script>
-    <script src="{% static 'hub/activity-tab.js' %}?v=189"></script>
+    <!-- Activity tab (canonical Agents UI renderer) — split into focused
+         sub-files. ALL share the same cache-bust version. Load order:
+         state → utils → data → per-view renderers → topology helpers →
+         topology → grid handlers → controls → init. -->
+    <script src="{% static 'hub/activity-tab/state.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/utils.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/data.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/hooks-panel.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/detail.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/detail-bind.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/channel-controls.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/multiselect.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-arrows.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-packets.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-pulse.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/seekbar.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/zoompan.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/compose.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-signature.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-edges.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-nodes.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology-pool.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/topology.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/row.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/click.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/edge-menu.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-click.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-mouse.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-ctx.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-hover.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/grid-delegation.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/controls.js' %}?v=190"></script>
+    <script src="{% static 'hub/activity-tab/init.js' %}?v=190"></script>
     <script src="{% static 'hub/viz-tab.js' %}?v=6"></script>
     <script src="{% static 'hub/upload.js' %}?v=112"></script>
     <script src="{% static 'hub/files-tab/files-tab-core.js' %}?v=106"></script>
