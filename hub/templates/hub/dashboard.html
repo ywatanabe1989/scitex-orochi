@@ -44,6 +44,7 @@
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=102">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
+    <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=101">
     <link rel="stylesheet"
@@ -153,6 +154,27 @@
                 </h2>
                 <div id="agents" class="sidebar-section">
                     <p id="no-agents">No agents connected</p>
+                </div>
+                <h2 class="collapsible-heading channels-heading"
+                    data-section="sidebar-memory">Memory</h2>
+                <div id="sidebar-memory" class="sidebar-section">
+                    <div class="sidebar-memory-slots">
+                        <!-- M1-M5 chips rendered by sidebar-memory.js -->
+                    </div>
+                    <div class="sidebar-memory-actions">
+                        <button class="sidebar-mem-btn"
+                                data-action="none"
+                                title="Clear active memory slot — show everything unfiltered">No memory</button>
+                        <button class="sidebar-mem-btn"
+                                data-action="select-all"
+                                title="Select every visible entity">Select all</button>
+                        <button class="sidebar-mem-btn"
+                                data-action="deselect-all"
+                                title="Clear the current selection">Deselect all</button>
+                        <button class="sidebar-mem-btn sidebar-mem-save"
+                                data-action="save"
+                                title="Save current selection to the active memory slot">Save</button>
+                    </div>
                 </div>
                 <h2 class="collapsible-heading channels-heading" data-section="channels">
                     Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
@@ -619,6 +641,7 @@
     <script src="{% static 'hub/activity-tab/grid-delegation.js' %}?v=190"></script>
     <script src="{% static 'hub/activity-tab/controls.js' %}?v=190"></script>
     <script src="{% static 'hub/activity-tab/init.js' %}?v=190"></script>
+    <script src="{% static 'hub/app/sidebar-memory.js' %}?v=1"></script>
     <script src="{% static 'hub/viz-tab.js' %}?v=6"></script>
     <script src="{% static 'hub/upload.js' %}?v=112"></script>
     <script src="{% static 'hub/files-tab/files-tab-core.js' %}?v=106"></script>

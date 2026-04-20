@@ -1,7 +1,6 @@
 /* activity-tab/init.js — renderActivityTab entry point, tab-click
  * wiring, auto-refresh timer. */
 
-
 function renderActivityTab() {
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
@@ -62,6 +61,13 @@ function renderActivityTab() {
 
   _renderActivityCards(agents, grid);
 
+  /* Mirror pool memory state into the sidebar Memory section so the two
+   * surfaces stay in lockstep (same _topoPoolMemories store). No-op
+   * when sidebar-memory.js / #sidebar-memory are not loaded. */
+  if (typeof renderSidebarMemory === "function") {
+    renderSidebarMemory();
+  }
+
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
@@ -69,7 +75,6 @@ function renderActivityTab() {
     } catch (_) {}
   }
 }
-
 
 document.addEventListener("DOMContentLoaded", function () {
   var btn = document.querySelector('[data-tab="activity"]');
@@ -80,4 +85,3 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 });
-
