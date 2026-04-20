@@ -229,7 +229,13 @@
 }
 /* Per-row hide/unhide eye icon (todo#418). ch-eye-on = channel is visible,
  * icon dim until row hover; ch-eye-off = channel is hidden, icon stays
- * semi-opaque so users can find the un-hide affordance on a dimmed row. */
+ * semi-opaque so users can find the un-hide affordance on a dimmed row.
+ *
+ * Mirrors the bell pattern — same 👁 glyph in BOTH states, with a red
+ * diagonal strike drawn via ::after pseudo-element when hidden (no
+ * Unicode crossed-eye exists, so we overlay). ywatanabe 2026-04-20:
+ * "eye hidden should use the same glyph with a red strike, matching
+ * the bell". */
 .ch-eye-on {
   opacity: 0.15;
   filter: grayscale(1);
@@ -237,6 +243,20 @@
 .ch-eye-off {
   opacity: 0.75;
   filter: none;
+  position: relative;
+}
+.ch-eye-off::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  height: 2px;
+  background: #ef4444;
+  transform: rotate(-20deg);
+  transform-origin: center;
+  border-radius: 1px;
+  pointer-events: none;
 }
 /* Notification / mute placeholder — user request 2026-04-19: every
  * channel row reserves fixed-width slots for star + notification so
