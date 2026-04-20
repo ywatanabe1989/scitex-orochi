@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/channel-controls.js — +/× badge controls for
  * per-agent channel subscriptions on the detail pane. */
 

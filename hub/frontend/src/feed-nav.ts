@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Feed keyboard navigation — Slack-like message selection and shortcuts.
  *
  * When the user presses ↑ in an empty input, focus moves to the last

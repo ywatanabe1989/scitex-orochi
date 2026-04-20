@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/compose.js — group compose modal (multi-select post)
  * + inline channel compose popup + drag-ghost helper + subscribe toast. */
 

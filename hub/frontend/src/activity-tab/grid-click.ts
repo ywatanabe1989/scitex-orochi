@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/grid-click.js — delegated click handler for the
  * overview grid: pin button, card expand, topology edge popover, pool
  * actions, pool chip selection, topology agent/channel clicks, action

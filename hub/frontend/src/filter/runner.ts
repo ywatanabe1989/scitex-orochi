@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Tag-based unified filter — matching, runFilter, sidebar/grid filters,
  * and is:<flag> chip toggles. Paired with filter/state.js. */
 /* globals: _fm, filterInput, activeTags, currentChannel, parseFilterInput,

@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/topology-pool.js — left-side agents + channels pool,
  * memory slot buttons, pool-action strip (Select All / None / M1..M5 / +Save). */
 

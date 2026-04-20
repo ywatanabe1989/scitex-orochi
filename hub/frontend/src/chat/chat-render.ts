@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 function appendMessage(msg) {
   /* Filter hub-internal system messages from the feed (msg#10315).
    * Hub sends mention_reply messages (sender="hub") as status responses

@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* app/sidebar-memory.js — sidebar Memory section renderer + click
  * wiring. Mirrors the Agents-tab topology pool's memory strip so users
  * can recall/save M1..M5 selection snapshots without switching tabs.

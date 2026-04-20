@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/zoompan.js — drag-rectangle zoom + shift-drag pan
  * + ctrl-drag lasso + wheel zoom/pan + keyboard shortcuts +
  * zoom button controls for the topology SVG. */

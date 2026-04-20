@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 
 /* POST /api/channel-members/ with a chosen permission. Reuses the same
  * endpoint as _toggleAgentChannelSubscription but passes the permission

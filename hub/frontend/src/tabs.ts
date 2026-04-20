@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Tab switching, collapsible sections, mobile sidebar */
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
    fetchWorkspaces */

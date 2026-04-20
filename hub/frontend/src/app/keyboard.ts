@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 
 /* Global ESC handler — close any visible popups/modals (#207) */
 document.addEventListener("keydown", function (e) {

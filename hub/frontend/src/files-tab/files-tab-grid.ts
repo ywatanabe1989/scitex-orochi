@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Files tab — grid render, selection, fetch, init, PDF modal viewer */
 /* globals: apiUrl, escapeHtml, timeAgo, getAgentColor, cleanAgentName */
 

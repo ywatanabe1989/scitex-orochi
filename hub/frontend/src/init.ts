@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Orochi Dashboard -- bootstrap (loaded last) */
 /* globals: loadHistory, fetchStats, fetchAgents, connect, fetchTodoList,
    fetchResources, fetchWorkspaces, wsConnected, startRestPolling,

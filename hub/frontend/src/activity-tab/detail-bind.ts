@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/detail-bind.js — detail-pane event wiring:
  * send-to-agent input, Refresh/Copy/Follow/Expand pane controls,
  * SSH terminal lifecycle, follow timer. */

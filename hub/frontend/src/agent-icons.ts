@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Agent icon system — Gravatar-style cascade: image > emoji > text > default SVG */
 /* globals: escapeHtml */
 

@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* ── Channel topic banner + subscriber list (todo#402) ── */
 var _channelDescriptions = {}; /* cache: channel → description */
 var _agentChannelMap = {}; /* cache: channel → [{name, online}] */

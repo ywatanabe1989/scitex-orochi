@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Tag-based unified filter with fuzzy matching — state, parser, tags,
  * suggestions, and input event wiring. Paired with filter/runner.js. */
 /* globals: fuzzyMatch, escapeHtml, cachedAgentNames, resourceData,

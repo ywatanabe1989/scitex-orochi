@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Agents Tab — per-agent detail view + indicator lamps + pane-state badge.
  * Depends on state.js (livenessColor, _fmtDuration, _agentDetailCache,
  * _paneExpanded, _followAgent, FOLLOW_INTERVAL_MS). */

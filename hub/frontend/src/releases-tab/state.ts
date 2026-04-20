@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Releases tab — shared state, markdown renderer, and tracked-repos
  * networking helpers. Companion to releases-tab/runner.js, which drives
  * the UI. Loaded as a classic <script> before runner.js so the symbols

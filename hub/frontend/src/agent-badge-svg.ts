@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /**
  * agent-badge-svg.js — SVG (topology-canvas) renderer parallel to
  * renderAgentBadge() in agent-badge.js. Split out so agent-badge.js

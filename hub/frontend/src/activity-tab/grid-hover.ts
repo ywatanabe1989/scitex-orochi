@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/grid-hover.js — channel + agent hover highlight for
  * the topology canvas. Mouseover on a channel/agent node adds
  * .topo-edge-hover to connected edges and highlights endpoint

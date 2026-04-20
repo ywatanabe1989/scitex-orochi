@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/grid-ctx.js — delegated contextmenu (right-click)
  * handler for the overview grid: memory slot rename/delete, edge
  * unsubscribe popover, channel/agent/pool context menus. Helper wired

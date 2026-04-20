@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/controls.js — sort/view/color/size dropdown wiring
  * + universal Escape-cancel for the topology canvas. */
 

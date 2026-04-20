@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* activity-tab/grid-delegation.js — delegated listeners on the
  * overview grid. Per-handler code lives in grid-click.js / grid-mouse.js
  * / grid-ctx.js / grid-hover.js; this file just wires them up once

@@ -1,3 +1,6 @@
+// @ts-nocheck
+// Migrated classic-script file. Types intentionally loose during
+// the big-bang JS-to-TS bundle migration. Narrow later, per-file.
 /* Channel-tree render + per-row handler helpers used by fetchStats()
  * in sidebar-stats.js. Split out as a sibling classic-script file so
  * sidebar-stats.js stays under the per-file line budget. Pure cut &
