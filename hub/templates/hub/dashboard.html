@@ -517,7 +517,7 @@
          under the 512-line .js hook cap. Must load AFTER agent-badge.js
          (shares agentIdentity/getAgentColor helpers) but BEFORE
          activity-tab/topology-nodes.js. -->
-    <script src="{% static 'hub/agent-badge-svg.js' %}?v=1"></script>
+    <script src="{% static 'hub/agent-badge-svg.js' %}?v=2"></script>
     <!-- Single source of truth for the channel badge (icon, star, eye,
          mute, name, unread). Parallel to agent-badge.js. Loaded BEFORE
          app/* and activity-tab/* so renderChannelBadgeHtml / Svg are in

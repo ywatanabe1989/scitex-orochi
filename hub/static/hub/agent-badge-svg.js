@@ -130,6 +130,95 @@
     );
   }
 
+  /* Build all four LED <circle> elements in canonical order (WS, Ping,
+   * Local-FN, Remote-Echo). Returns the concatenated SVG string.
+   * Mirrors renderAgentLeds() in agent-badge.js 1:1 — same state inputs,
+   * same color conventions. First LED is centered at startCx; successive
+   * LEDs step by (2*LED_R + GAP). */
+  function _renderAgentBadgeLedsSvg(a, startCx, y, LED_R, GAP, opts) {
+    var connectedFlag = _connected(a);
+    var liveness =
+      a.liveness || a.status || (connectedFlag ? "online" : "offline");
+    var FN_COLORS = {
+      online: "#4ecdc4",
+      idle: "#ffd93d",
+      stale: "#ff8c42",
+      offline: "#555",
+      waiting: "#60a5fa",
+      auth_error: "#ef4444",
+    };
+
+    // 1. WS
+    var wsColor = connectedFlag ? "#4ecdc4" : "#555";
+    // 2. Ping — from last_pong_ts age (<60s green, <180s warn, else off).
+    var pong = a.last_pong_ts;
+    var pongAge =
+      pong != null ? (Date.now() - new Date(pong).getTime()) / 1000 : null;
+    var pingColor = "#555";
+    var pingLabel = "no pong yet";
+    if (pongAge != null) {
+      if (pongAge < 60) {
+        pingColor = "#4ecdc4";
+        pingLabel = "pong " + Math.round(pongAge) + "s ago";
+      } else if (pongAge < 180) {
+        pingColor = "#ffd93d";
+        pingLabel = "stale pong " + Math.round(pongAge) + "s ago";
+      } else {
+        pingColor = "#555";
+        pingLabel = "no recent pong (" + Math.round(pongAge) + "s)";
+      }
+    }
+    // 3. Local functional state.
+    var fnColor = FN_COLORS[liveness] || "#555";
+    if (opts.isDead) fnColor = "#ef4444";
+    // 4. Remote echo — from last_nonce_echo_at age.
+    var echo = a.last_nonce_echo_at;
+    var echoAge =
+      echo != null ? (Date.now() - new Date(echo).getTime()) / 1000 : null;
+    var echoColor = "#555";
+    var echoLabel = "not yet probed by any peer";
+    if (echoAge != null) {
+      if (echoAge < 90) {
+        echoColor = "#4ecdc4";
+        echoLabel = "echoed " + Math.round(echoAge) + "s ago";
+      } else if (echoAge < 300) {
+        echoColor = "#ffd93d";
+        echoLabel = "stale echo " + Math.round(echoAge) + "s ago";
+      } else {
+        echoColor = "#ef4444";
+        echoLabel = "no echo (" + Math.round(echoAge) + "s)";
+      }
+    }
+
+    var leds = [
+      {
+        color: wsColor,
+        title: "WebSocket: " + (connectedFlag ? "connected" : "disconnected"),
+      },
+      { color: pingColor, title: "Ping: " + pingLabel },
+      { color: fnColor, title: "Liveness: " + liveness },
+      { color: echoColor, title: "Remote echo: " + echoLabel },
+    ];
+    var out = "";
+    var step = 2 * LED_R + GAP;
+    for (var i = 0; i < leds.length; i++) {
+      var cx = startCx + i * step;
+      out +=
+        '<circle cx="' +
+        cx.toFixed(1) +
+        '" cy="' +
+        y.toFixed(1) +
+        '" r="' +
+        LED_R +
+        '" fill="' +
+        leds[i].color +
+        '" stroke="#0a0a0a" stroke-width="0.5"><title>' +
+        _escape(leds[i].title) +
+        "</title></circle>";
+    }
+    return { svg: out, width: (leds.length - 1) * step + 2 * LED_R };
+  }
+
   function renderAgentBadgeSvg(a, pos, opts) {
     opts = opts || {};
     var x = pos.x;
@@ -139,7 +228,7 @@
     var showLeds = opts.showLeds !== false && !opts.isHuman;
     var iconSize = opts.iconSize || 14;
     var LED_R = 4;
-    var GAP = 5;
+    var GAP = 3;
 
     var ident =
       typeof agentIdentity === "function"
@@ -155,89 +244,157 @@
     var nameText = opts.labelOverride || ident.displayName || a.name || "";
     var color = opts.isHuman ? "#fbbf24" : ident.color;
 
-    var glyphX = opts.isHuman ? x - 10 : x - LED_R - GAP / 2 - 28;
-    var glyph = _renderAgentGlyphSvg(a, glyphX, y, iconSize, ident, opts);
+    /* Canonical layout per ywatanabe 2026-04-20:
+     *   icon + 4 LEDs + name@hostname + star
+     * All elements laid out left→right starting at glyphX. Human nodes
+     * keep their simpler icon+name layout (no LEDs, no star slot). */
+    var iconHalf = iconSize / 2;
+    var ledsWidth = 0;
+    var ledBlock = { svg: "", width: 0 };
 
-    // LEDs — two circles centered on the ring slot (WS left, FN right).
-    var wsLed = "";
-    var fnLed = "";
+    // Position the glyph (icon). For human: centered around x. For agent:
+    // leftmost element, with its CENTER at glyphX.
+    var glyphX;
+    if (opts.isHuman) {
+      glyphX = x - 10;
+    } else {
+      // Pack icon + 4 LEDs + name + star starting from glyphX, centering
+      // the whole cluster around pos.x. Compute total width first.
+      glyphX = x; // temp; will reposition below
+    }
+
+    // Compute LED block width (4 LEDs spaced by 2*R+GAP).
+    var ledStep = 2 * LED_R + GAP;
     if (showLeds) {
-      var connectedFlag = _connected(a);
-      var liveness =
-        a.liveness || a.status || (connectedFlag ? "online" : "offline");
-      var FN_COLORS = {
-        online: "#4ecdc4",
-        idle: "#ffd93d",
-        stale: "#ff8c42",
-        offline: "#555",
-      };
-      var wsColor = connectedFlag ? "#4ecdc4" : "#555";
-      var fnColor = FN_COLORS[liveness] || "#555";
-      if (opts.isDead) fnColor = "#ef4444";
-      var wsCx = x - (LED_R + GAP / 2);
-      var fnCx = x + (LED_R + GAP / 2);
-      wsLed =
-        '<circle cx="' +
-        wsCx.toFixed(1) +
-        '" cy="' +
-        y.toFixed(1) +
-        '" r="' +
-        LED_R +
-        '" fill="' +
-        wsColor +
-        '" stroke="#0a0a0a" stroke-width="0.5"><title>WebSocket: ' +
-        (connectedFlag ? "connected" : "disconnected") +
-        "</title></circle>";
-      fnLed =
-        '<circle cx="' +
-        fnCx.toFixed(1) +
-        '" cy="' +
-        y.toFixed(1) +
-        '" r="' +
-        LED_R +
-        '" fill="' +
-        fnColor +
-        '" stroke="#0a0a0a" stroke-width="0.5"><title>Liveness: ' +
-        _escape(liveness) +
-        "</title></circle>";
+      ledsWidth = 3 * ledStep + 2 * LED_R; // 4 LEDs span
     }
 
-    var pinMark = "";
-    if (showStar && a.pinned) {
-      pinMark =
-        '<text class="topo-label-pin" x="' +
-        (x + LED_R + GAP / 2 + 8).toFixed(1) +
-        '" y="' +
-        (y + 4).toFixed(1) +
-        '" fill="#fbbf24" font-size="13">\u2605</text>';
-    }
-
-    var nameX = opts.isHuman ? x + 6 : x + LED_R + GAP / 2 + 22;
     var textW = Math.max(40, nameText.length * 6.5);
+    var starW = showStar ? 14 : 0;
 
-    var badgeLeft = opts.isHuman ? x - 18 : glyphX - 14;
-    var badgeRight = nameX + textW + 6;
-    var badgeWidth = badgeRight - badgeLeft;
-    var badgeY = y - 11;
-    var bgClass = opts.isHuman
-      ? "topo-agent-bg topo-human-bg"
-      : "topo-agent-bg";
-    var bg =
-      '<rect class="' +
-      bgClass +
-      '" x="' +
-      badgeLeft.toFixed(1) +
+    if (!opts.isHuman) {
+      // Total width: icon + gap + LEDs + gap + name + gap + star.
+      var GAP_BETWEEN = 6;
+      var total =
+        iconSize +
+        GAP_BETWEEN +
+        ledsWidth +
+        GAP_BETWEEN +
+        textW +
+        (showStar ? GAP_BETWEEN + starW : 0);
+      // Re-center: cluster centered on pos.x.
+      var clusterLeft = x - total / 2;
+      glyphX = clusterLeft + iconHalf; // center of icon
+      var ledsStartCx = glyphX + iconHalf + GAP_BETWEEN + LED_R;
+      var nameX = ledsStartCx + ledsWidth - LED_R + GAP_BETWEEN;
+      var starX = nameX + textW + GAP_BETWEEN;
+
+      var glyph = _renderAgentGlyphSvg(a, glyphX, y, iconSize, ident, opts);
+
+      if (showLeds) {
+        ledBlock = _renderAgentBadgeLedsSvg(
+          a,
+          ledsStartCx,
+          y,
+          LED_R,
+          GAP,
+          opts,
+        );
+      }
+
+      var starSvg = "";
+      if (showStar) {
+        var pinned = !!a.pinned;
+        starSvg =
+          '<text class="topo-label-pin topo-agent-star" x="' +
+          starX.toFixed(1) +
+          '" y="' +
+          (y + 4).toFixed(1) +
+          '" fill="' +
+          (pinned ? "#fbbf24" : "#3a3a3a") +
+          '" font-size="13" style="cursor:pointer" data-pin-name="' +
+          _escape(a.name || "") +
+          '" data-pin-next="' +
+          (pinned ? "false" : "true") +
+          '"><title>' +
+          _escape(pinned ? "Unstar" : "Star") +
+          "</title>" +
+          (pinned ? "\u2605" : "\u2606") +
+          "</text>";
+      }
+
+      var nameSvg = "";
+      if (showName) {
+        nameSvg =
+          '<text class="topo-label topo-label-agent" x="' +
+          nameX.toFixed(1) +
+          '" y="' +
+          (y + 4).toFixed(1) +
+          '" fill="' +
+          color +
+          '">' +
+          _escape(nameText) +
+          "</text>";
+      }
+
+      var badgeLeft = clusterLeft - 4;
+      var badgeWidth = total + 8;
+      var badgeY = y - 11;
+      var bg =
+        '<rect class="topo-agent-bg" x="' +
+        badgeLeft.toFixed(1) +
+        '" y="' +
+        badgeY.toFixed(1) +
+        '" width="' +
+        badgeWidth.toFixed(1) +
+        '" height="22" rx="11" ry="11"/>';
+
+      var cls = "topo-node topo-agent";
+      if (opts.isSelected) cls += " topo-agent-selected";
+      if (opts.isDead) cls += " topo-agent-dead";
+      if (opts.extraClass) cls += " " + opts.extraClass;
+
+      /* Order matches the HTML agent-badge.js canonical order:
+       *   icon + 4 LEDs + name + star. */
+      return (
+        '<g class="' +
+        cls +
+        '" data-agent="' +
+        _escape(a.name || "") +
+        '">' +
+        "<title>" +
+        _escape(ident.tooltip || a.name || "") +
+        "</title>" +
+        bg +
+        glyph +
+        ledBlock.svg +
+        nameSvg +
+        starSvg +
+        "</g>"
+      );
+    }
+
+    // ── Human node branch (simpler layout; no LEDs, no star). ─────────
+    var hGlyph = _renderAgentGlyphSvg(a, glyphX, y, iconSize, ident, opts);
+    var hNameX = x + 6;
+    var hTextW = Math.max(40, nameText.length * 6.5);
+    var hBadgeLeft = x - 18;
+    var hBadgeRight = hNameX + hTextW + 6;
+    var hBadgeWidth = hBadgeRight - hBadgeLeft;
+    var hBadgeY = y - 11;
+    var hBg =
+      '<rect class="topo-agent-bg topo-human-bg" x="' +
+      hBadgeLeft.toFixed(1) +
       '" y="' +
-      badgeY.toFixed(1) +
+      hBadgeY.toFixed(1) +
       '" width="' +
-      badgeWidth.toFixed(1) +
+      hBadgeWidth.toFixed(1) +
       '" height="22" rx="11" ry="11"/>';
-
-    var nameSvg = "";
+    var hNameSvg = "";
     if (showName) {
-      nameSvg =
+      hNameSvg =
         '<text class="topo-label topo-label-agent" x="' +
-        nameX.toFixed(1) +
+        hNameX.toFixed(1) +
         '" y="' +
         (y + 4).toFixed(1) +
         '" fill="' +
@@ -246,28 +403,21 @@
         _escape(nameText) +
         "</text>";
     }
-
-    var cls = "topo-node topo-agent";
-    if (opts.isHuman) cls += " topo-human";
-    if (opts.isSelected) cls += " topo-agent-selected";
-    if (opts.isDead) cls += " topo-agent-dead";
-    if (opts.extraClass) cls += " " + opts.extraClass;
-
+    var hCls = "topo-node topo-agent topo-human";
+    if (opts.isSelected) hCls += " topo-agent-selected";
+    if (opts.extraClass) hCls += " " + opts.extraClass;
     return (
       '<g class="' +
-      cls +
+      hCls +
       '" data-agent="' +
       _escape(a.name || "") +
       '">' +
       "<title>" +
       _escape(ident.tooltip || a.name || "") +
       "</title>" +
-      bg +
-      glyph +
-      wsLed +
-      fnLed +
-      pinMark +
-      nameSvg +
+      hBg +
+      hGlyph +
+      hNameSvg +
       "</g>"
     );
   }
