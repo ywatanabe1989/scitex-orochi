@@ -44,7 +44,7 @@
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=102">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
-    <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=4">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
     <link rel="stylesheet" href="{% static 'hub/connectivity-map.css' %}?v=101">
     <link rel="stylesheet"
@@ -125,6 +125,21 @@
                     Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
                 </h2>
                 <div id="agents" class="sidebar-section">
+                    <div class="sidebar-agent-controls">
+                        <select id="activity-sort-select"
+                                class="sidebar-agent-select"
+                                title="sort order">
+                            <option value="name">sort: name</option>
+                            <option value="machine">sort: machine</option>
+                        </select>
+                        <select id="activity-color-select"
+                                class="sidebar-agent-select"
+                                title="name color keyed by">
+                            <option value="name">color: name</option>
+                            <option value="host">color: host</option>
+                            <option value="account">color: account</option>
+                        </select>
+                    </div>
                     <p id="no-agents">No agents connected</p>
                 </div>
                 <h2 class="collapsible-heading channels-heading" data-section="channels">
@@ -285,19 +300,7 @@
                                 data-view="list"
                                 title="one-line rows">List</button>
                     </div>
-                    <select id="activity-sort-select"
-                            class="activity-sort-select"
-                            title="sort order">
-                        <option value="name">sort: name</option>
-                        <option value="machine">sort: machine</option>
-                    </select>
-                    <select id="activity-color-select"
-                            class="activity-sort-select"
-                            title="name color keyed by">
-                        <option value="name">color: name</option>
-                        <option value="host">color: host</option>
-                        <option value="account">color: account</option>
-                    </select>
+                    <!-- sort + color dropdowns moved to the sidebar (ywatanabe 2026-04-21) -->
                     <select id="activity-size-select"
                             class="activity-sort-select"
                             title="topology channel node size">
@@ -532,7 +535,7 @@
     <script src="{% static 'hub/app/agent-actions.js' %}?v=149"></script>
     <script src="{% static 'hub/app/utils.js' %}?v=149"></script>
     <script src="{% static 'hub/app/websocket.js' %}?v=149"></script>
-    <script src="{% static 'hub/app/sidebar-agents.js' %}?v=149"></script>
+    <script src="{% static 'hub/app/sidebar-agents.js' %}?v=150"></script>
     <script src="{% static 'hub/app/sidebar-channel-tree.js' %}?v=150"></script>
     <script src="{% static 'hub/app/sidebar-stats.js' %}?v=149"></script>
     <script src="{% static 'hub/app/keyboard.js' %}?v=149"></script>

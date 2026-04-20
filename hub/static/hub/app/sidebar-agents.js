@@ -93,6 +93,16 @@ async function fetchAgents() {
     var sidebarVisible = agents.filter(function (a) {
       return connected(a) || !!a.pinned;
     });
+    /* Starred first (like channels), then the rest in the order the
+     * backend sent them. ywatanabe 2026-04-21: "starred agents should
+     * be placed upper places like in channels". Stable sort — pinned
+     * vs pinned preserves prior order so the within-starred list
+     * doesn't jitter on every heartbeat. */
+    sidebarVisible.sort(function (a, b) {
+      var pa = a.pinned ? 0 : 1;
+      var pb = b.pinned ? 0 : 1;
+      return pa - pb;
+    });
     container.innerHTML = sidebarVisible
       .map(function (a) {
         var liveness = a.liveness || (connected(a) ? "online" : "offline");

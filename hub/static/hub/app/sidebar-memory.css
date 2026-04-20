@@ -176,6 +176,32 @@
   outline: none;
 }
 
+/* Sidebar agent controls (sort / color) — same compact dropdown
+ * styling as the memory picker above. Two dropdowns in a row, ~50%
+ * width each. ywatanabe 2026-04-21: "sort and color should be in the
+ * sidebar as well". */
+#agents .sidebar-agent-controls {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+#agents .sidebar-agent-select {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 3px 6px;
+  font-size: 10px;
+  color: #e0e0e0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#agents .sidebar-agent-select:hover,
+#agents .sidebar-agent-select:focus {
+  border-color: #4ecdc4;
+  outline: none;
+}
+
 /* Transient hint bubble for "Pick an M-slot first". Anchored via
  * inline position:fixed in JS. */
 .sidebar-mem-hint {
