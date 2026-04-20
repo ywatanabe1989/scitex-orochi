@@ -72,6 +72,7 @@
     <link rel="stylesheet" href="{% static 'hub/element-inspector.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/search-palette.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/effects.css' %}?v=1">
+    <link rel="stylesheet" href="{% static 'hub/sidebar-fold.css' %}?v=1">
     <!-- highlight.js — syntax highlighting for code blocks -->
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
@@ -154,6 +155,10 @@
                 <a href="/signout/" class="signout-link">Sign out</a>
             </div>
         </div>
+        <button id="sidebar-fold"
+                class="sidebar-fold-toggle"
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar (Ctrl+B)">&lsaquo;</button>
         <div class="main">
             <div class="tab-bar">
                 <button class="tab-btn active" data-tab="chat">Chat</button>
@@ -607,6 +612,7 @@
     <script src="{% static 'hub/terminal-tab.js' %}?v=1"></script>
     <script src="{% static 'hub/tabs.js' %}?v=108"></script>
     <script src="{% static 'hub/init.js' %}?v=101"></script>
+    <script src="{% static 'hub/sidebar-fold.js' %}?v=1"></script>
     <script src="{% static 'hub/sw-register.js' %}?v=99"></script>
     <script src="{% static 'hub/push.js' %}?v=99"></script>
     <!-- mermaid.js — diagram rendering for ```mermaid code blocks -->
