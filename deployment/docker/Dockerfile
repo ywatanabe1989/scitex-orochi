@@ -1,21 +1,3 @@
-# ─── Stage 1: Vite build for the hub dashboard frontend ─────────────
-# Produces hub/static/hub/dist/orochi-<hash>.js + .vite/manifest.json
-# (consumed by hub.templatetags.vite.vite_bundle in dashboard.html).
-FROM node:20-slim AS frontend-build
-
-WORKDIR /build
-
-# Install JS deps first so the layer caches when source changes but
-# package.json doesn't.
-COPY hub/frontend/package.json hub/frontend/package-lock.json* ./
-RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
-
-# Copy TS sources + config and build.
-COPY hub/frontend/ ./
-RUN npm run build
-
-
-# ─── Stage 2: Python runtime ─────────────────────────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -25,13 +7,6 @@ COPY src/ src/
 COPY hub/ hub/
 COPY orochi/ orochi/
 COPY manage.py ./
-
-# Overlay the Vite build output into the source tree so Django's
-# staticfiles app can collect it alongside the hand-authored CSS
-# that still lives under hub/static/hub/.
-# vite.config.ts resolves outDir to ../static/hub/dist relative to
-# the frontend dir; inside stage 1 that lands at /static/hub/dist.
-COPY --from=frontend-build /static/hub/dist /app/hub/static/hub/dist
 
 RUN pip install --no-cache-dir .
 
