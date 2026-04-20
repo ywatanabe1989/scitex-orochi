@@ -3,11 +3,8 @@ __pycache__/
 *.pyo
 *.egg-info/
 dist/
-# Commit the Vite build artifacts for the orochi-hub frontend — Django
-# serves them via collectstatic and we don't want a node/npm toolchain
-# on the prod image.
-!hub/static/hub/dist/
-!hub/static/hub/dist/**
+# Vite build artifacts are generated in the Dockerfile's node build
+# stage (see deployment/docker/Dockerfile). Don't track them in git.
 build/
 .eggs/
 *.db
