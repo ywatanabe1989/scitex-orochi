@@ -128,16 +128,13 @@ async function fetchAgents() {
       .map(function (a) {
         var liveness = a.liveness || (connected(a) ? "online" : "offline");
         var state = _computeStateLocal(a);
-        /* Ghost (shadow) rule — user 2026-04-20 global rule:
-         * functionally dead or offline but pinned → shadow. Mirrors
-         * the canvas + list-view .activity-card-ghost treatment so
-         * head-spartan is dimmed consistently across every surface. */
-        var _sidebarDead =
-          typeof _isDeadAgent === "function" ? _isDeadAgent(a) : false;
-        var ghostClass =
-          (!connected(a) || _sidebarDead) && a.pinned
-            ? " sidebar-agent-ghost"
-            : "";
+        /* Per ywatanabe 2026-04-21: the whole point of starring is to
+         * keep the agent prominently visible; dimming a starred agent
+         * contradicts that. Keep starred rows at full opacity even when
+         * disconnected. The ghost class only still applies to non-
+         * starred rows that are rendered as "shadow" for the other
+         * visibility paths — but those don't pass the filter above. */
+        var ghostClass = "";
         var rawName = a.name || "";
         /* todo#96: route identity (icon, color, display-name, tooltip)
          * through the shared agentIdentity helper so the sidebar row,

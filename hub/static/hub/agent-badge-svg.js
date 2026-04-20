@@ -355,7 +355,7 @@
       if (opts.extraClass) cls += " " + opts.extraClass;
 
       /* Order matches the HTML agent-badge.js canonical order:
-       *   icon + 4 LEDs + name + star. */
+       *   icon + star + 4 LEDs + name (ywatanabe 2026-04-21). */
       return (
         '<g class="' +
         cls +
@@ -367,9 +367,9 @@
         "</title>" +
         bg +
         glyph +
+        starSvg +
         ledBlock.svg +
         nameSvg +
-        starSvg +
         "</g>"
       );
     }

@@ -238,16 +238,17 @@
   // ── Composed badge (canonical layout) ─────────────────────────────
   function renderAgentBadge(a, opts) {
     opts = opts || {};
-    /* Canonical order per ywatanabe 2026-04-20:
-     *   icon + 4 LEDs + name@hostname + star
-     * (previous order was icon + star + LEDs + name; reordered so the
-     * star sits at the tail where it's a stable interaction target and
-     * the name reads left-to-right as "icon 4-LEDs name".) */
+    /* Canonical order per ywatanabe 2026-04-21:
+     *   icon + star + 4 LEDs + name@hostname
+     * Matches the channel badge (icon + star + eye + mute + name), so
+     * star sits in the same column position across both entity types.
+     * renderAgentStar always emits a placeholder span for non-starred
+     * agents so column alignment holds. */
     var icon = renderAgentIcon(a, opts.iconSize);
+    var star = renderAgentStar(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    var star = renderAgentStar(a);
-    return icon + leds + name + star;
+    return icon + star + leds + name;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────

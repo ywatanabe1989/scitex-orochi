@@ -101,10 +101,10 @@
             <div class="sidebar-sections">
                 <h2 class="collapsible-heading channels-heading"
                     data-section="sidebar-memory">
-                    Filter memory
+                    Filtering
                     <span class="sidebar-mem-help"
                           tabindex="0"
-                          aria-label="Memory help"
+                          aria-label="Filtering help"
                           title="Memory slots span agents, channels, and machines.  Click M1–M5 to recall a saved snapshot (the pill lights up). Click Save to M-n to overwrite the active slot with the current selection. Shift-click a slot = save directly to that slot. Right-click a slot = rename or clear it. ● on a slot = unsaved changes vs its snapshot. Click Clear (🚫) to unset the active slot and show everything.">?</span>
                 </h2>
                 <div id="sidebar-memory" class="sidebar-section">
@@ -516,14 +516,14 @@
          so renderAgentBadge() is in scope at first render. NEVER inline a
          badge in any of those files — call renderAgentBadge() instead.
          See dashboard-development-discipline.md rule 1. -->
-    <script src="{% static 'hub/agent-badge.js' %}?v=1"></script>
+    <script src="{% static 'hub/agent-badge.js' %}?v=2"></script>
     <!-- SVG variant of the agent badge — renderAgentBadgeSvg for the
          topology canvas (both agent and human nodes). Parallel to
          renderChannelBadgeSvg. Split out of agent-badge.js to stay
          under the 512-line .js hook cap. Must load AFTER agent-badge.js
          (shares agentIdentity/getAgentColor helpers) but BEFORE
          activity-tab/topology-nodes.js. -->
-    <script src="{% static 'hub/agent-badge-svg.js' %}?v=2"></script>
+    <script src="{% static 'hub/agent-badge-svg.js' %}?v=3"></script>
     <!-- Single source of truth for the channel badge (icon, star, eye,
          mute, name, unread). Parallel to agent-badge.js. Loaded BEFORE
          app/* and activity-tab/* so renderChannelBadgeHtml / Svg are in
@@ -538,7 +538,7 @@
     <script src="{% static 'hub/app/agent-actions.js' %}?v=149"></script>
     <script src="{% static 'hub/app/utils.js' %}?v=149"></script>
     <script src="{% static 'hub/app/websocket.js' %}?v=149"></script>
-    <script src="{% static 'hub/app/sidebar-agents.js' %}?v=151"></script>
+    <script src="{% static 'hub/app/sidebar-agents.js' %}?v=152"></script>
     <script src="{% static 'hub/app/sidebar-channel-tree.js' %}?v=150"></script>
     <script src="{% static 'hub/app/sidebar-stats.js' %}?v=149"></script>
     <script src="{% static 'hub/app/keyboard.js' %}?v=149"></script>
