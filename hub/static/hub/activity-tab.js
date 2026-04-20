@@ -4901,17 +4901,31 @@ function _renderActivityCards(agents, grid) {
   }
 
   var visible = all.filter(function (a) {
-    var connected = (a.status || "online") !== "offline";
-    /* If the agent is connected (WS up), it MUST be listed — even if
-     * unpinned and even if other indicators are unhealthy. ywatanabe
-     * 2026-04-20: "if agent is connected via websocket, they should
-     * keep listed in the Agents tab even when they are not registered;
-     * This is quite natural... Even though they are not starred yet."
-     * Hide-on-dead behaviour applied only to fully-disconnected
-     * unpinned agents — for those, dead-ghost rendering is reserved
-     * for pinned (operator explicitly cares about the slot). */
-    if (connected) return true;
+    /* ywatanabe 2026-04-20: hide criterion is the strict
+     * conjunction "all LEDs not green AND not starred". Any single
+     * green indicator means show; any star means show; only fully-
+     * dead unstarred agents disappear. Maps the four-indicator
+     * contract from fleet-liveness-four-indicators.md to the
+     * filter:
+     *   1. WS    — green when status != "offline"
+     *   2. Ping  — green when last_pong_ts within 60s
+     *   3. Local — green when liveness == "online"
+     *   4. Remote — green when last_nonce_echo_at within 90s
+     */
     if (a.pinned) return true;
+    if ((a.status || "online") !== "offline") return true; // WS green
+    var pongAge =
+      a.last_pong_ts != null
+        ? (Date.now() - new Date(a.last_pong_ts).getTime()) / 1000
+        : null;
+    if (pongAge != null && pongAge < 60) return true; // Ping green
+    var liveness = a.liveness || a.status || "";
+    if (liveness === "online") return true; // Local green
+    var echoAge =
+      a.last_nonce_echo_at != null
+        ? (Date.now() - new Date(a.last_nonce_echo_at).getTime()) / 1000
+        : null;
+    if (echoAge != null && echoAge < 90) return true; // Remote green
     return false;
   });
 
@@ -4961,15 +4975,28 @@ function _renderActivityCards(agents, grid) {
       var rawName = a.name || "";
       var liveness = a.liveness || a.status || "online";
       var connected = (a.status || "online") !== "offline";
-      /* Ghost (shadow) treatment for two pinned cases:
-       *   - not connected (the original offline-ghost case)
-       *   - functionally dead (heartbeat fresh, no tool/action in 3min)
-       * Both read as "slot expected but not responsive". Unpinned
-       * variants are already filtered out upstream. */
-      var ghostClass =
-        (!connected && a.pinned) || (_isDeadAgent(a) && a.pinned)
-          ? " activity-card-ghost"
-          : "";
+      /* Shadow treatment when not all four indicators are green —
+       * makes degraded agents visually distinct without hiding them.
+       * ywatanabe 2026-04-20: "Registered agents must be shown as
+       * shadowed when all LEDs not green". The four-LED green test
+       * mirrors the visibility filter above (which keeps an agent
+       * listed as long as ≥1 LED is green or it's starred). */
+      var pongAge =
+        a.last_pong_ts != null
+          ? (Date.now() - new Date(a.last_pong_ts).getTime()) / 1000
+          : null;
+      var echoAge =
+        a.last_nonce_echo_at != null
+          ? (Date.now() - new Date(a.last_nonce_echo_at).getTime()) / 1000
+          : null;
+      var allGreen =
+        connected &&
+        pongAge != null &&
+        pongAge < 60 &&
+        liveness === "online" &&
+        echoAge != null &&
+        echoAge < 90;
+      var ghostClass = allGreen ? "" : " activity-card-ghost";
       var idleStr = _formatIdle(a.idle_seconds);
       var color = getAgentColor(_colorKeyFor(a));
       var channels = Array.isArray(a.channels) ? a.channels : [];

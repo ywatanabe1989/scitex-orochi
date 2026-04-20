@@ -1299,22 +1299,32 @@ a.chat-link:hover {
   color: #e0e0e0;
 }
 
-/* Pin/unpin agent button */
+/* Pin/unpin (star) agent button — outline ☆ when unpinned, filled
+ * gold ★ when pinned. Always visible: opacity floor lifted from 0.4
+ * to 0.7 and color set to a visible neutral so the unstarred state
+ * is discoverable without needing to know it's there.
+ * ywatanabe 2026-04-20 "no star UI". */
 .pin-btn {
   background: none;
   border: none;
   cursor: pointer;
   font-size: 14px;
   padding: 2px 4px;
-  opacity: 0.4;
-  transition: opacity 0.15s;
+  color: #888;
+  opacity: 0.7;
+  transition:
+    color 0.15s,
+    opacity 0.15s;
   line-height: 1;
 }
 .pin-btn:hover {
+  color: #fbbf24;
   opacity: 1;
 }
-.pin-btn.pinned {
-  opacity: 0.9;
+.pin-btn.pinned,
+.pin-btn.starred {
+  color: #fbbf24;
+  opacity: 1;
 }
 /* Kill button */
 .kill-btn {
