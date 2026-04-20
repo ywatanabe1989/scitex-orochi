@@ -4618,6 +4618,8 @@ function _renderActivityTopology(visible, grid) {
       /* Color the NAME text, not a left-edge stripe. ywatanabe
        * 2026-04-19: "do not highlight left edge of cards; but update
        * colors of the agent text instead". */
+      // Single source of truth — agent-badge.js. Same call lives in
+      // app.js sidebar and the list-view row above. NEVER fork.
       return (
         '<div class="topo-pool-chip topo-pool-chip-agent' +
         selCls +
@@ -4625,17 +4627,12 @@ function _renderActivityTopology(visible, grid) {
         escapeHtml(a.name) +
         '" title="' +
         escapeHtml(_ident.tooltip) +
-        '"><span class="topo-pool-chip-icon">' +
-        _ident.iconHtml(12) +
-        "</span>" +
-        // Single source of truth — see renderAgentLeds() in app.js
-        renderAgentLeds(a, { extraClass: "topo-pool-chip-led" }) +
-        pPin +
-        '<span class="topo-pool-chip-name" style="color:' +
-        escapeHtml(_ident.color) +
         '">' +
-        escapeHtml(_ident.displayName) +
-        "</span></div>"
+        renderAgentBadge(a, {
+          iconSize: 12,
+          extraClass: "topo-pool-chip-led",
+        }) +
+        "</div>"
       );
     })
     .join("");
@@ -5026,6 +5023,8 @@ function _renderActivityCards(agents, grid) {
           offline: "not connected",
         }[state] || state;
       var ageStr = idleStr ? idleStr : "";
+      // Single source of truth — agent-badge.js. Same call appears in
+      // app.js sidebar and topology pool chip. NEVER fork the markup.
       var row =
         '<div class="activity-card activity-' +
         liveness +
@@ -5035,24 +5034,7 @@ function _renderActivityCards(agents, grid) {
         '" data-machine="' +
         escapeHtml(a.machine || "") +
         '">' +
-        '<button type="button" class="activity-pin-btn' +
-        pinOn +
-        '" data-pin-name="' +
-        escapeHtml(rawName) +
-        '" data-pin-next="' +
-        (a.pinned ? "false" : "true") +
-        '" title="' +
-        escapeHtml(pinTitle) +
-        '">' +
-        (a.pinned ? "\u2605" : "\u2606") +
-        "</button>" +
-        // Single source of truth — see renderAgentLeds() in app.js
-        renderAgentLeds(a) +
-        '<span class="activity-name" style="color:' +
-        color +
-        '">' +
-        name +
-        "</span>" +
+        renderAgentBadge(a) +
         '<span class="activity-channels" title="' +
         escapeHtml(channelsStr || "no channels") +
         '">' +

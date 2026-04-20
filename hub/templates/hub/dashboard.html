@@ -483,7 +483,13 @@
     </script>
     <script src="{% static 'hub/config.js' %}?v=117"></script>
     <script src="{% static 'hub/agent-icons.js' %}?v=100"></script>
-    <script src="{% static 'hub/app.js' %}?v=147"></script>
+    <!-- Single source of truth for the agent badge (icon, star, 4 LEDs,
+         name, host). Loaded BEFORE app.js / activity-tab.js / agents-tab.js
+         so renderAgentBadge() is in scope at first render. NEVER inline a
+         badge in any of those files — call renderAgentBadge() instead.
+         See dashboard-development-discipline.md rule 1. -->
+    <script src="{% static 'hub/agent-badge.js' %}?v=1"></script>
+    <script src="{% static 'hub/app.js' %}?v=148"></script>
     <script src="{% static 'hub/dms.js' %}?v=4"></script>
     <script src="{% static 'hub/workspace-dropdown.js' %}?v=99"></script>
     <script src="{% static 'hub/resources-tab.js' %}?v=103"></script>

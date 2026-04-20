@@ -1601,25 +1601,12 @@ function hostedAgentName(a) {
 }
 
 /**
- * Single source of truth for the four-LED liveness strip rendered on
- * every agent badge (sidebar row, topology pool chip, list-view row).
- * Returns ready-to-concat HTML — DRY this function from EVERY render
- * site so colors / tooltips / order stay consistent. If you need a
- * variant (smaller, no-tooltip), extend the optional second argument
- * — never inline a fork of the markup.
- *
- * Indicators (left → right):
- *   1. WS — TCP+WebSocket handshake to the hub
- *   2. Ping — hub→agent JSON ping every 25s, sidecar echoes pong
- *      (uses last_pong_ts + last_rtt_ms)
- *   3. Local — pane-state classifier on this host (heuristic)
- *   4. Remote — nonce-echo verification by peer host (active probe)
- *
- * @param {object} a — agent record from the registry
- * @param {object} [opts] — { extraClass?: string } appended to each LED
- * @returns {string} HTML
+ * @deprecated In-file copy retained for backward compat with any caller
+ * that loaded before agent-badge.js was wired in. The canonical helper
+ * lives in `agent-badge.js` and overrides this one at script-load time.
+ * Do not edit this body — edit `agent-badge.js`.
  */
-function renderAgentLeds(a, opts) {
+function _legacyRenderAgentLeds(a, opts) {
   var extra = opts && opts.extraClass ? " " + opts.extraClass : "";
   var liveness = a.liveness || a.status || "online";
   var paneState = a.pane_state || "unknown";
@@ -2330,7 +2317,13 @@ async function fetchAgents() {
           ? "Unstar"
           : "Star (keeps as ghost when offline, floats to top)";
         return (
+          // Single source of truth — agent-badge.js owns icon + star +
+          // 4 LEDs + name. Same call lives in activity-tab.js list view
+          // and topology pool chip. NEVER inline a fork here.
           '<div class="agent-card sidebar-agent-row' +
+          (typeof isAgentAllGreen === "function" && !isAgentAllGreen(a)
+            ? " activity-card-ghost"
+            : "") +
           ghostClass +
           '" data-agent-name="' +
           escapeHtml(rawName) +
@@ -2339,30 +2332,7 @@ async function fetchAgents() {
           '" draggable="true" title="' +
           escapeHtml(ident.tooltip) +
           '">' +
-          '<button type="button" class="activity-pin-btn pin-btn' +
-          pinOn +
-          (a.pinned ? " pinned" : "") +
-          '" data-pin-name="' +
-          escapeHtml(rawName) +
-          '" data-pin-next="' +
-          (a.pinned ? "false" : "true") +
-          '" title="' +
-          escapeHtml(pinTitle) +
-          '">' +
-          (a.pinned ? "\u2605" : "\u2606") +
-          "</button>" +
-          '<span class="sidebar-agent-icon">' +
-          ident.iconHtml(14) +
-          "</span>" +
-          // Single source of truth — see renderAgentLeds() for the
-          // four-LED contract. Used here, in activity-tab list view,
-          // and in topology pool chips.
-          renderAgentLeds(a) +
-          '<span class="agent-name" style="color:' +
-          ident.color +
-          '">' +
-          escapeHtml(ident.displayName) +
-          "</span>" +
+          renderAgentBadge(a, { iconSize: 14 }) +
           "</div>"
         );
       })
