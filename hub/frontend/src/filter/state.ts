@@ -16,6 +16,15 @@ export var _fm = function (query, text) {
   return fuzzyMatch(query, text) >= 0;
 };
 
+/* The filter UI (#filter-input + #filter-tags + #filter-suggest) was
+ * removed from dashboard.html when the global Ctrl+K fuzzy filter was
+ * dropped. The support functions (addTag/removeTag/runFilter/etc.) are
+ * still imported from many call-sites (right-click "filter by host",
+ * etc.) and the data side (activeTags) still drives row dimming via
+ * syncFilterVisuals(). So: keep the data, no-op the UI. Each function
+ * that touched a filter-UI element now early-returns if the element is
+ * absent. NOT a patch — recognising that the filter UI is conditional
+ * is the rigorous design once the visible chips were removed. */
 export var filterInput = document.getElementById("filter-input");
 export var filterTagsEl = document.getElementById("filter-tags");
 export var filterSuggestEl = document.getElementById("filter-suggest");
@@ -116,6 +125,7 @@ export function syncFilterVisuals() {
 }
 
 export function renderTags() {
+  if (!filterTagsEl) return;
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
@@ -182,6 +192,7 @@ export function getTagSuggestions(prefix) {
 }
 
 export function showSuggestions(items) {
+  if (!filterSuggestEl) return;
   if (items.length === 0) {
     hideSuggestions();
     return;
@@ -219,6 +230,7 @@ export function showSuggestions(items) {
 }
 
 export function hideSuggestions() {
+  if (!filterSuggestEl) return;
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
@@ -234,54 +246,61 @@ export function hideSuggestions() {
   }
 }
 
-filterSuggestEl.addEventListener("click", function (e) {
-  var item = e.target.closest(".filter-suggest-item");
-  if (item) {
-    addTag(item.getAttribute("data-type"), item.getAttribute("data-value"));
-    filterInput.value = "";
-    hideSuggestions();
-  }
-});
-
-filterInput.addEventListener("input", function () {
-  var raw = this.value.trim();
-  if (raw.length >= 1) {
-    showSuggestions(getTagSuggestions(raw));
-  } else {
-    hideSuggestions();
-  }
-  runFilter();
-});
-
-filterInput.addEventListener("keydown", function (e) {
-  var items = filterSuggestEl.querySelectorAll(".filter-suggest-item");
-  if (items.length > 0 && filterSuggestEl.classList.contains("visible")) {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      suggestIndex = Math.min(suggestIndex + 1, items.length - 1);
-      items.forEach(function (el, i) {
-        el.classList.toggle("selected", i === suggestIndex);
-      });
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      suggestIndex = Math.max(suggestIndex - 1, 0);
-      items.forEach(function (el, i) {
-        el.classList.toggle("selected", i === suggestIndex);
-      });
-    } else if ((e.key === "Tab" || e.key === "Enter") && suggestIndex >= 0) {
-      e.preventDefault();
-      var sel = items[suggestIndex];
-      addTag(sel.getAttribute("data-type"), sel.getAttribute("data-value"));
+/* Wire the fuzzy-suggest UI only when its elements are in the DOM.
+ * The visible filter-input / filter-tags / filter-suggest trio was
+ * removed from dashboard.html when the Ctrl+K fuzzy search was
+ * dropped. The handlers below are kept so we can re-enable the UI by
+ * just re-adding the three elements — no JS re-wiring required. */
+if (filterSuggestEl && filterInput) {
+  filterSuggestEl.addEventListener("click", function (e) {
+    var item = e.target.closest(".filter-suggest-item");
+    if (item) {
+      addTag(item.getAttribute("data-type"), item.getAttribute("data-value"));
       filterInput.value = "";
       hideSuggestions();
-    } else if (e.key === "Escape") {
+    }
+  });
+
+  filterInput.addEventListener("input", function () {
+    var raw = this.value.trim();
+    if (raw.length >= 1) {
+      showSuggestions(getTagSuggestions(raw));
+    } else {
       hideSuggestions();
     }
-  } else if (e.key === "Backspace" && !this.value && activeTags.length > 0) {
-    removeTag(activeTags.length - 1);
-  }
-});
+    runFilter();
+  });
 
-filterInput.addEventListener("blur", function () {
-  setTimeout(hideSuggestions, 150);
-});
+  filterInput.addEventListener("keydown", function (e) {
+    var items = filterSuggestEl.querySelectorAll(".filter-suggest-item");
+    if (items.length > 0 && filterSuggestEl.classList.contains("visible")) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        suggestIndex = Math.min(suggestIndex + 1, items.length - 1);
+        items.forEach(function (el, i) {
+          el.classList.toggle("selected", i === suggestIndex);
+        });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        suggestIndex = Math.max(suggestIndex - 1, 0);
+        items.forEach(function (el, i) {
+          el.classList.toggle("selected", i === suggestIndex);
+        });
+      } else if ((e.key === "Tab" || e.key === "Enter") && suggestIndex >= 0) {
+        e.preventDefault();
+        var sel = items[suggestIndex];
+        addTag(sel.getAttribute("data-type"), sel.getAttribute("data-value"));
+        filterInput.value = "";
+        hideSuggestions();
+      } else if (e.key === "Escape") {
+        hideSuggestions();
+      }
+    } else if (e.key === "Backspace" && !this.value && activeTags.length > 0) {
+      removeTag(activeTags.length - 1);
+    }
+  });
+
+  filterInput.addEventListener("blur", function () {
+    setTimeout(hideSuggestions, 150);
+  });
+}
