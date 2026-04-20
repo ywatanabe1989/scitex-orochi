@@ -192,15 +192,21 @@
 .ch-star,
 .ch-pin,
 .ch-watch,
-.ch-eye {
+.ch-eye,
+.ch-mute {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
   font-size: 11px;
-  margin-right: 3px;
-  flex-shrink: 0;
+  line-height: 1;
+  margin-right: 2px;
+  cursor: pointer;
   transition:
     color 0.15s,
     opacity 0.15s;
-  line-height: 1;
-  cursor: pointer;
 }
 .ch-star-off,
 .ch-pin-off {
@@ -261,18 +267,9 @@
 /* Notification / mute placeholder — user request 2026-04-19: every
  * channel row reserves fixed-width slots for star + notification so
  * the name column stays aligned whether the flag is set or not. */
-.ch-mute {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-  font-size: 11px;
-  line-height: 1;
-  cursor: pointer;
-  margin-right: 2px;
-}
+/* .ch-mute sizing consolidated into the .ch-star/.ch-pin/.ch-watch/
+ * .ch-eye rule above (ywatanabe 2026-04-21: "bell is too large
+ * compared to other icons"). */
 .ch-mute-on {
   opacity: 0.9;
   color: #94a3b8;

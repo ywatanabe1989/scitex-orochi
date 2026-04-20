@@ -1,4 +1,3 @@
-
 /* Machines sidebar — one-line compact row (ywatanabe 2026-04-19).
  *   [conn-dot] name   CPU%  Mem used/total GB  Disk%
  * Replaces the 3-stacked-bars layout. Everything fits in ~260px so the
@@ -106,9 +105,13 @@
   /* legacy class, no longer used for section rendering */
   padding-left: 6px;
 }
-/* Starred channel inline highlight in CHANNELS list */
+/* Starred channel inline highlight in CHANNELS list — warm-white
+ * instead of pure white so it reads as emphasized without hurting the
+ * eyes (ywatanabe 2026-04-21: "star channel text is too white, bright;
+ * use eye-friend white"). */
 .ch-starred .ch-name {
   font-weight: 600;
+  color: #e6e0d4;
 }
 .ch-starred {
   /* left-border highlight dropped per ywatanabe 2026-04-17 — the star
@@ -317,4 +320,3 @@
   color: #ccc;
   border-color: #3a5a6a;
 }
-

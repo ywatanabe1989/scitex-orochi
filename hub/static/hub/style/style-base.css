@@ -394,14 +394,17 @@ body {
 .channel-item {
   font-size: 12px;
   color: #aaa;
-  margin-bottom: 8px;
-  padding: 4px 8px;
+  /* ywatanabe 2026-04-21: "enlarge height; we need to see more" —
+   * tighter vertical rhythm so more rows fit without scrolling. */
+  margin-bottom: 2px;
+  padding: 2px 8px;
   border-radius: 4px;
   transition: background 0.15s;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 20px;
 }
 .unread-badge {
   background: #4ecdc4;
