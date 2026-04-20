@@ -2239,31 +2239,112 @@ async function fetchAgents() {
           '<span class="sidebar-agent-icon">' +
           ident.iconHtml(14) +
           "</span>" +
+          // ── Four-indicator strip: WS · Ping · Local · Remote ────
+          // Each LED detects a different failure mode. A green WS with
+          // grey Ping means the socket is open but the agent stopped
+          // replying to pings. Green Ping with red Local means transport
+          // is fine but the pane shows an auth error. Green Local with
+          // grey Remote means the local pane looks fine but no other
+          // host has verified the agent end-to-end with a nonce echo.
+          //
+          // 1. WS — TCP+WebSocket handshake is up
           '<span class="activity-led activity-led-ws activity-led-ws-' +
           (connected(a) ? "on" : "off") +
           '" title="' +
           escapeHtml(
-            "WebSocket — " +
+            "1. WebSocket — " +
               (connected(a) ? "connected" : "disconnected") +
-              " (transport-layer liveness; green = sidecar holds an open WS to the hub)",
+              "\n  TCP+WS handshake; green = sidecar holds an open WS to the hub.",
           ) +
           '"></span>' +
+          // 2. Ping — round-trip works through WS (hub→agent JSON ping
+          // every 25s, sidecar echoes pong; last_pong_ts + last_rtt_ms)
+          (function () {
+            var pong = a.last_pong_ts;
+            var pongAge =
+              pong != null
+                ? (Date.now() - new Date(pong).getTime()) / 1000
+                : null;
+            var pingState = "off";
+            var pingLabel = "no pong yet";
+            if (pongAge != null) {
+              if (pongAge < 60) {
+                pingState = "on";
+                pingLabel = "pong " + Math.round(pongAge) + "s ago";
+                if (a.last_rtt_ms != null)
+                  pingLabel += " · " + Math.round(a.last_rtt_ms) + "ms";
+              } else if (pongAge < 180) {
+                pingState = "warn";
+                pingLabel = "stale pong " + Math.round(pongAge) + "s ago";
+              } else {
+                pingState = "off";
+                pingLabel = "no recent pong (" + Math.round(pongAge) + "s)";
+              }
+            }
+            return (
+              '<span class="activity-led activity-led-ping activity-led-ping-' +
+              pingState +
+              '" title="' +
+              escapeHtml(
+                "2. Ping — " +
+                  pingLabel +
+                  "\n  Hub sends WS ping every 25s; sidecar must echo pong.\n  Green = fresh pong; yellow = stale; grey = none.",
+              ) +
+              '"></span>'
+            );
+          })() +
+          // 3. Local functional liveness — pane-state classifier on this
+          // host (sac _classify_pane_state). Heuristic; can miss novel
+          // wordings — that's why indicator 4 exists.
           '<span class="activity-led activity-led-fn activity-led-fn-' +
           liveness +
           '" title="' +
           escapeHtml(
-            "Functional state — " +
+            "3. Local functional state — " +
               state.toUpperCase() +
-              " (pane classifier: " +
+              " (pane: " +
               (a.pane_state || "unknown") +
-              ")\n" +
-              "  green = running / online\n" +
-              "  yellow = idle (worked, then stopped)\n" +
-              "  blue = waiting (booted, never received work)\n" +
-              "  red = auth_error / mcp_broken (alive but cannot do work)\n" +
-              "  orange = stale (no recent heartbeat)",
+              ")\n  Heuristic from local pane text; not fully reliable.\n  green = running, yellow = idle, blue = waiting,\n  red = auth_error / mcp_broken, orange = stale.",
           ) +
           '"></span>' +
+          // 4. Remote functional liveness — nonce-echo verification by
+          // another host. Active probe: hub publishes a random nonce,
+          // agent must reply containing it within TTL. Until publisher
+          // lands (todo: fleet-random-nonce-ping-protocol skill), this
+          // LED is grey to make the gap visible to operators rather
+          // than silently absent.
+          (function () {
+            var echo = a.last_nonce_echo_at;
+            var echoAge =
+              echo != null
+                ? (Date.now() - new Date(echo).getTime()) / 1000
+                : null;
+            var echoState = "pending";
+            var echoLabel = "not yet probed";
+            if (echoAge != null) {
+              if (echoAge < 90) {
+                echoState = "on";
+                echoLabel = "echoed " + Math.round(echoAge) + "s ago";
+              } else if (echoAge < 300) {
+                echoState = "warn";
+                echoLabel = "stale echo " + Math.round(echoAge) + "s ago";
+              } else {
+                echoState = "fail";
+                echoLabel = "no echo (" + Math.round(echoAge) + "s)";
+              }
+            }
+            return (
+              '<span class="activity-led activity-led-echo activity-led-echo-' +
+              echoState +
+              '" title="' +
+              escapeHtml(
+                "4. Remote functional state — " +
+                  echoLabel +
+                  "\n  Active probe: another host posts a random nonce; agent\n  must echo it back through Claude. Strongest proof-of-life.\n  green = recent echo, yellow = stale, red = no echo, grey = pending.",
+              ) +
+              '"></span>'
+            );
+          })() +
           '<span class="agent-name" style="color:' +
           ident.color +
           '">' +

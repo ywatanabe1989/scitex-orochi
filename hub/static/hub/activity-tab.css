@@ -564,6 +564,33 @@
 .activity-led-fn-waiting {
   background: #60a5fa;
 }
+/* Indicator 2: Ping (round-trip via WS pong). Green = fresh pong,
+ * yellow = stale, grey = none yet. */
+.activity-led-ping-on {
+  background: #4ecdc4;
+}
+.activity-led-ping-warn {
+  background: #ffd93d;
+}
+.activity-led-ping-off {
+  background: #555;
+}
+/* Indicator 4: Remote functional liveness (nonce echo by peer host).
+ * Pending until publisher lands; then green/yellow/red. */
+.activity-led-echo-on {
+  background: #4ecdc4;
+}
+.activity-led-echo-warn {
+  background: #ffd93d;
+}
+.activity-led-echo-fail {
+  background: #ef4444;
+}
+.activity-led-echo-pending {
+  background: #555;
+  outline: 1px dashed #777;
+  outline-offset: -1px;
+}
 
 /* Compact variant for sidebar rows — narrower badge so the 260px
  * sidebar fits everything in one line. */
