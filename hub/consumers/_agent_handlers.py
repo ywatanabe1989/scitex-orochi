@@ -17,13 +17,20 @@ from ._helpers import _load_agent_channel_subs, _persist_agent_subscription
 
 
 async def handle_register(consumer, content):
-    """Hydrate channel subscriptions + agent metadata, then announce."""
+    """Hydrate channel subscriptions + agent metadata, then announce.
+
+    Subscription state is sourced **only** from the persisted
+    ``ChannelMembership`` rows. Client-supplied ``channels`` arrays in the
+    register frame (``content["channels"]`` / ``payload["channels"]``) are
+    **ignored** — accepting them would let any agent opt itself into any
+    channel by self-declaration, bypassing the ACL gate on subscribe.
+    Fix for scitex-orochi#251 (private-channel delivery leak).
+    """
     payload = content.get("payload", {})
-    legacy_channels = list(content.get("channels") or payload.get("channels", []) or [])
     persisted = await _load_agent_channel_subs(
         consumer.workspace_id, consumer.agent_name
     )
-    channels = list(dict.fromkeys([*persisted, *legacy_channels]))
+    channels = list(persisted)
     # Spec v3 §3.1 — DM channels auto-subscribed at connect must also
     # appear in agent_meta["channels"] so the chat_message filter
     # forwards DM events.
