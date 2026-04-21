@@ -23,7 +23,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_http_methods
 
-from hub.channel_acl import check_write_allowed
+from hub.channel_acl import check_membership_allowed, check_write_allowed
 from hub.models import (
     Channel,
     ChannelPreference,
@@ -57,6 +57,7 @@ __all__ = [
     "WorkspaceToken",
     "_server_start_time",
     "async_to_sync",
+    "check_membership_allowed",
     "check_write_allowed",
     "csrf_exempt",
     "datetime",

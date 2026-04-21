@@ -9,7 +9,7 @@ without becoming a method.
 
 from __future__ import annotations
 
-from hub.channel_acl import check_write_allowed
+from hub.channel_acl import check_membership_allowed, check_write_allowed
 from hub.models import Workspace
 
 from ._groups import _sanitize_group, log
@@ -73,6 +73,29 @@ async def handle_agent_message(consumer, content):
                 "type": "error",
                 "code": "acl_denied",
                 "message": f"You are not allowed to write to {ch_name}",
+            }
+        )
+        return
+
+    # Issue #276 — close the WS write-path ACL gap. AgentConsumer
+    # authenticates as the synthetic ``agent-<name>`` user; the
+    # membership gate requires an explicit ChannelMembership row for
+    # non-DM channels so agents cannot write to channels they were
+    # never subscribed to.
+    _member_allowed = await _sta(check_membership_allowed)(
+        f"agent-{consumer.agent_name}", ch_name, consumer.workspace_id
+    )
+    if not _member_allowed:
+        log.warning(
+            "[ACL] blocked non-member write from %s to %s",
+            consumer.agent_name,
+            ch_name,
+        )
+        await consumer.send_json(
+            {
+                "type": "error",
+                "code": "not_a_member",
+                "message": f"You are not a member of {ch_name}",
             }
         )
         return
