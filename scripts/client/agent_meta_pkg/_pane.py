@@ -112,6 +112,25 @@ def filter_pane_tail(pane: str) -> tuple[str, str, str, str]:
     return pane_tail, pane_tail_block, pane_tail_block_clean, pane_tail_full
 
 
+_SUBAGENT_MARKER_RE = re.compile(
+    r"(\d+)\s+local\s+agents?(?:\s+still)?\s+running",
+    re.IGNORECASE,
+)
+
+
 def parse_subagent_count(pane: str) -> int:
-    m = re.search(r"(\d+) local agent", pane or "")
+    """Return the subagent count advertised by Claude Code's status marker.
+
+    Claude Code emits a line of the form ``N local agent(s) running`` (or
+    ``... still running``) in the tmux pane while subagent ``Agent`` calls
+    are in flight. Parse that as the authoritative count; anything else
+    (no marker, empty pane) is reported as ``0`` so the hub's
+    ``subagent_count`` field stays a monotonic "how many sub-Agents does
+    this pane think it has right now" indicator. Anchoring to the literal
+    ``running`` trailer avoids false positives from chat text that merely
+    mentions "local agent".
+    """
+    if not pane:
+        return 0
+    m = _SUBAGENT_MARKER_RE.search(pane)
     return int(m.group(1)) if m else 0

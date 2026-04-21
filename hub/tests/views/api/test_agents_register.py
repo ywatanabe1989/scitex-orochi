@@ -126,6 +126,35 @@ class AgentMetaOAuthRegisterTest(TestCase):
         self.assertEqual(a["oauth_org_name"], "")
         self.assertIsNone(a["has_available_subscription"])
 
+    def test_register_persists_subagent_count(self):
+        """Heartbeat's ``subagent_count`` field reaches hub.registry and
+        is exposed via get_agents() unchanged.
+
+        Pinned here because the sidecar parses the tmux pane for
+        ``N local agent(s) running`` and relies on the hub treating the
+        field as authoritative (not silently overwriting it with the
+        length of the ``subagents`` list, which is empty on the Python
+        --push path)."""
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        for count in (0, 1, 3, 7):
+            resp = self._post(
+                {
+                    "token": self.token.token,
+                    "name": f"sub-count-{count}",
+                    "subagent_count": count,
+                }
+            )
+            self.assertEqual(resp.status_code, 200)
+            a = [
+                x
+                for x in get_agents(workspace_id=self.ws.id)
+                if x["name"] == f"sub-count-{count}"
+            ][0]
+            self.assertEqual(a["subagent_count"], count)
+
     def test_register_does_not_echo_tokens(self):
         """Even if a client tries to POST token-like fields under
         arbitrary keys, the registry's strict whitelist drops them.
