@@ -117,6 +117,21 @@
     );
   }
 
+  // ── 2c. Subagent count (msg#16116 Item 4). Tiny chip showing the
+  //        number of active subagents. Hidden when 0/undefined.
+  function renderAgentSubagentCount(a) {
+    var n = a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+    if (!n || !isFinite(n) || n < 1) return "";
+    return (
+      '<span class="agent-badge-subcount" title="' +
+      _escape(n + " active subagent(s)") +
+      '">' +
+      "\uD83E\uDDD2\uFE0F\u00A0" +
+      n +
+      "</span>"
+    );
+  }
+
   // ── 2b. Eye (togglable show/hide, always visible, placeholder even when
   //        not hidden so column geometry stays constant across rows).
   // Mirrors the channel .ch-eye pattern 1:1: same 👁 glyph in both states,
@@ -279,7 +294,9 @@
     var eye = opts.hideEye ? "" : renderAgentEye(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    return icon + star + eye + leds + name;
+    /* msg#16116 Item 4: append subagent count chip (hidden when 0). */
+    var subs = opts.hideSubagentCount ? "" : renderAgentSubagentCount(a);
+    return icon + star + eye + leds + name + subs;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────
@@ -379,6 +396,7 @@
   window.renderAgentIcon = renderAgentIcon;
   window.renderAgentStar = renderAgentStar;
   window.renderAgentEye = renderAgentEye;
+  window.renderAgentSubagentCount = renderAgentSubagentCount;
   window.renderAgentLeds = renderAgentLeds;
   window.renderAgentName = renderAgentName;
   window.renderAgentBadge = renderAgentBadge;

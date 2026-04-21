@@ -203,6 +203,11 @@ function _renderAgentDetail(a) {
       );
     })
     .join("");
+  /* msg#16116 Item 4: inline subagent-count chip in the detail header. */
+  var headerSubagents =
+    typeof window.renderAgentSubagentCount === "function"
+      ? window.renderAgentSubagentCount({ subagent_count: subagentCount })
+      : "";
   var headerHtml =
     '<div class="agent-detail-header">' +
     '<div class="agent-detail-header-line">' +
@@ -210,6 +215,7 @@ function _renderAgentDetail(a) {
     '<span class="agent-detail-header-title">' +
     escapeHtml(a.name) +
     "</span>" +
+    headerSubagents +
     (currentTask
       ? '<em class="agent-detail-task">' + escapeHtml(currentTask) + "</em>"
       : "") +

@@ -270,6 +270,23 @@ function _buildPastedTextFile(text) {
 }
 
 function handleClipboardPaste(e) {
+  /* Guard (msg#16116 Item 2 / lead msg#16116): this handler is bound to
+   * msg-input only, but it was still catching paste events when the user
+   * was on a non-Chat tab (e.g. Overview). Gate: only process paste when
+   * the current focus is actually msg-input AND Chat is the active tab.
+   * Mirrors the TS source in hub/frontend/src/upload.ts. */
+  var _activeTab =
+    typeof window !== "undefined" && typeof window.activeTab === "string"
+      ? window.activeTab
+      : typeof activeTab === "string"
+        ? activeTab
+        : "";
+  var _msgInputEl = document.getElementById("msg-input");
+  var _focusIsMsgInput =
+    _msgInputEl && document.activeElement === _msgInputEl;
+  if (!_focusIsMsgInput || _activeTab !== "chat") {
+    return;
+  }
   var cd =
     e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;

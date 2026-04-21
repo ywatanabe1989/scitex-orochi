@@ -539,6 +539,30 @@
   opacity: 1;
 }
 
+/* msg#16116 Item 4: subagent count chip — rendered inline at the end
+ * of the canonical agent-badge strip when the agent has >=1 active
+ * Agent-tool subagent. Hidden entirely when count == 0 (the render
+ * fn returns an empty string), so idle agents keep the existing row
+ * silhouette untouched. Tone matches the running-subagent bubble in
+ * components-agent-cards.css (.subagent-running) so callers who see
+ * the yellow glyph associate it with "currently working". */
+.agent-badge-subcount {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffd93d;
+  background: rgba(255, 217, 61, 0.12);
+  border: 1px solid rgba(255, 217, 61, 0.3);
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* todo#305 Task 7: hidden-agent row — mirrors .channel-item.ch-hidden.
  * Keep the row at full opacity (PR #293/#295 rule — no row-level
  * dimming); hidden state is communicated ONLY via the eye-with-slash

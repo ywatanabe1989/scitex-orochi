@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { apiUrl, csrfToken } from "./app/utils";
+import { activeTab } from "./tabs";
 
 /* File upload — attach, drag-drop, clipboard paste (multi-file) with
  * staged preview. Files picked via paste/drag/file-picker are held in a
@@ -273,6 +274,31 @@ export function _buildPastedTextFile(text) {
 }
 
 export function handleClipboardPaste(e) {
+  /* Guard (msg#16116 Item 2 / lead msg#16116): this handler is bound to
+   * msg-input only, but it was still catching paste events when the user
+   * was on a non-Chat tab (e.g. Overview) — either via an inherited
+   * focus ring that survived the tab switch, or via a bubbled paste from
+   * a descendant the user was focused on (the dashboard does NOT have a
+   * document-level paste listener, but defense-in-depth is cheap). When
+   * that happened, staging attachments from a paste on the Overview tab
+   * silently wired the user into the Chat composer — because stageFiles()
+   * mutates the Chat composer's tray and subsequent WS/focus restores
+   * can flip the active tab. Gate: only process paste when the current
+   * focus is actually inside the Chat composer AND Chat is the active
+   * tab. Anywhere else, let the native paste land in the user's real
+   * target (textarea on Overview, contenteditable in a modal, etc.).
+   *
+   * This mirrors the stopPropagation() defense already in place on the
+   * activity-tab compose popup (see compose.ts, PR #313 Item 10). */
+  var msgInputEl = document.getElementById("msg-input");
+  var focusIsMsgInput =
+    msgInputEl && document.activeElement === msgInputEl;
+  if (!focusIsMsgInput || activeTab !== "chat") {
+    /* Let the event pass through untouched — do not stage attachments,
+     * do not preventDefault. The user's current target receives the
+     * paste natively. */
+    return;
+  }
   var cd =
     e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;

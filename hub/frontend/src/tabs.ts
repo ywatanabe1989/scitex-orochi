@@ -231,11 +231,69 @@ export function _activateTab(tab) {
   } catch (_) {}
 }
 
+/* msg#16116 Item 3: cmd-click / ctrl-click / middle-click on a tab
+ * button should open that view in a new browser tab so the user can
+ * lay Overview + TODO side-by-side. Tab buttons are <button> elements
+ * (dashboard.html), not <a>, so browsers don't offer the native
+ * "open in new tab" affordance by default. Rather than change the
+ * markup (which would cascade into every .tab-btn CSS selector), we
+ * intercept modifier-key and middle clicks at the JS layer:
+ *   - auxclick listener catches middle-button presses and calls
+ *     window.open(pathname + "#tab", "_blank").
+ *   - Regular click listener checks metaKey / ctrlKey / shiftKey; if
+ *     any is pressed, preventDefault and route through window.open.
+ *   - Plain left-click still runs _activateTab for the in-place
+ *     switch (the existing flow).
+ * The ``data-href`` attribute stays on the button as a hint for
+ * developers / a11y tools but is not honoured by the browser itself.
+ * The new tab lands on ``dashboard/#<tab>`` and the boot code below
+ * reads the hash to activate the requested tab. */
+function _isNewTabClick(ev) {
+  /* Middle mouse button = ev.button === 1. Cmd (mac) = metaKey.
+   * Ctrl (win/linux) = ctrlKey. Shift opens in a new window on most
+   * browsers; treat it the same (user intent = "not in place"). */
+  return ev.button === 1 || ev.metaKey || ev.ctrlKey || ev.shiftKey;
+}
+
 document.querySelectorAll(".tab-btn").forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    var tab = btn.getAttribute("data-tab");
-    if (tab === activeTab) return;
-    _activateTab(tab);
+  /* Install an anchor-style href so the browser exposes the standard
+   * "Open in new tab" / "Open in new window" context menu entries, and
+   * so middle-click raises a new background tab by default. Buttons
+   * themselves don't honour href (they're not anchors), but modifier-
+   * key clicks still get our custom handler below which opens a fresh
+   * tab via window.open. The href stays consistent with the hash-route
+   * the new tab's boot code looks for. */
+  var tab = btn.getAttribute("data-tab") || "";
+  if (tab && !btn.hasAttribute("data-href")) {
+    btn.setAttribute("data-href", "#" + tab);
+  }
+  /* Middle-click (auxclick) on a <button> fires regardless of href. */
+  btn.addEventListener("auxclick", function (ev) {
+    /* Middle button only (1). Right-click (2) lets the browser show
+     * its own context menu. */
+    if (ev.button !== 1) return;
+    ev.preventDefault();
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    try {
+      window.open(window.location.pathname + "#" + t, "_blank");
+    } catch (_) {}
+  });
+  btn.addEventListener("click", function (ev) {
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    if (_isNewTabClick(ev)) {
+      /* Cmd/Ctrl/Shift click — open a new tab/window. Use a blank
+       * target so each click spawns its own surface; suppress the
+       * in-place switch. */
+      ev.preventDefault();
+      try {
+        window.open(window.location.pathname + "#" + t, "_blank");
+      } catch (_) {}
+      return;
+    }
+    if (t === activeTab) return;
+    _activateTab(t);
   });
 });
 
@@ -249,6 +307,18 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
  * Chat surfaces — _activateTab("activity") hides them imperatively. */
 (function () {
   try {
+    /* msg#16116 Item 3: hash-based tab routing. When a cmd/middle-click
+     * on a tab button opens a new browser tab, the fresh tab loads the
+     * dashboard with ``#<tab>`` as the URL fragment. Honor that hash
+     * FIRST — it reflects the explicit "open this view in a new tab"
+     * intent. Fall back to localStorage (in-place session continuity)
+     * and finally Overview. */
+    var hash = "";
+    try {
+      hash = (window.location.hash || "").replace(/^#/, "");
+    } catch (_) {
+      hash = "";
+    }
     var last = localStorage.getItem("orochi_active_tab");
     /* Step 3c: the top-level Terminal tab has been removed (terminal
      * preview now lives only inside the agent-detail pane's SSH action).
@@ -256,8 +326,11 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     if (last === "terminal") {
       last = null;
     }
-    var target = last || "activity";
-    /* If the remembered tab no longer has a DOM button, fall back to
+    if (hash === "terminal") {
+      hash = "";
+    }
+    var target = hash || last || "activity";
+    /* If the requested tab no longer has a DOM button, fall back to
      * Overview ("activity"). */
     var btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
     if (!btn) {
