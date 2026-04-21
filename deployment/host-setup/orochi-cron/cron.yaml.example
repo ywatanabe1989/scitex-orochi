@@ -66,3 +66,21 @@ jobs:
   #   interval: 1h
   #   command: "scitex-orochi disk reaper-dry-run --yes"
   #   timeout: 10m
+
+  # Venv-integrity probe — catches the msg#16777 regression (``~/.venv``
+  # silently missing ``scitex_orochi``). Emits NDJSON per critical pkg
+  # per interpreter, exits nonzero on any failure so the cron log trips
+  # severity. Read-only: never installs.
+  - name: venv-integrity-check
+    interval: 30m
+    command: "scitex-orochi system venv-check"
+    timeout: 2m
+
+  # Venv-integrity auto-heal — opt-in. Runs ``pip install -e <repo>`` for
+  # broken critical packages whose local checkout is present on this
+  # host. Alert-only (no install) when the repo isn't on this box. Flip
+  # from the check-only job above once you're comfortable with auto-heal.
+  # - name: venv-integrity-heal
+  #   interval: 30m
+  #   command: "scitex-orochi system venv-heal --yes"
+  #   timeout: 10m

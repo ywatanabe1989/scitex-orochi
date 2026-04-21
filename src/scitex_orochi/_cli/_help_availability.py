@@ -122,6 +122,10 @@ DEFAULT_PROBE_MAP: Mapping[str, ProbeKind] = {
     "serve": ProbeKind.PURE_LOCAL,
     "setup-push": ProbeKind.PURE_LOCAL,
     "doctor": ProbeKind.PURE_LOCAL,
+    # ``system venv-check`` / ``venv-heal`` are subprocess-only probes;
+    # they run fine offline and never DM/chat by themselves.
+    "venv-check": ProbeKind.PURE_LOCAL,
+    "venv-heal": ProbeKind.PURE_LOCAL,
     "init": ProbeKind.PURE_LOCAL,
     "launch": ProbeKind.PURE_LOCAL,
     "deploy": ProbeKind.PURE_LOCAL,
