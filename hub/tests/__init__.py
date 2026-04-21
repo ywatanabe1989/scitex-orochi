@@ -26,6 +26,7 @@ from hub.tests.registry.test_active_sessions import *  # noqa: F401,F403
 from hub.tests.registry.test_canonical_metadata import *  # noqa: F401,F403
 from hub.tests.registry.test_echo_indicator import *  # noqa: F401,F403
 from hub.tests.registry.test_heartbeat import *  # noqa: F401,F403
+from hub.tests.registry.test_host_identity_from_client import *  # noqa: F401,F403
 from hub.tests.registry.test_reexports import *  # noqa: F401,F403
 from hub.tests.registry.test_singleton_enforcement import *  # noqa: F401,F403
 from hub.tests.test_auth import *  # noqa: F401,F403

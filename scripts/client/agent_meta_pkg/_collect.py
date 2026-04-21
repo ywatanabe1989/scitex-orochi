@@ -108,6 +108,18 @@ def collect(agent: str) -> dict:
     # and mis-fire `stale` after 2 real cycles instead of 3). The
     # `agent` kwarg enables cross-cycle stagnation tracking; omit it
     # and the classifier degrades to its legacy stateless behavior.
+    # Live hostname(1) — the kernel's answer to "where is this process
+    # running right now". This is the authoritative host-identity signal
+    # the hub's badge renderer (hostedAgentName) prefers over ``machine``.
+    # Collected here so ``_build_payload`` can forward it unconditionally,
+    # never letting env vars or server-side inference speak for the
+    # process (lead msg#15578 root fix).
+    import socket as _socket
+    try:
+        live_hostname = (_socket.gethostname() or "").split(".")[0].strip()
+    except Exception:
+        live_hostname = ""
+
     pane_state = _classify_pane_state(pane_tail_block_clean, pane, agent=agent)
     stuck_prompt_text = _extract_stuck_prompt(
         pane_tail_block_clean, pane, agent=agent
@@ -199,6 +211,11 @@ def collect(agent: str) -> dict:
         "workdir": workspace,
         "project": project,
         "machine": machine,
+        # Live hostname(1) — see the comment above live_hostname for why
+        # we send this unconditionally. The hub stores this as ``hostname``
+        # distinct from ``machine`` (YAML label) and
+        # ``hostname_canonical`` (FQDN).
+        "hostname": live_hostname,
         # todo#55: canonical FQDN for display next to the short machine
         # label in the dashboard.
         "hostname_canonical": _resolve_canonical_hostname(),

@@ -99,12 +99,27 @@ function onOpen(ws: WebSocket): void {
     }
   } catch {}
 
-  // Register with the hub
+  // Register with the hub.
+  //
+  // Host identity source order (lead msg#15578 root fix):
+  //   1. Live ``hostname()`` — the kernel's answer to "where am I
+  //      running right now". Always trusted when non-empty.
+  //   2. ``SCITEX_OROCHI_*`` env vars — explicit override, only honoured
+  //      if ``hostname()`` is empty (e.g. stripped container).
+  //
+  // Previously the env vars were primary, which caused the
+  // proj-neurovista misreport: a stale ``SCITEX_OROCHI_HOSTNAME=mba``
+  // inherited from the shell/tmux env of the process that spawned the
+  // agent overrode the real host identity, so an agent running on
+  // spartan reported itself as mba. Per the lead fix: the agent sets
+  // its ``host`` field from its own ``hostname()``, never from
+  // inherited env or server-side inference.
+  const _liveHostname = hostname() || "";
   const _machine =
+    _liveHostname ||
     process.env.SCITEX_OROCHI_MACHINE ||
     process.env.SCITEX_OROCHI_HOSTNAME ||
     process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
-    hostname() ||
     "";
   ws.send(
     JSON.stringify({
@@ -112,6 +127,11 @@ function onOpen(ws: WebSocket): void {
       sender: OROCHI_AGENT,
       payload: {
         machine: _machine,
+        // Live hostname(1) surfaced separately from ``machine`` so the
+        // hub / frontend can render the authoritative ``<name>@<host>``
+        // badge directly from the kernel's answer, bypassing any
+        // env-var-driven ``machine`` override.
+        hostname: _liveHostname,
         role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
         model: OROCHI_MODEL,
         multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
