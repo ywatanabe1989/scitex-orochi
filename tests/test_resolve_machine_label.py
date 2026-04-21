@@ -15,14 +15,13 @@ regression of that priority flip.
 
 from __future__ import annotations
 
+# Import the client-side resolver by path since scripts/client isn't a
+# package on the default Python path.
+import importlib.util
 import socket
 from pathlib import Path
 
 import pytest
-
-# Import the client-side resolver by path since scripts/client isn't a
-# package on the default Python path.
-import importlib.util
 
 _MODULE_PATH = (
     Path(__file__).resolve().parents[1]
