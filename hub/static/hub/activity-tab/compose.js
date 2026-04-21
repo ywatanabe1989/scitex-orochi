@@ -276,6 +276,50 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     if (input) input.focus();
   }, 10);
 
+  /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
+   * was failing on this popup. Root cause: macOS Safari does NOT focus
+   * a textarea on right-click (unlike Chrome/Firefox). A right-click on
+   * our textarea therefore left document.activeElement on whatever had
+   * focus before the popup opened (often <body> or the topology
+   * canvas), so the subsequent native "Paste" from the OS context menu
+   * fired a paste event on THAT element — not the textarea.
+   *
+   * Keyboard Cmd+V was only intermittent for the same reason: if the
+   * user clicked anywhere inside the popup that wasn't a focusable
+   * child, the textarea could lose focus and the next Cmd+V landed
+   * outside.
+   *
+   * Fix: refocus the textarea on ANY pointer interaction inside the
+   * popup (mousedown covers left + right click + middle click on all
+   * browsers), unless the target is one of the action buttons that
+   * legitimately owns focus (attach / camera / sketch / voice /
+   * expand). Also listen to `contextmenu` explicitly — belt & braces
+   * for browsers that fire contextmenu without a prior mousedown
+   * (some trackpad two-finger-tap paths on macOS). */
+  function _refocusInput(ev) {
+    if (!input) return;
+    /* Don't steal focus from action buttons. */
+    if (
+      ev.target &&
+      ev.target.closest &&
+      ev.target.closest(".tcc-x, .tcc-expand")
+    ) {
+      return;
+    }
+    /* If the user clicked directly on the textarea, the browser will
+     * focus it anyway and move the caret — don't fight that. Only
+     * refocus when the target is a non-focusable child (the popup
+     * chrome, a label, etc.) or the textarea but unfocused (e.g.
+     * right-click on macOS Safari). */
+    if (document.activeElement !== input) {
+      try {
+        input.focus();
+      } catch (_) {}
+    }
+  }
+  pop.addEventListener("mousedown", _refocusInput);
+  pop.addEventListener("contextmenu", _refocusInput);
+
   function close() {
     if (pop.parentNode) pop.parentNode.removeChild(pop);
     document.removeEventListener("mousedown", outsideClick, true);

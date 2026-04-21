@@ -23,11 +23,19 @@ import { escapeHtml, userName } from "../app/utils";
 
 export function _renderActivityTopology(visible, grid) {
   _topoApplyStickyEdges();
-  /* Filter out agents the user hid via right-click. Edges involving
+  /* Filter out agents the user hid via right-click (session-only via
+   * _topoHidden) OR via the persistent 👁 eye on the agent card (Task 7,
+   * AgentProfile.is_hidden — sticks across sessions). Edges involving
    * hidden agents collapse automatically because they're dropped from
-   * the visible loop. Human node is protected inside _topoHide. */
+   * the visible loop. Human node is protected inside _topoHide and
+   * never has is_hidden on its payload. */
   visible = visible.filter(function (a) {
     if ((globalThis as any)._topoHidden.agents[a.name]) return false;
+    /* todo#305 Task 7 (lead msg#15548): mirror channel-hidden topo
+     * semantics — hidden agents are DROPPED from the canvas render
+     * (not dimmed in place). Consistent with how channels hidden via
+     * .ch-eye disappear from the topology. */
+    if (a.is_hidden) return false;
     /* Dead agents render only when pinned (kept as ghost/shadow);
      * unpinned dead agents are dropped entirely from the canvas. */
     if (_isDeadAgent(a) && !a.pinned) return false;
@@ -335,6 +343,11 @@ export function _renderActivityTopology(visible, grid) {
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="minus" title="Zoom out (−)">−</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="reset" title="Reset zoom (0)">0</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
+    /* todo#305: 整列 (Tidy) button — runs concentric-ring auto-layout
+     * (inner = channels, outer = agents + human) with two light
+     * repulsion passes so overlapping nodes spread out. Layout only
+     * runs on explicit click; drag / zoom / pan are unchanged. */
+    '<button type="button" class="topo-ctrl-btn topology-autolayout-btn" data-topo-ctrl="integrate" title="整列 (auto-layout: channels inner, agents outer)">整列</button>' +
     "</div>";
   var pool = _topoBuildPoolHtml(visible, channels);
   /* todo#67 — Time seekbar + play button docked at the bottom of the

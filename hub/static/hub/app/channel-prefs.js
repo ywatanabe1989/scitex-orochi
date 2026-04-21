@@ -141,6 +141,37 @@ function _setChannelPref(ch, patch) {
  * configuration story uniform across entity types. The registry
  * reads AgentProfile on next join so the icon survives container
  * restarts (todo#101 Entity Consistency). */
+
+/* todo#305 Task 7 (lead msg#15548): flip the persistent per-agent
+ * is_hidden flag. Parallel to _setChannelPref({ is_hidden: ... }) —
+ * same server contract, same re-render trigger. The 👁 eye glyph on
+ * an agent card (sidebar row or topology SVG) calls this from the
+ * body-level delegated handler in agent-badge.js. */
+function _setAgentHidden(name, isHidden) {
+  var live = window.__lastAgents || [];
+  for (var i = 0; i < live.length; i++) {
+    if (live[i] && live[i].name === name) {
+      live[i].is_hidden = !!isHidden;
+      break;
+    }
+  }
+  fetch(apiUrl("/api/agent-profiles/"), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({ name: name, is_hidden: !!isHidden }),
+  }).catch(function (_) {});
+  if (typeof fetchAgents === "function") fetchAgents();
+  if (typeof renderActivityTab === "function") {
+    if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
+    renderActivityTab();
+  }
+}
+window._setAgentHidden = _setAgentHidden;
+
 function _setAgentIcon(name, patch) {
   if (
     typeof cachedAgentIcons !== "undefined" &&

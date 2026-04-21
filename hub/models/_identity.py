@@ -171,6 +171,12 @@ class AgentProfile(models.Model):
     icon_image = models.CharField(max_length=500, blank=True, default="")
     icon_text = models.CharField(max_length=16, blank=True, default="")
     color = models.CharField(max_length=16, blank=True, default="")
+    # todo#305 Task 7 (lead msg#15548): persistent per-agent hidden flag
+    # toggled by the 👁 eye icon on the agent card. Mirrors
+    # ChannelPreference.is_hidden — same semantics (row dropped from
+    # sidebar + topology; visible flag restorable via the eye toggle on
+    # any ghost/pool representation).
+    is_hidden = models.BooleanField(default=False)
     # Last-known caduceus-reported health — persisted so the Agents tab
     # + sidebar pills survive container restarts without agents having
     # to re-POST their diagnosis. Free-form status string per mamba's

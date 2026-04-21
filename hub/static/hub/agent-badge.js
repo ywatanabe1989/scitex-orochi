@@ -117,6 +117,29 @@
     );
   }
 
+  // ── 2b. Eye (togglable show/hide, always visible, placeholder even when
+  //        not hidden so column geometry stays constant across rows).
+  // Mirrors the channel .ch-eye pattern 1:1: same 👁 glyph in both states,
+  // red diagonal strike drawn via the .agent-badge-eye-off::after CSS
+  // rule (defined in style-agents.css alongside the channel variant).
+  // todo#305 Task 7 (lead msg#15548).
+  function renderAgentEye(a) {
+    var hidden = !!a.is_hidden;
+    return (
+      '<span class="agent-badge-eye ' +
+      (hidden ? "agent-badge-eye-off" : "agent-badge-eye-on") +
+      '" data-eye-agent="' +
+      _escape(a.name || "") +
+      '" title="' +
+      _escape(
+        hidden
+          ? "Show agent (un-hide)"
+          : "Hide agent (remove from list + graph)",
+      ) +
+      '" style="cursor:pointer">\uD83D\uDC41</span>'
+    );
+  }
+
   // ── 3. Four-LED liveness strip ────────────────────────────────────
   function renderAgentLeds(a, opts) {
     var extra = opts && opts.extraClass ? " " + opts.extraClass : "";
@@ -243,17 +266,20 @@
   // ── Composed badge (canonical layout) ─────────────────────────────
   function renderAgentBadge(a, opts) {
     opts = opts || {};
-    /* Canonical order per ywatanabe 2026-04-21:
-     *   icon + star + 4 LEDs + name@hostname
-     * Matches the channel badge (icon + star + eye + mute + name), so
-     * star sits in the same column position across both entity types.
-     * renderAgentStar always emits a placeholder span for non-starred
-     * agents so column alignment holds. */
+    /* Canonical order, todo#305 Task 7 (lead msg#15548):
+     *   icon + star + eye + 4 LEDs + name@hostname
+     * Matches the channel badge column order (icon + star + eye +
+     * mute + name) so a user who learned the glyph map on channels
+     * finds the same on agents. The eye was inserted between ★ and
+     * the LED strip per lead's explicit ordering directive in
+     * msg#15548 (deviation from Task 3's baseline, but Task 7 owns
+     * the slot for agents going forward). */
     var icon = renderAgentIcon(a, opts.iconSize);
     var star = renderAgentStar(a);
+    var eye = opts.hideEye ? "" : renderAgentEye(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    return icon + star + leds + name;
+    return icon + star + eye + leds + name;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────
@@ -294,9 +320,65 @@
     return false;
   }
 
+  // ── Eye toggle — persistent flip of AgentProfile.is_hidden ──────────
+  // Body-level delegated handler so EVERY agent-eye glyph anywhere in
+  // the DOM (sidebar row, Activity overview card, topology SVG) gets
+  // the same behavior without per-render binding. Mirrors the
+  // .ch-eye delegation pattern in channel-badge.js. Idempotent.
+  var _agentEyeAttached = false;
+  function attachAgentEyeHandler() {
+    if (_agentEyeAttached) return;
+    _agentEyeAttached = true;
+    if (typeof document === "undefined") return;
+    document.body.addEventListener(
+      "click",
+      function (ev) {
+        var eye = ev.target.closest && ev.target.closest(
+          ".agent-badge-eye[data-eye-agent], .topo-agent-eye[data-eye-agent]",
+        );
+        if (!eye) return;
+        var name = eye.getAttribute("data-eye-agent");
+        if (!name) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        var live = window.__lastAgents || [];
+        var curAgent = null;
+        for (var i = 0; i < live.length; i++) {
+          if (live[i] && live[i].name === name) {
+            curAgent = live[i];
+            break;
+          }
+        }
+        var curHidden = curAgent
+          ? !!curAgent.is_hidden
+          : eye.classList.contains("agent-badge-eye-off") ||
+            eye.classList.contains("topo-agent-eye-off");
+        var nextHidden = !curHidden;
+        if (curAgent) curAgent.is_hidden = nextHidden;
+        eye.classList.toggle("agent-badge-eye-on", !nextHidden);
+        eye.classList.toggle("agent-badge-eye-off", nextHidden);
+        eye.classList.toggle("topo-agent-eye-on", !nextHidden);
+        eye.classList.toggle("topo-agent-eye-off", nextHidden);
+        var setHidden = window._setAgentHidden;
+        if (typeof setHidden === "function") {
+          setHidden(name, nextHidden);
+        }
+      },
+      true,
+    );
+  }
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", attachAgentEyeHandler);
+    } else {
+      attachAgentEyeHandler();
+    }
+  }
+
   // Expose globals — script is loaded as a plain <script> tag.
   window.renderAgentIcon = renderAgentIcon;
   window.renderAgentStar = renderAgentStar;
+  window.renderAgentEye = renderAgentEye;
   window.renderAgentLeds = renderAgentLeds;
   window.renderAgentName = renderAgentName;
   window.renderAgentBadge = renderAgentBadge;

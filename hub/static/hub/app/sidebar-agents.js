@@ -115,6 +115,12 @@ async function fetchAgents() {
       return String(dn || "").toLowerCase();
     };
     sidebarVisible.sort(function (a, b) {
+      /* todo#305 Task 7 (lead msg#15548): hidden -> bottom. Mirrors
+       * the channel-prefs.is_hidden sort in sidebar-stats.js. Row
+       * stays at opacity 1 per PR #293/#295. */
+      var ha = a.is_hidden ? 1 : 0;
+      var hb = b.is_hidden ? 1 : 0;
+      if (ha !== hb) return ha - hb;
       var pa = a.pinned ? 0 : 1;
       var pb = b.pinned ? 0 : 1;
       if (pa !== pb) return pa - pb;
@@ -166,15 +172,21 @@ async function fetchAgents() {
           : "Star (keeps as ghost when offline, floats to top)";
         return (
           // Single source of truth — agent-badge.js owns icon + star +
-          // 4 LEDs + name. Same call lives in activity-tab.js list view
-          // and topology pool chip. NEVER inline a fork here.
+          // eye + 4 LEDs + name. Same call lives in activity-tab.js list
+          // view and topology pool chip. NEVER inline a fork here.
           '<div class="agent-card sidebar-agent-row' +
           (typeof isAgentAllGreen === "function" && !isAgentAllGreen(a)
             ? " activity-card-ghost"
             : "") +
+          /* todo#305 Task 7: agent-hidden class mirrors .ch-hidden on
+           * channel rows — keeps row at full opacity (PR #293/#295
+           * rule); hidden state is communicated ONLY via the eye-slash
+           * glyph. */
+          (a.is_hidden ? " agent-hidden" : "") +
           ghostClass +
           '" data-agent-name="' +
           escapeHtml(rawName) +
+          (a.is_hidden ? '" data-hidden="1' : "") +
           '" data-agent-channels="' +
           escapeHtml(chList) +
           '" draggable="true" title="' +

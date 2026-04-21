@@ -138,6 +138,35 @@ function _renderChannelRowHtml(row, ctx) {
           iconSize: 14,
         })
       : "";
+  /* todo#305 (ywatanabe msg#15510 / lead msg#15513): restore per-channel
+   * colour to the sidebar row. PR #285 dropped row-level colour-coding;
+   * the directive has since been reversed. Palette source = the SAME
+   * name-hash used by agent cards (getAgentColor → OROCHI_COLORS), so
+   * Channels and Agents lists share a coherent colour vocabulary.
+   *
+   * Apply via the --channel-accent CSS custom property on the row. CSS
+   * in style-channels.css tints the leading .ch-identity-icon glyph and
+   * draws a 2px left-edge accent stripe from this var. Nothing else on
+   * the row is coloured: no row background tint (PR #293's subtle
+   * selected-bg rule owns selection signalling) and no opacity change
+   * (PR #291 banned row-level opacity dim). The 🔔/👁/★ glyphs remain
+   * monochrome — colour is ONLY on the category icon at position 1.
+   *
+   * channelBadgeModel(c).color resolves to any user-set channel colour
+   * first, then falls back to _identityColor → getAgentColor(norm); we
+   * reuse it here so a channel's sidebar accent matches its pool chip
+   * label colour and its topology label fill. */
+  var accentColor = "";
+  if (typeof channelBadgeModel === "function") {
+    var m = channelBadgeModel(c);
+    accentColor = (m && m.color) || "";
+  }
+  if (!accentColor && typeof getAgentColor === "function") {
+    accentColor = getAgentColor(norm);
+  }
+  var accentStyle = accentColor
+    ? ' style="--channel-accent:' + escapeHtml(accentColor) + '"'
+    : "";
   return (
     divider +
     '<div class="channel-item ch-badge ch-badge-sidebar' +
@@ -152,6 +181,7 @@ function _renderChannelRowHtml(row, ctx) {
     (entry.hidden ? ' data-hidden="1"' : "") +
     (row.inFolder ? ' data-folder="' + escapeHtml(row.inFolder) + '"' : "") +
     rowTitle +
+    accentStyle +
     ' draggable="true">' +
     badgeInner +
     "</div>"
@@ -293,11 +323,12 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
       }
       /* #284: channels are single-selection only. The legacy Ctrl/Cmd+Click
        * multi-select has been removed — any click replaces the current
-       * selection with exactly this row. */
-      if (currentChannel === ch) {
-        setCurrentChannel(null);
-        loadHistory();
-      } else {
+       * selection with exactly this row.
+       *
+       * todo#305 / lead msg#15493: clicking the currently-selected row
+       * is a NO-OP — there is always exactly one selected channel, and
+       * re-clicking must not deselect. */
+      if (currentChannel !== ch) {
         setCurrentChannel(ch);
         loadChannelHistory(ch);
       }
@@ -310,19 +341,16 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
       updateChannelUnreadBadges();
       /* todo#274 Part 1 + #293: single-select is the HARD invariant —
        * clear .selected across the ENTIRE sidebar (channel rows AND
-       * DM agent-cards), not just this chContainer. Previously only
-       * chContainer was cleared, which left a stale .selected on a
-       * DM row when the user switched from a DM to a channel and
-       * manifested as "two rows selected at once" (#293). */
-      var wasSelected = el.classList.contains("selected");
+       * DM agent-cards), not just this chContainer.
+       *
+       * todo#305: unconditionally re-select this row — re-click no
+       * longer deselects, so .selected always lands on this element. */
       document
         .querySelectorAll(".sidebar .channel-item.selected, .sidebar .dm-item.selected")
         .forEach(function (it) {
           it.classList.remove("selected");
         });
-      if (!wasSelected && currentChannel === ch) {
-        el.classList.add("selected");
-      }
+      el.classList.add("selected");
       if (typeof applyFeedFilter === "function") applyFeedFilter();
       fetchStats();
     });

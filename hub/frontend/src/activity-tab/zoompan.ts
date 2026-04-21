@@ -3,6 +3,7 @@ import { _topoCleanupDrag } from "./compose";
 import { renderActivityTab } from "./init";
 import { _topoSelectAdd, _topoSelectClear } from "./multiselect";
 import { _topoViewBoxFuture, _topoViewBoxHistory } from "./state";
+import { _topoAutoLayout } from "./topology-autolayout";
 
 /* activity-tab/zoompan.js — drag-rectangle zoom + shift-drag pan
  * + ctrl-drag lasso + wheel zoom/pan + keyboard shortcuts +
@@ -311,6 +312,14 @@ export function _wireTopoZoomPan(grid, W, H) {
     else if (action === "reset") _resetVB(svg);
     else if (action === "plus") _zoomAt(svg, 1 / 1.25, null, null);
     else if (action === "minus") _zoomAt(svg, 1.25, null, null);
+    else if (action === "integrate") {
+      /* todo#305: 整列 — concentric ring auto-layout. Mutates the
+       * _topoManualPositions overlay and re-renders so nodes snap to
+       * the computed slots. Zoom / pan state is preserved; only the
+       * per-node positions change. */
+      _topoAutoLayout();
+      if (typeof renderActivityTab === "function") renderActivityTab();
+    }
   });
   /* Keyboard — Escape = back; 0 = reset; +/= = zoom in; - = zoom out.
    * Only fires when an SVG is visible and no text input is focused. */
