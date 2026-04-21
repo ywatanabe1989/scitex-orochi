@@ -212,7 +212,11 @@ def check_membership_allowed(
     * If the caller did not supply ``workspace_id`` we cannot scope the
       lookup and fall back to ``True`` (preserves non-WS test fixtures).
     * If an explicit :class:`ChannelMembership` row exists with
-      ``permission = "read-only"`` the write is **denied**.
+      ``permission = "read-only"`` the write is **denied**. Rows with
+      ``read-write`` or ``write-only`` are **allowed** — write-only
+      blocks the read side (see ``_load_agent_channel_subs``) but
+      still permits writes (msg#16880 — worker-progress posts digests
+      to ``#ywatanabe`` but must not receive ``#ywatanabe`` traffic).
     * If the sender is a synthetic agent user (``agent-*`` — see
       ``hub/views/auth.py``) and *no* membership row exists for the
       target non-DM channel, the write is **denied**. Agents must be
@@ -246,6 +250,7 @@ def check_membership_allowed(
         .first()
     )
     if row is not None:
+        # read-write and write-only both permit writes; only read-only denies.
         return row.permission != _Membership.PERM_READ_ONLY
 
     # No explicit row. Agents must be explicitly added; humans default-allow.
