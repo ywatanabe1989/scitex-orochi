@@ -76,8 +76,22 @@
  * names should be color coded" / "they are now in white and in
  * blue for head-nas@... i am not sure why only it is". The prior
  * `filter: brightness(1.5)` saturated most pastels toward white,
- * leaving only bluer hashes recognizable. */
+ * leaving only bluer hashes recognizable.
+ *
+ * todo#305 (Task 3, lead msg#15509): visually unify with the sidebar
+ * agent card. Structural reuse of renderAgentBadge is already in place
+ * via renderAgentBadgeSvg (same icon→star→4 LEDs→name order, same
+ * palette, same glyph cascade — agent-badge-svg.ts). What remained
+ * different was the SVG's default typography: labels had no explicit
+ * font-size and inherited the document default (16px), while the
+ * sidebar agent row uses 11px (activity-tab-list.css .sidebar-agent-
+ * row). Pin label size to match. Halo stroke is kept because the
+ * canvas has no solid card background to fall back on — the sidebar
+ * reads on #141414 cards without a halo, but the SVG must read on the
+ * raw graph plane where adjacent edges and other nodes cross through.
+ */
 .activity-grid.activity-view-topology .topo-label-agent {
+  font-size: 11px;
   font-weight: 600;
   paint-order: stroke;
   stroke: rgba(0, 0, 0, 0.45);

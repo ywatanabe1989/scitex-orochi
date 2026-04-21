@@ -138,6 +138,35 @@ function _renderChannelRowHtml(row, ctx) {
           iconSize: 14,
         })
       : "";
+  /* todo#305 (ywatanabe msg#15510 / lead msg#15513): restore per-channel
+   * colour to the sidebar row. PR #285 dropped row-level colour-coding;
+   * the directive has since been reversed. Palette source = the SAME
+   * name-hash used by agent cards (getAgentColor → OROCHI_COLORS), so
+   * Channels and Agents lists share a coherent colour vocabulary.
+   *
+   * Apply via the --channel-accent CSS custom property on the row. CSS
+   * in style-channels.css tints the leading .ch-identity-icon glyph and
+   * draws a 2px left-edge accent stripe from this var. Nothing else on
+   * the row is coloured: no row background tint (PR #293's subtle
+   * selected-bg rule owns selection signalling) and no opacity change
+   * (PR #291 banned row-level opacity dim). The 🔔/👁/★ glyphs remain
+   * monochrome — colour is ONLY on the category icon at position 1.
+   *
+   * channelBadgeModel(c).color resolves to any user-set channel colour
+   * first, then falls back to _identityColor → getAgentColor(norm); we
+   * reuse it here so a channel's sidebar accent matches its pool chip
+   * label colour and its topology label fill. */
+  var accentColor = "";
+  if (typeof channelBadgeModel === "function") {
+    var m = channelBadgeModel(c);
+    accentColor = (m && m.color) || "";
+  }
+  if (!accentColor && typeof getAgentColor === "function") {
+    accentColor = getAgentColor(norm);
+  }
+  var accentStyle = accentColor
+    ? ' style="--channel-accent:' + escapeHtml(accentColor) + '"'
+    : "";
   return (
     divider +
     '<div class="channel-item ch-badge ch-badge-sidebar' +
@@ -152,6 +181,7 @@ function _renderChannelRowHtml(row, ctx) {
     (entry.hidden ? ' data-hidden="1"' : "") +
     (row.inFolder ? ' data-folder="' + escapeHtml(row.inFolder) + '"' : "") +
     rowTitle +
+    accentStyle +
     ' draggable="true">' +
     badgeInner +
     "</div>"

@@ -349,6 +349,39 @@
   border-radius: 3px;
   object-fit: cover;
 }
+/* todo#305 (ywatanabe msg#15510 / lead msg#15513): per-channel colour
+ * on the sidebar row. The --channel-accent CSS var is set inline on
+ * .channel-item by sidebar-channel-tree.ts/js (hash of channel name
+ * through the shared OROCHI_COLORS palette — same palette agent cards
+ * use, so Channels and Agents read from a coherent colour vocabulary).
+ *
+ * Visual treatment — match the weight of the agent card's accent:
+ *   1. .ch-identity-icon at position 1 tinted to the accent (colour
+ *      only cascades to CSS-coloured glyphs: the default "#" text and
+ *      emoji text via `color:`). Image avatars (img.agent-avatar) are
+ *      bitmaps, so the tint doesn't bleed into user-uploaded icons.
+ *   2. 2px left-edge stripe on the row so the accent is visible even
+ *      when the channel uses an image avatar.
+ *
+ * Intentionally NOT coloured:
+ *   - Row background — PR #293's subtle .selected background rule owns
+ *     selection signalling. Adding a row-level tint would either mask
+ *     or compete with .selected.
+ *   - Row text / opacity — PR #295 / #291 banned per-row font-weight
+ *     and opacity-based dimming.
+ *   - 🔔/👁/★ glyphs (ch-mute/ch-eye/ch-star) — monochrome signal icons
+ *     per spec. Only the category icon at slot 1 carries colour. */
+.sidebar .channel-item {
+  /* Fallback to the existing muted text colour when no accent is set
+   * (e.g. renderChannelBadgeHtml called with no channelBadgeModel). */
+  border-left: 2px solid var(--channel-accent, transparent);
+  /* Nudge padding-left to keep the icon column aligned when the stripe
+   * lands (2px stripe + 6px inner pad → matches original 8px left pad). */
+  padding-left: 6px;
+}
+.sidebar .channel-item .ch-identity-icon {
+  color: var(--channel-accent, inherit);
+}
 .ch-pin:hover,
 .ch-watch:hover,
 .ch-eye:hover {

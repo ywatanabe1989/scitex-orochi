@@ -231,7 +231,12 @@ import { escapeHtml, getAgentColor } from "./app/utils";
     var showStar = opts.showStar !== false;
     var showLeds = opts.showLeds !== false && !opts.isHuman;
     var iconSize = opts.iconSize || 14;
-    var LED_R = 4;
+    /* todo#305 (Task 3, lead msg#15509): LED radius tuned to 3.5px so
+     * the topology node's LED strip reads at the same visual weight as
+     * the sidebar agent row (which uses 7px-diameter .activity-led via
+     * .sidebar-agent-row .activity-led in activity-tab-list.css). Was
+     * 4px (=8px diameter) which felt heavier than the sidebar's dots. */
+    var LED_R = 3.5;
     var GAP = 3;
 
     var ident =
