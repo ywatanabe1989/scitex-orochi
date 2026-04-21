@@ -135,11 +135,37 @@ function _activateTab(tab) {
   } catch (_) {}
 }
 
+/* msg#16116 Item 3: cmd-click / middle-click a tab → open in a new
+ * browser tab. See hub/frontend/src/tabs.ts for the full rationale. */
+function _isNewTabClick(ev) {
+  return ev.button === 1 || ev.metaKey || ev.ctrlKey || ev.shiftKey;
+}
 document.querySelectorAll(".tab-btn").forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    var tab = btn.getAttribute("data-tab");
-    if (tab === activeTab) return;
-    _activateTab(tab);
+  var tab = btn.getAttribute("data-tab") || "";
+  if (tab && !btn.hasAttribute("data-href")) {
+    btn.setAttribute("data-href", "#" + tab);
+  }
+  btn.addEventListener("auxclick", function (ev) {
+    if (ev.button !== 1) return;
+    ev.preventDefault();
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    try {
+      window.open(window.location.pathname + "#" + t, "_blank");
+    } catch (_) {}
+  });
+  btn.addEventListener("click", function (ev) {
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    if (_isNewTabClick(ev)) {
+      ev.preventDefault();
+      try {
+        window.open(window.location.pathname + "#" + t, "_blank");
+      } catch (_) {}
+      return;
+    }
+    if (t === activeTab) return;
+    _activateTab(t);
   });
 });
 
@@ -153,15 +179,22 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
  * Chat surfaces — _activateTab("activity") hides them imperatively. */
 (function () {
   try {
+    /* msg#16116 Item 3: honor #hash for cmd/middle-click new-tab flow. */
+    var hash = "";
+    try {
+      hash = (window.location.hash || "").replace(/^#/, "");
+    } catch (_) {
+      hash = "";
+    }
     var last = localStorage.getItem("orochi_active_tab");
-    /* Step 3c: the top-level Terminal tab has been removed (terminal
-     * preview now lives only inside the agent-detail pane's SSH action).
-     * Users who left their last session on "terminal" fall through. */
     if (last === "terminal") {
       last = null;
     }
-    var target = last || "activity";
-    /* If the remembered tab no longer has a DOM button, fall back to
+    if (hash === "terminal") {
+      hash = "";
+    }
+    var target = hash || last || "activity";
+    /* If the requested tab no longer has a DOM button, fall back to
      * Overview ("activity"). */
     var btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
     if (!btn) {
