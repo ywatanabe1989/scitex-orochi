@@ -99,6 +99,24 @@ def _build_payload(meta: dict, tok: str) -> dict:
         "agent_calls": meta.get("agent_calls") or [],
         "background_tasks": meta.get("background_tasks") or [],
         "subagents": meta.get("subagents") or [],
+        # scitex-orochi todo#369 — host-level machine metrics (CPU / mem
+        # / disk / load) + optional SLURM cluster snapshot. Without
+        # these two keys the hub's /api/resources rollup has no data
+        # to populate the Machines tab card for agents pushed via this
+        # legacy daemon path (symptom: mba / nas / spartan show zero /
+        # blink while ywata-note-win — which pushes via the sidecar
+        # heartbeat in ts/mcp_channel/heartbeat.ts that spreads the
+        # full collect() output — renders correctly).
+        #
+        # Hub-side contract: POST /api/agents/register/ reads
+        # body["metrics"] verbatim (see hub/views/api/_agents_register.py
+        # line `update_heartbeat(name, metrics=body.get("metrics") or
+        # {})`), and the merged per-agent snapshot is flattened into
+        # each machine's aggregate card by hub/views/api/_resources.py.
+        # `slurm` is a nested dict used by the Machines tab's SLURM
+        # card on HPC hosts and is expected to be None on non-HPC.
+        "metrics": meta.get("metrics") or {},
+        "slurm": meta.get("slurm"),
     }
 
 
