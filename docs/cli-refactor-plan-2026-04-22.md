@@ -551,7 +551,80 @@ place before any rename — otherwise the alias layer has no way to
 signal degraded state quietly. Suffix implementation is shared
 infrastructure used by both new and alias command paths.
 
+## 10. ywatanabe decisions (2026-04-22, msg#16533 / msg#16546)
+
+Locking in the approval asks from §6:
+
+### Q1 — Alias period
+**Pivot**: not a grace period. Deprecated commands **hard-error at
+call time** with a one-line fix instruction. Example stderr output:
+```
+error: `scitex-orochi list-agents` was renamed to `scitex-orochi agent list`.
+```
+Exit non-zero. No silent fallback to the new command. This is the
+"soon" policy — immediate rename, no grace period.
+
+### Q2 — Warning style
+**b) one-time-per-shell**, single stderr line, opt-out via
+`SCITEX_OROCHI_NO_DEPRECATION=1`. Integrated with Q1: the hard-error
+above is not a warning but a terminal error — the "one-time" rule
+applies to any soft notes we emit on non-renamed commands (e.g.
+feature drifts), not to hard renames.
+
+### Q3 — `convention-cli.md` location
+**a AND b**: canonical at `src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`,
+with a short pointer in `docs/cli.md` that `include`s or links to the
+canonical copy. Single source of truth, two discovery paths.
+
+### Q4 — PR granularity
+**a) 1 PR.** All rename + alias wrappers + tests + convention-cli +
+help-suffix layer land together. Easier to review consistency,
+avoids partial-state regressions.
+
+### Q5 — Flat keepers
+Force `<noun> <verb>` for everything **except**:
+- `-h` / `--help`
+- `--help-recursive`
+- `--version`
+- `--json` (global flag)
+- `mcp start` (keep flat — external contract with MCP client
+  configs that reference this literal path)
+
+Previously-proposed flat keepers (`doctor`, `init`, `fleet`, `listen`,
+`login`, `launch`, `deploy`, `report`) all move under proper nouns:
+- `doctor` → `system doctor`
+- `init` → `config init`
+- `fleet` → `agent fleet-list`
+- `listen` → `message listen`
+- `login` → `auth login`
+- `launch` → `agent launch` (already planned)
+- `deploy` → `server deploy`
+- `report` → `hook report`
+
+### Q6 — sac coupling
+**Not decided yet by ywatanabe.** Defaulting to §6 Q6 recommended:
+scitex-orochi only in this refactor, sac gets a sister plan PR after
+this lands.
+
+## 11. Skill discoverability (msg#16546)
+
+ywatanabe flagged: "the noun-verb convention lives in a skill that's
+hard to find". Fix in the same refactor:
+
+1. `docs/cli.md` gains a visible pointer in the repo README + any
+   top-level agent-boot context files.
+2. The `--help` output of `scitex-orochi` (top-level, no subcommand)
+   ends with: `see <URL> for the noun-verb convention` pointing at
+   `docs/cli.md`.
+3. `src/scitex_orochi/_skills/SKILL_INDEX.md` (add if missing) lists
+   every skill under this package by one-line role so a fleet agent
+   can grep for "cli convention" and land in the right place.
+4. head-ywata-note-win's concurrent work (msg#16558) consolidates the
+   cross-package convention skill; this PR cross-references that
+   canonical location rather than duplicating it.
+
 ---
 
-End of plan. Approve, amend, or reject whole-cloth. No implementation
-until this merges.
+End of plan. Q1–Q5 locked. Q6 pending ywatanabe. Implementation PR
+opens once Q6 is answered (or auto-defaults to "defer sac" after a
+reasonable wait).
