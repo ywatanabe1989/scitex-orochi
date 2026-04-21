@@ -48,10 +48,22 @@ class SeedWorkerProgressTest(TestCase):
         self.assertTrue(
             WorkspaceMember.objects.filter(user=user, workspace=self.ws).exists()
         )
-        for name in ("#progress", "#heads", "#ywatanabe"):
+        # #progress + #heads stay fully read-write. #ywatanabe switches
+        # to write-only per lead msg#16884 (can_read=False, can_write=True)
+        # so the worker posts digests without consuming the firehose back.
+        for name in ("#progress", "#heads"):
             ch = Channel.objects.get(workspace=self.ws, name=name)
             m = ChannelMembership.objects.get(user=user, channel=ch)
+            self.assertTrue(m.can_read, f"{name} should have can_read=True")
+            self.assertTrue(m.can_write, f"{name} should have can_write=True")
             self.assertEqual(m.permission, ChannelMembership.PERM_READ_WRITE)
+
+        yw = Channel.objects.get(workspace=self.ws, name="#ywatanabe")
+        yw_mem = ChannelMembership.objects.get(user=user, channel=yw)
+        self.assertFalse(yw_mem.can_read, "#ywatanabe must be write-only (no read)")
+        self.assertTrue(yw_mem.can_write, "#ywatanabe must allow writes")
+        # Deprecation bridge keeps the legacy enum synced — "write-only".
+        self.assertEqual(yw_mem.permission, ChannelMembership.PERM_WRITE_ONLY)
 
     # --- dynamic #proj-* enumeration -------------------------------------
 
@@ -65,10 +77,12 @@ class SeedWorkerProgressTest(TestCase):
         self._run("--workspace", "default")
         user = self._agent_user()
 
-        # #proj-* subscribed.
+        # #proj-* subscribed read-write (both bits True).
         for name in ("#proj-alpha", "#proj-beta"):
             ch = Channel.objects.get(workspace=self.ws, name=name)
             m = ChannelMembership.objects.get(user=user, channel=ch)
+            self.assertTrue(m.can_read)
+            self.assertTrue(m.can_write)
             self.assertEqual(m.permission, ChannelMembership.PERM_READ_WRITE)
 
         # Non-matching lookalike must NOT be subscribed.
@@ -142,13 +156,38 @@ class SeedWorkerProgressTest(TestCase):
         user, _ = User.objects.get_or_create(username="agent-worker-progress")
         WorkspaceMember.objects.create(user=user, workspace=self.ws)
         ch = Channel.objects.create(workspace=self.ws, name="#progress")
+        # Pre-existing read-only row: can_read=True, can_write=False.
         ChannelMembership.objects.create(
-            user=user, channel=ch, permission=ChannelMembership.PERM_READ_ONLY
+            user=user, channel=ch, can_read=True, can_write=False
         )
         output = self._run("--workspace", "default")
-        self.assertIn("upgraded to read-write", output)
+        self.assertIn("#progress", output)
+        self.assertIn("read-only", output)  # prev-label in the diff line
         refreshed = ChannelMembership.objects.get(user=user, channel=ch)
+        self.assertTrue(refreshed.can_read)
+        self.assertTrue(refreshed.can_write)
         self.assertEqual(refreshed.permission, ChannelMembership.PERM_READ_WRITE)
+
+    def test_reseeds_ywatanabe_as_write_only(self):
+        """Stale read-write ``#ywatanabe`` row is downgraded to write-only.
+
+        Codifies the lead msg#16884 flip so a re-run of the seed
+        converts the legacy read-write membership into the new
+        ``can_read=False, can_write=True`` shape without manual DB edits.
+        """
+        user, _ = User.objects.get_or_create(username="agent-worker-progress")
+        WorkspaceMember.objects.create(user=user, workspace=self.ws)
+        ch = Channel.objects.create(workspace=self.ws, name="#ywatanabe")
+        ChannelMembership.objects.create(
+            user=user, channel=ch, can_read=True, can_write=True
+        )
+        output = self._run("--workspace", "default")
+        self.assertIn("#ywatanabe", output)
+        self.assertIn("write-only", output)
+        refreshed = ChannelMembership.objects.get(user=user, channel=ch)
+        self.assertFalse(refreshed.can_read)
+        self.assertTrue(refreshed.can_write)
+        self.assertEqual(refreshed.permission, ChannelMembership.PERM_WRITE_ONLY)
 
     # --- error handling --------------------------------------------------
 

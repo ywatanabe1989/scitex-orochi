@@ -92,7 +92,13 @@ async def handle_register(consumer, content):
 
 
 async def handle_subscription(consumer, content, subscribe: bool):
-    """Add or remove a persistent channel subscription for the agent."""
+    """Add or remove a persistent channel subscription for the agent.
+
+    ``payload.can_read`` / ``payload.can_write`` (lead msg#16884
+    bit-split) are accepted and forwarded to the persistence helper.
+    Both default to True when omitted, preserving the pre-split
+    behaviour for agents on old clients.
+    """
     payload = content.get("payload", {})
     raw_name = payload.get("channel") or content.get("channel") or ""
     if not raw_name:
@@ -105,8 +111,17 @@ async def handle_subscription(consumer, content, subscribe: bool):
         )
         return
     ch_name = normalize_channel_name(raw_name)
+    # msg#16884: accept independent bits. Missing = True (back-compat
+    # default). unsubscribe ignores these.
+    can_read = bool(payload.get("can_read", True))
+    can_write = bool(payload.get("can_write", True))
     ok = await _persist_agent_subscription(
-        consumer.workspace_id, consumer.agent_name, ch_name, subscribe
+        consumer.workspace_id,
+        consumer.agent_name,
+        ch_name,
+        subscribe,
+        can_read=can_read,
+        can_write=can_write,
     )
     if not ok:
         await consumer.send_json(
@@ -118,14 +133,21 @@ async def handle_subscription(consumer, content, subscribe: bool):
         )
         return
     group = _sanitize_group(f"channel_{consumer.workspace_id}_{ch_name}")
-    if subscribe:
+    # msg#16884 bit-split: only join the channel-layer group + advertise
+    # the channel in agent_meta["channels"] when the subscription grants
+    # read access. A write-only subscription persists the row but must
+    # not pull chat fan-out — that is the whole point of the split.
+    joins_group = subscribe and can_read
+    if joins_group:
         await consumer.channel_layer.group_add(group, consumer.channel_name)
     else:
+        # Always discard on unsubscribe; also discard if we're flipping
+        # a prior read-write row into write-only in-place.
         await consumer.channel_layer.group_discard(group, consumer.channel_name)
     subs = list(getattr(consumer, "agent_meta", {}).get("channels", []) or [])
-    if subscribe and ch_name not in subs:
+    if joins_group and ch_name not in subs:
         subs.append(ch_name)
-    if not subscribe and ch_name in subs:
+    if (not joins_group) and ch_name in subs:
         subs.remove(ch_name)
     if hasattr(consumer, "agent_meta"):
         consumer.agent_meta["channels"] = subs

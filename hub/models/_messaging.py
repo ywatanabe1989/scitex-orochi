@@ -119,12 +119,24 @@ class ChannelPreference(models.Model):
 
 
 class ChannelMembership(models.Model):
-    """Explicit per-member channel permissions (todo#407).
+    """Explicit per-member channel permissions (todo#407, lead msg#16884).
 
-    Stores the access level for a given (user, channel) pair.
-    Default is read-write — only entries that deviate from the default
-    need explicit rows. All agents and humans can post by default;
-    admins can create read-only rows to restrict specific members.
+    Stores the access level for a given (user, channel) pair via two
+    independent boolean bits — ``can_read`` and ``can_write`` — so the
+    four combinations (RW / R-only / W-only / no-op) are representable
+    without juggling an enum string.
+
+    The legacy ``permission`` CharField is preserved for one release
+    cycle (data migration 0029 backfills it in both directions); new
+    consumer code should rely exclusively on the bits. The field will be
+    dropped in a follow-up migration once every deploy has rolled past
+    0029.
+
+    Default is ``can_read=True``, ``can_write=True`` (full read-write,
+    matching the pre-bit-split default) so rows that exist only to
+    track presence keep behaving identically. Admins can flip either
+    bit False to restrict a specific member (e.g. write-only digest
+    targets: ``can_read=False, can_write=True``).
 
     This model serves humans and agent-synthetic-users equally (spec §2.1).
     """
@@ -148,10 +160,29 @@ class ChannelMembership(models.Model):
         on_delete=models.CASCADE,
         related_name="memberships",
     )
+    # Deprecated — kept for one release cycle (lead msg#16884). Consumer
+    # code must use ``can_read`` / ``can_write`` instead. The
+    # post_save/migration bridge in 0029 keeps the string in sync with the
+    # bits so admin UIs / legacy callers that still read the enum see the
+    # right value, and a future migration will drop the column.
     permission = models.CharField(
         max_length=12,
         choices=PERM_CHOICES,
         default=PERM_READ_WRITE,
+    )
+    can_read = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether the member receives chat/reaction/edit/delete "
+            "fan-out for this channel. False = write-only (no read)."
+        ),
+    )
+    can_write = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether the member is allowed to post to this channel. "
+            "False = read-only."
+        ),
     )
     joined_at = models.DateTimeField(auto_now_add=True)
 
@@ -160,7 +191,85 @@ class ChannelMembership(models.Model):
         unique_together = ("user", "channel")
 
     def __str__(self):
-        return f"{self.user.username} → {self.channel.name} ({self.permission})"
+        bits = f"r={int(self.can_read)},w={int(self.can_write)}"
+        return f"{self.user.username} → {self.channel.name} ({bits})"
+
+    # -- bit <-> legacy-string bridge (msg#16884, deprecated string) -----
+
+    @staticmethod
+    def perm_to_bits(permission: str) -> tuple[bool, bool]:
+        """Map the legacy ``permission`` enum to ``(can_read, can_write)``.
+
+        Unknown values fall through to ``(True, True)`` — the historical
+        default — so garbage data never locks a member out silently.
+        """
+        if permission == ChannelMembership.PERM_READ_ONLY:
+            return (True, False)
+        if permission == ChannelMembership.PERM_WRITE_ONLY:
+            return (False, True)
+        return (True, True)
+
+    @staticmethod
+    def bits_to_perm(can_read: bool, can_write: bool) -> str:
+        """Map ``(can_read, can_write)`` back to the legacy enum.
+
+        The ``(False, False)`` case (admin lockout) has no legacy enum —
+        we map it to ``read-only`` (the most restrictive value the old
+        enum could express) so legacy readers continue to treat the row
+        as no-write. Callers that care about lockout must check the
+        bits directly.
+        """
+        if can_read and can_write:
+            return ChannelMembership.PERM_READ_WRITE
+        if can_read and not can_write:
+            return ChannelMembership.PERM_READ_ONLY
+        if (not can_read) and can_write:
+            return ChannelMembership.PERM_WRITE_ONLY
+        # (False, False) — admin lockout, no legacy enum for it.
+        return ChannelMembership.PERM_READ_ONLY
+
+    def __init__(self, *args, **kwargs):
+        """One-release-cycle deprecation bridge for the ``permission`` enum.
+
+        Legacy callers that still pass ``permission=...`` at construct
+        time (without bits) deserve to keep working — the test suite in
+        particular leans on this shape. When a caller supplies
+        ``permission`` but NOT the bits, derive the bits from the enum
+        so both views stay consistent. When bits are explicitly set they
+        win (they are the new source of truth).
+        """
+        has_perm = "permission" in kwargs
+        has_read = "can_read" in kwargs
+        has_write = "can_write" in kwargs
+        super().__init__(*args, **kwargs)
+        if has_perm and not (has_read or has_write):
+            bits = ChannelMembership.perm_to_bits(self.permission)
+            self.can_read, self.can_write = bits
+
+    def save(self, *args, **kwargs):
+        """Keep ``permission`` in sync with the bits on every write.
+
+        Bits are the authoritative source. ``__init__`` already converts
+        a legacy ``permission=...`` construct into the matching bits, so
+        by save-time the bits reflect the caller's intent regardless of
+        which surface they used. We then normalize the string from the
+        bits so the deprecated column stays truthful for one-release
+        readers.
+
+        When ``save(update_fields=...)`` is used (Django's partial-update
+        path — ``update_or_create`` and ``save(update_fields=[...])``),
+        we must include ``permission`` in the update-fields set so the
+        normalized string actually hits the DB. Without this the bridge
+        silently no-ops on partial writes.
+        """
+        self.permission = self.bits_to_perm(self.can_read, self.can_write)
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None:
+            fields = set(update_fields)
+            if "can_read" in fields or "can_write" in fields:
+                fields.add("permission")
+                kwargs["update_fields"] = list(fields)
+        super().save(*args, **kwargs)
 
 
 class DMParticipant(models.Model):
