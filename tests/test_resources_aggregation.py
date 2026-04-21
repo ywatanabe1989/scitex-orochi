@@ -14,15 +14,36 @@ covered by the existing ``test_web.py`` integration tests.
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Ensure Django is configured before any hub.* import. CI invokes
+# ``pytest tests/`` without DJANGO_SETTINGS_MODULE set (see
+# .github/workflows/test.yml), and hub/registry pulls in Django at
+# import time. Set the env var + call django.setup() at module load so
+# both the test-collection phase and the test body can import hub.*.
+# The ``skipif`` marker degrades the test to a skip (not a failure) on
+# environments without Django installed (e.g. a minimal sdist
+# install), so this test never blocks a non-hub contributor's CI run.
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "orochi.settings")
+
+try:
+    import django as _django
+
+    _django.setup()
+    _DJANGO_OK = True
+except Exception:  # pragma: no cover — Django missing / misconfigured
+    _DJANGO_OK = False
+
+pytestmark = pytest.mark.skipif(
+    not _DJANGO_OK, reason="Django not configured — skipping hub.* tests"
+)
 
 
 @pytest.fixture
 def fresh_registry():
     """Reset the in-memory registry between tests (global state)."""
-    import django
-
-    django.setup()
     from hub.registry import _agents, _connections
 
     _agents.clear()
