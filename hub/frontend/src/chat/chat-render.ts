@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
-import { cleanAgentName, escapeHtml, timeAgo, userName } from "../app/utils";
+import { cleanAgentName, escapeHtml, hostedAgentName, timeAgo, userName } from "../app/utils";
 import { _renderMermaidIn, buildAttachmentsHtml } from "./chat-attachments";
 import { _processMessageMarkdown } from "./chat-markdown";
 import { _chatFilterQuery, _mentionRegex, _pulseSidebarRow, _voiceDeferQueue, applyIssueTitleHints, isKnownAgent } from "./chat-state";
@@ -162,7 +162,22 @@ export function appendMessage(msg) {
     '<span class="sender" style="color:' +
     senderColor +
     '">' +
-    escapeHtml(cleanAgentName(senderName)) +
+    /* #238: include @hostname in chat-feed sender headers, mirroring
+     * the sidebar Agents list. Look up the agent record in the live
+     * cache (window.__lastAgents) and pass to hostedAgentName so
+     * cleanAgentName collapses redundant role-host suffixes
+     * (head-mba@mba → head@mba). Falls back to bare cleanAgentName
+     * for humans / unknown senders. */
+    escapeHtml(
+      isAgent
+        ? (function () {
+            var rec = (window.__lastAgents || []).find(function (a) {
+              return a && a.name === senderName;
+            });
+            return rec ? hostedAgentName(rec) : cleanAgentName(senderName);
+          })()
+        : cleanAgentName(senderName),
+    ) +
     "</span>" +
     youTag +
     roleBadge +
