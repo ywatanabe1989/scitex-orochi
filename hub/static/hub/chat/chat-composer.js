@@ -231,6 +231,14 @@ document.addEventListener("click", function (e) {
   if (!msgInput) return;
   msgInput.addEventListener("blur", function (e) {
     if (window.__voiceInputAllowBlur) return;
+    /* msg#16116 Item 2: never re-focus msg-input from a non-Chat tab. */
+    var _activeTab =
+      typeof window !== "undefined" && typeof window.activeTab === "string"
+        ? window.activeTab
+        : typeof activeTab === "string"
+          ? activeTab
+          : "";
+    if (_activeTab !== "chat") return;
     var savedStart = msgInput.selectionStart || 0;
     var savedEnd = msgInput.selectionEnd || 0;
     var rt = e && e.relatedTarget;

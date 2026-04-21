@@ -4,6 +4,7 @@ import { sendOrochiMessage, userName } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
 import { _renderMermaidIn } from "./chat-attachments";
 import { clearPendingAttachments, getPendingAttachments } from "../upload";
+import { activeTab } from "../tabs";
 
 export function updateChannelSelect() {
   /* Channel select removed -- using sidebar selection instead */
@@ -238,6 +239,14 @@ document.addEventListener("click", function (e) {
   if (!msgInput) return;
   msgInput.addEventListener("blur", function (e) {
     if (window.__voiceInputAllowBlur) return;
+    /* msg#16116 Item 2: never re-focus msg-input from a non-Chat tab.
+     * When the user is on Overview/TODO/etc the input bar is display:none
+     * and the watchdog's rAF refocus either silently no-ops (browsers
+     * refuse to focus display:none elements) or — under race conditions
+     * with rapid tab switches — can briefly park focus on msg-input and
+     * cascade into a Chat-tab flip via downstream focus-in handlers.
+     * Guard: if Chat isn't the active tab, leave the blur where it is. */
+    if (activeTab !== "chat") return;
     var savedStart = msgInput.selectionStart || 0;
     var savedEnd = msgInput.selectionEnd || 0;
     var rt = e && e.relatedTarget;
