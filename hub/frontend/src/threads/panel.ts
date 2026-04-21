@@ -3,7 +3,14 @@ import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
 import { apiUrl, cleanAgentName, escapeHtml, getAgentColor, orochiHeaders, timeAgo } from "../app/utils";
 import { buildAttachmentsHtml } from "../chat/chat-attachments";
 import { renderComposer } from "../composer/composer";
-import { _linkifyThreadContent, _pushThreadUrlState, _renderThreadAttachmentTray, _stageThreadFiles } from "./state";
+import {
+  _linkifyThreadContent,
+  _pushThreadUrlState,
+  _renderThreadAttachmentTray,
+  _stageThreadFiles,
+  getThreadPendingAttachments,
+  resetThreadPendingAttachments,
+} from "./state";
 import { _debounceSave, clearDraft, loadDraft } from "../composer/draft-store";
 
 function _threadDraftTarget(parentId) {
@@ -24,8 +31,9 @@ var _threadComposer = null;
  * hydration. */
 /* globals: apiUrl, orochiHeaders, escapeHtml, timeAgo, getAgentColor,
    cleanAgentName, getSenderIcon, getResolvedAgentColor,
-   (globalThis as any).threadPanel, (globalThis as any).threadPanelParentId, (globalThis as any).threadPendingAttachments,
+   (globalThis as any).threadPanel, (globalThis as any).threadPanelParentId,
    (globalThis as any)._threadSketchActive, _renderThreadAttachmentTray, _stageThreadFiles,
+   getThreadPendingAttachments, resetThreadPendingAttachments,
    _linkifyThreadContent, _pushThreadUrlState */
 
 export function closeThreadPanel(opts) {
@@ -106,7 +114,11 @@ export async function openThreadPanel(parentId, opts) {
   await loadThreadReplies(parentId);
 
   var composerSlot = document.getElementById("thread-composer-slot");
-  (globalThis as any).threadPendingAttachments = [];
+  /* msg#16527: clear the shared pending-attachments array IN PLACE. Do
+   * NOT reassign `(globalThis as any).threadPendingAttachments` — under
+   * ES modules that would orphan state.ts's module-local reference, so
+   * pasted / dropped images would never reach sendThreadReply. */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
 
   if (composerSlot) {
@@ -331,7 +343,12 @@ export async function sendThreadReply() {
   var ta = document.getElementById("thread-input");
   if (!ta) return;
   var text = ta.value.trim();
-  var attachments = (globalThis as any).threadPendingAttachments
+  /* msg#16527: read from the shared SSoT accessor, not
+   * `(globalThis as any).threadPendingAttachments`. The globalThis
+   * mirror falls out of sync across ES-module boundaries every time
+   * panel.ts reassigned it, so pasted / dropped images sat in
+   * state.ts's local array but were missed by the send payload. */
+  var attachments = getThreadPendingAttachments()
     .filter(function (p) {
       return p.uploaded;
     })
@@ -347,8 +364,9 @@ export async function sendThreadReply() {
       window.voiceInputResetAfterSend();
     } catch (_) {}
   }
-  /* Clear thread attachment tray */
-  (globalThis as any).threadPendingAttachments = [];
+  /* Clear thread attachment tray — in-place mutate so the state.ts
+   * module-local reference stays authoritative. */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
   try {
     var res = await fetch(apiUrl("/api/threads/"), {

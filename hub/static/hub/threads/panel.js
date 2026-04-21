@@ -6,8 +6,9 @@
  * thread-specific voice-lang button sync + draft-store hydration. */
 /* globals: apiUrl, orochiHeaders, escapeHtml, timeAgo, getAgentColor,
    cleanAgentName, getSenderIcon, getResolvedAgentColor, renderComposer,
-   threadPanel, threadPanelParentId, threadPendingAttachments,
+   threadPanel, threadPanelParentId,
    _threadSketchActive, _renderThreadAttachmentTray, _stageThreadFiles,
+   getThreadPendingAttachments, resetThreadPendingAttachments,
    _linkifyThreadContent, _pushThreadUrlState */
 
 var _threadComposer = null;
@@ -82,7 +83,8 @@ async function openThreadPanel(parentId, opts) {
   await loadThreadReplies(parentId);
 
   var composerSlot = document.getElementById("thread-composer-slot");
-  threadPendingAttachments = [];
+  /* msg#16527: clear IN PLACE so the shared reference stays authoritative. */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
 
   if (composerSlot && typeof renderComposer === "function") {
@@ -300,7 +302,11 @@ async function sendThreadReply() {
   var ta = document.getElementById("thread-input");
   if (!ta) return;
   var text = ta.value.trim();
-  var attachments = threadPendingAttachments
+  /* msg#16527: read via the shared accessor so the mirror stays
+   * aligned with threads/state — panel.js used to reassign
+   * threadPendingAttachments on every open, which the ES-module build
+   * cannot do across module boundaries. */
+  var attachments = getThreadPendingAttachments()
     .filter(function (p) {
       return p.uploaded;
     })
@@ -316,8 +322,8 @@ async function sendThreadReply() {
       window.voiceInputResetAfterSend();
     } catch (_) {}
   }
-  /* Clear thread attachment tray */
-  threadPendingAttachments = [];
+  /* Clear thread attachment tray — in-place mutate (msg#16527). */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
   try {
     var res = await fetch(apiUrl("/api/threads/"), {
