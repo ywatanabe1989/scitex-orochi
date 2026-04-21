@@ -388,6 +388,18 @@
 .sidebar .channel-item .ch-identity-icon {
   color: var(--channel-accent, inherit);
 }
+/* msg#15599 Task B: row-wide colorization — the channel NAME text
+ * picks up the per-channel accent colour too, mirroring how agent
+ * cards tint the agent name via inline `color:` in agent-badge.ts.
+ * Previously only the icon + 2px stripe carried colour (PR #306 task
+ * 4); lead wanted the name to read coloured as well. The 👁/🔔 glyphs
+ * stay monochrome (they encode state, not identity), and the bell /
+ * eye grayscale filters in the rules above are untouched. Row
+ * background and opacity remain PR #293/#295 invariants (opacity 1,
+ * no per-row font-weight). */
+.sidebar .channel-item .ch-name {
+  color: var(--channel-accent, inherit);
+}
 .ch-pin:hover,
 .ch-watch:hover,
 .ch-eye:hover {
