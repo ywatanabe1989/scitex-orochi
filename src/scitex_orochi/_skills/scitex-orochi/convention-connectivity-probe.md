@@ -222,7 +222,7 @@ Tracked 2026-04-13. Agents responsible for each lane must update this list when 
 
 ## Per-lane issue templates
 
-Copy-paste these into #agent / issue tracker when assigning adoption work to a host owner.
+Copy-paste these into the issue tracker (or DM the host owner) when assigning adoption work to a host owner. (`#agent` was abolished 2026-04-21; cross-head coordination now lives in `#heads`.)
 
 ### Primary workstation lane (owner: head-<host>)
 > **Task**: Align `worker-healer-<host>` `/loop` with `convention-connectivity-probe.md` canonical pattern.
@@ -234,7 +234,7 @@ Copy-paste these into #agent / issue tracker when assigning adoption work to a h
 > 4. Routine all-green: written to `~/.scitex/healer/last-scan.json`, **not** posted.
 > 5. Consume `~/.scitex/orochi/fleet-watch/` if head-<host> snapshot is available; fall back to own probe otherwise.
 >
-> **Done signal**: one-line post to #agent: `worker-healer-<host> adoption complete, job <id>`, then mark this row ✅ in `convention-connectivity-probe.md`.
+> **Done signal**: DM the dispatcher (or one-line post to `#heads` for cross-head visibility): `worker-healer-<host> adoption complete, job <id>`, then mark this row ✅ in `convention-connectivity-probe.md`.
 
 ### NAS/storage lane (owner: head-<host>)
 > **Task**: Align `worker-healer-<host>` `/loop` with canonical pattern and switch it to **pure consumer** of its own `fleet_watch.sh` output (no duplicate probes).
@@ -253,7 +253,7 @@ Copy-paste these into #agent / issue tracker when assigning adoption work to a h
 > **Acceptance**:
 > 1. Document whether a long-lived probe loop can run on login1 (policy: controller-only is OK, see `project_spartan_login_node` memory).
 > 2. List which metrics are obtainable on login1 vs require a compute allocation.
-> 3. Post a short design note to #agent; update this skill's per-host row with link.
+> 3. Post a short design note to `#heads` (or DM lead); update this skill's per-host row with link.
 >
 > **Done signal**: feasibility note posted; skill row updated to 📝 feasibility-complete.
 

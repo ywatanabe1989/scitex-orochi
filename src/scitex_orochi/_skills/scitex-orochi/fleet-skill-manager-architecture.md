@@ -221,9 +221,11 @@ drift/dedupe candidates, curate taxonomy.
 | Source              | Target latency | Escalate if                                       |
 |---------------------|----------------|---------------------------------------------------|
 | DM from any agent   | ≤ 60 s         | miss → #escalation after 5 min                    |
-| #agent @mention     | ≤ 60 s         | same                                              |
+| #heads @mention     | ≤ 60 s         | same (cross-head coordination)                    |
 | #the operator direct   | ≤ 30 s         | miss → TTS escalation                             |
 | #the operator fleet    | only if skills expertise is the blocker; otherwise silent (the operator thread is DM-ish, not fleet broadcast) |
+
+> `#agent` was abolished 2026-04-21; cross-head @mentions now go to `#heads`, and task dispatch/ack uses DM.
 
 ### Response format (terse, in order)
 
@@ -331,8 +333,8 @@ should copy this pattern.
   metrics-collector daemons.
 - `silent-success.md` — rule #6 discipline that governs the
   worker's posting behavior.
-- `fleet-communication-discipline.md` — #the operator vs #agent vs
-  #progress rules the worker follows.
+- `fleet-communication-discipline.md` — #the operator vs DM vs
+  #heads vs #progress rules the worker follows.
 - `agent-startup-protocol.md` — 5-step boot sequence the Track B
   worker runs before entering its idle-respond loop.
 - `fleet-close-evidence-gate.md` — the evidence standard the worker
