@@ -198,6 +198,62 @@ def _check_dm_write_allowed(
     return False
 
 
+def check_membership_allowed(
+    sender: str, channel: str, workspace_id: int | None = None
+) -> bool:
+    """Return True if ``sender`` is allowed to write to ``channel`` per
+    :class:`hub.models.ChannelMembership`.
+
+    Semantics (issue #276 — closing the REST/WS write-path ACL gap):
+
+    * DMs are handled by :func:`_check_dm_write_allowed`; this helper
+      returns ``True`` for ``dm:`` channels (deferring to the caller's
+      existing DM gate).
+    * If the caller did not supply ``workspace_id`` we cannot scope the
+      lookup and fall back to ``True`` (preserves non-WS test fixtures).
+    * If an explicit :class:`ChannelMembership` row exists with
+      ``permission = "read-only"`` the write is **denied**.
+    * If the sender is a synthetic agent user (``agent-*`` — see
+      ``hub/views/auth.py``) and *no* membership row exists for the
+      target non-DM channel, the write is **denied**. Agents must be
+      explicitly added (ywatanabe policy msg#11866 — "by default no
+      agent subscribes anywhere"). Human users keep the permissive
+      default so humans continue to post through the UI without a
+      pre-seeded row.
+    """
+    if channel.startswith("dm:") or workspace_id is None:
+        return True
+
+    try:
+        from hub.models import Channel as _Channel
+        from hub.models import ChannelMembership as _Membership
+    except Exception:
+        return True
+
+    ch = (
+        _Channel.objects.filter(workspace_id=workspace_id, name=channel)
+        .only("id", "kind")
+        .first()
+    )
+    if ch is None or ch.kind == _Channel.KIND_DM:
+        # Channel does not exist yet, or is a DM row without dm: prefix —
+        # let the caller's other gates decide.
+        return True
+
+    row = (
+        _Membership.objects.filter(channel_id=ch.id, user__username=sender)
+        .only("permission")
+        .first()
+    )
+    if row is not None:
+        return row.permission != _Membership.PERM_READ_ONLY
+
+    # No explicit row. Agents must be explicitly added; humans default-allow.
+    if sender.startswith("agent-"):
+        return False
+    return True
+
+
 def reload() -> int:
     """Force reload of ACL from disk. Returns number of channel rules loaded."""
     global _last_load

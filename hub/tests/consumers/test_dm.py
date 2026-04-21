@@ -427,6 +427,15 @@ class DMConsumerRoutingTest(TestCase):
         from asgiref.sync import async_to_sync
 
         from hub.consumers import AgentConsumer
+        from hub.models import ChannelMembership
+
+        # Issue #276 — agent senders require an explicit membership row
+        # on non-DM channels. This test uses bare ``alice`` as the agent
+        # name; the WS handler authenticates as ``agent-alice``, so seed
+        # the membership for that synthetic user.
+        agent_user, _ = User.objects.get_or_create(username="agent-alice")
+        general, _ = Channel.objects.get_or_create(workspace=self.ws, name="#general")
+        ChannelMembership.objects.get_or_create(user=agent_user, channel=general)
 
         consumer = AgentConsumer.__new__(AgentConsumer)
         consumer.workspace_id = self.ws.id

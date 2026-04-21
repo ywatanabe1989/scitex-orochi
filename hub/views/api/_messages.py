@@ -10,6 +10,7 @@ from hub.views.api._common import (
     Message,
     MessageThread,
     async_to_sync,
+    check_membership_allowed,
     check_write_allowed,
     get_channel_layer,
     get_workspace,
@@ -99,6 +100,19 @@ def api_messages(request, slug=None):
     ):
         return JsonResponse(
             {"error": "not allowed to write to this channel"}, status=403
+        )
+    # Issue #276 — close the REST write-path ACL gap. The yaml ACL above
+    # is permissive-by-default when channels.yaml is absent; the
+    # ChannelMembership gate enforces the per-(user, channel) permission
+    # rows managed via /api/channel-members/ and blocks agents that were
+    # never explicitly subscribed to the target group channel.
+    if not check_membership_allowed(
+        sender=sender_identity,
+        channel=ch_name,
+        workspace_id=workspace.id,
+    ):
+        return JsonResponse(
+            {"error": "not a member of this channel"}, status=403
         )
 
     channel, _ = Channel.objects.get_or_create(
