@@ -93,6 +93,17 @@ urlpatterns = [
     path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Auto-dispatch operator triggers + inspection (Phase 1c msg#16477).
+    path(
+        "api/auto-dispatch/fire/",
+        views.api_auto_dispatch_fire,
+        name="api-auto-dispatch-fire-ws",
+    ),
+    path(
+        "api/auto-dispatch/status/",
+        views.api_auto_dispatch_status,
+        name="api-auto-dispatch-status-ws",
+    ),
     # Admin-scoped subscribe/unsubscribe (issue #262 §9.1) — mounted on
     # the workspace subdomain so dashboard sessions on
     # ``<slug>.scitex-orochi.com`` can call the admin path without an

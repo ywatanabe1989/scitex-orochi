@@ -221,6 +221,13 @@ orochi.add_command(hungry_signal)
 orochi.add_command(disk)
 orochi.add_command(chrome_watchdog)
 
+# ── Fleet-coordination verbs (Phase 1c, msg#16477) ───────────
+from scitex_orochi._cli.commands.dispatch_cmd import dispatch as dispatch_group
+from scitex_orochi._cli.commands.todo_cmd import todo as todo_group
+
+orochi.add_command(todo_group)
+orochi.add_command(dispatch_group)
+
 
 def main() -> None:
     try:

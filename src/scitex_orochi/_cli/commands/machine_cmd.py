@@ -1,16 +1,21 @@
-"""``scitex-orochi machine heartbeat {send,status}`` subcommands.
+"""``scitex-orochi machine {heartbeat,resources} ...`` subcommands.
 
-``send``  — drop-in for ``scripts/client/agent_meta.py --push --once``.
-            Enumerate local tmux/screen agent sessions, collect their
-            metadata via ``agent_meta_pkg`` (the real implementation
-            already lives in the repo), and POST each entry to the
-            Orochi hub's ``/api/agents/register/`` endpoint.
+``heartbeat send``    — drop-in for ``scripts/client/agent_meta.py --push --once``.
+                       Enumerate local tmux/screen agent sessions, collect their
+                       metadata via ``agent_meta_pkg`` (the real implementation
+                       already lives in the repo), and POST each entry to the
+                       Orochi hub's ``/api/agents/register/`` endpoint.
 
-``status`` — GET the hub agents registry and print this host's canonical
-            payload (``head-<hostname>``) as JSON. Used as a lightweight
-            smoke test in lieu of the dashboard.
+``heartbeat status``  — GET the hub agents registry and print this host's canonical
+                       payload (``head-<hostname>``) as JSON. Used as a lightweight
+                       smoke test in lieu of the dashboard.
 
-Both commands emit NDJSON on stdout and human-readable progress on
+``resources show``    — Snapshot local CPU / RAM / Storage / GPU in the
+                       ``N cores`` / ``N/M GB`` / ``N/M TB`` format that the
+                       Machines tab renders (PR #327 parity, ywatanabe msg#16215).
+                       Reads via ``agent_meta_pkg._metrics.collect_machine_metrics``.
+
+All commands emit NDJSON on stdout and human-readable progress on
 stderr when ``--verbose``.
 """
 
@@ -206,6 +211,144 @@ def heartbeat_status(
         click.echo(json.dumps(payload, indent=2, sort_keys=False))
     else:
         click.echo(json.dumps(payload, separators=(",", ":")))
+
+
+# ---------------------------------------------------------------------------
+# machine resources show
+# ---------------------------------------------------------------------------
+
+@machine.group("resources")
+def resources() -> None:
+    """Local host resource snapshot (CPU / RAM / Storage / GPU)."""
+
+
+def _import_metrics():
+    """Return ``collect_machine_metrics`` from ``agent_meta_pkg._metrics``.
+
+    Same bootstrapping dance as ``_import_agent_meta_pkg`` above: falls
+    back to prepending ``scripts/client`` to ``sys.path`` so non-installed
+    checkouts work.
+    """
+    try:
+        from agent_meta_pkg._metrics import (  # type: ignore[import-not-found]
+            collect_machine_metrics,
+        )
+
+        return collect_machine_metrics
+    except ImportError:
+        pass
+    from ._host_ops import _repo_root_candidate  # local import to avoid cycle
+
+    scripts_client = _repo_root_candidate() / "scripts" / "client"
+    if scripts_client.is_dir() and str(scripts_client) not in sys.path:
+        sys.path.insert(0, str(scripts_client))
+    try:
+        from agent_meta_pkg._metrics import (  # type: ignore[import-not-found]
+            collect_machine_metrics,
+        )
+
+        return collect_machine_metrics
+    except ImportError as exc:  # pragma: no cover - defensive
+        raise click.ClickException(
+            "agent_meta_pkg._metrics not importable — ensure you're in a "
+            "repo checkout or set SCITEX_OROCHI_REPO_ROOT."
+        ) from exc
+
+
+def _fmt_cores(n: int | None) -> str:
+    if not n:
+        return "-"
+    return f"{int(n)} cores"
+
+
+def _fmt_gb_ratio(used_mb: int | None, total_mb: int | None) -> str:
+    if not used_mb or not total_mb:
+        return "-"
+    used_gb = float(used_mb) / 1024.0
+    total_gb = float(total_mb) / 1024.0
+    return f"{used_gb:.1f}/{total_gb:.1f} GB"
+
+
+def _fmt_tb_ratio(used_mb: int | None, total_mb: int | None) -> str:
+    if not used_mb or not total_mb:
+        return "-"
+    used_tb = float(used_mb) / 1024.0 / 1024.0
+    total_tb = float(total_mb) / 1024.0 / 1024.0
+    return f"{used_tb:.2f}/{total_tb:.2f} TB"
+
+
+def _fmt_gpu(gpus: list[dict]) -> str:
+    if not gpus:
+        return "n/a"
+    used = sum(float(g.get("memory_used_mb") or 0) for g in gpus)
+    total = sum(float(g.get("memory_total_mb") or 0) for g in gpus)
+    if total <= 0:
+        return f"{len(gpus)}x"
+    used_gb = used / 1024.0
+    total_gb = total / 1024.0
+    return f"{len(gpus)}x — VRAM {used_gb:.1f}/{total_gb:.1f} GB"
+
+
+@resources.command("show")
+@click.option(
+    "--pretty",
+    is_flag=True,
+    help="Pretty-print the JSON (default: single-line NDJSON).",
+)
+@click.pass_context
+def resources_show(ctx: click.Context, pretty: bool) -> None:
+    """Print this host's resource snapshot (matches Machines-tab display).
+
+    Emits the shape::
+
+        {
+          "host": "<shortname>",
+          "display": {
+            "cpu": "N cores",
+            "ram": "N/M GB",
+            "storage": "N/M TB",
+            "gpu":  "N x — VRAM N/M GB"   # or "n/a"
+          },
+          "raw": { ...full metrics dict... }
+        }
+
+    ``--json`` (top-level) or ``--pretty`` honoured. Human output prints
+    the four lines in a compact key:value format so operators can eyeball
+    the values without piping through jq.
+    """
+    collect = _import_metrics()
+    try:
+        metrics = collect()
+    except Exception as exc:  # noqa: BLE001 - must degrade
+        raise click.ClickException(f"collect_machine_metrics failed: {exc}") from exc
+
+    display = {
+        "cpu": _fmt_cores(metrics.get("cpu_count")),
+        "ram": _fmt_gb_ratio(metrics.get("mem_used_mb"), metrics.get("mem_total_mb")),
+        "storage": _fmt_tb_ratio(
+            metrics.get("disk_used_mb"), metrics.get("disk_total_mb")
+        ),
+        "gpu": _fmt_gpu(metrics.get("gpus") or []),
+    }
+    payload = {
+        "host": resolve_self_host(),
+        "display": display,
+        "raw": metrics,
+    }
+    as_json = bool(ctx.obj and ctx.obj.get("json"))
+    if as_json or pretty:
+        click.echo(
+            json.dumps(payload, indent=2 if pretty else None, default=str)
+            if pretty
+            else json.dumps(payload, separators=(",", ":"), default=str)
+        )
+        return
+    # Human output — the four Machines-tab lines.
+    click.echo(f"host:    {payload['host']}")
+    click.echo(f"CPU:     {display['cpu']}")
+    click.echo(f"RAM:     {display['ram']}")
+    click.echo(f"Storage: {display['storage']}")
+    click.echo(f"GPU:     {display['gpu']}")
 
 
 __all__ = ["machine"]
