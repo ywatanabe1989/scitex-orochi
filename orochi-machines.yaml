@@ -1,9 +1,10 @@
 # Orochi Fleet Machine Inventory (todo#283 / Task #2)
 #
 # Source-of-truth manifest for the four fleet hosts. Producer/consumer roles:
-#   - Producers (per-host healers, fleet_watch.sh) read this to know what
-#     they're supposed to see (expected sessions, expected resources).
-#   - Consumers (mamba-healer-*, MCP `connectivity_matrix`, future hub UI
+#   - Producers (per-host healers, fleet_watch.sh, host-liveness-probe.sh)
+#     read this to know what they're supposed to see (expected sessions,
+#     expected resources).
+#   - Consumers (healer-<host>, MCP `connectivity_matrix`, future hub UI
 #     Machines tab) read this to render labels and to flag drift.
 #
 # This file is intentionally human-curated, not auto-generated. The drifted
@@ -64,22 +65,37 @@ machines:
       hostname: bastion-mba.scitex-orochi.com
       cloudflared_running: true
     expected_tmux_sessions:
+      # Per-host gateway + healer (hosts: all)
       - head-mba
-      - mamba-auth-manager-mba
-      - mamba-explorer-mba
-      - mamba-healer-mba
-      - mamba-quality-checker-mba
-      - mamba-skill-manager
-      - mamba-synchronizer-mba
-      - mamba-todo-manager
-      - mamba-verifier-mba
+      - healer-mba
+      # Fleet-wide singletons currently pinned on mba (host: priority chain,
+      # first-available wins; mba is primary for all six mgr-* + expert-* +
+      # lead + proj-* today — see #298).
+      - expert-scitex
+      - lead
+      - mgr-auth
+      - mgr-code-quality
+      - mgr-memory
+      - mgr-pkg
+      - mgr-secretary
+      - mgr-todo
+      - proj-neurovista
+      - proj-ripple-wm
+      - proj-scitex-clew
+      - proj-scitex-cloud
+      - proj-scitex-orochi
+      # Host-pinned + per-host workers on mba
+      - worker-iOS-simulator   # host: [mba] — only Mac in fleet has Xcode
+      - worker-playwright-mba  # hosts: all
+      - worker-progress        # host: [mba] — #301
+      - worker-todo-mirror     # singleton; lives on mba today
     process_caps:
       ulimit_u: 4000         # macOS hard cap (msg#8043 confirmed); raise via launchctl limit maxproc
       pid_max: ~             # macOS uses kern.maxproc, not /proc/sys/kernel/pid_max
     notes:
       - "Hub origin: scitex-orochi.com Cloudflare tunnel terminates here."
       - "Fork pressure observed at 18.5% (739/4000) during today's session — well under cap but cap is hard."
-      - "All 9 head + mamba sessions auto-start via launchd plist staged in ~/.dotfiles/src/launchd/."
+      - "All head + mgr-*/proj-*/worker-* sessions auto-start via launchd plist staged in ~/.dotfiles/src/launchd/."
 
   # ---------------------------------------------------------------------------
   - canonical_name: nas
@@ -123,8 +139,11 @@ machines:
       hostname: bastion-nas.scitex-orochi.com
       cloudflared_running: true
     expected_tmux_sessions:
+      # Per-host gateway + healer (hosts: all)
       - head-nas
-      - mamba-healer-nas
+      - healer-nas
+      # Per-host worker (hosts: all)
+      - worker-playwright-nas
     process_caps:
       ulimit_u: ~              # ulimit -u inherited from systemd, no hard cap observed
       pid_max: 4194304         # /proc/sys/kernel/pid_max
@@ -175,7 +194,11 @@ machines:
       hostname: bastion-spartan.scitex-orochi.com
       cloudflared_running: false   # tier-2, requires HPC admin policy verification
     expected_tmux_sessions:
+      # Per-host gateway + healer (hosts: all). Minimal roster on spartan
+      # today — login node has cgroup CPU=1 cap so heavy agents dispatch via
+      # salloc/srun rather than running on login1 directly.
       - head-spartan
+      - healer-spartan
     process_caps:
       ulimit_u: ~              # cgroup 1 CPU on login1 per HPC policy
       pid_max: 303104          # observed at session start (Linux default class)
@@ -224,8 +247,12 @@ machines:
       hostname: bastion-ywata-note-win.scitex-orochi.com
       cloudflared_running: false   # tier-3, future
     expected_tmux_sessions:
+      # Per-host gateway + healer (hosts: all). Other fleet-wide agents may
+      # land here later if mba is offline and the singleton priority chain
+      # drifts over (host: [ywata-note-win, mba, nas, spartan]) — don't
+      # pre-list them; let the probe's advisory path catch transients.
       - head-ywata-note-win
-      - mamba-healer-ywata-note-win
+      - healer-ywata-note-win
     process_caps:
       ulimit_u: ~
       pid_max: 4194304
@@ -235,7 +262,7 @@ machines:
       - "mamba-healer-ywata-note-win identity drift fixed via SCITEX_OROCHI_AGENT env (todo#304)."
 
 # ---------------------------------------------------------------------------
-# Fleet-wide preflight thresholds (consumed by mamba-healer-* + fleet_watch.sh)
+# Fleet-wide preflight thresholds (consumed by healer-<host> + fleet_watch.sh)
 # ---------------------------------------------------------------------------
 preflight:
   fork_pressure_warn_pct: 60
