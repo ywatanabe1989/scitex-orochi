@@ -138,6 +138,18 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # lamp flickered to gray 1× per 30s heartbeat cycle.
             "last_pong_ts": prev.get("last_pong_ts"),
             "last_rtt_ms": prev.get("last_rtt_ms"),
+            # #259 — preserve echo round-trip state across re-registers.
+            # Same prev-preserve pitfall as the ping/pong fields above:
+            # if these were dropped on every heartbeat, the 4th LED
+            # (Remote/echo) would flicker to grey-pending at the
+            # heartbeat cadence even when the echo path is live. The
+            # fields are written by ``update_echo_pong()`` (in
+            # ``_heartbeat.py``) when an ``echo_pong`` frame lands, and
+            # are surfaced in the API by ``_payload.get_agents()`` /
+            # ``hub/views/agent_detail.py``.
+            "last_echo_rtt_ms": prev.get("last_echo_rtt_ms"),
+            "last_echo_ok_ts": prev.get("last_echo_ok_ts"),
+            "last_nonce_echo_at": prev.get("last_nonce_echo_at"),
             # Extended process/runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,

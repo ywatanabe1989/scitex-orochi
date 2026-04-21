@@ -31,6 +31,7 @@ from ._heartbeat import (
     set_health,
     set_subagent_count,
     set_subagents,
+    update_echo_pong,
     update_heartbeat,
     update_pong,
 )
@@ -76,6 +77,7 @@ __all__ = [
     # Heartbeat / activity / health setters
     "update_heartbeat",
     "update_pong",
+    "update_echo_pong",
     "mark_activity",
     "set_current_task",
     "set_subagents",

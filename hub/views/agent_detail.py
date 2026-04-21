@@ -247,6 +247,14 @@ def api_agent_detail(request, name: str):
         # by latency).
         "last_pong_ts": agent.get("last_pong_ts"),
         "last_rtt_ms": agent.get("last_rtt_ms"),
+        # #259 — 4th indicator (Remote / nonce-echo round-trip).
+        # ``last_nonce_echo_at`` is the field the agent-badge LED
+        # renderer consumes (already wired in agent-badge.js); the
+        # other two surface RTT + raw unix timestamp for the per-agent
+        # detail page tooling.
+        "last_nonce_echo_at": agent.get("last_nonce_echo_at"),
+        "last_echo_rtt_ms": agent.get("last_echo_rtt_ms"),
+        "last_echo_ok_ts": agent.get("last_echo_ok_ts"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
         "claude_md": redact_secrets(agent.get("claude_md") or ""),
         # todo#460: serve the workspace .mcp.json for the Agents tab viewer.

@@ -148,6 +148,31 @@ export async function handleWsMessage(
       return;
     }
 
+    // scitex-orochi#259 — 4th liveness indicator (Remote / nonce-echo
+    // round-trip). The hub publishes `{type:echo,nonce}` to every
+    // connected agent; we auto-respond at the WS layer with
+    // `{type:echo_pong,nonce,ts}`. NO Claude round-trip — this is a
+    // sidecar-level pure handler, identical in spirit to the ping/pong
+    // branch above. The hub matches the nonce against its in-flight
+    // dict to compute RTT and flips the 4th LED green.
+    if (msg.type === "echo") {
+      const nonce = typeof msg.nonce === "string" ? msg.nonce : null;
+      if (nonce) {
+        try {
+          ws.send(
+            JSON.stringify({
+              type: "echo_pong",
+              nonce,
+              ts: Date.now() / 1000,
+            }),
+          );
+        } catch (_) {
+          /* socket already closing — ignore */
+        }
+      }
+      return;
+    }
+
     // Thread replies and reaction updates -> rewrite to message type
     if (msg.type === "thread_reply") {
       const parentId = msg.parent_id ?? msg.parent ?? "?";

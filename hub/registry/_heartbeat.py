@@ -145,3 +145,29 @@ def update_pong(name: str, rtt_ms: float) -> None:
         if name in _agents:
             _agents[name]["last_pong_ts"] = time.time()
             _agents[name]["last_rtt_ms"] = float(rtt_ms)
+
+
+def update_echo_pong(name: str, rtt_ms: float) -> None:
+    """Record an agent's echo round-trip pong (#259, indicator #4).
+
+    Sets three fields:
+
+    - ``last_echo_rtt_ms`` — most recent echo RTT in milliseconds.
+    - ``last_echo_ok_ts``  — wall time of the most recent successful
+      echo (unix seconds, float). Used by the API/payload layer.
+    - ``last_nonce_echo_at`` — ISO-8601 string of the same instant,
+      consumed directly by the Agents-tab LED renderer
+      (``renderAgentLeds`` reads ``a.last_nonce_echo_at``).
+
+    All three are written atomically so a partial update can't leave
+    the LED rendering off a fresher timestamp than the RTT it cites.
+    """
+    from datetime import datetime, timezone
+
+    now = time.time()
+    iso_now = datetime.fromtimestamp(now, tz=timezone.utc).isoformat()
+    with _lock:
+        if name in _agents:
+            _agents[name]["last_echo_rtt_ms"] = float(rtt_ms)
+            _agents[name]["last_echo_ok_ts"] = now
+            _agents[name]["last_nonce_echo_at"] = iso_now

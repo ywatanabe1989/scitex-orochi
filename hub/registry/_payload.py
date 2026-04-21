@@ -129,6 +129,20 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     else None
                 ),
                 "last_rtt_ms": a.get("last_rtt_ms"),
+                # #259 — 4th-indicator (Remote / nonce-echo) round-trip
+                # data for the dashboard. ``last_nonce_echo_at`` is the
+                # field the LED renderer reads (already wired in
+                # agent-badge.js); the other two surface RTT + raw unix
+                # timestamp for tooling and the per-agent detail page.
+                "last_nonce_echo_at": a.get("last_nonce_echo_at"),
+                "last_echo_rtt_ms": a.get("last_echo_rtt_ms"),
+                "last_echo_ok_ts": (
+                    datetime.fromtimestamp(
+                        a["last_echo_ok_ts"], tz=timezone.utc
+                    ).isoformat()
+                    if a.get("last_echo_ok_ts")
+                    else None
+                ),
                 "last_action": (
                     datetime.fromtimestamp(action_ts, tz=timezone.utc).isoformat()
                     if action_ts
