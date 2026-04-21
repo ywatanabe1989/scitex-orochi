@@ -216,8 +216,11 @@
 .ch-pin-off {
   /* ywatanabe 2026-04-21 msg#15131: "全部今暗くなってて見にくい...
      普通に見えるように". Icons stay at normal brightness instead of
-     the prior hover-reveal pattern. */
+     the prior hover-reveal pattern.
+     PR #<this> Item 5: outlined-grey glyph, readable without being
+     loud — mid-grey matches the agent row's neutral glyph weight. */
   opacity: 1;
+  color: #94a3b8;
 }
 .channel-item:hover .ch-star-off,
 .channel-item:hover .ch-pin-off,
@@ -226,7 +229,12 @@
   opacity: 0.7;
 }
 .ch-star-on {
-  color: #f5a623;
+  /* PR #<this> Item 5: starred state uses a brighter filled yellow so
+   * the "this channel is starred" signal reads at the same saturation
+   * weight as agent LED greens / the pinned-agent yellow. #fbbf24 is
+   * the same tint the SVG canvas star uses (channel-badge renderSvg). */
+  color: #fbbf24;
+  opacity: 1;
 }
 .ch-pin-on {
   opacity: 1;
@@ -249,11 +257,20 @@
  * "eye hidden should use the same glyph with a red strike, matching
  * the bell". */
 .ch-eye-on {
+  /* Item 12 (msg#15661): visible-state glyph bumped from mid-grey
+   * #94a3b8 (slate-400) to brighter slate-300 #cbd5e1 so "channel is
+   * visible" reads unambiguously on the dark sidebar. Previous tone
+   * was dim enough to be misread as a disabled/hidden state. */
   opacity: 1;
+  color: #cbd5e1;
 }
 .ch-eye-off {
-  opacity: 0.75;
+  /* Item 12: eye body stays grey; the dominant semantic cue is the
+   * red diagonal slash in ::after below. Slightly more opaque so the
+   * grey glyph reads through the red overlay. */
+  opacity: 0.85;
   filter: none;
+  color: #64748b;
   position: relative;
 }
 .ch-eye-off::after {
@@ -262,7 +279,10 @@
   left: 1px;
   right: 1px;
   top: 50%;
-  height: 2px;
+  /* Item 12: bump stroke from 2 → 2.5 px so the red slash reads
+   * cleanly on the 14 px eye glyph against both sidebar-bg and
+   * graph-canvas-bg. Colour stays Tailwind red-500 per spec. */
+  height: 2.5px;
   background: #ef4444;
   transform: rotate(-20deg);
   transform-origin: center;
@@ -284,20 +304,31 @@
  * encodes the slash (U+1F515 "bell with slash"); no extra overlay
  * needed. */
 .ch-mute {
+  /* PR #<this> Item 5: bell glyph saturation bumped to match the agent
+   * LED visual weight. Keep grayscale filter for muted (see ch-mute-on)
+   * but let the not-muted / "notifications on" state carry a little
+   * more warmth so the read isn't flat against the sidebar. */
   filter: grayscale(1);
   opacity: 0.7;
   color: #94a3b8;
 }
 .ch-mute-on {
-  /* Muted — bell-with-slash glyph, slightly dimmer than the default
-   * state so the "notifications are off" read is not louder than
-   * "notifications are on". */
-  opacity: 0.55;
+  /* Muted — bell-with-slash glyph at neutral grey, dimmer than the
+   * active state. The slash glyph itself encodes "off"; no extra
+   * colour cue. */
+  opacity: 0.6;
+  color: #64748b;
 }
 .ch-mute-off {
-  /* Not muted — neutral bell, monochrome, same weight as the other
-   * row icons. No yellow emphasis. */
-  opacity: 0.7;
+  /* Not muted — bell glyph at medium-bright so the "notifications on"
+   * state reads at the same saturation as agent LED greens / star
+   * yellow, without overriding the row's per-channel accent colour.
+   * #fbbf24 (bell yellow) would compete with ch-star-on; go with a
+   * soft gold instead. Item 5 explicit ask: "medium-bright colour
+   * (bell-yellow or similar to agent highlight)". */
+  filter: none;
+  opacity: 0.9;
+  color: #e0b87a;
 }
 .channel-item:hover .ch-mute {
   opacity: 1;
@@ -362,28 +393,23 @@
  *      only cascades to CSS-coloured glyphs: the default "#" text and
  *      emoji text via `color:`). Image avatars (img.agent-avatar) are
  *      bitmaps, so the tint doesn't bleed into user-uploaded icons.
- *   2. 2px left-edge stripe on the row so the accent is visible even
- *      when the channel uses an image avatar.
+ *   2. Row name text tinted to the accent (see .ch-name rule below).
  *
  * Intentionally NOT coloured:
- *   - Row background — PR #293's subtle .selected background rule owns
- *     selection signalling. Adding a row-level tint would either mask
- *     or compete with .selected.
- *   - Row text / opacity — PR #295 / #291 banned per-row font-weight
+ *   - Row background — the .selected rounded-rect tint owns selection
+ *     signalling. Adding a row-level tint would compete with .selected.
+ *   - Row text opacity — PR #295 / #291 banned per-row font-weight
  *     and opacity-based dimming.
- *   - 🔔/👁/★ glyphs (ch-mute/ch-eye/ch-star) — monochrome signal icons
- *     per spec. Only the category icon at slot 1 carries colour. */
+ *   - 🔔/👁/★ glyphs — state icons, not identity icons.
+ *
+ * PR #<this> Item 2 (lead msg#15608): the 2px left-edge accent bar is
+ * REMOVED. ywatanabe explicitly disliked the left bar; selection
+ * signalling now uses the subtle rounded-rect background (Item 6).
+ * Unselected rows are plain — no left stripe, no right stripe. */
 .sidebar .channel-item {
-  /* Fallback to the existing muted text colour when no accent is set
-   * (e.g. renderChannelBadgeHtml called with no channelBadgeModel). */
-  border-left: 2px solid var(--channel-accent, transparent);
-  /* .channel-item in style-base.css already carries padding: 1px 6px
-   * (unified with .sidebar-agent-row per msg#15599 column-align spec).
-   * The 2px border-left above stacks on top of that 6px, giving a
-   * content start of 8px from the outer edge — matched by the
-   * transparent border-left applied to .sidebar-agent-row in
-   * activity-tab-list.css, so the icon / ★ columns line up across
-   * the Agents and Channels sidebar sections. */
+  /* No border-left here — Item 2 removed the accent bar. Row-level
+   * styling kept empty-but-present so future accent-adjacent rules
+   * (drag handles, drop targets, etc.) have a stable anchor. */
 }
 .sidebar .channel-item .ch-identity-icon {
   color: var(--channel-accent, inherit);

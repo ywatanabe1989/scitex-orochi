@@ -7,35 +7,47 @@ import {
 } from "./state";
 import { userName } from "../app/utils";
 
-/* activity-tab/topology-autolayout.ts — "整列" (Tidy) button handler.
+/* activity-tab/topology-autolayout.ts — "Reset Layout" button handler.
  *
  * Re-lays out the topology graph into two concentric rings:
  *   - Inner ring  = channel nodes
  *   - Outer ring  = agents + human user
  *
- * Then runs a couple of light repulsion passes so no two nodes sit
- * within ~1.2 * node_diameter of each other. Positions are written into
+ * Then runs a force-directed relaxation loop so no two nodes sit within
+ * ~1.1 * node_diameter of each other. Positions are written into
  * _topoManualPositions (the same overlay that drag-to-reposition uses)
  * so the layout survives heartbeat re-renders and zoom/pan.
  *
- * No deps; pure math + a two-pass softbody nudge. ywatanabe 2026-04-20
- * lead msg#15493 / todo#305.
+ * No deps; pure math. ywatanabe 2026-04-20 lead msg#15493 / todo#305 +
+ * PR #<this> Item 8 (zero-overlap guarantee).
  */
 
 /* Approximate node footprint used for the overlap-relief pass. The
- * topology renderer itself uses node_diameter ≈ 44 for agent badges
- * and ≈ 32 for channel diamonds; we take the max so repulsion is
- * slightly conservative. */
-var _NODE_D = 48;
-var _MIN_SEP = _NODE_D * 1.2; /* ~58px */
+ * topology renderer uses badge-pill nodes ≈ 90px wide × 22px tall for
+ * agents and ≈ 60px wide × 22px tall for channels (post-PR#310 — no
+ * more diamonds). We use a circumscribed diameter of 90 for the
+ * repulsion radius so wide pills don't visually overlap even when
+ * their centres are exactly `_NODE_D * 1.1` apart.
+ *
+ * Item 8 "guarantee: for N < (some threshold) nodes with the canvas
+ * dimensions available, post-layout every pair is at least
+ * node_diameter × 1.1 apart". */
+var _NODE_D = 90;
+var _MIN_SEP = _NODE_D * 1.1; /* ~99px */
+var _MAX_ITER = 300;
 
 /* One repulsion pass — O(n²) over the node set, fine for <200 nodes.
  * For each close pair, push them apart along the connecting vector by
  * half the overlap each. `anchors` holds the target-ring position so a
  * displaced node is also softly pulled back toward its assigned ring
- * slot; without this a dense cluster can spiral outward forever. */
+ * slot; without this a dense cluster can spiral outward forever.
+ *
+ * Returns the number of overlapping pairs observed in this pass so the
+ * caller's relaxation loop can terminate early when no overlap remains
+ * (PR #<this> Item 8). */
 function _repulsePass(nodes, anchors, strength) {
-  var i, j, a, b, dx, dy, d, overlap, ux, uy, push;
+  var i, j, a, b, dx, dy, d, overlap, ux, uy;
+  var overlapCount = 0;
   for (i = 0; i < nodes.length; i++) {
     for (j = i + 1; j < nodes.length; j++) {
       a = nodes[i];
@@ -44,9 +56,12 @@ function _repulsePass(nodes, anchors, strength) {
       dy = b.y - a.y;
       d = Math.sqrt(dx * dx + dy * dy);
       if (d >= _MIN_SEP) continue;
+      overlapCount++;
       if (d < 0.01) {
-        /* Co-located — nudge along a deterministic axis. */
-        ux = 1;
+        /* Co-located — nudge along a deterministic axis. Use node
+         * index parity so repeat-overlapping pairs drift apart
+         * consistently across iterations. */
+        ux = (i + j) % 2 === 0 ? 1 : -1;
         uy = 0;
         d = 0.01;
       } else {
@@ -68,6 +83,7 @@ function _repulsePass(nodes, anchors, strength) {
     nodes[i].x += (anc.x - nodes[i].x) * 0.05;
     nodes[i].y += (anc.y - nodes[i].y) * 0.05;
   }
+  return overlapCount;
 }
 
 /* Compute concentric ring positions for the currently-visible topology
@@ -163,11 +179,55 @@ export function _topoAutoLayout() {
     outerIdx++;
   });
 
-  /* Two nudge passes — empirically enough to resolve the typical
-   * 15-agent / 10-channel overlap on a default-sized canvas without
-   * drifting the rings noticeably. */
-  _repulsePass(nodes, anchors, 1.0);
-  _repulsePass(nodes, anchors, 0.7);
+  /* PR #<this> Item 8: force-directed relaxation loop with zero-overlap
+   * guarantee. Run up to _MAX_ITER passes; exit early when no pair
+   * overlaps. Strength decays over iterations so early passes move
+   * fast and late passes fine-tune without oscillation. Each iteration
+   * is O(n²); at N < 200 nodes and 300 iter cap this is <60k op/pass
+   * which runs instantly in the browser.
+   *
+   * If the canvas literally cannot fit the nodes (rOuter × 2π < N ×
+   * _MIN_SEP), we still relax to the best-effort spacing but log a
+   * console warning so the user knows the layout is saturated. */
+  var idealOuterSpacing =
+    (2 * Math.PI * rOuter) / Math.max(1, nOuter);
+  var idealInnerSpacing =
+    (2 * Math.PI * rInner) / Math.max(1, channels.length);
+  var saturated =
+    idealOuterSpacing < _MIN_SEP || idealInnerSpacing < _MIN_SEP;
+  if (saturated) {
+    console.warn(
+      "[topology-autolayout] canvas saturated: best-effort spacing " +
+        "(" +
+        Math.round(Math.min(idealOuterSpacing, idealInnerSpacing)) +
+        "px < " +
+        Math.round(_MIN_SEP) +
+        "px target). Consider hiding some agents/channels or " +
+        "enlarging the viewport.",
+    );
+  }
+  var iter;
+  var overlap = 0;
+  for (iter = 0; iter < _MAX_ITER; iter++) {
+    /* Strength decays linearly from 1.0 → 0.3 over the iteration cap
+     * so early passes do bulk separation and late passes polish. */
+    var strength = 1.0 - (iter / _MAX_ITER) * 0.7;
+    overlap = _repulsePass(nodes, anchors, strength);
+    /* Early-exit: no overlaps remaining = layout is clean. */
+    if (overlap === 0) break;
+  }
+  if (overlap > 0 && !saturated) {
+    /* Ran to the iteration cap without converging despite the canvas
+     * having enough room — surface that so future tuning can raise
+     * the cap if needed. */
+    console.warn(
+      "[topology-autolayout] did not converge after " +
+        _MAX_ITER +
+        " iterations, " +
+        overlap +
+        " overlapping pair(s) remain.",
+    );
+  }
 
   /* Write back into the manual-position overlay. We REPLACE every
    * existing entry for the keys we touched so partial drags don't

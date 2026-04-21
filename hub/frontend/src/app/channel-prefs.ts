@@ -267,6 +267,15 @@ export function _sortedStarred() {
     });
 }
 
+/* PR #<this> Item 1 (SSoT audit): this function predates channel-badge.ts
+ * and renders its own inline channel-row markup. The DOM elements it
+ * targets (#starred-heading, #starred-channels) do NOT exist in the
+ * current dashboard.html / workspace_settings.html templates — the
+ * function returns early on every call. Kept as-is to avoid surprise
+ * removal in a polish PR; the next time a "Starred" subsection UI
+ * surface is needed, this renderer MUST be rewritten to delegate to
+ * renderChannelBadgeHtml(ch, {context:"starred", ...}) rather than
+ * forking the markup again. */
 export function _renderStarredSection() {
   var heading = document.getElementById("starred-heading");
   var container = document.getElementById("starred-channels");

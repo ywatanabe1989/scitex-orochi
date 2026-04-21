@@ -2,6 +2,7 @@
 import { refreshActivityFromApi, startActivityAutoRefresh } from "./activity-tab/data";
 import { renderAgentsTab } from "./agents-tab/overview";
 import { restoreDraftForCurrentChannel } from "./chat/chat-composer";
+import { loadChannelHistory } from "./chat/chat-history";
 import { fetchFiles } from "./files-tab/files-tab-grid";
 import { renderResourcesTab } from "./resources-tab/tab";
 import { fetchSettings } from "./settings-tab";
@@ -9,12 +10,55 @@ import { renderTerminalTab } from "./terminal-tab";
 import { fetchTodoList } from "./todo-tab/todo-tab-list";
 import { renderVizTab, stopVizTab } from "./viz-tab";
 import { fetchWorkspaces } from "./workspaces-tab";
+import { setCurrentChannel } from "./app/state";
+import { channelUnread } from "./app/utils";
 
 /* Tab switching, collapsible sections, mobile sidebar */
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
    fetchWorkspaces */
 
 export var activeTab = "chat";
+
+/* PR #<this> Item 3 helper: pick a sensible default channel when the
+ * Chat tab is activated without one. Preference order:
+ *   1. Channel with the highest unread count (proxy for "most recently
+ *      posted / most relevant right now").
+ *   2. First sidebar channel row in document order (i.e. first in the
+ *      user's star-sorted list).
+ * Returns null if no candidate exists (empty sidebar / first load
+ * before the stats fetch returns). Caller is responsible for null
+ * handling — we intentionally do NOT set a placeholder channel. */
+function _pickFallbackChannel(): string | null {
+  try {
+    /* 1. Highest unread. channelUnread keys are channel names (raw or
+     *    normalised). We filter out DM channels since those are owned
+     *    by the DM surface; Chat fallback should land on a group
+     *    channel. */
+    var best: string | null = null;
+    var bestCount = 0;
+    var unread = (channelUnread as Record<string, number>) || {};
+    Object.keys(unread).forEach(function (k) {
+      if (!k || k.indexOf("dm:") === 0) return;
+      var n = unread[k] || 0;
+      if (n > bestCount) {
+        bestCount = n;
+        best = k;
+      }
+    });
+    if (best) return best;
+    /* 2. First sidebar channel row. Skip hidden/dm rows. */
+    var row = document.querySelector(
+      '.sidebar .channel-item:not([data-hidden="1"])',
+    );
+    if (row) {
+      var ch = row.getAttribute("data-channel");
+      if (ch && ch.indexOf("dm:") !== 0) return ch;
+    }
+  } catch (_) {
+    /* Never let a fallback-pick error break the tab activation. */
+  }
+  return null;
+}
 
 export function _activateTab(tab) {
   activeTab = tab;
@@ -62,6 +106,45 @@ export function _activateTab(tab) {
      * vanishes after the first tab switch. Banner content already tracks
      * the textarea target (see app.js _updateChannelTopicBanner). */
     if (topicBanner) topicBanner.style.display = "";
+    /* PR #<this> Item 3: Chat tab single-channel enforcement. On mount,
+     * if no channel is currently selected (and we're not in a DM), auto-
+     * select a reasonable default — prefer the channel with the most
+     * unread messages (closest proxy to "most recently posted"), fall
+     * back to the first visible sidebar channel. Never leave the Chat
+     * tab in the "Type a message (no channel selected)" state from its
+     * normal flow — that placeholder should only be reachable from the
+     * all-channels filter entry, never from Chat's mount path.
+     *
+     * DM exception: if the user is in a DM thread (currentChannel starts
+     * with "dm:"), we don't interfere — DMs are first-class chat
+     * targets. */
+    var cur = (globalThis as any).currentChannel;
+    var inDm = typeof cur === "string" && cur.indexOf("dm:") === 0;
+    if (!cur && !inDm) {
+      var picked = _pickFallbackChannel();
+      if (picked) {
+        setCurrentChannel(picked);
+        if (typeof loadChannelHistory === "function")
+          loadChannelHistory(picked);
+        /* Flip .selected on the sidebar row so the visual matches the
+         * state; the full sidebar re-render on next stats fetch will
+         * idempotently do the same, but this makes the transition feel
+         * instant. */
+        document
+          .querySelectorAll(
+            ".sidebar .channel-item.selected, .sidebar .dm-item.selected",
+          )
+          .forEach(function (it) {
+            it.classList.remove("selected");
+          });
+        var row = document.querySelector(
+          '.sidebar .channel-item[data-channel="' +
+            picked.replace(/"/g, '\\"') +
+            '"]',
+        );
+        if (row) row.classList.add("selected");
+      }
+    }
     /* Always default-focus the compose input when the chat tab is shown.
      * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
      * the primary action target on the chat tab, so the user should never

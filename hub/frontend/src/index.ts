@@ -76,6 +76,7 @@ import "./activity-tab/grid-click";
 import "./activity-tab/grid-mouse";
 import "./activity-tab/grid-ctx";
 import "./activity-tab/grid-hover";
+import "./activity-tab/channel-hover-preview";
 import "./activity-tab/grid-delegation";
 import "./activity-tab/controls";
 import "./activity-tab/init";

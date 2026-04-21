@@ -145,21 +145,22 @@ blockquote.chat-blockquote {
  * other rows keep their normal icons; the selected row is
  * distinguished only by a solid background".
  *
- * #294 (msg#15352 / #heads #15353): bump the accent alpha so the
- * selected row is UNAMBIGUOUSLY brighter than its siblings AND
- * clearly distinct from the row-hover state (:hover uses #1a1a1a,
- * a flat dark grey; the selected tint must read as an accent colour
- * rather than "slightly darker"). Text/icon styling stays identical
- * to unselected rows — only the background differs.
+ * PR #<this> Items 4+6 (lead msg#15618 / reference
+ * .playwright-cli/ctrl-click-selection-target-2026-04-21.png):
+ * the previous stark accent-teal tint (rgba 126/200/227, 0.35) read
+ * as "overloud" against the dark theme. Replace with a subtle
+ * neutral rounded-rect bg — matches the ctrl+click highlight
+ * ywatanabe liked in msg#15618. Same treatment for agents and DMs
+ * so the whole sidebar reads coherently; no left-accent bar, no
+ * outer glow, just a gentle rounded background tint.
  *
- * Applies to .sidebar .channel-item and .sidebar .agent-card (DMs
- * render as .agent-card so they inherit). */
-.sidebar .channel-item.selected {
-  background: rgba(126, 200, 227, 0.35);
-}
+ * Applies to .sidebar .channel-item, .sidebar .agent-card and
+ * .sidebar .dm-item. */
+.sidebar .channel-item.selected,
 .sidebar .agent-card.selected,
 .sidebar .dm-item.selected {
-  background: rgba(78, 205, 196, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
 }
 /* #294: normalise font-weight on every sidebar channel/DM row so no
  * per-name rule (e.g. a stale .channel-item.active path, or a

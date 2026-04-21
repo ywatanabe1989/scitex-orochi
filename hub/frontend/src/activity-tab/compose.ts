@@ -410,8 +410,25 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
    * clipboard carries a file/image, route to the Chat composer (the
    * canonical paste-to-attach pipeline lives there) and re-dispatch
    * the paste event so the upload.js handler does the work.
-   * ywatanabe 2026-04-19: "small input modal should support pasting". */
+   * ywatanabe 2026-04-19: "small input modal should support pasting".
+   *
+   * PR #<this> Item 10 (lead msg#15637): graph-compose paste was
+   * triggering a tab switch to Chat when the user intended the paste
+   * to land in the graph input. Root cause: the paste event bubbled
+   * up from this textarea to msg-input's body-attached paste handler
+   * (upload.ts handleClipboardPaste) which is focused on msg-input;
+   * when msg-input received the bubbled paste it implicitly reacted
+   * as if the user had interacted with the Chat composer. The fix is
+   * simple: unconditionally stopPropagation() on every paste into the
+   * graph input so nothing bubbles past this handler. The textarea
+   * still receives the native paste (we don't preventDefault unless
+   * we're re-routing files/long-text to msg-input explicitly). */
   input.addEventListener("paste", function (ev) {
+    /* Item 10: contain paste to this popup unconditionally — paste
+     * MUST NOT bubble up to msg-input's handler or any window-level
+     * tab-router. Don't preventDefault (that would kill native text
+     * paste); only stopPropagation. */
+    ev.stopPropagation();
     var cd =
       ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
     if (!cd) return;
@@ -434,8 +451,11 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     } catch (_) {}
     var isLong = text.length > 1000;
     if (hasFile || isLong) {
+      /* Route to Chat composer: block native textarea paste, close
+       * this popup, and synthesize a paste on msg-input (below). The
+       * stopPropagation above already contained the bubble; no need
+       * to repeat it here. */
       ev.preventDefault();
-      ev.stopPropagation();
       close();
       _routeToChat();
       setTimeout(function () {
