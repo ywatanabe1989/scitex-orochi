@@ -228,6 +228,20 @@ from scitex_orochi._cli.commands.todo_cmd import todo as todo_group
 orochi.add_command(todo_group)
 orochi.add_command(dispatch_group)
 
+# ── Phase 1d Step A: flat-keeper `mcp start` (Q5, plan PR #337) ─
+# Only mcp-client configs read this literal path, so it stays flat.
+from scitex_orochi._cli.commands.mcp_cmd import mcp as mcp_group
+
+orochi.add_command(mcp_group)
+
+# ── Phase 1d Step A: (Available Now) help-suffix layer ───────
+# Annotates `--help` output of the top-level group with a quiet
+# "(Available Now)" next to each reachable subcommand. See plan §9
+# (PR #337). Top-level only in this PR; nested groups land in Step B.
+from scitex_orochi._cli._help_availability import annotate_help_with_availability
+
+annotate_help_with_availability(orochi)
+
 
 def main() -> None:
     try:
