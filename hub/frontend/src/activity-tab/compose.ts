@@ -269,15 +269,18 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     "Drop files to attach\n" +
     "Paste image/file to attach\n" +
     "Click ▾ for attach / camera / sketch / voice";
-  /* Item 15 (lead msg#15694): channel-node double-click now shows a
+  /* Item 15 (lead msg#15694): channel-node double-click shows a
    * last-5-messages preview ABOVE the input area, so the user can see
-   * the conversation context before replying without first having to
-   * hover (channel-hover-preview popover) or triple-click into the
-   * full Chat tab. The preview is chronological (oldest → newest),
-   * scrolls internally if content overflows, and renders a loading
-   * placeholder while the fetch is in flight; a failed fetch turns
-   * into a muted "(no recent messages)" row rather than an error
-   * block so the compose input stays usable. */
+   * the conversation context before replying without triple-clicking
+   * into the full Chat tab. The preview is chronological (oldest →
+   * newest), scrolls internally if content overflows, and renders a
+   * loading placeholder while the fetch is in flight; a failed fetch
+   * turns into a muted "(no recent messages)" row rather than an error
+   * block so the compose input stays usable.
+   *
+   * (msg#16319: the older settled-hover channel-hover-preview popover
+   * has been removed — this in-popup preview is now the sole inline
+   * last-N surfacing for channels.) */
   pop.innerHTML =
     '<div class="tcc-preview" data-tcc-preview>' +
     '<div class="tcc-preview-loading">Loading recent messages\u2026</div>' +
@@ -638,8 +641,8 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
  * the double-clicked channel inside the compose popup's .tcc-preview
  * slot. Runs fire-and-forget — never blocks the input or closes the
  * popup on failure. API shape mirrors /api/history/ as used by
- * graph-feed / channel-hover-preview (newest-first; we reverse to
- * chronological before rendering). */
+ * graph-feed (newest-first; we reverse to chronological before
+ * rendering). */
 var _TCC_PREVIEW_LIMIT = 5;
 function _tccFmtTime(iso) {
   if (!iso) return "";
