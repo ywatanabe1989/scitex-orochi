@@ -213,6 +213,141 @@ class DmRestApiTest(TestCase):
         self.assertEqual(resp.status_code, 201, resp.content)
 
 
+# ── Token-auth on workspace-scoped routes (issues #258 + #254) ──────────
+
+
+class DmTokenAuthTest(TestCase):
+    """MCP sidecars hit the bare domain with ``?token=wks_...&agent=<name>``.
+
+    These tests pin the token-auth path independently of any Django session
+    cookie so the regression that took out ``dm_open`` / ``dm_list`` /
+    ``channel_info`` cannot reappear silently.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="tok-ws")
+        self.token = WorkspaceToken.objects.create(workspace=self.ws, label="ci")
+        self.bob = User.objects.create_user(username="bob", password="x")
+        WorkspaceMember.objects.create(workspace=self.ws, user=self.bob)
+
+    def test_post_dms_with_token_no_session(self):
+        """POST /api/workspace/<slug>/dms/?token=...&agent=... opens a DM."""
+        url = (
+            f"/api/workspace/tok-ws/dms/"
+            f"?token={self.token.token}&agent=mamba-foo"
+        )
+        resp = self.client.post(
+            url,
+            data=json.dumps({"recipient": "human:bob"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = resp.json()
+        # Canonical channel name with both principals.
+        self.assertIn("agent:mamba-foo", data["name"])
+        self.assertIn("human:bob", data["name"])
+        # The synthetic agent user was auto-provisioned as a member.
+        self.assertTrue(
+            User.objects.filter(username="agent-mamba-foo").exists(),
+            "token branch must auto-provision the agent's User row",
+        )
+        self.assertTrue(
+            WorkspaceMember.objects.filter(
+                workspace=self.ws, user__username="agent-mamba-foo"
+            ).exists(),
+            "token branch must auto-provision the WorkspaceMember row",
+        )
+
+    def test_get_dms_with_token_no_session(self):
+        url_post = (
+            f"/api/workspace/tok-ws/dms/?token={self.token.token}&agent=mamba-foo"
+        )
+        self.client.post(
+            url_post,
+            data=json.dumps({"recipient": "human:bob"}),
+            content_type="application/json",
+        )
+        resp = self.client.get(url_post)
+        self.assertEqual(resp.status_code, 200, resp.content)
+        rows = resp.json()["dms"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["other_participants"][0]["identity_name"], "bob")
+
+    def test_dms_token_invalid_returns_401(self):
+        resp = self.client.post(
+            "/api/workspace/tok-ws/dms/?token=wks_BADBADBAD&agent=mamba-foo",
+            data=json.dumps({"recipient": "human:bob"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_dms_token_missing_agent_returns_400(self):
+        resp = self.client.post(
+            f"/api/workspace/tok-ws/dms/?token={self.token.token}",
+            data=json.dumps({"recipient": "human:bob"}),
+            content_type="application/json",
+        )
+        self.assertEqual(resp.status_code, 400, resp.content)
+
+    def test_channels_get_with_token_no_session(self):
+        """GET /api/channels/?token=...&name=#X — the channel_info path.
+
+        Hits ``lvh.me`` (a bare-domain alias the middleware recognizes) so
+        the request is dispatched against ``hub.urls_bare`` — which is
+        exactly what MCP sidecars do when they call
+        ``https://scitex-orochi.com/api/channels/?...``. Without the
+        bare-domain route added in this PR the call 404s.
+        """
+        Channel.objects.create(workspace=self.ws, name="#general")
+        resp = self.client.get(
+            f"/api/channels/?token={self.token.token}&name=%23general",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = resp.json()
+        names = [c["name"] for c in data]
+        self.assertIn("#general", names)
+
+    def test_channels_get_invalid_token_returns_401(self):
+        resp = self.client.get(
+            "/api/channels/?token=wks_BADBADBAD", HTTP_HOST="lvh.me"
+        )
+        self.assertEqual(resp.status_code, 401, resp.content)
+
+    def test_workspace_scoped_channels_with_token(self):
+        """GET /api/workspace/<slug>/channels/?token=... resolves on bare domain."""
+        Channel.objects.create(workspace=self.ws, name="#proj-x")
+        resp = self.client.get(
+            f"/api/workspace/tok-ws/channels/?token={self.token.token}",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        names = [c["name"] for c in resp.json()]
+        self.assertIn("#proj-x", names)
+
+    def test_workspace_scoped_dms_resolves_on_bare_domain(self):
+        """POST /api/workspace/<slug>/dms/?token=... on the bare domain works.
+
+        Pin for issue #258 — the exact MCP request shape that previously
+        404'd in production because the route wasn't mounted in
+        ``hub.urls_bare``.
+        """
+        resp = self.client.post(
+            (
+                f"/api/workspace/tok-ws/dms/"
+                f"?token={self.token.token}&agent=mamba-foo"
+            ),
+            data=json.dumps({"recipient": "human:bob"}),
+            content_type="application/json",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        data = resp.json()
+        self.assertIn("agent:mamba-foo", data["name"])
+        self.assertIn("human:bob", data["name"])
+
+
 # ── Web Push (todo#263) ─────────────────────────────────────────────────
 
 from unittest.mock import MagicMock, patch
