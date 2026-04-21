@@ -109,14 +109,20 @@ def collect(agent: str) -> dict:
     # `agent` kwarg enables cross-cycle stagnation tracking; omit it
     # and the classifier degrades to its legacy stateless behavior.
     # Live hostname(1) — the kernel's answer to "where is this process
-    # running right now". This is the authoritative host-identity signal
-    # the hub's badge renderer (hostedAgentName) prefers over ``machine``.
-    # Collected here so ``_build_payload`` can forward it unconditionally,
-    # never letting env vars or server-side inference speak for the
-    # process (lead msg#15578 root fix).
-    import socket as _socket
+    # running right now", mapped through ``spec.hostname_aliases`` from
+    # ``~/.scitex/orochi/shared/config.yaml`` so raw OS hostnames like
+    # ``Yusukes-MacBook-Air`` surface as the canonical fleet short name
+    # (``mba``) the hub's badge renderer (hostedAgentName) displays.
+    #
+    # PR#309 correctly flipped env/hostname priority (lead msg#15578 —
+    # stale ``SCITEX_OROCHI_HOSTNAME=mba`` inherited into a spartan
+    # process) but pushed the raw ``socket.gethostname()`` here, which
+    # caused the ``Yusukes-MacBook-Air`` regression on the dashboard
+    # (ywatanabe msg#16102). Routing through ``resolve_machine_label``
+    # applies the alias map so both ``machine`` and ``hostname`` fields
+    # carry the same canonical label.
     try:
-        live_hostname = (_socket.gethostname() or "").split(".")[0].strip()
+        live_hostname = resolve_machine_label()
     except Exception:
         live_hostname = ""
 
