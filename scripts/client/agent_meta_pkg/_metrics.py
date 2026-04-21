@@ -18,6 +18,20 @@ def collect_machine_metrics() -> dict:
     what ``hub/views/api.py:api_resources`` projects into the per-machine
     Machines tab card. Empty/None on any read error so the receiver
     degrades gracefully.
+
+    Target display shape (ywatanabe msg#16215):
+
+    - CPU: ``N cores`` — ``cpu_count`` as integer
+    - RAM: ``N/M GB`` — ``mem_used_mb`` / ``mem_total_mb`` (MB; hub divides)
+    - Storage: ``N/M TB`` — ``disk_used_mb`` / ``disk_total_mb``
+    - GPU: ``N/M`` — per-GPU ``utilization_percent`` + ``memory_*_mb`` in ``gpus``
+
+    ``disk_total_mb`` / ``disk_used_mb`` / ``gpus`` were added post
+    msg#16215 because the hub sidebar + Machines-tab tooltip were
+    rendering empty strings for mba + nas (no GPU hosts): the legacy
+    producer emitted only ``disk_used_percent`` and no GPU info, so the
+    aggregator in ``hub/views/api/_resources.py`` had no "total" side
+    for the N/M storage display.
     """
     out: dict[str, Any] = {
         "cpu_count": None,
@@ -28,7 +42,14 @@ def collect_machine_metrics() -> dict:
         "mem_used_percent": None,
         "mem_total_mb": None,
         "mem_free_mb": None,
+        "mem_used_mb": None,
         "disk_used_percent": None,
+        "disk_total_mb": None,
+        "disk_used_mb": None,
+        # Per-GPU list — empty on hosts without a GPU. Each entry carries
+        # enough for the hub's ``N/M GPU`` + VRAM tooltip (utilization_%,
+        # memory_used_mb, memory_total_mb, name).
+        "gpus": [],
     }
     try:
         import psutil  # type: ignore
@@ -65,6 +86,7 @@ def collect_machine_metrics() -> dict:
             out["mem_free_mb"] = int(
                 vm.available / 1024 / 1024
             )  # use "available", not "free" — Darwin/Linux semantics (todo#310)
+            out["mem_used_mb"] = int((vm.total - vm.available) / 1024 / 1024)
             out["mem_used_percent"] = round(
                 (vm.total - vm.available) * 100.0 / max(vm.total, 1), 1
             )
@@ -84,6 +106,7 @@ def collect_machine_metrics() -> dict:
                 if total and avail is not None:
                     out["mem_total_mb"] = int(total / 1024 / 1024)
                     out["mem_free_mb"] = int(avail / 1024 / 1024)
+                    out["mem_used_mb"] = int((total - avail) / 1024 / 1024)
                     out["mem_used_percent"] = round(
                         (total - avail) * 100.0 / max(total, 1), 1
                     )
@@ -113,17 +136,23 @@ def collect_machine_metrics() -> dict:
                 ) * page_size
                 out["mem_total_mb"] = int(total_bytes / 1024 / 1024)
                 out["mem_free_mb"] = int(free_bytes / 1024 / 1024)
+                out["mem_used_mb"] = int((total_bytes - free_bytes) / 1024 / 1024)
                 out["mem_used_percent"] = round(
                     (total_bytes - free_bytes) * 100.0 / max(total_bytes, 1), 1
                 )
         except Exception:
             pass
 
-    # Disk: try psutil, then statvfs
+    # Disk: try psutil, then statvfs. Emit BOTH percent AND absolute
+    # total/used so the hub can render ``N/M TB`` (ywatanabe msg#16215).
+    # The legacy-only percent field is kept for backwards compat with
+    # older hub aggregators + the donut-chart renderer.
     try:
         if psutil is not None:
             du = psutil.disk_usage(os.path.expanduser("~"))
             out["disk_used_percent"] = round(du.percent, 1)
+            out["disk_total_mb"] = int(du.total / 1024 / 1024)
+            out["disk_used_mb"] = int(du.used / 1024 / 1024)
         else:
             raise ImportError
     except Exception:
@@ -131,10 +160,21 @@ def collect_machine_metrics() -> dict:
             st = os.statvfs(os.path.expanduser("~"))
             total = st.f_blocks * st.f_frsize
             free = st.f_bavail * st.f_frsize
+            used = total - free
             if total > 0:
-                out["disk_used_percent"] = round((total - free) * 100.0 / total, 1)
+                out["disk_used_percent"] = round(used * 100.0 / total, 1)
+                out["disk_total_mb"] = int(total / 1024 / 1024)
+                out["disk_used_mb"] = int(used / 1024 / 1024)
         except Exception:
             pass
+
+    # GPU: best-effort nvidia-smi query. Apple Silicon (mba) + NAS
+    # (DXP480TPLUS) have no NVIDIA GPU — `shutil.which` returns None,
+    # so ``gpus`` stays ``[]`` and the frontend renders "n/a" (spec).
+    try:
+        out["gpus"] = _collect_gpus()
+    except Exception:
+        out["gpus"] = []
 
     try:
         # cpu_model — best-effort, OS-specific
@@ -145,6 +185,53 @@ def collect_machine_metrics() -> dict:
         pass
 
     return out
+
+
+def _collect_gpus() -> list[dict]:
+    """Per-GPU snapshot via ``nvidia-smi``.
+
+    Returns ``[]`` on hosts without ``nvidia-smi`` on PATH (Apple
+    Silicon, NAS, any container without GPU pass-through). Each entry:
+    ``{name, utilization_percent, memory_used_mb, memory_total_mb}``.
+
+    Format chosen so ``hub/views/api/_resources.py`` can surface ``N/M``
+    (GPU utilisation / GPU count) and ``VRAM used/total`` in the
+    Machines-tab tooltip without further parsing.
+    """
+    if shutil.which("nvidia-smi") is None:
+        return []
+    try:
+        proc = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,utilization.gpu,memory.used,memory.total",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=4,
+        )
+    except Exception:
+        return []
+    if proc.returncode != 0:
+        return []
+    gpus: list[dict] = []
+    for raw in proc.stdout.splitlines():
+        parts = [p.strip() for p in raw.split(",")]
+        if len(parts) < 4:
+            continue
+        try:
+            gpus.append(
+                {
+                    "name": parts[0],
+                    "utilization_percent": float(parts[1]),
+                    "memory_used_mb": float(parts[2]),
+                    "memory_total_mb": float(parts[3]),
+                }
+            )
+        except (ValueError, TypeError):
+            continue
+    return gpus
 
 
 def collect_slurm_status():
