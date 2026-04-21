@@ -6,6 +6,7 @@ from hub.views.api._common import (
     JsonResponse,
     Workspace,
     WorkspaceMember,
+    WorkspaceToken,
     async_to_sync,
     csrf_exempt,
     get_channel_layer,
@@ -44,13 +45,37 @@ def api_workspaces(request):
 
 
 @csrf_exempt
-@login_required
 @require_http_methods(["GET", "PATCH"])
 def api_channels(request, slug=None):
     """GET /api/channels/ — list channels in current workspace.
     PATCH /api/channels/?name=<channel> — update channel description (topic).
+
+    Auth: Django session OR workspace token (``?token=wks_...``). The
+    token branch supports the MCP ``channel_info`` tool which hits the
+    bare domain — see issue #254 / #258 for the original outage. PATCH
+    still requires a logged-in human (token-auth has no notion of "who
+    edited the topic").
     """
-    workspace = get_workspace(request, slug=slug)
+    # GET supports token auth (read-only); PATCH still requires session
+    # because we attribute the edit to a Django user for audit.
+    if request.method == "GET":
+        token_str = request.GET.get("token")
+        if token_str:
+            try:
+                wt = WorkspaceToken.objects.select_related("workspace").get(
+                    token=token_str
+                )
+                workspace = wt.workspace
+            except WorkspaceToken.DoesNotExist:
+                return JsonResponse({"error": "invalid token"}, status=401)
+        elif request.user and request.user.is_authenticated:
+            workspace = get_workspace(request, slug=slug)
+        else:
+            return JsonResponse({"error": "auth required"}, status=401)
+    else:
+        if not (request.user and request.user.is_authenticated):
+            return JsonResponse({"error": "auth required"}, status=401)
+        workspace = get_workspace(request, slug=slug)
 
     if request.method == "PATCH":
         body = json.loads(request.body)

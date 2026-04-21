@@ -1,5 +1,6 @@
 """Direct-message helpers + ``/api/dms/`` view (spec v3 §4)."""
 
+from hub.views._helpers import resolve_workspace_and_actor
 from hub.views.api._common import (
     Channel,
     DMParticipant,
@@ -9,10 +10,8 @@ from hub.views.api._common import (
     async_to_sync,
     csrf_exempt,
     get_channel_layer,
-    get_workspace,
     json,
     log,
-    login_required,
     require_http_methods,
 )
 
@@ -201,24 +200,19 @@ def _dm_row(channel, current_member):
     }
 
 
-@login_required
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def api_dms(request, slug=None):
     """GET/POST /api/workspace/<slug>/dms/ — list or create 1:1 DMs.
 
-    Spec v3 §4. The current authenticated principal is resolved via
-    ``WorkspaceMember`` for ``request.user`` in the active workspace.
+    Spec v3 §4. Auth is either a Django session OR a workspace token
+    (``?token=wks_...&agent=<name>``) — see
+    :func:`hub.views._helpers.resolve_workspace_and_actor`. MCP sidecars
+    on the bare domain rely on the token branch (issue #258 root cause).
     """
-    workspace = get_workspace(request, slug=slug)
-
-    current_member = (
-        WorkspaceMember.objects.filter(workspace=workspace, user=request.user)
-        .select_related("user")
-        .first()
-    )
-    if current_member is None:
-        return JsonResponse({"error": "not a workspace member"}, status=403)
+    workspace, current_member, err = resolve_workspace_and_actor(request, slug=slug)
+    if err is not None:
+        return err
 
     if request.method == "GET":
         my_dm_channel_ids = DMParticipant.objects.filter(
