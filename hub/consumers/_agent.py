@@ -58,6 +58,18 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_name = result["workspace_name"]
         self.agent_name = qs.get("agent", ["anonymous"])[0]
 
+        # scitex-orochi#255: per-process identity captured at connect so
+        # the singleton enforcer can decide who wins when two WS claim
+        # the same agent name. Both fields are optional in the URL —
+        # legacy clients (pre-#257) omit them and fall through to the
+        # permissive "no enforcement" path with a logged WARNING.
+        self._instance_id = qs.get("instance_id", [""])[0] or ""
+        _start_raw = qs.get("start_ts_unix", [""])[0]
+        try:
+            self._start_ts_unix = float(_start_raw) if _start_raw else None
+        except (TypeError, ValueError):
+            self._start_ts_unix = None
+
         # Spec v3 §2.3 — idempotently ensure a WorkspaceMember row exists
         # for this agent so DMParticipant FKs have a stable target.
         self.workspace_member = await _ensure_agent_member(
@@ -85,11 +97,117 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
         await self.accept()
 
+        # scitex-orochi#255: singleton cardinality enforcement.
+        #
+        # Before recording this connection in the registry, decide
+        # whether to enforce singleton cardinality: only one WS per
+        # agent name should remain alive. The decision rests on
+        # (instance_id, start_ts_unix) captured per-connection — the
+        # older start_ts_unix wins (the original process keeps its
+        # claim). Legacy clients without identity fall through to the
+        # permissive multi-connection behaviour with a WARNING.
+        from hub.registry import (
+            decide_singleton_winner,
+            get_connection_identity,
+            list_sibling_channels,
+            record_singleton_conflict,
+            set_connection_identity,
+        )
+
+        decision = decide_singleton_winner(
+            self.agent_name, self._instance_id, self._start_ts_unix
+        )
+        if decision == "challenger":
+            # Newcomer is older → it wins. Close every incumbent WS
+            # under the same name with the singleton-conflict close
+            # frame, record the event, then proceed to register the
+            # newcomer below as the surviving connection.
+            for inc_ch in list_sibling_channels(self.agent_name):
+                inc_ident = get_connection_identity(inc_ch) or {}
+                inc_iid = inc_ident.get("instance_id", "")
+                try:
+                    await self.channel_layer.send(
+                        inc_ch,
+                        {
+                            "type": "agent.singleton_evict",
+                            "code": 4409,
+                            "reason": "duplicate_identity",
+                        },
+                    )
+                except Exception:  # noqa: BLE001 — best-effort eviction
+                    log.exception(
+                        "Failed to send singleton-evict to incumbent %s for %s",
+                        inc_ch,
+                        self.agent_name,
+                    )
+                record_singleton_conflict(
+                    self.agent_name,
+                    winner_instance_id=self._instance_id,
+                    loser_instance_id=inc_iid,
+                    reason="duplicate_identity",
+                )
+                log.warning(
+                    "Singleton conflict on %s: incumbent %s evicted by older "
+                    "challenger (winner=%s, loser=%s).",
+                    self.agent_name,
+                    inc_ch,
+                    self._instance_id,
+                    inc_iid,
+                )
+        elif decision == "incumbent":
+            # An older incumbent already holds the claim — close THIS
+            # socket with the singleton-conflict frame and record the
+            # event. The incumbent's identity is the most-recent
+            # full-identity sibling.
+            inc_iid = ""
+            for inc_ch in list_sibling_channels(self.agent_name):
+                inc_ident = get_connection_identity(inc_ch) or {}
+                if inc_ident.get("instance_id"):
+                    inc_iid = inc_ident["instance_id"]
+                    break
+            record_singleton_conflict(
+                self.agent_name,
+                winner_instance_id=inc_iid,
+                loser_instance_id=self._instance_id,
+                reason="duplicate_identity",
+            )
+            log.warning(
+                "Singleton conflict on %s: challenger %s rejected (incumbent=%s, "
+                "loser=%s).",
+                self.agent_name,
+                self.channel_name,
+                inc_iid,
+                self._instance_id,
+            )
+            await self.close(code=4409, reason="duplicate_identity")
+            return
+        elif decision == "no_enforcement" and list_sibling_channels(self.agent_name):
+            # Legacy client (or first connection missing identity) —
+            # don't enforce, but log so multi-instance hazards stay
+            # visible in the operator log.
+            log.warning(
+                "Multi-instance hazard on %s: %d sibling connection(s) but "
+                "missing instance_id/start_ts_unix on this or incumbent — "
+                "falling back to permissive multi-connection behaviour "
+                "(scitex-orochi#255).",
+                self.agent_name,
+                len(list_sibling_channels(self.agent_name)),
+            )
+
         # scitex-orochi#144 fix path 4: track this WebSocket as one of N
         # active connections under self.agent_name, so the registry can
         # surface concurrent-instance situations without altering identity.
         from hub.registry import register_connection
 
+        # Record identity BEFORE register_connection so that subsequent
+        # connections coming in concurrently can see this one's identity
+        # via decide_singleton_winner.
+        set_connection_identity(
+            self.channel_name,
+            self.agent_name,
+            self._instance_id,
+            self._start_ts_unix,
+        )
         active_sessions = register_connection(self.agent_name, self.channel_name)
 
         log.info(
@@ -142,9 +260,15 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # scitex-orochi#144 fix path 4: drop only THIS connection from
             # the per-agent set, not the whole agent record. The agent only
             # transitions to offline when its last sibling connection drops.
-            from hub.registry import unregister_connection
+            from hub.registry import (
+                clear_connection_identity,
+                unregister_connection,
+            )
 
             agent_name = getattr(self, "agent_name", "?")
+            # scitex-orochi#255: drop the per-channel identity row so a
+            # later challenger doesn't compare against a dead socket.
+            clear_connection_identity(self.channel_name)
             remaining = unregister_connection(agent_name, self.channel_name)
             if remaining > 0:
                 log.info(
@@ -234,6 +358,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         )
 
     # --- channel-layer events ignored on the agent socket ----------------
+
+    async def agent_singleton_evict(self, event):
+        """scitex-orochi#255 — close this WS because a newer/older twin won.
+
+        Sent to the LOSING incumbent socket from the connect handler of a
+        challenger that wins the singleton-cardinality decision. The
+        message-name uses an underscore (``agent_singleton_evict``)
+        because Channels rewrites the dotted ``agent.singleton_evict``
+        type into this method name.
+        """
+        code = int(event.get("code") or 4409)
+        reason = str(event.get("reason") or "duplicate_identity")
+        log.info(
+            "Closing WS for %s by singleton-eviction (code=%d reason=%s)",
+            getattr(self, "agent_name", "?"),
+            code,
+            reason,
+        )
+        try:
+            await self.close(code=code, reason=reason)
+        except TypeError:
+            # Some versions of channels.AsyncJsonWebsocketConsumer.close
+            # don't accept a `reason` kwarg — fall back to code-only.
+            await self.close(code=code)
 
     async def agent_presence(self, event):
         pass
