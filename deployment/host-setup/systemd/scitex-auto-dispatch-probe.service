@@ -1,0 +1,25 @@
+[Unit]
+# SciTeX Orochi — auto-dispatch probe ("idle = forbidden" by code)
+#
+# Runs scripts/client/auto-dispatch-probe.sh every 5 minutes. Paired with
+# scitex-auto-dispatch-probe.timer in the same directory.
+#
+# Install via scripts/client/install-auto-dispatch-probe.sh. The installer
+# templates __REPO__, __PROBE_MODE__ and __HOME__ into the target copy
+# under ~/.config/systemd/user/ and reloads the user-scoped systemd.
+#
+# For hosts without systemd --user support, the installer falls back to a
+# cron entry.
+Description=SciTeX Orochi — auto-dispatch probe (idle heads auto-claim next high-priority todo)
+Documentation=https://github.com/ywatanabe1989/scitex-orochi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/systemd/user/orochi.env
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/bash -lc '__REPO__/scripts/client/auto-dispatch-probe.sh __PROBE_MODE__'
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60
