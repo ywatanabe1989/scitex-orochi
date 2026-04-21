@@ -20,7 +20,7 @@ from __future__ import annotations
 import time
 from unittest import mock
 
-from django.test import TestCase, override_settings
+from django.test import TestCase, TransactionTestCase, override_settings
 
 from hub import auto_dispatch as ad
 from hub.auto_dispatch import (
@@ -434,3 +434,105 @@ class RunPickTodoContractTest(TestCase):
             got = ad._run_pick_todo("infrastructure")
         self.assertEqual(got["number"], 7)
         self.assertEqual(got["title"], "fix it")
+
+
+# ---------------------------------------------------------------------------
+# 6. Async-context fire path — regression for the SynchronousOnlyOperation
+#    seen in prod logs on 2026-04-21: the WS ``handle_heartbeat`` handler
+#    runs on the asyncio loop, and Django 4.1+ refuses ORM calls from an
+#    async context. Before the fix, every WS-triggered auto-dispatch
+#    fire silently lost its DM because ``_post_dispatch_message`` raised
+#    inside the broad ``except Exception`` and returned None.
+# ---------------------------------------------------------------------------
+
+
+@override_settings(CHANNEL_LAYERS=_INMEM_CHANNELS)
+class AsyncContextFireTest(TransactionTestCase):
+    """``check_agent_auto_dispatch`` must dispatch cleanly from asyncio.
+
+    Uses ``TransactionTestCase`` (not ``TestCase``) because the fix
+    offloads the ORM work to a worker thread. The thread uses its own
+    DB connection; with the default ``TestCase`` transaction wrapping,
+    the test connection and the worker connection don't see each
+    other's writes — so assertions about persisted rows would always
+    fail. TransactionTestCase truncates tables per-test instead, which
+    permits the cross-connection visibility this path relies on in
+    production.
+    """
+
+    def setUp(self):
+        self.agent_name = "head-mba"
+        with _lock:
+            _agents.pop(self.agent_name, None)
+        self.ws = Workspace.objects.create(name="auto-dispatch-async-ws")
+        register_agent(self.agent_name, self.ws.id, {"role": "head"})
+        _reset_auto_dispatch_state_for_tests(self.agent_name)
+
+    def tearDown(self):
+        with _lock:
+            _agents.pop(self.agent_name, None)
+
+    def test_in_async_context_detection(self):
+        """``_in_async_context`` matches the caller's execution context."""
+        import asyncio
+
+        self.assertFalse(ad._in_async_context())
+
+        async def _probe():
+            return ad._in_async_context()
+
+        self.assertTrue(asyncio.new_event_loop().run_until_complete(_probe()))
+
+    def test_fire_from_async_does_not_raise_sync_only(self):
+        """Regression for SynchronousOnlyOperation on WS heartbeat fire path.
+
+        Simulates the WS handler calling ``check_agent_auto_dispatch``
+        from an asyncio coroutine. Before the fix, the inline
+        ``Workspace.objects.get(...)`` raised ``SynchronousOnlyOperation``;
+        after the fix, the ORM work is moved to a worker thread and the
+        DM lands exactly like the sync path.
+        """
+        import asyncio
+        import threading
+
+        with _lock:
+            _agents[self.agent_name]["subagent_count"] = 0
+
+        captured: dict = {}
+
+        async def _driver():
+            # First heartbeat: streak -> 1 (no fire).
+            with mock.patch.object(ad, "_run_pick_todo", return_value=None):
+                r1 = ad.check_agent_auto_dispatch(self.agent_name)
+                # Second heartbeat: streak -> 2 -> fire.
+                r2 = ad.check_agent_auto_dispatch(self.agent_name)
+            captured["r1"] = r1
+            captured["r2"] = r2
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(_driver())
+        finally:
+            loop.close()
+
+        self.assertEqual(captured["r1"]["decision"], "streak_increment")
+        self.assertEqual(captured["r2"]["decision"], "fired")
+
+        # The DM Message is written by the worker thread launched from
+        # the async context — join any live ones so the assert is
+        # deterministic. Name prefix matches ``_dispatch_in_thread``.
+        for t in list(threading.enumerate()):
+            if t.name.startswith("auto-dispatch-"):
+                t.join(timeout=5.0)
+
+        dm_name = _canonical_auto_dispatch_dm_name(self.agent_name)
+        msgs = list(Message.objects.filter(channel__name=dm_name))
+        self.assertEqual(
+            len(msgs),
+            1,
+            msg=(
+                "WS-context fire must still persist exactly one "
+                "auto-dispatch DM (SynchronousOnlyOperation regression)."
+            ),
+        )
+        self.assertEqual(msgs[0].metadata.get("kind"), "auto-dispatch")
