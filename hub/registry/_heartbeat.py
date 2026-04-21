@@ -125,13 +125,35 @@ def set_health(
 
 
 def update_heartbeat(name: str, metrics: dict | None = None) -> None:
-    """Update heartbeat timestamp and optional metrics."""
+    """Update heartbeat timestamp and optional metrics.
+
+    todo#272: after the timestamp/metric write, run the quota-pressure
+    state machine for this agent. The check reads the quota fields that
+    ``register_agent()`` just wrote (``quota_5h_used_pct`` / ``quota_7d_used_pct``
+    + reset timestamps + prior state) and posts a threshold-crossing
+    message to ``#progress`` / ``#escalation`` / ``#ywatanabe`` when a
+    window crosses the warn / escalate bands. Best-effort — the check
+    never raises into the heartbeat hot path.
+    """
     with _lock:
         if name in _agents:
             _agents[name]["last_heartbeat"] = time.time()
             _agents[name]["status"] = "online"
             if metrics:
                 _agents[name]["metrics"] = metrics
+            has_agent = True
+        else:
+            has_agent = False
+
+    if has_agent:
+        # Deferred import — avoid circular (``hub.quota_watch`` itself
+        # imports ``hub.registry``).
+        try:
+            from hub.quota_watch import check_agent_quota_pressure
+
+            check_agent_quota_pressure(name)
+        except Exception:  # pragma: no cover — defense in depth
+            pass
 
 
 def update_pong(name: str, rtt_ms: float) -> None:
