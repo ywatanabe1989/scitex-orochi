@@ -37,7 +37,6 @@ if str(_AGENT_META_DIR) not in sys.path:
 
 from agent_meta_pkg._pane import parse_subagent_count  # noqa: E402
 
-
 # ---------------------------------------------------------------------------
 # Happy-path parametric coverage — every count / grammar variant the
 # Claude Code status line is known to emit.
