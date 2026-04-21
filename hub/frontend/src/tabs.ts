@@ -17,7 +17,13 @@ import { channelUnread } from "./app/utils";
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
    fetchWorkspaces */
 
-export var activeTab = "chat";
+/* Default landing tab — the Overview tab (internal id "activity" — see
+ * note below) is the leftmost tab and the first-load landing surface.
+ * The internal id stays "activity" even though the user-visible label
+ * reads "Overview"; renaming the id would churn every globalThis/SSE
+ * key that keys off it (_overviewExpanded, etc.), and the directory
+ * name `activity-tab/` is likewise left alone per Step 3 spec. */
+export var activeTab = "activity";
 
 /* PR #<this> Item 3 helper: pick a sensible default channel when the
  * Chat tab is activated without one. Preference order:
@@ -233,15 +239,35 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
   });
 });
 
-/* Restore last open tab across reloads */
+/* Restore last open tab across reloads.
+ *
+ * PR Step 3 (Overview promotion): default landing is the Overview tab
+ * (internal id "activity"). If localStorage has a remembered tab AND
+ * its button still exists in the DOM, honor it — otherwise fall back
+ * to Overview. We activate Overview synchronously so first paint lands
+ * there without flashing through Chat; the inline `activity` default
+ * on the Overview tab-button plus activeTab="activity" above already
+ * gets us 90% of the way, but we still run _activateTab to trigger
+ * the poll start + render-hook side effects. */
 (function () {
   try {
     var last = localStorage.getItem("orochi_active_tab");
-    if (last && last !== "chat") {
-      var btn = document.querySelector('.tab-btn[data-tab="' + last + '"]');
-      if (btn) _activateTab(last);
+    var target = last || "activity";
+    /* If the remembered tab no longer has a DOM button (e.g. Terminal
+     * was demoted in this PR), fall through to Overview. */
+    var btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
+    if (!btn) {
+      target = "activity";
+      btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
     }
-  } catch (_) {}
+    if (btn) _activateTab(target);
+  } catch (_) {
+    /* Even if localStorage is unavailable (private mode / quota), we
+     * still want to land on Overview. */
+    try {
+      _activateTab("activity");
+    } catch (__) {}
+  }
 })();
 
 /* Collapsible sidebar sections (#321 fix: use data-section for stable keys) */
