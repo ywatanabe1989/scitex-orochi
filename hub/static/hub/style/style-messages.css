@@ -155,11 +155,45 @@ blockquote.chat-blockquote {
  * outer glow, just a gentle rounded background tint.
  *
  * Applies to .sidebar .channel-item, .sidebar .agent-card and
- * .sidebar .dm-item. */
+ * .sidebar .dm-item.
+ *
+ * msg#16116 fix (ywatanabe msg#16106/#16108/#16109): channel rows carry
+ * class ``ch-badge ch-badge-sidebar`` (see sidebar-channel-tree.ts), so
+ * the generic ``.ch-badge { background: #333 }`` rule in
+ * components-agent-cards.css used to paint EVERY sidebar channel row
+ * #333 — brighter than the sidebar #111 bg. The .selected row at 8%
+ * white then read *darker* than the unselected bright-#333 rows.
+ * ywatanabe reported this as "the unselected channels look white/bright,
+ * the selected one looks darker — opposite of intent".
+ *
+ * Fix: two prongs.
+ *   1. Reset ``.ch-badge-sidebar`` to a transparent background so
+ *      unselected channel rows read as plain sidebar-bg (#111) rows.
+ *   2. Bump ``.selected`` alpha from 0.08 → 0.12 so the selected row
+ *      reads as a clearly accented rounded rect on the dark bg (spec
+ *      in lead msg#16116, and matches the ctrl+click highlight
+ *      ywatanabe liked).
+ *
+ * Net effect: unselected = transparent = #111 bg, selected = clear
+ * white-tinted rounded rect. Selection reads BRIGHTER than unselected
+ * rows again — intent restored. */
+/* Unset the generic .ch-badge { background: #333 } inline-chip paint
+ * for FULL-WIDTH sidebar rows. The .ch-badge class was originally
+ * designed for tiny inline channel chips rendered on agent cards
+ * (components-agent-cards.css). When sidebar-channel-tree.ts started
+ * reusing ``ch-badge ch-badge-sidebar`` classes to pick up shared
+ * badge geometry, the #333 bg leaked onto every channel row —
+ * brighter than the sidebar #111 bg, inverting selection signalling.
+ * Restrict to rows that are neither hovered nor selected so the
+ * hover (#1a1a1a, style-base.css) and .selected (white 12% below)
+ * states keep their explicit backgrounds. */
+.sidebar .channel-item.ch-badge:not(:hover):not(.selected) {
+  background: transparent;
+}
 .sidebar .channel-item.selected,
 .sidebar .agent-card.selected,
 .sidebar .dm-item.selected {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 6px;
 }
 /* #294: normalise font-weight on every sidebar channel/DM row so no
