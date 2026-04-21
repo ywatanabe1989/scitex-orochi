@@ -179,23 +179,14 @@
                 aria-label="Collapse sidebar"
                 title="Collapse sidebar (Ctrl+B)">&lsaquo;</button>
         <div class="main">
-            {# Tab bar — Step 3 (UI restructure): Overview is leftmost
-               and the first-load default; Agents is a list-view only
-               (graph/topology lives in Overview now); Terminal tab was
-               demoted — the terminal preview code still powers the
-               agent-detail pane's SSH action. Initial .active class is
-               set on Overview here so first paint lands there even
-               before tabs.ts runs its restore logic. The internal
-               data-tab values ("activity" / "agents-tab") are kept as
-               is; only the user-visible labels flip. #}
             <div class="tab-bar">
-                <button class="tab-btn active" data-tab="activity">Overview</button>
-                <button class="tab-btn" data-tab="chat">Chat</button>
+                <button class="tab-btn active" data-tab="chat">Chat</button>
                 <button class="tab-btn" data-tab="todo">TODO</button>
-                <button class="tab-btn" data-tab="agents-tab">Agents</button>
+                <button class="tab-btn" data-tab="activity">Agents</button>
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
                 <button class="tab-btn" data-tab="releases">Releases</button>
+                <button class="tab-btn" data-tab="terminal">Terminal</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
             <div id="channel-topic-banner"
@@ -233,17 +224,12 @@
                 </div>
                 <div id="ch-members-list" class="ch-members-list"></div>
             </div>
-            {# Chat surfaces — hidden on first paint because Overview
-               is now the default landing tab (PR Step 3). tabs.ts
-               `_activateTab("chat")` flips these back to their visible
-               values when the user switches to Chat. #}
             <input id="chat-filter-input"
                    class="chat-filter-input"
                    placeholder="filter messages in this channel&hellip;"
                    autocomplete="off"
-                   style="display:none"
                    oninput="chatFilterApply(this.value)">
-            <div id="messages" class="messages" style="display:none"></div>
+            <div id="messages" class="messages"></div>
             <!-- hook-bypass: inline-style -->
             <div id="todo-view" class="todo-view" style="display:none">
                 <div class="todo-view-switch-wrap">
@@ -303,13 +289,7 @@
             <div id="workspaces-view" class="todo-view" style="display:none">
                 <div id="workspaces-grid" class="todo-grid"></div>
             </div>
-            {# #activity-view is the Overview tab container (PR Step 3
-               rename: tab label changed to "Overview" but the id + css
-               classes keep "activity" to avoid churning dozens of CSS
-               selectors and globalThis keys). Default landing tab, so
-               starts visible; tabs.ts `_activateTab` will toggle the
-               display between tabs normally. #}
-            <div id="activity-view" class="todo-view">
+            <div id="activity-view" class="todo-view" style="display:none">
                 <!-- hook-bypass: inline-style -->
                 <div id="activity-subtabs" class="activity-subtabs">
                     <div class="activity-view-switch"
@@ -442,9 +422,7 @@
                     class="feed-scroll-btn"
                     title="Jump to bottom"
                     aria-label="Scroll to bottom">&#8681;</button>
-            {# Compose bar — hidden on first paint (Overview is default
-               landing per PR Step 3); _activateTab("chat") shows it. #}
-            <div class="input-bar" style="display:none">
+            <div class="input-bar">
                 <div id="composer-target" class="composer-target">
                     &#8594; <span id="composer-target-name">#general</span>
                 </div>
