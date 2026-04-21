@@ -25,6 +25,7 @@ from ._metrics import collect_machine_metrics, collect_slurm_status
 from ._multiplexer import detect_multiplexer
 from ._pane import capture_pane, filter_pane_tail, parse_subagent_count
 from ._proc import _read_process_env
+from ._process_tree import count_subagents_via_ps
 from ._statusline import parse_statusline
 from ._transcript import find_jsonl_transcripts, parse_transcript
 
@@ -65,7 +66,22 @@ def collect(agent: str) -> dict:
     pane_tail, pane_tail_block, pane_tail_block_clean, pane_tail_full = (
         filter_pane_tail(pane)
     )
-    subagents = parse_subagent_count(pane)
+    # Subagent count — prefer the process-tree walk (msg#16727: the
+    # regex-on-tmux-pane approach false-positives on chat-embedded
+    # quotes of the marker phrase; see
+    # ``tests/test_subagent_count_lifecycle.test_quoted_marker_phrase_false_positive``
+    # for the pinned bug). ``count_subagents_via_ps`` returns ``-1`` on
+    # walk failure — then we fall back to the legacy pane parser so
+    # hosts without psutil / pgrep / session registry keep the old
+    # signal. Belt-and-suspenders: if both fail, report 0 (conservative
+    # — auto-dispatch then fires, which is the desired behaviour for a
+    # head we can't introspect: assume it's idle and re-check next
+    # tick).
+    _pt_count = count_subagents_via_ps(agent)
+    if _pt_count >= 0:
+        subagents = _pt_count
+    else:
+        subagents = parse_subagent_count(pane)
 
     # Statusline (claude-hud) — context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(pane_tail_block)
