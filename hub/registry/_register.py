@@ -326,6 +326,13 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # re-post warn / escalate on every poll (spam regression).
             "quota_state_5h": prev.get("quota_state_5h") or "ok",
             "quota_state_7d": prev.get("quota_state_7d") or "ok",
+            # msg#16388 — server-side auto-dispatch streak + cooldown state.
+            # Owned by ``hub.auto_dispatch.check_agent_auto_dispatch``. Same
+            # prev-preserve pattern as quota_state_*: without it every
+            # heartbeat would reset the streak to 0 and the firing
+            # condition (N consecutive zero readings) could never be met.
+            "idle_streak": prev.get("idle_streak") or 0,
+            "auto_dispatch_last_fire_ts": prev.get("auto_dispatch_last_fire_ts"),
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))

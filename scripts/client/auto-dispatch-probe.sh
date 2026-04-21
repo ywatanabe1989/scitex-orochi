@@ -1,6 +1,27 @@
 #!/usr/bin/env bash
 # auto-dispatch-probe.sh — auto-dispatch daemon: "idle = forbidden" enforced by code
 # -----------------------------------------------------------------------------
+# >>> DEPRECATED (msg#16388 / ywatanabe msg#16380) <<<
+#
+# Layer 1 auto-dispatch moved from this per-host client probe to a
+# server-side hook in the hub. On every heartbeat the hub now:
+#   * maintains an idle-streak counter per head in its in-memory registry
+#   * after N consecutive zero-subagent-count readings (default 2), DMs
+#     the head with an auto-dispatch instruction that Claude parses
+#   * enforces a 15-min per-head cooldown
+#
+# See ``hub/auto_dispatch.py`` + the ``check_agent_auto_dispatch`` hook
+# in ``hub/registry/_heartbeat.py::update_heartbeat``.
+#
+# This script is kept in-tree so hosts where the server-side mechanism
+# is unavailable (stale hub, local dev, emergency manual dispatch) can
+# still run the probe. A follow-up PR may delete it after burn-in. To
+# explicitly run it in the interim, pass ``--yes`` — the installer
+# warns you not to enable the scheduler alongside server-side dispatch.
+#
+# To migrate: ``./scripts/client/install-auto-dispatch-probe.sh --uninstall``
+# once your hub is on a version carrying the server-side hook.
+# -----------------------------------------------------------------------------
 # Problem statement (lead msg#15975, ywatanabe msg#15971)
 #   Rules-based discipline failed. The fleet keeps dropping to
 #   ``subagent_count == 0`` on individual heads (2026-04-20: head-mba hit 0
