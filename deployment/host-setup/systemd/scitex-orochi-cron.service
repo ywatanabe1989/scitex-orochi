@@ -1,0 +1,43 @@
+[Unit]
+# SciTeX Orochi — unified cron daemon (msg#16406 / msg#16410 / lead msg#16408).
+#
+# One long-running Python process that owns every Orochi per-host cron
+# job (agent-meta-push, fleet-host-liveness-probe, hungry-signal,
+# chrome-codesign-watchdog, ...) via the declarative schedule in
+# ~/.scitex/orochi/cron.yaml.
+#
+# Replaces the pair of scitex-auto-dispatch-probe.{service,timer} /
+# scitex-hungry-signal.{service,timer} units + crontab fallbacks.
+# install-orochi-cron.sh auto-unloads and backs them up to
+# ~/.scitex/orochi/cron-migrated-units/.
+#
+# Install via scripts/client/install-orochi-cron.sh. Templated
+# placeholders (__HOME__, __STABLE_BIN__) are rewritten by the
+# installer — stable-bin-path pattern from PR #326.
+#
+# Unlike the per-job units this replaces, there's no companion .timer.
+# The daemon owns its own scheduling loop; systemd's role here is just
+# to keep the daemon alive on failure.
+Description=SciTeX Orochi — unified cron daemon
+Documentation=https://github.com/ywatanabe1989/scitex-orochi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-%h/.config/systemd/user/orochi.env
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# SCITEX_OROCHI_REPO_ROOT is auto-detected by the daemon; override in
+# ~/.config/systemd/user/orochi.env only when running from a custom
+# checkout.
+ExecStart=/usr/bin/env python3 -u __STABLE_BIN__/orochi-cron.py
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=30s
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=30
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

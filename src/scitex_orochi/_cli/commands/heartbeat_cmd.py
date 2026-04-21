@@ -136,9 +136,31 @@ def _wrap_with_orochi_fields(
         "account_email": status.get("account_email") or "",
         "version": status.get("version") or "",
     }
+    # Orochi unified cron state (msg#16406 / msg#16410). Surfaced in
+    # every heartbeat so Phase 2 can wire the Machines tab directly off
+    # /api/agents/...heartbeat.payload.cron_jobs — no extra endpoint
+    # needed. Empty list when the daemon isn't running on this host, so
+    # UI just renders "no jobs".
+    body["cron_jobs"] = _collect_cron_jobs()
     if channels:
         body["channels"] = list(channels)
     return body
+
+
+def _collect_cron_jobs() -> list[dict[str, Any]]:
+    """Read the orochi-cron state file and normalise it for heartbeat.
+
+    Defensive: any read / parse error returns an empty list. The
+    heartbeat is best-effort telemetry; never let a local daemon glitch
+    prevent the health signal from reaching the hub.
+    """
+    try:
+        from scitex_orochi._cron import default_state_path, state_read
+        from scitex_orochi._cron._state import render_cron_jobs
+
+        return render_cron_jobs(state_read(default_state_path()))
+    except Exception:
+        return []
 
 
 def _post_register(hub: str, body: dict[str, Any]) -> tuple[int, str]:

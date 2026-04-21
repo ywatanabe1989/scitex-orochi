@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: Orochi unified cron daemon (msg#16406 / msg#16410).
+
+  One long-running Python process that schedules every Orochi
+  per-host cron job (agent-meta-push, fleet-host-liveness-probe,
+  hungry-signal, chrome-codesign-watchdog, ...) per the declarative
+  schedule in ~/.scitex/orochi/cron.yaml.
+
+  Replaces the scattered com.scitex.{fleet-host-liveness-probe,
+  hungry-signal, chrome-codesign-watchdog, auto-dispatch-probe,
+  orochi.agent-meta-push} plists. install-orochi-cron.sh auto-unloads
+  and backs them up to ~/.scitex/orochi/cron-migrated-units/ so
+  rollback is a single `launchctl load` away.
+
+  Install:
+    ./scripts/client/install-orochi-cron.sh
+
+  Logs:
+    ~/Library/Logs/scitex/orochi-cron.log (daemon lifecycle)
+    ~/.local/state/scitex/orochi-cron/logs/<job>.ndjson (per-job runs)
+
+  KeepAlive keeps the daemon alive even if it crashes (unlike
+  StartInterval, which just fires periodically). The daemon handles its
+  own scheduling loop internally.
+
+  Template placeholders: __HOME__, __STABLE_BIN__ are rewritten by
+  install-orochi-cron.sh (stable-bin-path pattern, same as PR #326
+  todo#466). Kill switch: set SCITEX_OROCHI_CRON_DISABLED=1 in the
+  user env to pause without uninstalling.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.scitex.orochi-cron</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/bin/env</string>
+      <string>python3</string>
+      <string>-u</string>
+      <string>__STABLE_BIN__/orochi-cron.py</string>
+    </array>
+
+    <!-- Daemon-style: keep alive across crashes. StartInterval is
+         intentionally absent because the daemon owns its own loop. -->
+    <key>KeepAlive</key>
+    <dict>
+      <key>SuccessfulExit</key>
+      <false/>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/scitex/orochi-cron.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/scitex/orochi-cron.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <!-- SCITEX_OROCHI_REPO_ROOT is auto-detected by the daemon from
+           its installed scitex_orochi package location. Override here
+           only if running from a non-standard checkout. -->
+    </dict>
+  </dict>
+</plist>
