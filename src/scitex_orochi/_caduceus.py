@@ -57,6 +57,8 @@ from datetime import datetime, timezone
 
 from ._caduceus_greeting import (
     DEFAULT_TIMEOUT_S as GREETING_TIMEOUT_S,
+)
+from ._caduceus_greeting import (
     GreetingState,
     format_greeting,
     should_ping,
