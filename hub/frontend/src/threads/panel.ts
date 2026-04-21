@@ -22,6 +22,17 @@ function _threadDraftTarget(parentId) {
  * without a DOM round-trip. */
 var _threadComposer = null;
 
+/* Monotonic open-token guarding openThreadPanel against re-entrancy
+ * (msg#17058). Rapid re-opens — double-click the reply icon, popstate
+ * during an in-flight open, WS-triggered refresh racing a click —
+ * used to interleave so two `renderComposer` calls landed in the same
+ * #thread-composer-slot (bug A: stacked compose inputs) and a stale
+ * `loadThreadReplies` awaited fetch wrote into a detached panel
+ * (bug B: replies invisible). Each openThreadPanel bumps this token
+ * and stashes a local copy; any continuation after `await` checks the
+ * copy against the live token and bails if newer. */
+var _threadOpenToken = 0;
+
 /* Threading — panel open/close, replies render, send, WS handlers.
  * Reply composer (textarea + attach/sketch/voice/send buttons) is
  * provided by composer.ts::renderComposer(surface: "reply") since the
@@ -62,6 +73,10 @@ export function closeThreadPanel(opts) {
 }
 
 export async function openThreadPanel(parentId, opts) {
+  /* Invalidate any in-flight openThreadPanel before tearing down the
+   * previous panel — continuations below compare `myToken !==
+   * _threadOpenToken` to know they were superseded (msg#17058). */
+  var myToken = ++_threadOpenToken;
   closeThreadPanel({ skipPushState: true });
   (globalThis as any).threadPanelParentId = parentId;
   if (!(opts && opts.skipPushState)) {
@@ -112,6 +127,12 @@ export async function openThreadPanel(parentId, opts) {
   }
 
   await loadThreadReplies(parentId);
+  /* A newer openThreadPanel started during the fetch — its
+   * closeThreadPanel already ripped our panel out and built a fresh
+   * one. Do not proceed to mount a composer into the new panel's
+   * slot; that's the newer call's job and doing it here would stack
+   * a second composer (msg#17058 bug A). */
+  if (myToken !== _threadOpenToken) return;
 
   var composerSlot = document.getElementById("thread-composer-slot");
   /* msg#16527: clear the shared pending-attachments array IN PLACE. Do
@@ -122,6 +143,10 @@ export async function openThreadPanel(parentId, opts) {
   _renderThreadAttachmentTray();
 
   if (composerSlot) {
+    /* Belt-and-suspenders: if anything ever leaks DOM into this slot
+     * (e.g. a stale composer from an earlier race), wipe it before the
+     * new mount so we never end up with stacked inputs (msg#17058). */
+    composerSlot.innerHTML = "";
     _threadComposer = renderComposer(composerSlot as HTMLElement, {
       surface: "reply",
       placeholder: "Reply in thread\u2026",
@@ -272,6 +297,20 @@ export async function loadThreadReplies(parentId) {
     var res = await fetch(apiUrl("/api/threads/?parent_id=" + parentId), {
       credentials: "same-origin",
     });
+    /* If a newer openThreadPanel ran during the fetch, our `container`
+     * was detached when closeThreadPanel removed the old panel. Writing
+     * replies into a detached node renders nothing (msg#17058 bug B).
+     * Re-query; if the live panel is for a *different* parent, bail
+     * and let its own loadThreadReplies fill it. */
+    if (!container.isConnected) {
+      container = document.getElementById("thread-replies");
+      if (
+        !container ||
+        Number((globalThis as any).threadPanelParentId) !== Number(parentId)
+      ) {
+        return;
+      }
+    }
     if (!res.ok) {
       container.innerHTML =
         '<p class="empty-notice">Failed to load thread.</p>';
