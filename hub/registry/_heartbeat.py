@@ -155,6 +155,13 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
     message to ``#progress`` / ``#escalation`` / ``#ywatanabe`` when a
     window crosses the warn / escalate bands. Best-effort — the check
     never raises into the heartbeat hot path.
+
+    msg#16388: after quota pressure, run the auto-dispatch state machine
+    for ``head-*`` agents. ``check_agent_auto_dispatch()`` reads
+    ``subagent_count`` (just written by the heartbeat handler via
+    ``set_subagent_count``) and maintains a per-head idle streak + 15min
+    cooldown, firing a DM when a head stalls for N consecutive zero
+    readings. Also best-effort.
     """
     with _lock:
         if name in _agents:
@@ -173,6 +180,16 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
             from hub.quota_watch import check_agent_quota_pressure
 
             check_agent_quota_pressure(name)
+        except Exception:  # pragma: no cover — defense in depth
+            pass
+
+        # msg#16388 Layer 1 redesign — server-side auto-dispatch hook.
+        # Only fires for ``head-*`` agents (internal name prefix check).
+        # Deferred import to avoid a circular through hub.registry.
+        try:
+            from hub.auto_dispatch import check_agent_auto_dispatch
+
+            check_agent_auto_dispatch(name)
         except Exception:  # pragma: no cover — defense in depth
             pass
 

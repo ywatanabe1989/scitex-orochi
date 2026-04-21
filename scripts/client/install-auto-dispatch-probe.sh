@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 # install-auto-dispatch-probe.sh
 #
+# >>> DEPRECATED (msg#16388) <<<
+# Layer 1 auto-dispatch moved to a hub server-side hook. The installer
+# still works for emergency/local use but prints a warning banner. To
+# uninstall on hosts that already track a hub carrying the server-side
+# dispatcher, run ``./install-auto-dispatch-probe.sh --uninstall``.
+#
 # Installer for the auto-dispatch probe scheduler — enforces "idle =
 # forbidden" on each head by code instead of memory/rules.
 #
@@ -45,10 +51,32 @@ while [ $# -gt 0 ]; do
         --dry-run-only) mode="--dry-run"; shift ;;
         --yes)          mode="--yes"; shift ;;
         -h|--help)
-            sed -n '2,25p' "$0"; exit 0 ;;
+            sed -n '2,32p' "$0"; exit 0 ;;
         *) echo "unknown arg: $1" >&2; exit 2 ;;
     esac
 done
+
+# Deprecation banner — print before any action so operators running
+# `install-auto-dispatch-probe.sh` interactively see it. Installs still
+# proceed (for hosts whose hub hasn't rolled out the server-side hook
+# yet); uninstalls are encouraged once the hub deploy lands.
+if [ "$action" = "install" ]; then
+    cat >&2 <<'EOF'
+===============================================================================
+WARNING: auto-dispatch-probe.sh is DEPRECATED (msg#16388).
+
+Layer 1 auto-dispatch moved to a hub server-side hook. The hub now
+detects idle heads from the heartbeat stream and DMs them directly.
+
+If your hub is already running the new build, UNINSTALL this probe:
+  ./scripts/client/install-auto-dispatch-probe.sh --uninstall
+
+If you still want to install (local dev / emergency fallback), proceed
+— the probe is kept in-tree for exactly that reason. It will be
+deleted in a follow-up PR after server-side burn-in.
+===============================================================================
+EOF
+fi
 
 OS="$(uname -s)"
 
