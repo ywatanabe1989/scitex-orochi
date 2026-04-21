@@ -29,6 +29,7 @@ from hub.tests.registry.test_reexports import *  # noqa: F401,F403
 from hub.tests.registry.test_singleton_enforcement import *  # noqa: F401,F403
 from hub.tests.test_auth import *  # noqa: F401,F403
 from hub.tests.test_oauth_helper import *  # noqa: F401,F403
+from hub.tests.views.api.test_admin_subscribe import *  # noqa: F401,F403
 from hub.tests.views.api.test_agent_detail import *  # noqa: F401,F403
 from hub.tests.views.api.test_agents_register import *  # noqa: F401,F403
 from hub.tests.views.api.test_channel_members import *  # noqa: F401,F403
