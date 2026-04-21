@@ -138,13 +138,18 @@ blockquote.chat-blockquote {
   border-left: 3px solid #4ecdc4;
 }
 
-/* todo#274 Part 1: pure visual selection in sidebar — clicking a
- * channel or agent highlights just that item and dims siblings.
- * Replaces the previous badge-filter UX. */
+/* todo#274 Part 1 / #293: selection marker is a BACKGROUND COLOUR ONLY.
+ * Do not boost opacity, do not brighten icons, do not bold the name —
+ * the selected row must read the same as the rest except for its
+ * subtle tint. This is ywatanabe msg#15299 / #15317: "all other rows
+ * keep their normal icons; the selected row is distinguished only by
+ * a subtle solid background". Applies to .sidebar .channel-item and
+ * .sidebar .agent-card (DMs render as .agent-card so they inherit). */
 .sidebar .channel-item.selected {
   background: rgba(126, 200, 227, 0.2);
 }
-.sidebar .agent-card.selected {
+.sidebar .agent-card.selected,
+.sidebar .dm-item.selected {
   background: rgba(78, 205, 196, 0.2);
 }
 /* #284: don't dim non-selected channels when one is selected — the
