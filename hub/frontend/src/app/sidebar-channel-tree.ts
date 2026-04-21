@@ -227,50 +227,21 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
        * added it above. Belt-and-braces against any stale DOM state. */
       el.classList.remove("selected");
     }
-    /* Pin icon click — toggle is_starred (pinned-to-top) */
-    var pinEl = el.querySelector(".ch-pin");
-    if (pinEl) {
-      pinEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var norm = pinEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_starred: !curPref.is_starred });
-      });
-    }
-    /* Eye icon click — toggle is_muted (watching vs muted) */
-    var watchEl = el.querySelector(".ch-watch");
-    if (watchEl) {
-      watchEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var norm = watchEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_muted: !curPref.is_muted });
-      });
-    }
-    /* Bell/mute placeholder click — toggle is_muted. Placeholder is
-     * always rendered (reserved slot) so channel-name columns line up
-     * whether the row is muted or not. */
-    var muteEl = el.querySelector(".ch-mute");
-    if (muteEl) {
-      muteEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        var norm = muteEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_muted: !curPref.is_muted });
-      });
-    }
-    /* Hide/unhide icon click — toggle is_hidden (todo#418). */
-    var eyeEl = el.querySelector(".ch-eye");
-    if (eyeEl) {
-      eyeEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        var norm = eyeEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_hidden: !curPref.is_hidden });
-      });
-    }
+    /* msg#16979 — channel-card double-handler race.
+     *
+     * Star (.ch-pin), eye (.ch-eye), mute (.ch-mute) and watch (.ch-watch)
+     * clicks are owned by the body-level capture-phase delegate in
+     * channel-badge.ts (attachChannelBadgeHandlers). Per-row wiring
+     * here duplicated the same _setChannelPref call on the same click,
+     * causing a double-toggle that looked like "nothing happens" — the
+     * second call inverted the optimistic update from the first (the
+     * per-row bubble handler ran on the detached old element even after
+     * the delegate tore down the DOM, and by that point _channelPrefs
+     * already held the new value, so !curPref.is_* flipped it back).
+     *
+     * The delegate covers every surface that renders a channel badge
+     * (sidebar row, pool chip, topology canvas), so the per-row
+     * listeners are intentionally omitted here. */
     /* Context menu */
     _addChannelContextMenu(el);
     /* todo#49: accept agent-card drops to toggle subscription. */
