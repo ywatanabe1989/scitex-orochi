@@ -235,17 +235,9 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
   pop.id = "topo-channel-compose";
   pop.className = "topo-channel-compose";
   pop.setAttribute("data-channel", channel);
+  pop.setAttribute("data-composer-surface", "overview");
   pop.style.left = Math.max(8, clientX - 140) + "px";
   pop.style.top = Math.max(8, clientY + 12) + "px";
-  /* Minimal popup: no header, no close button, no + button, no send
-   * button. Just a textarea whose tooltip documents all the keyboard
-   * shortcuts, plus a small ▾ chevron at the bottom-right corner that
-   * reveals attach / camera / sketch / voice buttons. Enter sends, Esc
-   * closes, outside click closes. ywatanabe 2026-04-19: "make the
-   * modal minimal; no send button needed; no dm nor channel label
-   * needed; no plus button needed; not x button needed; just add a
-   * small chevron to the bottom to show other buttons; show tooltip
-   * with keyboard shortcuts even when they are not expanded to use". */
   var tccShortcuts =
     "Enter — send\n" +
     "Shift+Enter — newline\n" +
@@ -253,128 +245,23 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     "Drop files to attach\n" +
     "Paste image/file to attach\n" +
     "Click ▾ for attach / camera / sketch / voice";
+  /* Preview slot + pending tray + composer slot + chevron. Composer DOM
+   * injected by renderComposer into .tcc-composer-slot; its action row
+   * is moved into .tcc-extras so the chevron can toggle visibility
+   * (matches pre-SSoT UX). */
   pop.innerHTML =
-    '<textarea class="tcc-input" data-voice-input rows="2" placeholder="message #' +
-    escapeHtml(channel).replace(/^#/, "") +
-    '" title="' +
-    tccShortcuts.replace(/"/g, "&quot;") +
-    '"></textarea>' +
-    '<div class="tcc-extras" style="display:none">' +
-    '<button type="button" class="tcc-x tcc-attach" title="Attach file (paste also works)">\uD83D\uDCCE</button>' +
-    '<button type="button" class="tcc-x tcc-camera" title="Camera">\uD83D\uDCF7</button>' +
-    '<button type="button" class="tcc-x tcc-sketch" title="Sketch">\u270F\uFE0F</button>' +
-    '<button type="button" class="tcc-x tcc-voice" title="Voice input">\uD83C\uDFA4</button>' +
-    "</div>" +
+    '<div class="tcc-pending" style="display:none"></div>' +
+    '<div class="tcc-composer-slot"></div>' +
     '<button type="button" class="tcc-expand" title="' +
     tccShortcuts.replace(/"/g, "&quot;") +
     '" aria-label="More options">\u25BE</button>';
   document.body.appendChild(pop);
-  var input = pop.querySelector(".tcc-input");
-  var extras = pop.querySelector(".tcc-extras");
+
+  var popTray = pop.querySelector(".tcc-pending");
+  var composerSlot = pop.querySelector(".tcc-composer-slot");
   var expandBtn = pop.querySelector(".tcc-expand");
-  /* msg#16324: restore any persisted draft + wire debounced save. */
-  try {
-    if (
-      typeof window.orochiDraftStore !== "undefined" &&
-      window.orochiDraftStore
-    ) {
-      var _saved = window.orochiDraftStore.loadDraft("overview-popup", channel);
-      if (input && _saved) input.value = _saved;
-    }
-  } catch (_) {}
-  if (input) {
-    input.addEventListener("input", function () {
-      try {
-        if (
-          typeof window.orochiDraftStore !== "undefined" &&
-          window.orochiDraftStore &&
-          typeof window.orochiDraftStore._debounceSave === "function"
-        ) {
-          window.orochiDraftStore._debounceSave(
-            "overview-popup",
-            channel,
-            input.value,
-          );
-        }
-      } catch (_) {}
-    });
-  }
-  setTimeout(function () {
-    if (input) {
-      input.focus();
-      try {
-        var _len = input.value ? input.value.length : 0;
-        input.setSelectionRange(_len, _len);
-      } catch (_) {}
-    }
-  }, 10);
 
-  /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
-   * was failing on this popup. Root cause: macOS Safari does NOT focus
-   * a textarea on right-click (unlike Chrome/Firefox). A right-click on
-   * our textarea therefore left document.activeElement on whatever had
-   * focus before the popup opened (often <body> or the topology
-   * canvas), so the subsequent native "Paste" from the OS context menu
-   * fired a paste event on THAT element — not the textarea.
-   *
-   * Keyboard Cmd+V was only intermittent for the same reason: if the
-   * user clicked anywhere inside the popup that wasn't a focusable
-   * child, the textarea could lose focus and the next Cmd+V landed
-   * outside.
-   *
-   * Fix: refocus the textarea on ANY pointer interaction inside the
-   * popup (mousedown covers left + right click + middle click on all
-   * browsers), unless the target is one of the action buttons that
-   * legitimately owns focus (attach / camera / sketch / voice /
-   * expand). Also listen to `contextmenu` explicitly — belt & braces
-   * for browsers that fire contextmenu without a prior mousedown
-   * (some trackpad two-finger-tap paths on macOS). */
-  function _refocusInput(ev) {
-    if (!input) return;
-    /* Don't steal focus from action buttons. */
-    if (
-      ev.target &&
-      ev.target.closest &&
-      ev.target.closest(".tcc-x, .tcc-expand")
-    ) {
-      return;
-    }
-    /* If the user clicked directly on the textarea, the browser will
-     * focus it anyway and move the caret — don't fight that. Only
-     * refocus when the target is a non-focusable child (the popup
-     * chrome, a label, etc.) or the textarea but unfocused (e.g.
-     * right-click on macOS Safari). */
-    if (document.activeElement !== input) {
-      try {
-        input.focus();
-      } catch (_) {}
-    }
-  }
-  pop.addEventListener("mousedown", _refocusInput);
-  pop.addEventListener("contextmenu", _refocusInput);
-
-  function close() {
-    if (pop.parentNode) pop.parentNode.removeChild(pop);
-    document.removeEventListener("mousedown", outsideClick, true);
-  }
-  function outsideClick(ev) {
-    if (!pop.contains(ev.target)) close();
-  }
-  setTimeout(function () {
-    document.addEventListener("mousedown", outsideClick, true);
-  }, 50);
-
-  /* msg#16193: local-scoped pending attachments for this popup. Paste /
-   * drop stage here instead of routing to the Chat composer. */
   var popPending = [];
-  var popTray = document.createElement("div");
-  popTray.className = "tcc-pending";
-  popTray.style.display = "none";
-  if (input && input.parentNode === pop) {
-    pop.insertBefore(popTray, input);
-  } else {
-    pop.insertBefore(popTray, pop.firstChild);
-  }
 
   function _renderPopTray() {
     if (!popPending.length) {
@@ -434,7 +321,140 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     _renderPopTray();
   }
 
+  /* Build composer via SSoT module. Mention autocomplete, paste, attach/
+   * camera/sketch/voice, keyboard shortcuts — all shared with Chat + Reply. */
+  var composerInstance =
+    typeof renderComposer === "function"
+      ? renderComposer(composerSlot, {
+          surface: "overview",
+          placeholder:
+            "message #" + String(channel || "").replace(/^#/, ""),
+          stageFiles: _stagePopFiles,
+          features: {
+            mention: true,
+            paste: true,
+            dragDrop: false,
+            attach: true,
+            camera: true,
+            sketch: true,
+            voice: true,
+            sendButton: false,
+            shiftEnterNewline: true,
+            autoResize: false,
+            cmdEnterSubmit: true,
+            tabAwareFocus: false,
+            localVoiceChord: true,
+          },
+          maxResizePx: 0,
+          onSubmit: function () {
+            send();
+          },
+        })
+      : null;
+  var input = composerInstance ? composerInstance.input : null;
+  if (input) {
+    input.classList.add("tcc-input");
+    input.title = tccShortcuts;
+    input.rows = 2;
+  }
+
+  /* Move composer action row into .tcc-extras so the chevron can toggle. */
+  var actionsRow = composerSlot.querySelector(".composer-actions");
+  var extras = document.createElement("div");
+  extras.className = "tcc-extras";
+  extras.style.display = "none";
+  if (actionsRow) extras.appendChild(actionsRow);
+  composerSlot.appendChild(extras);
+
+  var actionBtns = extras.querySelectorAll(".composer-btn");
+  actionBtns.forEach(function (b) {
+    b.classList.add("tcc-x");
+    if (b.classList.contains("composer-btn-attach")) b.classList.add("tcc-attach");
+    else if (b.classList.contains("composer-btn-camera")) b.classList.add("tcc-camera");
+    else if (b.classList.contains("composer-btn-sketch")) b.classList.add("tcc-sketch");
+    else if (b.classList.contains("composer-btn-voice")) b.classList.add("tcc-voice");
+  });
+
+  /* msg#16324: restore any persisted draft + wire debounced save. */
+  try {
+    if (
+      typeof window.orochiDraftStore !== "undefined" &&
+      window.orochiDraftStore
+    ) {
+      var _saved = window.orochiDraftStore.loadDraft("overview-popup", channel);
+      if (input && _saved) input.value = _saved;
+    }
+  } catch (_) {}
+  if (input) {
+    input.addEventListener("input", function () {
+      try {
+        if (
+          typeof window.orochiDraftStore !== "undefined" &&
+          window.orochiDraftStore &&
+          typeof window.orochiDraftStore._debounceSave === "function"
+        ) {
+          window.orochiDraftStore._debounceSave(
+            "overview-popup",
+            channel,
+            input.value,
+          );
+        }
+      } catch (_) {}
+    });
+  }
+  setTimeout(function () {
+    if (input) {
+      try {
+        input.focus();
+        var _len = input.value ? input.value.length : 0;
+        input.setSelectionRange(_len, _len);
+      } catch (_) {}
+    }
+  }, 10);
+
+  /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
+   * was failing on this popup. Refocus the textarea on ANY pointer
+   * interaction inside the popup unless the target is an action button. */
+  function _refocusInput(ev) {
+    if (!input) return;
+    if (
+      ev.target &&
+      ev.target.closest &&
+      ev.target.closest(".tcc-x, .tcc-expand, .composer-btn")
+    ) {
+      return;
+    }
+    if (document.activeElement !== input) {
+      try { input.focus(); } catch (_) {}
+    }
+  }
+  pop.addEventListener("mousedown", _refocusInput);
+  pop.addEventListener("contextmenu", _refocusInput);
+
+  function close() {
+    try { if (composerInstance) composerInstance.destroy(); } catch (_) {}
+    if (pop.parentNode) pop.parentNode.removeChild(pop);
+    document.removeEventListener("mousedown", outsideClick, true);
+  }
+  function outsideClick(ev) {
+    if (!pop.contains(ev.target)) close();
+  }
+  setTimeout(function () {
+    document.addEventListener("mousedown", outsideClick, true);
+  }, 50);
+
+  /* Esc closes the popup; Enter / Shift+Enter handled by composer. */
+  if (input) {
+    input.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        close();
+      }
+    });
+  }
+
   function send() {
+    if (!input) return;
     var text = (input.value || "").trim();
     var attachments = popPending.map(function (p) {
       return p.uploaded;
@@ -458,15 +478,11 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
         payload: payload,
       });
     }
-    /* msg#16316 / ywatanabe msg#16313: keep the popup OPEN after send so
-     * the user can keep replying without re-double-clicking the channel
-     * node. Clear the textarea + pending attachment tray, refocus the
-     * input, and leave the popup mounted. The popup still closes via
-     * Esc, outside-click, or routing to Chat (existing paths). */
+    /* msg#16316: keep popup OPEN after send; clear textarea + tray. */
     input.value = "";
     popPending.length = 0;
     _renderPopTray();
-    /* Spec msg#16324: clear the stored draft ONLY on successful send. */
+    /* msg#16324: clear the stored draft ONLY on successful send. */
     try {
       if (
         typeof window.orochiDraftStore !== "undefined" &&
@@ -476,125 +492,15 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
         window.orochiDraftStore.clearDraft("overview-popup", channel);
       }
     } catch (_) {}
-    try {
-      input.focus();
-    } catch (_) {}
+    try { input.focus(); } catch (_) {}
   }
-  input.addEventListener("keydown", function (ev) {
-    /* Voice-toggle shortcuts — same as Chat composer. Keep these BEFORE
-     * the plain-Enter branch so Ctrl+Enter / Alt+Enter don't fall through
-     * to send(). Ctrl+M and Alt+V also toggle voice. */
-    if (ev.key === "Enter" && (ev.ctrlKey || ev.altKey)) {
-      ev.preventDefault();
-      ev.stopPropagation(); /* prevent global voice handler from double-firing */
-      if (typeof window.toggleVoiceInput === "function") {
-        input.focus(); /* ensure _toggleVoice sees our textarea as active */
-        window.toggleVoiceInput();
-      }
-      return;
-    }
-    if (
-      (ev.ctrlKey && (ev.key === "m" || ev.key === "M")) ||
-      (ev.altKey && (ev.key === "v" || ev.key === "V"))
-    ) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (typeof window.toggleVoiceInput === "function") {
-        input.focus();
-        window.toggleVoiceInput();
-      }
-      return;
-    }
-    if (ev.key === "Enter" && !ev.shiftKey) {
-      ev.preventDefault();
-      send();
-    } else if (ev.key === "Escape") {
-      ev.preventDefault();
-      close();
-    }
-  });
-  /* Paste support — msg#16193 regression-fix: stage LOCALLY instead of
-   * routing to Chat (which flipped the user out of the Overview tab).
-   * See hub/frontend/src/activity-tab/compose.ts for the canonical
-   * source and full rationale. */
-  input.addEventListener("paste", function (ev) {
-    ev.stopPropagation();
-    var cd =
-      ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
-    if (!cd) return;
-    var collected = [];
-    var seen = new Set();
-    function pushUnique(f) {
-      if (!f || !f.type || f.type.indexOf("image/") !== 0) return;
-      var key =
-        f.name + "|" + f.size + "|" + f.type + "|" + (f.lastModified || 0);
-      if (seen.has(key)) return;
-      seen.add(key);
-      collected.push(f);
-    }
-    var fileList = cd.files;
-    if (fileList && fileList.length) {
-      for (var i = 0; i < fileList.length; i++) pushUnique(fileList[i]);
-    } else if (cd.items) {
-      for (var j = 0; j < cd.items.length; j++) {
-        var it = cd.items[j];
-        if (it && it.type && it.type.indexOf("image/") === 0) {
-          pushUnique(it.getAsFile());
-        }
-      }
-    }
-    var text = "";
-    try {
-      text = cd.getData("text/plain") || "";
-    } catch (_) {}
-    var attachText =
-      typeof _pastedTextShouldAttach === "function" &&
-      _pastedTextShouldAttach(text);
-    if (collected.length > 0 || attachText) {
-      ev.preventDefault();
-      if (attachText && typeof _buildPastedTextFile === "function") {
-        collected.push(_buildPastedTextFile(text));
-      }
-      _stagePopFiles(collected);
-    }
-  });
+
   expandBtn.addEventListener("click", function () {
     var on = extras.style.display === "none";
     extras.style.display = on ? "" : "none";
     expandBtn.textContent = on ? "\u25B4" : "\u25BE";
   });
-  /* Delegate extras — pop the channel into currentChannel so existing
-   * global helpers target the right place, then invoke them. Fallback
-   * to focusing the main composer for modes that don't have a headless
-   * API surface. */
-  function _routeToChat() {
-    if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
-    if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
-    var tabBtn = document.querySelector('[data-tab="chat"]');
-    if (tabBtn) tabBtn.click();
-    close();
-  }
-  pop.querySelector(".tcc-attach").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openAttachmentPicker === "function") openAttachmentPicker();
-  });
-  pop.querySelector(".tcc-camera").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openCameraCapture === "function") openCameraCapture();
-  });
-  pop.querySelector(".tcc-sketch").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openSketchPanel === "function") openSketchPanel();
-  });
-  pop.querySelector(".tcc-voice").addEventListener("click", function () {
-    /* Dictate into THIS popup's textarea — don't route to Chat.
-     * Focus the popup textarea so _toggleVoice's selector-based
-     * target resolution picks it up, then toggle. */
-    if (typeof window.toggleVoiceInput === "function") {
-      input.focus();
-      window.toggleVoiceInput();
-    }
-  });
+
   /* Drop files onto popup → stage LOCALLY (msg#16193). */
   pop.addEventListener("dragover", function (ev) {
     ev.preventDefault();

@@ -43,6 +43,14 @@ import "./chat/chat-history";
 import "./chat/chat-composer";
 import "./chat/chat-actions";
 import "./mention";
+/* Composer SSoT unification (msg#16286): shared module between the
+ * Chat / Overview / Reply surfaces. Loaded after mention.ts so
+ * wireComposerMention can reach the already-initialised dropdown
+ * state. */
+import "./composer/composer-paste";
+import "./composer/composer-mention";
+import "./composer/composer-attach";
+import "./composer/composer";
 import "./settings-tab";
 import "./emoji-picker";
 import "./filter/state";
