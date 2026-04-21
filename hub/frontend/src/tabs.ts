@@ -329,6 +329,24 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     if (hash === "terminal") {
       hash = "";
     }
+    /* msg#16337: Overview loses its Viz/List toggle — Overview is
+     * Viz-only, and the List surface moves to the dedicated Agents
+     * tab. If the user's last session had activity + list subview
+     * selected, redirect their next boot to the Agents tab so they
+     * land on the list they were looking at (not an empty graph).
+     * Graph/topology users on activity land on Overview as before.
+     * Consumes the legacy orochi.overviewView key one time and
+     * rewrites it to "topology" to match the new UI contract. */
+    if (last === "activity") {
+      try {
+        var _legacyOverviewView = localStorage.getItem("orochi.overviewView");
+        if (_legacyOverviewView === "list" || _legacyOverviewView === "tiled") {
+          last = "agents-tab";
+          localStorage.setItem("orochi.overviewView", "topology");
+          localStorage.setItem("orochi_active_tab", "agents-tab");
+        }
+      } catch (_) {}
+    }
     var target = hash || last || "activity";
     /* If the requested tab no longer has a DOM button, fall back to
      * Overview ("activity"). */

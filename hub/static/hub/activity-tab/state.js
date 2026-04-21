@@ -24,9 +24,12 @@ var ACTIVITY_FOLLOW_INTERVAL_MS = 3000;
 
 
 /* ── Overview controls state (filter / sort / view / color / expand) ── */
+/* msg#16337: Overview is Viz-only; the Agents list moves to its own
+ * tab. Keep _overviewView around (as a "topology" constant) so every
+ * branch that still reads it keeps working. */
 var _overviewFilter = "";
 var _overviewSort = "name";
-var _overviewView = "list";
+var _overviewView = "topology";
 var _overviewColor = "name";
 var _overviewExpanded = null;
 /* Topology channel-node size mode. "equal" = fixed radius; "subscribers" =
@@ -39,13 +42,14 @@ try {
   var _savedSort = localStorage.getItem("orochi.overviewSort");
   if (_savedSort === "name" || _savedSort === "machine")
     _overviewSort = _savedSort;
+  /* Overview is Viz-only — migrate any stale saved value to "topology". */
   var _savedView = localStorage.getItem("orochi.overviewView");
-  if (
-    _savedView === "list" ||
-    _savedView === "tiled" ||
-    _savedView === "topology"
-  )
-    _overviewView = _savedView;
+  if (_savedView && _savedView !== "topology") {
+    try {
+      localStorage.setItem("orochi.overviewView", "topology");
+    } catch (_e) {}
+  }
+  _overviewView = "topology";
   var _savedColor = localStorage.getItem("orochi.overviewColor");
   if (
     _savedColor === "name" ||
