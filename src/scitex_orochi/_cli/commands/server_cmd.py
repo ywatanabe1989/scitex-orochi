@@ -1,4 +1,11 @@
-"""CLI commands: serve, vapid-generate."""
+"""CLI commands: serve, vapid-generate.
+
+Phase 1d Step B additionally exposes an empty ``server`` click group —
+the noun dispatcher that will host ``server start/status/deploy`` once
+Step C migrates the flat ``serve`` / top-level ``deploy`` verbs. The
+group is deliberately empty in Step B; it co-exists with the legacy
+flat commands.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +13,24 @@ import json
 
 import click
 
+from scitex_orochi._cli._help_availability import annotate_help_with_availability
 from scitex_orochi._cli._helpers import EXAMPLES_HEADER
+
+
+# ── Phase 1d Step B: empty noun dispatcher ─────────────────────────────
+# No verbs are registered under this group in Step B. Step C migrates
+# the flat ``serve`` / ``deploy`` commands into
+# ``server start / server status / server deploy``.
+@click.group(
+    "server",
+    short_help="Hub server lifecycle",
+    help="Hub server lifecycle (start, status, deploy).",
+)
+def server() -> None:
+    """Server-scoped verbs. Subcommands populate in Phase 1d Step C."""
+
+
+annotate_help_with_availability(server)
 
 
 # ── serve ───────────────────────────────────────────────────────

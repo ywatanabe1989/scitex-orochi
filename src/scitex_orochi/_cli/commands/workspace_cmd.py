@@ -1,4 +1,10 @@
-"""CLI commands: workspace management (create, delete, list, invites)."""
+"""CLI commands: workspace management (create, delete, list, invites).
+
+Phase 1d Step B additionally exposes an empty ``workspace`` click group —
+the noun dispatcher that will host ``workspace create/delete/list`` once
+Step C migrates the flat verbs. The group is deliberately empty in
+Step B; it co-exists with the legacy flat commands.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +16,25 @@ import urllib.request
 
 import click
 
+from scitex_orochi._cli._help_availability import annotate_help_with_availability
 from scitex_orochi._cli._helpers import EXAMPLES_HEADER
+
+
+# ── Phase 1d Step B: empty noun dispatcher ─────────────────────────────
+# No verbs are registered under this group in Step B. Step C migrates
+# the flat ``create-workspace / delete-workspace / list-workspaces``
+# commands into ``workspace create / delete / list``.
+@click.group(
+    "workspace",
+    short_help="Manage workspaces",
+    help="Manage workspaces (create, delete, list).",
+)
+def workspace() -> None:
+    """Workspace-scoped verbs. Subcommands populate in Phase 1d Step C."""
+
+
+annotate_help_with_availability(workspace)
+
 
 # ── HTTP helper ───────────────────────────────────────────────────
 

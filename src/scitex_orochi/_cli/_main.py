@@ -234,10 +234,46 @@ from scitex_orochi._cli.commands.mcp_cmd import mcp as mcp_group
 
 orochi.add_command(mcp_group)
 
+# ── Phase 1d Step B: noun dispatcher skeleton (plan §2, PR #337) ───
+# Empty click groups for every canonical top-level noun. Verbs move
+# under them in Step C — Step B only wires the dispatchers themselves
+# so that `scitex-orochi <noun> --help` is well-formed *before* any
+# rename and so nested help can already annotate reachability.
+#
+# The legacy flat verbs (`list-agents`, `send`, `create-workspace`,
+# `serve`, `doctor`, `init`, `login`, `deploy`, `report`, …) stay
+# registered and functional in Step B; they are migrated and aliased
+# off in Step C.
+from scitex_orochi._cli.commands.agent_cmd import agent as agent_group
+from scitex_orochi._cli.commands.auth_cmd import auth as auth_group
+from scitex_orochi._cli.commands.channel_cmd import channel as channel_group
+from scitex_orochi._cli.commands.config_cmd import config as config_group
+from scitex_orochi._cli.commands.hook_cmd import hook as hook_group
+from scitex_orochi._cli.commands.invite_cmd import invite as invite_group
+from scitex_orochi._cli.commands.message_cmd import message as message_group
+from scitex_orochi._cli.commands.push_cmd import push as push_group
+from scitex_orochi._cli.commands.server_cmd import server as server_group
+from scitex_orochi._cli.commands.system_cmd import system as system_group
+from scitex_orochi._cli.commands.workspace_cmd import workspace as workspace_group
+
+orochi.add_command(agent_group)
+orochi.add_command(auth_group)
+orochi.add_command(channel_group)
+orochi.add_command(config_group)
+orochi.add_command(hook_group)
+orochi.add_command(invite_group)
+orochi.add_command(message_group)
+orochi.add_command(push_group)
+orochi.add_command(server_group)
+orochi.add_command(system_group)
+orochi.add_command(workspace_group)
+
 # ── Phase 1d Step A: (Available Now) help-suffix layer ───────
 # Annotates `--help` output of the top-level group with a quiet
 # "(Available Now)" next to each reachable subcommand. See plan §9
-# (PR #337). Top-level only in this PR; nested groups land in Step B.
+# (PR #337). Top-level was Step A; Step B extends the probe map to
+# cover the new noun groups and applies the same decorator to each
+# of them (so Step C's nested verbs inherit it for free).
 from scitex_orochi._cli._help_availability import annotate_help_with_availability
 
 annotate_help_with_availability(orochi)
