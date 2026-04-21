@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { _ovgWireChannelHoverPreview } from "./channel-hover-preview";
 import { _ovgWireClick } from "./grid-click";
 import { _ovgWireContextmenu } from "./grid-ctx";
 import { _ovgWireHover } from "./grid-hover";
@@ -7,9 +8,9 @@ import { _memSelectOnChange } from "../app/sidebar-memory-handlers";
 
 /* activity-tab/grid-delegation.js — delegated listeners on the
  * overview grid. Per-handler code lives in grid-click.js / grid-mouse.js
- * / grid-ctx.js / grid-hover.js; this file just wires them up once
- * (guard flag) and defines the standalone _topoSvgPoint helper used
- * by both zoom/pan and drag gestures. */
+ * / grid-ctx.js / grid-hover.js / channel-hover-preview.ts; this file
+ * just wires them up once (guard flag) and defines the standalone
+ * _topoSvgPoint helper used by both zoom/pan and drag gestures. */
 
 export function _wireOverviewGridDelegation(grid) {
   if ((globalThis as any)._overviewGridWired || !grid) return;
@@ -17,6 +18,10 @@ export function _wireOverviewGridDelegation(grid) {
   _ovgWireMouse(grid);
   _ovgWireContextmenu(grid);
   _ovgWireHover(grid);
+  /* Item 11 (lead msg#15646) — settled-hover popover showing the last
+   * 7 messages from a channel node. Independent of the edge-highlight
+   * hover wiring in _ovgWireHover; both coexist on the same target. */
+  _ovgWireChannelHoverPreview(grid);
   _ovgWireChange(grid);
   (globalThis as any)._overviewGridWired = true;
 }

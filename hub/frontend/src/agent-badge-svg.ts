@@ -356,12 +356,18 @@ import { escapeHtml, getAgentColor } from "./app/utils";
         var eyeCls =
           "topo-agent-eye " +
           (hiddenFlag ? "topo-agent-eye-off" : "topo-agent-eye-on");
+        /* Item 12 (msg#15661): brighten visible-state and keep hidden
+         * eye grey so the red slash carries the dominant cue. Mirrors
+         * the channel eye so both entity types read identically. */
+        var eyeFill = hiddenFlag ? "#64748b" : "#cbd5e1";
         var eyeGlyph =
           '<text x="' +
           eyeX.toFixed(1) +
           '" y="' +
           (y + 4).toFixed(1) +
-          '" font-size="11" text-anchor="middle" fill="#94a3b8" style="cursor:pointer">\uD83D\uDC41</text>';
+          '" font-size="11" text-anchor="middle" fill="' +
+          eyeFill +
+          '" style="cursor:pointer">\uD83D\uDC41</text>';
         var strike = hiddenFlag
           ? '<line x1="' +
             (eyeX - 5).toFixed(1) +
@@ -371,7 +377,7 @@ import { escapeHtml, getAgentColor } from "./app/utils";
             (eyeX + 5).toFixed(1) +
             '" y2="' +
             (y - 3).toFixed(1) +
-            '" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" pointer-events="none"/>'
+            '" stroke="#ef4444" stroke-width="2" stroke-linecap="round" pointer-events="none"/>'
           : "";
         eyeSvg =
           '<g class="' +

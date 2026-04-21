@@ -496,17 +496,28 @@
   line-height: 1;
   font-size: 11px;
   /* Monochrome so the color emoji doesn't outscreech the surrounding
-   * ★ / LEDs. Matches the .ch-mute and .ch-eye treatment. */
+   * ★ / LEDs. Matches the .ch-mute and .ch-eye treatment. Item 12
+   * (msg#15661): default tone bumped from #94a3b8 to #cbd5e1 so the
+   * visible-state eye reads brightly; -off variant overrides back to
+   * dim grey for the hidden state. */
   filter: grayscale(1);
-  color: #94a3b8;
+  color: #cbd5e1;
   cursor: pointer;
   position: relative;
 }
 .agent-badge-eye-on {
-  opacity: 0.7;
+  /* Item 12: visible state — brighter glyph (slate-300). Opacity
+   * bumped from 0.7 to 1.0 so the brightened colour actually reaches
+   * the viewer; previous 0.7 muted the new tone back to the old
+   * ambiguous grey. */
+  opacity: 1;
+  color: #cbd5e1;
 }
 .agent-badge-eye-off {
-  opacity: 0.9;
+  /* Item 12: hidden state — grey eye body, red slash (below) is the
+   * dominant semantic cue. */
+  opacity: 0.85;
+  color: #64748b;
 }
 .agent-badge-eye-off::after {
   content: "";
@@ -514,7 +525,9 @@
   left: 1px;
   right: 1px;
   top: 50%;
-  height: 2px;
+  /* Item 12: bump slash to 2.5 px so it reads cleanly over the grey
+   * glyph, matching .ch-eye-off::after. */
+  height: 2.5px;
   background: #ef4444;
   transform: rotate(-20deg);
   transform-origin: center;

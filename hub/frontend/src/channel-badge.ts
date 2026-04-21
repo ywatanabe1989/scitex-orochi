@@ -348,14 +348,24 @@ import { escapeHtml } from "./app/utils";
     // Eye — always rendered when showEye, with the SAME 👁 glyph in
     // both states and a red strike when hidden. Wrapped in a <g> so
     // the strike shares the click target (mirrors agent eye SVG).
+    //
+    // Item 12 (msg#15661): visible-state fill bumped from #94a3b8
+    // (slate-400) to #cbd5e1 (slate-300) so the eye reads brightly on
+    // the graph canvas, matching the sidebar CSS .ch-eye-on tone. The
+    // hidden-state eye body stays a dim grey (#64748b) and the slash
+    // becomes the dominant semantic cue — red-500 (#ef4444) at
+    // stroke-width 2 so it reads cleanly at canvas font-size 11.
     var eyeGlyph = "";
     if (showEye) {
+      var eyeFill = m.isHidden ? "#64748b" : "#cbd5e1";
       var eyeText =
         '<text x="' +
         eyeX.toFixed(1) +
         '" y="' +
         (y + 4).toFixed(1) +
-        '" font-size="11" text-anchor="middle" fill="#94a3b8" style="cursor:pointer">\uD83D\uDC41</text>';
+        '" font-size="11" text-anchor="middle" fill="' +
+        eyeFill +
+        '" style="cursor:pointer">\uD83D\uDC41</text>';
       var eyeStrike = "";
       if (m.isHidden) {
         eyeStrike =
@@ -367,7 +377,7 @@ import { escapeHtml } from "./app/utils";
           (eyeX + 5).toFixed(1) +
           '" y2="' +
           (y - 3).toFixed(1) +
-          '" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" pointer-events="none"/>';
+          '" stroke="#ef4444" stroke-width="2" stroke-linecap="round" pointer-events="none"/>';
       }
       eyeGlyph =
         '<g class="topo-ch-eye ch-eye' +

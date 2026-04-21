@@ -257,15 +257,18 @@
  * "eye hidden should use the same glyph with a red strike, matching
  * the bell". */
 .ch-eye-on {
-  /* PR #<this> Item 5: visible state — normal-colour mid-grey glyph,
-   * same visual weight as the agent row's eye. NOT the row accent
-   * colour — this is state feedback, not identity. */
+  /* Item 12 (msg#15661): visible-state glyph bumped from mid-grey
+   * #94a3b8 (slate-400) to brighter slate-300 #cbd5e1 so "channel is
+   * visible" reads unambiguously on the dark sidebar. Previous tone
+   * was dim enough to be misread as a disabled/hidden state. */
   opacity: 1;
-  color: #94a3b8;
+  color: #cbd5e1;
 }
 .ch-eye-off {
-  /* Hidden state — dimmer grey + red-strike ::after overlay (below). */
-  opacity: 0.75;
+  /* Item 12: eye body stays grey; the dominant semantic cue is the
+   * red diagonal slash in ::after below. Slightly more opaque so the
+   * grey glyph reads through the red overlay. */
+  opacity: 0.85;
   filter: none;
   color: #64748b;
   position: relative;
@@ -276,7 +279,10 @@
   left: 1px;
   right: 1px;
   top: 50%;
-  height: 2px;
+  /* Item 12: bump stroke from 2 → 2.5 px so the red slash reads
+   * cleanly on the 14 px eye glyph against both sidebar-bg and
+   * graph-canvas-bg. Colour stays Tailwind red-500 per spec. */
+  height: 2.5px;
   background: #ef4444;
   transform: rotate(-20deg);
   transform-origin: center;
