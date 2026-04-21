@@ -203,6 +203,11 @@ from scitex_orochi._cli.commands.host_identity_cmd import host_identity
 
 orochi.add_command(host_identity)
 
+# Unified cron daemon (msg#16406 / msg#16410)
+from scitex_orochi._cli.commands.cron_cmd import cron as cron_group
+
+orochi.add_command(cron_group)
+
 
 def main() -> None:
     try:
