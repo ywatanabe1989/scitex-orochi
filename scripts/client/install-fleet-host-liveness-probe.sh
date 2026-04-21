@@ -18,7 +18,7 @@ set -u
 set -o pipefail
 
 LABEL="com.scitex.fleet-host-liveness-probe"
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 TEMPLATE="${REPO_ROOT}/deployment/host-setup/launchd/${LABEL}.plist"
 TARGET_LAUNCHD="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 MAC_LOG_DIR="${HOME}/Library/Logs/scitex"
