@@ -1,0 +1,16 @@
+[Unit]
+# Timer companion for scitex-hungry-signal.service. Fires every 10 minutes
+# with a 30s AccuracySec window. Layer 1 (auto-dispatch-probe) runs every
+# 5 min; this runs half as often so HUNGRY_THRESHOLD=2 cycles maps to
+# ~20 min of real idleness before lead gets DM'd.
+Description=SciTeX Orochi — trigger hungry-signal probe every 10 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=10min
+AccuracySec=30s
+Unit=scitex-hungry-signal.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,27 @@
+[Unit]
+# SciTeX Orochi — Layer 2 hungry-signal probe (lead msg#16310)
+#
+# Runs scripts/client/hungry-signal.sh every 10 minutes. Paired with
+# scitex-hungry-signal.timer in the same directory. Install via
+# scripts/client/install-hungry-signal.sh.
+#
+# __REPO__ / __STABLE_PROBE__ / __PROBE_MODE__ templated by installer;
+# stable-bin-path pattern (PR #326 todo#466) so feature-branch checkouts
+# never 404 the scheduler.
+#
+# For hosts without systemd --user support, the installer falls back to
+# a cron entry.
+Description=SciTeX Orochi — hungry-signal probe (idle heads DM lead for coordinated dispatch)
+Documentation=https://github.com/ywatanabe1989/scitex-orochi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/systemd/user/orochi.env
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=SCITEX_OROCHI_REPO_ROOT=__REPO__
+ExecStart=/bin/bash -lc '__STABLE_PROBE__ __PROBE_MODE__'
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=60
