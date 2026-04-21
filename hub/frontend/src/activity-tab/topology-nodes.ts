@@ -4,12 +4,20 @@ import { _secondsSinceIso } from "./utils";
 import { renderAgentBadgeSvg } from "../agent-badge-svg";
 import { renderChannelBadgeSvg } from "../channel-badge";
 
-/* activity-tab/topology-nodes.js — SVG emission for channel diamonds,
- * agent pills, and the human user node. */
+/* activity-tab/topology-nodes.js — SVG emission for channel nodes,
+ * agent pills, and the human user node.
+ *
+ * PR #<this> Item 9 (ywatanabe msg#15637): channel nodes are rendered
+ * ONLY through renderChannelBadgeSvg — the prior rotated-square
+ * "diamond" shape is removed. Every node (agent AND channel) now
+ * goes through the shared badge modules so canvas ↔ sidebar ↔ pool
+ * stay in lockstep ("channel ノードの ダイヤモンド形状は削除、
+ * identity badge だけで十分"). No parallel renderer; no diamond
+ * fallback. */
 
 export function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs) {
   /* Per-channel subscriber counts across the visible agents. Used to
-   * scale each channel diamond — "based on the number of agents, the
+   * scale each channel badge — "based on the number of agents, the
    * channel node can be larger" (ywatanabe 2026-04-19). */
   var chAgentCounts = {};
   visible.forEach(function (a) {
@@ -18,8 +26,9 @@ export function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs)
       chAgentCounts[c] = (chAgentCounts[c] || 0) + 1;
     });
   });
-  /* Channel diamonds (rotated squares) with label above. Size scales
-   * per user-selected "size:" dropdown (todo#95):
+  /* Channel badges (horizontal pills via renderChannelBadgeSvg) with
+   * identity inline. Size scales per user-selected "size:" dropdown
+   * (todo#95):
    *   equal       — fixed r = 12
    *   subscribers — r = 8 + sqrt(count-1)*5, clamped [8,22]
    *   posts       — reserved; /api/stats does not yet expose post counts,
@@ -46,17 +55,16 @@ export function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs)
        * 2026-04-20: "ALL channel badge MUST have the SAME UI and
        * functionalities"). No inline glyph/star/eye/mute emission
        * here — the SSoT owns the full channel visual. */
-      if (typeof renderChannelBadgeSvg === "function") {
-        return renderChannelBadgeSvg(
-          c,
-          { x: p.x, y: p.y, r: r },
-          { showEye: true, showUnread: false, count: count },
-        );
-      }
-      /* Fallback shouldn't fire once channel-badge.js is loaded;
-       * kept minimal so the canvas still renders if the helper is
-       * missing for any reason. */
-      return "";
+      /* Item 9: no fallback — renderChannelBadgeSvg is the ONLY path.
+       * channel-badge.ts loads before this file in the Vite bundle
+       * (see src/index.ts import order), so the helper is always
+       * defined. If it is missing we want to fail loudly rather than
+       * silently render nothing. */
+      return renderChannelBadgeSvg(
+        c,
+        { x: p.x, y: p.y, r: r },
+        { showEye: true, showUnread: false, count: count },
+      );
     })
     .join("");
 
