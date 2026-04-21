@@ -34,7 +34,7 @@ jobs:
   # and revive locally. Paired cadence with server-side liveness.
   - name: fleet-host-liveness-probe
     interval: 5m
-    command: "bash ${SCITEX_OROCHI_REPO_ROOT}/scripts/client/fleet-watch/host-liveness-probe.sh --yes"
+    command: "scitex-orochi host-liveness probe --yes"
     timeout: 4m
 
   # Layer 2: idle heads DM lead for coordinated dispatch. Cadence
@@ -42,22 +42,27 @@ jobs:
   # counter maps to ~20 min of real idleness.
   - name: hungry-signal
     interval: 10m
-    command: "bash ${SCITEX_OROCHI_REPO_ROOT}/scripts/client/hungry-signal.sh --yes"
+    command: "scitex-orochi hungry-signal check --yes"
     timeout: 9m
 
   # Chrome code_sign_clone reaper — hourly is plenty, the problem grows
   # on the order of GB/day when it goes wrong.
   - name: chrome-codesign-watchdog
     interval: 1h
-    command: "bash ${SCITEX_OROCHI_REPO_ROOT}/scripts/client/chrome-codesign-clone-watchdog.sh"
+    command: "scitex-orochi chrome-watchdog check"
     timeout: 10m
 
-  # Disk reaper — Phase 2 will wire the full version; this is the
-  # hourly tmp-file sweep (safe subset) so Phase 1 already gains back
-  # the cadence from the old disk-reaper.sh script.
-  # Uncomment once deployment/host-setup/orochi-cron/cron.yaml on the
-  # host reflects disk thresholds appropriate for that box.
+  # Disk pressure probe — hourly advisory on root-fs headroom. Emits
+  # NDJSON to $HOST_TELEMETRY_OUT_DIR and exits non-zero on warn/critical.
+  - name: disk-pressure-probe
+    interval: 1h
+    command: "scitex-orochi disk pressure-probe"
+    timeout: 2m
+
+  # Disk reaper — dry-run by default (no side effects), flip to --yes
+  # on hosts where you've accepted the safe-default reap list. Uncomment
+  # once disk thresholds on the host match your tolerance.
   # - name: disk-reaper
   #   interval: 1h
-  #   command: "bash ${SCITEX_OROCHI_REPO_ROOT}/scripts/client/disk-reaper.sh --reap"
+  #   command: "scitex-orochi disk reaper-dry-run --yes"
   #   timeout: 10m
