@@ -8,6 +8,11 @@ import { setCurrentChannel } from "../app/state";
 import { apiUrl, escapeHtml, sendOrochiMessage, userName } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
 import { loadChannelHistory } from "../chat/chat-history";
+import {
+  _buildPastedTextFile,
+  _pastedTextShouldAttach,
+  _uploadFilesAPI,
+} from "../upload";
 
 /* activity-tab/compose.js — group compose modal (multi-select post)
  * + inline channel compose popup + drag-ghost helper + subscribe toast. */
@@ -367,10 +372,88 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     document.addEventListener("mousedown", outsideClick, true);
   }, 50);
 
+  /* msg#16193: local-scoped pending attachments for this popup. Paste /
+   * drop stage here instead of routing to the Chat composer, so the
+   * user's Overview-tab interaction never flips them into Chat. Rendered
+   * as a small inline strip ABOVE the textarea; cleared when the popup
+   * closes or the message is sent. */
+  var popPending = [];
+  var popTray = document.createElement("div");
+  popTray.className = "tcc-pending";
+  popTray.style.display = "none";
+  /* Insert above the textarea (after preview slot if present). */
+  if (input && input.parentNode === pop) {
+    pop.insertBefore(popTray, input);
+  } else {
+    pop.insertBefore(popTray, pop.firstChild);
+  }
+
+  function _renderPopTray() {
+    if (!popPending.length) {
+      popTray.style.display = "none";
+      popTray.innerHTML = "";
+      return;
+    }
+    popTray.style.display = "flex";
+    popTray.innerHTML = "";
+    popPending.forEach(function (p, idx) {
+      var item = document.createElement("div");
+      item.className = "tcc-pending-item";
+      var isImage =
+        p.uploaded &&
+        p.uploaded.mime_type &&
+        p.uploaded.mime_type.indexOf("image/") === 0;
+      var thumb;
+      if (isImage) {
+        thumb = document.createElement("img");
+        thumb.src = p.uploaded.url;
+        thumb.className = "tcc-pending-thumb";
+        thumb.alt = p.uploaded.filename || "image";
+      } else {
+        thumb = document.createElement("span");
+        thumb.className = "tcc-pending-icon";
+        thumb.textContent = "\uD83D\uDCCE";
+      }
+      var label = document.createElement("span");
+      label.className = "tcc-pending-label";
+      label.textContent = (p.uploaded && p.uploaded.filename) || "";
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "tcc-pending-remove";
+      remove.title = "Remove";
+      remove.textContent = "\u2715";
+      remove.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        popPending.splice(idx, 1);
+        _renderPopTray();
+      });
+      item.appendChild(thumb);
+      item.appendChild(label);
+      item.appendChild(remove);
+      popTray.appendChild(item);
+    });
+  }
+
+  async function _stagePopFiles(files) {
+    if (!files || files.length === 0) return;
+    var uploaded = await _uploadFilesAPI(files);
+    if (!uploaded || !uploaded.length) return;
+    /* Popup may have closed while upload was in-flight — bail silently. */
+    if (!pop.parentNode) return;
+    uploaded.forEach(function (u, i) {
+      popPending.push({ file: files[i] || files[0], uploaded: u });
+    });
+    _renderPopTray();
+  }
+
   function send() {
     var text = (input.value || "").trim();
-    if (!text) return;
+    var attachments = popPending.map(function (p) {
+      return p.uploaded;
+    });
+    if (!text && attachments.length === 0) return;
     var payload = { channel: channel, content: text };
+    if (attachments.length > 0) payload.attachments = attachments;
     if (
       typeof wsConnected !== "undefined" &&
       wsConnected &&
@@ -422,77 +505,63 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
       close();
     }
   });
-  /* Paste support — images / files / long text. Native paste of plain
-   * text keeps the default behavior (lands in the textarea). If the
-   * clipboard carries a file/image, route to the Chat composer (the
-   * canonical paste-to-attach pipeline lives there) and re-dispatch
-   * the paste event so the upload.js handler does the work.
-   * ywatanabe 2026-04-19: "small input modal should support pasting".
+  /* Paste support — images / files / long text. msg#16193 regression-fix:
+   * previously this handler, on image/long-text paste, closed the popup
+   * and re-dispatched the paste into the Chat composer via `_routeToChat`
+   * — which flipped the user out of the Overview tab, which is exactly
+   * the bug the user keeps reporting ("I'm on Overview, I paste an
+   * image, I end up on Chat"). Fix: stage attachments LOCALLY to this
+   * popup (upload to /api/upload, show inline thumb strip, include in
+   * the send() payload). No tab switch, no msg-input re-dispatch.
    *
-   * PR #<this> Item 10 (lead msg#15637): graph-compose paste was
-   * triggering a tab switch to Chat when the user intended the paste
-   * to land in the graph input. Root cause: the paste event bubbled
-   * up from this textarea to msg-input's body-attached paste handler
-   * (upload.ts handleClipboardPaste) which is focused on msg-input;
-   * when msg-input received the bubbled paste it implicitly reacted
-   * as if the user had interacted with the Chat composer. The fix is
-   * simple: unconditionally stopPropagation() on every paste into the
-   * graph input so nothing bubbles past this handler. The textarea
-   * still receives the native paste (we don't preventDefault unless
-   * we're re-routing files/long-text to msg-input explicitly). */
+   * Keep `ev.stopPropagation()` so nothing bubbles into msg-input's
+   * window-level paste handler. Short plain text still lands in the
+   * textarea via the browser's default paste behavior (we only
+   * preventDefault when we actually stage a file). */
   input.addEventListener("paste", function (ev) {
-    /* Item 10: contain paste to this popup unconditionally — paste
-     * MUST NOT bubble up to msg-input's handler or any window-level
-     * tab-router. Don't preventDefault (that would kill native text
-     * paste); only stopPropagation. */
     ev.stopPropagation();
     var cd =
       ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
     if (!cd) return;
-    var hasFile = false;
-    if (cd.files && cd.files.length) hasFile = true;
-    else if (cd.items) {
-      for (var i = 0; i < cd.items.length; i++) {
-        var it = cd.items[i];
+    /* Collect image files from both cd.files (browsers that expose it)
+     * and cd.items (browsers that only expose items). Dedup inline. */
+    var collected = [];
+    var seen = new Set();
+    function pushUnique(f) {
+      if (!f || !f.type || f.type.indexOf("image/") !== 0) return;
+      var key =
+        f.name + "|" + f.size + "|" + f.type + "|" + (f.lastModified || 0);
+      if (seen.has(key)) return;
+      seen.add(key);
+      collected.push(f);
+    }
+    var fileList = cd.files;
+    if (fileList && fileList.length) {
+      for (var i = 0; i < fileList.length; i++) pushUnique(fileList[i]);
+    } else if (cd.items) {
+      for (var j = 0; j < cd.items.length; j++) {
+        var it = cd.items[j];
         if (it && it.type && it.type.indexOf("image/") === 0) {
-          hasFile = true;
-          break;
+          pushUnique(it.getAsFile());
         }
       }
     }
-    /* Long text still attaches as a file via upload.js's
-     * _pastedTextShouldAttach heuristic — route for that case too. */
+    /* Long-text-as-file: same heuristic as upload.ts (>= 1500 chars or
+     * >= 25 lines) so the popup behaves identically to the Chat
+     * composer in this regard. */
     var text = "";
     try {
       text = cd.getData("text/plain") || "";
     } catch (_) {}
-    var isLong = text.length > 1000;
-    if (hasFile || isLong) {
-      /* Route to Chat composer: block native textarea paste, close
-       * this popup, and synthesize a paste on msg-input (below). The
-       * stopPropagation above already contained the bubble; no need
-       * to repeat it here. */
+    var attachText =
+      typeof _pastedTextShouldAttach === "function" &&
+      _pastedTextShouldAttach(text);
+    if (collected.length > 0 || attachText) {
       ev.preventDefault();
-      close();
-      _routeToChat();
-      setTimeout(function () {
-        var msgInput = document.getElementById("msg-input");
-        if (!msgInput) return;
-        msgInput.focus();
-        /* Synthesize a paste event on msg-input so upload.js's
-         * handleClipboardPaste processes the same clipboard payload. */
-        try {
-          var newEv = new ClipboardEvent("paste", {
-            clipboardData: cd,
-            bubbles: true,
-            cancelable: true,
-          });
-          msgInput.dispatchEvent(newEv);
-        } catch (_) {
-          /* Some browsers don't allow constructing ClipboardEvent with
-           * populated data — let the user paste again in that case. */
-        }
-      }, 50);
+      if (attachText && typeof _buildPastedTextFile === "function") {
+        collected.push(_buildPastedTextFile(text));
+      }
+      _stagePopFiles(collected);
     }
   });
   expandBtn.addEventListener("click", function () {
@@ -532,9 +601,13 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
       window.toggleVoiceInput();
     }
   });
-  /* Drop files onto popup → route to Chat with attachments primed. */
+  /* Drop files onto popup → stage LOCALLY (msg#16193). Same rationale
+   * as the paste handler: the user is working in the graph-compose
+   * popup on the Overview tab and shouldn't get flipped to Chat for a
+   * drag-drop. */
   pop.addEventListener("dragover", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.add("tcc-drag-over");
   });
   pop.addEventListener("dragleave", function () {
@@ -542,11 +615,11 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
   });
   pop.addEventListener("drop", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.remove("tcc-drag-over");
     var files = ev.dataTransfer && ev.dataTransfer.files;
-    if (files && files.length && typeof handleFileUpload === "function") {
-      _routeToChat();
-      for (var i = 0; i < files.length; i++) handleFileUpload(files[i]);
+    if (files && files.length) {
+      _stagePopFiles(Array.prototype.slice.call(files));
     }
   });
 }
