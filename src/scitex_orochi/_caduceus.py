@@ -55,6 +55,13 @@ import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from ._caduceus_greeting import (
+    DEFAULT_TIMEOUT_S as GREETING_TIMEOUT_S,
+    GreetingState,
+    format_greeting,
+    should_ping,
+)
+
 log = logging.getLogger("orochi.caduceus")
 
 # Severity thresholds (seconds)
@@ -225,16 +232,78 @@ def register_self(hub: str, token: str | None, name: str, machine: str) -> bool:
     return False
 
 
+def greeting_scan(
+    hub: str,
+    token: str | None,
+    agents: list["AgentState"],
+    state: GreetingState,
+    last_ping_ts: dict[str, float],
+    channel: str,
+    interval_s: int,
+    timeout_s: int,
+) -> None:
+    """One tick of the conversational round-trip health check (todo#168).
+
+    1. Sweep expired in-flight greetings → mark owners inbound-deaf.
+    2. For every agent in the roster, decide if they're due for a ping.
+    3. Post the greeting, remember ``(agent, nonce, sent_ts)``.
+
+    Matching incoming pongs happens out-of-band — a separate code path
+    watches ``#<channel>`` traffic and calls
+    ``state.record_reply(body, now)`` per inbound message. That path
+    lives in the MCP-bridge verifier (sidecar lane, Phase 2); for now
+    the caller can call ``state.record_reply`` manually in tests.
+    """
+    now = time.time()
+    expired = state.sweep_expired(now)
+    for ping in expired:
+        label = state.conversational_status(ping.agent)
+        log.warning(
+            "greeting timeout: agent=%s nonce=%s age=%.1fs -> %s",
+            ping.agent,
+            ping.nonce,
+            now - ping.sent_ts,
+            label,
+        )
+        if label in ("degraded", "inbound_deaf"):
+            msg = (
+                f"conversational-health: @{ping.agent} "
+                f"{label} (missed {int(state.status[ping.agent].get('consecutive_timeouts', 0))}x"
+                f" greeting, last nonce={ping.nonce}, timeout={ping.timeout_s}s)"
+            )
+            _post_chat(hub, token, "#escalation", msg)
+
+    for a in agents:
+        # Skip caduceus itself (self-ping is a null signal).
+        if a.name.startswith("caduceus"):
+            continue
+        if not should_ping(
+            a.name, a.current_task, a.idle_seconds, now, last_ping_ts, interval_s
+        ):
+            continue
+        body, nonce = format_greeting(a.name)
+        state.register_ping(a.name, nonce, now, timeout_s=timeout_s)
+        last_ping_ts[a.name] = now
+        _post_chat(hub, token, channel, body)
+        log.info("greeting sent: agent=%s nonce=%s", a.name, nonce)
+
+
 def loop(
     hub: str,
     token: str | None,
     interval: int,
     autoremedy: bool,
     once: bool,
+    greeting_enabled: bool = False,
+    greeting_channel: str = "#general",
+    greeting_interval_s: int = 180,
+    greeting_timeout_s: int = GREETING_TIMEOUT_S,
 ) -> None:
     import socket as _socket
 
     last_action_ts: dict[str, float] = {}
+    last_greeting_ts: dict[str, float] = {}
+    greeting_state = GreetingState()
     self_host = (
         os.environ.get("SCITEX_OROCHI_CADUCEUS_HOST")
         or os.environ.get("SCITEX_OROCHI_MACHINE")
@@ -243,11 +312,12 @@ def loop(
     )
     self_name = os.environ.get("SCITEX_OROCHI_CADUCEUS_NAME") or f"caduceus@{self_host}"
     log.info(
-        "caduceus starting: hub=%s interval=%ds autoremedy=%s self=%s",
+        "caduceus starting: hub=%s interval=%ds autoremedy=%s self=%s greeting=%s",
         hub,
         interval,
         autoremedy,
         self_name,
+        greeting_enabled,
     )
     while True:
         # Re-register every cycle so we show up as an online agent
@@ -278,6 +348,20 @@ def loop(
                 heal_stale(hub, token, a)
             elif kind == "dead":
                 heal_dead(hub, token, a)
+        if greeting_enabled:
+            try:
+                greeting_scan(
+                    hub=hub,
+                    token=token,
+                    agents=agents,
+                    state=greeting_state,
+                    last_ping_ts=last_greeting_ts,
+                    channel=greeting_channel,
+                    interval_s=greeting_interval_s,
+                    timeout_s=greeting_timeout_s,
+                )
+            except Exception as e:  # never let greeting errors kill the loop
+                log.warning("greeting_scan error: %s", e)
         if once:
             break
         time.sleep(interval)
@@ -302,6 +386,36 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable debug logging"
     )
+    parser.add_argument(
+        "--greeting",
+        action="store_true",
+        help=(
+            "Enable greeting-ping conversational health check (todo#168). "
+            "Posts `@<agent> [greeting:<8hex>]` per agent every "
+            "--greeting-interval seconds and expects `[pong:<hex>]` within "
+            "--greeting-timeout seconds."
+        ),
+    )
+    parser.add_argument(
+        "--greeting-channel",
+        default=os.environ.get("SCITEX_OROCHI_GREETING_CHANNEL", "#general"),
+        help="Channel to post greeting pings into (default: #general)",
+    )
+    parser.add_argument(
+        "--greeting-interval",
+        type=int,
+        default=180,
+        help="Per-agent greeting cadence in seconds (default: 180)",
+    )
+    parser.add_argument(
+        "--greeting-timeout",
+        type=int,
+        default=GREETING_TIMEOUT_S,
+        help=(
+            "Timeout in seconds from greeting-send to expected pong. "
+            f"Default: {GREETING_TIMEOUT_S} (matches rule #13)."
+        ),
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -314,6 +428,10 @@ def main(argv: list[str] | None = None) -> int:
             interval=args.interval,
             autoremedy=args.autoremedy,
             once=args.once,
+            greeting_enabled=args.greeting,
+            greeting_channel=args.greeting_channel,
+            greeting_interval_s=args.greeting_interval,
+            greeting_timeout_s=args.greeting_timeout,
         )
     except KeyboardInterrupt:
         log.info("caduceus stopped by user")
