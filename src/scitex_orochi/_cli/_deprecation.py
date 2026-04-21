@@ -33,6 +33,7 @@ __all__ = [
     "SOFT_TTL_S",
     "is_opted_out",
     "hard_rename_error",
+    "make_rename_stub",
     "soft_notice",
     "reset_soft_notice_state",
 ]
@@ -131,6 +132,53 @@ def hard_rename_error(
     )
     print(msg, file=out)
     exit_fn(exit_code)
+
+
+def make_rename_stub(old_name: str, new_name: str):
+    """Return a click.Command that fires :func:`hard_rename_error` when invoked.
+
+    Used by the top-level ``_main.py`` to replace legacy flat commands
+    whose body has been migrated under a noun group (Phase 1d Step C, plan
+    PR #337). The stub:
+
+    * accepts arbitrary extra args (so users who run
+      ``scitex-orochi list-agents --json`` still see the rename error,
+      not a click usage error that would confuse them further);
+    * prints the canonical one-liner to stderr and exits ``2`` unchanged;
+    * exposes a short help string mentioning the new form, so
+      ``scitex-orochi --help`` readers see the redirect target.
+
+    The stub is deliberately a ``click.Command`` (not a group) — any
+    former subcommand path (e.g. ``scitex-orochi deploy stable``) is
+    swallowed by ``UNPROCESSED`` and the user still gets the rename
+    error. This is simpler than enumerating every old sub-verb and is
+    correct per the plan: the old path is dead, not re-routed.
+    """
+    import click as _click
+
+    short_help = f"Renamed -- use `scitex-orochi {new_name}`."
+
+    @_click.command(
+        old_name,
+        short_help=short_help,
+        help=(
+            f"Renamed. Use `scitex-orochi {new_name}` instead. This stub "
+            f"exists only to give a clear error message; invoking it "
+            f"exits non-zero."
+        ),
+        # Accept any extra args so users who ran the old form with its
+        # old options still hit the rename error (not a click parse error).
+        context_settings={
+            "ignore_unknown_options": True,
+            "allow_extra_args": True,
+            "help_option_names": ["-h", "--help"],
+        },
+    )
+    @_click.argument("_args", nargs=-1, type=_click.UNPROCESSED)
+    def _stub(_args):  # pragma: no cover - exercised via tests
+        hard_rename_error(old_name, new_name)
+
+    return _stub
 
 
 def soft_notice(

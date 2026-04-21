@@ -112,89 +112,68 @@ def orochi(
 
 
 # ── Register subcommands ────────────────────────────────────────
-from scitex_orochi._cli.commands.agent_cmd import (
-    agent_launch,
-    agent_restart,
-    agent_status,
-    agent_stop,
-)
-from scitex_orochi._cli.commands.deploy_cmd import deploy
+# Phase 1d Step C (plan PR #337 §2, Q1 decision): flat command names
+# are now hard-error stubs that tell the user the new form. The verb
+# bodies live under the noun dispatchers below.
+from scitex_orochi._cli._deprecation import make_rename_stub
 from scitex_orochi._cli.commands.docs_cmd import docs
-from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
-from scitex_orochi._cli.commands.fleet_cmd import fleet
-from scitex_orochi._cli.commands.init_cmd import init_cmd
-from scitex_orochi._cli.commands.launch_cmd import launch
-from scitex_orochi._cli.commands.messaging_cmd import join, listen, login, send
-from scitex_orochi._cli.commands.query_cmd import (
-    list_agents,
-    list_channels,
-    list_members,
-    show_history,
-    show_status,
-)
-from scitex_orochi._cli.commands.report_cmd import report
-from scitex_orochi._cli.commands.server_cmd import serve, setup_push
 from scitex_orochi._cli.commands.skills_cmd import skills
 
-# Agent lifecycle (direct screen-based management)
-orochi.add_command(agent_launch)
-orochi.add_command(agent_restart)
-orochi.add_command(agent_stop)
-orochi.add_command(agent_status)
+# Rename table (plan §2). Each tuple is (old_flat_name, new_noun_verb).
+# The stub accepts any trailing args so users who still run the old
+# form with its old flags still hit the rename error rather than a
+# confusing click parse failure.
+_RENAMES: list[tuple[str, str]] = [
+    # Agent lifecycle
+    ("agent-launch", "agent launch"),
+    ("agent-restart", "agent restart"),
+    ("agent-status", "agent status"),
+    ("agent-stop", "agent stop"),
+    ("list-agents", "agent list"),
+    ("fleet", "agent fleet-list"),
+    # Flat `launch` (group with master/head/all) and flat `stop` both
+    # mapped to the agent-lifecycle nouns per plan §2 (ambiguous-stop
+    # resolution: implementation targets fleet agents).
+    ("launch", "agent launch"),
+    ("stop", "agent stop"),
+    # Messaging
+    ("send", "message send"),
+    ("listen", "message listen"),
+    # Channels
+    ("show-history", "channel history"),
+    ("join", "channel join"),
+    ("list-channels", "channel list"),
+    ("list-members", "channel members"),
+    # Invites
+    ("create-invite", "invite create"),
+    ("list-invites", "invite list"),
+    # Workspaces
+    ("create-workspace", "workspace create"),
+    ("delete-workspace", "workspace delete"),
+    ("list-workspaces", "workspace list"),
+    # Server
+    ("show-status", "server status"),
+    ("serve", "server start"),
+    ("deploy", "server deploy"),
+    # Push
+    ("setup-push", "push setup"),
+    # Config
+    ("init", "config init"),
+    # System
+    ("doctor", "system doctor"),
+    # Auth
+    ("login", "auth login"),
+    # Machine (Q1 rename, even though `machine heartbeat send` already
+    # exists from PR #336 — the flat form still needs a hard error).
+    ("heartbeat-push", "machine heartbeat send"),
+    # Hook
+    ("report", "hook report"),
+]
 
-# Fleet
-orochi.add_command(fleet)
+for _old, _new in _RENAMES:
+    orochi.add_command(make_rename_stub(_old, _new))
 
-# Messaging
-orochi.add_command(send)
-orochi.add_command(listen)
-orochi.add_command(login)
-orochi.add_command(join)
-
-# Queries
-orochi.add_command(list_agents)
-orochi.add_command(show_status)
-orochi.add_command(list_channels)
-orochi.add_command(list_members)
-orochi.add_command(show_history)
-
-# Server
-orochi.add_command(serve)
-orochi.add_command(doctor_cmd)
-orochi.add_command(setup_push)
-
-from scitex_orochi._cli.commands.stop_cmd import stop as stop_cmd
-
-# Deployment (legacy agent-container based)
-orochi.add_command(init_cmd)
-orochi.add_command(launch)
-orochi.add_command(deploy)
-orochi.add_command(stop_cmd)
-
-# Workspace
-from scitex_orochi._cli.commands.workspace_cmd import (
-    create_invite,
-    create_workspace,
-    delete_workspace,
-    list_invites,
-    list_workspaces,
-)
-
-orochi.add_command(create_workspace)
-orochi.add_command(delete_workspace)
-orochi.add_command(list_workspaces)
-orochi.add_command(create_invite)
-orochi.add_command(list_invites)
-
-# Hook-driven liveness reporting (#143)
-orochi.add_command(report)
-
-# Non-agentic heartbeat pusher (consumes scitex-agent-container CLI)
-from scitex_orochi._cli.commands.heartbeat_cmd import heartbeat_push
-
-orochi.add_command(heartbeat_push)
-
-# Integration
+# Flat keepers (Q5): docs and skills stay flat, no rename.
 orochi.add_command(docs)
 orochi.add_command(skills)
 
@@ -234,16 +213,10 @@ from scitex_orochi._cli.commands.mcp_cmd import mcp as mcp_group
 
 orochi.add_command(mcp_group)
 
-# ── Phase 1d Step B: noun dispatcher skeleton (plan §2, PR #337) ───
-# Empty click groups for every canonical top-level noun. Verbs move
-# under them in Step C — Step B only wires the dispatchers themselves
-# so that `scitex-orochi <noun> --help` is well-formed *before* any
-# rename and so nested help can already annotate reachability.
-#
-# The legacy flat verbs (`list-agents`, `send`, `create-workspace`,
-# `serve`, `doctor`, `init`, `login`, `deploy`, `report`, …) stay
-# registered and functional in Step B; they are migrated and aliased
-# off in Step C.
+# ── Phase 1d Step C: noun dispatchers with migrated verbs (plan §2, PR #337) ─
+# Click groups for every canonical top-level noun. Verbs have been
+# migrated under them (Step C). Flat legacy verbs now hard-error via
+# the rename table above.
 from scitex_orochi._cli.commands.agent_cmd import agent as agent_group
 from scitex_orochi._cli.commands.auth_cmd import auth as auth_group
 from scitex_orochi._cli.commands.channel_cmd import channel as channel_group

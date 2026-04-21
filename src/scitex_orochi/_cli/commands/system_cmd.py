@@ -1,14 +1,15 @@
-"""``scitex-orochi system`` — empty noun group (Phase 1d Step B).
+"""``scitex-orochi system {doctor}`` (Phase 1d Step C).
 
-Step B (PR plan §2 / #337) lays the dispatcher skeleton. This group is
-deliberately empty — the verb (``system doctor``, replacing top-level
-``doctor``) moves here in Step C. Step B only ensures ``scitex-orochi
-system --help`` works and the group appears in top-level help with an
-``(Available Now)`` suffix when the hub is reachable.
+The verb body lives in ``doctor_cmd.py`` (the flat command was plain
+``doctor``). We re-expose it under the ``system`` noun group with a
+short name.
 
-See ``src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`` §1.1
-for the full noun-group registry.
+The old flat spelling (``doctor``) is stubbed in ``_main.py`` to emit
+``hard_rename_error`` (plan PR #337 §2, Q1 decision).
 """
+# ruff: noqa: E402
+# (E402 is ignored file-wide so the noun-group decorator can run before
+# the deferred verb imports below — the pattern mirrors ``_main.py``.)
 
 from __future__ import annotations
 
@@ -23,7 +24,11 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
     help="Host-side self-diagnosis (doctor).",
 )
 def system() -> None:
-    """System-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """System-scoped verbs (Phase 1d Step C)."""
 
+
+from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd as _doctor_cmd
+
+system.add_command(_doctor_cmd, name="doctor")
 
 annotate_help_with_availability(system)

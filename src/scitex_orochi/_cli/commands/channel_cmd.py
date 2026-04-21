@@ -1,15 +1,16 @@
-"""``scitex-orochi channel`` — empty noun group (Phase 1d Step B).
+"""``scitex-orochi channel {list,join,history,members}`` (Phase 1d Step C).
 
-Step B (PR plan §2 / #337) lays the dispatcher skeleton. This group is
-deliberately empty — the verbs (``channel list``, ``channel join``,
-``channel history``, ``channel members``) move here in Step C. Step B
-only ensures ``scitex-orochi channel --help`` works and the group is
-visible in top-level help with an ``(Available Now)`` suffix when the
-hub is reachable.
+The underlying verb bodies still live in ``query_cmd.py`` and
+``messaging_cmd.py`` — this module just re-exposes them under the
+``channel`` noun group with short names.
 
-See ``src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`` §1.1
-for the full noun-group registry.
+The old flat spellings (``list-channels``, ``join``, ``show-history``,
+``list-members``) are stubbed in ``_main.py`` to emit
+``hard_rename_error`` (plan PR #337 §2, Q1 decision).
 """
+# ruff: noqa: E402
+# (E402 is ignored file-wide so the noun-group decorator can run before
+# the deferred verb imports below — the pattern mirrors ``_main.py``.)
 
 from __future__ import annotations
 
@@ -24,9 +25,20 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
     help="Channel membership and history (list, join, history, members).",
 )
 def channel() -> None:
-    """Channel-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """Channel-scoped verbs (Phase 1d Step C)."""
 
 
-# Annotate nested help so Step C's verbs will render with the
-# ``(Available Now)`` suffix as soon as they are registered.
+# Deferred registrations — ``query_cmd`` / ``messaging_cmd`` import
+# lightweight helpers only, so we can pull them at module-import time
+# without a cycle.
+from scitex_orochi._cli.commands.messaging_cmd import join as _join
+from scitex_orochi._cli.commands.query_cmd import list_channels as _list_channels
+from scitex_orochi._cli.commands.query_cmd import list_members as _list_members
+from scitex_orochi._cli.commands.query_cmd import show_history as _show_history
+
+channel.add_command(_list_channels, name="list")
+channel.add_command(_join, name="join")
+channel.add_command(_show_history, name="history")
+channel.add_command(_list_members, name="members")
+
 annotate_help_with_availability(channel)

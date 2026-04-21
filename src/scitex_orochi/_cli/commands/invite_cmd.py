@@ -1,14 +1,15 @@
-"""``scitex-orochi invite`` — empty noun group (Phase 1d Step B).
+"""``scitex-orochi invite {create,list}`` (Phase 1d Step C).
 
-Step B (PR plan §2 / #337) lays the dispatcher skeleton. This group is
-deliberately empty — the verbs (``invite create``, ``invite list``)
-move here in Step C. Step B only ensures ``scitex-orochi invite --help``
-works and the group appears in top-level help with an ``(Available
-Now)`` suffix when the hub is reachable.
+The verb bodies live in ``workspace_cmd.py`` (historical wiring — the
+original flat commands were ``create-invite`` / ``list-invites`` which
+are workspace-scoped operations). We re-expose them under the
+``invite`` noun group with short names.
 
-See ``src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`` §1.1
-for the full noun-group registry.
+The old flat spellings (``create-invite``, ``list-invites``) are
+stubbed in ``_main.py`` to emit ``hard_rename_error`` (plan PR #337
+§2, Q1 decision).
 """
+# ruff: noqa: E402
 
 from __future__ import annotations
 
@@ -23,7 +24,13 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
     help="Workspace invite codes (create, list).",
 )
 def invite() -> None:
-    """Invite-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """Invite-scoped verbs (Phase 1d Step C)."""
 
+
+from scitex_orochi._cli.commands.workspace_cmd import create_invite as _create_invite
+from scitex_orochi._cli.commands.workspace_cmd import list_invites as _list_invites
+
+invite.add_command(_create_invite, name="create")
+invite.add_command(_list_invites, name="list")
 
 annotate_help_with_availability(invite)

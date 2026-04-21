@@ -1,14 +1,11 @@
-"""``scitex-orochi config`` — empty noun group (Phase 1d Step B).
+"""``scitex-orochi config {init}`` (Phase 1d Step C).
 
-Step B (PR plan §2 / #337) lays the dispatcher skeleton. This group is
-deliberately empty — the verb (``config init``, replacing top-level
-``init``) moves here in Step C. Step B only ensures ``scitex-orochi
-config --help`` works. ``config`` is pure-local so no ``(Available
-Now)`` suffix is ever shown — its backing operations write local
-state only.
+The verb body lives in ``init_cmd.py`` (the flat command was plain
+``init``). We re-expose it under the ``config`` noun group with a short
+name.
 
-See ``src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`` §1.1
-for the full noun-group registry.
+The old flat spelling (``init``) is stubbed in ``_main.py`` to emit
+``hard_rename_error`` (plan PR #337 §2, Q1 decision).
 """
 
 from __future__ import annotations
@@ -24,7 +21,11 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
     help="Local scitex-orochi config (init).",
 )
 def config() -> None:
-    """Config-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """Config-scoped verbs (Phase 1d Step C)."""
 
+
+from scitex_orochi._cli.commands.init_cmd import init_cmd as _init_cmd  # noqa: E402
+
+config.add_command(_init_cmd, name="init")
 
 annotate_help_with_availability(config)

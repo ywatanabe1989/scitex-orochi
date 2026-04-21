@@ -77,64 +77,69 @@ class ProbeKind(enum.Enum):
 # ---------------------------------------------------------------------------
 
 DEFAULT_PROBE_MAP: Mapping[str, ProbeKind] = {
-    # Hub-dependent verbs/groups (talk to the Orochi server or Django API)
+    # ── Phase 1d Step C: canonical noun groups (plan §2 / PR #337). ──
+    # The noun dispatchers are hub-dependent wherever their verbs talk
+    # to the hub (agent, auth, channel, hook, invite, message, push,
+    # server, system, workspace). ``config`` stays pure-local — its only
+    # verb (``config init``) writes a local YAML.
     "agent": ProbeKind.HUB,
-    "agent-launch": ProbeKind.HUB,
-    "agent-restart": ProbeKind.HUB,
-    "agent-status": ProbeKind.HUB,
-    "agent-stop": ProbeKind.HUB,
-    "list-agents": ProbeKind.HUB,
-    "list-channels": ProbeKind.HUB,
-    "list-members": ProbeKind.HUB,
-    "list-workspaces": ProbeKind.HUB,
-    "list-invites": ProbeKind.HUB,
-    "show-status": ProbeKind.HUB,
-    "show-history": ProbeKind.HUB,
-    "send": ProbeKind.HUB,
-    "listen": ProbeKind.HUB,
-    "join": ProbeKind.HUB,
-    "login": ProbeKind.HUB,
-    "fleet": ProbeKind.HUB,
-    "create-workspace": ProbeKind.HUB,
-    "delete-workspace": ProbeKind.HUB,
-    "create-invite": ProbeKind.HUB,
-    "report": ProbeKind.HUB,
-    "heartbeat-push": ProbeKind.HUB,
+    "auth": ProbeKind.HUB,
+    "channel": ProbeKind.HUB,
+    "hook": ProbeKind.HUB,
+    "invite": ProbeKind.HUB,
+    "message": ProbeKind.HUB,
+    "push": ProbeKind.HUB,
+    "server": ProbeKind.HUB,
+    "system": ProbeKind.HUB,
+    "workspace": ProbeKind.HUB,
+    "config": ProbeKind.PURE_LOCAL,
+    # ── Phase 1d Step C: flat rename stubs (hard-error). ──
+    # The stubs do not talk to the hub; they print-and-exit. Mark them
+    # pure-local so no probe runs and no ``(Available Now)`` suffix is
+    # rendered next to a command that will deterministically fail. This
+    # avoids misleading operators who glance at ``--help``.
+    "agent-launch": ProbeKind.PURE_LOCAL,
+    "agent-restart": ProbeKind.PURE_LOCAL,
+    "agent-status": ProbeKind.PURE_LOCAL,
+    "agent-stop": ProbeKind.PURE_LOCAL,
+    "list-agents": ProbeKind.PURE_LOCAL,
+    "list-channels": ProbeKind.PURE_LOCAL,
+    "list-members": ProbeKind.PURE_LOCAL,
+    "list-workspaces": ProbeKind.PURE_LOCAL,
+    "list-invites": ProbeKind.PURE_LOCAL,
+    "show-status": ProbeKind.PURE_LOCAL,
+    "show-history": ProbeKind.PURE_LOCAL,
+    "send": ProbeKind.PURE_LOCAL,
+    "listen": ProbeKind.PURE_LOCAL,
+    "join": ProbeKind.PURE_LOCAL,
+    "login": ProbeKind.PURE_LOCAL,
+    "fleet": ProbeKind.PURE_LOCAL,
+    "create-workspace": ProbeKind.PURE_LOCAL,
+    "delete-workspace": ProbeKind.PURE_LOCAL,
+    "create-invite": ProbeKind.PURE_LOCAL,
+    "report": ProbeKind.PURE_LOCAL,
+    "heartbeat-push": ProbeKind.PURE_LOCAL,
+    "serve": ProbeKind.PURE_LOCAL,
+    "setup-push": ProbeKind.PURE_LOCAL,
+    "doctor": ProbeKind.PURE_LOCAL,
+    "init": ProbeKind.PURE_LOCAL,
+    "launch": ProbeKind.PURE_LOCAL,
+    "deploy": ProbeKind.PURE_LOCAL,
+    "stop": ProbeKind.PURE_LOCAL,
+    # ── Other hub-dependent top-level commands (not renamed). ──
     "machine": ProbeKind.HUB,
     "host-liveness": ProbeKind.HUB,
     "hungry-signal": ProbeKind.HUB,
     "dispatch": ProbeKind.HUB,
     "todo": ProbeKind.HUB,
     "host-identity": ProbeKind.HUB,
-    "serve": ProbeKind.HUB,
-    "setup-push": ProbeKind.HUB,
-    "doctor": ProbeKind.HUB,
-    # Phase 1d Step B: new empty noun dispatchers (plan §2 / PR #337).
-    # Verbs land in Step C; these entries make the top-level `--help`
-    # annotate the new groups with `(Available Now)` from day one.
-    "channel": ProbeKind.HUB,
-    "workspace": ProbeKind.HUB,
-    "invite": ProbeKind.HUB,
-    "message": ProbeKind.HUB,
-    "push": ProbeKind.HUB,
-    "server": ProbeKind.HUB,
-    "auth": ProbeKind.HUB,
-    "hook": ProbeKind.HUB,
-    "system": ProbeKind.HUB,
-    # Local daemon-dependent commands
+    # ── Local daemon-dependent commands. ──
     "cron": ProbeKind.LOCAL_DAEMON,
     "chrome-watchdog": ProbeKind.LOCAL_DAEMON,
     "disk": ProbeKind.LOCAL_DAEMON,
-    # Pure-local commands: omit suffix entirely
+    # ── Flat keepers (Q5): docs / skills / mcp stay flat. ──
     "docs": ProbeKind.PURE_LOCAL,
     "skills": ProbeKind.PURE_LOCAL,
-    "init": ProbeKind.PURE_LOCAL,
-    "launch": ProbeKind.PURE_LOCAL,
-    "deploy": ProbeKind.PURE_LOCAL,
-    "stop": ProbeKind.PURE_LOCAL,
-    # Phase 1d Step B: `config` is pure-local (config init writes local
-    # state only) — keep the suffix off to avoid false positives.
-    "config": ProbeKind.PURE_LOCAL,
     # Flat keeper `mcp start` is pure-local (stdio server startup): no
     # suffix added to keep external mcp.json contracts noise-free.
     "mcp": ProbeKind.PURE_LOCAL,
