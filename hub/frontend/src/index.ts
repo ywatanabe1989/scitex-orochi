@@ -67,6 +67,7 @@ import "./activity-tab/topology-signature";
 import "./activity-tab/topology-edges";
 import "./activity-tab/topology-nodes";
 import "./activity-tab/topology-pool";
+import "./activity-tab/graph-feed";
 import "./activity-tab/topology";
 import "./activity-tab/row";
 import "./activity-tab/click";
