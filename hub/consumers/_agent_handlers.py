@@ -12,8 +12,14 @@ import time
 
 from hub.models import normalize_channel_name
 
-from ._groups import _sanitize_group
+from ._groups import _sanitize_group, log
 from ._helpers import _load_agent_channel_subs, _persist_agent_subscription
+
+# WebSocket close code reserved for "this WS got evicted because another
+# process holds the same agent identity". Custom 4xxx range is allowed
+# by RFC 6455; 4409 mirrors HTTP 409 Conflict for readability.
+DUPLICATE_IDENTITY_CLOSE_CODE = 4409
+DUPLICATE_IDENTITY_REASON = "duplicate_identity"
 
 
 async def handle_register(consumer, content):
@@ -25,8 +31,44 @@ async def handle_register(consumer, content):
     **ignored** — accepting them would let any agent opt itself into any
     channel by self-declaration, bypassing the ACL gate on subscribe.
     Fix for scitex-orochi#251 (private-channel delivery leak).
+
+    scitex-orochi#255 — singleton cardinality enforcement runs FIRST. If
+    a sibling channel already holds this ``agent_name`` and reports a
+    different ``instance_id``, we run the decision rule and either:
+
+      - close THIS connection (incumbent wins) with code 4409 and reason
+        ``"duplicate_identity"``; OR
+      - close the OTHER connection (challenger wins) via the channel
+        layer and proceed with the normal register flow.
+
+    Legacy clients that don't report ``instance_id``/``start_ts_unix`` in
+    the register frame fall through to the pre-#255 permissive
+    multi-connection behavior with a logged WARNING (no regression for
+    older agent_meta.py installs).
     """
     payload = content.get("payload", {})
+
+    # ── #255 singleton enforcement ───────────────────────────────────
+    challenger_instance_id = (payload.get("instance_id") or "").strip()
+    raw_challenger_ts = payload.get("start_ts_unix")
+    try:
+        challenger_start_ts_unix = (
+            float(raw_challenger_ts) if raw_challenger_ts is not None else None
+        )
+    except (TypeError, ValueError):
+        challenger_start_ts_unix = None
+
+    closed_self = await _enforce_singleton(
+        consumer,
+        challenger_instance_id=challenger_instance_id,
+        challenger_start_ts_unix=challenger_start_ts_unix,
+    )
+    if closed_self:
+        # We sent the close — abort the register flow so we don't write
+        # a half-registered identity into the registry.
+        return
+    # ── /#255 ────────────────────────────────────────────────────────
+
     persisted = await _load_agent_channel_subs(
         consumer.workspace_id, consumer.agent_name
     )
@@ -57,11 +99,27 @@ async def handle_register(consumer, content):
         "multiplexer": payload.get("multiplexer", ""),
         "channels": channels,
         "claude_md": payload.get("claude_md", ""),
+        # #257 canonical heartbeat metadata — pass through so the
+        # registry's prev-preserve logic can store the per-process
+        # identity. Without these, singleton enforcement on a future
+        # second register frame can't find an incumbent identity.
+        "instance_id": challenger_instance_id,
+        "start_ts_unix": challenger_start_ts_unix,
     }
 
-    from hub.registry import register_agent
+    from hub.registry import register_agent, set_connection_identity
 
     register_agent(consumer.agent_name, consumer.workspace_id, consumer.agent_meta)
+    # Track per-channel identity so a future challenger can be compared
+    # against this connection (#255). Safe no-op when instance_id is
+    # empty — list_sibling_channels still emits the entry but
+    # decide_singleton_winner falls through to legacy permissive mode.
+    set_connection_identity(
+        channel_name=consumer.channel_name,
+        agent_name=consumer.agent_name,
+        instance_id=challenger_instance_id,
+        start_ts_unix=challenger_start_ts_unix,
+    )
 
     await consumer.channel_layer.group_send(
         consumer.workspace_group,
@@ -73,6 +131,128 @@ async def handle_register(consumer, content):
     )
 
     await consumer.send_json({"type": "registered", "channels": channels})
+
+
+async def _enforce_singleton(
+    consumer,
+    challenger_instance_id: str,
+    challenger_start_ts_unix: float | None,
+) -> bool:
+    """Apply the #255 singleton decision rule for ``consumer``'s register frame.
+
+    Returns ``True`` when this connection (the challenger) was closed
+    and the caller should abort the register flow. Returns ``False``
+    when either no conflict was detected or the incumbent was evicted
+    (this consumer keeps the claim and registration should proceed).
+    """
+    from hub.registry import (
+        decide_singleton_winner,
+        list_sibling_channels,
+        record_singleton_conflict,
+    )
+
+    siblings = list_sibling_channels(
+        consumer.agent_name, exclude=consumer.channel_name
+    )
+    if not siblings:
+        return False
+
+    # Compare against EACH sibling so a third-comer doesn't accidentally
+    # admit itself by colluding with a stale half-disconnected sibling.
+    for sib in siblings:
+        outcome = decide_singleton_winner(
+            incumbent_instance_id=sib.get("instance_id") or "",
+            incumbent_start_ts_unix=sib.get("start_ts_unix"),
+            challenger_instance_id=challenger_instance_id,
+            challenger_start_ts_unix=challenger_start_ts_unix,
+        )
+        if outcome == "incumbent" and (
+            not sib.get("instance_id") or not challenger_instance_id
+        ):
+            # Legacy permissive mode — at least one side can't enforce.
+            # Log for visibility but admit both connections.
+            log.warning(
+                "Singleton check skipped for agent %s — legacy client "
+                "(missing instance_id). Allowing concurrent connections; "
+                "upgrade agent_meta.py to enable enforcement.",
+                consumer.agent_name,
+            )
+            continue
+        if outcome == "incumbent" and sib.get(
+            "instance_id"
+        ) == challenger_instance_id:
+            # Same process re-registering (transient WS reconnect).
+            # Not a conflict — let the new connection register and
+            # naturally supersede the stale sibling.
+            continue
+        if outcome == "incumbent":
+            # Strict-mode incumbent wins → close THIS connection.
+            record_singleton_conflict(
+                name=consumer.agent_name,
+                winner_instance_id=sib.get("instance_id") or "",
+                loser_instance_id=challenger_instance_id,
+                winner_start_ts_unix=sib.get("start_ts_unix"),
+                loser_start_ts_unix=challenger_start_ts_unix,
+                outcome="incumbent",
+            )
+            try:
+                await consumer.send_json(
+                    {
+                        "type": "error",
+                        "code": DUPLICATE_IDENTITY_REASON,
+                        "message": (
+                            "another process already holds this agent "
+                            "identity (older start_ts_unix wins)"
+                        ),
+                        "winner_instance_id": sib.get("instance_id") or "",
+                    }
+                )
+            except Exception:
+                pass
+            await consumer.close(code=DUPLICATE_IDENTITY_CLOSE_CODE)
+            return True
+        # outcome == "challenger" → evict the sibling.
+        record_singleton_conflict(
+            name=consumer.agent_name,
+            winner_instance_id=challenger_instance_id,
+            loser_instance_id=sib.get("instance_id") or "",
+            winner_start_ts_unix=challenger_start_ts_unix,
+            loser_start_ts_unix=sib.get("start_ts_unix"),
+            outcome="challenger",
+        )
+        await _evict_sibling(consumer, sib.get("channel_name", ""))
+    return False
+
+
+async def _evict_sibling(consumer, sibling_channel_name: str) -> None:
+    """Send a force-close hint to a sibling consumer over the channel layer.
+
+    Django Channels lets us address a single consumer by its
+    ``channel_name``. We deliver a custom event whose ``type`` maps to
+    the consumer's ``singleton_evict`` handler (defined on
+    ``AgentConsumer``); that handler then performs the WebSocket close.
+    Best-effort — if the sibling is already gone the channel layer just
+    drops the message and the next heartbeat-stale sweep finishes the
+    cleanup.
+    """
+    if not sibling_channel_name:
+        return
+    try:
+        await consumer.channel_layer.send(
+            sibling_channel_name,
+            {
+                "type": "singleton.evict",
+                "reason": DUPLICATE_IDENTITY_REASON,
+                "code": DUPLICATE_IDENTITY_CLOSE_CODE,
+            },
+        )
+    except Exception as e:
+        log.warning(
+            "Failed to evict sibling %s for agent %s: %s",
+            sibling_channel_name,
+            consumer.agent_name,
+            e,
+        )
 
 
 async def handle_subscription(consumer, content, subscribe: bool):

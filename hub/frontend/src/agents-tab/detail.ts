@@ -208,6 +208,44 @@ export function _renderAgentDetail(a) {
       );
     })
     .join("");
+  // scitex-orochi#255 — duplicate-identity warning banner. Surfaces
+  // when the most recent singleton-conflict event for this agent is
+  // within the hub's window (last hour). The detail endpoint fades
+  // the field to null after the window expires so this branch falls
+  // off automatically — no client-side timer.
+  var dupEvent = d.last_duplicate_identity_event || null;
+  var dupWarnHtml = "";
+  if (dupEvent && dupEvent.ts) {
+    var ageSec = Math.max(
+      0,
+      Math.round((Date.now() - dupEvent.ts * 1000) / 1000),
+    );
+    var ageLabel =
+      ageSec < 60
+        ? ageSec + "s ago"
+        : ageSec < 3600
+          ? Math.round(ageSec / 60) + "m ago"
+          : Math.round(ageSec / 3600) + "h ago";
+    var winnerShort = (dupEvent.winner_instance_id || "?").slice(0, 8);
+    var loserShort = (dupEvent.loser_instance_id || "?").slice(0, 8);
+    dupWarnHtml =
+      '<div class="agent-detail-dup-warn" role="alert" title="' +
+      escapeHtml(
+        "Two processes claimed this agent name. The hub closed the loser " +
+          "with WebSocket close code 4409 (duplicate_identity).",
+      ) +
+      '">' +
+      "\u26A0\uFE0F duplicate identity detected " +
+      escapeHtml(ageLabel) +
+      " \u2014 winner=" +
+      escapeHtml(winnerShort) +
+      ", loser=" +
+      escapeHtml(loserShort) +
+      " (" +
+      escapeHtml(dupEvent.outcome || "incumbent") +
+      ")" +
+      "</div>";
+  }
   var headerHtml =
     '<div class="agent-detail-header">' +
     '<div class="agent-detail-header-line">' +
@@ -226,6 +264,7 @@ export function _renderAgentDetail(a) {
     '">DM</button>' +
     "</span>" +
     "</div>" +
+    dupWarnHtml +
     '<div class="agent-detail-meta-grid">' +
     metaHtml +
     "</div>" +

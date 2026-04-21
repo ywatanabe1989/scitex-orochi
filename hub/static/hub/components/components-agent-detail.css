@@ -123,6 +123,21 @@
   background: #2a2a2a;
   border-color: #4ecdc4;
 }
+/* scitex-orochi#255 — duplicate-identity warning banner. Surfaces in
+ * the per-agent detail header when the hub recently closed a sibling
+ * connection because both processes claimed the same agent name.
+ * Auto-fades when the source event ages out of the hub's window
+ * (currently 1 hour); no client-side dismiss needed. */
+.agent-detail-dup-warn {
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: #3a1f0d;
+  border: 1px solid #ff8c42;
+  border-radius: 4px;
+  color: #ffb98a;
+  font-size: 12px;
+  font-weight: 500;
+}
 .agent-detail-meta {
   font-size: 12px;
   color: #888;

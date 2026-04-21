@@ -138,6 +138,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         echo_task = getattr(self, "_echo_task", None)
         if echo_task is not None:
             echo_task.cancel()
+        # scitex-orochi#255 — drop per-channel identity tracking so a
+        # future challenger doesn't compare against this dead channel.
+        # Safe even when handle_register never recorded the channel
+        # (token-rejected connect, missing register frame).
+        try:
+            from hub.registry import clear_connection_identity
+
+            clear_connection_identity(self.channel_name)
+        except Exception:
+            pass
         if hasattr(self, "workspace_group"):
             # scitex-orochi#144 fix path 4: drop only THIS connection from
             # the per-agent set, not the whole agent record. The agent only
@@ -232,6 +242,41 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "metadata": event.get("metadata", {}),
             }
         )
+
+    # --- scitex-orochi#255 singleton eviction handler -------------------
+
+    async def singleton_evict(self, event):
+        """Evict this WS because another process won the singleton race.
+
+        The challenger's register handler dispatched a ``singleton.evict``
+        event addressed to this exact channel via the channel layer. We
+        send a final error frame so the agent process logs *why* it is
+        being closed (rather than seeing a bare WS close), then close
+        with the configured code/reason so reconnect loops can branch
+        on it (don't auto-reconnect when the close reason is
+        ``duplicate_identity`` — exit cleanly instead).
+        """
+        from ._agent_handlers import (
+            DUPLICATE_IDENTITY_CLOSE_CODE,
+            DUPLICATE_IDENTITY_REASON,
+        )
+
+        code = event.get("code", DUPLICATE_IDENTITY_CLOSE_CODE)
+        reason = event.get("reason", DUPLICATE_IDENTITY_REASON)
+        try:
+            await self.send_json(
+                {
+                    "type": "error",
+                    "code": reason,
+                    "message": (
+                        "another process holds this agent identity with an "
+                        "older start_ts_unix; closing this connection"
+                    ),
+                }
+            )
+        except Exception:
+            pass
+        await self.close(code=code)
 
     # --- channel-layer events ignored on the agent socket ----------------
 
