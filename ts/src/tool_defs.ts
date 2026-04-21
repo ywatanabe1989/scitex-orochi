@@ -199,6 +199,49 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "channel_members",
+    description:
+      "READ-ONLY (#252). List subscribers of an Orochi channel as " +
+      "[{name, principal_type: 'human'|'agent', role}]. Uses the " +
+      "agent's workspace token (?token=&agent=) — no Django session " +
+      "needed; works from MCP sidecars on the bare domain. Pass the " +
+      "channel name (e.g. '#general') and optionally workspace=<slug>.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        channel: {
+          type: "string",
+          description: "Channel name (e.g. #general).",
+        },
+        workspace: {
+          type: "string",
+          description:
+            "Workspace slug. Defaults to env SCITEX_OROCHI_WORKSPACE if set.",
+        },
+      },
+      required: ["channel"],
+    },
+  },
+  {
+    name: "my_subscriptions",
+    description:
+      "READ-ONLY (#253). Return the channels this agent is subscribed " +
+      "to as [{channel, joined_at, role}]. Uses the agent's workspace " +
+      "token (?token=&agent=) — no Django session needed. Implicitly " +
+      "scoped to the calling agent (no target_agent arg); a separate " +
+      "write tool will follow in #262 for fleet self-pruning.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        workspace: {
+          type: "string",
+          description:
+            "Workspace slug. Defaults to env SCITEX_OROCHI_WORKSPACE if set.",
+        },
+      },
+    },
+  },
+  {
     name: "download_media",
     description:
       "Download a file from the Orochi hub to local disk. Use this to view screenshots or files posted in chat.",

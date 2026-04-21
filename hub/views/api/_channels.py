@@ -1,5 +1,6 @@
 """Channel/workspace listing + prefs + members + stats API views."""
 
+from hub.views._helpers import resolve_workspace_and_actor
 from hub.views.api._common import (
     Channel,
     ChannelPreference,
@@ -211,13 +212,16 @@ def api_channel_prefs(request, slug=None):
     return JsonResponse(data, safe=False)
 
 
-@login_required
+@csrf_exempt
 @require_http_methods(["GET", "POST", "PATCH", "DELETE"])
 def api_channel_members(request, slug=None):
     """Channel membership admin endpoint (todo#407 + Phase 3 channel refactor).
 
     GET /api/channel-members/?channel=<name>
-        List members with permission level.
+        List members with permission level. Read-only; accepts either a
+        Django session OR a workspace token (``?token=wks_...&agent=<name>``)
+        so the MCP ``channel_members`` tool (#252) can hit it from the
+        bare domain without a browser session.
     POST /api/channel-members/  (admin only)
         Subscribe a member: body {channel, username, permission?}.
         Idempotent. Creates the channel if missing (group kind).
@@ -228,7 +232,14 @@ def api_channel_members(request, slug=None):
     """
     from hub.models import ChannelMembership
 
-    workspace = get_workspace(request, slug=slug)
+    if request.method == "GET":
+        workspace, _actor, err = resolve_workspace_and_actor(request, slug=slug)
+        if err is not None:
+            return err
+    else:
+        if not (request.user and request.user.is_authenticated):
+            return JsonResponse({"error": "auth required"}, status=401)
+        workspace = get_workspace(request, slug=slug)
 
     if request.method in ("POST", "PATCH", "DELETE"):
         body = json.loads(request.body) if request.body else {}
@@ -356,6 +367,50 @@ def api_channel_members(request, slug=None):
                     "role": wm.role,
                 }
             )
+    return JsonResponse(data, safe=False)
+
+
+@csrf_exempt
+@require_GET
+def api_my_subscriptions(request, slug=None):
+    """GET /api/me/subscriptions/?token=wks_...&agent=<name>
+
+    Read-only endpoint backing the MCP ``my_subscriptions`` tool (#253).
+    Returns the list of channels the calling agent is explicitly
+    subscribed to via :class:`ChannelMembership` rows. Each row has the
+    shape ``{channel, joined_at, role}`` where ``role`` is the member's
+    permission on that channel (``read-write`` / ``read-only``).
+
+    Auth follows the same token-or-session contract as the other
+    agent-facing read endpoints (see
+    :func:`hub.views._helpers.resolve_workspace_and_actor`). On token
+    auth the actor is taken from ``?agent=<name>``; on session auth the
+    actor is the logged-in user (so a human dashboard query is also
+    valid). Either way the response is scoped to the *actor* — an
+    agent cannot peek at another agent's subscriptions.
+    """
+    from hub.models import ChannelMembership
+
+    workspace, actor_member, err = resolve_workspace_and_actor(request, slug=slug)
+    if err is not None:
+        return err
+
+    memberships = (
+        ChannelMembership.objects.filter(
+            user=actor_member.user,
+            channel__workspace=workspace,
+        )
+        .select_related("channel")
+        .order_by("channel__name")
+    )
+    data = [
+        {
+            "channel": m.channel.name,
+            "joined_at": m.joined_at.isoformat() if m.joined_at else None,
+            "role": m.permission,
+        }
+        for m in memberships
+    ]
     return JsonResponse(data, safe=False)
 
 

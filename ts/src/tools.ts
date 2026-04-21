@@ -16,6 +16,8 @@ export {
   handleSubscribe,
   handleUnsubscribe,
   handleChannelInfo,
+  handleChannelMembers,
+  handleMySubscriptions,
   handleDmList,
   handleDmOpen,
 } from "./tools/channels.js";

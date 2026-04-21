@@ -167,6 +167,118 @@ export async function handleDmList(args: {
   }
 }
 
+export async function handleChannelMembers(args: {
+  channel: string;
+  workspace?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const channel = normalizeGroupChannel(args.channel);
+  if (!channel) {
+    return { content: [{ type: "text", text: "Error: channel required" }] };
+  }
+  const slug = resolveWorkspaceSlug(args.workspace);
+  if (!slug) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Error: workspace slug required. Pass workspace=<slug> or set " +
+            "SCITEX_OROCHI_WORKSPACE.",
+        },
+      ],
+    };
+  }
+  try {
+    const url =
+      `${httpBase}/api/workspace/${encodeURIComponent(slug)}` +
+      `/channel-members/${tokenParam("?")}` +
+      (tokenParam("?") ? "&" : "?") +
+      "channel=" +
+      encodeURIComponent(channel);
+    const res = await fetch(url, {
+      headers: buildFetchHeaders({ Accept: "application/json" }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${res.status} — ${body.slice(0, 300)}`,
+          },
+        ],
+      };
+    }
+    const raw = await res.json();
+    /* Hub returns rows of {username, permission, kind, role}. Reshape
+     * to the spec'd MCP tool surface: {name, principal_type, role}.
+     * `name` strips the "agent-" prefix so it matches the agent-name
+     * convention used elsewhere (matches identity_name on DM rows). */
+    const rows = Array.isArray(raw) ? raw : [];
+    const members = rows.map((m: any) => {
+      const username = String(m.username || "");
+      const principal_type = m.kind === "agent" ? "agent" : "human";
+      const name =
+        principal_type === "agent" && username.startsWith("agent-")
+          ? username.slice("agent-".length)
+          : username;
+      return {
+        name,
+        principal_type,
+        role: m.permission || m.role || "",
+      };
+    });
+    return { content: [{ type: "text", text: JSON.stringify(members) }] };
+  } catch (e) {
+    return {
+      content: [{ type: "text", text: `Error fetching channel members: ${e}` }],
+    };
+  }
+}
+
+export async function handleMySubscriptions(args: {
+  workspace?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  const slug = resolveWorkspaceSlug(args.workspace);
+  if (!slug) {
+    return {
+      content: [
+        {
+          type: "text",
+          text:
+            "Error: workspace slug required. Pass workspace=<slug> or set " +
+            "SCITEX_OROCHI_WORKSPACE.",
+        },
+      ],
+    };
+  }
+  try {
+    const url =
+      `${httpBase}/api/workspace/${encodeURIComponent(slug)}` +
+      `/me/subscriptions/${tokenParam("?")}`;
+    const res = await fetch(url, {
+      headers: buildFetchHeaders({ Accept: "application/json" }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Error: HTTP ${res.status} — ${body.slice(0, 300)}`,
+          },
+        ],
+      };
+    }
+    const out = await res.json();
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
+  } catch (e) {
+    return {
+      content: [{ type: "text", text: `Error fetching subscriptions: ${e}` }],
+    };
+  }
+}
+
 export async function handleDmOpen(args: {
   recipient?: string;
   peer?: string;
