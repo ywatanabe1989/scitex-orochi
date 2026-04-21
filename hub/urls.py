@@ -90,6 +90,24 @@ urlpatterns = [
         name="api-channel-rename",
     ),
     path("api/workspace/<slug:slug>/stats/", views.api_stats, name="api-stats"),
+    # Channel members + my subscriptions — read-only MCP tools (#252, #253).
+    # Mounted on the default urls.py too so dashboard-side queries work
+    # in dev/test where the bare domain is the only Host header in play.
+    path(
+        "api/workspace/<slug:slug>/channel-members/",
+        views.api_channel_members,
+        name="api-channel-members",
+    ),
+    path(
+        "api/workspace/<slug:slug>/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions",
+    ),
+    path(
+        "api/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions-flat",
+    ),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),

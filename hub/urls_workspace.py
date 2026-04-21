@@ -69,6 +69,12 @@ urlpatterns = [
     ),
     path("api/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"),
     path("api/channel-members/", views.api_channel_members, name="api-channel-members"),
+    # My subscriptions — MCP `my_subscriptions` tool (#253). Read-only.
+    path(
+        "api/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions",
+    ),
     path("api/messages/", views.api_messages, name="api-messages"),
     path("api/dms/", views.api_dms, name="api-dms"),
     path("api/history/<str:channel_name>/", views.api_history, name="api-history"),

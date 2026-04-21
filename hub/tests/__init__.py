@@ -31,8 +31,10 @@ from hub.tests.test_oauth_helper import *  # noqa: F401,F403
 from hub.tests.views.api.test_agent_detail import *  # noqa: F401,F403
 from hub.tests.views.api.test_agents_register import *  # noqa: F401,F403
 from hub.tests.views.api.test_channel_members import *  # noqa: F401,F403
+from hub.tests.views.api.test_channel_members_token import *  # noqa: F401,F403
 from hub.tests.views.api.test_channel_rename import *  # noqa: F401,F403
 from hub.tests.views.api.test_dms import *  # noqa: F401,F403
 from hub.tests.views.api.test_messages import *  # noqa: F401,F403
+from hub.tests.views.api.test_my_subscriptions import *  # noqa: F401,F403
 from hub.tests.views.api.test_push import *  # noqa: F401,F403
 from hub.tests.views.api.test_reexports import *  # noqa: F401,F403

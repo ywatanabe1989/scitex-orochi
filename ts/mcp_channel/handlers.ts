@@ -18,6 +18,8 @@ import {
   handleSubscribe,
   handleUnsubscribe,
   handleChannelInfo,
+  handleChannelMembers,
+  handleMySubscriptions,
   handleConnectivityMatrix,
   handleReact,
   handleRsyncMedia,
@@ -51,6 +53,10 @@ export function registerMcpHandlers(mcp: Server): void {
     if (name === "unsubscribe")
       return handleUnsubscribe(conn as any, args as any);
     if (name === "channel_info") return handleChannelInfo(args as any);
+    if (name === "channel_members")
+      return handleChannelMembers(args as any);
+    if (name === "my_subscriptions")
+      return handleMySubscriptions(args as any);
     if (name === "download_media") return handleDownloadMedia(args as any);
     if (name === "upload_media") return handleUploadMedia(args as any);
     if (name === "rsync_media") return handleRsyncMedia(args as any);

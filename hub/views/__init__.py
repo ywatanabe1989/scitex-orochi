@@ -25,6 +25,7 @@ from hub.views.api import (  # noqa: F401
     api_members,
     api_message_detail,
     api_messages,
+    api_my_subscriptions,
     api_push_subscribe,
     api_push_unsubscribe,
     api_push_vapid_key,

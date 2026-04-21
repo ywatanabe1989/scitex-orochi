@@ -82,6 +82,21 @@ urlpatterns = [
         views.api_channel_export,
         name="api-channel-export",
     ),
+    # Channel members — MCP `channel_members` tool (#252). Token-auth
+    # on GET handled inside the view; POST/PATCH/DELETE still session-only
+    # on the bare domain since admin actions need an attributable user.
+    path(
+        "api/channel-members/",
+        views.api_channel_members,
+        name="api-channel-members",
+    ),
+    # My subscriptions — MCP `my_subscriptions` tool (#253). Read-only,
+    # token-auth via ?token=&agent=<name>.
+    path(
+        "api/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions",
+    ),
     # Workspace-scoped routes — MCP sidecars build URLs of the form
     # /api/workspace/<slug>/dms/?token=wks_... when the agent's
     # SCITEX_OROCHI_URL points at the bare domain (the default for the
@@ -115,6 +130,16 @@ urlpatterns = [
         "api/workspace/<slug:slug>/channels/<str:chat_id>/export/",
         views.api_channel_export,
         name="api-channel-export-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/channel-members/",
+        views.api_channel_members,
+        name="api-channel-members-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions-bare",
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
