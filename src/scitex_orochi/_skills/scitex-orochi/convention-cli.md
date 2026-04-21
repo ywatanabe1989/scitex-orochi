@@ -1,125 +1,277 @@
 ---
 name: orochi-cli-conventions
-description: SciTeX CLI design conventions — verb-noun structure, standard flags, exit codes, output streams. Apply to all new CLI commands across the ecosystem.
+description: SciTeX CLI design conventions — canonical noun-verb shape for scitex-orochi, standard flags, exit codes, deprecation policy, and help-display rules. Apply to all new CLI commands across the Orochi fleet.
 ---
 
 # CLI Conventions (SciTeX / Orochi Fleet)
 
-These conventions apply to all CLI tools built within the SciTeX ecosystem and Orochi fleet. The upstream definition lives in `scitex-dev` (`scitex/general/interface-cli.md`); this file extends and clarifies it for fleet use.
+These conventions apply to all CLI tools built within the SciTeX ecosystem
+and Orochi fleet. The upstream definition of the shared verb/noun
+vocabulary lives in `scitex-dev` (`scitex/general/interface-cli.md`) and is
+being consolidated cross-package in the `head-ywata-note-win` fleet-wide
+convention skill (msg#16558, in flight). This file is the **scitex-orochi
+canonical source of truth** — anything in a downstream skill that
+contradicts this file loses.
 
-## Command Structure
+Canonical path: `src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`.
+Web-discovery pointer: `docs/cli.md` (Q3 decision, plan PR #337).
 
-### Canonical shape: `scitex-orochi <noun> <verb>` (House style)
+## 1. Canonical shape: `scitex-orochi <noun> <verb>`
 
-As of Phase 1b/1c (PR #336 + #337, msg#16414 / msg#16477), every new
-scitex-orochi subcommand MUST be exposed as a `<noun> <verb>` pair —
-click group = noun, command = verb. This is the SAME style scitex-dev
-uses and what we are migrating the whole fleet toward.
+As of Phase 1d (PR #337 plan, Step A onward), every scitex-orochi
+subcommand MUST be exposed as a `<noun> <verb>` pair — click group =
+noun, command = verb.
 
 ```bash
-scitex-orochi machine heartbeat send         # noun=machine, verb=heartbeat send
-scitex-orochi machine resources show         # resource snapshot for this host
-scitex-orochi cron start                     # unified cron daemon
-scitex-orochi host-liveness probe            # fleet-watch probe
-scitex-orochi hungry-signal check            # idle→lead ping
-scitex-orochi disk pressure-probe            # df-based alert
-scitex-orochi chrome-watchdog check          # kernel_task CPU escape hatch
-scitex-orochi todo list --lane infrastructure
-scitex-orochi todo next --lane hub-admin
-scitex-orochi todo triage --lane hub-admin --json
-scitex-orochi dispatch run --head mba --todo 123
-scitex-orochi dispatch status
+scitex-orochi agent launch head-mba
+scitex-orochi agent status
+scitex-orochi channel list
+scitex-orochi channel join '#heads'
+scitex-orochi message send '#agent' 'hello'
+scitex-orochi workspace create demo
+scitex-orochi invite create <ws-id>
+scitex-orochi machine heartbeat send
+scitex-orochi machine resources show
+scitex-orochi cron start
+scitex-orochi host-liveness probe
+scitex-orochi hungry-signal check
+scitex-orochi chrome-watchdog check
+scitex-orochi dispatch run --head mba
+scitex-orochi todo triage --lane hub-admin
+scitex-orochi push setup
+scitex-orochi server start
+scitex-orochi config init
+scitex-orochi system doctor
+scitex-orochi auth login
+scitex-orochi hook report activity
+scitex-orochi mcp start                   # flat keeper — see §4
 ```
 
-### Complete subcommand-group registry (as of Phase 1c)
+### 1.1 Complete noun-group registry (as of Phase 1d Step A plan)
 
-1. **`machine`** — host-level operations
-   * `machine heartbeat {send,status}` — push agent metadata / inspect registry
-   * `machine resources show` — CPU / RAM / Storage / GPU snapshot (matches Machines tab)
-2. **`host-liveness`** — fleet-watch host reachability probe
+Planned canonical groups (Section 2 of PR #337's plan):
+
+1. **`agent`** — agent lifecycle and fleet view
+   * `agent launch NAME`
+   * `agent restart NAME`
+   * `agent stop NAME`
+   * `agent status`
+   * `agent list`
+   * `agent fleet-list` (absorbs legacy top-level `fleet`)
+2. **`channel`** — channel membership and history
+   * `channel list`
+   * `channel join NAME`
+   * `channel history NAME`
+   * `channel members NAME`
+3. **`workspace`** — workspace CRUD
+   * `workspace create NAME`
+   * `workspace delete ID`
+   * `workspace list`
+4. **`invite`** — workspace invites
+   * `invite create WS_ID`
+   * `invite list WS_ID`
+5. **`message`** — messaging verbs
+   * `message send CHANNEL MESSAGE`
+   * `message listen [--channel]`
+   * `message react add`
+   * `message react remove`
+6. **`machine`** — host-level operations
+   * `machine heartbeat send`
+   * `machine heartbeat status`
+   * `machine resources show`
+7. **`cron`** — unified Orochi cron daemon (msg#16406 / #16410)
+   * `cron {start,stop,list,run,status,reload}`
+8. **`disk`** — host disk hygiene
+   * `disk reaper-dry-run`
+   * `disk pressure-probe`
+9. **`host-liveness`** — fleet-watch host reachability probe
    * `host-liveness probe`
-3. **`hungry-signal`** — Layer 2 idle-head → lead ping
-   * `hungry-signal check`
-4. **`disk`** — host disk hygiene
-   * `disk reaper-dry-run` — cache/sticker dir cleanup
-   * `disk pressure-probe` — NDJSON alert pipeline
-5. **`chrome-watchdog`** — macOS kernel_task CPU escape hatch
-   * `chrome-watchdog check`
-6. **`cron`** — unified Orochi cron daemon (msg#16406 / #16410)
-   * `cron start|stop|list|run|status|reload`
-7. **`todo`** — fleet todo queue (PR #320 helper reused)
-   * `todo list [--lane LABEL]`
-   * `todo next --lane LABEL` — pick-one path
-   * `todo triage [--lane LABEL]` — scored ranking
-8. **`dispatch`** — operator-side auto-dispatch control
-   * `dispatch run --head HOST [--todo N]` — force-fire
-   * `dispatch status` — per-head streak / cooldown table
-9. **`host-identity`** — local-vs-remote resolver (read-only)
+10. **`hungry-signal`** — Layer 2 idle-head → lead ping
+    * `hungry-signal check`
+11. **`chrome-watchdog`** — macOS kernel_task CPU escape hatch
+    * `chrome-watchdog check`
+12. **`dispatch`** — operator-side auto-dispatch control
+    * `dispatch run --head HOST [--todo N]`
+    * `dispatch status`
+    * `dispatch history`
+13. **`todo`** — fleet todo queue
+    * `todo list [--lane LABEL]`
+    * `todo next --lane LABEL`
+    * `todo triage [--lane LABEL]`
+14. **`push`** — APNs / notification plumbing
+    * `push setup`
+    * `push send`
+15. **`server`** — hub server lifecycle
+    * `server start` (replaces `serve`)
+    * `server status`
+    * `server deploy` (absorbs legacy top-level `deploy`)
+16. **`config`** — local scitex-orochi config
+    * `config init` (replaces top-level `init`)
+17. **`system`** — host-side self-diagnosis
+    * `system doctor` (replaces top-level `doctor`)
+18. **`auth`** — credential / session management
+    * `auth login` (replaces top-level `login`)
+19. **`hook`** — Claude Code / framework hook-driven reporting
+    * `hook report activity`
+    * `hook report stuck`
+    * `hook report heartbeat`
+20. **`host-identity`** — local-vs-remote resolver (read-only)
+    * `host-identity {show,init,check}`
 
-Legacy top-level verb-noun commands (`list-agents`, `show-history`,
-`send-message`, etc.) are kept for backwards compatibility but are
-**deprecated for new additions** — reach for a `<noun> <verb>`
-group instead. When a legacy verb-noun command is logically part of
-an existing group, the acceptable migration path is: (a) add the
-`<noun> <verb>` form, (b) keep the old alias as a thin shim, (c)
-mark the shim deprecated in `--help`.
+### 1.2 Why this shape
 
-### Why this shape
-
-* Groups keep the `--help` tree navigable. `scitex-orochi machine --help`
-  lists every host-level verb without polluting the top level.
+* Groups keep the `--help` tree navigable. `scitex-orochi agent --help`
+  lists every agent verb without polluting the top level.
 * Subcommand-level monkeypatching (the PR #336 test pattern) is
   cleaner when the verb is the last path component.
 * The shell wrappers (`scripts/client/*.sh`) become trivial
   `exec scitex-orochi <noun> <verb> "$@"` shims — one idiom, no
   per-script flag handling.
+* Single-package parity with `scitex-dev` and the forthcoming sac
+  noun-verb refactor (deferred — Q6 / msg#16533).
 
-### Deprecated: legacy per-script shell-call convention
+## 2. Deprecation policy (Q1 + Q2 decisions, plan PR #337)
 
-Before Phase 1b (PR #336), each host-side concern lived in its own
-bash script under `scripts/client/` with hand-rolled flag parsing,
-inconsistent exit codes, and no unit tests. That convention is now
-deprecated:
+### 2.1 Hard-error on rename (no grace period)
 
-* **Do NOT** add new bash-only scripts for host-side operations.
-  Implement the logic as a click subcommand under an existing or
-  new `<noun>` group; if a shell-callable entry point is needed
-  (launchd / systemd / cron), write a three-line wrapper that
-  `exec`s `scitex-orochi <noun> <verb> "$@"`.
-* **Do NOT** add new flags directly to existing legacy bash scripts.
-  Port the script to a click subcommand first, then add the flag.
-* **Do NOT** invent new top-level verb-noun entries (`scitex-orochi
-  foo-bar-baz`). Put them inside an existing group or propose a new
-  group in the PR description.
+Renamed commands do **not** fall through to the new name. They **hard-error
+at call time** with a one-line fix instruction and exit non-zero. This is
+the "soon" policy — immediate rename, zero silent-fallback risk.
 
-## Standard Flags (All Commands)
+**Canonical stderr format (exit code = 2):**
+
+```
+error: `scitex-orochi <old-name>` was renamed to `scitex-orochi <new-name>`.
+```
+
+No multi-line banner. No colour. No link. One line, one action: tell the
+operator the exact string to type instead.
+
+Implemented by `scitex_orochi._cli._deprecation.hard_rename_error(old, new)`.
+
+### 2.2 Soft, one-time-per-shell notes for non-rename drifts
+
+For changes that are **not** renames (e.g. "this flag's semantics shifted
+but the name is unchanged"), a soft note may be emitted on stderr at most
+**once per shell session per command**. State is tracked via a marker
+file under `$XDG_STATE_HOME/scitex-orochi/deprecation/` (24 h TTL).
+
+**Canonical stderr format (exit unchanged):**
+
+```
+note: <short one-line instruction>.
+```
+
+Implemented by `scitex_orochi._cli._deprecation.soft_notice(command, msg)`.
+
+### 2.3 Hard opt-out
+
+Both the hard-error and the soft-notice paths honour the environment
+variable `SCITEX_OROCHI_NO_DEPRECATION=1`:
+
+* For **soft notes**: no notice is printed.
+* For **hard renames**: the error is still printed (a misspelling cannot
+  succeed just because the operator asked for quiet) but it is not
+  re-emitted beyond the one-line message. The exit remains non-zero.
+
+The opt-out is intended for long-running CI logs that archive every
+invocation and genuinely don't want the repetition. It is **not** a
+way to make a removed name work again.
+
+## 3. Help-display rule: `(Available Now)` suffix (§9 of plan)
+
+"最小限びっくり" — no verbose warnings, no red text, no popups. The only
+visible change in `--help` output vs. pre-Phase-1d is a quiet
+`(Available Now)` suffix next to each subcommand whose backing service
+is currently reachable.
+
+### 3.1 Rendering
+
+```
+$ scitex-orochi --help
+...
+Commands:
+  agent      Launch / control agents           (Available Now)
+  machine    Heartbeat, probe, resources       (Available Now)
+  cron       Schedule daemon                   (Available Now)
+  dispatch   Auto-dispatch read-only           (Available Now)
+  todo       Todo listing and triage
+  workspace  Manage workspaces                 (Available Now)
+  docs       Browse package documentation
+  skills     Browse package skills
+  ...
+```
+
+### 3.2 Semantics
+
+* Suffix is present iff the subcommand's backing service is currently
+  reachable (hub HTTP for server-dependent commands, local daemon check
+  for host-local commands, nothing for pure-local doc/help commands).
+* Suffix drops when unreachable — that is the only signal. No error
+  text, no colour flip, no `[DEGRADED]` label.
+* Reachability probe runs as part of click help rendering; total wall
+  budget **≤ 100 ms** (parallel probes with tight timeout).
+* Commands with no service dependency (e.g. `config init`, `docs`,
+  `skills`) omit the suffix entirely — no false positive.
+
+### 3.3 Implementation
+
+* `scitex_orochi._cli._help_availability.annotate_help_with_availability(group)`
+  re-parents a click `Group` so its `format_commands` injects the suffix.
+* Three probe kinds live in the same module: `HUB` (hit `/api/healthz`),
+  `LOCAL_DAEMON` (launchctl / systemctl user unit), `PURE_LOCAL` (always
+  omit).
+* Step A wires the decorator onto the top-level group only. Step B will
+  recurse into nested groups.
+
+## 4. Flat keepers (Q5 decision, plan PR #337)
+
+Everything is `<noun> <verb>` **except** this short, explicitly-approved
+set. Nothing else may stay flat. New flat additions require a separate
+plan doc.
+
+| Flat token | Type | Why kept flat |
+|---|---|---|
+| `-h` / `--help` | global flag | universal CLI idiom |
+| `--help-recursive` | global flag | operator convenience |
+| `--version` | global flag | universal CLI idiom |
+| `--json` | global flag | pipes into every subcommand's output |
+| `mcp start` | subcommand | external contract with MCP-client configs that reference this literal path |
+
+Previously-proposed flat keepers (`doctor`, `init`, `fleet`, `listen`,
+`login`, `launch`, `deploy`, `report`) all move under proper nouns per
+§1.1.
+
+## 5. Standard Flags (All Commands)
 
 | Flag | Purpose | Required for |
 |------|---------|--------------|
 | `-h`, `--help` | Show usage with examples | All commands |
-| `--help-recursive` | Show help for all subcommands recursively | Commands with subcommands |
+| `--help-recursive` | Show help for all subcommands recursively | Top-level entry point |
 | `--json` | Machine-readable JSON output | All data-fetching commands |
 | `--dry-run` | Preview changes without applying | All mutating commands |
 | `--version` | Print package version | Top-level entry point |
 | `--verbose`, `-v` | Increase verbosity | Optional |
 | `--quiet`, `-q` | Suppress non-error output | Optional |
 
-## Exit Codes
+## 6. Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | 0 | Success |
 | 1 | Generic error (operation failed) |
-| 2 | Usage error (bad flags, missing args) |
+| 2 | Usage error (bad flags, missing args, **deprecated-rename hit**) |
 | 3+ | Domain-specific errors (document in `--help`) |
 
-## Output Streams
+## 7. Output Streams
 
 - **stdout**: Data, JSON, parseable output. Pipe-friendly.
-- **stderr**: Logs, progress, warnings, errors. Not for piped data.
-- **Rule**: A user must be able to `cmd --json | jq` without log noise mixing in.
+- **stderr**: Logs, progress, warnings, errors, deprecation notices.
+- **Rule**: A user must be able to `cmd --json | jq` without log noise
+  mixing in. This is why deprecation messages and the `(Available Now)`
+  suffix are stderr- / help-only, never on stdout.
 
-## Help Text Requirements
+## 8. Help Text Requirements
 
 Every command's `--help` must include:
 1. One-line description
@@ -128,17 +280,19 @@ Every command's `--help` must include:
 4. List of flags with descriptions
 5. Exit code summary (if non-trivial)
 
-## Environment Variables
+## 9. Environment Variables
 
-- All package-level env vars use the `SCITEX_<PACKAGE>_*` prefix (e.g., `SCITEX_OROCHI_HOST`)
-- CLI flags should override env vars
-- Document env var fallbacks in `--help`
+- All package-level env vars use the `SCITEX_<PACKAGE>_*` prefix
+  (e.g., `SCITEX_OROCHI_HOST`).
+- CLI flags should override env vars.
+- Document env var fallbacks in `--help`.
 
-### Bare prefixes are forbidden (Hard Rule)
+### 9.1 Bare prefixes are forbidden (Hard Rule)
 
-**Never use a bare package name as an env var prefix.** Always include `SCITEX_`:
+**Never use a bare package name as an env var prefix.** Always include
+`SCITEX_`:
 
-| ❌ Forbidden | ✅ Required |
+| Forbidden | Required |
 |---|---|
 | `OROCHI_AGENT` | `SCITEX_OROCHI_AGENT` |
 | `OROCHI_TOKEN` | `SCITEX_OROCHI_TOKEN` |
@@ -147,15 +301,22 @@ Every command's `--help` must include:
 | `AGENT_CONTAINER_*` | `SCITEX_AGENT_CONTAINER_*` |
 | `SCHOLAR_*` | `SCITEX_SCHOLAR_*` |
 
-Reason (operator directive 2026-04-12): bare prefixes collide with other tools'
-env vars and pollute the global namespace. The `SCITEX_` namespace makes
-ownership unambiguous and lets users `env | grep SCITEX_` to see all
-SciTeX-related state at once.
+Reason (operator directive 2026-04-12): bare prefixes collide with other
+tools' env vars and pollute the global namespace. The `SCITEX_` namespace
+makes ownership unambiguous and lets users `env | grep SCITEX_` to see
+all SciTeX-related state at once.
 
 When auditing existing code, `grep -rE '^OROCHI_|[^A-Z_]OROCHI_'` finds
 violations. Rename and update all references in one commit.
 
-### Scope: scitex-owned vars only
+### 9.2 Deprecation-specific env vars (Phase 1d)
+
+| Var | Effect |
+|---|---|
+| `SCITEX_OROCHI_NO_DEPRECATION=1` | Suppress soft notes; hard-rename error still prints once |
+| `SCITEX_OROCHI_SHELL_SESSION` | Explicit session key for soft-notice tracking (defaults to PPID) |
+
+### 9.3 Scope: scitex-owned vars only
 
 The `SCITEX_<PACKAGE>_*` rule applies **only to env vars that scitex code
 defines and reads**. It does **not** apply to env vars defined by
@@ -166,83 +327,58 @@ third-party tools, frameworks, or upstream conventions:
   `LANG`, `BUILD_ID`, `CI`, `GITHUB_*`, `AWS_*`, etc.
 - **In scope (must rename):** any env var that scitex code originates and
   whose name we control.
-- **Borderline cases** (third-party integration configured by scitex —
-  e.g. `GITEA_URL`, `CROSSREF_INTERNAL_URL`): if scitex code is the only
-  reader and the var is not a standard set by the upstream tool, prefer
-  the namespaced form (`SCITEX_CLOUD_GITEA_URL`). If the upstream tool
-  reads it directly, leave it.
 
-When in doubt: if removing the `SCITEX_` prefix would break a third-party
-tool, keep the upstream name.
+See the adapter pattern (Django settings) in the full text preserved in
+git history if you need the detailed framework-interop rationale.
 
-**Adapter pattern for framework env vars (preferred):** When a framework
-like Django expects a specific env var name (e.g. `ALLOWED_HOSTS`,
-`POSTGRES_PASSWORD`), the canonical scitex source of truth should still
-be `SCITEX_<PACKAGE>_*`. Translate inside the framework's config file:
-
-```python
-# scitex-cloud/settings.py
-import os
-ALLOWED_HOSTS = os.environ.get("SCITEX_CLOUD_ALLOWED_HOSTS", "").split(",")
-DATABASES = {
-    "default": {
-        "PASSWORD": os.environ["SCITEX_CLOUD_POSTGRES_PASSWORD"],
-        ...
-    }
-}
-```
-
-This keeps the operator-facing env namespace clean (`SCITEX_CLOUD_*` only)
-while letting Django still receive the values it needs internally.
-The operator (2026-04-12) explicitly requested this pattern for scitex-cloud:
-"DJANGO で認識されるようにしないといけないのもあるかも。その場合は
-settings.py で書きなおす". Apply the same pattern to Vite, Postgres
-client libs, etc., when feasible.
-
-### Where SCITEX_* env vars live (canonical location)
+### 9.4 Where SCITEX_* env vars live (canonical location)
 
 All scitex-owned env vars are sourced from
 **`~/.dotfiles/src/.bash.d/secrets/010_scitex/`** (one `.src` file per
 package: `01_orochi.src`, `01_cloud.src`, `01_agent-container.src`,
-`01_scholar.src`, etc.). The aggregator `scitex_entry.src` loads them at
-shell startup so all `SCITEX_*` vars are available to every scitex tool.
+`01_scholar.src`, etc.).
 
 Rules:
 - When adding a new `SCITEX_<PACKAGE>_FOO` var, **add the export to the
-  matching `01_<package>.src` file** in `010_scitex/`. Don't scatter
-  scitex env vars across other shell init files.
-- When renaming a bare-prefix var (e.g. `OROCHI_TOKEN` → `SCITEX_OROCHI_TOKEN`),
-  re-import / re-export from the same `01_orochi.src` file so all hosts
-  pick up the new name on next shell init.
-- Secrets stay in this directory (gitignored from the main dotfiles repo;
-  see the operator's secret-dotfiles convention) — never inline secrets in
+  matching `01_<package>.src` file** in `010_scitex/`.
+- When renaming a bare-prefix var (e.g. `OROCHI_TOKEN` →
+  `SCITEX_OROCHI_TOKEN`), re-import / re-export from the same
+  `01_orochi.src` file so all hosts pick up the new name on next shell
+  init.
+- Secrets stay in this directory (gitignored); never inline secrets in
   package code or YAML.
 
-## MCP Tool Parity
+## 10. MCP Tool Parity
 
 When a CLI command corresponds to an MCP tool:
-- Use the same name (or close: `scitex-orochi send-message` ↔ `mcp__scitex-orochi__send`)
+- Use the same name (or close: `scitex-orochi message send` ↔
+  `mcp__scitex-orochi__send`)
 - Same arguments
 - Same JSON shape for output
 - Document parity in the package SKILL.md
 
-## No Interactive Prompts (Hard Rule)
+## 11. No Interactive Prompts (Hard Rule)
 
-CLI commands MUST be non-interactive by default — they must work in pipelines, CI, and unattended agent runs.
+CLI commands MUST be non-interactive by default — they must work in
+pipelines, CI, and unattended agent runs.
 
-- **Never prompt for input** at runtime (no `input()`, no `read`, no password prompts)
-- If credentials are needed, read from env vars, config files, or `--flag` args
-- If a value is missing, **fail fast with a clear error message** — do not block waiting
+- **Never prompt for input** at runtime (no `input()`, no `read`, no
+  password prompts)
+- If credentials are needed, read from env vars, config files, or
+  `--flag` args
+- If a value is missing, **fail fast with a clear error message** — do
+  not block waiting
 
-### Fail-First Pattern
+### 11.1 Fail-First Pattern
 
-Validate all preconditions at the **start** of the command, before doing any work:
+Validate all preconditions at the **start** of the command, before doing
+any work:
 
 ```python
 def main():
     # 1. Check all preconditions FIRST
     if not have_sudo():
-        sys.stderr.write("error: this command requires sudo. Run with sudo or set X.\n")
+        sys.stderr.write("error: this command requires sudo.\n")
         sys.exit(2)
     if not config_exists():
         sys.stderr.write("error: missing config at ~/.scitex/config.yaml\n")
@@ -252,17 +388,19 @@ def main():
     do_work()
 ```
 
-**Why**: Interactive prompts break agent automation. A command that asks "Are you sure? [y/N]" or prompts for sudo password mid-run will hang forever in a tmux session. Fail-first means failures happen in seconds, not after partial work.
+**Why**: Interactive prompts break agent automation.
 
-### Acceptable: `--yes` Override
+### 11.2 Acceptable: `--yes` Override
 
-Mutating commands may use `--yes` / `-y` to bypass safety checks, but the **default** must be safe (e.g., `--dry-run` style preview, then `--yes` to apply).
+Mutating commands may use `--yes` / `-y` to bypass safety checks, but the
+**default** must be safe (e.g., `--dry-run` style preview, then `--yes`
+to apply).
 
-## Audit Checklist (For Existing Commands)
+## 12. Audit Checklist (For Existing Commands)
 
 When auditing a SciTeX package's CLI for compliance:
 
-- [ ] Verb-noun OR subcommand structure (consistent)
+- [ ] `<noun> <verb>` structure (or explicit flat-keeper exception)
 - [ ] `--help` works on every command
 - [ ] `--help-recursive` works at top level
 - [ ] `--json` available on all data commands
@@ -272,5 +410,22 @@ When auditing a SciTeX package's CLI for compliance:
 - [ ] Examples in help text
 - [ ] Env var prefix correct (`SCITEX_<PKG>_*`)
 - [ ] MCP tool parity (if applicable)
+- [ ] Deprecated-rename hits call `hard_rename_error(old, new)` with
+      exit 2 and no silent fallback
 
-Failing items should be filed as `cli-audit` issues in `the project's issue tracker`.
+Failing items should be filed as `cli-audit` issues in the project's
+issue tracker.
+
+## 13. Cross-references
+
+- `docs/cli.md` — public pointer to this file.
+- `docs/cli-refactor-plan-2026-04-22.md` (PR #337) — the plan that
+  produced these rules.
+- `src/scitex_orochi/_cli/_help_availability.py` — implementation of
+  the `(Available Now)` suffix layer.
+- `src/scitex_orochi/_cli/_deprecation.py` — implementation of the
+  hard-rename / soft-notice helpers.
+- `src/scitex_orochi/_skills/SKILL_INDEX.md` — one-line role per skill
+  (so agents can grep for "cli convention" and land here).
+- head-ywata-note-win's msg#16558 fleet-wide convention skill — when it
+  lands, this file cross-references it rather than duplicating text.
