@@ -392,6 +392,25 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "account_email": info.get("account_email")
             or prev.get("account_email")
             or "",
+            # lead msg#16005: full ``scitex-agent-container status --terse
+            # --json`` dict attached to the heartbeat by the pusher
+            # (``scripts/client/agent_meta_pkg/_sac_status.py``). Stored
+            # verbatim so future fields added to sac's terse projection
+            # (context_pct, pane_state, current_tool, quota, ...) reach
+            # the dashboard via ``/api/agents/`` without per-field
+            # plumbing here.
+            #
+            # Replace-on-present semantics: a fresh heartbeat carrying
+            # a non-empty dict always wins (the pusher re-runs sac
+            # every cycle, so the value is current). Absent / empty
+            # dict falls back to the previous value — older pushers
+            # that don't emit the field yet don't wipe it.
+            "sac_status": (
+                dict(info.get("sac_status"))
+                if isinstance(info.get("sac_status"), dict)
+                and info.get("sac_status")
+                else prev.get("sac_status") or {}
+            ),
         }
 
 

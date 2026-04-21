@@ -242,6 +242,16 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
                 "statusline_model": a.get("statusline_model", ""),
                 "account_email": a.get("account_email", ""),
+                # lead msg#16005 — whole ``scitex-agent-container status
+                # --terse --json`` payload. Dashboard consumers (Agents
+                # tab, future dashboards) can key off
+                # ``sac_status.<any-field>`` without this module needing
+                # a per-field allowlist. ``--terse`` projects the source
+                # onto dotted keys (see
+                # scitex_agent_container.terse.TERSE_STATUS_FIELDS) so
+                # flat reads via ``a["sac_status"]["context_management.percent"]``
+                # work today and on whatever fields get added tomorrow.
+                "sac_status": dict(a.get("sac_status") or {}),
             }
         )
     return result

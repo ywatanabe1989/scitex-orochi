@@ -30,6 +30,7 @@ from ._heartbeat import (
     mark_echo_alive,
     set_current_task,
     set_health,
+    set_sac_status,
     set_subagent_count,
     set_subagents,
     update_echo_pong,
@@ -105,6 +106,7 @@ __all__ = [
     "set_current_task",
     "set_subagents",
     "set_subagent_count",
+    "set_sac_status",
     "set_health",
     # Dashboard payload assembly
     "get_agents",
