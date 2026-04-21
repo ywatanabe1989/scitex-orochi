@@ -185,6 +185,13 @@ class AgentProfile(models.Model):
     health_reason = models.CharField(max_length=200, blank=True, default="")
     health_source = models.CharField(max_length=64, blank=True, default="")
     health_ts = models.DateTimeField(null=True, blank=True)
+    # msg#17078 lane A — DB-persisted auto-dispatch cooldown timestamp.
+    # Hydrates the in-memory ``_agents[name]["auto_dispatch_last_fire_ts"]``
+    # on first lookup so the 15min cooldown survives hub restarts. Before
+    # this field the cooldown lived only in-memory and a hub restart
+    # re-enabled auto-dispatches ~1-5min after the previous fire even
+    # though the DM text advertised 15min.
+    last_auto_dispatch_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

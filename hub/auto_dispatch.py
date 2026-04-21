@@ -110,8 +110,35 @@ def _streak_threshold() -> int:
 
 
 def _cooldown_seconds() -> int:
-    """Per-head minimum gap between auto-dispatches, in seconds."""
-    return max(_env_int("SCITEX_AUTO_DISPATCH_COOLDOWN_SECONDS", 900), 0)
+    """Per-head minimum gap between auto-dispatches, in seconds.
+
+    Resolution order (first non-None wins):
+      1. ``SCITEX_AUTO_DISPATCH_COOLDOWN_SECONDS`` env var — highest
+         precedence so ``mock.patch.dict(os.environ, ...)`` in tests
+         and short-lived shell overrides always take effect without
+         re-importing Django settings.
+      2. ``django.conf.settings.AUTO_DISPATCH_COOLDOWN_SECONDS`` — the
+         canonical production override (msg#17078 lane A). Docker
+         compose sets this via an env var at boot; the settings module
+         reads it there, and this path is what production hits when no
+         shell override is in scope.
+      3. 900s (15min) — matches the figure the DM text advertises.
+    """
+    raw = os.environ.get("SCITEX_AUTO_DISPATCH_COOLDOWN_SECONDS")
+    if raw is not None:
+        try:
+            return max(int(raw), 0)
+        except (TypeError, ValueError):
+            pass
+    try:
+        from django.conf import settings
+
+        val = getattr(settings, "AUTO_DISPATCH_COOLDOWN_SECONDS", None)
+        if val is not None:
+            return max(int(val), 0)
+    except Exception:
+        pass
+    return 900
 
 
 def _is_disabled() -> bool:
@@ -197,25 +224,62 @@ def _run_pick_todo(lane: str, timeout_s: int = 20) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 
 
-def _compose_dispatch_text(streak: int, pick: Optional[dict], cooldown_s: int) -> str:
+#: Max length of the full DM body. Deliberately kept under 400 chars so
+#: the downstream Web Push 200-char body cap (``hub/push.py``) and any
+#: future dashboard preview truncator still leaves the concrete shell
+#: command visible — the single most actionable element in the DM.
+#: msg#17078 lane A.
+MAX_DISPATCH_BODY_CHARS = 400
+
+
+def _compose_dispatch_text(
+    streak: int,
+    pick: Optional[dict],
+    cooldown_s: int,
+    agent_name: Optional[str] = None,
+) -> str:
     """Build the Claude-visible instruction text.
 
-    Shape matches the spec in lead msg#16388. When no todo matches the
-    lane we still fire (the stillness itself is the signal); the head's
-    Claude can then choose what to do from its own backlog / context.
+    msg#17078 lane A augments the original (lead msg#16388) template so
+    the recipient agent has a concrete shell command plus a fallback
+    pointer (mgr-todo MCP). Compression rules:
+
+    - Drop the redundant "Pick a high-priority todo..." sentence that
+      was visible in clipped previews but carried no command; the
+      candidate line + ``gh issue list`` line subsume it.
+    - Keep the whole body under :data:`MAX_DISPATCH_BODY_CHARS` so the
+      Web Push 200-char body cap + any dashboard previewer does not
+      clip the command line.
+    - ``gh`` command is tailored per recipient via ``agent_name`` (head
+      name ends in ``-<host>``). When ``agent_name`` is None (legacy
+      callers) the command falls back to the generic ``-<host>`` form.
     """
     cooldown_min = max(cooldown_s // 60, 1)
+    host = _head_host_from_name(agent_name or "") or "<host>"
     if pick is None:
-        candidate = "no open todo matched this lane — pick from your own backlog"
+        candidate = "no open todo matched lane — pick from backlog or ask mgr-todo"
     else:
         title = (pick.get("title") or "").strip()
-        candidate = f"todo#{pick['number']} — {title} — pick and fork a subagent for it"
-    return (
-        f"[auto-dispatch] you have been idle for {streak} cycles. "
-        f"Pick a high-priority todo from your lane and fork a subagent immediately. "
-        f"Candidate: {candidate}. "
-        f"Cooldown: no further auto-dispatches for {cooldown_min}min."
+        # Hard-cap the title so a 200-char runaway issue title can't
+        # alone blow past MAX_DISPATCH_BODY_CHARS.
+        if len(title) > 80:
+            title = title[:77] + "..."
+        candidate = f"todo#{pick['number']} — {title}"
+    cmd = (
+        f"gh issue list --repo ywatanabe1989/scitex-orochi "
+        f"--label ready-for-head-{host} --state open --limit 10"
     )
+    text = (
+        f"[auto-dispatch] idle {streak} cycles. Candidate: {candidate}. "
+        f"Run: {cmd} — or DM mgr-todo for a pick. "
+        f"Cooldown {cooldown_min}min."
+    )
+    # Hard belt-and-braces cap. The earlier title truncation should
+    # already guarantee we stay inside MAX_DISPATCH_BODY_CHARS, but a
+    # miscount in the template is a silent truncation bug — pin it.
+    if len(text) > MAX_DISPATCH_BODY_CHARS:
+        text = text[: MAX_DISPATCH_BODY_CHARS - 1].rstrip() + "…"
+    return text
 
 
 def _canonical_auto_dispatch_dm_name(agent_name: str) -> str:
@@ -289,6 +353,22 @@ def _post_dispatch_message(agent_name: str, workspace_id: int, text: str, metada
             metadata=metadata,
         )
 
+        # msg#17078 lane A — write-through the cooldown timestamp to
+        # ``AgentProfile.last_auto_dispatch_at`` so the 15min window
+        # survives hub restarts. Best-effort: the Message above is the
+        # user-visible side effect; a failure here at worst lets the
+        # next hub restart re-fire, which is the current (pre-fix)
+        # behaviour.
+        try:
+            _persist_last_auto_dispatch_at(
+                workspace_id, agent_name, time.time()
+            )
+        except Exception:  # pragma: no cover
+            log.exception(
+                "auto_dispatch: persist_last_auto_dispatch_at failed for %s",
+                agent_name,
+            )
+
         # Broadcast so any already-connected AgentConsumer delivers it
         # as a normal chat.message frame immediately.
         layer = get_channel_layer()
@@ -338,7 +418,13 @@ def _update_streak_locked(agent: dict, subagent_count: int) -> int:
 
 
 def _cooldown_active_locked(agent: dict, now: float, cooldown_s: int) -> bool:
-    """Return True if the per-head cooldown window hasn't expired yet."""
+    """Return True if the per-head cooldown window hasn't expired yet.
+
+    Reads only the in-memory ``auto_dispatch_last_fire_ts`` slot. The
+    slot is hydrated from ``AgentProfile.last_auto_dispatch_at`` by
+    :func:`_hydrate_cooldown_from_db_locked` on first lookup so the
+    window survives hub restarts (msg#17078 lane A).
+    """
     last_fire = agent.get("auto_dispatch_last_fire_ts")
     if not last_fire:
         return False
@@ -347,6 +433,147 @@ def _cooldown_active_locked(agent: dict, now: float, cooldown_s: int) -> bool:
     except (TypeError, ValueError):
         return False
     return elapsed < cooldown_s
+
+
+# ---------------------------------------------------------------------------
+# DB-persisted cooldown (msg#17078 lane A)
+#
+# Before this section existed, ``auto_dispatch_last_fire_ts`` lived only in
+# the in-memory ``hub.registry._agents[<name>]`` dict. A hub restart wiped
+# the dict and the next heartbeat would re-fire an auto-dispatch within
+# one streak-threshold cycle (~1-5min) even though the DM text advertised
+# a 15min cooldown — 8 DMs observed to head-mba in 40min in the incident
+# report. Promoting the timestamp to ``AgentProfile.last_auto_dispatch_at``
+# makes the window honest across restarts.
+# ---------------------------------------------------------------------------
+
+
+def _read_last_auto_dispatch_at_from_db(
+    workspace_id: int, agent_name: str
+) -> Optional[float]:
+    """Return the DB-stored last-fire timestamp as a unix float, or None.
+
+    Any exception (DB down, migration not yet applied, AgentProfile row
+    absent) yields ``None`` — auto-dispatch is best-effort and the
+    heartbeat hot path must never fail here.
+    """
+    try:
+        from hub.models import AgentProfile
+
+        row = AgentProfile.objects.filter(
+            workspace_id=workspace_id, name=agent_name
+        ).only("last_auto_dispatch_at").first()
+        if row is None:
+            return None
+        ts = row.last_auto_dispatch_at
+        if ts is None:
+            return None
+        return ts.timestamp()
+    except Exception:  # pragma: no cover — belt-and-braces
+        log.debug(
+            "auto_dispatch: _read_last_auto_dispatch_at_from_db failed for %s",
+            agent_name,
+            exc_info=True,
+        )
+        return None
+
+
+def _persist_last_auto_dispatch_at(
+    workspace_id: int, agent_name: str, now: float
+) -> None:
+    """Upsert ``AgentProfile.last_auto_dispatch_at = now`` for the agent.
+
+    Called from :func:`_post_dispatch_message` which already runs on a
+    sync thread when the heartbeat arrived on the asyncio loop, so
+    ``update_or_create`` is safe to call here directly.
+    """
+    try:
+        from datetime import datetime, timezone
+
+        from hub.models import AgentProfile
+
+        AgentProfile.objects.update_or_create(
+            workspace_id=workspace_id,
+            name=agent_name,
+            defaults={
+                "last_auto_dispatch_at": datetime.fromtimestamp(now, tz=timezone.utc),
+            },
+        )
+    except Exception:  # pragma: no cover — belt-and-braces
+        log.exception(
+            "auto_dispatch: _persist_last_auto_dispatch_at failed for %s",
+            agent_name,
+        )
+
+
+def _hydrate_cooldown_from_db_locked(
+    agent: dict, workspace_id: Optional[int], agent_name: str
+) -> None:
+    """Ensure ``agent["auto_dispatch_last_fire_ts"]`` reflects the DB.
+
+    Called under ``hub.registry._lock``. The ``_hydrated`` sentinel lets
+    us limit DB roundtrips to one per agent per hub lifetime (the happy
+    path is in-memory only thereafter — the write-through path keeps
+    the slot synced after each fire).
+
+    If we're running under the asyncio event loop (WS handler calls
+    ``handle_heartbeat`` → ``update_heartbeat`` → here), Django ORM
+    would raise ``SynchronousOnlyOperation``. We guard with
+    :func:`_in_async_context` and, in the async case, defer hydration
+    to a worker thread that writes back into the same in-memory slot
+    — on the very next heartbeat the cooldown check sees the hydrated
+    value. The cost is that the first post-restart heartbeat after a
+    fire *could* fire again before hydration lands; we accept that vs
+    the alternative of blocking the WS loop on a DB query.
+    """
+    if agent.get("auto_dispatch_hydrated"):
+        return
+    if workspace_id is None:
+        return
+    if _in_async_context():
+        # Defer to a worker thread — re-acquire the lock inside to
+        # write. Only schedule one hydrate per agent.
+        agent["auto_dispatch_hydrated"] = True
+
+        def _bg_hydrate():
+            ts = _read_last_auto_dispatch_at_from_db(workspace_id, agent_name)
+            if ts is None:
+                return
+            try:
+                from hub.registry import _agents as _a
+                from hub.registry import _lock as _l
+
+                with _l:
+                    row = _a.get(agent_name)
+                    if row is not None and not row.get(
+                        "auto_dispatch_last_fire_ts"
+                    ):
+                        row["auto_dispatch_last_fire_ts"] = ts
+            except Exception:  # pragma: no cover
+                log.debug(
+                    "auto_dispatch: _bg_hydrate failed for %s",
+                    agent_name,
+                    exc_info=True,
+                )
+
+        try:
+            threading.Thread(
+                target=_bg_hydrate,
+                name=f"auto-dispatch-hydrate-{agent_name}",
+                daemon=True,
+            ).start()
+        except Exception:  # pragma: no cover
+            log.debug(
+                "auto_dispatch: could not spawn hydrate thread for %s",
+                agent_name,
+                exc_info=True,
+            )
+        return
+    # Sync context — do the read inline.
+    ts = _read_last_auto_dispatch_at_from_db(workspace_id, agent_name)
+    agent["auto_dispatch_hydrated"] = True
+    if ts is not None and not agent.get("auto_dispatch_last_fire_ts"):
+        agent["auto_dispatch_last_fire_ts"] = ts
 
 
 # ---------------------------------------------------------------------------
@@ -448,14 +675,21 @@ def check_agent_auto_dispatch(agent_name: str) -> Optional[dict]:
             if not agent:
                 return None
             subagent_count = int(agent.get("subagent_count") or 0)
+            workspace_id = agent.get("workspace_id")
+            # msg#17078 lane A — hydrate the in-memory cooldown from the
+            # DB on first lookup so a hub restart cannot drop the window.
+            _hydrate_cooldown_from_db_locked(agent, workspace_id, agent_name)
             streak = _update_streak_locked(agent, subagent_count)
             if subagent_count > 0:
                 return {"decision": "reset", "streak": 0}
             if streak < threshold:
                 return {"decision": "streak_increment", "streak": streak}
             if _cooldown_active_locked(agent, now, cooldown_s):
+                # msg#17078 lane A: do NOT reset the streak here. Any
+                # subsequent zero-reading tick within the cooldown
+                # window must continue to return ``cooldown_skip``
+                # rather than silently re-arming the state machine.
                 return {"decision": "cooldown_skip", "streak": streak}
-            workspace_id = agent.get("workspace_id")
             # Arm cooldown + reset streak optimistically so a reentrant
             # call (unlikely but possible under asgiref) doesn't fire twice.
             agent["auto_dispatch_last_fire_ts"] = now
@@ -467,7 +701,7 @@ def check_agent_auto_dispatch(agent_name: str) -> Optional[dict]:
             return {"decision": "no_workspace", "streak": streak}
 
         pick = _run_pick_todo(lane)
-        text = _compose_dispatch_text(streak, pick, cooldown_s)
+        text = _compose_dispatch_text(streak, pick, cooldown_s, agent_name)
         metadata = {
             "kind": "auto-dispatch",
             "agent": agent_name,
@@ -519,10 +753,14 @@ def _reset_auto_dispatch_state_for_tests(agent_name: Optional[str] = None) -> No
     """Clear per-agent streak / cooldown state. Test-only utility.
 
     ``None`` clears every head-* entry; a specific name clears just that
-    one.
+    one. Also wipes the DB-persisted cooldown so test ordering is
+    deterministic (msg#17078 lane A made the cooldown DB-backed; without
+    clearing the column here a second test in the same process would
+    see the prior test's last-fire row and hit ``cooldown_skip``).
     """
     from hub.registry import _agents, _lock
 
+    names_to_reset: list[tuple[str, Optional[int]]] = []
     with _lock:
         targets = (
             [agent_name] if agent_name is not None else list(_agents.keys())
@@ -531,5 +769,23 @@ def _reset_auto_dispatch_state_for_tests(agent_name: Optional[str] = None) -> No
             a = _agents.get(name)
             if not a:
                 continue
+            names_to_reset.append((name, a.get("workspace_id")))
             a.pop("idle_streak", None)
             a.pop("auto_dispatch_last_fire_ts", None)
+            a.pop("auto_dispatch_hydrated", None)
+
+    # Best-effort DB-side clear.
+    try:
+        from hub.models import AgentProfile
+
+        for name, ws_id in names_to_reset:
+            if ws_id is None:
+                continue
+            AgentProfile.objects.filter(
+                workspace_id=ws_id, name=name
+            ).update(last_auto_dispatch_at=None)
+    except Exception:
+        log.debug(
+            "auto_dispatch: _reset_auto_dispatch_state_for_tests DB clear failed",
+            exc_info=True,
+        )

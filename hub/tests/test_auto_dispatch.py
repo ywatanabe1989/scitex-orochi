@@ -147,21 +147,71 @@ class EnvConfigTest(TestCase):
 class ComposeTextTest(TestCase):
     def test_text_with_pick(self):
         pick = {"number": 42, "title": "migrate foo to bar"}
-        out = _compose_dispatch_text(streak=2, pick=pick, cooldown_s=900)
+        out = _compose_dispatch_text(
+            streak=2, pick=pick, cooldown_s=900, agent_name="head-mba"
+        )
         self.assertIn("[auto-dispatch]", out)
-        self.assertIn("idle for 2 cycles", out)
+        self.assertIn("idle 2 cycles", out)
         self.assertIn("todo#42", out)
         self.assertIn("migrate foo to bar", out)
         self.assertIn("15min", out)
 
     def test_text_without_pick(self):
-        out = _compose_dispatch_text(streak=3, pick=None, cooldown_s=900)
+        out = _compose_dispatch_text(
+            streak=3, pick=None, cooldown_s=900, agent_name="head-mba"
+        )
         self.assertIn("[auto-dispatch]", out)
         self.assertIn("no open todo matched", out)
 
     def test_cooldown_minutes_from_seconds(self):
-        out = _compose_dispatch_text(streak=2, pick=None, cooldown_s=60)
+        out = _compose_dispatch_text(
+            streak=2, pick=None, cooldown_s=60, agent_name="head-mba"
+        )
         self.assertIn("1min", out)
+
+    def test_text_includes_per_host_gh_command(self):
+        """msg#17078 lane A — DM must carry a concrete shell command.
+
+        The head that receives the DM reads the literal command out of
+        the message body and can paste it directly. Host is derived
+        from the recipient's agent name (``head-<host>`` suffix).
+        """
+        for host in ("mba", "nas", "spartan", "ywata-note-win"):
+            out = _compose_dispatch_text(
+                streak=2,
+                pick=None,
+                cooldown_s=900,
+                agent_name=f"head-{host}",
+            )
+            self.assertIn(
+                f"gh issue list --repo ywatanabe1989/scitex-orochi "
+                f"--label ready-for-head-{host}",
+                out,
+                msg=f"Missing tailored gh command for host={host}",
+            )
+
+    def test_text_mentions_mgr_todo_fallback(self):
+        """msg#17078 lane A — DM must point at mgr-todo as a fallback."""
+        out = _compose_dispatch_text(
+            streak=2, pick=None, cooldown_s=900, agent_name="head-mba"
+        )
+        self.assertIn("mgr-todo", out)
+
+    def test_text_fits_in_400_chars(self):
+        """msg#17078 lane A — keep body under 400 chars so downstream
+        previewers (Web Push 200-char body, dashboard snippet renderer)
+        cannot clip the gh command line.
+        """
+        pick = {"number": 9999, "title": "x" * 200}  # pathological title
+        out = _compose_dispatch_text(
+            streak=7, pick=pick, cooldown_s=900, agent_name="head-mba"
+        )
+        self.assertLessEqual(len(out), 400)
+
+    def test_text_legacy_none_agent_name(self):
+        """Legacy callers (no agent_name) fall back to ``<host>``."""
+        out = _compose_dispatch_text(streak=2, pick=None, cooldown_s=900)
+        self.assertIn("ready-for-head-<host>", out)
 
 
 class DmNameTest(TestCase):
@@ -332,6 +382,127 @@ class CheckAgentAutoDispatchTest(TestCase):
         msgs = list(Message.objects.filter(channel__name=dm_name))
         self.assertEqual(len(msgs), 1)
         self.assertIn("no open todo matched", msgs[0].content)
+
+    # -----------------------------------------------------------------
+    # msg#17078 lane A — DM body must be persisted in full (no
+    # truncation) in the Message row the hub writes. The user-reported
+    # clip ("Pick a hig...") comes from Web Push notification OS
+    # behaviour (``hub/push.py`` truncates at 200 chars for the push
+    # body only — not the DB row). This asserts the DB side is intact
+    # so a healer / dashboard reading back the Message sees the full
+    # command line.
+    # -----------------------------------------------------------------
+
+    def test_full_dm_body_persisted_in_db(self):
+        pick = {"number": 17, "title": "a concrete title"}
+        self._set_subagent_count(0)
+        with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
+            check_agent_auto_dispatch(self.agent_name)
+            check_agent_auto_dispatch(self.agent_name)
+        dm_name = _canonical_auto_dispatch_dm_name(self.agent_name)
+        m = Message.objects.get(channel__name=dm_name)
+        # Full body must contain both the host-specific gh command AND
+        # the mgr-todo pointer — the two most actionable elements.
+        self.assertIn("gh issue list", m.content)
+        self.assertIn("ready-for-head-mba", m.content)
+        self.assertIn("mgr-todo", m.content)
+        # Full body must match what ``_compose_dispatch_text`` produced,
+        # byte-for-byte (no DB-side truncation).
+        expected = ad._compose_dispatch_text(
+            streak=2,
+            pick=pick,
+            cooldown_s=ad._cooldown_seconds(),
+            agent_name=self.agent_name,
+        )
+        self.assertEqual(m.content, expected)
+
+    # -----------------------------------------------------------------
+    # msg#17078 lane A — cooldown must survive a hub restart. We
+    # simulate the restart by (1) firing normally, (2) wiping the
+    # in-memory registry entry the way a fresh process would see it,
+    # (3) re-registering the agent (the normal register_agent flow), and
+    # (4) running two more zero-reading ticks. The second tick must
+    # return ``cooldown_skip`` because the DB write-through in the
+    # first fire recorded ``AgentProfile.last_auto_dispatch_at``.
+    # -----------------------------------------------------------------
+
+    def test_cooldown_survives_simulated_hub_restart(self):
+        from hub.models import AgentProfile
+
+        pick = {"number": 17, "title": "t"}
+        self._set_subagent_count(0)
+        with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
+            check_agent_auto_dispatch(self.agent_name)
+            r_fired = check_agent_auto_dispatch(self.agent_name)
+            self.assertEqual(r_fired["decision"], "fired")
+
+        # DB row written?
+        profile = AgentProfile.objects.get(
+            workspace=self.ws, name=self.agent_name
+        )
+        self.assertIsNotNone(profile.last_auto_dispatch_at)
+
+        # Simulate a hub restart — wipe the in-memory registry slot for
+        # this agent and re-register. register_agent intentionally does
+        # NOT carry over the auto_dispatch_last_fire_ts slot; it must
+        # come back from the DB on next lookup.
+        with _lock:
+            _agents.pop(self.agent_name, None)
+        register_agent(self.agent_name, self.ws.id, {"role": "head"})
+        self._set_subagent_count(0)
+        # Slot starts empty post-restart.
+        with _lock:
+            self.assertIsNone(
+                _agents[self.agent_name].get("auto_dispatch_last_fire_ts")
+            )
+
+        # Two more zero-reading ticks: first increments streak; on the
+        # second the hydrate-from-DB step fills in the last-fire
+        # timestamp BEFORE the cooldown check, so it returns
+        # cooldown_skip instead of re-firing.
+        with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
+            r1 = check_agent_auto_dispatch(self.agent_name)
+            r2 = check_agent_auto_dispatch(self.agent_name)
+        self.assertEqual(r1["decision"], "streak_increment")
+        self.assertEqual(
+            r2["decision"],
+            "cooldown_skip",
+            msg=(
+                "Post-restart second tick must NOT fire again — the "
+                "DB-persisted cooldown from the first fire is the "
+                "source of truth. If this assertion fails, head-mba "
+                "will see ~8 auto-dispatch DMs per 40min in prod."
+            ),
+        )
+        # Still only one DM in the DB.
+        dm_name = _canonical_auto_dispatch_dm_name(self.agent_name)
+        self.assertEqual(
+            Message.objects.filter(channel__name=dm_name).count(), 1
+        )
+
+    def test_cooldown_skip_does_not_reset_streak(self):
+        """Per spec: cooldown skip leaves streak intact — a subsequent
+        zero tick must still evaluate cooldown (not silently re-arm the
+        state machine by zeroing the streak).
+        """
+        pick = {"number": 17, "title": "t"}
+        self._set_subagent_count(0)
+        with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
+            check_agent_auto_dispatch(self.agent_name)
+            check_agent_auto_dispatch(self.agent_name)  # fires, arms cooldown
+            # Bring streak back to threshold + keep pushing.
+            r1 = check_agent_auto_dispatch(self.agent_name)  # streak=1
+            r2 = check_agent_auto_dispatch(self.agent_name)  # streak=2, cooldown_skip
+            r3 = check_agent_auto_dispatch(self.agent_name)  # streak=3, cooldown_skip
+        self.assertEqual(r1["decision"], "streak_increment")
+        self.assertEqual(r2["decision"], "cooldown_skip")
+        self.assertEqual(r3["decision"], "cooldown_skip")
+        # Streak must not have been reset by cooldown_skip — it stays
+        # ≥ threshold, which keeps the gate honest.
+        with _lock:
+            self.assertGreaterEqual(
+                _agents[self.agent_name].get("idle_streak", 0), 2
+            )
 
 
 # ---------------------------------------------------------------------------
