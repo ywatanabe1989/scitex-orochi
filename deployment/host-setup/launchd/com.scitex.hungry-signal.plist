@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: Layer 2 hungry-signal probe (lead msg#16310).
+
+  Runs scripts/client/hungry-signal.sh every 10 minutes. On each tick the
+  probe reads local `scitex-agent-container status --terse --json` for
+  this head's subagent_count and, if zero for HUNGRY_THRESHOLD consecutive
+  cycles, DMs `lead` asking for a coordinated dispatch pick.
+
+  Install:
+    ./scripts/client/install-hungry-signal.sh
+
+  Logs: ~/Library/Logs/scitex/hungry-signal.log. State file:
+  ~/.local/state/scitex/hungry-signal.state.
+
+  __HOME__, __REPO__, __STABLE_PROBE__ are replaced by the installer
+  (stable-bin-path pattern, same shape as PR #326 todo#466). Kill switch:
+  set SCITEX_HUNGRY_DISABLED=1 in the user env to pause without
+  uninstalling.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.scitex.hungry-signal</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>__STABLE_PROBE__</string>
+      <string>__PROBE_MODE__</string>
+    </array>
+
+    <!-- Every 10 minutes. Layer 1 runs every 5 min; we want this cadence
+         to be half the rate so the counter only trips after real idleness,
+         not micro-gaps between probes. -->
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/scitex/hungry-signal.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/scitex/hungry-signal.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>SCITEX_OROCHI_REPO_ROOT</key>
+      <string>__REPO__</string>
+    </dict>
+  </dict>
+</plist>
