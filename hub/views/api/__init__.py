@@ -32,6 +32,7 @@ from hub.views.api._agents_subscribe import (
     api_admin_agent_subscribe,
     api_admin_agent_unsubscribe,
 )
+from hub.views.api._cron import api_cron
 from hub.views.api._channels import (
     api_channel_members,
     api_channel_prefs,
@@ -80,6 +81,7 @@ __all__ = [
     "api_channels",
     "api_config",
     "api_connectivity",
+    "api_cron",
     "api_dms",
     "api_event_tool_use",
     "api_history",

@@ -117,6 +117,11 @@ urlpatterns = [
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Orochi unified cron Phase 2 (lead msg#16406 / msg#16408).
+    # Fleet-wide cron status aggregated from heartbeat ``cron_jobs``
+    # payloads. Reuses the in-memory registry — no new DB model. Consumed
+    # by the Machines tab cron-jobs panel.
+    path("api/cron/", views.api_cron, name="api-cron"),
     # Auto-dispatch operator triggers + inspection (Phase 1c msg#16477).
     path(
         "api/auto-dispatch/fire/",

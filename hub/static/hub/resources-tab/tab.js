@@ -8,7 +8,8 @@
    syncHostHover, resourceData, _machineIcons, donutHtml,
    _wireMachinesControls, _applyMachinesViewVisibility,
    showMachineTooltip, moveMachineTooltip, hideMachineTooltip,
-   setMachineIcon */
+   setMachineIcon,
+   cronByHost, fetchCronJobs, renderCronJobsHtml, wireCronToggles */
 
 function renderResources() {
   var msgInput = document.getElementById("msg-input");
@@ -238,6 +239,10 @@ function renderResourcesTab() {
         syncHostHover(el.getAttribute("data-host-name"), false);
     });
   });
+  /* Orochi cron Phase 2 — per-host collapse chevron. */
+  if (typeof wireCronToggles === "function") {
+    wireCronToggles(grid, renderResourcesTab);
+  }
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
@@ -350,6 +355,10 @@ function buildResourceCard(k) {
       : hbDate.toLocaleString();
     html += '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + "</div>";
   }
+  /* Orochi unified cron Phase 2 — collapsible cron-jobs subsection. */
+  if (typeof renderCronJobsHtml === "function") {
+    html += renderCronJobsHtml(k);
+  }
   html += "</div>";
   return html;
 }
@@ -457,6 +466,10 @@ async function fetchResources() {
         gpu: gpuList,
       };
     });
+    /* Orochi cron Phase 2 — piggyback fetch on the 30s resource poll. */
+    if (typeof fetchCronJobs === "function") {
+      await fetchCronJobs();
+    }
     renderResources();
     if (activeTab === "resources") renderResourcesTab();
   } catch (e) {

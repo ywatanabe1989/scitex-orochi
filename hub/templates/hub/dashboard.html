@@ -44,6 +44,10 @@
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=102">
+    <!-- Orochi unified cron Phase 2 (msg#16406 / msg#16408) — Machines
+         tab cron-jobs panel. Loaded after resources.css so cron-panel
+         rules sit under each .res-card via the shared 11px meta font. -->
+    <link rel="stylesheet" href="{% static 'hub/style/style-cron-panel.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">

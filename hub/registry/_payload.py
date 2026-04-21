@@ -263,6 +263,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # flat reads via ``a["sac_status"]["context_management.percent"]``
                 # work today and on whatever fields get added tomorrow.
                 "sac_status": dict(a.get("sac_status") or {}),
+                # Orochi unified cron state (msg#16406 / msg#16408 Phase 2).
+                # Per-heartbeat snapshot of the local orochi-cron daemon's job
+                # list (empty list when the daemon isn't running on this host).
+                # Consumed by /api/cron/ and the Machines tab cron-jobs panel.
+                "cron_jobs": list(a.get("cron_jobs") or []),
             }
         )
     return result
