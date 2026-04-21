@@ -21,7 +21,6 @@ if str(_AGENT_META_DIR) not in sys.path:
 
 from agent_meta_pkg._push import _build_payload  # noqa: E402
 
-
 _MIN_META = {
     "agent": "worker-mba",
     "machine": "mba",
