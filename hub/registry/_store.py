@@ -12,12 +12,31 @@ directly. The names are part of the registry's public surface.
 import logging
 import threading
 import time
+from collections import deque
 
 log = logging.getLogger("orochi.registry")
 
 _lock = threading.Lock()
 _agents: dict[str, dict] = {}
 _connections: dict[str, set[str]] = {}
+# scitex-orochi#255 — per-channel connection identity for singleton
+# enforcement. Maps channel_name -> {"agent": str, "instance_id": str,
+# "start_ts_unix": float | None}. Populated by ``set_connection_identity``
+# at register-frame time so the hub can decide singleton conflicts even
+# after the second WS connection has already accepted (the register frame
+# is what carries the per-process identity).
+_connection_identity: dict[str, dict] = {}
+# scitex-orochi#255 — bounded ring buffer of singleton-conflict events.
+# Each entry: {"name": agent_name, "ts": float, "winner_instance_id":
+# str, "loser_instance_id": str, "winner_start_ts_unix": float | None,
+# "loser_start_ts_unix": float | None, "outcome": "incumbent" | "challenger"}.
+# Newest events appended on the right; we cap the buffer so a runaway
+# crash loop can't OOM the hub. The detail API filters by ``ts`` >=
+# now-3600 so an event ages out of the dashboard banner one hour after
+# it occurred even if it's still in the buffer.
+SINGLETON_EVENTS_MAX = 256
+SINGLETON_EVENT_WINDOW_S = 3600  # 1 hour
+_singleton_events: deque[dict] = deque(maxlen=SINGLETON_EVENTS_MAX)
 
 # Agents with no heartbeat for this many seconds are auto-marked offline
 HEARTBEAT_TIMEOUT_S = 60

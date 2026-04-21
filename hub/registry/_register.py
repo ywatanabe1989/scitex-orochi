@@ -8,7 +8,16 @@ flicker every heartbeat (regression hazard).
 
 import time
 
-from ._store import _active_session_count, _agents, _connections, _lock
+from ._store import (
+    SINGLETON_EVENT_WINDOW_S,
+    _active_session_count,
+    _agents,
+    _connection_identity,
+    _connections,
+    _lock,
+    _singleton_events,
+    log,
+)
 
 
 def register_agent(name: str, workspace_id: int, info: dict) -> None:
@@ -138,6 +147,15 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # lamp flickered to gray 1× per 30s heartbeat cycle.
             "last_pong_ts": prev.get("last_pong_ts"),
             "last_rtt_ms": prev.get("last_rtt_ms"),
+            # #259 — preserve echo round-trip state across re-registers.
+            # The 4th LED (Remote / nonce echo) renders from
+            # `last_nonce_echo_at` (ISO string consumed by
+            # renderAgentLeds). Without prev-preserve, the LED would
+            # flicker grey on every heartbeat cycle (same pitfall as
+            # last_pong_ts). update_echo_pong is the canonical setter.
+            "last_echo_rtt_ms": prev.get("last_echo_rtt_ms"),
+            "last_echo_ok_ts": prev.get("last_echo_ok_ts"),
+            "last_nonce_echo_at": prev.get("last_nonce_echo_at"),
             # Extended process/runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,
@@ -448,3 +466,210 @@ def purge_agent(name: str) -> bool:
             del _agents[name]
             return True
         return False
+
+
+# ── scitex-orochi#255 — singleton cardinality enforcement ────────────
+#
+# The two-process race that motivated #255: when sac (or a human) starts
+# a second copy of an agent that already has a live WS, both processes
+# claim the same ``SCITEX_OROCHI_AGENT`` identity. Pre-#255 behaviour
+# admitted both — they then fought for the heartbeat slot, the dashboard
+# flickered between their states, and DM routing was racy. Post-#255 the
+# hub picks one winner and closes the loser with WebSocket close code
+# 4409 / reason ``duplicate_identity`` so the loser exits cleanly.
+#
+# Decision rule (HANDOFF.md §3 #3 + ywatanabe msg #14757):
+#
+#   1. Need *both* sides to report ``instance_id`` AND ``start_ts_unix``
+#      to enforce — legacy clients that report neither fall through to
+#      the permissive "allow both" behaviour with a logged WARNING (no
+#      regression for older agent_meta.py installs).
+#   2. Same ``instance_id``: not a conflict — same process re-registering
+#      after a transient WS reconnect. Treat as incumbent-wins (no-op).
+#   3. Different ``instance_id`` AND both have ``start_ts_unix``: the
+#      OLDER ``start_ts_unix`` wins. Original process keeps its claim.
+#   4. Tie (equal ``start_ts_unix``) or one side missing the field:
+#      incumbent wins (don't disrupt the running process).
+
+
+def set_connection_identity(
+    channel_name: str,
+    agent_name: str,
+    instance_id: str | None,
+    start_ts_unix: float | None,
+) -> None:
+    """Remember the per-process identity behind ``channel_name``.
+
+    Called from the register-frame handler so that when a *future* second
+    register frame arrives under the same ``agent_name`` we can compare
+    its ``(instance_id, start_ts_unix)`` against every currently-live
+    sibling channel and decide who survives.
+
+    Lookup direction is channel→identity (not name→identity) because
+    ``_agents[name]`` only ever stores ONE process's identity at a time;
+    the per-channel map is what lets us close the right WebSocket when
+    the challenger wins.
+    """
+    if not channel_name or not agent_name:
+        return
+    with _lock:
+        _connection_identity[channel_name] = {
+            "agent": agent_name,
+            "instance_id": instance_id or "",
+            "start_ts_unix": (
+                float(start_ts_unix) if start_ts_unix is not None else None
+            ),
+        }
+
+
+def clear_connection_identity(channel_name: str) -> None:
+    """Forget per-channel identity on disconnect.
+
+    Mirrors ``unregister_connection`` so the per-channel map doesn't grow
+    monotonically over the hub's lifetime.
+    """
+    if not channel_name:
+        return
+    with _lock:
+        _connection_identity.pop(channel_name, None)
+
+
+def get_connection_identity(channel_name: str) -> dict | None:
+    """Return the per-channel identity dict, or ``None`` if not tracked."""
+    with _lock:
+        if channel_name in _connection_identity:
+            return dict(_connection_identity[channel_name])
+        return None
+
+
+def list_sibling_channels(agent_name: str, exclude: str = "") -> list[dict]:
+    """Return identity dicts for every other live channel claiming ``agent_name``.
+
+    Used by the register handler to find candidates to compare the new
+    challenger against. ``exclude`` is the new connection's own channel
+    name so we don't compare it with itself.
+    """
+    if not agent_name:
+        return []
+    with _lock:
+        return [
+            {"channel_name": ch, **ident}
+            for ch, ident in _connection_identity.items()
+            if ident.get("agent") == agent_name and ch != exclude
+        ]
+
+
+def decide_singleton_winner(
+    incumbent_instance_id: str | None,
+    incumbent_start_ts_unix: float | None,
+    challenger_instance_id: str | None,
+    challenger_start_ts_unix: float | None,
+) -> str:
+    """Pick the winner of a two-process singleton race.
+
+    Returns ``"incumbent"`` when the existing connection should keep the
+    claim and the challenger should be closed; ``"challenger"`` when the
+    new connection wins and the incumbent should be evicted.
+
+    Rule precedence (matches the module-level docstring):
+
+      1. If either side is missing ``instance_id`` -> incumbent wins
+         (legacy permissive mode). The caller is expected to log a
+         WARNING in that branch so the situation is still observable.
+      2. Same ``instance_id`` -> incumbent (treat as harmless re-register,
+         not a real conflict — the caller decides not to close anyone).
+      3. Both have ``start_ts_unix`` and they differ -> older
+         ``start_ts_unix`` wins.
+      4. Tie or one side missing ``start_ts_unix`` -> incumbent wins
+         (don't disrupt the running process).
+    """
+    # Rule 1 — legacy permissive mode. Either side can't enforce.
+    if not incumbent_instance_id or not challenger_instance_id:
+        return "incumbent"
+    # Rule 2 — same process re-registering, not a conflict.
+    if incumbent_instance_id == challenger_instance_id:
+        return "incumbent"
+    # Rule 3 — strict tiebreaker on start_ts_unix.
+    if (
+        incumbent_start_ts_unix is not None
+        and challenger_start_ts_unix is not None
+        and incumbent_start_ts_unix != challenger_start_ts_unix
+    ):
+        return (
+            "incumbent"
+            if incumbent_start_ts_unix < challenger_start_ts_unix
+            else "challenger"
+        )
+    # Rule 4 — tie or missing tiebreaker; protect the running process.
+    return "incumbent"
+
+
+def record_singleton_conflict(
+    name: str,
+    winner_instance_id: str,
+    loser_instance_id: str,
+    winner_start_ts_unix: float | None = None,
+    loser_start_ts_unix: float | None = None,
+    outcome: str = "incumbent",
+) -> dict:
+    """Append a singleton-conflict event to the bounded ring buffer.
+
+    The dashboard reads back the most recent event per agent via
+    ``get_recent_singleton_event(name)`` and surfaces a banner /
+    detail-pane warning when the event is within the last hour.
+
+    ``outcome`` is the verbatim return value of ``decide_singleton_winner``
+    so the dashboard / log reader can tell which side actually got
+    closed without re-running the rule.
+    """
+    event = {
+        "name": name,
+        "ts": time.time(),
+        "winner_instance_id": winner_instance_id or "",
+        "loser_instance_id": loser_instance_id or "",
+        "winner_start_ts_unix": (
+            float(winner_start_ts_unix)
+            if winner_start_ts_unix is not None
+            else None
+        ),
+        "loser_start_ts_unix": (
+            float(loser_start_ts_unix)
+            if loser_start_ts_unix is not None
+            else None
+        ),
+        "outcome": outcome,
+    }
+    with _lock:
+        _singleton_events.append(event)
+    log.warning(
+        "Singleton conflict for agent %s — %s wins (winner=%s, loser=%s)",
+        name,
+        outcome,
+        winner_instance_id or "?",
+        loser_instance_id or "?",
+    )
+    return event
+
+
+def get_recent_singleton_event(
+    name: str, within_seconds: int = SINGLETON_EVENT_WINDOW_S
+) -> dict | None:
+    """Return the most recent conflict event for ``name`` within the window.
+
+    The dashboard banner / per-agent detail pane fades out once the
+    most recent event is older than ``within_seconds``. Default window
+    matches HANDOFF.md (last hour).
+    """
+    cutoff = time.time() - max(0, int(within_seconds))
+    with _lock:
+        # Iterate newest-first so we can return on the first matching
+        # hit. Events are time-ordered globally, so the first matching
+        # entry IS the most recent for ``name``; we only return it when
+        # it's still inside the window.
+        for event in reversed(_singleton_events):
+            if event.get("name") != name:
+                continue
+            if event.get("ts", 0) < cutoff:
+                return None
+            return dict(event)
+    return None

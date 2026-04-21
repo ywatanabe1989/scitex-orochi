@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
-from hub.registry import get_agents
+from hub.registry import get_agents, get_recent_singleton_event
 
 # Canonical list of credential-ish strings to redact from terminal
 # captures before serving them to the dashboard. These are matched as
@@ -315,4 +315,22 @@ def api_agent_detail(request, name: str):
         "action_counts": agent.get("action_counts") or {},
         "p95_elapsed_s_by_action": agent.get("p95_elapsed_s_by_action") or {},
     }
+    # ── #255 singleton conflict surface ────────────────────────────────
+    # Most-recent duplicate-identity event for THIS agent within the
+    # last hour. ``None`` when no conflict has happened (or the most
+    # recent one has aged out of the window). The dashboard banner /
+    # detail-pane warning is driven off the presence of this key.
+    event = get_recent_singleton_event(name)
+    if event is not None:
+        payload["last_duplicate_identity_event"] = {
+            "ts": event.get("ts"),
+            "ts_iso": _iso(event.get("ts")),
+            "winner_instance_id": event.get("winner_instance_id", ""),
+            "loser_instance_id": event.get("loser_instance_id", ""),
+            "winner_start_ts_unix": event.get("winner_start_ts_unix"),
+            "loser_start_ts_unix": event.get("loser_start_ts_unix"),
+            "outcome": event.get("outcome", "incumbent"),
+        }
+    else:
+        payload["last_duplicate_identity_event"] = None
     return JsonResponse(payload)
