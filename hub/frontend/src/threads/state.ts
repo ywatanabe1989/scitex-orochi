@@ -8,9 +8,31 @@ import { closeThreadPanel, openThreadPanel } from "./panel";
 var threadPanel = null;
 var threadPanelParentId = null;
 
-/* Thread-local pending attachments (separate from main composer pendingAttachments) */
+/* Thread-local pending attachments (separate from main composer
+ * pendingAttachments). This is the single source of truth — paste,
+ * drop, and file-picker all push here via _stageThreadFiles; the send
+ * path (threads/panel.ts::sendThreadReply) reads via
+ * getThreadPendingAttachments(); panel open/close + send clear via
+ * resetThreadPendingAttachments(). Previously panel.ts reassigned
+ * `(globalThis as any).threadPendingAttachments = []`, which broke the
+ * reference shared with this module under ES modules — pasted images
+ * were staged here but never picked up by the send path, so the Reply
+ * composer "lost" pasted attachments (msg#16527). */
 var threadPendingAttachments = [];
 var _threadSketchActive = false;
+
+/* Accessor + resetter so cross-module consumers never need to reassign
+ * the array reference (which would break this module's writers). */
+export function getThreadPendingAttachments() {
+  return threadPendingAttachments;
+}
+
+export function resetThreadPendingAttachments() {
+  /* Mutate in place so any existing reference (including the legacy
+   * globalThis mirror at the bottom of this file) stays pointing at
+   * the live array. */
+  threadPendingAttachments.length = 0;
+}
 
 export function _renderThreadAttachmentTray() {
   var tray = document.getElementById("thread-pending-attachments");

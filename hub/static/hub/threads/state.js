@@ -4,9 +4,23 @@
 var threadPanel = null;
 var threadPanelParentId = null;
 
-/* Thread-local pending attachments (separate from main composer pendingAttachments) */
+/* Thread-local pending attachments (separate from main composer
+ * pendingAttachments). Classic-script siblings share this global by
+ * name; the ES-module build accesses it through the
+ * getThreadPendingAttachments / resetThreadPendingAttachments helpers
+ * defined below (msg#16527 — panel.js previously reassigned
+ * threadPendingAttachments = [], which orphaned the shared reference
+ * under ES modules). */
 var threadPendingAttachments = [];
 var _threadSketchActive = false;
+
+function getThreadPendingAttachments() {
+  return threadPendingAttachments;
+}
+
+function resetThreadPendingAttachments() {
+  threadPendingAttachments.length = 0;
+}
 
 function _renderThreadAttachmentTray() {
   var tray = document.getElementById("thread-pending-attachments");

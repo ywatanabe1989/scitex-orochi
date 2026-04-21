@@ -7,7 +7,9 @@
  * this module turns raw paste / drop DOM events into a dedup'd File[] and
  * invokes it. Does NOT know about the surface's pending-attachments tray —
  * that stays with the surface (Chat: module-level pendingAttachments;
- * Overview: popup-local popPending[]; Reply: window.threadPendingAttachments).
+ * Overview: popup-local popPending[]; Reply: threads/state.ts module-level
+ * threadPendingAttachments, accessed via getThreadPendingAttachments() /
+ * resetThreadPendingAttachments() — msg#16527).
  *
  * Text-paste-as-file heuristic (todo#52) lives in upload.ts
  * (_pastedTextShouldAttach / _buildPastedTextFile) and is reused here so
