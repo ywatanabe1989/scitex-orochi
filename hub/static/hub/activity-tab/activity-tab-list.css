@@ -198,7 +198,17 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  /* ywatanabe 2026-04-21: tighter row height so more agents fit. */
+  /* ywatanabe 2026-04-21: tighter row height so more agents fit.
+   * msg#15599 Task A: border-left widened to 2px (vs the 1px all-
+   * around border) so the agent row's content-start sits at the SAME
+   * x as the Channels section (.sidebar .channel-item in
+   * style-channels.css carries a 2px left accent stripe). The border
+   * stays transparent on agents — accent colour is applied to the
+   * NAME text (via inline color in agent-badge.ts renderAgentName),
+   * mirroring how Channels now colorize the name (style-channels.css
+   * .sidebar .channel-item .ch-name rule). Top/right/bottom borders
+   * held at 1px so the hover outline (border-color #2a2a2a below)
+   * still draws a visible frame on three sides. */
   padding: 1px 6px;
   margin-bottom: 1px;
   border-radius: 3px;
@@ -207,6 +217,7 @@
   font-size: 11px;
   background: transparent;
   border: 1px solid transparent;
+  border-left-width: 2px;
   transition:
     background 0.15s,
     border-color 0.15s;

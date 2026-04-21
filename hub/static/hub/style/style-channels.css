@@ -202,7 +202,11 @@
   flex: 0 0 14px;
   font-size: 11px;
   line-height: 1;
-  margin-right: 2px;
+  /* msg#15599 Task A: drop per-slot margin-right — the sidebar row's
+   * flex `gap` (now unified at 4px with .sidebar-agent-row) handles
+   * inter-slot spacing, so each slot has the IDENTICAL width to the
+   * Agents section. Previous 2px margin-right added 2×4 = 8px of drift
+   * between the Agents and Channels icon columns. */
   cursor: pointer;
   transition:
     color 0.15s,
@@ -298,30 +302,28 @@
 .channel-item:hover .ch-mute {
   opacity: 1;
 }
-.ch-pin,
-.ch-eye {
+/* .ch-pin and .ch-eye sizing is consolidated into the first
+ * .ch-star/.ch-pin/.ch-watch/.ch-eye/.ch-mute rule above (msg#15599
+ * Task A cleanup — the duplicate block here re-declared the same
+ * width/flex and served no purpose). */
+
+/* Custom channel icon slot in the sidebar (todo#101). Fixed-width
+ * wrapper — MUST clamp both width and flex-basis so rows with an
+ * emoji glyph, an image avatar, or the default '#' placeholder all
+ * line up the channel-name column. Without the flex-basis clamp, a
+ * wide emoji pushes the name right and column alignment breaks.
+ * msg#15599 Task A: slot width dropped from 18px to 14px and
+ * margin-right removed so the channel icon column is geometrically
+ * identical to the agent icon slot (.agent-badge-icon width:14px in
+ * agent-badge.ts, no margin — inter-slot spacing handled by the
+ * row's flex gap). */
+.ch-identity-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 14px;
   height: 14px;
   flex: 0 0 14px;
-  line-height: 1;
-}
-
-/* Custom channel icon slot in the sidebar (todo#101). Fixed-width
- * wrapper — MUST clamp both width and flex-basis so rows with an
- * emoji glyph, an image avatar, or the default '#' placeholder all
- * line up the channel-name column. Without the flex-basis clamp, a
- * wide emoji pushes the name right and column alignment breaks. */
-.ch-identity-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  margin-right: 4px;
   overflow: hidden;
   line-height: 1;
 }
@@ -344,8 +346,8 @@
   line-height: 1;
 }
 .ch-identity-icon img.agent-avatar {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 3px;
   object-fit: cover;
 }
@@ -375,11 +377,27 @@
   /* Fallback to the existing muted text colour when no accent is set
    * (e.g. renderChannelBadgeHtml called with no channelBadgeModel). */
   border-left: 2px solid var(--channel-accent, transparent);
-  /* Nudge padding-left to keep the icon column aligned when the stripe
-   * lands (2px stripe + 6px inner pad → matches original 8px left pad). */
-  padding-left: 6px;
+  /* .channel-item in style-base.css already carries padding: 1px 6px
+   * (unified with .sidebar-agent-row per msg#15599 column-align spec).
+   * The 2px border-left above stacks on top of that 6px, giving a
+   * content start of 8px from the outer edge — matched by the
+   * transparent border-left applied to .sidebar-agent-row in
+   * activity-tab-list.css, so the icon / ★ columns line up across
+   * the Agents and Channels sidebar sections. */
 }
 .sidebar .channel-item .ch-identity-icon {
+  color: var(--channel-accent, inherit);
+}
+/* msg#15599 Task B: row-wide colorization — the channel NAME text
+ * picks up the per-channel accent colour too, mirroring how agent
+ * cards tint the agent name via inline `color:` in agent-badge.ts.
+ * Previously only the icon + 2px stripe carried colour (PR #306 task
+ * 4); lead wanted the name to read coloured as well. The 👁/🔔 glyphs
+ * stay monochrome (they encode state, not identity), and the bell /
+ * eye grayscale filters in the rules above are untouched. Row
+ * background and opacity remain PR #293/#295 invariants (opacity 1,
+ * no per-row font-weight). */
+.sidebar .channel-item .ch-name {
   color: var(--channel-accent, inherit);
 }
 .ch-pin:hover,

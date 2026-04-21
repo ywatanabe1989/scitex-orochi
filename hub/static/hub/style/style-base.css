@@ -400,17 +400,25 @@ body {
    * sidebar card metrics (.sidebar .agent-card.sidebar-compact in
    * style-messages.css) so Channels and Agents lists read at the same
    * row height. font-size + min-height already matched; only padding
-   * + margin needed nudging. Icons (icon→★→👁→🔔→name) are still
-   * specific to channels — only container metrics align. */
+   * + margin needed nudging.
+   *
+   * msg#15599: padding + gap unified pixel-for-pixel with
+   * .sidebar-agent-row (activity-tab-list.css) so the icon and ★
+   * columns land at the SAME x from the row's left edge in both
+   * sections. The 2px left border (transparent fallback, tinted via
+   * --channel-accent when set; see style-channels.css) accounts for
+   * the accent stripe from PR #306 task 4. Agent rows carry a
+   * matching transparent border-left so both content boxes start
+   * 2+6=8px from the outer edge. */
   margin-bottom: 2px;
-  padding: 4px 8px;
+  padding: 1px 6px;
   border-radius: 4px;
   transition: background 0.15s;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-height: 20px;
 }
 .unread-badge {
