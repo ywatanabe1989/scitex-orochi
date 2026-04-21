@@ -2,7 +2,9 @@
 import { _agentSubscribe, _openAgentDmSimple, _toggleAgentChannelSubscription, openChannelExport } from "./agent-actions";
 import { _setChannelPref } from "./channel-prefs";
 import { _channelPrefs } from "./members";
+import { setCurrentChannel } from "./state";
 import { escapeHtml, userName } from "./utils";
+import { loadChannelHistory } from "../chat/chat-history";
 
 /* Context menu for channel items — right-click shows pref options */
 export function _addChannelContextMenu(el) {
@@ -44,6 +46,7 @@ export function _showChannelCtxMenu(ch, x, y) {
   menu.style.cssText =
     "position:fixed;z-index:9999;left:" + x + "px;top:" + y + "px;";
   var G_EXPORT = "\u2935"; /* ⤵ export */
+  var G_OPEN_CHAT = "\u21AA"; /* ↪ open-in-chat */
   var G_EMPTY = "";
   function _glyph(g) {
     return '<span class="ch-ctx-glyph">' + g + "</span>";
@@ -59,6 +62,17 @@ export function _showChannelCtxMenu(ch, x, y) {
    * this is a session-only viz hide, distinct from the persistent
    * eye-icon is_hidden that propagates across surfaces. */
   menu.innerHTML = [
+    /* Item 14 (lead msg#15694): graph channel-node right-click menu
+     * needs an "Open in Chat" entry so a user browsing the topology
+     * can jump straight to the full Chat surface for that channel
+     * without having to triple-click the node or navigate via the
+     * sidebar. Pinned to the top of the menu so it's the first thing
+     * users see after right-click; mirrors the muscle-memory of the
+     * channel-badge "→" affordance. */
+    '<div class="ch-ctx-item ch-ctx-open-chat" data-action="open-chat">' +
+      _glyph(G_OPEN_CHAT) +
+      "Open in Chat</div>",
+    '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-label">Notifications</div>',
     '<div class="ch-ctx-item ch-ctx-notif' +
       (notif === "all" ? " ch-ctx-active" : "") +
@@ -96,6 +110,20 @@ export function _showChannelCtxMenu(ch, x, y) {
        * clear-icon are now handled exclusively by the channel-badge
        * icons (delegation in channel-badge.ts attachChannelBadgeHandlers).
        * Remaining: notification-level trio, export, topo-hide. */
+      if (action === "open-chat") {
+        /* Item 14: switch the Chat tab to this channel and activate
+         * it. Mirrors the triple-click-channel path in
+         * activity-tab/click.ts _topoFlushClick so the behaviour is
+         * consistent across entry surfaces. */
+        _hideChannelCtxMenu();
+        try {
+          if (typeof setCurrentChannel === "function") setCurrentChannel(ch);
+          if (typeof loadChannelHistory === "function") loadChannelHistory(ch);
+          var chatBtn = document.querySelector('[data-tab="chat"]');
+          if (chatBtn) (chatBtn as HTMLElement).click();
+        } catch (_) {}
+        return;
+      }
       if (action === "notif-all")
         _setChannelPref(ch, { notification_level: "all" });
       else if (action === "notif-mentions")

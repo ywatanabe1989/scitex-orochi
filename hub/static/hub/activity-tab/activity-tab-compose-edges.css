@@ -73,6 +73,57 @@
   min-height: 40px;
   box-sizing: border-box;
 }
+
+/* Item 15 (lead msg#15694): last-5-messages preview shown above the
+ * input on a channel-node double-click. Compact rendering — single
+ * line body with ellipsis truncation at 140 chars — so the 5 rows
+ * fit inside the popup's 360px max-width without dwarfing the input
+ * itself. max-height keeps the popup bounded even if a row wraps to
+ * two lines; overflow-y:auto so long content scrolls instead of
+ * expanding the modal past the viewport. */
+.topo-channel-compose .tcc-preview {
+  max-height: 140px;
+  overflow-y: auto;
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  background: #070707;
+  border: 1px solid #1a1a1a;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.topo-channel-compose .tcc-preview-loading,
+.topo-channel-compose .tcc-preview-empty {
+  color: #6a7785;
+  font-style: italic;
+  padding: 2px 0;
+}
+.topo-channel-compose .tcc-preview-row {
+  padding: 3px 0;
+  border-top: 1px solid #141414;
+}
+.topo-channel-compose .tcc-preview-row:first-child {
+  border-top: 0;
+}
+.topo-channel-compose .tcc-preview-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 10px;
+  color: #8a95a2;
+}
+.topo-channel-compose .tcc-preview-sender {
+  color: #4ecdc4;
+  font-weight: 600;
+  font-family: ui-monospace, monospace;
+}
+.topo-channel-compose .tcc-preview-ts {
+  color: #555;
+}
+.topo-channel-compose .tcc-preview-body {
+  color: #cbd5e1;
+  word-break: break-word;
+  line-height: 1.35;
+}
 .topo-channel-compose .tcc-input:focus {
   outline: none;
   border-color: #4ecdc4;
