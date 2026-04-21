@@ -322,9 +322,13 @@
 .dm-item:hover {
   background: #1a1a1a;
 }
+/* #293/#294: see .channel-item.active in style-base.css for the full
+ * rationale. The .selected rule in style-messages.css is the single
+ * source of truth for the "this is the current row" marker. Keep
+ * the background from cascading .active paths but do NOT bold the
+ * name; every DM row renders with identical weight. */
 .dm-item.active {
   background: #1a1a1a;
-  font-weight: bold;
   color: #f8f7f5;
 }
 .dm-item .dm-principal-badge {

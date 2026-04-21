@@ -439,9 +439,13 @@ body {
 .channel-item:hover {
   background: #1a1a1a;
 }
+/* #293/#294: the current channel's visual marker is the .selected
+ * rule in style-messages.css (accent-coloured background). .active
+ * is a legacy class that some code paths still add — keep the
+ * background hover-equivalent but DO NOT bold the name. The selected
+ * row must read with the SAME font-weight as every other row. */
 .channel-item.active {
   background: #1a1a1a;
-  font-weight: bold;
 }
 #no-agents {
   color: #555;
