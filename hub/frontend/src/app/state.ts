@@ -2,6 +2,7 @@
 import { _updateChannelTopicBanner } from "./members";
 import { chatFilterReset } from "../chat/chat-state";
 import { _normalizeChannelName } from "./utils";
+import { readLastOpened, writeLastOpened } from "./last-opened";
 
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
 
@@ -49,7 +50,11 @@ var currentChannel = null;
  * Used as posting target when multi-select is active (currentChannel=null). */
 export var lastActiveChannel = null;
 try {
-  var _persistedCh = localStorage.getItem("orochi_active_channel");
+  /* msg#16999: hydrate from the unified `orochi.ui.lastOpened.v1` record;
+   * readLastOpened() also folds in the legacy `orochi_active_channel` key
+   * so a user whose bundle updated mid-session doesn't lose their spot. */
+  var _lastOpened = readLastOpened();
+  var _persistedCh = _lastOpened.activeChannel || null;
   if (_persistedCh && _persistedCh !== "__all__") {
     /* Normalize on hydrate too (msg#16691) — a prior session could have
      * persisted the bare form. */
@@ -77,9 +82,11 @@ export function setCurrentChannel(ch) {
    * channel, and sendMessage() to post to the original channel instead of
    * the one the sidebar highlights. Mirror every update to the global. */
   (globalThis as any).currentChannel = ch;
-  try {
-    localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
-  } catch (_) {}
+  /* msg#16999: persist the channel half of the last-opened UI record.
+   * writeLastOpened() also mirrors to the legacy `orochi_active_channel`
+   * key so older in-flight bundles keep reading a consistent value.
+   * Silently no-ops if storage is disabled / SecurityError. */
+  writeLastOpened({ activeChannel: ch == null ? null : ch });
   /* Per-channel chat filter: reset whenever the user switches channels so
    * a stale filter from the previous channel doesn't hide messages here. */
   if (typeof chatFilterReset === "function") {

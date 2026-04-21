@@ -12,6 +12,11 @@ import { renderVizTab, stopVizTab } from "./viz-tab";
 import { fetchWorkspaces } from "./workspaces-tab";
 import { setCurrentChannel } from "./app/state";
 import { channelUnread } from "./app/utils";
+import {
+  clearLastOpenedChannel,
+  readLastOpened,
+  writeLastOpened,
+} from "./app/last-opened";
 
 /* Tab switching, collapsible sections, mobile sidebar */
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
@@ -226,9 +231,11 @@ export function _activateTab(tab) {
     settingsView.style.flex = "1";
     fetchSettings();
   }
-  try {
-    localStorage.setItem("orochi_active_tab", tab);
-  } catch (_) {}
+  /* msg#16999: persist the tab half of the last-opened UI record so a
+   * hard reload (Ctrl+Shift+R) lands the user back where they were.
+   * writeLastOpened() also mirrors to the legacy `orochi_active_tab`
+   * key for older in-flight bundles. */
+  writeLastOpened({ activeTab: tab });
 }
 
 /* msg#16116 Item 3: cmd-click / ctrl-click / middle-click on a tab
@@ -319,7 +326,12 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     } catch (_) {
       hash = "";
     }
-    var last = localStorage.getItem("orochi_active_tab");
+    /* msg#16999: read the unified last-opened record. readLastOpened()
+     * also folds in the legacy `orochi_active_tab` / `orochi_active_channel`
+     * keys so users on an older bundle at boot time don't lose their
+     * spot. */
+    var _lastOpened = readLastOpened();
+    var last = _lastOpened.activeTab || null;
     /* Step 3c: the top-level Terminal tab has been removed (terminal
      * preview now lives only inside the agent-detail pane's SSH action).
      * Users who left their last session on "terminal" fall through. */
@@ -343,7 +355,7 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
         if (_legacyOverviewView === "list" || _legacyOverviewView === "tiled") {
           last = "agents-tab";
           localStorage.setItem("orochi.overviewView", "topology");
-          localStorage.setItem("orochi_active_tab", "agents-tab");
+          writeLastOpened({ activeTab: "agents-tab" });
         }
       } catch (_) {}
     }
@@ -356,6 +368,32 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
     }
     if (btn) _activateTab(target);
+    /* msg#16999: validate the persisted channel actually exists in the
+     * current sidebar. It may have been deleted, belong to a workspace
+     * the user no longer has access to, or simply never resolved. When
+     * the channel is missing we clear the persisted value so a
+     * subsequent reload doesn't keep hitting the same stale ref — the
+     * fallback-pick in _activateTab("chat") / the default feed handle
+     * the empty state without further intervention. The sidebar is
+     * populated asynchronously via /api/stats, so defer one rAF tick
+     * plus a short grace window to give the first stats render a
+     * chance to land. */
+    var _persistedCh = _lastOpened.activeChannel || null;
+    if (_persistedCh && _persistedCh !== "__all__") {
+      setTimeout(function () {
+        try {
+          var safe = _persistedCh.replace(/"/g, '\\"');
+          var row = document.querySelector(
+            '.sidebar .channel-item[data-channel="' +
+              safe +
+              '"], .sidebar [data-channel="' +
+              safe +
+              '"]',
+          );
+          if (!row) clearLastOpenedChannel();
+        } catch (__) {}
+      }, 2000);
+    }
   } catch (_) {
     /* Even if localStorage is unavailable (private mode / quota), we
      * still want to land on Overview. */
