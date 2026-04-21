@@ -294,6 +294,27 @@ function messageKey(sender, ts, content) {
   );
 }
 
+/* Channel-name normalization for client-side equality checks (msg#16691).
+ * See hub/frontend/src/app/utils.ts for the full rationale — root cause of
+ * the #ywatanabe feed-silence regression was ``#ywatanabe !== ywatanabe``
+ * in the chat-render channel guard when legacy sidebar rows or persisted
+ * localStorage handed the bare form into setCurrentChannel. */
+function _normalizeChannelName(name) {
+  if (name == null) return "";
+  var s = String(name);
+  if (!s) return "";
+  if (s.charAt(0) === "#") return s;
+  if (s.indexOf("dm:") === 0) return s;
+  return "#" + s;
+}
+
+function channelsEqual(a, b) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  if (a === b) return true;
+  return _normalizeChannelName(a) === _normalizeChannelName(b);
+}
+
 function isAgentInactive(agent) {
   if (agent.status === "offline") return true;
   if (!agent.last_heartbeat) return false;

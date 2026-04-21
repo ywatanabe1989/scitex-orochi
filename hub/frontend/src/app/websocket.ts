@@ -7,7 +7,7 @@ import { _channelDescriptions, _updateChannelTopicBanner } from "./members";
 import { fetchAgents } from "./sidebar-agents";
 import { fetchStats } from "./sidebar-stats";
 import { showSystemBanner } from "./state";
-import { apiUrl, baseTitle, channelUnread, messageKey, token } from "./utils";
+import { apiUrl, baseTitle, channelUnread, channelsEqual, messageKey, token } from "./utils";
 import { handleMessageDelete, handleMessageEdit } from "../chat/chat-actions";
 import { appendSystemMessage } from "../chat/chat-attachments";
 import { fetchNewMessages, loadHistory } from "../chat/chat-history";
@@ -194,9 +194,12 @@ export function handleMessage(msg) {
       (globalThis as any).unreadCount++;
       document.title = "(" + (globalThis as any).unreadCount + ") " + baseTitle;
     }
-    /* Per-channel unread count (#322) */
+    /* Per-channel unread count (#322). Use channelsEqual (msg#16691) so a
+     * message arriving on ``#ywatanabe`` while the user has ``ywatanabe``
+     * selected (or vice-versa) is NOT double-counted as unread in its
+     * own focused channel. */
     var msgCh = msg.channel || msg.chat_id || "";
-    if (msgCh && msgCh !== (globalThis as any).currentChannel) {
+    if (msgCh && !channelsEqual(msgCh, (globalThis as any).currentChannel)) {
       channelUnread[msgCh] = (channelUnread[msgCh] || 0) + 1;
       updateChannelUnreadBadges();
     }

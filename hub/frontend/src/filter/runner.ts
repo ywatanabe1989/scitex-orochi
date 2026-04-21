@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { channelsEqual } from "../app/utils";
 import { _channelMatchesIsFlag, _fm, activeTags, filterInput, parseFilterInput } from "./state";
 
 /* Tag-based unified filter — matching, runFilter, sidebar/grid filters,
@@ -79,7 +80,12 @@ export function runFilter() {
      * ever exists. The legacy multi-channel bypass was removed; currentChannel
      * alone is the filter gate. */
     if (show && (globalThis as any).currentChannel) {
-      show = el.getAttribute("data-channel") === (globalThis as any).currentChannel;
+      /* channelsEqual (msg#16691) so legacy ``#`` vs bare channel names
+       * don't wrongly hide rows in the active channel. */
+      show = channelsEqual(
+        el.getAttribute("data-channel"),
+        (globalThis as any).currentChannel,
+      );
     }
     el.style.display = show ? "" : "none";
   });
