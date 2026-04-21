@@ -102,3 +102,48 @@ class AgentChannelSubscriptionPersistenceTest(TestCase):
         subs_other = async_to_sync(_load_agent_channel_subs)(ws2.id, "worker-d")
         self.assertEqual(subs_self, ["#self"])
         self.assertEqual(subs_other, ["#other"])
+
+    def test_persist_subscribe_rejects_abolished_agent_channel(self):
+        """``#agent`` was abolished 2026-04-21 — no agent may (re)subscribe.
+
+        The helper must short-circuit with ``False`` and NOT create any
+        ``ChannelMembership`` / ``Channel`` rows, so a stray WebSocket
+        subscribe op can't resurrect the channel.
+        """
+        from asgiref.sync import async_to_sync
+        from django.contrib.auth.models import User
+
+        from hub.consumers import _persist_agent_subscription
+
+        ok = async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-e", "#agent", True
+        )
+        self.assertFalse(ok)
+        # No Channel row created for #agent in this workspace:
+        self.assertFalse(
+            self.Channel.objects.filter(workspace=self.ws, name="#agent").exists()
+        )
+        # No synthetic agent user created as a side-effect either:
+        self.assertFalse(User.objects.filter(username="agent-worker-e").exists())
+
+    def test_load_filters_abolished_agent_channel(self):
+        """Stale ``#agent`` ``ChannelMembership`` rows from before the
+        2026-04-21 abolition must NOT surface in ``_load_agent_channel_subs``
+        — otherwise the WS consumer would re-join the group on connect.
+        """
+        from asgiref.sync import async_to_sync
+        from django.contrib.auth.models import User
+
+        from hub.consumers import _load_agent_channel_subs
+
+        # Simulate a pre-abolition DB row: create the channel + membership
+        # directly, bypassing _persist_agent_subscription's guard.
+        user = User.objects.create_user(username="agent-worker-f")
+        stale_ch = self.Channel.objects.create(workspace=self.ws, name="#agent")
+        alive_ch = self.Channel.objects.create(workspace=self.ws, name="#heads")
+        self.ChannelMembership.objects.create(user=user, channel=stale_ch)
+        self.ChannelMembership.objects.create(user=user, channel=alive_ch)
+
+        subs = async_to_sync(_load_agent_channel_subs)(self.ws.id, "worker-f")
+        self.assertNotIn("#agent", subs)
+        self.assertIn("#heads", subs)

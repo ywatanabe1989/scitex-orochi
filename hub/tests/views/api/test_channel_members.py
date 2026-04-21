@@ -160,3 +160,27 @@ class ChannelMembersAdminApiTest(TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["deleted"], 0)
+
+    def test_post_subscribe_abolished_agent_channel_returns_403(self):
+        """``#agent`` was abolished 2026-04-21 (lead directive, PR #293
+        follow-up). POST/PATCH must return 403 so the client gets a real
+        signal — a silent 200 would let the bad client think it's
+        subscribed and retry endlessly.
+        """
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps(
+                {"channel": "#agent", "username": "agent-worker-x"}
+            ),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.json().get("error"), "channel abolished")
+        self.assertFalse(
+            self.Channel.objects.filter(workspace=self.ws, name="#agent").exists()
+        )
+        self.assertFalse(
+            self.ChannelMembership.objects.filter(user=self.agent_user).exists()
+        )

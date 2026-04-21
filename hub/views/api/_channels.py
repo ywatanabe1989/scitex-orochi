@@ -290,6 +290,15 @@ def api_channel_members(request, slug=None):
         if perm not in ("read-write", "read-only"):
             return JsonResponse({"error": "invalid permission"}, status=400)
 
+        # ``#agent`` was abolished 2026-04-21 (lead directive, PR #293
+        # follow-up). Block any subscribe/update attempt at the REST layer
+        # so the client gets a real signal instead of a silent 200.
+        # DELETE is still allowed above so stale memberships can be cleaned.
+        from hub.consumers._helpers import ABOLISHED_AGENT_CHANNELS
+
+        if ch_name in ABOLISHED_AGENT_CHANNELS and request.method in ("POST", "PATCH"):
+            return JsonResponse({"error": "channel abolished"}, status=403)
+
         if request.method == "POST":
             # Idempotent subscribe: create the channel if missing.
             ch, _ = Channel.objects.get_or_create(
