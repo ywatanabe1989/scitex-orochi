@@ -149,6 +149,14 @@ operator the exact string to type instead.
 
 Implemented by `scitex_orochi._cli._deprecation.hard_rename_error(old, new)`.
 
+**Post-Phase-1d cleanup (ywatanabe msg#16746 / PR fix/cli-post-phase1d-cleanup):**
+rename stubs are `hidden=True` by default on the click.Command — they stay
+*invokable* (still hard-error with the canonical message) but do not appear
+in `scitex-orochi --help` or `--help-recursive` listings. This keeps the
+top-level help clean (24 canonical nouns/groups, not 52 entries half of
+which shout "Renamed"). Tests pin the invariant in
+`tests/cli/test_post_phase1d_cleanup.py`.
+
 ### 2.2 Soft, one-time-per-shell notes for non-rename drifts
 
 For changes that are **not** renames (e.g. "this flag's semantics shifted

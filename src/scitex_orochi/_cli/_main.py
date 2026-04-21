@@ -24,7 +24,15 @@ def _get_version() -> str:
 
 
 class _HelpRecursiveGroup(click.Group):
-    """Click group that supports ``--help-recursive`` to dump every subcommand."""
+    """Click group that supports ``--help-recursive`` to dump every subcommand.
+
+    Hidden subcommands (e.g. the Phase-1d rename stubs whose presence in
+    ``--help`` would clutter the listing) are skipped entirely: they don't
+    appear in the top-level ``Commands`` block and they don't appear in
+    the recursive dump either. Invoking them by name still works — the
+    hard-error still fires — the goal here is simply to avoid advertising
+    dead paths in help output.
+    """
 
     def get_help_recursive(self, ctx: click.Context) -> str:
         lines = [
@@ -39,6 +47,8 @@ class _HelpRecursiveGroup(click.Group):
             cmd = self.get_command(ctx, name)
             if cmd is None:
                 continue
+            if getattr(cmd, "hidden", False):
+                continue
             lines.append("-" * 60)
             lines.append(f"Command: {name}")
             lines.append("-" * 60)
@@ -51,10 +61,19 @@ class _HelpRecursiveGroup(click.Group):
         return "\n".join(lines)
 
 
+# Plan §11.2: the top-level ``--help`` output ends with a one-line
+# pointer at the noun-verb convention doc so fleet agents can grep
+# ``scitex-orochi --help`` and land on the skill directly.
+_CLI_CONVENTION_EPILOG = (
+    "See docs/cli.md for the noun-verb convention (scitex-orochi/convention-cli skill)."
+)
+
+
 @click.group(
     cls=_HelpRecursiveGroup,
     context_settings={"help_option_names": ["-h", "--help"]},
     invoke_without_command=True,
+    epilog=_CLI_CONVENTION_EPILOG,
 )
 @click.version_option(version=_get_version(), prog_name="scitex-orochi")
 @click.option(

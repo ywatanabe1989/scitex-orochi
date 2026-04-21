@@ -127,14 +127,13 @@ def hard_rename_error(
     out = sys.stderr if stream is None else stream
     exit_fn = sys.exit if exit_func is None else exit_func
     msg = (
-        f"error: `scitex-orochi {old_name}` was renamed to "
-        f"`scitex-orochi {new_name}`."
+        f"error: `scitex-orochi {old_name}` was renamed to `scitex-orochi {new_name}`."
     )
     print(msg, file=out)
     exit_fn(exit_code)
 
 
-def make_rename_stub(old_name: str, new_name: str):
+def make_rename_stub(old_name: str, new_name: str, *, hidden: bool = True):
     """Return a click.Command that fires :func:`hard_rename_error` when invoked.
 
     Used by the top-level ``_main.py`` to replace legacy flat commands
@@ -145,8 +144,12 @@ def make_rename_stub(old_name: str, new_name: str):
       ``scitex-orochi list-agents --json`` still see the rename error,
       not a click usage error that would confuse them further);
     * prints the canonical one-liner to stderr and exits ``2`` unchanged;
-    * exposes a short help string mentioning the new form, so
-      ``scitex-orochi --help`` readers see the redirect target.
+    * is **hidden from ``--help`` listings by default** so the 28 flat
+      legacy names no longer clutter the top-level command list (plan
+      §9 "最小限びっくり" / post-Phase-1d cleanup). The stub is still
+      *invokable* — users who type the old name still hit the hard
+      rename error — it just isn't *advertised* anymore. Tests pin
+      both invariants.
 
     The stub is deliberately a ``click.Command`` (not a group) — any
     former subcommand path (e.g. ``scitex-orochi deploy stable``) is
@@ -161,6 +164,7 @@ def make_rename_stub(old_name: str, new_name: str):
     @_click.command(
         old_name,
         short_help=short_help,
+        hidden=hidden,
         help=(
             f"Renamed. Use `scitex-orochi {new_name}` instead. This stub "
             f"exists only to give a clear error message; invoking it "
