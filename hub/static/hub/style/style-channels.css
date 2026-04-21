@@ -338,9 +338,11 @@
   opacity: 1 !important;
   filter: none !important;
 }
-.ch-muted {
-  opacity: 0.5;
-}
+/* ywatanabe msg#15282 / 2026-04-21: muted state is already communicated
+   by the .ch-mute-on bell icon; dimming the whole row on top cascades
+   down to every child (making icons look dim despite opacity:1 rules)
+   and was the root cause of the "まだ暗いまま" report. Drop the row-level
+   dim; keep the icon-level signal. */
 
 /* Hidden channel rows — rendered inline at the bottom of the Channels
  * section, dimmed so the list stays scannable. Clicking a dimmed row
