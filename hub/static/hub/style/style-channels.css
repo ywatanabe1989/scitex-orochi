@@ -210,8 +210,10 @@
 }
 .ch-star-off,
 .ch-pin-off {
-  opacity: 0.15; /* near-invisible until hover */
-  filter: grayscale(1);
+  /* ywatanabe 2026-04-21 msg#15131: "全部今暗くなってて見にくい...
+     普通に見えるように". Icons stay at normal brightness instead of
+     the prior hover-reveal pattern. */
+  opacity: 1;
 }
 .channel-item:hover .ch-star-off,
 .channel-item:hover .ch-pin-off,
@@ -243,8 +245,7 @@
  * "eye hidden should use the same glyph with a red strike, matching
  * the bell". */
 .ch-eye-on {
-  opacity: 0.15;
-  filter: grayscale(1);
+  opacity: 1;
 }
 .ch-eye-off {
   opacity: 0.75;
@@ -275,7 +276,7 @@
   color: #94a3b8;
 }
 .ch-mute-off {
-  opacity: 0.15;
+  opacity: 1;
 }
 .channel-item:hover .ch-mute-off {
   opacity: 0.55;
