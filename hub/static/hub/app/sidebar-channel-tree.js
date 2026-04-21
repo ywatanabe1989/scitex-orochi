@@ -163,7 +163,10 @@ function _renderChannelRowHtml(row, ctx) {
  * the file-size budget without changing any observable behavior. */
 function _wireChannelItemHandlers(chContainer, prevSelected) {
   chContainer.querySelectorAll(".channel-item").forEach(function (el) {
-    /* Restore selected state from before re-render */
+    /* Restore selected state from before re-render. Channels are single-
+     * selection only (#284): at most one channel-item ever carries the
+     * .selected class. prevSelected is retained across renders so the
+     * current-selection marker doesn't flicker mid-refresh. */
     var elCh = el.getAttribute("data-channel");
     if (elCh && prevSelected[elCh]) el.classList.add("selected");
     /* Pin icon click — toggle is_starred (pinned-to-top) */
@@ -274,41 +277,9 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
         _setChannelPref(ch, { is_hidden: false });
         return;
       }
-      var multi = ev.ctrlKey || ev.metaKey;
-      /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select without
-       * disturbing siblings; plain click keeps legacy single-select. */
-      if (multi) {
-        el.classList.toggle("selected");
-        /* When multi-select is active, the DOM may only have messages from
-         * currentChannel. Switch to all-channel history so messages from
-         * every selected channel are present, then let applyFeedFilter
-         * show the merged subset. (#366) */
-        var _selCount = chContainer.querySelectorAll(
-          ".channel-item.selected[data-channel]",
-        ).length;
-        if (_selCount >= 2) {
-          /* Load all messages; applyFeedFilter handles visible subset */
-          setCurrentChannel(null);
-          var _applyAfter = function () {
-            if (typeof applyFeedFilter === "function") applyFeedFilter();
-          };
-          loadHistory().then
-            ? loadHistory().then(_applyAfter)
-            : (loadHistory(), _applyAfter());
-        } else if (_selCount === 1) {
-          var _onlyCh = chContainer.querySelector(
-            ".channel-item.selected[data-channel]",
-          );
-          if (_onlyCh) {
-            setCurrentChannel(_onlyCh.getAttribute("data-channel"));
-            loadChannelHistory(_onlyCh.getAttribute("data-channel"));
-          }
-        } else {
-          /* All deselected */
-          if (typeof applyFeedFilter === "function") applyFeedFilter();
-        }
-        return;
-      }
+      /* #284: channels are single-selection only. The legacy Ctrl/Cmd+Click
+       * multi-select has been removed — any click replaces the current
+       * selection with exactly this row. */
       if (currentChannel === ch) {
         setCurrentChannel(null);
         loadHistory();

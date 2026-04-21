@@ -122,14 +122,16 @@ blockquote.chat-blockquote {
   border-color: #4ecdc4;
 }
 
-/* Filter toggle active states (click-to-toggle on sidebar items) */
+/* Filter toggle active states (click-to-toggle on sidebar items).
+ * #284: the channel rule has been removed — the spec requires a single
+ * "currently-selected" marker on the Channels list with no additional
+ * highlight / category / filter tinting. Agent and resource rows still
+ * show a filter-active accent since those aren't under the single-
+ * select constraint (agents still support multi-select; resources use
+ * this to show when a host: tag is focusing them). */
 .agent-card.filter-active {
   background: rgba(78, 205, 196, 0.15);
   border-left: 3px solid #4ecdc4;
-}
-.channel-item.filter-active {
-  background: rgba(126, 200, 227, 0.15);
-  border-left: 3px solid #7ec8e3;
 }
 .res-card.filter-active {
   background: rgba(78, 205, 196, 0.15);
@@ -145,7 +147,10 @@ blockquote.chat-blockquote {
 .sidebar .agent-card.selected {
   background: rgba(78, 205, 196, 0.2);
 }
-.sidebar #channels:has(.channel-item.selected) .channel-item:not(.selected),
+/* #284: don't dim non-selected channels when one is selected — the
+ * spec calls for a single currently-selected marker only, no additional
+ * tinting/dimming cascade on the channel list. Agent sibling-dim stays
+ * (agents still support multi-select outside the #284 scope). */
 .sidebar #agents:has(.agent-card.selected) .agent-card:not(.selected) {
   opacity: 0.6;
 }
