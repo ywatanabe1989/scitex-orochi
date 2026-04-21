@@ -5,7 +5,7 @@ import { _showMiniToast } from "../app/agent-actions";
 import { _channelPrefs } from "../app/members";
 import { fetchAgents } from "../app/sidebar-agents";
 import { setCurrentChannel } from "../app/state";
-import { escapeHtml, sendOrochiMessage, userName } from "../app/utils";
+import { apiUrl, escapeHtml, sendOrochiMessage, userName } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
 import { loadChannelHistory } from "../chat/chat-history";
 
@@ -264,7 +264,19 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     "Drop files to attach\n" +
     "Paste image/file to attach\n" +
     "Click ▾ for attach / camera / sketch / voice";
+  /* Item 15 (lead msg#15694): channel-node double-click now shows a
+   * last-5-messages preview ABOVE the input area, so the user can see
+   * the conversation context before replying without first having to
+   * hover (channel-hover-preview popover) or triple-click into the
+   * full Chat tab. The preview is chronological (oldest → newest),
+   * scrolls internally if content overflows, and renders a loading
+   * placeholder while the fetch is in flight; a failed fetch turns
+   * into a muted "(no recent messages)" row rather than an error
+   * block so the compose input stays usable. */
   pop.innerHTML =
+    '<div class="tcc-preview" data-tcc-preview>' +
+    '<div class="tcc-preview-loading">Loading recent messages\u2026</div>' +
+    "</div>" +
     '<textarea class="tcc-input" data-voice-input rows="2" placeholder="message #' +
     escapeHtml(channel).replace(/^#/, "") +
     '" title="' +
@@ -280,6 +292,11 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     tccShortcuts.replace(/"/g, "&quot;") +
     '" aria-label="More options">\u25BE</button>';
   document.body.appendChild(pop);
+  /* Item 15: fire off a last-5 history fetch. This is fire-and-forget
+   * — no await, no blocking of the compose input. If the popup has
+   * been closed by the time the response lands, the querySelector
+   * returns null and we silently skip painting. */
+  _tccLoadPreview(pop, channel);
   /* Wire the persistent graph feed to this channel so replies to the
    * outgoing post land in the right-docked panel instead of flashing
    * off-screen as a 1.3s landing bubble (lead msg#15701 blocker). */
@@ -532,6 +549,95 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
       for (var i = 0; i < files.length; i++) handleFileUpload(files[i]);
     }
   });
+}
+
+/* Item 15 (lead msg#15694): fetch & render the last 5 messages for
+ * the double-clicked channel inside the compose popup's .tcc-preview
+ * slot. Runs fire-and-forget — never blocks the input or closes the
+ * popup on failure. API shape mirrors /api/history/ as used by
+ * graph-feed / channel-hover-preview (newest-first; we reverse to
+ * chronological before rendering). */
+var _TCC_PREVIEW_LIMIT = 5;
+function _tccFmtTime(iso) {
+  if (!iso) return "";
+  try {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    var hh = String(d.getHours()).padStart(2, "0");
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    return hh + ":" + mm;
+  } catch (_e) {
+    return "";
+  }
+}
+function _tccTruncate(s, n) {
+  if (!s) return "";
+  s = String(s);
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1) + "\u2026";
+}
+function _tccRenderRows(rows) {
+  if (!rows || !rows.length) {
+    return '<div class="tcc-preview-empty">(no recent messages)</div>';
+  }
+  return rows
+    .map(function (m) {
+      var sender = m.sender || "?";
+      var ts = _tccFmtTime(m.ts);
+      var content = _tccTruncate(m.content || "", 140);
+      return (
+        '<div class="tcc-preview-row">' +
+        '<div class="tcc-preview-meta">' +
+        '<span class="tcc-preview-sender">' +
+        escapeHtml(sender) +
+        "</span>" +
+        (ts
+          ? '<span class="tcc-preview-ts">' + escapeHtml(ts) + "</span>"
+          : "") +
+        "</div>" +
+        '<div class="tcc-preview-body">' +
+        escapeHtml(content) +
+        "</div>" +
+        "</div>"
+      );
+    })
+    .join("");
+}
+function _tccLoadPreview(pop, channel) {
+  if (!pop || !channel) return;
+  var encoded = encodeURIComponent(channel);
+  var url = apiUrl(
+    "/api/history/" + encoded + "?limit=" + _TCC_PREVIEW_LIMIT,
+  );
+  fetch(url, { credentials: "same-origin" })
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then(function (rows) {
+      /* Bail quietly if the popup is already gone (user pressed Esc,
+       * clicked outside, or double-clicked another channel). */
+      if (!pop.parentNode) return;
+      if (pop.getAttribute("data-channel") !== channel) return;
+      var slot = pop.querySelector("[data-tcc-preview]");
+      if (!slot) return;
+      /* API returns newest-first; flip so the compose preview reads
+       * chronologically (oldest → newest, same as Chat feed). */
+      var chrono = (rows || []).slice().reverse();
+      slot.innerHTML = _tccRenderRows(chrono);
+      /* Keep the latest message visible when overflow clips the
+       * preview — users care most about what they're about to reply
+       * to, which sits at the bottom. */
+      slot.scrollTop = slot.scrollHeight;
+    })
+    .catch(function () {
+      if (!pop.parentNode) return;
+      var slot = pop.querySelector("[data-tcc-preview]");
+      if (slot) {
+        slot.innerHTML =
+          '<div class="tcc-preview-empty">(no recent messages)</div>';
+      }
+    });
 }
 
 export function _topoSpawnGhost(svg, text, x, y) {
