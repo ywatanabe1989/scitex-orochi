@@ -350,6 +350,67 @@ def _cooldown_active_locked(agent: dict, now: float, cooldown_s: int) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Fire-and-forget dispatch bridge (sync/async agnostic)
+# ---------------------------------------------------------------------------
+
+
+def _in_async_context() -> bool:
+    """Return True iff called from a thread with a running asyncio event loop.
+
+    The heartbeat path reaches ``check_agent_auto_dispatch`` from both
+    sync Django views (``POST /api/agents/register/``) and the async WS
+    consumer (``handle_heartbeat`` in ``hub/consumers/_agent_handlers.py``).
+    Django 4.1+ refuses ORM calls from an async context —
+    ``SynchronousOnlyOperation`` is raised. Detecting which side we're
+    on lets us keep the sync call cheap while moving WS-triggered fires
+    to a thread where ORM is legal.
+    """
+    try:
+        import asyncio
+
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    return True
+
+
+def _dispatch_in_thread(
+    agent_name: str, workspace_id: int, text: str, metadata: dict
+) -> Optional[int]:
+    """Run ``_post_dispatch_message`` in the appropriate execution context.
+
+    If called from a sync context (Django view, management command,
+    tests), run inline and return the resulting message id so
+    existing callers / tests keep their synchronous observable
+    behaviour.
+
+    If called from an async context (the WS ``handle_heartbeat`` path),
+    delegate to a daemon thread so Django ORM runs in a sync context
+    and does not raise ``SynchronousOnlyOperation``. The thread is
+    fire-and-forget — the heartbeat hot path returns immediately and
+    the returned id is ``None`` because the insert is in flight. The
+    thread's own exception handling (inside ``_post_dispatch_message``)
+    still logs on failure.
+    """
+    if not _in_async_context():
+        return _post_dispatch_message(agent_name, workspace_id, text, metadata)
+    try:
+        t = threading.Thread(
+            target=_post_dispatch_message,
+            args=(agent_name, workspace_id, text, metadata),
+            name=f"auto-dispatch-{agent_name}",
+            daemon=True,
+        )
+        t.start()
+    except Exception:  # noqa: BLE001 — heartbeat hot path must not raise
+        log.exception(
+            "auto_dispatch: failed to spawn dispatch thread for %s", agent_name
+        )
+        return None
+    return None
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -415,7 +476,20 @@ def check_agent_auto_dispatch(agent_name: str) -> Optional[dict]:
             "todo_number": (pick or {}).get("number"),
             "todo_title": (pick or {}).get("title"),
         }
-        msg_id = _post_dispatch_message(agent_name, int(workspace_id), text, metadata)
+        # The heartbeat hot path may be called from either a sync view
+        # (``/api/agents/register/``) or the async WS consumer
+        # (``handle_heartbeat`` in ``hub/consumers/_agent_handlers.py``).
+        # ``_post_dispatch_message`` performs Django ORM work which
+        # Django 4.1+ refuses to run from an async context, raising
+        # ``SynchronousOnlyOperation``. That exception was being caught
+        # and logged but meant no auto-dispatch DM was ever delivered
+        # through the WS path. Offload to a worker thread so the ORM
+        # runs in a sync context regardless of where the heartbeat
+        # came from. Fire-and-forget matches the "best-effort" contract
+        # of this whole module — the caller never awaited the result.
+        msg_id = _dispatch_in_thread(
+            agent_name, int(workspace_id), text, metadata
+        )
         log.info(
             "auto_dispatch: fired agent=%s lane=%s streak=%d todo=%s msg=%s",
             agent_name,
