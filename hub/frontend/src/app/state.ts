@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { _updateChannelTopicBanner } from "./members";
 import { chatFilterReset } from "../chat/chat-state";
+import { _normalizeChannelName } from "./utils";
 
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
 
@@ -50,11 +51,22 @@ export var lastActiveChannel = null;
 try {
   var _persistedCh = localStorage.getItem("orochi_active_channel");
   if (_persistedCh && _persistedCh !== "__all__") {
-    currentChannel = _persistedCh;
-    lastActiveChannel = _persistedCh;
+    /* Normalize on hydrate too (msg#16691) — a prior session could have
+     * persisted the bare form. */
+    currentChannel = _normalizeChannelName(_persistedCh);
+    lastActiveChannel = currentChannel;
   }
 } catch (_) {}
 export function setCurrentChannel(ch) {
+  /* Normalize group channel names to the canonical ``#<name>`` form so
+   * every downstream comparator sees the same string the server emits on
+   * WS ``chat.message`` broadcasts and ``/api/stats``. Callers pass raw
+   * ``data-channel`` attribute values which, for some legacy sidebar rows,
+   * still arrive without the ``#`` prefix; without this normalize step the
+   * chat-render channel guard hid every inbound message for ``#ywatanabe``
+   * (msg#16691 root cause). DM channels (``dm:`` prefix) and ``null`` /
+   * empty (== all-channels mode) pass through unchanged. */
+  if (ch) ch = _normalizeChannelName(ch);
   currentChannel = ch;
   if (ch) lastActiveChannel = ch;
   /* #278: other modules read `(globalThis as any).currentChannel` — the

@@ -297,6 +297,48 @@ export function messageKey(sender, ts, content) {
   );
 }
 
+/* Channel-name normalization for client-side equality checks (msg#16691).
+ *
+ * Group channels live under the ``#<name>`` namespace server-side (see
+ * ``hub/models/_helpers.py::normalize_channel_name``), but multiple code
+ * paths on the client can end up holding the bare ``<name>`` form:
+ *  - legacy API rows persisted before the write-path normalize was
+ *    enforced returned ``channel: "ywatanabe"`` from ``GET /api/messages/``
+ *    (``m.channel.name`` is the raw DB string on that endpoint, unlike
+ *    ``/api/stats`` which post-normalizes);
+ *  - sidebar ``data-channel`` attrs and ``(globalThis).currentChannel``
+ *    track whichever string the click site last handed to
+ *    ``setCurrentChannel``, which is whatever ``api_stats`` returned for
+ *    the row — usually ``#foo`` but not guaranteed after a stats-cache
+ *    miss vs hit, a channel rename, or a DB backfill gap;
+ *  - some ``chat.message`` WS fanouts (REST POST path included) round-
+ *    trip through the ``ch_name`` variable from the pre-normalized
+ *    caller field for older messages with ``is_thread_reply`` metadata.
+ *
+ * The ``#``-prefix mismatch was the root cause of the ``#ywatanabe``
+ * feed-silence regression — the chat-render channel guard hid every
+ * inbound message because ``"#ywatanabe" !== "ywatanabe"`` while other
+ * channels happened to have symmetric forms on both sides. Normalizing
+ * in the comparator (not mutating the value in place) closes the gap
+ * without affecting DM channels (``dm:`` prefix preserved) or any
+ * render surface that legitimately needs the raw string.
+ */
+export function _normalizeChannelName(name) {
+  if (name == null) return "";
+  var s = String(name);
+  if (!s) return "";
+  if (s.charAt(0) === "#") return s;
+  if (s.indexOf("dm:") === 0) return s;
+  return "#" + s;
+}
+
+export function channelsEqual(a, b) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  if (a === b) return true;
+  return _normalizeChannelName(a) === _normalizeChannelName(b);
+}
+
 export function isAgentInactive(agent) {
   if (agent.status === "offline") return true;
   if (!agent.last_heartbeat) return false;

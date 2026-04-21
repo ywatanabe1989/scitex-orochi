@@ -164,9 +164,12 @@ function handleMessage(msg) {
       unreadCount++;
       document.title = "(" + unreadCount + ") " + baseTitle;
     }
-    /* Per-channel unread count (#322) */
+    /* Per-channel unread count (#322). Use channelsEqual (msg#16691) so a
+     * message arriving on ``#ywatanabe`` while the user has ``ywatanabe``
+     * selected (or vice-versa) is NOT double-counted as unread in its own
+     * focused channel. */
     var msgCh = msg.channel || msg.chat_id || "";
-    if (msgCh && msgCh !== currentChannel) {
+    if (msgCh && !channelsEqual(msgCh, currentChannel)) {
       channelUnread[msgCh] = (channelUnread[msgCh] || 0) + 1;
       updateChannelUnreadBadges();
     }

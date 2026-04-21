@@ -234,7 +234,11 @@ function appendMessage(msg) {
   /* Hydrate PDF first-page thumbnails in this message's attachments
    * (todo#89). Safe no-op if pdf-thumbnail.js hasn't loaded yet. */
   if (window.pdfThumb) window.pdfThumb.hydrateAll(el);
-  if (currentChannel && channel !== currentChannel) {
+  /* Channel guard: hide this row if we're currently filtered to a single
+   * channel and the incoming message doesn't belong to it. Use channelsEqual
+   * (msg#16691) so ``#ywatanabe`` vs ``ywatanabe`` is treated as the same
+   * channel — the mismatch was the root cause of the silent-feed regression. */
+  if (currentChannel && !channelsEqual(channel, currentChannel)) {
     el.style.display = "none";
   }
   var container = document.getElementById("messages");
@@ -301,7 +305,8 @@ function appendMessage(msg) {
   /* Sidebar pulses — only for messages arriving AFTER initial load,
    * and only if the message is in a non-focused channel. */
   if (_initialLoadComplete && !_isLoadingHistory && channel) {
-    var _isFocused = channel === currentChannel;
+    /* `#`-prefix-agnostic match (msg#16691) — same rationale as above. */
+    var _isFocused = channelsEqual(channel, currentChannel);
     if (!_isFocused) {
       if (_hasMention) {
         _pulseSidebarRow(channel, "mention");
@@ -404,14 +409,20 @@ function applyFeedFilter() {
         el.style.display = "";
       } else {
         var ch0 = el.getAttribute("data-channel");
-        el.style.display = ch0 === currentChannel ? "" : "none";
+        /* channelsEqual (msg#16691) tolerates ``#``-prefix asymmetry between
+         * the stored message ``data-channel`` and the sidebar-driven
+         * currentChannel. */
+        el.style.display = channelsEqual(ch0, currentChannel) ? "" : "none";
       }
       return;
     }
     var ch = el.getAttribute("data-channel");
     var sender = el.getAttribute("data-sender");
     var chOk =
-      selectedChannels.length === 0 || selectedChannels.indexOf(ch) !== -1;
+      selectedChannels.length === 0 ||
+      selectedChannels.some(function (sc) {
+        return channelsEqual(sc, ch);
+      });
     var agOk =
       selectedAgents.length === 0 || selectedAgents.indexOf(sender) !== -1;
     el.style.display = chOk && agOk ? "" : "none";

@@ -76,7 +76,9 @@ function runFilter() {
      * ever exists. The legacy multi-channel bypass was removed; currentChannel
      * alone is the filter gate. */
     if (show && currentChannel) {
-      show = el.getAttribute("data-channel") === currentChannel;
+      /* channelsEqual (msg#16691) so legacy ``#`` vs bare channel names
+       * don't wrongly hide rows in the active channel. */
+      show = channelsEqual(el.getAttribute("data-channel"), currentChannel);
     }
     el.style.display = show ? "" : "none";
   });

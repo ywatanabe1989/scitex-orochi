@@ -46,11 +46,26 @@ var lastActiveChannel = null;
 try {
   var _persistedCh = localStorage.getItem("orochi_active_channel");
   if (_persistedCh && _persistedCh !== "__all__") {
-    currentChannel = _persistedCh;
-    lastActiveChannel = _persistedCh;
+    /* Normalize on hydrate (msg#16691) — a prior session could have
+     * persisted the bare form. See app/utils.ts::_normalizeChannelName. */
+    currentChannel =
+      typeof _normalizeChannelName === "function"
+        ? _normalizeChannelName(_persistedCh)
+        : _persistedCh;
+    lastActiveChannel = currentChannel;
   }
 } catch (_) {}
 function setCurrentChannel(ch) {
+  /* Normalize group channel names to the canonical ``#<name>`` form so
+   * every downstream comparator sees the same string the server emits
+   * (msg#16691). Callers pass raw ``data-channel`` attribute values which,
+   * for some legacy sidebar rows, still arrive without the ``#`` prefix;
+   * without this normalize step the chat-render channel guard hid every
+   * inbound message for ``#ywatanabe``. DM channels (``dm:`` prefix) and
+   * null / empty (== all-channels mode) pass through unchanged. */
+  if (ch && typeof _normalizeChannelName === "function") {
+    ch = _normalizeChannelName(ch);
+  }
   currentChannel = ch;
   if (ch) lastActiveChannel = ch;
   try {
