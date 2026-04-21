@@ -20,7 +20,7 @@
  * agent_meta.py path bypasses the broken registry lookup entirely (todo#155).
  */
 import { spawnSync } from "child_process";
-import { hostname, homedir } from "os";
+import { homedir } from "os";
 import { existsSync } from "fs";
 import { join } from "path";
 import {
@@ -30,6 +30,7 @@ import {
   maskUrl,
 } from "../src/config.js";
 import { dbg } from "./guards.js";
+import { resolveHostLabel } from "./hostname.js";
 
 export async function pushRegistryHeartbeat(): Promise<void> {
   if (process.env.SCITEX_OROCHI_REGISTRY_DISABLE === "1") return;
@@ -90,21 +91,32 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    // Host identity: trust live ``hostname()`` first, fall back to env
-    // only when the kernel returns empty (stripped container). Env-
-    // first was the root cause of lead msg#15578 (proj-neurovista
-    // misreporting as mba) — a stale SCITEX_OROCHI_HOSTNAME env var
-    // inherited into a spartan process would override the real host.
-    machine:
-      hostname() ||
-      process.env.SCITEX_OROCHI_MACHINE ||
-      process.env.SCITEX_OROCHI_HOSTNAME ||
-      process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
-      "",
-    // Live hostname(1) — surfaced distinctly from ``machine`` so the
-    // hub / frontend can prefer this authoritative signal when deriving
-    // the ``<name>@<host>`` badge. Never sourced from env.
-    hostname: hostname() || "",
+    // Host identity (post-PR#309 / post-ywatanabe msg#16102):
+    //
+    //   1. Live ``hostname()`` mapped through
+    //      ``spec.hostname_aliases`` in
+    //      ``~/.scitex/orochi/shared/config.yaml`` — so
+    //      ``Yusukes-MacBook-Air`` → ``mba``,
+    //      ``DXP480TPLUS-994`` → ``nas``, etc.
+    //   2. Raw short ``hostname()`` when no alias entry matches.
+    //   3. Env fallback (``SCITEX_OROCHI_MACHINE`` /
+    //      ``SCITEX_OROCHI_HOSTNAME`` /
+    //      ``SCITEX_AGENT_CONTAINER_HOSTNAME``) — only when
+    //      ``hostname()`` returns empty (stripped container).
+    //
+    // PR#309 flipped env/hostname priority correctly (root cause of
+    // lead msg#15578 — stale ``SCITEX_OROCHI_HOSTNAME=mba`` inherited
+    // into a spartan process) but skipped the alias map on the TS
+    // side, which caused the ``Yusukes-MacBook-Air`` regression
+    // (ywatanabe msg#16102). Both ``machine`` and ``hostname`` now
+    // resolve through ``resolveHostLabel()`` so the hub sees the
+    // canonical fleet short name.
+    machine: resolveHostLabel(),
+    // Live hostname(1), alias-mapped — surfaced distinctly from
+    // ``machine`` so the hub / frontend can prefer this authoritative
+    // signal when deriving the ``<name>@<host>`` badge. Never sourced
+    // from env unless ``hostname()`` is empty.
+    hostname: resolveHostLabel(),
     multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 
