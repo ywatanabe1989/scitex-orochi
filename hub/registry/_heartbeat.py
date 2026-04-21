@@ -183,6 +183,12 @@ def update_echo_pong(name: str, rtt_ms: float) -> None:
 
     All three are written atomically so a partial update can't leave
     the LED rendering off a fresher timestamp than the RTT it cites.
+
+    Semantic note (msg#15538 — 4th-LED auto-green on inbound message):
+    ``last_nonce_echo_at`` is now the "last proof of life" timestamp,
+    written either by this setter (successful nonce probe, carries RTT)
+    OR by ``mark_echo_alive()`` (any inbound agent message, no RTT).
+    Both paths feed the same LED field so either signal turns it green.
     """
     from datetime import datetime, timezone
 
@@ -191,5 +197,39 @@ def update_echo_pong(name: str, rtt_ms: float) -> None:
     with _lock:
         if name in _agents:
             _agents[name]["last_echo_rtt_ms"] = float(rtt_ms)
+            _agents[name]["last_echo_ok_ts"] = now
+            _agents[name]["last_nonce_echo_at"] = iso_now
+
+
+def mark_echo_alive(name: str) -> None:
+    """Record proof-of-life from an inbound agent message (msg#15538).
+
+    The 4th LED (ECHO / ``last_nonce_echo_at``) was previously only
+    driven by the hub→agent nonce round-trip in ``_hub_echo_loop`` /
+    ``handle_echo_pong``. If the agent's MCP-client could not reply to
+    the nonce (e.g. the sidecar was down) the LED stayed amber / red
+    even though the agent was clearly alive — we had just received a
+    chat message from it.
+
+    This setter is called from ``handle_agent_message`` when a
+    ``type: "message"`` frame lands on the WS (after ACL + membership
+    checks pass, so only authenticated inbound traffic is credited).
+    It advances the same ``last_nonce_echo_at`` / ``last_echo_ok_ts``
+    pair the nonce-probe setter writes — the LED renderer needs no
+    change; it just sees the hot timestamp regardless of which
+    mechanism produced it.
+
+    Does NOT touch ``last_echo_rtt_ms`` — an inbound message has no
+    round-trip measurement, and overwriting a real RTT with a sentinel
+    would make the per-agent detail panel's RTT display misleading.
+    The two mechanisms together are a strictly stronger liveness signal
+    than nonce-probe alone (either path turns the LED green).
+    """
+    from datetime import datetime, timezone
+
+    now = time.time()
+    iso_now = datetime.fromtimestamp(now, tz=timezone.utc).isoformat()
+    with _lock:
+        if name in _agents:
             _agents[name]["last_echo_ok_ts"] = now
             _agents[name]["last_nonce_echo_at"] = iso_now

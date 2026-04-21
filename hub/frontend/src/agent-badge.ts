@@ -184,7 +184,12 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
           ")\n  Heuristic from local pane text; not fully reliable.\n  green = running, yellow = idle, blue = waiting,\n  red = auth_error, orange = stale.",
       ) +
       '"></span>';
-    // 4. Remote functional state — nonce-echo (publisher TBD)
+    // 4. Remote functional state — "last proof of life".
+    // msg#15538: ``last_nonce_echo_at`` is advanced by EITHER the
+    // hub→agent nonce round-trip (hub/consumers/_echo.py) OR by any
+    // inbound agent message (hub/consumers/_agent_message.py via
+    // mark_echo_alive). The renderer does not need to know which
+    // mechanism wrote the timestamp — either path turns the LED green.
     var echo = a.last_nonce_echo_at;
     var echoAge =
       echo != null ? (Date.now() - new Date(echo).getTime()) / 1000 : null;
