@@ -4,13 +4,16 @@ Implements the data-plane side of todo#272 (sac-managed Claude agent
 re-spec, `#heads` msg#15416 — replaces closed PR #300 which shipped a
 Python daemon). Idempotent: running multiple times is a no-op.
 
-The synthetic ``agent-worker-progress`` user is granted ``read-write``
-``ChannelMembership`` on:
+The synthetic ``agent-worker-progress`` user is granted the following
+``ChannelMembership`` bits (lead msg#16884 bit-split):
 
-  - ``#progress``
-  - ``#heads``
-  - ``#ywatanabe``
-  - every ``#proj-*`` channel that exists in the DB **at seed time**
+  - ``#progress``  → ``can_read=True, can_write=True``  (read-write)
+  - ``#heads``     → ``can_read=True, can_write=True``  (read-write)
+  - ``#ywatanabe`` → ``can_read=False, can_write=True`` (write-only digest
+    target — posts summaries but must NOT consume the firehose back,
+    msg#16880 / msg#16884)
+  - every ``#proj-*`` channel that exists in the DB **at seed time** →
+    ``can_read=True, can_write=True``  (read-write)
 
 The ``#proj-*`` set is enumerated at runtime (not hardcoded) so new
 project channels are picked up without code changes — just re-run the
@@ -39,6 +42,14 @@ AGENT_USERNAME = f"agent-{AGENT_NAME}"
 
 # Base channels are always seeded (created if missing).
 BASE_CHANNELS = ("#progress", "#heads", "#ywatanabe")
+
+# Per-channel bit overrides. Any channel not listed gets the default
+# full read-write (True, True). ``#ywatanabe`` is seeded write-only
+# (msg#16880 / msg#16884 bit-split) so the worker can publish digest
+# summaries into the channel without consuming the firehose back.
+CHANNEL_BITS: dict[str, tuple[bool, bool]] = {
+    "#ywatanabe": (False, True),  # (can_read, can_write)
+}
 
 # Prefix for per-project channels. All existing channels whose name
 # starts with this prefix are added to the worker's membership set.
@@ -115,34 +126,57 @@ class Command(BaseCommand):
                 name=name,
                 defaults={"kind": Channel.KIND_GROUP},
             )
+            want_read, want_write = CHANNEL_BITS.get(name, (True, True))
+            label = self._bits_label(want_read, want_write)
             membership, was_created = ChannelMembership.objects.get_or_create(
                 user=user,
                 channel=channel,
-                defaults={"permission": ChannelMembership.PERM_READ_WRITE},
+                defaults={
+                    "can_read": want_read,
+                    "can_write": want_write,
+                },
             )
             if was_created:
                 created += 1
                 self.stdout.write(
-                    self.style.SUCCESS(f"  + membership: {name} (read-write)")
+                    self.style.SUCCESS(f"  + membership: {name} ({label})")
                 )
             else:
                 existed += 1
-                if membership.permission != ChannelMembership.PERM_READ_WRITE:
-                    membership.permission = ChannelMembership.PERM_READ_WRITE
-                    membership.save(update_fields=["permission"])
+                if (
+                    membership.can_read != want_read
+                    or membership.can_write != want_write
+                ):
+                    prev_label = self._bits_label(
+                        membership.can_read, membership.can_write
+                    )
+                    membership.can_read = want_read
+                    membership.can_write = want_write
+                    membership.save(update_fields=["can_read", "can_write"])
                     self.stdout.write(
                         self.style.WARNING(
-                            f"  ~ upgraded to read-write: {name}"
+                            f"  ~ updated {name}: {prev_label} → {label}"
                         )
                     )
                 else:
-                    self.stdout.write(f"  = membership exists: {name}")
+                    self.stdout.write(f"  = membership exists: {name} ({label})")
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"done: {created} created, {existed} existed, {skipped} skipped."
             )
         )
+
+    @staticmethod
+    def _bits_label(can_read: bool, can_write: bool) -> str:
+        """Human-readable label for a ``(can_read, can_write)`` pair."""
+        if can_read and can_write:
+            return "read-write"
+        if can_read and not can_write:
+            return "read-only"
+        if (not can_read) and can_write:
+            return "write-only"
+        return "locked-out"
 
     def _collect_channels(self, workspace: Workspace) -> list[str]:
         """Return the ordered channel-name set to seed.

@@ -204,19 +204,17 @@ def check_membership_allowed(
     """Return True if ``sender`` is allowed to write to ``channel`` per
     :class:`hub.models.ChannelMembership`.
 
-    Semantics (issue #276 — closing the REST/WS write-path ACL gap):
+    Semantics (issue #276 + lead msg#16884 bit-split):
 
     * DMs are handled by :func:`_check_dm_write_allowed`; this helper
       returns ``True`` for ``dm:`` channels (deferring to the caller's
       existing DM gate).
     * If the caller did not supply ``workspace_id`` we cannot scope the
       lookup and fall back to ``True`` (preserves non-WS test fixtures).
-    * If an explicit :class:`ChannelMembership` row exists with
-      ``permission = "read-only"`` the write is **denied**. Rows with
-      ``read-write`` or ``write-only`` are **allowed** — write-only
-      blocks the read side (see ``_load_agent_channel_subs``) but
-      still permits writes (msg#16880 — worker-progress posts digests
-      to ``#ywatanabe`` but must not receive ``#ywatanabe`` traffic).
+    * If an explicit :class:`ChannelMembership` row exists, the write
+      is allowed iff ``row.can_write`` is True. The legacy ``permission``
+      enum is no longer consulted on the write path — data migration
+      0029 backfills ``can_write`` from the old column on deploy.
     * If the sender is a synthetic agent user (``agent-*`` — see
       ``hub/views/auth.py``) and *no* membership row exists for the
       target non-DM channel, the write is **denied**. Agents must be
@@ -246,12 +244,12 @@ def check_membership_allowed(
 
     row = (
         _Membership.objects.filter(channel_id=ch.id, user__username=sender)
-        .only("permission")
+        .only("can_write")
         .first()
     )
     if row is not None:
-        # read-write and write-only both permit writes; only read-only denies.
-        return row.permission != _Membership.PERM_READ_ONLY
+        # msg#16884 bit-split: write is governed solely by ``can_write``.
+        return bool(row.can_write)
 
     # No explicit row. Agents must be explicitly added; humans default-allow.
     if sender.startswith("agent-"):

@@ -229,14 +229,36 @@ class OrochiClient:
         msg = Message(type="status_update", sender=self.name, payload=payload)
         await self._ws.send(msg.to_json())
 
-    async def subscribe(self, channel: str) -> None:
-        """Subscribe to an additional channel (persisted server-side)."""
+    async def subscribe(
+        self,
+        channel: str,
+        *,
+        can_read: bool = True,
+        can_write: bool = True,
+    ) -> None:
+        """Subscribe to an additional channel (persisted server-side).
+
+        ``can_read`` / ``can_write`` (lead msg#16884 bit-split) map to
+        the two independent boolean bits on the persisted
+        :class:`ChannelMembership` row. Both default to True (full
+        read-write) so existing callers keep the pre-split behaviour.
+        Examples:
+
+        * ``can_read=True, can_write=True``  — full read-write (default)
+        * ``can_read=True, can_write=False`` — read-only (listen, no post)
+        * ``can_read=False, can_write=True`` — write-only (post digests
+          without pulling the firehose back)
+        """
         if not self._ws:
             raise RuntimeError("Not connected")
         msg = Message(
             type="subscribe",
             sender=self.name,
-            payload={"channel": channel},
+            payload={
+                "channel": channel,
+                "can_read": bool(can_read),
+                "can_write": bool(can_write),
+            },
         )
         await self._ws.send(msg.to_json())
 

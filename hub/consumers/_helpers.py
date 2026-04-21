@@ -39,15 +39,13 @@ def _load_agent_channel_subs(workspace_id, agent_name):
 
     Agent subscriptions live in :class:`ChannelMembership` rows keyed to
     the agent's synthetic ``agent-<name>`` Django user. An agent is
-    considered subscribed iff a ``ChannelMembership`` row exists; the
-    row's ``permission`` column governs read-only vs read-write vs
-    write-only.
-
-    ``write-only`` memberships are excluded from the returned list so
-    the consumer does not join the channel-layer group and the channel
-    does not appear in ``agent_meta["channels"]``. This makes chat /
-    reaction / edit / delete fan-out skip the agent on the read side
-    while still permitting writes (msg#16880 — worker-progress posts
+    considered subscribed (for the read-side fan-out) iff a row exists
+    AND ``can_read`` is True. Rows with ``can_read=False`` are excluded
+    from the returned list so the consumer does not join the channel-
+    layer group and the channel does not appear in
+    ``agent_meta["channels"]`` — chat / reaction / edit / delete fan-out
+    skips the agent on the read side while still permitting writes
+    (msg#16880 / lead msg#16884 bit-split — worker-progress posts
     digests to ``#ywatanabe`` but must not receive ``#ywatanabe``
     traffic back).
     """
@@ -62,6 +60,7 @@ def _load_agent_channel_subs(workspace_id, agent_name):
     memberships = ChannelMembership.objects.filter(
         user=user,
         channel__workspace_id=workspace_id,
+        can_read=True,
     ).select_related("channel")
     # ``#agent`` was abolished 2026-04-21 (lead directive, PR #293 follow-up).
     # Filter out any stale DB rows so a leftover membership can't resurrect
@@ -70,16 +69,28 @@ def _load_agent_channel_subs(workspace_id, agent_name):
         m.channel.name
         for m in memberships
         if m.channel.name not in ABOLISHED_AGENT_CHANNELS
-        and m.permission != ChannelMembership.PERM_WRITE_ONLY
     ]
 
 
 @database_sync_to_async
-def _persist_agent_subscription(workspace_id, agent_name, ch_name, subscribe):
+def _persist_agent_subscription(
+    workspace_id,
+    agent_name,
+    ch_name,
+    subscribe,
+    *,
+    can_read: bool = True,
+    can_write: bool = True,
+):
     """Add or remove a persistent ``ChannelMembership`` row for an agent.
 
     Returns True on success, False if the channel or agent user cannot
     be resolved. Creates the channel if missing (group kind).
+
+    ``can_read`` / ``can_write`` control the new bit-split columns
+    (lead msg#16884). Defaults are ``(True, True)`` = full read-write,
+    matching the pre-bit-split behaviour so existing callers stay
+    backward-compatible. Unused when ``subscribe=False``.
     """
     from django.contrib.auth.models import User
 
@@ -110,10 +121,15 @@ def _persist_agent_subscription(workspace_id, agent_name, ch_name, subscribe):
         defaults={"kind": Channel.KIND_GROUP},
     )
     if subscribe:
+        # Use ``update_or_create`` with the bits. ``ChannelMembership.save``
+        # keeps the legacy ``permission`` enum in sync automatically.
         ChannelMembership.objects.update_or_create(
             user=user,
             channel=channel,
-            defaults={"permission": ChannelMembership.PERM_READ_WRITE},
+            defaults={
+                "can_read": bool(can_read),
+                "can_write": bool(can_write),
+            },
         )
     else:
         ChannelMembership.objects.filter(user=user, channel=channel).delete()
