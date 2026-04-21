@@ -1,6 +1,13 @@
 // @ts-nocheck
 import { _fetchActivityDetail, _refreshTopoPerms } from "./data";
 import { _renderActivityAgentDetail } from "./detail";
+import {
+  _graphFeedEnsureDefaultChannel,
+  _graphFeedPanelHtml,
+  _graphFeedPostRender,
+  _graphFeedPreRender,
+  _wireGraphFeed,
+} from "./graph-feed";
 import { _wireOverviewGridDelegation } from "./grid-delegation";
 import { _topoPoolApplyCanvasFilter, _topoPoolSelectionPaint, _topoSelectedNames } from "./multiselect";
 import { _topoSeekHeatRefresh, _topoSeekUpdateUI, _topoSeekbarHtml, _wireTopoSeekbar } from "./seekbar";
@@ -68,6 +75,9 @@ export function _renderActivityTopology(visible, grid) {
      * that slip in without changing the signature (rare but possible)
      * still get the correct dim treatment. */
     _topoPoolApplyCanvasFilter(grid);
+    /* Signature-unchanged path: the SVG is reused verbatim, so the
+     * graph-feed panel DOM is preserved automatically (we only rewrite
+     * innerHTML in the full-render branch). No-op here. */
     return;
   }
   (globalThis as any)._topoLastSig = sig;
@@ -356,16 +366,31 @@ export function _renderActivityTopology(visible, grid) {
    * from the playhead. All event listeners are attached via delegation
    * in _wireTopoSeekbar so they survive heartbeat-driven re-renders. */
   var seekBar = _topoSeekbarHtml();
+  /* Snapshot the current graph-feed DOM before grid.innerHTML is
+   * overwritten. Heartbeat re-renders would otherwise wipe the
+   * message feed every 2s. _graphFeedPostRender re-inflates it
+   * after the rebuild when the wired channel is unchanged. */
+  _graphFeedPreRender();
+  /* Persistent right-docked message feed (lead msg#15701): replaces
+   * the flash-and-disappear landing bubble as the primary way to read
+   * incoming replies while on the graph tab. Wired to the currently-
+   * focused channel; double-clicking a channel node or posting via
+   * the compose popup re-wires it. */
+  var feedPanel = _graphFeedPanelHtml();
   grid.innerHTML =
     '<div class="topo-wrap">' +
     hint +
     ctrls +
     pool +
     svg +
+    feedPanel +
     actionBar +
     seekBar +
     "</div>" +
     detailBox;
+  _graphFeedPostRender();
+  _graphFeedEnsureDefaultChannel();
+  _wireGraphFeed(grid);
 
   /* Delegated click: agent node → toggle expand. Bound ONCE on the
    * grid (the delegation helper guards with _overviewGridWired). We

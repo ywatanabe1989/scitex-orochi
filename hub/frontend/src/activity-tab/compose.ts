@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { _activityChannelRequest, _invalidateTopoPerms } from "./data";
+import { _graphFeedSetChannel } from "./graph-feed";
 import { _showMiniToast } from "../app/agent-actions";
 import { _channelPrefs } from "../app/members";
 import { fetchAgents } from "../app/sidebar-agents";
@@ -279,6 +280,14 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     tccShortcuts.replace(/"/g, "&quot;") +
     '" aria-label="More options">\u25BE</button>';
   document.body.appendChild(pop);
+  /* Wire the persistent graph feed to this channel so replies to the
+   * outgoing post land in the right-docked panel instead of flashing
+   * off-screen as a 1.3s landing bubble (lead msg#15701 blocker). */
+  if (typeof _graphFeedSetChannel === "function") {
+    try {
+      _graphFeedSetChannel(channel);
+    } catch (_) {}
+  }
   var input = pop.querySelector(".tcc-input");
   var extras = pop.querySelector(".tcc-extras");
   var expandBtn = pop.querySelector(".tcc-expand");
