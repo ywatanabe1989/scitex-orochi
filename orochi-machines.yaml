@@ -244,6 +244,15 @@ preflight:
   context_pressure_critical_pct: 70   # default trigger_at_percent (todo#284)
   fleet_watch_cycle_seconds: 300
   fleet_watch_neutral_observer: nas
+  # Disk pressure — consumed by scripts/client/fleet-watch/disk-pressure-probe.sh
+  # Defaults per #286 (2026-04-21 mba full-disk incident). Severity ladder:
+  #   free >= advisory → ok
+  #   advisory > free >= warn → advisory (healer posts suggestion to #agent)
+  #   warn > free >= critical → warn (healer escalates, halts non-essential work)
+  #   free < critical → critical (block new heavy ops, demand human or reaper)
+  disk_free_advisory_gib: 10
+  disk_free_warn_gib: 5
+  disk_free_critical_gib: 2
 
 # ---------------------------------------------------------------------------
 # Bastion mesh (#283 + #294)
