@@ -411,6 +411,29 @@ export const TOOL_DEFS = [
     },
   },
   {
+    name: "cron_status",
+    description:
+      "Fleet-wide cron job status (lead msg#16684 follow-up to PR #346). " +
+      "Mirrors the ``GET /api/cron/`` endpoint that powers the Machines " +
+      "tab cron panel, exposed via MCP so any agent can observe daemon " +
+      "state without scraping the dashboard. Returns " +
+      "``{\"hosts\": {<machine>: {agent, last_heartbeat_at, stale, " +
+      "jobs}}}``. Optional ``host`` arg filters to a single host " +
+      "server-side. Workspace-scoped via the MCP sidecar's token; " +
+      "read-only.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        host: {
+          type: "string",
+          description:
+            "Optional host key (e.g. 'mba', 'nas'). When omitted, all " +
+            "hosts in the workspace are returned.",
+        },
+      },
+    },
+  },
+  {
     name: "export_channel",
     description:
       "Export chat channel messages as JSON, Markdown, or plain text with date slicing. Returns the export content as a string.",

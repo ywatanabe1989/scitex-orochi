@@ -349,3 +349,115 @@ class ApiCronTest(TestCase):
         resp = self._get_cron()
         hosts = resp.json()["hosts"]
         self.assertIn("bare-host.example", hosts)
+
+    # ------------------------------------------------------------------
+    # ``?host=<name>`` filter + token-auth path (lead msg#16684 /
+    # PR #346 follow-up — the MCP ``cron_status`` tool relies on both).
+    # ------------------------------------------------------------------
+
+    def test_host_filter_returns_only_matching_host(self):
+        """``GET /api/cron/?host=mba`` returns just the mba row, not nas."""
+        self._post_heartbeat(
+            {
+                "token": self.token.token,
+                "name": "head-mba",
+                "machine": "mba",
+                "cron_jobs": [
+                    {
+                        "name": "machine-heartbeat",
+                        "interval": 120,
+                        "last_run": time.time() - 60,
+                        "last_exit": 0,
+                        "next_run": time.time() + 60,
+                    }
+                ],
+            }
+        )
+        self._post_heartbeat(
+            {
+                "token": self.token.token,
+                "name": "head-nas",
+                "machine": "nas",
+                "cron_jobs": [],
+            }
+        )
+        resp = self.client.get(
+            "/api/cron/?host=mba", HTTP_HOST=self.SUBDOMAIN_HOST
+        )
+        self.assertEqual(resp.status_code, 200)
+        hosts = resp.json()["hosts"]
+        self.assertEqual(set(hosts.keys()), {"mba"})
+        self.assertEqual(hosts["mba"]["agent"], "head-mba")
+
+    def test_host_filter_unknown_host_returns_empty_hosts(self):
+        """Unknown host key → ``{"hosts": {}}`` (not 404)."""
+        self._post_heartbeat(
+            {
+                "token": self.token.token,
+                "name": "head-mba",
+                "machine": "mba",
+                "cron_jobs": [],
+            }
+        )
+        resp = self.client.get(
+            "/api/cron/?host=no-such-host", HTTP_HOST=self.SUBDOMAIN_HOST
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json(), {"hosts": {}})
+
+    def test_token_auth_allows_mcp_sidecar_access(self):
+        """MCP sidecars hit ``/api/cron/?token=wks_...&agent=<self>``
+        on the bare domain. Session-less requests with a valid workspace
+        token must be accepted; this is the path the MCP ``cron_status``
+        tool uses.
+        """
+        self._post_heartbeat(
+            {
+                "token": self.token.token,
+                "name": "head-mba",
+                "machine": "mba",
+                "cron_jobs": [],
+            }
+        )
+        anon = Client()
+        resp = anon.get(
+            f"/api/cron/?token={self.token.token}&agent=cron-status-probe",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn("mba", resp.json()["hosts"])
+
+    def test_token_auth_with_host_filter(self):
+        """Token auth + ``?host=<name>`` compose — MCP callers pass both."""
+        self._post_heartbeat(
+            {
+                "token": self.token.token,
+                "name": "head-mba",
+                "machine": "mba",
+                "cron_jobs": [],
+            }
+        )
+        self._post_heartbeat(
+            {
+                "token": self.token.token,
+                "name": "head-nas",
+                "machine": "nas",
+                "cron_jobs": [],
+            }
+        )
+        anon = Client()
+        resp = anon.get(
+            f"/api/cron/?token={self.token.token}&agent=probe&host=nas",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(set(resp.json()["hosts"].keys()), {"nas"})
+
+    def test_token_auth_rejects_invalid_token(self):
+        """A bad token → 401 (not a silent empty response)."""
+        anon = Client()
+        resp = anon.get(
+            "/api/cron/?token=wks_bogus&agent=probe",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 401)

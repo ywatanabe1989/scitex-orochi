@@ -35,15 +35,25 @@ Staleness: a host is marked ``stale: true`` when the hub has not seen a
 heartbeat in >10 minutes (``HEARTBEAT_STALE_THRESHOLD_S``). The hub keeps
 serving the last-known ``jobs`` array so the UI can show stale data with
 a warning rather than dropping the card.
+
+Auth (lead msg#16684 follow-up): accepts either a Django session OR a
+workspace token (``?token=wks_...&agent=<name>``) so the MCP
+``cron_status`` tool can hit it from the bare domain without a browser
+session. Routing falls back on the same ``resolve_workspace_and_actor``
+helper used by other agent-callable read-only endpoints (channel_members,
+my_subscriptions, ...).
+
+Optional ``?host=<name>`` query param filters the response server-side
+to a single host key — cheaper than pulling all hosts and discarding the
+rest on the client.
 """
 
 import time
 from datetime import datetime, timezone
 
+from hub.views._helpers import resolve_workspace_and_actor
 from hub.views.api._common import (
     JsonResponse,
-    get_workspace,
-    login_required,
     require_GET,
 )
 
@@ -81,15 +91,21 @@ def _to_iso(ts: str | float | None) -> str | None:
     return None
 
 
-@login_required
 @require_GET
 def api_cron(request):
     """GET /api/cron/ — fleet-wide cron status aggregated from heartbeats.
 
-    Auth: same pattern as ``/api/agents/`` — Django session via
-    ``login_required``. Workspace-scoped: the registry read is filtered
-    by ``get_workspace(request)``, so users on different workspaces see
-    disjoint host sets.
+    Auth: accepts either a Django session (dashboard) OR a workspace
+    token (``?token=wks_...&agent=<name>`` — MCP sidecars on the bare
+    domain). Workspace-scoped: the registry read is filtered by the
+    resolved workspace, so users on different workspaces see disjoint
+    host sets.
+
+    Query params:
+        host: optional host key (machine label, e.g. ``mba``). When
+            present, the response is filtered server-side to that
+            single host. If the host is unknown, ``{"hosts": {}}`` is
+            returned — the same shape as "no hosts reporting".
 
     Returns ``{"hosts": {<machine>: {agent, last_heartbeat_at, stale,
     jobs}}}``. An empty registry (or a workspace with no heads) returns
@@ -104,7 +120,11 @@ def api_cron(request):
     """
     from hub.registry import get_agents
 
-    workspace = get_workspace(request)
+    workspace, _actor, err = resolve_workspace_and_actor(request)
+    if err is not None:
+        return err
+
+    host_filter = (request.GET.get("host") or "").strip() or None
     agents = get_agents(workspace_id=workspace.id)
 
     now = time.time()
@@ -116,6 +136,11 @@ def api_cron(request):
     for a in agents:
         host = _host_key(a)
         if not host:
+            continue
+        # ``?host=<name>`` short-circuits the aggregation: skip any row
+        # whose host key doesn't match. Done at loop-head so collision
+        # resolution (freshness wins) stays scoped to the filtered host.
+        if host_filter is not None and host != host_filter:
             continue
         jobs = a.get("cron_jobs") or []
         # Parse last_heartbeat to an epoch float for the stale check +
