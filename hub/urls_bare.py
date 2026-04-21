@@ -143,6 +143,10 @@ urlpatterns = [
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
+    # Fleet-wide cron status (Phase 2 msg#16406, MCP tool lead msg#16684).
+    # Mounted on the bare domain too so MCP sidecars can call
+    # ``/api/cron/?token=wks_...&agent=<self>`` without a subdomain.
+    path("api/cron/", views.api_cron, name="api-cron-bare"),
     # Auto-dispatch operator triggers + inspection (Phase 1c msg#16477).
     path(
         "api/auto-dispatch/fire/",

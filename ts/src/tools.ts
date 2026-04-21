@@ -36,6 +36,7 @@ export { handleRsyncMedia, handleRsyncStatus } from "./tools/rsync.js";
 
 export {
   handleConnectivityMatrix,
+  handleCronStatus,
   handleSidecarStatus,
 } from "./tools/sidecar.js";
 
