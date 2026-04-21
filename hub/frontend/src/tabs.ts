@@ -17,6 +17,13 @@ import {
   readLastOpened,
   writeLastOpened,
 } from "./app/last-opened";
+import {
+  onHashChange,
+  parseHash,
+  scrollMessageIntoView,
+  writeHash,
+} from "./app/url-router";
+import { openThreadForMessage } from "./threads/panel";
 
 /* Tab switching, collapsible sections, mobile sidebar */
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
@@ -73,6 +80,10 @@ function _pickFallbackChannel(): string | null {
 
 export function _activateTab(tab) {
   activeTab = tab;
+  /* Mirror to globalThis so cross-module consumers (state.ts URL-hash
+   * sync, future routers) can read the current tab without a circular
+   * import on the tabs.ts export. msg#17039. */
+  (globalThis as any).activeTab = tab;
   document.querySelectorAll(".tab-btn").forEach(function (b) {
     b.classList.toggle("active", b.getAttribute("data-tab") === tab);
   });
@@ -236,6 +247,23 @@ export function _activateTab(tab) {
    * writeLastOpened() also mirrors to the legacy `orochi_active_tab`
    * key for older in-flight bundles. */
   writeLastOpened({ activeTab: tab });
+  /* msg#17039: keep the URL hash in sync with the active tab so the
+   * current view is deep-linkable. For the chat tab we also encode
+   * the active channel so reloads reproduce the exact surface. We
+   * use history.replaceState (inside writeHash) — never pushState —
+   * so the Back button stays usable (one entry per real navigation,
+   * not one per tab-click). */
+  try {
+    const _cur = (globalThis as any).currentChannel || null;
+    const _params: Record<string, string | null> = {};
+    if (tab === "chat" && _cur) {
+      /* Strip leading # for compact URLs (#chat?channel=heads instead
+       * of #chat?channel=%23heads). DM channels keep their raw prefix
+       * so the round-trip stays lossless. */
+      _params.channel = typeof _cur === "string" && _cur.charAt(0) === "#" ? _cur.slice(1) : _cur;
+    }
+    writeHash(tab, _params);
+  } catch (_) {}
 }
 
 /* msg#16116 Item 3: cmd-click / ctrl-click / middle-click on a tab
@@ -319,12 +347,29 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
      * dashboard with ``#<tab>`` as the URL fragment. Honor that hash
      * FIRST — it reflects the explicit "open this view in a new tab"
      * intent. Fall back to localStorage (in-place session continuity)
-     * and finally Overview. */
+     * and finally Overview.
+     *
+     * msg#17039: the hash format has grown to `#<tab>?<params>` so
+     * the URL can carry a channel / thread selection too. The legacy
+     * bare `#<tab>` still works — parseHash handles both shapes. */
+    var _routed = parseHash();
     var hash = "";
-    try {
-      hash = (window.location.hash || "").replace(/^#/, "");
-    } catch (_) {
-      hash = "";
+    var _hashParams: Record<string, string> = {};
+    if (_routed) {
+      hash = _routed.tab;
+      _hashParams = _routed.params || {};
+    } else {
+      try {
+        /* parseHash rejected (unknown tab / malformed) — fall through
+         * to legacy bare-tab parsing below, then localStorage. */
+        hash = (window.location.hash || "").replace(/^#/, "");
+        /* Strip any `?...` tail so the bare legacy path ignores
+         * params that parseHash couldn't validate. */
+        var _q = hash.indexOf("?");
+        if (_q !== -1) hash = hash.slice(0, _q);
+      } catch (_) {
+        hash = "";
+      }
     }
     /* msg#16999: read the unified last-opened record. readLastOpened()
      * also folds in the legacy `orochi_active_tab` / `orochi_active_channel`
@@ -368,6 +413,99 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
       btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
     }
     if (btn) _activateTab(target);
+    /* msg#17039: hash-directed channel + thread selection. When the
+     * URL carries `?channel=<name>` or `?thread=<id>` we honour those
+     * over the localStorage persisted channel — the hash is the more
+     * explicit "open this exact surface" intent (user pasted / clicked
+     * a shared link). The chat-history load happens async so we defer
+     * the scroll-to-message until the DOM is populated; scrollMessage-
+     * IntoView returns false when the target isn't in the DOM yet and
+     * we retry once after a short settle window. */
+    var _hashChannel = _hashParams && _hashParams.channel;
+    var _hashThread = _hashParams && _hashParams.thread;
+    if (_routed && _hashChannel) {
+      try {
+        /* Defer — setCurrentChannel + loadChannelHistory need the
+         * state module to be live and the sidebar-row lookup to have
+         * something to match on. One rAF + a short grace window
+         * mirrors the pattern used below for the persisted channel. */
+        setTimeout(function () {
+          try {
+            var ch = String(_hashChannel);
+            /* Accept both "heads" and "#heads" in the URL; the state
+             * module normalises to the canonical form. */
+            setCurrentChannel(ch);
+            if (typeof loadChannelHistory === "function") {
+              loadChannelHistory((globalThis as any).currentChannel || ch);
+            }
+          } catch (__) {}
+        }, 50);
+      } catch (_) {}
+    }
+    if (_routed && _hashThread) {
+      try {
+        /* Thread panel auto-open: chat-history.ts already calls
+         * applyThreadUrlOnLoad() which reads `?thread=` off the
+         * query string (not the hash). We drive it explicitly here
+         * for the new hash scheme. The retry loop handles the common
+         * case where the parent message hasn't rendered yet. */
+        var _threadId = String(_hashThread);
+        var _attempts = 0;
+        var _tryOpen = function () {
+          _attempts++;
+          var parentEl = document.querySelector(
+            '[data-msg-id="' + _threadId + '"]',
+          );
+          if (parentEl && typeof openThreadForMessage === "function") {
+            try {
+              openThreadForMessage(_threadId);
+            } catch (__) {}
+            /* After opening, scroll + highlight the parent message
+             * with surrounding context. */
+            try {
+              scrollMessageIntoView(_threadId, { context: 5 });
+            } catch (__) {}
+            return;
+          }
+          if (_attempts < 20) setTimeout(_tryOpen, 250);
+        };
+        setTimeout(_tryOpen, 300);
+      } catch (_) {}
+    }
+    /* msg#17039: listen for external URL-hash edits (user paste, back
+     * button when a different surface wrote the hash, etc.) and sync
+     * the UI. Our own writeHash() calls are self-filtered inside the
+     * router so they don't cause a re-route cascade. */
+    try {
+      onHashChange(function (state) {
+        if (!state) return;
+        try {
+          if (state.tab && state.tab !== activeTab) {
+            _activateTab(state.tab);
+          }
+          var chParam = state.params && state.params.channel;
+          if (state.tab === "chat" && chParam) {
+            var _cur = (globalThis as any).currentChannel || "";
+            if (String(_cur).replace(/^#/, "") !== String(chParam).replace(/^#/, "")) {
+              setCurrentChannel(String(chParam));
+              if (typeof loadChannelHistory === "function") {
+                loadChannelHistory((globalThis as any).currentChannel || chParam);
+              }
+            }
+          }
+          var thrParam = state.params && state.params.thread;
+          if (thrParam && typeof openThreadForMessage === "function") {
+            var tid = String(thrParam);
+            if ((globalThis as any).threadPanelParentId !== Number(tid)) {
+              try { openThreadForMessage(tid); } catch (__) {}
+            }
+            setTimeout(function () {
+              try { scrollMessageIntoView(tid, { context: 5 }); } catch (__) {}
+            }, 200);
+          }
+        } catch (__) {}
+      });
+    } catch (_) {}
     /* msg#16999: validate the persisted channel actually exists in the
      * current sidebar. It may have been deleted, belong to a workspace
      * the user no longer has access to, or simply never resolved. When

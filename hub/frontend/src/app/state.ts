@@ -3,6 +3,7 @@ import { _updateChannelTopicBanner } from "./members";
 import { chatFilterReset } from "../chat/chat-state";
 import { _normalizeChannelName } from "./utils";
 import { readLastOpened, writeLastOpened } from "./last-opened";
+import { writeHash } from "./url-router";
 
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
 
@@ -87,6 +88,20 @@ export function setCurrentChannel(ch) {
    * key so older in-flight bundles keep reading a consistent value.
    * Silently no-ops if storage is disabled / SecurityError. */
   writeLastOpened({ activeChannel: ch == null ? null : ch });
+  /* msg#17039: keep the URL hash in sync with the current channel so
+   * a reload (or "copy URL") reproduces the same surface. Only sync
+   * when the user is actually looking at the Chat tab — other tabs
+   * carry their own params (thread=… on overview, etc.) and we don't
+   * want a sidebar click there to shove a `?channel=` into the hash
+   * for a tab that doesn't consume it. writeHash is a
+   * replaceState-based no-op if the hash is already correct. */
+  try {
+    var _activeTab = (globalThis as any).activeTab || "";
+    if (_activeTab === "chat") {
+      var _ch = ch == null ? null : (typeof ch === "string" && ch.charAt(0) === "#" ? ch.slice(1) : ch);
+      writeHash("chat", _ch ? { channel: _ch } : {});
+    }
+  } catch (_) {}
   /* Per-channel chat filter: reset whenever the user switches channels so
    * a stale filter from the previous channel doesn't hide messages here. */
   if (typeof chatFilterReset === "function") {

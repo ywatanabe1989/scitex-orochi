@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { apiUrl, escapeHtml } from "../app/utils";
 import { closeThreadPanel, openThreadPanel } from "./panel";
+import { buildPermalink } from "../app/url-router";
 
 /* Threading — state, attachment tray, content linkify, permalink, URL sync */
 /* globals: apiUrl, escapeHtml */
@@ -190,14 +191,24 @@ export function _linkifyThreadContent(html) {
   return html;
 }
 
-/* Build a permalink URL for a thread parent message. */
+/* Build a permalink URL for a thread parent message. Emits the
+ * hash-form deep link introduced in msg#17039:
+ *   https://<host>/#chat?thread=<id>
+ * The server-side `?thread=` query-string form stays supported for
+ * older in-flight links via popstate + applyThreadUrlOnLoad below,
+ * but every link *we* produce from here on uses the hash scheme so
+ * the router can deep-link into any tab consistently. */
 export function threadPermalinkUrl(parentId) {
-  return (
-    window.location.origin +
-    window.location.pathname +
-    "?thread=" +
-    encodeURIComponent(String(parentId))
-  );
+  try {
+    return buildPermalink("chat", { thread: String(parentId) });
+  } catch (_) {
+    return (
+      window.location.origin +
+      window.location.pathname +
+      "#chat?thread=" +
+      encodeURIComponent(String(parentId))
+    );
+  }
 }
 
 /* Copy a permalink to the clipboard and flash a "Copied!" tooltip on the

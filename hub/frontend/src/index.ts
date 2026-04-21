@@ -15,6 +15,10 @@ import "./agent-icons";
 import "./agent-badge";
 import "./agent-badge-svg";
 import "./channel-badge";
+/* msg#17039: URL-hash router must load before state.ts and tabs.ts
+ * so their top-level imports find it live. The module itself has no
+ * DOM side-effects at import time — it only exposes helpers. */
+import "./app/url-router";
 import "./app/state";
 import "./app/members";
 import "./app/channel-prefs";

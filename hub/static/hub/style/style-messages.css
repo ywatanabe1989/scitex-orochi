@@ -107,6 +107,15 @@ blockquote.chat-blockquote {
   background: rgba(78, 205, 196, 0.15) !important;
   transition: background 0.3s;
 }
+/* msg#17039: deep-link target — stronger highlight on the single
+ * scroll-to message so it stands out from the ~5 context rows
+ * around it (those get plain .msg-highlight). */
+.msg-highlight-target {
+  background: rgba(78, 205, 196, 0.32) !important;
+  outline: 2px solid rgba(78, 205, 196, 0.55);
+  outline-offset: -2px;
+  transition: background 0.3s, outline-color 0.3s;
+}
 .msg-fold-btn {
   background: none;
   border: 1px solid #333;
