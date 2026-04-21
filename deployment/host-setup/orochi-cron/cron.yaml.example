@@ -66,12 +66,3 @@ jobs:
   #   interval: 1h
   #   command: "scitex-orochi disk reaper-dry-run --yes"
   #   timeout: 10m
-
-  # Venv drift audit for scitex-* packages — pip show + import probe.
-  # Mgr-pkg's startup_commands will enable this per host (commented out
-  # here so fresh installs don't immediately start reinstalling editable
-  # packages). See scripts/client/pkg-audit.sh for flags / exit codes.
-  # - name: pkg-audit
-  #   interval: 15m
-  #   command: "bash ${SCITEX_OROCHI_REPO_ROOT}/scripts/client/pkg-audit.sh --auto-fix --quiet"
-  #   timeout: 5m
