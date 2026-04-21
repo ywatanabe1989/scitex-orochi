@@ -397,6 +397,24 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     # --- channel-layer events forwarded to the agent WebSocket -----------
 
+    async def _is_channel_visible(self, ch_name: str) -> bool:
+        """Issue #277 — read-side ACL: apply the chat.message filter shape.
+
+        Mirrors ``chat_message`` (DM participant check for dm:* channels,
+        subscription-membership check for group channels) so thread /
+        reaction / edit / delete fan-out cannot leak cross-channel.
+        The write-side companion is #276 / PR #279.
+        """
+        is_dm = ch_name.startswith("dm:")
+        if is_dm:
+            return await _is_dm_participant_by_member(
+                channel_name=ch_name,
+                workspace_id=self.workspace_id,
+                member_id=getattr(self, "workspace_member_id", None),
+            )
+        agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
+        return ch_name in agent_channels
+
     async def reaction_update(self, event):
         """Forward reaction add/remove events to agent WebSocket.
 
@@ -405,6 +423,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         thumbs-up to mean "received, no further action needed") without
         having to write a full reply.
         """
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "reaction_update",
@@ -416,24 +437,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         )
 
     async def message_edit(self, event):
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "message_edit",
                 "message_id": event["message_id"],
                 "sender": event["sender"],
-                "channel": event.get("channel", ""),
+                "channel": ch_name,
                 "text": event["text"],
                 "edited_at": event.get("edited_at"),
             }
         )
 
     async def message_delete(self, event):
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "message_delete",
                 "message_id": event["message_id"],
                 "sender": event["sender"],
-                "channel": event.get("channel", ""),
+                "channel": ch_name,
             }
         )
 
@@ -443,6 +470,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         The MCP sidecar rewrites thread_reply into a message with parent
         context, so agents can recognise and respond to threaded replies.
         """
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "thread_reply",
@@ -450,7 +480,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "reply_id": event["reply_id"],
                 "sender": event["sender"],
                 "sender_type": event.get("sender_type", "human"),
-                "channel": event.get("channel", ""),
+                "channel": ch_name,
                 "text": event.get("text", ""),
                 "ts": event.get("ts"),
                 "metadata": event.get("metadata", {}),
