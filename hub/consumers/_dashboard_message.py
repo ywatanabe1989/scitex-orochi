@@ -118,6 +118,24 @@ async def handle_dashboard_message(consumer, content):
     except Exception:
         log.exception("push fan-out failed (dashboard path)")
 
+    # Cross-channel @mention push (msg#15767). Best-effort; wrapped in
+    # sync_to_async because the helper touches the ORM + channel layer
+    # synchronously. No-ops for DM channels and mention-less messages.
+    try:
+        from asgiref.sync import sync_to_async as _sta2
+
+        from hub.mentions import expand_mentions_and_notify
+
+        await _sta2(expand_mentions_and_notify)(
+            workspace_id=consumer.workspace_id,
+            source_channel=ch_name,
+            source_msg_id=msg["id"] if msg else None,
+            sender_username=consumer.user.username,
+            text=text,
+        )
+    except Exception:
+        log.exception("mention push fan-out failed (dashboard path)")
+
     # @mention auto-reply (issue #98): when a message contains @agentname,
     # hub immediately posts a brief system status for the mentioned agent
     # so the sender knows whether it's alive and what it's doing.
