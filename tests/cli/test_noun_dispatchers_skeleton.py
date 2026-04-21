@@ -46,7 +46,7 @@ EXPECTED_NOUN_VERBS: dict[str, set[str]] = {
     "config": {"init"},
     "hook": {"report"},
     "invite": {"create", "list"},
-    "message": {"send", "listen"},
+    "message": {"send", "listen", "react"},
     "push": {"setup"},
     "server": {"start", "status", "deploy"},
     "system": {"doctor"},
