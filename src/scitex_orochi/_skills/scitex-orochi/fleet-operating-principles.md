@@ -125,8 +125,8 @@ loop) to every form of debugging artifact:
   (macOS) or an iOS Simulator Safari, never by the operator.
 - **DevTools logs** (console, network, blur traces) are dumped by the
   verifier running a real headed session against the real hub, then
-  forwarded to the responsible agent via `#agent`. Never ask the operator
-  to open DevTools.
+  forwarded to the responsible agent via DM (or `#heads` if it affects
+  cross-head coordination). Never ask the operator to open DevTools.
 - **Tmux pane snapshots** are taken by the operator agents via
   `tmux capture-pane` or `screen hardcopy`, not by asking the operator
   what the terminal shows.
@@ -170,12 +170,17 @@ miss blur/focus/WS timing bugs that real sessions exhibit.
 | Channel | Purpose | Who writes |
 |---|---|---|
 | `#general` | the operator ↔ fleet dialogue; broadcast announcements | the operator + any agent (sparingly) |
-| `#agent` | agent-to-agent coordination, hand-offs, claim-and-release | agents only, freely |
+| DM | task dispatch, completion acks, worker-to-worker coordination | agents only, freely |
+| `#heads` | cross-head coordination, lead-moderated | heads + lead |
 | `#operator` | fleet → operator direct reports, digests, blocking asks | `worker-todo-manager` primary; any `head-*` as failover. No `worker-*` else. |
 | `#progress` | periodic status reports (done/doing/next) | any agent, on schedule |
 | `#escalation` | critical failures and alerts requiring immediate attention | `quality-checker`, `healer`, anyone on a genuine critical |
 | `#grant` | research funding pipeline coordination | `worker-todo-manager`, `worker-explorer-<host>`, the operator |
 | `#todo` | GitHub issue bot feed | bot only |
+
+> `#agent` was abolished 2026-04-21 (per ywatanabe msg#15307 / lead
+> msg#15310). Fleet coordination now splits: DM for 1:1 dispatch
+> and completion acks, `#heads` for cross-head broadcasts.
 
 ### `#operator` write ACL (hard rule)
 
@@ -187,8 +192,8 @@ is restricted to agents that have audit/responsibility authority:
   `head-<host>` — these may post directly only when
   `worker-todo-manager` is unreachable (quota, login, crash), and should
   clearly tag the message as a failover relay.
-- **Everyone else** routes through `#agent` with an `@worker-todo-manager`
-  tag and lets todo-manager decide whether to escalate to `#operator`.
+- **Everyone else** DMs `worker-todo-manager` and lets todo-manager
+  decide whether to escalate to `#operator`.
 
 This stays the rule until the YAML `ChannelPolicy` (scitex-orochi#93)
 lands and enforces it at the hub.
@@ -203,8 +208,8 @@ lands and enforces it at the hub.
 3. Out-of-domain chatter in `#general`: stay silent. The cost of "me
    too"-ing a topic you don't own is that the operator has to scroll past
    it.
-4. Agent-to-agent acks, handoffs, and "claiming X" declarations go in
-   `#agent`, never in `#general`.
+4. Agent-to-agent acks, handoffs, and "claiming X" declarations go via
+   DM (or `#heads` for cross-head coordination), never in `#general`.
 
 ### Post-type prefixes
 
@@ -368,9 +373,10 @@ Therefore every agent that is actively working must:
 
 - Keep `current_task` populated (updated by `agent_meta.py` /
   `scitex-agent-container status --json` heartbeats).
-- Post a 1-line `[INFO]` or `[PERIODIC]` update to `#agent` on each
-  meaningful state change (claim, progress milestone, completion). Silent
-  work looks dead on the dashboard.
+- Post a 1-line `[INFO]` or `[PERIODIC]` update to `#heads` (heads) or
+  DM the dispatcher (workers) on each meaningful state change (claim,
+  progress milestone, completion). Silent work looks dead on the
+  dashboard.
 - For long jobs, name the subagent so it shows up in `subagent_count`
   with a recognizable label.
 

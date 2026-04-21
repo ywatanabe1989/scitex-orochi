@@ -226,7 +226,7 @@ directory separation — `head-mba`, `head-nas`, `head-spartan`,
 `head-ywata-note-win`, `mamba-skill-manager-mba` etc. — because
 `~/.scitex/orochi/workspaces/<id>/` needs a unique-per-agent path.
 
-The **display form** (in dashboards, #agent posts, #ywatanabe
+The **display form** (in dashboards, #heads posts, #ywatanabe
 relays) is `role[:function]@host`, rendered by the hub-side
 username filter. So `head-mba` renders as `head@mba`,
 `mamba-skill-manager-mba` renders as `worker:skill-sync@mba`,

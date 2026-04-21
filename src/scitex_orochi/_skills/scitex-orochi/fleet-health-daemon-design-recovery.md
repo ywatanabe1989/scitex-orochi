@@ -86,9 +86,10 @@ to `#escalation`).
   not a mutation of state. If the session misread and "2" is the
   wrong choice, the agent sees the follow-up screen and decides
   its own next action.
-- **Escalation**: post to `#agent` if the same session hits the
-  same prompt pattern 3 times within 5 min (pattern needs to be
-  added to the allowlist or the permission scope needs widening).
+- **Escalation**: DM the dispatcher (or post to `#heads` for cross-head
+  visibility) if the same session hits the same prompt pattern 3 times
+  within 5 min (pattern needs to be added to the allowlist or the
+  permission scope needs widening). (`#agent` was abolished 2026-04-21.)
 - **Rate limit**: max 1 recovery attempt per session per 30 s.
 
 ### 7.2 Extra-usage wedge recovery
@@ -163,9 +164,9 @@ to `#escalation`).
   still responds.
 - **Rollback**: re-launch the agent's MCP subprocess if the kill
   took the wrong one.
-- **Escalation**: post to `#agent` if the kill did not reduce the
-  duplicate count, or if the agent becomes unresponsive after the
-  kill.
+- **Escalation**: DM the dispatcher (or post to `#heads`) if the kill
+  did not reduce the duplicate count, or if the agent becomes
+  unresponsive after the kill.
 - **Rate limit**: max 1 dedup per agent per 10 min.
 
 ### 7.6 Paste-buffer-unsent recovery
@@ -192,8 +193,8 @@ to `#escalation`).
   see the follow-up and correct.
 - **Escalation**: if the same session hits paste-buffer-unsent 3
   times in 10 min, something is systematically broken upstream
-  (agent not consuming its own composed message); escalate to
-  `#agent` with the pane capture.
+  (agent not consuming its own composed message); escalate via DM
+  to the dispatcher (or post to `#heads`) with the pane capture.
 - **Rate limit**: max 1 Enter per session per 60 s.
 - **Relationship to §7.1 permission prompt**: if the pane matches
   *both* the paste-buffer marker and a permission prompt pattern,
