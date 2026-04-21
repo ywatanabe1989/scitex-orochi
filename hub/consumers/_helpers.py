@@ -26,6 +26,11 @@ from hub.models import (
     WorkspaceToken,
 )
 
+# ``#agent`` was abolished 2026-04-21 (lead directive, PR #293 follow-up).
+# Keep a module-level constant so both the hub/views path and the
+# WebSocket-consumer path share a single source of truth for the blocklist.
+ABOLISHED_AGENT_CHANNELS = frozenset({"#agent"})
+
 
 @database_sync_to_async
 def _load_agent_channel_subs(workspace_id, agent_name):
@@ -49,7 +54,14 @@ def _load_agent_channel_subs(workspace_id, agent_name):
         user=user,
         channel__workspace_id=workspace_id,
     ).select_related("channel")
-    return [m.channel.name for m in memberships]
+    # ``#agent`` was abolished 2026-04-21 (lead directive, PR #293 follow-up).
+    # Filter out any stale DB rows so a leftover membership can't resurrect
+    # the subscription on the next register() / agent-consumer connect.
+    return [
+        m.channel.name
+        for m in memberships
+        if m.channel.name not in ABOLISHED_AGENT_CHANNELS
+    ]
 
 
 @database_sync_to_async
@@ -60,6 +72,12 @@ def _persist_agent_subscription(workspace_id, agent_name, ch_name, subscribe):
     be resolved. Creates the channel if missing (group kind).
     """
     from django.contrib.auth.models import User
+
+    # ``#agent`` was abolished 2026-04-21 (lead directive, PR #293 follow-up).
+    # Hard-block the channel on the server so no agent can re-create the
+    # row via a subscribe WebSocket op, regardless of what the client sends.
+    if ch_name in ABOLISHED_AGENT_CHANNELS:
+        return False
 
     try:
         workspace = Workspace.objects.get(id=workspace_id)

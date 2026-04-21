@@ -10,7 +10,7 @@
  * (screen|tmux); default is "tmux" — set SCITEX_OROCHI_MULTIPLEXER=screen to opt in.
  */
 import { exec } from "child_process";
-import { OROCHI_AGENT } from "./_shared.js";
+import { MCP_ERROR_CODES, OROCHI_AGENT, mcpError } from "./_shared.js";
 
 // Allow only safe characters in the session name to prevent shell injection.
 function validateSessionName(name: string): string | null {
@@ -55,22 +55,19 @@ function scheduleSelfCommand(
 ): { content: Array<{ type: string; text: string }> } {
   const rawSession = OROCHI_AGENT;
   if (!rawSession) {
-    return {
-      content: [
-        { type: "text", text: "ERROR: SCITEX_OROCHI_AGENT env var not set" },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INVALID_INPUT,
+      "SCITEX_OROCHI_AGENT env var not set",
+      "set SCITEX_OROCHI_AGENT in the MCP sidecar environment",
+    );
   }
   const session = validateSessionName(rawSession);
   if (!session) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `ERROR: SCITEX_OROCHI_AGENT contains unsafe characters: ${rawSession}`,
-        },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INVALID_INPUT,
+      `SCITEX_OROCHI_AGENT contains unsafe characters: ${rawSession}`,
+      "agent name must match [A-Za-z0-9._-]+",
+    );
   }
 
   const mux = getMultiplexer();
@@ -78,9 +75,11 @@ function scheduleSelfCommand(
   try {
     cmd = buildSendKeysCommand(mux, session, text);
   } catch (err) {
-    return {
-      content: [{ type: "text", text: `ERROR: ${(err as Error).message}` }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INVALID_INPUT,
+      (err as Error).message,
+      "remove single quotes from the command text",
+    );
   }
 
   const delay = Math.max(0, delayMs);
@@ -165,37 +164,31 @@ export async function handleSelfCommand(args: {
   const command = (args?.command || "").trim();
   const err = validateSelfCommand(command);
   if (err) {
-    return { content: [{ type: "text", text: `ERROR: ${err}` }] };
+    return mcpError(
+      MCP_ERROR_CODES.INVALID_INPUT,
+      err,
+      "use a slash command matching /^\\/[A-Za-z0-9_-]+( .*)?$/ or a free-text prompt without single quotes",
+    );
   }
 
   // Allowlist gate: reject modal-opening slash commands before scheduling.
   if (!isSafeForSelfCommand(command)) {
     const rejected = command.split(/\s+/, 1)[0];
-    return {
-      content: [
-        {
-          type: "text",
-          text:
-            `ERROR: slash command '${rejected}' is not in self_command allowlist. ` +
-            `Safe commands: ${SELF_COMMAND_ALLOWLIST.join(", ")}. ` +
-            `Modal-opening commands like /model, /agents, /permissions trap the agent and are blocked. ` +
-            `Free-text prompts (no leading slash) are always allowed.`,
-        },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.PERMISSION_DENIED,
+      `slash command '${rejected}' is not in self_command allowlist`,
+      `safe commands: ${SELF_COMMAND_ALLOWLIST.join(", ")} (free-text prompts without a leading slash are always allowed)`,
+    );
   }
 
   // Extract the bare slash name (no args) for destructive-list lookup.
   const slashName = command.split(/\s+/, 1)[0];
   if (DESTRUCTIVE_COMMANDS.has(slashName) && !args?.confirm) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `ERROR: '${slashName}' is destructive; pass confirm=true to fire`,
-        },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.PERMISSION_DENIED,
+      `'${slashName}' is destructive`,
+      "pass confirm=true to fire",
+    );
   }
 
   const delay = args?.delay_ms ?? 6000;

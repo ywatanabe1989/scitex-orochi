@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: Chrome code_sign_clone watchdog (scitex-orochi#286 item 2).
+
+  Runs scripts/client/chrome-codesign-clone-watchdog.sh hourly on this
+  user's login session. Default thresholds: advise at >=2 GiB, reap at
+  >=5 GiB. See the script's header for threshold env-var overrides.
+
+  Install:
+    cp deployment/host-setup/launchd/com.scitex.chrome-codesign-watchdog.plist \
+       ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.scitex.chrome-codesign-watchdog.plist
+
+  Logs: ~/Library/Logs/scitex/chrome-codesign-watchdog.log (rotated by
+  macOS launchd; rotate manually if the file grows — `tail -n 2000` is
+  usually plenty of history).
+
+  Replace __HOME__ and __REPO__ with your actual paths before `launchctl
+  load`. The companion install helper
+  scripts/client/install-chrome-codesign-watchdog.sh does this rewrite
+  automatically.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.scitex.chrome-codesign-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>__REPO__/scripts/client/chrome-codesign-clone-watchdog.sh</string>
+    </array>
+
+    <!-- Every hour on login sessions. macOS schedules a single run at
+         load time, then on the interval thereafter. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Don't respawn in a tight loop if the script exits non-zero -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/scitex/chrome-codesign-watchdog.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/scitex/chrome-codesign-watchdog.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+      <!-- Override here to tune thresholds on a specific host; leave
+           commented-out to inherit the script's defaults
+           (advise 2 GiB / reap 5 GiB). -->
+      <!--
+      <key>ADVISE_GIB</key>
+      <string>2</string>
+      <key>REAP_GIB</key>
+      <string>5</string>
+      -->
+    </dict>
+  </dict>
+</plist>

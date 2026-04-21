@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: fleet host-liveness probe with auto-revive (todo#271).
+
+  Runs scripts/client/fleet-watch/host-liveness-probe.sh every 5 minutes
+  on this user's login session. Detects tmux-server death and missing
+  expected agents, then delegates revive to the local healer (if alive)
+  or runs `scitex-agent-container start <agent>` directly via SSH.
+
+  Install:
+    ./scripts/client/install-fleet-host-liveness-probe.sh
+
+  Logs: ~/Library/Logs/scitex/fleet-host-liveness-probe.log (both stdout
+  NDJSON and stderr advisories tee there; rotate manually when large).
+
+  Replace __HOME__ and __REPO__ with your actual paths before `launchctl
+  load`. The companion install helper
+  scripts/client/install-fleet-host-liveness-probe.sh does this rewrite
+  automatically.
+
+  Why --yes in production: the whole point of this LaunchAgent is to
+  auto-revive dead agents without waiting for humans. The install helper
+  provides --dry-run-only if you want to observe before committing to
+  automatic revive.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.scitex.fleet-host-liveness-probe</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>__REPO__/scripts/client/fleet-watch/host-liveness-probe.sh</string>
+      <string>__PROBE_MODE__</string>
+    </array>
+
+    <!-- Every 5 minutes. matches orochi-machines.yaml preflight.fleet_watch_cycle_seconds. -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Don't respawn in a tight loop if the script exits non-zero -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/scitex/fleet-host-liveness-probe.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/scitex/fleet-host-liveness-probe.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+  </dict>
+</plist>

@@ -72,6 +72,75 @@ urlpatterns = [
         views.api_message_detail,
         name="api-message-detail",
     ),
+    # Channel info — MCP `channel_info` tool hits this on the bare
+    # domain (issue #254). Token-auth on GET handled inside the view.
+    path("api/channels/", views.api_channels, name="api-channels"),
+    # Channel export — MCP `export_channel` tool. Already accepts
+    # ?token= internally; just needs a route on the bare domain.
+    path(
+        "api/channels/<str:chat_id>/export/",
+        views.api_channel_export,
+        name="api-channel-export",
+    ),
+    # Channel members — MCP `channel_members` tool (#252). Token-auth
+    # on GET handled inside the view; POST/PATCH/DELETE still session-only
+    # on the bare domain since admin actions need an attributable user.
+    path(
+        "api/channel-members/",
+        views.api_channel_members,
+        name="api-channel-members",
+    ),
+    # My subscriptions — MCP `my_subscriptions` tool (#253). Read-only,
+    # token-auth via ?token=&agent=<name>.
+    path(
+        "api/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions",
+    ),
+    # Workspace-scoped routes — MCP sidecars build URLs of the form
+    # /api/workspace/<slug>/dms/?token=wks_... when the agent's
+    # SCITEX_OROCHI_URL points at the bare domain (the default for the
+    # production hub). Without these the DM tool, channel listing,
+    # history fetch, and per-channel export 404 (issue #258 root cause).
+    # The slug kwarg is consumed by ``get_workspace`` /
+    # ``resolve_workspace_and_actor`` so the same view function works on
+    # both the subdomain (`request.workspace` set by middleware) and the
+    # bare domain (slug from URL).
+    path(
+        "api/workspace/<slug:slug>/dms/",
+        views.api_dms,
+        name="api-dms-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/channels/",
+        views.api_channels,
+        name="api-channels-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/messages/",
+        views.api_messages,
+        name="api-messages-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/history/<str:channel_name>/",
+        views.api_history,
+        name="api-history-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/channels/<str:chat_id>/export/",
+        views.api_channel_export,
+        name="api-channel-export-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/channel-members/",
+        views.api_channel_members,
+        name="api-channel-members-bare",
+    ),
+    path(
+        "api/workspace/<slug:slug>/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions-bare",
+    ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
     # Per-agent single-screen detail payload (todo#420 MVP).
@@ -89,6 +158,19 @@ urlpatterns = [
         "api/agents/register/",
         views.api_agents_register,
         name="api-agents-register",
+    ),
+    # Admin subscribe/unsubscribe — issue #262 §9.1. Mirrored on the bare
+    # domain so MCP sidecars (which default to the apex) can hit the
+    # admin path without a subdomain.
+    path(
+        "api/agents/<str:target>/subscribe/",
+        views.api_admin_agent_subscribe,
+        name="api-admin-agent-subscribe-bare",
+    ),
+    path(
+        "api/agents/<str:target>/unsubscribe/",
+        views.api_admin_agent_unsubscribe,
+        name="api-admin-agent-unsubscribe-bare",
     ),
     # Central container-agent registry — mounted on bare domain so the MCP
     # sidecar on localhost can reach it without the subdomain middleware.

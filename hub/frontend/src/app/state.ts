@@ -57,6 +57,14 @@ try {
 export function setCurrentChannel(ch) {
   currentChannel = ch;
   if (ch) lastActiveChannel = ch;
+  /* #278: other modules read `(globalThis as any).currentChannel` — the
+   * module-local `var currentChannel` is a private binding that the rest
+   * of the app can't see. Without this write, a sidebar channel switch
+   * updates the local var but leaves the global pinned at its page-load
+   * value, causing the feed to stay stale, the WS filter to pass the wrong
+   * channel, and sendMessage() to post to the original channel instead of
+   * the one the sidebar highlights. Mirror every update to the global. */
+  (globalThis as any).currentChannel = ch;
   try {
     localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
   } catch (_) {}

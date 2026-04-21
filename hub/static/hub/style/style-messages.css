@@ -122,30 +122,66 @@ blockquote.chat-blockquote {
   border-color: #4ecdc4;
 }
 
-/* Filter toggle active states (click-to-toggle on sidebar items) */
+/* Filter toggle active states (click-to-toggle on sidebar items).
+ * #284: the channel rule has been removed — the spec requires a single
+ * "currently-selected" marker on the Channels list with no additional
+ * highlight / category / filter tinting. Agent and resource rows still
+ * show a filter-active accent since those aren't under the single-
+ * select constraint (agents still support multi-select; resources use
+ * this to show when a host: tag is focusing them). */
 .agent-card.filter-active {
   background: rgba(78, 205, 196, 0.15);
   border-left: 3px solid #4ecdc4;
-}
-.channel-item.filter-active {
-  background: rgba(126, 200, 227, 0.15);
-  border-left: 3px solid #7ec8e3;
 }
 .res-card.filter-active {
   background: rgba(78, 205, 196, 0.15);
   border-left: 3px solid #4ecdc4;
 }
 
-/* todo#274 Part 1: pure visual selection in sidebar — clicking a
- * channel or agent highlights just that item and dims siblings.
- * Replaces the previous badge-filter UX. */
+/* todo#274 Part 1 / #293 / #294: selection marker is a BACKGROUND COLOUR
+ * ONLY. Do not boost opacity, do not brighten icons, do not bold the
+ * name — the selected row must read the same as the rest except for
+ * its background tint. This is ywatanabe msg#15299 / #15317: "all
+ * other rows keep their normal icons; the selected row is
+ * distinguished only by a solid background".
+ *
+ * #294 (msg#15352 / #heads #15353): bump the accent alpha so the
+ * selected row is UNAMBIGUOUSLY brighter than its siblings AND
+ * clearly distinct from the row-hover state (:hover uses #1a1a1a,
+ * a flat dark grey; the selected tint must read as an accent colour
+ * rather than "slightly darker"). Text/icon styling stays identical
+ * to unselected rows — only the background differs.
+ *
+ * Applies to .sidebar .channel-item and .sidebar .agent-card (DMs
+ * render as .agent-card so they inherit). */
 .sidebar .channel-item.selected {
-  background: rgba(126, 200, 227, 0.2);
+  background: rgba(126, 200, 227, 0.35);
 }
-.sidebar .agent-card.selected {
-  background: rgba(78, 205, 196, 0.2);
+.sidebar .agent-card.selected,
+.sidebar .dm-item.selected {
+  background: rgba(78, 205, 196, 0.35);
 }
-.sidebar #channels:has(.channel-item.selected) .channel-item:not(.selected),
+/* #294: normalise font-weight on every sidebar channel/DM row so no
+ * per-name rule (e.g. a stale .channel-item.active path, or a
+ * selector that happens to overlap a user/agent slug) can re-bold
+ * individual rows. The sidebar rows must render with identical
+ * weight — visual distinction comes from the .selected background
+ * above, nothing else. Belt-and-braces against regressions like the
+ * one reported in msg#15352 where #ywatanabe, #proj-neurovista,
+ * #proj-scitex-clew, #proj-scitex-orochi all rendered bold while
+ * #general, #heads, #releases did not. */
+.sidebar .channel-item,
+.sidebar .channel-item .ch-name,
+.sidebar .dm-item,
+.sidebar .dm-item .dm-name,
+.sidebar .agent-card,
+.sidebar .agent-card .agent-name {
+  font-weight: normal;
+}
+/* #284: don't dim non-selected channels when one is selected — the
+ * spec calls for a single currently-selected marker only, no additional
+ * tinting/dimming cascade on the channel list. Agent sibling-dim stays
+ * (agents still support multi-select outside the #284 scope). */
 .sidebar #agents:has(.agent-card.selected) .agent-card:not(.selected) {
   opacity: 0.6;
 }

@@ -75,11 +75,10 @@ export function runFilter() {
         });
       }
     }
-    /* Skip single-channel filter when multi-select is active (#366):
-     * applyFeedFilter() handles multi-channel visibility in that case. */
-    var _multiActive =
-      document.querySelectorAll("#channels .channel-item.selected").length >= 2;
-    if (show && (globalThis as any).currentChannel && !_multiActive) {
+    /* #284: channels are single-select — at most one .channel-item.selected
+     * ever exists. The legacy multi-channel bypass was removed; currentChannel
+     * alone is the filter gate. */
+    if (show && (globalThis as any).currentChannel) {
       show = el.getAttribute("data-channel") === (globalThis as any).currentChannel;
     }
     el.style.display = show ? "" : "none";

@@ -162,10 +162,27 @@ function _renderChannelRowHtml(row, ctx) {
  * chContainer. Pulled out of fetchStats so the main entry point stays under
  * the file-size budget without changing any observable behavior. */
 function _wireChannelItemHandlers(chContainer, prevSelected) {
+  /* #293: enforce single-select hard invariant on restore. Even if
+   * prevSelected contained multiple entries (from a stale DOM where
+   * two rows both carried .selected — the regression this PR fixes),
+   * we restore .selected to AT MOST ONE row, preferring the current
+   * channel. Anything else is dropped on the floor. */
+  var restoredOne = false;
   chContainer.querySelectorAll(".channel-item").forEach(function (el) {
-    /* Restore selected state from before re-render */
     var elCh = el.getAttribute("data-channel");
-    if (elCh && prevSelected[elCh]) el.classList.add("selected");
+    if (
+      !restoredOne &&
+      elCh &&
+      prevSelected[elCh] &&
+      currentChannel === elCh
+    ) {
+      el.classList.add("selected");
+      restoredOne = true;
+    } else {
+      /* Defensive: make sure NO row carries .selected unless we just
+       * added it above. Belt-and-braces against any stale DOM state. */
+      el.classList.remove("selected");
+    }
     /* Pin icon click — toggle is_starred (pinned-to-top) */
     var pinEl = el.querySelector(".ch-pin");
     if (pinEl) {
@@ -274,41 +291,9 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
         _setChannelPref(ch, { is_hidden: false });
         return;
       }
-      var multi = ev.ctrlKey || ev.metaKey;
-      /* todo#274 Part 2: Ctrl/Cmd+Click toggles multi-select without
-       * disturbing siblings; plain click keeps legacy single-select. */
-      if (multi) {
-        el.classList.toggle("selected");
-        /* When multi-select is active, the DOM may only have messages from
-         * currentChannel. Switch to all-channel history so messages from
-         * every selected channel are present, then let applyFeedFilter
-         * show the merged subset. (#366) */
-        var _selCount = chContainer.querySelectorAll(
-          ".channel-item.selected[data-channel]",
-        ).length;
-        if (_selCount >= 2) {
-          /* Load all messages; applyFeedFilter handles visible subset */
-          setCurrentChannel(null);
-          var _applyAfter = function () {
-            if (typeof applyFeedFilter === "function") applyFeedFilter();
-          };
-          loadHistory().then
-            ? loadHistory().then(_applyAfter)
-            : (loadHistory(), _applyAfter());
-        } else if (_selCount === 1) {
-          var _onlyCh = chContainer.querySelector(
-            ".channel-item.selected[data-channel]",
-          );
-          if (_onlyCh) {
-            setCurrentChannel(_onlyCh.getAttribute("data-channel"));
-            loadChannelHistory(_onlyCh.getAttribute("data-channel"));
-          }
-        } else {
-          /* All deselected */
-          if (typeof applyFeedFilter === "function") applyFeedFilter();
-        }
-        return;
-      }
+      /* #284: channels are single-selection only. The legacy Ctrl/Cmd+Click
+       * multi-select has been removed — any click replaces the current
+       * selection with exactly this row. */
       if (currentChannel === ch) {
         setCurrentChannel(null);
         loadHistory();
@@ -323,12 +308,18 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
       /* Clear unread for this channel (#322) */
       channelUnread[ch] = 0;
       updateChannelUnreadBadges();
-      /* todo#274 Part 1: pure visual highlight, toggle on second click. */
-      var items = chContainer.querySelectorAll(".channel-item");
+      /* todo#274 Part 1 + #293: single-select is the HARD invariant —
+       * clear .selected across the ENTIRE sidebar (channel rows AND
+       * DM agent-cards), not just this chContainer. Previously only
+       * chContainer was cleared, which left a stale .selected on a
+       * DM row when the user switched from a DM to a channel and
+       * manifested as "two rows selected at once" (#293). */
       var wasSelected = el.classList.contains("selected");
-      items.forEach(function (it) {
-        it.classList.remove("selected");
-      });
+      document
+        .querySelectorAll(".sidebar .channel-item.selected, .sidebar .dm-item.selected")
+        .forEach(function (it) {
+          it.classList.remove("selected");
+        });
       if (!wasSelected && currentChannel === ch) {
         el.classList.add("selected");
       }

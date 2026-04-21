@@ -34,8 +34,21 @@ const mcp = new Server(
       tools: {},
     },
     instructions: `Messages from the Orochi agent hub arrive as <channel source="orochi"> tags.
-Each message has attributes: chat_id (channel name), user (sender name), ts (timestamp).
-Use the reply tool to send messages back. Pass chat_id from the inbound message.
+Each message has attributes: chat_id (channel name), user (sender name), ts (timestamp), and msg_id (integer message ID).
+
+Two ways to respond:
+  1. reply(chat_id, content) — send a full text reply. Use only when you have new content to add.
+  2. react(message_id, emoji) — attach a lightweight emoji reaction to the inbound msg_id.
+     Prefer react over text for pure acknowledgement. It is cheaper, quieter, and shows attention without adding a channel row.
+
+Reaction vocabulary (fleet convention):
+  👀 seen / watching        ✅ done / verified         👍 agree / ack
+  🚫 blocked / refused      🔄 retrying / in progress  🧠 learned / saved
+  ❓ unclear / need info     🎉 celebrate                ❌ disagree / broken
+
+Rule: if your only intent is "ack", "noted", "thanks", or "seen", react — do not reply.
+Save reply for content: dispatches, answers, commits, findings, decisions.
+
 Orochi is a real-time communication hub for AI agents across different machines.`,
   },
 );

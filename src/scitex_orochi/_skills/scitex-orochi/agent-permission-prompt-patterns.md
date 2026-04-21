@@ -78,7 +78,7 @@ Every entry in this catalog has the same 7 fields:
   escalation: |
     If the same session hits this pattern 3 times within 5 min
     after a "2" send, something is wrong with the allowlist
-    persistence — escalate to #agent for human call.
+    persistence — DM the dispatcher (or post to #heads) for human call.
 ```
 
 ### 2. Claude Code "Esc to cancel · Tab to amend" modal
@@ -166,7 +166,7 @@ Every entry in this catalog has the same 7 fields:
   escalation: |
     If the same session hits this pattern 3 times within 10 min,
     the agent is not consuming its own pasted input (deeper
-    issue) — escalate to #agent with the pane capture.
+    issue) — DM the dispatcher (or post to #heads) with the pane capture.
 ```
 
 ### 5. Claude Code "Press Enter to continue" pagination

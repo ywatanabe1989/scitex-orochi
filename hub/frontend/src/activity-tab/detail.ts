@@ -103,9 +103,37 @@ export function _renderActivityAgentDetail(a, grid) {
     _rawModel.charAt(_rawModel.length - 1) === ">"
       ? "—"
       : _rawModel || "-";
+  /* #257 + #261: surface the canonical heartbeat metadata. See the
+   * matching block in hub/static/hub/activity-tab/detail.js. */
+  var _launchSigil = {
+    "sac": "🤖 sac",
+    "sac-ssh": "🛰 sac-ssh",
+    "sbatch": "💼 sbatch",
+    "manual-tmux": "👤 tmux",
+    "manual-direct": "👤 direct",
+    "unknown": "?",
+  };
+  var _launchDisplay = a.launch_method
+    ? (_launchSigil[a.launch_method] || a.launch_method)
+    : "-";
+  var _instanceShort = a.instance_id
+    ? String(a.instance_id).slice(0, 8) + "…"
+    : "-";
+  var _proxyDisplay = a.is_proxy
+    ? "yes (rank " + (a.priority_rank != null ? a.priority_rank : "?") + ")"
+    : (a.priority_rank === 0 ? "no (primary)" : "-");
+  var _priorityListDisplay = (a.priority_list && a.priority_list.length)
+    ? a.priority_list.join(" → ")
+    : "-";
   var metaFields = [
     ["Role", a.role || "agent"],
     ["Machine", _machineDisplay],
+    ["Hostname", a.hostname || "-"],
+    ["Uname", a.uname || "-"],
+    ["Instance", _instanceShort],
+    ["Launch", _launchDisplay],
+    ["Proxy?", _proxyDisplay],
+    ["Priority list", _priorityListDisplay],
     ["Model", _modelDisplay],
     ["Multiplexer", a.multiplexer || "-"],
     ["PID", a.pid || "-"],

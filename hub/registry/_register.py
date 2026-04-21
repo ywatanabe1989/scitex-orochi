@@ -6,9 +6,20 @@ flickering. New per-agent fields MUST be added here, otherwise the LEDs
 flicker every heartbeat (regression hazard).
 """
 
+import logging
 import time
 
-from ._store import _active_session_count, _agents, _connections, _lock
+from ._store import (
+    SINGLETON_EVENT_WINDOW_S,
+    _active_session_count,
+    _agents,
+    _connection_identity,
+    _connections,
+    _lock,
+    _singleton_events,
+)
+
+_log = logging.getLogger("orochi.registry")
 
 
 def register_agent(name: str, workspace_id: int, info: dict) -> None:
@@ -138,6 +149,18 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # lamp flickered to gray 1× per 30s heartbeat cycle.
             "last_pong_ts": prev.get("last_pong_ts"),
             "last_rtt_ms": prev.get("last_rtt_ms"),
+            # #259 — preserve echo round-trip state across re-registers.
+            # Same prev-preserve pitfall as the ping/pong fields above:
+            # if these were dropped on every heartbeat, the 4th LED
+            # (Remote/echo) would flicker to grey-pending at the
+            # heartbeat cadence even when the echo path is live. The
+            # fields are written by ``update_echo_pong()`` (in
+            # ``_heartbeat.py``) when an ``echo_pong`` frame lands, and
+            # are surfaced in the API by ``_payload.get_agents()`` /
+            # ``hub/views/agent_detail.py``.
+            "last_echo_rtt_ms": prev.get("last_echo_rtt_ms"),
+            "last_echo_ok_ts": prev.get("last_echo_ok_ts"),
+            "last_nonce_echo_at": prev.get("last_nonce_echo_at"),
             # Extended process/runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,
@@ -294,6 +317,15 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "quota_7d_reset_at": info.get("quota_7d_reset_at")
             or prev.get("quota_7d_reset_at")
             or "",
+            # todo#272 — per-window quota state machine slot (ok / warn /
+            # escalate). Owned by ``hub.quota_watch.check_agent_quota_pressure``
+            # which reads it before evaluate() and writes the new state
+            # after. Preserved across heartbeats so threshold transitions
+            # fire exactly once per crossing — without the prev-preserve
+            # the state machine would reset to "ok" every heartbeat and
+            # re-post warn / escalate on every poll (spam regression).
+            "quota_state_5h": prev.get("quota_state_5h") or "ok",
+            "quota_state_7d": prev.get("quota_state_7d") or "ok",
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))
@@ -448,3 +480,211 @@ def purge_agent(name: str) -> bool:
             del _agents[name]
             return True
         return False
+
+
+# ── scitex-orochi#255: singleton cardinality enforcement ────────────────
+#
+# When two WS connections claim the same agent name, the hub picks one
+# and disconnects the other. The decision is made on the (instance_id,
+# start_ts_unix) pair captured per-connection at connect time:
+#
+#   * If both sides report the pair, the older ``start_ts_unix`` wins
+#     (the original process keeps its claim — newer racers lose).
+#   * If either side is missing the pair (legacy clients), we don't
+#     enforce — the running connection wins by default and we log a
+#     WARNING so multi-instance hazards are still visible in logs.
+#
+# State lives next to ``_connections`` in ``_store.py``:
+#
+#   * ``_connection_identity[channel_name]`` — the captured triple for
+#     this WS, set at connect / cleared at disconnect.
+#   * ``_singleton_events[agent_name]`` — bounded ring buffer of recent
+#     conflict events (``SINGLETON_EVENT_WINDOW_S`` window) so the
+#     agent-detail API can surface the newest one.
+
+
+def set_connection_identity(
+    channel_name: str,
+    agent_name: str,
+    instance_id: str | None,
+    start_ts_unix: float | None,
+) -> None:
+    """Remember the (agent, instance_id, start_ts_unix) of a live WS.
+
+    Called from ``AgentConsumer.connect`` after the workspace token has
+    authorized the connection. The recorded triple is what the singleton
+    decider compares against on a subsequent connection that claims the
+    same ``agent_name``.
+
+    ``instance_id`` and ``start_ts_unix`` may be ``None``/empty for
+    legacy clients — they are stored as-is so the decider can detect
+    "missing identity" and fall back to the permissive multi-connection
+    behaviour without enforcement.
+    """
+    if not channel_name:
+        return
+    with _lock:
+        _connection_identity[channel_name] = {
+            "agent_name": agent_name or "",
+            "instance_id": (instance_id or "") if isinstance(instance_id, str) else "",
+            "start_ts_unix": (
+                float(start_ts_unix)
+                if isinstance(start_ts_unix, (int, float))
+                else None
+            ),
+        }
+
+
+def clear_connection_identity(channel_name: str) -> None:
+    """Drop the identity row for ``channel_name`` (called on disconnect)."""
+    if not channel_name:
+        return
+    with _lock:
+        _connection_identity.pop(channel_name, None)
+
+
+def get_connection_identity(channel_name: str) -> dict | None:
+    """Return the captured identity triple for a WS, or ``None`` if absent."""
+    if not channel_name:
+        return None
+    with _lock:
+        ident = _connection_identity.get(channel_name)
+        return dict(ident) if ident else None
+
+
+def list_sibling_channels(agent_name: str) -> list[str]:
+    """Return the live ``channel_name`` ids currently registered for an agent.
+
+    Used by the singleton enforcer to find the incumbent connection so
+    it can compare identities and (when the new one wins) close the
+    incumbent. Returns an empty list when the agent has no live
+    connections (the new WS is the first claimant — no enforcement
+    needed).
+    """
+    if not agent_name:
+        return []
+    with _lock:
+        return list(_connections.get(agent_name, ()))
+
+
+def decide_singleton_winner(
+    name: str,
+    new_instance_id: str | None,
+    new_start_ts_unix: float | None,
+) -> str:
+    """Decide who survives when two WS claim the same ``name``.
+
+    Returns one of:
+
+    * ``"challenger"`` — the new connection wins (the existing/incumbent
+      connection should be closed).
+    * ``"incumbent"`` — the existing connection wins (the new/challenger
+      connection should be closed).
+    * ``"no_enforcement"`` — either side is missing the
+      ``(instance_id, start_ts_unix)`` pair, so we fall back to the
+      permissive multi-connection behaviour. Caller logs a WARNING and
+      keeps both sockets alive.
+
+    Algorithm — the older ``start_ts_unix`` wins (the original process
+    keeps its claim). Ties and missing data fall through to
+    ``no_enforcement`` rather than guessing — disrupting a healthy
+    incumbent on insufficient evidence is the worst outcome.
+
+    Requires the lock-free read of ``_connection_identity`` /
+    ``_connections`` to find the incumbent's recorded identity.
+    """
+    if not name:
+        return "no_enforcement"
+    if not isinstance(new_instance_id, str) or not new_instance_id:
+        return "no_enforcement"
+    if not isinstance(new_start_ts_unix, (int, float)):
+        return "no_enforcement"
+
+    with _lock:
+        sibling_channels = list(_connections.get(name, ()))
+        # Pick the most-recent incumbent identity among the siblings.
+        # In practice there's exactly one incumbent at the point of
+        # comparison (the new WS hasn't yet been added). If multiple
+        # siblings exist with full identity, we compare against the
+        # one with the OLDEST start_ts_unix — that is the de-facto
+        # primary that a challenger must beat.
+        incumbent: dict | None = None
+        for ch in sibling_channels:
+            ident = _connection_identity.get(ch)
+            if not ident:
+                continue
+            if not ident.get("instance_id"):
+                continue
+            if not isinstance(ident.get("start_ts_unix"), (int, float)):
+                continue
+            if incumbent is None or float(ident["start_ts_unix"]) < float(
+                incumbent["start_ts_unix"]
+            ):
+                incumbent = ident
+
+    if incumbent is None:
+        # No incumbent with enforceable identity — fall back to
+        # permissive behaviour. Caller logs the situation.
+        return "no_enforcement"
+
+    incumbent_start = float(incumbent["start_ts_unix"])
+    new_start = float(new_start_ts_unix)
+    if new_start < incumbent_start:
+        # Challenger is older → it wins.
+        return "challenger"
+    # Incumbent is older OR tie. Don't disrupt the running process.
+    return "incumbent"
+
+
+def record_singleton_conflict(
+    name: str,
+    winner_instance_id: str,
+    loser_instance_id: str,
+    reason: str = "duplicate_identity",
+) -> None:
+    """Append a conflict event to the per-agent ring buffer.
+
+    Trims entries older than ``SINGLETON_EVENT_WINDOW_S`` so the buffer
+    stays bounded over a long-running hub process. The agent-detail
+    API surfaces the newest entry as ``last_duplicate_identity_event``.
+    """
+    if not name:
+        return
+    now = time.time()
+    cutoff = now - SINGLETON_EVENT_WINDOW_S
+    with _lock:
+        events = _singleton_events.setdefault(name, [])
+        events.append(
+            {
+                "ts": now,
+                "agent": name,
+                "winner_instance_id": winner_instance_id or "",
+                "loser_instance_id": loser_instance_id or "",
+                "reason": reason or "duplicate_identity",
+            }
+        )
+        # Drop stale events. List ops are cheap at this size (<< 100/hr).
+        _singleton_events[name] = [e for e in events if e["ts"] >= cutoff]
+
+
+def get_recent_singleton_event(name: str) -> dict | None:
+    """Return the newest singleton-conflict event for ``name`` (or None).
+
+    Lazy-trims the per-agent buffer to the active window. Returns a
+    plain dict (a copy) so the caller can mutate it freely.
+    """
+    if not name:
+        return None
+    cutoff = time.time() - SINGLETON_EVENT_WINDOW_S
+    with _lock:
+        events = _singleton_events.get(name) or []
+        fresh = [e for e in events if e["ts"] >= cutoff]
+        if fresh != events:
+            if fresh:
+                _singleton_events[name] = fresh
+            else:
+                _singleton_events.pop(name, None)
+        if not fresh:
+            return None
+        # Newest last (append-only) → return the tail.
+        return dict(fresh[-1])

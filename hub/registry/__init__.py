@@ -27,30 +27,42 @@ The full pre-split public surface is re-exported here so
 
 from ._heartbeat import (
     mark_activity,
+    mark_echo_alive,
     set_current_task,
     set_health,
     set_subagent_count,
     set_subagents,
+    update_echo_pong,
     update_heartbeat,
     update_pong,
 )
 from ._payload import get_agents, get_online_count
 from ._register import (
+    clear_connection_identity,
+    decide_singleton_winner,
+    get_connection_identity,
+    get_recent_singleton_event,
+    list_sibling_channels,
     purge_agent,
     purge_all_offline,
+    record_singleton_conflict,
     register_agent,
     register_connection,
+    set_connection_identity,
     unregister_agent,
     unregister_connection,
 )
 from ._store import (
     HEARTBEAT_TIMEOUT_S,
+    SINGLETON_EVENT_WINDOW_S,
     STALE_PURGE_S,
     _active_session_count,
     _agents,
     _cleanup_locked,
+    _connection_identity,
     _connections,
     _lock,
+    _singleton_events,
     active_session_count,
     log,
 )
@@ -59,6 +71,8 @@ __all__ = [
     # Storage primitives (also imported by tests + a few views directly)
     "_agents",
     "_connections",
+    "_connection_identity",
+    "_singleton_events",
     "_lock",
     "_active_session_count",
     "_cleanup_locked",
@@ -66,6 +80,7 @@ __all__ = [
     "log",
     "HEARTBEAT_TIMEOUT_S",
     "STALE_PURGE_S",
+    "SINGLETON_EVENT_WINDOW_S",
     # Registration / connection lifecycle
     "register_agent",
     "unregister_agent",
@@ -73,10 +88,20 @@ __all__ = [
     "unregister_connection",
     "purge_agent",
     "purge_all_offline",
+    # Singleton cardinality enforcement (#255)
+    "set_connection_identity",
+    "clear_connection_identity",
+    "get_connection_identity",
+    "list_sibling_channels",
+    "decide_singleton_winner",
+    "record_singleton_conflict",
+    "get_recent_singleton_event",
     # Heartbeat / activity / health setters
     "update_heartbeat",
     "update_pong",
+    "update_echo_pong",
     "mark_activity",
+    "mark_echo_alive",
     "set_current_task",
     "set_subagents",
     "set_subagent_count",

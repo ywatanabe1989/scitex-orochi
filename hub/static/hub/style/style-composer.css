@@ -421,11 +421,14 @@
 .agent-card {
   position: relative;
 }
-.agent-card > .pin-btn {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-}
+/* ywatanabe 2026-04-20 + PR #293 follow-up: the star (.pin-btn) must
+ * sit in canonical badge order icon → ★ → LEDs → name as emitted by
+ * renderAgentBadge(). A historical absolute-positioning rule pushed
+ * the star to the far right of every .agent-card (sidebar agent rows,
+ * DM rows, Activity list-view rows), breaking that order. Keeping the
+ * star in flex flow lets agent-badge.ts own layout as the single
+ * source of truth. If a legacy card EVER needs a floated star again,
+ * scope it with a specific child class — not .agent-card > .pin-btn. */
 /* Pinned but offline agent styling */
 .agent-card.pinned-offline {
   opacity: 0.55;

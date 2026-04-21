@@ -17,13 +17,20 @@ from ._helpers import _load_agent_channel_subs, _persist_agent_subscription
 
 
 async def handle_register(consumer, content):
-    """Hydrate channel subscriptions + agent metadata, then announce."""
+    """Hydrate channel subscriptions + agent metadata, then announce.
+
+    Subscription state is sourced **only** from the persisted
+    ``ChannelMembership`` rows. Client-supplied ``channels`` arrays in the
+    register frame (``content["channels"]`` / ``payload["channels"]``) are
+    **ignored** — accepting them would let any agent opt itself into any
+    channel by self-declaration, bypassing the ACL gate on subscribe.
+    Fix for scitex-orochi#251 (private-channel delivery leak).
+    """
     payload = content.get("payload", {})
-    legacy_channels = list(content.get("channels") or payload.get("channels", []) or [])
     persisted = await _load_agent_channel_subs(
         consumer.workspace_id, consumer.agent_name
     )
-    channels = list(dict.fromkeys([*persisted, *legacy_channels]))
+    channels = list(persisted)
     # Spec v3 §3.1 — DM channels auto-subscribed at connect must also
     # appear in agent_meta["channels"] so the chat_message filter
     # forwards DM events.
@@ -38,6 +45,13 @@ async def handle_register(consumer, content):
         "agent_id": payload.get("agent_id", consumer.agent_name),
         "project": payload.get("project", ""),
         "machine": payload.get("machine", ""),
+        # #257 / lead msg#15578 — live hostname(1) reported by the
+        # client. Never derived from auth / source IP on the hub side;
+        # always what the agent process's own ``socket.gethostname()``
+        # / ``os.hostname()`` returned. Surfaced in the dashboard
+        # payload as the authoritative "where is this agent running"
+        # field (distinct from the YAML ``machine`` config label).
+        "hostname": payload.get("hostname", ""),
         # todo#55: canonical FQDN from the heartbeat (display-only).
         "hostname_canonical": payload.get("hostname_canonical", ""),
         "role": payload.get("role", ""),
@@ -55,6 +69,15 @@ async def handle_register(consumer, content):
     from hub.registry import register_agent
 
     register_agent(consumer.agent_name, consumer.workspace_id, consumer.agent_meta)
+
+    # scitex-orochi#451 — mark the consumer as registered. The
+    # ``receive_json`` dispatch uses this flag to deny ``message`` frames
+    # from un-registered connections so orphan-on-reconnect failures
+    # surface as a loud error instead of a silent deafness. The flag
+    # flips True only AFTER agent_meta + group_adds are in place, so a
+    # concurrent message frame either arrives before register completes
+    # (rejected) or after (accepted + delivered).
+    consumer._registered = True
 
     await consumer.channel_layer.group_send(
         consumer.workspace_group,
@@ -148,6 +171,33 @@ async def handle_pong(consumer, content):
                 "ts": time.time(),
             },
         )
+
+
+async def handle_echo_pong(consumer, content):
+    """Lookup the nonce, compute RTT, update echo registry fields (#259).
+
+    The hub publisher (in ``_echo._hub_echo_loop``) keeps a per-consumer
+    ``_echo_inflight`` dict mapping nonce -> sent_at. A matching
+    ``echo_pong`` frame yields the round-trip time and triggers
+    ``update_echo_pong``, which is what flips the 4th LED green.
+
+    Unknown nonces are dropped silently — they happen naturally on
+    reconnects (publisher state is per-consumer, lost on disconnect)
+    and shouldn't disturb the dashboard or log noise.
+    """
+    nonce = content.get("nonce")
+    if not isinstance(nonce, str) or not nonce:
+        return
+    inflight = getattr(consumer, "_echo_inflight", None)
+    if not inflight:
+        return
+    sent_at = inflight.pop(nonce, None)
+    if sent_at is None:
+        return
+    rtt_ms = max(0.0, (time.time() - float(sent_at)) * 1000.0)
+    from hub.registry import update_echo_pong
+
+    update_echo_pong(consumer.agent_name, rtt_ms)
 
 
 async def handle_heartbeat(consumer, content):

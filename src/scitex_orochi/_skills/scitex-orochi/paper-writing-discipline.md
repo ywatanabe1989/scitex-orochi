@@ -343,11 +343,12 @@ belongs here for reference):
    (the env var was removed; channel subscriptions are hub-DB
    authoritative now). After first boot, subscribe the proj-agent
    to **`#proj-<topic>` only** via the hub UI or MCP `subscribe`
-   tool. The proj-agent is deliberately invisible to `#agent`,
+   tool. The proj-agent is deliberately invisible to `#heads`,
    `#progress`, `#escalation`, `#general`, and `#ywatanabe` —
    narrow-subscription policy. Cross-fleet coordination reaches
    it via DM from `lead` or via the one channel it owns; no
-   fleet-wide broadcast.
+   fleet-wide broadcast. (`#agent` was abolished 2026-04-21;
+   cross-head coordination moved to `#heads`.)
 4. **transfer dir** `~/.scitex/orochi/transfer/proj-<topic>/`
    (note: `proj-` prefix, matching the canonical channel
    and agent naming from ywatanabe msg#12286) with
@@ -397,7 +398,7 @@ Operational implications:
 - **Red-as-red permission model** (ywatanabe msg#12290): a
   future hub-side 4-level permission API (none / readonly /
   writable / subscribed) may add `readonly` grants to
-  `#agent` / `#heads` for proj-agents so they see coordinator
+  `#heads` for proj-agents so they see coordinator
   chatter without being able to post. That would partially
   close the rule-10 gap at the observation layer without
   changing the narrow write-surface. Out of scope for this

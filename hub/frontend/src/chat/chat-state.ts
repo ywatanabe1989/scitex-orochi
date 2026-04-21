@@ -136,13 +136,72 @@ export function isKnownAgent(name) {
 }
 
 /* Cache of GitHub issue titles.
- *   issueTitleCache[number]            → title for the default repo
- *                                        (ywatanabe1989/todo, legacy `#N`)
  *   issueTitleCache["owner/repo#N"]    → title for cross-repo references
+ * (Bare `#N` legacy entries are no longer produced; see #275.)
  * Negative lookups are stored as the literal string "" so we stop retrying
- * missing issues on every render pass. */
-export var issueTitleCache = {};
-export var issueTitleInflight = {};
+ * missing issues on every render pass.
+ *
+ * Persistence (#275 Part 2): the cache is mirrored to
+ * localStorage['orochi.issueTitleCache.v1'] as {key: {title, ts}} with a
+ * 24h TTL per entry. On module load we hydrate the in-memory cache from
+ * localStorage, dropping expired entries. On every successful title
+ * fetch we write the cache back. Storage failures are swallowed (quota,
+ * privacy-mode, corrupted JSON — never break the chat UI). */
+export var issueTitleCache: Record<string, string> = {};
+export var issueTitleInflight: Record<string, boolean> = {};
+
+var ISSUE_TITLE_LS_KEY = "orochi.issueTitleCache.v1";
+var ISSUE_TITLE_TTL_MS = 24 * 60 * 60 * 1000; /* 24 hours */
+
+/* Pull persisted entries into the in-memory cache. Called once at module
+ * load. Expired or malformed entries are silently discarded. */
+(function _hydrateIssueTitleCacheFromLS() {
+  try {
+    var raw = localStorage.getItem(ISSUE_TITLE_LS_KEY);
+    if (!raw) return;
+    var obj = JSON.parse(raw);
+    if (!obj || typeof obj !== "object") return;
+    var now = Date.now();
+    Object.keys(obj).forEach(function (k) {
+      var v = obj[k];
+      if (!v || typeof v !== "object") return;
+      if (typeof v.ts !== "number") return;
+      if (now - v.ts > ISSUE_TITLE_TTL_MS) return;
+      if (typeof v.title === "string") issueTitleCache[k] = v.title;
+    });
+  } catch (_e) {
+    /* ignore: corrupt JSON, storage denied, etc. */
+  }
+})();
+
+/* Rewrite the persisted cache from the current in-memory state.
+ * Debounced via rAF to coalesce bursts of writes from prefetch loops. */
+var _issueTitleLSWritePending = false;
+function _persistIssueTitleCache() {
+  if (_issueTitleLSWritePending) return;
+  _issueTitleLSWritePending = true;
+  var flush = function () {
+    _issueTitleLSWritePending = false;
+    try {
+      var now = Date.now();
+      var out: Record<string, { title: string; ts: number }> = {};
+      Object.keys(issueTitleCache).forEach(function (k) {
+        /* Persist only positive lookups — negative ("") entries are
+         * cheap to re-derive and would pollute storage. */
+        var t = issueTitleCache[k];
+        if (t) out[k] = { title: t, ts: now };
+      });
+      localStorage.setItem(ISSUE_TITLE_LS_KEY, JSON.stringify(out));
+    } catch (_e) {
+      /* ignore: quota, privacy, etc. */
+    }
+  };
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(flush);
+  } else {
+    setTimeout(flush, 0);
+  }
+}
 
 export function _hydrateIssueLink(a, title) {
   if (!title || a.dataset.hinted) return;
@@ -169,7 +228,7 @@ export function _hydrateIssueLink(a, title) {
 export function _fetchCrossRepoTitle(repo, num, cb) {
   var key = repo + "#" + num;
   if (issueTitleCache[key] !== undefined) {
-    cb(issueTitleCache[key] || null);
+    if (cb) cb(issueTitleCache[key] || null);
     return;
   }
   if (issueTitleInflight[key]) return;
@@ -192,15 +251,82 @@ export function _fetchCrossRepoTitle(repo, num, cb) {
       delete issueTitleInflight[key];
       var title = (data && data.title) || "";
       issueTitleCache[key] = title;
-      if (title) cb(title);
+      if (title) {
+        _persistIssueTitleCache();
+        if (cb) cb(title);
+      }
     })
     .catch(function () {
       delete issueTitleInflight[key];
     });
 }
 
+/* Background prefetch for `owner/repo#N` references in freshly-rendered
+ * message HTML (#275 Part 2). Batches cache misses so a burst of new
+ * messages coalesces into a single debounced flush (50ms) rather than
+ * N independent network calls. The inflight guard inside
+ * _fetchCrossRepoTitle prevents duplicate network calls for the same
+ * key, so re-enqueueing is safe. */
+var _prefetchQueue: Array<{ repo: string; num: string }> = [];
+var _prefetchCallbacks: Array<(title: string, key: string) => void> = [];
+var _prefetchTimer: any = null;
+
+function _schedulePrefetchFlush(cb?: (title: string, key: string) => void) {
+  if (cb) _prefetchCallbacks.push(cb);
+  if (_prefetchTimer) return;
+  _prefetchTimer = setTimeout(function () {
+    _prefetchTimer = null;
+    var batch = _prefetchQueue.splice(0);
+    var callbacks = _prefetchCallbacks.splice(0);
+    /* Dedup within the batch */
+    var seen: Record<string, boolean> = {};
+    batch.forEach(function (p) {
+      var k = p.repo + "#" + p.num;
+      if (seen[k]) return;
+      seen[k] = true;
+      _fetchCrossRepoTitle(p.repo, p.num, function (title) {
+        callbacks.forEach(function (c) {
+          try {
+            c(title, k);
+          } catch (_e) {
+            /* swallow */
+          }
+        });
+      });
+    });
+  }, 50);
+}
+
+export function prefetchIssueTitlesFromHtml(htmlOrNode: string | Element) {
+  var html =
+    typeof htmlOrNode === "string"
+      ? htmlOrNode
+      : (htmlOrNode as Element).innerHTML || "";
+  if (!html) return;
+  /* The rendered <a class="issue-link"> carries data-issue-repo +
+   * data-issue-num — easier to parse than re-running the markdown regex.
+   * Match both attribute orderings just in case. */
+  var re =
+    /data-issue-repo="([^"]+)"[^>]*data-issue-num="([^"]+)"|data-issue-num="([^"]+)"[^>]*data-issue-repo="([^"]+)"/g;
+  var m: RegExpExecArray | null;
+  var found = 0;
+  while ((m = re.exec(html)) !== null) {
+    var repo = m[1] || m[4];
+    var num = m[2] || m[3];
+    if (!repo || !num) continue;
+    var key = repo + "#" + num;
+    if (issueTitleCache[key] !== undefined) continue;
+    if (issueTitleInflight[key]) continue;
+    _prefetchQueue.push({ repo: repo, num: num });
+    found++;
+  }
+  if (found > 0) _schedulePrefetchFlush();
+}
+(globalThis as any).prefetchIssueTitlesFromHtml = prefetchIssueTitlesFromHtml;
+
 export function applyIssueTitleHints(scope) {
   var root = scope || document;
+  var uncached: Array<{ a: Element; repo: string; num: string }> = [];
   root.querySelectorAll(".issue-link").forEach(function (a) {
     if (a.dataset.hinted) return;
     var repo = a.getAttribute("data-issue-repo");
@@ -211,46 +337,42 @@ export function applyIssueTitleHints(scope) {
       num = m[1];
       a.setAttribute("data-issue-num", num);
     }
-    if (repo) {
-      /* Cross-repo: hit the per-issue endpoint lazily. */
-      var key = repo + "#" + num;
-      var cached = issueTitleCache[key];
-      if (cached) {
-        _hydrateIssueLink(a, cached);
-      } else if (cached === undefined) {
-        _fetchCrossRepoTitle(repo, num, function (title) {
-          _hydrateIssueLink(a, title);
-        });
-      }
-    } else {
-      /* Legacy bare `#N` → ywatanabe1989/todo, served from the list cache. */
-      var title = issueTitleCache[num];
-      if (title) _hydrateIssueLink(a, title);
+    /* Only cross-repo `owner/repo#N` links carry a hint now (#275).
+     * Links without data-issue-repo are legacy/external and stay unhinted. */
+    if (!repo) return;
+    var key = repo + "#" + num;
+    var cached = issueTitleCache[key];
+    if (cached) {
+      _hydrateIssueLink(a, cached);
+    } else if (cached === undefined) {
+      uncached.push({ a: a, repo: repo, num: num });
     }
   });
-}
-
-export async function refreshIssueTitleCache() {
-  try {
-    var res = await fetch(apiUrl("/api/github/issues"), {
-      credentials: "same-origin",
+  /* Dispatch the misses through the debounced prefetch queue so a burst
+   * of new messages coalesces into a single batch of fetches (#275). */
+  if (uncached.length > 0) {
+    uncached.forEach(function (u) {
+      _prefetchQueue.push({ repo: u.repo, num: u.num });
     });
-    if (!res.ok) return;
-    var issues = await res.json();
-    if (Array.isArray(issues)) {
-      issues.forEach(function (i) {
-        if (i && i.number && i.title)
-          issueTitleCache[String(i.number)] = i.title;
+    _schedulePrefetchFlush(function (title, key) {
+      /* Hydrate all matching links now that the fetch resolved. */
+      uncached.forEach(function (u) {
+        if (u.repo + "#" + u.num === key && title) {
+          _hydrateIssueLink(u.a, title);
+        }
       });
-      applyIssueTitleHints();
-    }
-  } catch (e) {
-    /* ignore */
+    });
   }
 }
-/* Refresh on load and every 2 minutes */
-refreshIssueTitleCache();
-setInterval(refreshIssueTitleCache, 120000);
+
+/* Kept as a named export for back-compat with modules that still import
+ * it. The legacy body (pre-seeding the cache with a GET /api/github/issues
+ * dump of ywatanabe1989/todo) was removed along with the bare `#N`
+ * auto-linker (#275) — cross-repo refs populate the cache on demand and
+ * are now persisted via localStorage instead. */
+export async function refreshIssueTitleCache() {
+  /* no-op retained for import compatibility */
+}
 
 // Expose cross-file mutable state via globalThis:
 (globalThis as any)._initialLoadComplete = (typeof _initialLoadComplete !== 'undefined' ? _initialLoadComplete : undefined);

@@ -5,9 +5,11 @@ import { readFileSync } from "fs";
 import { basename } from "path";
 import {
   ConnLike,
+  MCP_ERROR_CODES,
   OROCHI_AGENT,
   OROCHI_TOKEN,
   httpBase,
+  mcpError,
   tokenParam,
   buildFetchHeaders,
   MIME,
@@ -18,14 +20,11 @@ export async function handleReply(
   args: { chat_id: string; text: string; reply_to?: string; files?: string[] },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error: not connected to Orochi (state=${conn.state}, attempts=${(conn as any).reconnectAttempts})`,
-        },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.AGENT_OFFLINE,
+      `not connected to Orochi (state=${conn.state}, attempts=${(conn as any).reconnectAttempts})`,
+      "wait for the MCP sidecar to reconnect",
+    );
   }
 
   const attachments: Array<Record<string, unknown>> = [];
@@ -133,9 +132,11 @@ export async function handleReact(args: {
   const messageId = String(args.message_id);
   const emoji = args.emoji;
   if (!messageId || !emoji) {
-    return {
-      content: [{ type: "text", text: "Error: message_id and emoji required" }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INVALID_INPUT,
+      "message_id and emoji required",
+      "pass both fields",
+    );
   }
   try {
     const url = `${httpBase}/api/reactions/${tokenParam("?")}`;
@@ -150,22 +151,27 @@ export async function handleReact(args: {
     });
     if (!resp.ok) {
       const body = await resp.text();
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
-          },
-        ],
-      };
+      const code =
+        resp.status === 401 || resp.status === 403
+          ? MCP_ERROR_CODES.PERMISSION_DENIED
+          : resp.status === 404
+            ? MCP_ERROR_CODES.NOT_FOUND
+            : MCP_ERROR_CODES.INTERNAL_ERROR;
+      return mcpError(
+        code,
+        `react HTTP ${resp.status}`,
+        body.slice(0, 200) || "no response body",
+      );
     }
     return {
       content: [{ type: "text", text: `reacted ${emoji} to ${messageId}` }],
     };
   } catch (err) {
-    return {
-      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INTERNAL_ERROR,
+      `react failed: ${(err as Error).message}`,
+      "check hub reachability",
+    );
   }
 }
 
@@ -188,19 +194,26 @@ export async function handleExportChannel(args: {
     const resp = await fetch(url, { headers: buildFetchHeaders() });
     if (!resp.ok) {
       const body = await resp.text();
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
-          },
-        ],
-      };
+      const code =
+        resp.status === 401 || resp.status === 403
+          ? MCP_ERROR_CODES.PERMISSION_DENIED
+          : resp.status === 404
+            ? MCP_ERROR_CODES.NOT_FOUND
+            : MCP_ERROR_CODES.INTERNAL_ERROR;
+      return mcpError(
+        code,
+        `export_channel HTTP ${resp.status}`,
+        body.slice(0, 200) || "no response body",
+      );
     }
     const text = await resp.text();
     return { content: [{ type: "text", text }] };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { content: [{ type: "text", text: `Error: ${msg}` }] };
+    return mcpError(
+      MCP_ERROR_CODES.INTERNAL_ERROR,
+      `export_channel failed: ${msg}`,
+      "check hub reachability",
+    );
   }
 }

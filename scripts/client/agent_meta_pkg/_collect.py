@@ -6,7 +6,12 @@ import json
 import os
 from pathlib import Path
 
-from ._classifier import _classify_pane_state, _extract_stuck_prompt
+from ._classifier import (
+    _classify_pane_state,
+    _detect_contradiction,
+    _extract_stuck_prompt,
+    _log_contradiction_evidence,
+)
 from ._files import (
     collect_claude_md,
     collect_mcp_json,
@@ -97,6 +102,44 @@ def collect(agent: str) -> dict:
     claude_md_head, claude_md_full = collect_claude_md(workspace)
     mcp_json_full = collect_mcp_json(workspace)
 
+    # Classifier (computed ONCE per collect — the stagnation counter
+    # inside _classify_pane_state is per-cycle, so calling it twice
+    # would double-increment the "pane unchanged for N cycles" count
+    # and mis-fire `stale` after 2 real cycles instead of 3). The
+    # `agent` kwarg enables cross-cycle stagnation tracking; omit it
+    # and the classifier degrades to its legacy stateless behavior.
+    # Live hostname(1) — the kernel's answer to "where is this process
+    # running right now". This is the authoritative host-identity signal
+    # the hub's badge renderer (hostedAgentName) prefers over ``machine``.
+    # Collected here so ``_build_payload`` can forward it unconditionally,
+    # never letting env vars or server-side inference speak for the
+    # process (lead msg#15578 root fix).
+    import socket as _socket
+    try:
+        live_hostname = (_socket.gethostname() or "").split(".")[0].strip()
+    except Exception:
+        live_hostname = ""
+
+    pane_state = _classify_pane_state(pane_tail_block_clean, pane, agent=agent)
+    stuck_prompt_text = _extract_stuck_prompt(
+        pane_tail_block_clean, pane, agent=agent
+    )
+    # Contradiction check + evidence log. `alive=True` here means
+    # we successfully captured a pane from the multiplexer, which is
+    # the client-side equivalent of the hub's 4th-LED == green
+    # (heartbeat fresh). When the classifier also says `stale`, that's
+    # the msg#15541 contradiction — log the tmux tail so future
+    # pattern additions have ground-truth data, and surface a
+    # `classifier_note` on the payload so the Agents tab can flag it.
+    classifier_note = _detect_contradiction(pane_state, liveness="online")
+    if classifier_note:
+        _log_contradiction_evidence(
+            agent=agent,
+            pane_state=pane_state,
+            liveness="online",
+            tmux_tail=pane,
+        )
+
     # If the most recent assistant turn carried no real model label
     # (empty or a <synthetic>-style placeholder from compacted
     # summaries), fall back to the env var the runtime set at spawn.
@@ -168,6 +211,11 @@ def collect(agent: str) -> dict:
         "workdir": workspace,
         "project": project,
         "machine": machine,
+        # Live hostname(1) — see the comment above live_hostname for why
+        # we send this unconditionally. The hub stores this as ``hostname``
+        # distinct from ``machine`` (YAML label) and
+        # ``hostname_canonical`` (FQDN).
+        "hostname": live_hostname,
         # todo#55: canonical FQDN for display next to the short machine
         # label in the dashboard.
         "hostname_canonical": _resolve_canonical_hostname(),
@@ -179,8 +227,15 @@ def collect(agent: str) -> dict:
         "mcp_json": mcp_json_full,
         # todo#418: agent decision-transparency — classifier label + verbatim
         # stuck-prompt text. Computed from pane_tail_block_clean.
-        "pane_state": _classify_pane_state(pane_tail_block_clean, pane),
-        "stuck_prompt_text": _extract_stuck_prompt(pane_tail_block_clean, pane),
+        # 2026-04-21 (lead msg#15541): the classifier now also emits
+        # `stale` when the pane tail has been byte-identical for
+        # N consecutive push cycles with no busy-animation marker. The
+        # `classifier_note` field surfaces the 3rd-LED-stale-vs-4th-LED-green
+        # contradiction with evidence appended to a dedicated log so
+        # future pattern additions have ground-truth data.
+        "pane_state": pane_state,
+        "stuck_prompt_text": stuck_prompt_text,
+        "classifier_note": classifier_note,
         # scitex-orochi #187 / #59 — hook-event ring buffer summary
         # from scitex-agent-container. Unpacked as top-level keys so
         # push_all()'s whitelist can forward each one verbatim.

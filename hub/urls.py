@@ -90,6 +90,24 @@ urlpatterns = [
         name="api-channel-rename",
     ),
     path("api/workspace/<slug:slug>/stats/", views.api_stats, name="api-stats"),
+    # Channel members + my subscriptions — read-only MCP tools (#252, #253).
+    # Mounted on the default urls.py too so dashboard-side queries work
+    # in dev/test where the bare domain is the only Host header in play.
+    path(
+        "api/workspace/<slug:slug>/channel-members/",
+        views.api_channel_members,
+        name="api-channel-members",
+    ),
+    path(
+        "api/workspace/<slug:slug>/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions",
+    ),
+    path(
+        "api/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions-flat",
+    ),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
@@ -99,6 +117,20 @@ urlpatterns = [
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Admin-scoped subscribe/unsubscribe (issue #262 §9.1). Routed to a
+    # dedicated view that requires the calling actor to hold the
+    # workspace ``admin`` (or ``staff``) role; non-admin agents get a
+    # structured ``permission_denied`` JSON envelope.
+    path(
+        "api/agents/<str:target>/subscribe/",
+        views.api_admin_agent_subscribe,
+        name="api-admin-agent-subscribe",
+    ),
+    path(
+        "api/agents/<str:target>/unsubscribe/",
+        views.api_admin_agent_unsubscribe,
+        name="api-admin-agent-unsubscribe",
+    ),
     # Per-agent single-screen detail payload (todo#420 MVP).
     path(
         "api/agents/<str:name>/detail/",

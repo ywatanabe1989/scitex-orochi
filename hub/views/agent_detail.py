@@ -32,7 +32,7 @@ from datetime import datetime, timezone
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
-from hub.registry import get_agents
+from hub.registry import get_agents, get_recent_singleton_event
 
 # Canonical list of credential-ish strings to redact from terminal
 # captures before serving them to the dashboard. These are matched as
@@ -247,6 +247,14 @@ def api_agent_detail(request, name: str):
         # by latency).
         "last_pong_ts": agent.get("last_pong_ts"),
         "last_rtt_ms": agent.get("last_rtt_ms"),
+        # #259 — 4th indicator (Remote / nonce-echo round-trip).
+        # ``last_nonce_echo_at`` is the field the agent-badge LED
+        # renderer consumes (already wired in agent-badge.js); the
+        # other two surface RTT + raw unix timestamp for the per-agent
+        # detail page tooling.
+        "last_nonce_echo_at": agent.get("last_nonce_echo_at"),
+        "last_echo_rtt_ms": agent.get("last_echo_rtt_ms"),
+        "last_echo_ok_ts": agent.get("last_echo_ok_ts"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
         "claude_md": redact_secrets(agent.get("claude_md") or ""),
         # todo#460: serve the workspace .mcp.json for the Agents tab viewer.
@@ -314,5 +322,12 @@ def api_agent_detail(request, name: str):
         "last_action_elapsed_s": agent.get("last_action_elapsed_s"),
         "action_counts": agent.get("action_counts") or {},
         "p95_elapsed_s_by_action": agent.get("p95_elapsed_s_by_action") or {},
+        # scitex-orochi#255: most recent singleton-cardinality conflict
+        # for this agent within ``SINGLETON_EVENT_WINDOW_S``. ``None``
+        # when no conflict has been recorded recently. Each event has
+        # ``ts``, ``winner_instance_id``, ``loser_instance_id``,
+        # ``reason``. The Agents tab uses this to surface a "another
+        # process tried to claim this name" warning chip.
+        "last_duplicate_identity_event": get_recent_singleton_event(name),
     }
     return JsonResponse(payload)

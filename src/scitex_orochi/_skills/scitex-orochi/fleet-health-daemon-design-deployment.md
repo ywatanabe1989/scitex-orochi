@@ -226,8 +226,9 @@ the sweep sees the sustained-wedged state and acts).
 2. **"daemon injects keystrokes"** — never. Judgment is worker-side.
 3. **"worker polls instead of reading breadcrumbs"** — defeats the
    quota relief. Worker idles between breadcrumb events.
-4. **"continuous threshold chatter to `#agent`"** — daemons are
-   silent-otherwise.
+4. **"continuous threshold chatter to `#heads`"** — daemons are
+   silent-otherwise. (`#agent` was abolished 2026-04-21; cross-head
+   chatter now lives in `#heads`, lead-moderated.)
 5. **"one healer on NAS covers everything"** — violates host
    diversity and the redundancy-mesh requirement.
 6. **"reshape NDJSON schema when adding a signal"** — append only.

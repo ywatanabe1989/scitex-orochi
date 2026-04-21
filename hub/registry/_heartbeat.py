@@ -125,13 +125,35 @@ def set_health(
 
 
 def update_heartbeat(name: str, metrics: dict | None = None) -> None:
-    """Update heartbeat timestamp and optional metrics."""
+    """Update heartbeat timestamp and optional metrics.
+
+    todo#272: after the timestamp/metric write, run the quota-pressure
+    state machine for this agent. The check reads the quota fields that
+    ``register_agent()`` just wrote (``quota_5h_used_pct`` / ``quota_7d_used_pct``
+    + reset timestamps + prior state) and posts a threshold-crossing
+    message to ``#progress`` / ``#escalation`` / ``#ywatanabe`` when a
+    window crosses the warn / escalate bands. Best-effort — the check
+    never raises into the heartbeat hot path.
+    """
     with _lock:
         if name in _agents:
             _agents[name]["last_heartbeat"] = time.time()
             _agents[name]["status"] = "online"
             if metrics:
                 _agents[name]["metrics"] = metrics
+            has_agent = True
+        else:
+            has_agent = False
+
+    if has_agent:
+        # Deferred import — avoid circular (``hub.quota_watch`` itself
+        # imports ``hub.registry``).
+        try:
+            from hub.quota_watch import check_agent_quota_pressure
+
+            check_agent_quota_pressure(name)
+        except Exception:  # pragma: no cover — defense in depth
+            pass
 
 
 def update_pong(name: str, rtt_ms: float) -> None:
@@ -145,3 +167,69 @@ def update_pong(name: str, rtt_ms: float) -> None:
         if name in _agents:
             _agents[name]["last_pong_ts"] = time.time()
             _agents[name]["last_rtt_ms"] = float(rtt_ms)
+
+
+def update_echo_pong(name: str, rtt_ms: float) -> None:
+    """Record an agent's echo round-trip pong (#259, indicator #4).
+
+    Sets three fields:
+
+    - ``last_echo_rtt_ms`` — most recent echo RTT in milliseconds.
+    - ``last_echo_ok_ts``  — wall time of the most recent successful
+      echo (unix seconds, float). Used by the API/payload layer.
+    - ``last_nonce_echo_at`` — ISO-8601 string of the same instant,
+      consumed directly by the Agents-tab LED renderer
+      (``renderAgentLeds`` reads ``a.last_nonce_echo_at``).
+
+    All three are written atomically so a partial update can't leave
+    the LED rendering off a fresher timestamp than the RTT it cites.
+
+    Semantic note (msg#15538 — 4th-LED auto-green on inbound message):
+    ``last_nonce_echo_at`` is now the "last proof of life" timestamp,
+    written either by this setter (successful nonce probe, carries RTT)
+    OR by ``mark_echo_alive()`` (any inbound agent message, no RTT).
+    Both paths feed the same LED field so either signal turns it green.
+    """
+    from datetime import datetime, timezone
+
+    now = time.time()
+    iso_now = datetime.fromtimestamp(now, tz=timezone.utc).isoformat()
+    with _lock:
+        if name in _agents:
+            _agents[name]["last_echo_rtt_ms"] = float(rtt_ms)
+            _agents[name]["last_echo_ok_ts"] = now
+            _agents[name]["last_nonce_echo_at"] = iso_now
+
+
+def mark_echo_alive(name: str) -> None:
+    """Record proof-of-life from an inbound agent message (msg#15538).
+
+    The 4th LED (ECHO / ``last_nonce_echo_at``) was previously only
+    driven by the hub→agent nonce round-trip in ``_hub_echo_loop`` /
+    ``handle_echo_pong``. If the agent's MCP-client could not reply to
+    the nonce (e.g. the sidecar was down) the LED stayed amber / red
+    even though the agent was clearly alive — we had just received a
+    chat message from it.
+
+    This setter is called from ``handle_agent_message`` when a
+    ``type: "message"`` frame lands on the WS (after ACL + membership
+    checks pass, so only authenticated inbound traffic is credited).
+    It advances the same ``last_nonce_echo_at`` / ``last_echo_ok_ts``
+    pair the nonce-probe setter writes — the LED renderer needs no
+    change; it just sees the hot timestamp regardless of which
+    mechanism produced it.
+
+    Does NOT touch ``last_echo_rtt_ms`` — an inbound message has no
+    round-trip measurement, and overwriting a real RTT with a sentinel
+    would make the per-agent detail panel's RTT display misleading.
+    The two mechanisms together are a strictly stronger liveness signal
+    than nonce-probe alone (either path turns the LED green).
+    """
+    from datetime import datetime, timezone
+
+    now = time.time()
+    iso_now = datetime.fromtimestamp(now, tz=timezone.utc).isoformat()
+    with _lock:
+        if name in _agents:
+            _agents[name]["last_echo_ok_ts"] = now
+            _agents[name]["last_nonce_echo_at"] = iso_now

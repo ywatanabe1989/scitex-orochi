@@ -69,6 +69,12 @@ urlpatterns = [
     ),
     path("api/channel-prefs/", views.api_channel_prefs, name="api-channel-prefs"),
     path("api/channel-members/", views.api_channel_members, name="api-channel-members"),
+    # My subscriptions — MCP `my_subscriptions` tool (#253). Read-only.
+    path(
+        "api/me/subscriptions/",
+        views.api_my_subscriptions,
+        name="api-my-subscriptions",
+    ),
     path("api/messages/", views.api_messages, name="api-messages"),
     path("api/dms/", views.api_dms, name="api-dms"),
     path("api/history/<str:channel_name>/", views.api_history, name="api-history"),
@@ -87,6 +93,20 @@ urlpatterns = [
     path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Admin-scoped subscribe/unsubscribe (issue #262 §9.1) — mounted on
+    # the workspace subdomain so dashboard sessions on
+    # ``<slug>.scitex-orochi.com`` can call the admin path without an
+    # explicit slug. Permission gate inside the view enforces admin/staff.
+    path(
+        "api/agents/<str:target>/subscribe/",
+        views.api_admin_agent_subscribe,
+        name="api-admin-agent-subscribe-ws",
+    ),
+    path(
+        "api/agents/<str:target>/unsubscribe/",
+        views.api_admin_agent_unsubscribe,
+        name="api-admin-agent-unsubscribe-ws",
+    ),
     # Per-agent single-screen detail payload (todo#420 MVP).
     path(
         "api/agents/<str:name>/detail/",

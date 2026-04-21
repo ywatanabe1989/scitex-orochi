@@ -19,10 +19,30 @@ _lock = threading.Lock()
 _agents: dict[str, dict] = {}
 _connections: dict[str, set[str]] = {}
 
+# scitex-orochi#255: per-WS-channel identity table. Maps Channels'
+# ``channel_name`` (the opaque per-WebSocket id used in ``_connections``)
+# to the (agent_name, instance_id, start_ts_unix) triple captured when
+# the WS connected. Lets the singleton enforcer ask "what process owns
+# this socket?" without re-parsing the register frame, and lets it
+# safely close the LOSING socket by name. Cleared on disconnect.
+_connection_identity: dict[str, dict] = {}
+
+# scitex-orochi#255: ring buffer of recent singleton-conflict events.
+# Entries are dicts {ts, agent, winner_instance_id, loser_instance_id,
+# reason}. Trimmed lazily on read so a long-lived hub doesn't pile up
+# events forever — the agent-detail API only surfaces the newest event
+# per agent, but the buffer is kept per-agent so future debugging /
+# observability can query the full hour.
+_singleton_events: dict[str, list[dict]] = {}
+
 # Agents with no heartbeat for this many seconds are auto-marked offline
 HEARTBEAT_TIMEOUT_S = 60
 # Offline agents are purged from registry after this many seconds
 STALE_PURGE_S = 300  # 5 minutes
+# How long a singleton-conflict event stays in the ring buffer for
+# surfacing in the agent-detail API. One hour is enough to investigate
+# a recent ghost-process incident without bloating memory.
+SINGLETON_EVENT_WINDOW_S = 3600
 
 
 def _active_session_count(name: str) -> int:

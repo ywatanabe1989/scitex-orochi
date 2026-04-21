@@ -23,6 +23,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from ._agent_handlers import (
+    handle_echo_pong,
     handle_heartbeat,
     handle_pong,
     handle_register,
@@ -30,6 +31,8 @@ from ._agent_handlers import (
     handle_subscription,
     handle_task_update,
 )
+from ._agent_refresh import prehydrate_channels as _prehydrate_channels
+from ._echo import _hub_echo_loop
 from ._groups import _hub_ping_loop, _sanitize_group, log
 from ._helpers import (
     _ensure_agent_member,
@@ -56,6 +59,18 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_name = result["workspace_name"]
         self.agent_name = qs.get("agent", ["anonymous"])[0]
 
+        # scitex-orochi#255: per-process identity captured at connect so
+        # the singleton enforcer can decide who wins when two WS claim
+        # the same agent name. Both fields are optional in the URL —
+        # legacy clients (pre-#257) omit them and fall through to the
+        # permissive "no enforcement" path with a logged WARNING.
+        self._instance_id = qs.get("instance_id", [""])[0] or ""
+        _start_raw = qs.get("start_ts_unix", [""])[0]
+        try:
+            self._start_ts_unix = float(_start_raw) if _start_raw else None
+        except (TypeError, ValueError):
+            self._start_ts_unix = None
+
         # Spec v3 §2.3 — idempotently ensure a WorkspaceMember row exists
         # for this agent so DMParticipant FKs have a stable target.
         self.workspace_member = await _ensure_agent_member(
@@ -81,13 +96,126 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_add(group, self.channel_name)
 
+        # scitex-orochi#451 — eager channel-membership rehydration.
+        # Pre-hydrates persisted group memberships + seeds agent_meta so
+        # group messages aren't silently dropped during the window between
+        # connect and the client's register frame (or permanently, if the
+        # register frame never arrives). See ``_prehydrate_channels``.
+        await _prehydrate_channels(self)
+
         await self.accept()
+
+        # scitex-orochi#255: singleton cardinality enforcement.
+        #
+        # Before recording this connection in the registry, decide
+        # whether to enforce singleton cardinality: only one WS per
+        # agent name should remain alive. The decision rests on
+        # (instance_id, start_ts_unix) captured per-connection — the
+        # older start_ts_unix wins (the original process keeps its
+        # claim). Legacy clients without identity fall through to the
+        # permissive multi-connection behaviour with a WARNING.
+        from hub.registry import (
+            decide_singleton_winner,
+            get_connection_identity,
+            list_sibling_channels,
+            record_singleton_conflict,
+            set_connection_identity,
+        )
+
+        decision = decide_singleton_winner(
+            self.agent_name, self._instance_id, self._start_ts_unix
+        )
+        if decision == "challenger":
+            # Newcomer is older → it wins. Close every incumbent WS
+            # under the same name with the singleton-conflict close
+            # frame, record the event, then proceed to register the
+            # newcomer below as the surviving connection.
+            for inc_ch in list_sibling_channels(self.agent_name):
+                inc_ident = get_connection_identity(inc_ch) or {}
+                inc_iid = inc_ident.get("instance_id", "")
+                try:
+                    await self.channel_layer.send(
+                        inc_ch,
+                        {
+                            "type": "agent.singleton_evict",
+                            "code": 4409,
+                            "reason": "duplicate_identity",
+                        },
+                    )
+                except Exception:  # noqa: BLE001 — best-effort eviction
+                    log.exception(
+                        "Failed to send singleton-evict to incumbent %s for %s",
+                        inc_ch,
+                        self.agent_name,
+                    )
+                record_singleton_conflict(
+                    self.agent_name,
+                    winner_instance_id=self._instance_id,
+                    loser_instance_id=inc_iid,
+                    reason="duplicate_identity",
+                )
+                log.warning(
+                    "Singleton conflict on %s: incumbent %s evicted by older "
+                    "challenger (winner=%s, loser=%s).",
+                    self.agent_name,
+                    inc_ch,
+                    self._instance_id,
+                    inc_iid,
+                )
+        elif decision == "incumbent":
+            # An older incumbent already holds the claim — close THIS
+            # socket with the singleton-conflict frame and record the
+            # event. The incumbent's identity is the most-recent
+            # full-identity sibling.
+            inc_iid = ""
+            for inc_ch in list_sibling_channels(self.agent_name):
+                inc_ident = get_connection_identity(inc_ch) or {}
+                if inc_ident.get("instance_id"):
+                    inc_iid = inc_ident["instance_id"]
+                    break
+            record_singleton_conflict(
+                self.agent_name,
+                winner_instance_id=inc_iid,
+                loser_instance_id=self._instance_id,
+                reason="duplicate_identity",
+            )
+            log.warning(
+                "Singleton conflict on %s: challenger %s rejected (incumbent=%s, "
+                "loser=%s).",
+                self.agent_name,
+                self.channel_name,
+                inc_iid,
+                self._instance_id,
+            )
+            await self.close(code=4409, reason="duplicate_identity")
+            return
+        elif decision == "no_enforcement" and list_sibling_channels(self.agent_name):
+            # Legacy client (or first connection missing identity) —
+            # don't enforce, but log so multi-instance hazards stay
+            # visible in the operator log.
+            log.warning(
+                "Multi-instance hazard on %s: %d sibling connection(s) but "
+                "missing instance_id/start_ts_unix on this or incumbent — "
+                "falling back to permissive multi-connection behaviour "
+                "(scitex-orochi#255).",
+                self.agent_name,
+                len(list_sibling_channels(self.agent_name)),
+            )
 
         # scitex-orochi#144 fix path 4: track this WebSocket as one of N
         # active connections under self.agent_name, so the registry can
         # surface concurrent-instance situations without altering identity.
         from hub.registry import register_connection
 
+        # Record identity BEFORE register_connection so that subsequent
+        # connections coming in concurrently can see this one's identity
+        # via decide_singleton_winner.
+        set_connection_identity(
+            self.channel_name,
+            self.agent_name,
+            self._instance_id,
+            self._start_ts_unix,
+        )
         active_sessions = register_connection(self.agent_name, self.channel_name)
 
         log.info(
@@ -123,19 +251,32 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         # live RTT and flag hub-side drops without waiting for the 30s
         # heartbeat-stale timeout.
         self._ping_task = asyncio.create_task(_hub_ping_loop(self))
+        # #259 — start hub→agent echo round-trip loop. Independent task
+        # so a transport hiccup in one loop can't starve the other.
+        # Cancelled in disconnect() alongside _ping_task.
+        self._echo_task = asyncio.create_task(_hub_echo_loop(self))
 
     async def disconnect(self, code):
         # Stop the ping task first so we don't race with the WS close.
         ping_task = getattr(self, "_ping_task", None)
         if ping_task is not None:
             ping_task.cancel()
+        echo_task = getattr(self, "_echo_task", None)
+        if echo_task is not None:
+            echo_task.cancel()
         if hasattr(self, "workspace_group"):
             # scitex-orochi#144 fix path 4: drop only THIS connection from
             # the per-agent set, not the whole agent record. The agent only
             # transitions to offline when its last sibling connection drops.
-            from hub.registry import unregister_connection
+            from hub.registry import (
+                clear_connection_identity,
+                unregister_connection,
+            )
 
             agent_name = getattr(self, "agent_name", "?")
+            # scitex-orochi#255: drop the per-channel identity row so a
+            # later challenger doesn't compare against a dead socket.
+            clear_connection_identity(self.channel_name)
             remaining = unregister_connection(agent_name, self.channel_name)
             if remaining > 0:
                 log.info(
@@ -173,6 +314,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             )
         elif msg_type == "pong":
             await handle_pong(self, content)
+        elif msg_type == "echo_pong":
+            await handle_echo_pong(self, content)
         elif msg_type == "heartbeat":
             await handle_heartbeat(self, content)
         elif msg_type == "task_update":
@@ -180,6 +323,26 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         elif msg_type == "subagents_update":
             await handle_subagents_update(self, content)
         elif msg_type == "message":
+            # scitex-orochi#451 — deny message frames from un-registered
+            # connections. This makes the "orphan on reconnect" failure
+            # mode break LOUDLY (error response the client can log and
+            # surface) instead of silently (write succeeds but the agent
+            # never sees replies because it isn't in the reply groups).
+            # Clients MUST send a ``register`` frame on every reconnect
+            # and await the ``registered`` ack before sending messages.
+            if not getattr(self, "_registered", False):
+                await self.send_json(
+                    {
+                        "type": "error",
+                        "code": "not_registered",
+                        "message": (
+                            "send a `register` frame and await the "
+                            "`registered` ack before sending messages "
+                            "(scitex-orochi#451)"
+                        ),
+                    }
+                )
+                return
             from ._agent_message import handle_agent_message
 
             await handle_agent_message(self, content)
@@ -224,6 +387,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     # --- channel-layer events ignored on the agent socket ----------------
 
+    async def agent_singleton_evict(self, event):
+        """scitex-orochi#255 — close this WS because a newer/older twin won.
+
+        Sent to the LOSING incumbent socket from the connect handler of a
+        challenger that wins the singleton-cardinality decision. The
+        message-name uses an underscore (``agent_singleton_evict``)
+        because Channels rewrites the dotted ``agent.singleton_evict``
+        type into this method name.
+        """
+        code = int(event.get("code") or 4409)
+        reason = str(event.get("reason") or "duplicate_identity")
+        log.info(
+            "Closing WS for %s by singleton-eviction (code=%d reason=%s)",
+            getattr(self, "agent_name", "?"),
+            code,
+            reason,
+        )
+        try:
+            await self.close(code=code, reason=reason)
+        except TypeError:
+            # Some versions of channels.AsyncJsonWebsocketConsumer.close
+            # don't accept a `reason` kwarg — fall back to code-only.
+            await self.close(code=code)
+
     async def agent_presence(self, event):
         pass
 
@@ -236,7 +423,35 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
     async def system_message(self, event):
         pass
 
+    async def agent_subs_refresh(self, event):
+        """Re-sync ``agent_meta["channels"]`` from DB (#282).
+
+        Delegates to :func:`handle_agent_subs_refresh` in
+        ``_agent_refresh`` to keep this file under the 512-line cap.
+        """
+        from ._agent_refresh import handle_agent_subs_refresh
+
+        await handle_agent_subs_refresh(self, event)
+
     # --- channel-layer events forwarded to the agent WebSocket -----------
+
+    async def _is_channel_visible(self, ch_name: str) -> bool:
+        """Issue #277 — read-side ACL: apply the chat.message filter shape.
+
+        Mirrors ``chat_message`` (DM participant check for dm:* channels,
+        subscription-membership check for group channels) so thread /
+        reaction / edit / delete fan-out cannot leak cross-channel.
+        The write-side companion is #276 / PR #279.
+        """
+        is_dm = ch_name.startswith("dm:")
+        if is_dm:
+            return await _is_dm_participant_by_member(
+                channel_name=ch_name,
+                workspace_id=self.workspace_id,
+                member_id=getattr(self, "workspace_member_id", None),
+            )
+        agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
+        return ch_name in agent_channels
 
     async def reaction_update(self, event):
         """Forward reaction add/remove events to agent WebSocket.
@@ -246,6 +461,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         thumbs-up to mean "received, no further action needed") without
         having to write a full reply.
         """
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "reaction_update",
@@ -257,24 +475,30 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         )
 
     async def message_edit(self, event):
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "message_edit",
                 "message_id": event["message_id"],
                 "sender": event["sender"],
-                "channel": event.get("channel", ""),
+                "channel": ch_name,
                 "text": event["text"],
                 "edited_at": event.get("edited_at"),
             }
         )
 
     async def message_delete(self, event):
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "message_delete",
                 "message_id": event["message_id"],
                 "sender": event["sender"],
-                "channel": event.get("channel", ""),
+                "channel": ch_name,
             }
         )
 
@@ -284,6 +508,9 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         The MCP sidecar rewrites thread_reply into a message with parent
         context, so agents can recognise and respond to threaded replies.
         """
+        ch_name = event.get("channel", "")
+        if ch_name and not await self._is_channel_visible(ch_name):
+            return
         await self.send_json(
             {
                 "type": "thread_reply",
@@ -291,7 +518,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
                 "reply_id": event["reply_id"],
                 "sender": event["sender"],
                 "sender_type": event.get("sender_type", "human"),
-                "channel": event.get("channel", ""),
+                "channel": ch_name,
                 "text": event.get("text", ""),
                 "ts": event.get("ts"),
                 "metadata": event.get("metadata", {}),

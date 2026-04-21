@@ -32,12 +32,56 @@
       .join(", ");
   }
 
-  function dmBadgeHtml(row) {
+  /* #284: DM card === Agent card.
+   *
+   * DM rows render through the shared renderAgentBadge() so markup,
+   * CSS classes and icon/star/LEDs/name layout are IDENTICAL to the
+   * Agent card. For DMs where the counterparty is a live agent, we
+   * pick up its record from window.__lastAgents so real liveness LEDs
+   * light up. For human-to-human DMs, we synthesise a minimal agent-
+   * shaped object keyed off the human's name — the same badge renders
+   * with all LEDs off/unknown (humans don't have a WS/ping/pane/echo
+   * signal) and the star/name columns line up with the agent sidebar.
+   *
+   * Returns a plain object shaped like an agent-registry row. Never
+   * forks the markup — see agent-badge.js renderAgentBadge. */
+  function dmCounterpartyAgentLike(row) {
     var others = (row && row.other_participants) || [];
-    if (others.length === 0) return "";
-    var t = others[0].type === "agent" ? "agent" : "human";
-    var label = t === "agent" ? "AI" : "U";
-    return '<span class="dm-principal-badge ' + t + '">' + label + "</span>";
+    if (others.length === 0) {
+      return {
+        name: row && row.name ? row.name : "(empty DM)",
+        status: "offline",
+        liveness: "offline",
+      };
+    }
+    var p = others[0];
+    var label = (p && p.identity_name) || "?";
+    if (p && p.type === "agent") {
+      var live = Array.isArray(window.__lastAgents) ? window.__lastAgents : [];
+      var match = null;
+      for (var i = 0; i < live.length; i++) {
+        var a = live[i];
+        if (!a || !a.name) continue;
+        var bare = String(a.name).split("@")[0];
+        if (bare === label || a.name === label) {
+          match = a;
+          break;
+        }
+      }
+      if (match) return match;
+      return {
+        name: label,
+        status: "offline",
+        liveness: "offline",
+        machine: (p && p.machine) || "",
+      };
+    }
+    return {
+      name: label,
+      status: "offline",
+      liveness: "offline",
+      _dm_counterparty_type: "human",
+    };
   }
 
   function renderDms(rows) {
@@ -59,68 +103,61 @@
             (typeof _channelPrefs !== "undefined" && _channelPrefs[ch]) || {};
           var pinned = !!prefs.is_starred;
           var muted = !!prefs.is_muted;
+          var counterparty = dmCounterpartyAgentLike(row);
+          var cpWithDmPin = {};
+          for (var k in counterparty)
+            if (Object.prototype.hasOwnProperty.call(counterparty, k))
+              cpWithDmPin[k] = counterparty[k];
+          cpWithDmPin.pinned = pinned;
           return (
-            '<div class="dm-item' +
+            '<div class="dm-item agent-card' +
             active +
             (muted ? " ch-muted" : "") +
             '" data-channel="' +
             escapeHtml(ch) +
+            '" data-agent-name="' +
+            escapeHtml(counterparty.name || "") +
             '" title="' +
             escapeHtml(ch) +
             '">' +
-            '<span class="ch-pin ' +
-            (pinned ? "ch-pin-on" : "ch-pin-off") +
-            '" data-ch="' +
-            escapeHtml(ch) +
-            '" title="' +
-            (pinned ? "Unstar" : "Star (float to top)") +
-            '">' +
-            (pinned ? "\u2605" : "\u2606") +
-            "</span>" +
-            '<span class="ch-watch ' +
-            (muted ? "ch-watch-off" : "ch-watch-on") +
-            '" data-ch="' +
-            escapeHtml(ch) +
-            '" title="' +
-            (muted
-              ? "Unmute (watch this DM)"
-              : "Mute (stop DM notifications)") +
-            '">\uD83D\uDC41</span>' +
-            dmBadgeHtml(row) +
-            escapeHtml(dmDisplayName(row)) +
+            (typeof renderAgentBadge === "function"
+              ? renderAgentBadge(cpWithDmPin, { iconSize: 14 })
+              : escapeHtml(dmDisplayName(row))) +
             "</div>"
           );
         })
         .join("");
       container.querySelectorAll(".dm-item").forEach(function (el) {
-        /* Pin icon toggles is_starred via the shared _setChannelPref. */
-        var pinEl = el.querySelector(".ch-pin");
-        if (pinEl && typeof _setChannelPref === "function") {
-          pinEl.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            var chName = pinEl.getAttribute("data-ch");
-            var pref =
-              (typeof _channelPrefs !== "undefined" && _channelPrefs[chName]) ||
-              {};
-            _setChannelPref(chName, { is_starred: !pref.is_starred });
-          });
-        }
-        /* Eye icon toggles is_muted. */
-        var watchEl = el.querySelector(".ch-watch");
-        if (watchEl && typeof _setChannelPref === "function") {
-          watchEl.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            var chName = watchEl.getAttribute("data-ch");
-            var pref =
-              (typeof _channelPrefs !== "undefined" && _channelPrefs[chName]) ||
-              {};
-            _setChannelPref(chName, { is_muted: !pref.is_muted });
-          });
+        /* Star inside the shared agent-badge markup — override the
+         * default agent-pin behaviour so clicking the star on a DM row
+         * toggles is_starred on the CHANNEL pref (pin the conversation)
+         * rather than pin-to-top the underlying agent. Uses the .dm-item
+         * row's data-channel, not the button's own data-pin-name which
+         * points at the counterparty agent. Runs on capture phase so we
+         * beat the global agent-pin handler wired elsewhere. */
+        var starEl = el.querySelector(".agent-badge-star");
+        if (starEl && typeof _setChannelPref === "function") {
+          starEl.addEventListener(
+            "click",
+            function (ev) {
+              ev.stopPropagation();
+              ev.preventDefault();
+              var chName = el.getAttribute("data-channel");
+              if (!chName) return;
+              var pref =
+                (typeof _channelPrefs !== "undefined" &&
+                  _channelPrefs[chName]) ||
+                {};
+              _setChannelPref(chName, { is_starred: !pref.is_starred });
+            },
+            true,
+          );
         }
         el.addEventListener("click", function (ev) {
+          /* Don't treat star / avatar clicks as row-clicks. */
           if (
-            ev.target.classList.contains("ch-pin") ||
-            ev.target.classList.contains("ch-watch")
+            ev.target.closest(".agent-badge-star") ||
+            ev.target.closest(".avatar-clickable")
           )
             return;
           var ch = el.getAttribute("data-channel");

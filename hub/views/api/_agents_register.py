@@ -97,6 +97,14 @@ def api_agents_register(request):
         info={
             "agent_id": body.get("agent_id") or name,
             "machine": body.get("machine", ""),
+            # #257 — live ``hostname(1)`` of the running agent process.
+            # Authoritative "where am I" signal that the frontend badge
+            # (hostedAgentName) prefers over ``machine``. Client-supplied
+            # from the agent's own ``socket.gethostname()`` / Node
+            # ``os.hostname()`` — NEVER derived from the auth token or
+            # source IP on the hub side (lead msg#15578: server-side
+            # inference was the bug we're fixing).
+            "hostname": body.get("hostname", ""),
             # todo#55: canonical FQDN (socket.getfqdn()) from the heartbeat.
             "hostname_canonical": body.get("hostname_canonical", ""),
             "role": body.get("role", "agent"),
