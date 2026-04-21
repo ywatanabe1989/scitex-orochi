@@ -181,6 +181,7 @@
         <div class="main">
             <div class="tab-bar">
                 <button class="tab-btn active" data-tab="activity">Overview</button>
+                <button class="tab-btn" data-tab="agents-tab">Agents</button>
                 <button class="tab-btn" data-tab="chat">Chat</button>
                 <button class="tab-btn" data-tab="todo">TODO</button>
                 <button class="tab-btn" data-tab="resources">Machines</button>
@@ -290,19 +291,12 @@
             </div>
             <div id="activity-view" class="todo-view" style="display:none">
                 <!-- hook-bypass: inline-style -->
+                <!-- Overview (internal id "activity") is Viz-only per
+                     msg#16337 — the Agents list lives in the dedicated
+                     #agents-tab-view. The Viz/List switch that used to
+                     sit here is gone; only the topology size dropdown
+                     and the summary pill row remain. -->
                 <div id="activity-subtabs" class="activity-subtabs">
-                    <div class="activity-view-switch"
-                         role="tablist"
-                         aria-label="overview view mode">
-                        <button type="button"
-                                class="activity-view-switch-btn"
-                                data-view="topology"
-                                title="topology (agents ↔ channels map)">Viz</button>
-                        <button type="button"
-                                class="activity-view-switch-btn active"
-                                data-view="list"
-                                title="one-line rows">List</button>
-                    </div>
                     <!-- sort + color dropdowns moved to the sidebar (ywatanabe 2026-04-21) -->
                     <select id="activity-size-select"
                             class="activity-sort-select"

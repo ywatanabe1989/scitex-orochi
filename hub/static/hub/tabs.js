@@ -193,6 +193,19 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
     if (hash === "terminal") {
       hash = "";
     }
+    /* msg#16337: Overview loses its Viz/List toggle — users whose
+     * last session was activity + list subview land on the dedicated
+     * Agents tab instead. */
+    if (last === "activity") {
+      try {
+        var _legacyOverviewView = localStorage.getItem("orochi.overviewView");
+        if (_legacyOverviewView === "list" || _legacyOverviewView === "tiled") {
+          last = "agents-tab";
+          localStorage.setItem("orochi.overviewView", "topology");
+          localStorage.setItem("orochi_active_tab", "agents-tab");
+        }
+      } catch (_) {}
+    }
     var target = hash || last || "activity";
     /* If the requested tab no longer has a DOM button, fall back to
      * Overview ("activity"). */
