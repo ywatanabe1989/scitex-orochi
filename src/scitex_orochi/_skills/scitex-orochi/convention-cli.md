@@ -1,9 +1,15 @@
 ---
 name: orochi-cli-conventions
-description: SciTeX CLI design conventions — verb-noun structure, standard flags, exit codes, output streams. Apply to all new CLI commands across the ecosystem.
+description: scitex-orochi CLI specialization — noun catalog (agent, channel, dm, history, message, react, workspace, machine, cron, todo, dispatch, hungry-signal), server/client split, MCP parity. Defers to the canonical SciTeX CLI convention.
 ---
 
-# CLI Conventions (SciTeX / Orochi Fleet)
+# scitex-orochi CLI Convention (specialization)
+
+> **This skill is a specialization of `scitex-cli-convention`.**
+> See: `~/.dotfiles/src/.scitex/orochi/shared/skills/scitex-cli-convention/SKILL.md`
+> for the canonical rules (noun-verb structure, universal flags, exit codes,
+> `(Available Now)` suffix, deprecation redirect, env var namespace, NDJSON).
+> This file only covers scitex-orochi-specific nouns and hub/client split.
 
 These conventions apply to all CLI tools built within the SciTeX ecosystem and Orochi fleet. The upstream definition lives in `scitex-dev` (`scitex/general/interface-cli.md`); this file extends and clarifies it for fleet use.
 
