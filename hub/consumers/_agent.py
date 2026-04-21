@@ -395,6 +395,16 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
     async def system_message(self, event):
         pass
 
+    async def agent_subs_refresh(self, event):
+        """Re-sync ``agent_meta["channels"]`` from DB (#282).
+
+        Delegates to :func:`handle_agent_subs_refresh` in
+        ``_agent_refresh`` to keep this file under the 512-line cap.
+        """
+        from ._agent_refresh import handle_agent_subs_refresh
+
+        await handle_agent_subs_refresh(self, event)
+
     # --- channel-layer events forwarded to the agent WebSocket -----------
 
     async def _is_channel_visible(self, ch_name: str) -> bool:
