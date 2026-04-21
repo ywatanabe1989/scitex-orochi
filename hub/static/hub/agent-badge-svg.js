@@ -388,6 +388,26 @@
           "</text>";
       }
 
+      /* msg#16116 Item 4: subagent count chip — SVG mirror of the
+       * .agent-badge-subcount HTML chip. Hidden when 0/undefined. */
+      var subCount =
+        a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+      var subSvg = "";
+      if (subCount && isFinite(subCount) && subCount >= 1) {
+        var subX = nameX + textW + 4;
+        subSvg =
+          '<text class="topo-label topo-agent-subcount" x="' +
+          subX.toFixed(1) +
+          '" y="' +
+          (y + 4).toFixed(1) +
+          '" fill="#ffd93d" font-size="10">' +
+          "\uD83E\uDDD2 " +
+          _escape(String(subCount)) +
+          "<title>" +
+          _escape(subCount + " active subagent(s)") +
+          "</title></text>";
+      }
+
       var badgeLeft = clusterLeft - 4;
       var badgeWidth = total + 8;
       var badgeY = y - 11;
@@ -407,7 +427,8 @@
       if (opts.extraClass) cls += " " + opts.extraClass;
 
       /* Order matches the HTML agent-badge.js canonical order:
-       *   icon + star + eye + 4 LEDs + name (Task 7, msg#15548). */
+       *   icon + star + eye + 4 LEDs + name + subcount (Task 7 +
+       *   msg#16116 Item 4). */
       return (
         '<g class="' +
         cls +
@@ -423,6 +444,7 @@
         eyeSvg +
         ledBlock.svg +
         nameSvg +
+        subSvg +
         "</g>"
       );
     }

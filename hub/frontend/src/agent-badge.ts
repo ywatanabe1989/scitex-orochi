@@ -128,6 +128,33 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
     );
   }
 
+  // ── 2c. Subagent count (msg#16116 Item 4 / lead msg#16116).
+  //        Tiny chip showing the number of active Agent-tool subagents
+  //        spawned by this agent. Source: ``a.subagent_count`` from the
+  //        /api/agents/ payload (already present per PR #318 — fleet-wide
+  //        terse whitelist). Hidden entirely when the value is undefined
+  //        or 0 so idle agents keep the compact row silhouette.
+  //        Rendered in every surface that uses renderAgentBadge (sidebar
+  //        list, detail-pane header, agent-card composer). The SVG
+  //        topology node renders its own variant via agent-badge-svg.ts.
+  function renderAgentSubagentCount(a) {
+    var n = a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+    if (!n || !isFinite(n) || n < 1) return "";
+    /* Class name ``agent-badge-subcount`` intentionally distinct from
+     * the pre-existing ``.agent-badge-subagents`` pill in
+     * components-agent-cards.css — that rule is a full-width meta pill
+     * rendered on the Agents-tab card; this one is an inline count
+     * chip appended to the badge strip. */
+    return (
+      '<span class="agent-badge-subcount" title="' +
+      _escape(n + " active subagent(s)") +
+      '">' +
+      "\uD83E\uDDD2\uFE0F\u00A0" + /* 🧒 + non-breaking space */
+      n +
+      "</span>"
+    );
+  }
+
   // ── 2b. Eye (togglable show/hide, always visible, placeholder even when
   //        not hidden so column geometry stays constant across rows).
   // Mirrors the channel .ch-eye pattern 1:1: same 👁 glyph in both states,
@@ -284,13 +311,20 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
      * finds the same on agents. The eye was inserted between ★ and
      * the LED strip per lead's explicit ordering directive in
      * msg#15548 (deviation from Task 3's baseline, but Task 7 owns
-     * the slot for agents going forward). */
+     * the slot for agents going forward).
+     *
+     * msg#16116 Item 4: a tiny subagent-count chip is appended AFTER
+     * the name. Hidden by default when count is 0/undefined so idle
+     * agents keep their existing row silhouette; only busy agents
+     * grow the extra glyph. Caller can opt out via
+     * ``opts.hideSubagentCount``. */
     var icon = renderAgentIcon(a, opts.iconSize);
     var star = renderAgentStar(a);
     var eye = opts.hideEye ? "" : renderAgentEye(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    return icon + star + eye + leds + name;
+    var subs = opts.hideSubagentCount ? "" : renderAgentSubagentCount(a);
+    return icon + star + eye + leds + name + subs;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────
@@ -401,6 +435,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   window.renderAgentIcon = renderAgentIcon;
   window.renderAgentStar = renderAgentStar;
   window.renderAgentEye = renderAgentEye;
+  window.renderAgentSubagentCount = renderAgentSubagentCount;
   window.renderAgentLeds = renderAgentLeds;
   window.renderAgentName = renderAgentName;
   window.renderAgentBadge = renderAgentBadge;
@@ -420,3 +455,4 @@ export const renderAgentIcon = (window as any).renderAgentIcon;
 export const renderAgentLeds = (window as any).renderAgentLeds;
 export const renderAgentName = (window as any).renderAgentName;
 export const renderAgentStar = (window as any).renderAgentStar;
+export const renderAgentSubagentCount = (window as any).renderAgentSubagentCount;
