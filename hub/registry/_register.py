@@ -317,6 +317,15 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "quota_7d_reset_at": info.get("quota_7d_reset_at")
             or prev.get("quota_7d_reset_at")
             or "",
+            # todo#272 — per-window quota state machine slot (ok / warn /
+            # escalate). Owned by ``hub.quota_watch.check_agent_quota_pressure``
+            # which reads it before evaluate() and writes the new state
+            # after. Preserved across heartbeats so threshold transitions
+            # fire exactly once per crossing — without the prev-preserve
+            # the state machine would reset to "ok" every heartbeat and
+            # re-post warn / escalate on every poll (spam regression).
+            "quota_state_5h": prev.get("quota_state_5h") or "ok",
+            "quota_state_7d": prev.get("quota_state_7d") or "ok",
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))
