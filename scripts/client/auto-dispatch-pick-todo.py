@@ -37,7 +37,6 @@ import subprocess
 import sys
 from typing import Iterable
 
-
 TODO_REPO = os.environ.get("SCITEX_TODO_REPO", "ywatanabe1989/todo")
 
 
