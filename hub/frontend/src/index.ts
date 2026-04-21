@@ -7,6 +7,10 @@
 // ./window-bridge so all exported names are ready to be bridged.
 
 import "./config";
+/* msg#16324: draft-store must be loaded BEFORE chat-composer and any
+ * other surface that imports from it, so the window-level
+ * orochiDraftStore global is ready by the time those modules read it. */
+import { cleanupStaleDrafts } from "./composer/draft-store";
 import "./agent-icons";
 import "./agent-badge";
 import "./agent-badge-svg";
@@ -113,3 +117,11 @@ import "./password-rules";
 import "./settings";
 import "./blockers";
 import "./window-bridge";
+
+/* msg#16324: one-shot localStorage sweep to evict any orochi.draft.*
+ * entries older than 24h. Keeps the "reasonable total footprint" cap
+ * the spec asks for without a dedicated cron. try/catch because
+ * private-mode / quota can throw. */
+try {
+  cleanupStaleDrafts();
+} catch (_) {}

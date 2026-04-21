@@ -272,8 +272,41 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
   var input = pop.querySelector(".tcc-input");
   var extras = pop.querySelector(".tcc-extras");
   var expandBtn = pop.querySelector(".tcc-expand");
+  /* msg#16324: restore any persisted draft + wire debounced save. */
+  try {
+    if (
+      typeof window.orochiDraftStore !== "undefined" &&
+      window.orochiDraftStore
+    ) {
+      var _saved = window.orochiDraftStore.loadDraft("overview-popup", channel);
+      if (input && _saved) input.value = _saved;
+    }
+  } catch (_) {}
+  if (input) {
+    input.addEventListener("input", function () {
+      try {
+        if (
+          typeof window.orochiDraftStore !== "undefined" &&
+          window.orochiDraftStore &&
+          typeof window.orochiDraftStore._debounceSave === "function"
+        ) {
+          window.orochiDraftStore._debounceSave(
+            "overview-popup",
+            channel,
+            input.value,
+          );
+        }
+      } catch (_) {}
+    });
+  }
   setTimeout(function () {
-    if (input) input.focus();
+    if (input) {
+      input.focus();
+      try {
+        var _len = input.value ? input.value.length : 0;
+        input.setSelectionRange(_len, _len);
+      } catch (_) {}
+    }
   }, 10);
 
   /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
@@ -433,6 +466,16 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     input.value = "";
     popPending.length = 0;
     _renderPopTray();
+    /* Spec msg#16324: clear the stored draft ONLY on successful send. */
+    try {
+      if (
+        typeof window.orochiDraftStore !== "undefined" &&
+        window.orochiDraftStore &&
+        typeof window.orochiDraftStore.clearDraft === "function"
+      ) {
+        window.orochiDraftStore.clearDraft("overview-popup", channel);
+      }
+    } catch (_) {}
     try {
       input.focus();
     } catch (_) {}

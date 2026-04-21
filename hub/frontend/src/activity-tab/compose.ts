@@ -13,6 +13,11 @@ import {
   _pastedTextShouldAttach,
   _uploadFilesAPI,
 } from "../upload";
+import {
+  _debounceSave,
+  clearDraft,
+  loadDraft,
+} from "../composer/draft-store";
 
 /* activity-tab/compose.js — group compose modal (multi-select post)
  * + inline channel compose popup + drag-ghost helper + subscribe toast. */
@@ -316,8 +321,33 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
   var input = pop.querySelector(".tcc-input");
   var extras = pop.querySelector(".tcc-extras");
   var expandBtn = pop.querySelector(".tcc-expand");
+  /* msg#16324: restore any draft the user was typing into this channel
+   * popup before the last reload. loadDraft returns null when nothing
+   * is stored, stored-but-stale (>24h), or localStorage is unavailable.
+   * Cursor lands at end so continued typing "just works". */
+  try {
+    var _savedPopDraft = loadDraft("overview-popup", channel);
+    if (input && _savedPopDraft) {
+      input.value = _savedPopDraft;
+    }
+  } catch (_) {}
+  /* Persist every keystroke (debounced at 300ms via draft-store). */
+  if (input) {
+    input.addEventListener("input", function () {
+      try {
+        _debounceSave("overview-popup", channel, input.value);
+      } catch (_) {}
+    });
+  }
   setTimeout(function () {
-    if (input) input.focus();
+    if (input) {
+      input.focus();
+      /* Place cursor at end of restored draft. */
+      try {
+        var len = input.value ? input.value.length : 0;
+        input.setSelectionRange(len, len);
+      } catch (_) {}
+    }
   }, 10);
 
   /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
@@ -481,6 +511,12 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     input.value = "";
     popPending.length = 0;
     _renderPopTray();
+    /* Spec msg#16324: clear the stored draft ONLY on successful send.
+     * Close-without-send (Esc / outside-click below) keeps the draft so
+     * the user can come back and finish the thought later. */
+    try {
+      clearDraft("overview-popup", channel);
+    } catch (_) {}
     try {
       input.focus();
     } catch (_) {}

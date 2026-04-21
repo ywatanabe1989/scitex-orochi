@@ -41,11 +41,16 @@ function sendMessage() {
   if (typeof clearPendingAttachments === "function") {
     clearPendingAttachments();
   }
-  /* Clear the per-channel draft now that the message has been sent. */
+  /* Clear the per-channel draft now that the message has been sent
+   * (msg#16324: localStorage-backed draft-store replaces the old
+   * sessionStorage scratch). */
   try {
-    sessionStorage.removeItem(
-      "orochi-draft-" + (currentChannel || "__default__"),
-    );
+    if (window.orochiDraftStore) {
+      window.orochiDraftStore.clearDraft(
+        "chat",
+        currentChannel || "__default__",
+      );
+    }
   } catch (_) {}
   /* Hands-free voice dictation: if the mic is currently listening, the
    * next recognition.result event would re-render the entire cumulative
@@ -68,33 +73,28 @@ function sendMessage() {
  * sessionStorage so drafts disappear when the tab closes — closer to a
  * "scratchpad" semantic than localStorage's "permanent" feel.
  */
-function _draftKey() {
+function _draftTarget() {
   try {
-    return "orochi-draft-" + (currentChannel || "__default__");
+    return currentChannel || "__default__";
   } catch (_) {
-    return "orochi-draft-__default__";
-  }
-}
-function _saveDraft(value) {
-  try {
-    if (value && value.length > 0) {
-      sessionStorage.setItem(_draftKey(), value);
-    } else {
-      sessionStorage.removeItem(_draftKey());
-    }
-  } catch (_) {
-    /* sessionStorage may be unavailable in private mode */
+    return "__default__";
   }
 }
 function restoreDraftForCurrentChannel() {
   try {
     var input = document.getElementById("msg-input");
     if (!input) return;
-    var saved = sessionStorage.getItem(_draftKey());
-    if (saved && !input.value) {
+    if (input.value) return; /* don't clobber live text */
+    var ds = window.orochiDraftStore;
+    if (!ds) return;
+    var saved = ds.loadDraft("chat", _draftTarget());
+    if (saved) {
       input.value = saved;
       input.style.height = "auto";
       input.style.height = Math.min(input.scrollHeight, 200) + "px";
+      try {
+        input.setSelectionRange(saved.length, saved.length);
+      } catch (_) {}
     }
   } catch (_) {}
 }
@@ -102,7 +102,11 @@ window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
 document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 200) + "px";
-  _saveDraft(this.value);
+  try {
+    if (window.orochiDraftStore) {
+      window.orochiDraftStore._debounceSave("chat", _draftTarget(), this.value);
+    }
+  } catch (_) {}
 });
 restoreDraftForCurrentChannel();
 
