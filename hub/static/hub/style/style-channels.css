@@ -308,7 +308,11 @@
   line-height: 1;
 }
 .ch-identity-icon .entity-icon-channel {
-  opacity: 0.55;
+  /* #284: channel icons render at full brightness — no dimming on the
+   * default "#" glyph, and no grayscale cascade. Previously 0.55 opacity
+   * made the icons hard to read; the canonical sidebar layout keeps them
+   * the same weight as agent/DM icons. */
+  opacity: 1;
   display: inline-block;
   width: 100%;
   text-align: center;

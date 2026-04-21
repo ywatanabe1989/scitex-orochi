@@ -15,7 +15,10 @@ async function fetchStats() {
     var inputHasFocus = msgInput && document.activeElement === msgInput;
     var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
     var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
-    /* Preserve Ctrl+Click multi-select state across re-renders (#274 Part 2) */
+    /* #284: channels are single-select only. prevSelected keeps the one
+     * currently-selected row marked .selected across DOM re-renders so the
+     * selection indicator doesn't flicker mid-refresh. (The legacy Ctrl+Click
+     * multi-select — #274 Part 2 — has been removed for channels.) */
     var prevSelected = {};
     chContainer
       .querySelectorAll(".channel-item.selected")

@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { renderAgentBadge } from "./agent-badge";
 import { _setChannelPref } from "./app/channel-prefs";
 import { _channelPrefs } from "./app/members";
 import { fetchStats } from "./app/sidebar-stats";
@@ -40,12 +41,70 @@ import { loadChannelHistory, loadHistory } from "./chat/chat-history";
       .join(", ");
   }
 
-  function dmBadgeHtml(row) {
+  /* #284: DM card === Agent card.
+   *
+   * DM rows render through the shared renderAgentBadge() so markup,
+   * CSS classes and icon/star/LEDs/name layout are IDENTICAL to the
+   * Agent card. For DMs where the counterparty is a live agent, we
+   * pick up its record from window.__lastAgents so real liveness LEDs
+   * light up. For human-to-human DMs, we synthesise a minimal agent-
+   * shaped object keyed off the human's name — the same badge renders
+   * with all LEDs off/unknown (humans don't have a WS/ping/pane/echo
+   * signal) and the star/name columns line up with the agent sidebar.
+   *
+   * Returns a plain object shaped like an agent-registry row. Never
+   * forks the markup — see agent-badge.ts renderAgentBadge. */
+  function dmCounterpartyAgentLike(row) {
     var others = (row && row.other_participants) || [];
-    if (others.length === 0) return "";
-    var t = others[0].type === "agent" ? "agent" : "human";
-    var label = t === "agent" ? "AI" : "U";
-    return '<span class="dm-principal-badge ' + t + '">' + label + "</span>";
+    /* Empty DM (no counterparty yet): fall back to the channel key as
+     * name so at least the row shows something stable. */
+    if (others.length === 0) {
+      return {
+        name: row && row.name ? row.name : "(empty DM)",
+        status: "offline",
+        liveness: "offline",
+      };
+    }
+    /* Collapse multi-participant DMs to the first counterparty so we
+     * always render one badge. The remaining names still appear in the
+     * fallback label via the data-channel tooltip. */
+    var p = others[0];
+    var label = (p && p.identity_name) || "?";
+    /* Agent principal: look up the live record so LEDs reflect truth. */
+    if (p && p.type === "agent") {
+      var live = Array.isArray(window.__lastAgents) ? window.__lastAgents : [];
+      var match = null;
+      for (var i = 0; i < live.length; i++) {
+        var a = live[i];
+        if (!a || !a.name) continue;
+        var bare = String(a.name).split("@")[0];
+        if (bare === label || a.name === label) {
+          match = a;
+          break;
+        }
+      }
+      if (match) return match;
+      /* Agent is listed in the DM but not currently in __lastAgents
+       * (offline / not yet registered) — synth an offline-agent-like
+       * record so the badge still renders. */
+      return {
+        name: label,
+        status: "offline",
+        liveness: "offline",
+        machine: (p && p.machine) || "",
+      };
+    }
+    /* Human principal: synthesise a minimal agent-shape object. All
+     * LEDs render grey/off because there's no WS/ping/pane/echo signal
+     * for humans. Star + icon + name layout match the agent card. */
+    return {
+      name: label,
+      status: "offline",
+      liveness: "offline",
+      /* Keep the type hint so CSS can style humans differently if it
+       * ever needs to (today it does not — identity is identical). */
+      _dm_counterparty_type: "human",
+    };
   }
 
   function renderDms(rows) {
@@ -65,70 +124,73 @@ import { loadChannelHistory, loadHistory } from "./chat/chat-history";
            * pin/mute state is shared between the Channels and DM sidebars. */
           var prefs =
             (typeof _channelPrefs !== "undefined" && _channelPrefs[ch]) || {};
-          var pinned = !!prefs.is_starred;
           var muted = !!prefs.is_muted;
+          var pinned = !!prefs.is_starred;
+          var counterparty = dmCounterpartyAgentLike(row);
+          /* Override .pinned so the star glyph reflects the DM-channel's
+           * is_starred pref rather than the underlying agent's own pin
+           * state — DMs are pinned on the conversation, not on the agent. */
+          var cpWithDmPin = {};
+          for (var k in counterparty)
+            if (Object.prototype.hasOwnProperty.call(counterparty, k))
+              cpWithDmPin[k] = counterparty[k];
+          cpWithDmPin.pinned = pinned;
+          /* DM card shares the .agent-card markup + class so CSS rules
+           * (hover, selected, drag affordances) apply uniformly across
+           * the Agent sidebar and the DM sidebar. .dm-item is retained
+           * as an extra hook for DM-specific behaviours (the per-row
+           * click handler attaches by that class); markup underneath
+           * is rendered by renderAgentBadge exactly as on the Agents
+           * sidebar. */
           return (
-            '<div class="dm-item' +
+            '<div class="dm-item agent-card' +
             active +
             (muted ? " ch-muted" : "") +
             '" data-channel="' +
             escapeHtml(ch) +
+            '" data-agent-name="' +
+            escapeHtml(counterparty.name || "") +
             '" title="' +
             escapeHtml(ch) +
             '">' +
-            '<span class="ch-pin ' +
-            (pinned ? "ch-pin-on" : "ch-pin-off") +
-            '" data-ch="' +
-            escapeHtml(ch) +
-            '" title="' +
-            (pinned ? "Unstar" : "Star (float to top)") +
-            '">' +
-            (pinned ? "\u2605" : "\u2606") +
-            "</span>" +
-            '<span class="ch-watch ' +
-            (muted ? "ch-watch-off" : "ch-watch-on") +
-            '" data-ch="' +
-            escapeHtml(ch) +
-            '" title="' +
-            (muted
-              ? "Unmute (watch this DM)"
-              : "Mute (stop DM notifications)") +
-            '">\uD83D\uDC41</span>' +
-            dmBadgeHtml(row) +
-            escapeHtml(dmDisplayName(row)) +
+            (typeof renderAgentBadge === "function"
+              ? renderAgentBadge(cpWithDmPin, { iconSize: 14 })
+              : escapeHtml(dmDisplayName(row))) +
             "</div>"
           );
         })
         .join("");
       container.querySelectorAll(".dm-item").forEach(function (el) {
-        /* Pin icon toggles is_starred via the shared _setChannelPref. */
-        var pinEl = el.querySelector(".ch-pin");
-        if (pinEl && typeof _setChannelPref === "function") {
-          pinEl.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            var chName = pinEl.getAttribute("data-ch");
-            var pref =
-              (typeof _channelPrefs !== "undefined" && _channelPrefs[chName]) ||
-              {};
-            _setChannelPref(chName, { is_starred: !pref.is_starred });
-          });
-        }
-        /* Eye icon toggles is_muted. */
-        var watchEl = el.querySelector(".ch-watch");
-        if (watchEl && typeof _setChannelPref === "function") {
-          watchEl.addEventListener("click", function (ev) {
-            ev.stopPropagation();
-            var chName = watchEl.getAttribute("data-ch");
-            var pref =
-              (typeof _channelPrefs !== "undefined" && _channelPrefs[chName]) ||
-              {};
-            _setChannelPref(chName, { is_muted: !pref.is_muted });
-          });
+        /* Star inside the shared agent-badge markup — override the
+         * default agent-pin behaviour so clicking the star on a DM row
+         * toggles is_starred on the CHANNEL pref (pin the conversation)
+         * rather than pin-to-top the underlying agent. Uses the .dm-item
+         * row's data-channel, not the button's own data-pin-name which
+         * points at the counterparty agent. Runs on capture phase so we
+         * beat the global agent-pin handler wired elsewhere. */
+        var starEl = el.querySelector(".agent-badge-star");
+        if (starEl && typeof _setChannelPref === "function") {
+          starEl.addEventListener(
+            "click",
+            function (ev) {
+              ev.stopPropagation();
+              ev.preventDefault();
+              var chName = el.getAttribute("data-channel");
+              if (!chName) return;
+              var pref =
+                (typeof _channelPrefs !== "undefined" &&
+                  _channelPrefs[chName]) ||
+                {};
+              _setChannelPref(chName, { is_starred: !pref.is_starred });
+            },
+            true,
+          );
         }
         el.addEventListener("click", function (ev) {
+          /* Don't treat star / avatar clicks as row-clicks. */
           if (
-            ev.target.classList.contains("ch-pin") ||
-            ev.target.classList.contains("ch-watch")
+            ev.target.closest(".agent-badge-star") ||
+            ev.target.closest(".avatar-clickable")
           )
             return;
           var ch = el.getAttribute("data-channel");

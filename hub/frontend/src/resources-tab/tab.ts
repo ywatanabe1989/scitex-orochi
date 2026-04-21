@@ -81,11 +81,18 @@ export function renderResources() {
           d.slurm.total_jobs +
           " jobs</span>";
       }
-      /* Entity-consistency format (TODO.md "Entity Consistency"):
-       * machine: [icon] [star] [<host-label>]. Icon is a compact
-       * server glyph; star is a reserved placeholder slot (machines
-       * aren't pinnable yet but the slot keeps the column aligned
-       * with sidebar channel rows). */
+      /* #284 Machine card order: [icon] [star] [LED] [<host-label>
+       * (<hostname-canonical>)] [metrics].
+       *
+       * The single LED replaces the old leading connection dot; it
+       * sits BETWEEN star and the name so the icon/star columns line
+       * up with agent + DM sidebar rows. Machines don't have the
+       * 4-LED liveness model agents do (no WS handshake / ping / pane
+       * state / nonce-echo signal is meaningful for a bare host), so
+       * we keep a single health LED driven by the heartbeat health
+       * status. Metrics (CPU / Mem / Disk / GPU / SLURM) stay inline
+       * where horizontal space allows — the full metric breakdown is
+       * always available on the hover tooltip regardless. */
       var mStarred = !!(d && d._starred);
       return (
         '<div class="res-card res-card-compact" data-machine="' +
@@ -94,9 +101,6 @@ export function renderResources() {
         escapeHtml(k) +
         (d._status ? " · " + d._status : "") +
         '">' +
-        '<span class="res-conn res-conn-' +
-        (healthy ? "ok" : "stale") +
-        '"></span>' +
         '<span class="res-machine-icon" title="right-click to change" aria-hidden="true">' +
         (_machineIcons[k] || "\uD83D\uDDA5\uFE0F") +
         "</span>" +
@@ -109,11 +113,17 @@ export function renderResources() {
         '">' +
         (mStarred ? "\u2605" : "\u2606") +
         "</span>" +
-        /* Spec: machine: [icon] [star] [<host-label> (<canonical-$HOSTNAME>)]
-         * — show the canonical FQDN in parentheses after the short
-         * label when it differs meaningfully from the label. Uses
-         * the same collapse rules as the Machine detail view
-         * (.local/.localdomain suffixes aren't "different"). */
+        '<span class="res-conn res-conn-' +
+        (healthy ? "ok" : "stale") +
+        '" title="' +
+        (healthy ? "Host healthy" : "Host stale / degraded") +
+        '"></span>' +
+        /* Spec: machine: [icon] [star] [LED] [<host-label>
+         * (<hostname-canonical>)] — show the canonical FQDN in
+         * parentheses after the short label when it differs
+         * meaningfully from the label. Uses the same collapse rules
+         * as the agents-tab Machine detail view (.local /
+         * .localdomain suffixes aren't "different"). */
         '<span class="res-host-name" style="color:' +
         color +
         '">' +
