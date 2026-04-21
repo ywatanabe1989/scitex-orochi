@@ -157,6 +157,33 @@ async def handle_pong(consumer, content):
         )
 
 
+async def handle_echo_pong(consumer, content):
+    """Lookup the nonce, compute RTT, update echo registry fields (#259).
+
+    The hub publisher (in ``_echo._hub_echo_loop``) keeps a per-consumer
+    ``_echo_inflight`` dict mapping nonce -> sent_at. A matching
+    ``echo_pong`` frame yields the round-trip time and triggers
+    ``update_echo_pong``, which is what flips the 4th LED green.
+
+    Unknown nonces are dropped silently — they happen naturally on
+    reconnects (publisher state is per-consumer, lost on disconnect)
+    and shouldn't disturb the dashboard or log noise.
+    """
+    nonce = content.get("nonce")
+    if not isinstance(nonce, str) or not nonce:
+        return
+    inflight = getattr(consumer, "_echo_inflight", None)
+    if not inflight:
+        return
+    sent_at = inflight.pop(nonce, None)
+    if sent_at is None:
+        return
+    rtt_ms = max(0.0, (time.time() - float(sent_at)) * 1000.0)
+    from hub.registry import update_echo_pong
+
+    update_echo_pong(consumer.agent_name, rtt_ms)
+
+
 async def handle_heartbeat(consumer, content):
     """Persist resource metrics + optional narrative fields, then broadcast."""
     payload = content.get("payload", {})

@@ -23,6 +23,7 @@ from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 
 from ._agent_handlers import (
+    handle_echo_pong,
     handle_heartbeat,
     handle_pong,
     handle_register,
@@ -30,6 +31,7 @@ from ._agent_handlers import (
     handle_subscription,
     handle_task_update,
 )
+from ._echo import _hub_echo_loop
 from ._groups import _hub_ping_loop, _sanitize_group, log
 from ._helpers import (
     _ensure_agent_member,
@@ -123,12 +125,19 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         # live RTT and flag hub-side drops without waiting for the 30s
         # heartbeat-stale timeout.
         self._ping_task = asyncio.create_task(_hub_ping_loop(self))
+        # #259 — start hub→agent echo round-trip loop. Independent task
+        # so a transport hiccup in one loop can't starve the other.
+        # Cancelled in disconnect() alongside _ping_task.
+        self._echo_task = asyncio.create_task(_hub_echo_loop(self))
 
     async def disconnect(self, code):
         # Stop the ping task first so we don't race with the WS close.
         ping_task = getattr(self, "_ping_task", None)
         if ping_task is not None:
             ping_task.cancel()
+        echo_task = getattr(self, "_echo_task", None)
+        if echo_task is not None:
+            echo_task.cancel()
         if hasattr(self, "workspace_group"):
             # scitex-orochi#144 fix path 4: drop only THIS connection from
             # the per-agent set, not the whole agent record. The agent only
@@ -173,6 +182,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             )
         elif msg_type == "pong":
             await handle_pong(self, content)
+        elif msg_type == "echo_pong":
+            await handle_echo_pong(self, content)
         elif msg_type == "heartbeat":
             await handle_heartbeat(self, content)
         elif msg_type == "task_update":
