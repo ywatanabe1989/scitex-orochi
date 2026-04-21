@@ -43,6 +43,13 @@
 }
 .agent-tab-content {
   width: 100%;
+  /* PR Step 3 (Overview promotion) — enforce a usable baseline for
+   * the agent detail panel. Lead reported the panel was collapsed to
+   * a single "Loading details…" line on the first click (msg#15734).
+   * 400×400 is the explicit spec floor; we give the whole tab-content
+   * wrapper the same minimum so children stretch naturally. */
+  min-width: 400px;
+  min-height: 400px;
 }
 
 /* ── Per-agent detail view ── */
@@ -51,6 +58,11 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
+  /* PR Step 3 — match the floor set on .agent-tab-content so the
+   * detail view itself doesn't collapse below a usable size when
+   * parent flex containers try to shrink it. */
+  min-width: 400px;
+  min-height: 400px;
 }
 .agent-detail-header {
   font-size: 14px;
@@ -204,6 +216,12 @@
 .agent-detail-pane-wrap {
   flex: 1 1 auto;
   width: 100%;
+  /* PR Step 3 (Overview promotion): lead flagged that the detail
+   * pane collapsed to barely-readable on click (msg#15734). Enforce
+   * the spec floor 400×400 directly on the pane wrap so even inside
+   * a cramped flex parent the terminal preview gets room to breathe. */
+  min-width: 400px;
+  min-height: 400px;
 }
 .agent-detail-pane {
   background: #0d1117;
