@@ -83,11 +83,20 @@ export function _setChannelPref(ch, patch) {
       var pref = _channelPrefs[elNorm] || _channelPrefs[elCh] || {};
       var pinEl = el.querySelector(".ch-pin");
       if (pinEl) {
+        /* msg#16979: renderChannelBadgeHtml SSoT emits BOTH .ch-pin-on/off
+         * AND .ch-star-on/off; the star's yellow fill is owned by
+         * .ch-star-on. Toggle both pairs + swap the ★/☆ glyph so the
+         * optimistic update produces the same visual as the SSoT render
+         * (prior code only toggled .ch-pin-* which left the star looking
+         * unchanged until fetchStats re-ran). */
         pinEl.classList.toggle("ch-pin-on", !!pref.is_starred);
         pinEl.classList.toggle("ch-pin-off", !pref.is_starred);
+        pinEl.classList.toggle("ch-star-on", !!pref.is_starred);
+        pinEl.classList.toggle("ch-star-off", !pref.is_starred);
+        pinEl.textContent = pref.is_starred ? "\u2605" : "\u2606";
         pinEl.setAttribute(
           "title",
-          pref.is_starred ? "Unpin" : "Pin (float to top)",
+          pref.is_starred ? "Unstar" : "Star (float to top)",
         );
       }
       var watchEl = el.querySelector(".ch-watch");
@@ -103,12 +112,19 @@ export function _setChannelPref(ch, patch) {
       }
       /* Keep the per-row eye icon (todo#418) in sync immediately after a
        * hide/unhide click so the user gets instant visual feedback before
-       * fetchStats() re-renders the list. */
+       * fetchStats() re-renders the list.
+       *
+       * msg#16979: renderChannelBadgeHtml uses the SAME 👁 glyph in both
+       * states — the red diagonal strike is drawn by .ch-eye-off::after
+       * in style-channels.css. Don't rewrite textContent to 🚫 here; the
+       * class toggle alone drives the red overlay via CSS, and staying
+       * aligned with the SSoT prevents a brief 🚫 flicker before
+       * fetchStats re-renders back to 👁. */
       var eyeEl = el.querySelector(".ch-eye");
       if (eyeEl) {
         eyeEl.classList.toggle("ch-eye-on", !pref.is_hidden);
         eyeEl.classList.toggle("ch-eye-off", !!pref.is_hidden);
-        eyeEl.textContent = pref.is_hidden ? "\uD83D\uDEAB" : "\uD83D\uDC41";
+        eyeEl.textContent = "\uD83D\uDC41";
         eyeEl.setAttribute(
           "title",
           pref.is_hidden
@@ -355,13 +371,12 @@ export function _renderStarredSection() {
       loadChannelHistory(ch);
       if (typeof applyFeedFilter === "function") applyFeedFilter();
     });
-    var star = el.querySelector(".ch-pin");
-    if (star)
-      star.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var ch = star.getAttribute("data-ch");
-        _setChannelPref(ch, { is_starred: false });
-      });
+    /* msg#16979: star (.ch-pin) clicks are owned by the body-level
+     * capture-phase delegate in channel-badge.ts. A per-row listener
+     * here caused a double-toggle race (the delegate's _setChannelPref
+     * ran first and kicked off a DOM rebuild; the bubble handler then
+     * fired on the detached old node and called _setChannelPref a
+     * second time, reverting the visual flip). */
     _addChannelContextMenu(el);
   });
   _addDragAndDrop(container, "starred");

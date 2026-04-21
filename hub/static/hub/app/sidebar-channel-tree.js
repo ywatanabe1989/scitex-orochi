@@ -213,50 +213,11 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
        * added it above. Belt-and-braces against any stale DOM state. */
       el.classList.remove("selected");
     }
-    /* Pin icon click — toggle is_starred (pinned-to-top) */
-    var pinEl = el.querySelector(".ch-pin");
-    if (pinEl) {
-      pinEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var norm = pinEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_starred: !curPref.is_starred });
-      });
-    }
-    /* Eye icon click — toggle is_muted (watching vs muted) */
-    var watchEl = el.querySelector(".ch-watch");
-    if (watchEl) {
-      watchEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var norm = watchEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_muted: !curPref.is_muted });
-      });
-    }
-    /* Bell/mute placeholder click — toggle is_muted. Placeholder is
-     * always rendered (reserved slot) so channel-name columns line up
-     * whether the row is muted or not. */
-    var muteEl = el.querySelector(".ch-mute");
-    if (muteEl) {
-      muteEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        var norm = muteEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_muted: !curPref.is_muted });
-      });
-    }
-    /* Hide/unhide icon click — toggle is_hidden (todo#418). */
-    var eyeEl = el.querySelector(".ch-eye");
-    if (eyeEl) {
-      eyeEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        var norm = eyeEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_hidden: !curPref.is_hidden });
-      });
-    }
+    /* msg#16979: star/eye/mute click wiring lives in the body-level
+     * capture-phase delegate in channel-badge.js. Duplicating it here
+     * caused a double-toggle race (same _setChannelPref call fired
+     * twice on one click → net no-op). See ts mirror in
+     * hub/frontend/src/app/sidebar-channel-tree.ts. */
     /* Context menu */
     _addChannelContextMenu(el);
     /* todo#49: accept agent-card drops to toggle subscription. */
