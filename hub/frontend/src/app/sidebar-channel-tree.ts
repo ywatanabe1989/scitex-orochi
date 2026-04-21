@@ -210,16 +210,32 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
    * prevSelected contained multiple entries (from a stale DOM where
    * two rows both carried .selected — the regression this PR fixes),
    * we restore .selected to AT MOST ONE row, preferring the current
-   * channel. Anything else is dropped on the floor. */
+   * channel. Anything else is dropped on the floor.
+   *
+   * msg#17050 — the prevSelected gate used to require the OLD DOM to
+   * have already carried `.selected` on this row. That gate silently
+   * broke the msg#16999 last-opened-channel restore path: on a cold
+   * reload the sidebar is built from scratch via `innerHTML = …`, so
+   * NO row carries `.selected` yet, `prevSelected` is always empty,
+   * and `_wireChannelItemHandlers` never re-applied the class even
+   * though `(globalThis).currentChannel` had been correctly hydrated
+   * from localStorage. The visible symptom was "server restart drops
+   * me back to Overview" — the user saw Chat rendered with no
+   * highlighted channel in the sidebar and read that as the UI having
+   * forgotten their session. `currentChannel` is the authoritative
+   * source of truth; if it names a row present in the sidebar, that
+   * row is selected, full stop. `prevSelected` is retained only as an
+   * additional tiebreaker for the edge case where currentChannel has
+   * drifted out of sync with a DOM that still remembers the previous
+   * selection. */
   var restoredOne = false;
+  var _curCh = (globalThis as any).currentChannel;
   chContainer.querySelectorAll(".channel-item").forEach(function (el) {
     var elCh = el.getAttribute("data-channel");
-    if (
-      !restoredOne &&
-      elCh &&
-      prevSelected[elCh] &&
-      (globalThis as any).currentChannel === elCh
-    ) {
+    var _matchesCurrent = !!elCh && _curCh === elCh;
+    var _matchesPrev =
+      !!elCh && prevSelected[elCh] && (globalThis as any).currentChannel === elCh;
+    if (!restoredOne && (_matchesCurrent || _matchesPrev)) {
       el.classList.add("selected");
       restoredOne = true;
     } else {
