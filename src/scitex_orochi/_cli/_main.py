@@ -208,6 +208,19 @@ from scitex_orochi._cli.commands.cron_cmd import cron as cron_group
 
 orochi.add_command(cron_group)
 
+# ── Host-side ops (migrated from scripts/client/*.sh) ────────
+from scitex_orochi._cli.commands.chrome_watchdog_cmd import chrome_watchdog
+from scitex_orochi._cli.commands.disk_cmd import disk
+from scitex_orochi._cli.commands.host_liveness_cmd import host_liveness
+from scitex_orochi._cli.commands.hungry_signal_cmd import hungry_signal
+from scitex_orochi._cli.commands.machine_cmd import machine
+
+orochi.add_command(machine)
+orochi.add_command(host_liveness)
+orochi.add_command(hungry_signal)
+orochi.add_command(disk)
+orochi.add_command(chrome_watchdog)
+
 
 def main() -> None:
     try:
