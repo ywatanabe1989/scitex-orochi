@@ -200,3 +200,87 @@ def test_non_zero_clears_prior_fired_flag(tmp_path):
     s = _read_state(state_dir)
     assert s["cycles"] == 0
     assert s["fired"] == 0
+
+
+# -----------------------------------------------------------------------------
+# Lifecycle coverage (msg#16389 / msg#16390) — the hungry-signal counter must
+# track a realistic spawn → partial-completion → completion → reset sequence
+# end-to-end. The parser + hub-registry round-trips that produce the counts
+# are covered by ``tests/test_subagent_count_lifecycle.py`` +
+# ``hub/tests/consumers/test_subagent_count_roundtrip.py``; this section
+# exercises the bash state-machine's response to the full sequence.
+# -----------------------------------------------------------------------------
+
+
+def test_full_lifecycle_spawn_drain_idle_dm(tmp_path):
+    """End-to-end sequence: idle → spawn batch → drain → idle → DM.
+
+    The head starts idle (0), spawns 3 subagents (1 → 3), one finishes
+    (→ 2), all finish (→ 0), then two further idle ticks trigger the DM.
+    Pins the correctness contract: transient non-zero readings during a
+    real batch must reset the counter each time, so the DM only fires
+    after a *sustained* idle stretch past threshold.
+    """
+    state_dir = tmp_path / "state"
+
+    # Tick A — idle cold start. cycles=1.
+    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "counting"
+    assert _read_state(state_dir)["cycles"] == 1
+
+    # Tick B — subagent spawned (1 local agent running). Counter resets.
+    r = _invoke(tmp_path, subagent_count=1, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "noop"
+    assert _read_state(state_dir)["cycles"] == 0
+
+    # Tick C — batch ramped to 3. Still busy, counter stays at 0.
+    r = _invoke(tmp_path, subagent_count=3, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "noop"
+    assert _read_state(state_dir)["cycles"] == 0
+
+    # Tick D — partial completion (2 still running). Still non-zero.
+    r = _invoke(tmp_path, subagent_count=2, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "noop"
+    assert _read_state(state_dir)["cycles"] == 0
+
+    # Tick E — full completion. First idle tick after batch. cycles=1.
+    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "counting"
+    assert _read_state(state_dir)["cycles"] == 1
+
+    # Tick F — still idle. cycles=2, below threshold=3.
+    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "counting"
+    assert _read_state(state_dir)["cycles"] == 2
+
+    # Tick G — still idle. cycles=3 hits threshold → DM attempt.
+    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] in {"dm_sent", "dm_failed"}
+    assert _read_state(state_dir)["cycles"] == 3
+
+
+def test_transient_spawn_resets_counter_mid_stretch(tmp_path):
+    """A single non-zero tick mid-idle-stretch must reset the counter.
+
+    Guards against a subtle regression: if the state machine kept
+    incrementing through a brief busy interval (e.g. decremented rather
+    than reset), the DM would fire spuriously seconds after the head
+    finished a legitimate task.
+    """
+    state_dir = tmp_path / "state"
+
+    # Two idle ticks — we're one tick shy of firing at threshold=3.
+    _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    assert _read_state(state_dir)["cycles"] == 2
+
+    # Brief busy tick — one Agent spawned + finished between ticks.
+    # Counter must reset to 0, NOT decrement by 1.
+    r = _invoke(tmp_path, subagent_count=1, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "noop"
+    assert _read_state(state_dir)["cycles"] == 0
+
+    # Back to idle. Must start over at 1 — NOT pick up where we left off.
+    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    assert r["decision"] == "counting"
+    assert _read_state(state_dir)["cycles"] == 1
