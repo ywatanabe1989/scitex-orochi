@@ -470,7 +470,17 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
         payload: payload,
       });
     }
-    close();
+    /* msg#16316 / ywatanabe msg#16313: keep the popup OPEN after send so
+     * the user can keep replying without re-double-clicking the channel
+     * node. Clear the textarea + pending attachment tray, refocus the
+     * input, and leave the popup mounted. The popup still closes via
+     * Esc, outside-click, or routing to Chat (existing paths). */
+    input.value = "";
+    popPending.length = 0;
+    _renderPopTray();
+    try {
+      input.focus();
+    } catch (_) {}
   }
   input.addEventListener("keydown", function (ev) {
     /* Voice-toggle shortcuts — same as Chat composer. Keep these BEFORE
