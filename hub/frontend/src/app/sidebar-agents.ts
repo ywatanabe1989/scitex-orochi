@@ -233,6 +233,28 @@ export async function fetchAgents() {
             /* Carry current subscriptions so the drop handler can render
              * add/remove affordance without an extra fetch. */
             ev.dataTransfer.setData("application/x-orochi-agent-channels", chs);
+            /* msg#16988 (a): browser default ghost is often just the
+             * text node under the cursor, leaving the drop position
+             * invisible. Hand setDragImage a full off-screen clone of
+             * the card (bg + border + icon + name) so the user sees
+             * exactly what they're moving. The clone is removed on
+             * the next microtask — the browser has already rasterised
+             * it by the time dragstart returns. */
+            var rect = el.getBoundingClientRect();
+            var clone = el.cloneNode(true);
+            clone.style.position = "absolute";
+            clone.style.top = "-10000px";
+            clone.style.left = "-10000px";
+            clone.style.width = rect.width + "px";
+            clone.style.pointerEvents = "none";
+            clone.classList.remove("agent-dragging");
+            document.body.appendChild(clone);
+            var ox = ev.clientX - rect.left;
+            var oy = ev.clientY - rect.top;
+            ev.dataTransfer.setDragImage(clone, ox, oy);
+            setTimeout(function () {
+              if (clone.parentNode) clone.parentNode.removeChild(clone);
+            }, 0);
           } catch (e) {}
           window.__orochiDragAgent = { name: n, channels: chs };
         });
