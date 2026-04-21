@@ -15,17 +15,23 @@ async function fetchStats() {
     var inputHasFocus = msgInput && document.activeElement === msgInput;
     var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
     var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
-    /* #284: channels are single-select only. prevSelected keeps the one
-     * currently-selected row marked .selected across DOM re-renders so the
-     * selection indicator doesn't flicker mid-refresh. (The legacy Ctrl+Click
-     * multi-select — #274 Part 2 — has been removed for channels.) */
+    /* #284/#293: channels are single-select only. prevSelected keeps
+     * the ONE currently-selected row marked .selected across DOM re-
+     * renders so the selection indicator doesn't flicker mid-refresh.
+     *
+     * Hard invariant: at most one key ever lands in prevSelected. The
+     * source of truth is `currentChannel` — even if the DOM somehow
+     * accumulated .selected on multiple rows (the regression this PR
+     * fixes), we only ever carry the current-channel pointer forward.
+     * _wireChannelItemHandlers enforces the same rule on restore. */
     var prevSelected = {};
-    chContainer
-      .querySelectorAll(".channel-item.selected")
-      .forEach(function (el) {
-        var ch = el.getAttribute("data-channel");
-        if (ch) prevSelected[ch] = true;
-      });
+    var _curCh = currentChannel;
+    if (_curCh) {
+      var _hasSelected = !!chContainer.querySelector(
+        '.channel-item.selected[data-channel="' + String(_curCh).replace(/"/g, '\\"') + '"]',
+      );
+      if (_hasSelected) prevSelected[_curCh] = true;
+    }
     /* todo#325: hide dm:* channels from the public Channels list
      * (they still render in the DM tab via its own path).
      * todo#326: normalize "general" -> "#general" and dedupe by

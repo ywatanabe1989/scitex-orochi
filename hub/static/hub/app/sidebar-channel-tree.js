@@ -162,13 +162,27 @@ function _renderChannelRowHtml(row, ctx) {
  * chContainer. Pulled out of fetchStats so the main entry point stays under
  * the file-size budget without changing any observable behavior. */
 function _wireChannelItemHandlers(chContainer, prevSelected) {
+  /* #293: enforce single-select hard invariant on restore. Even if
+   * prevSelected contained multiple entries (from a stale DOM where
+   * two rows both carried .selected — the regression this PR fixes),
+   * we restore .selected to AT MOST ONE row, preferring the current
+   * channel. Anything else is dropped on the floor. */
+  var restoredOne = false;
   chContainer.querySelectorAll(".channel-item").forEach(function (el) {
-    /* Restore selected state from before re-render. Channels are single-
-     * selection only (#284): at most one channel-item ever carries the
-     * .selected class. prevSelected is retained across renders so the
-     * current-selection marker doesn't flicker mid-refresh. */
     var elCh = el.getAttribute("data-channel");
-    if (elCh && prevSelected[elCh]) el.classList.add("selected");
+    if (
+      !restoredOne &&
+      elCh &&
+      prevSelected[elCh] &&
+      currentChannel === elCh
+    ) {
+      el.classList.add("selected");
+      restoredOne = true;
+    } else {
+      /* Defensive: make sure NO row carries .selected unless we just
+       * added it above. Belt-and-braces against any stale DOM state. */
+      el.classList.remove("selected");
+    }
     /* Pin icon click — toggle is_starred (pinned-to-top) */
     var pinEl = el.querySelector(".ch-pin");
     if (pinEl) {
@@ -294,12 +308,18 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
       /* Clear unread for this channel (#322) */
       channelUnread[ch] = 0;
       updateChannelUnreadBadges();
-      /* todo#274 Part 1: pure visual highlight, toggle on second click. */
-      var items = chContainer.querySelectorAll(".channel-item");
+      /* todo#274 Part 1 + #293: single-select is the HARD invariant —
+       * clear .selected across the ENTIRE sidebar (channel rows AND
+       * DM agent-cards), not just this chContainer. Previously only
+       * chContainer was cleared, which left a stale .selected on a
+       * DM row when the user switched from a DM to a channel and
+       * manifested as "two rows selected at once" (#293). */
       var wasSelected = el.classList.contains("selected");
-      items.forEach(function (it) {
-        it.classList.remove("selected");
-      });
+      document
+        .querySelectorAll(".sidebar .channel-item.selected, .sidebar .dm-item.selected")
+        .forEach(function (it) {
+          it.classList.remove("selected");
+        });
       if (!wasSelected && currentChannel === ch) {
         el.classList.add("selected");
       }
