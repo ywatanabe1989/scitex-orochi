@@ -1,11 +1,14 @@
 """CLI commands: serve, vapid-generate.
 
-Phase 1d Step B additionally exposes an empty ``server`` click group —
-the noun dispatcher that will host ``server start/status/deploy`` once
-Step C migrates the flat ``serve`` / top-level ``deploy`` verbs. The
-group is deliberately empty in Step B; it co-exists with the legacy
-flat commands.
+Phase 1d Step C (plan PR #337): the ``server`` noun group now hosts
+``start`` (= former ``serve``), ``status`` (= former ``show-status``)
+and ``deploy`` (= former flat ``deploy`` group). The flat legacy verbs
+are stubbed in ``_main.py``.
 """
+# ruff: noqa: E402
+# (E402 ignored file-wide so the bottom-of-file verb registrations can
+# import from sibling modules without the isort-style reordering that
+# breaks the click.Group → add_command invariant.)
 
 from __future__ import annotations
 
@@ -17,20 +20,17 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
 from scitex_orochi._cli._helpers import EXAMPLES_HEADER
 
 
-# ── Phase 1d Step B: empty noun dispatcher ─────────────────────────────
-# No verbs are registered under this group in Step B. Step C migrates
-# the flat ``serve`` / ``deploy`` commands into
-# ``server start / server status / server deploy``.
+# ── Phase 1d Step C: noun dispatcher with migrated verbs ───────────────
 @click.group(
     "server",
     short_help="Hub server lifecycle",
     help="Hub server lifecycle (start, status, deploy).",
 )
 def server() -> None:
-    """Server-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """Server-scoped verbs (Phase 1d Step C)."""
 
 
-annotate_help_with_availability(server)
+# Verbs registered at bottom of file after their definitions.
 
 
 # ── serve ───────────────────────────────────────────────────────
@@ -128,3 +128,18 @@ def setup_push(output: str | None, force: bool, as_json: bool, dry_run: bool) ->
     else:
         click.echo(f"VAPID keys generated and saved to {path}")
         click.echo(f"Public key: {keys['public_key']}")
+
+
+# ── Phase 1d Step C: register verbs under the noun group ───────────────
+# ``server start`` (was flat ``serve``), ``server status`` (was flat
+# ``show-status``), ``server deploy`` (was flat ``deploy`` group with
+# stable/dev/status subcommands — the whole group moves under ``server``
+# wholesale).
+from scitex_orochi._cli.commands.deploy_cmd import deploy as _deploy_group
+from scitex_orochi._cli.commands.query_cmd import show_status as _show_status
+
+server.add_command(serve, name="start")
+server.add_command(_show_status, name="status")
+server.add_command(_deploy_group, name="deploy")
+
+annotate_help_with_availability(server)

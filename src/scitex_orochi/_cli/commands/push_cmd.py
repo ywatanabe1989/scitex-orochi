@@ -1,14 +1,16 @@
-"""``scitex-orochi push`` — empty noun group (Phase 1d Step B).
+"""``scitex-orochi push {setup}`` (Phase 1d Step C).
 
-Step B (PR plan §2 / #337) lays the dispatcher skeleton. This group is
-deliberately empty — the verbs (``push setup``, ``push send``) move
-here in Step C. Step B only ensures ``scitex-orochi push --help``
-works and the group appears in top-level help with an ``(Available
-Now)`` suffix when the hub is reachable.
+The verb body lives in ``server_cmd.py`` (historical wiring — the flat
+command was ``setup-push``). We re-expose it under the ``push`` noun
+group with a short name.
 
-See ``src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`` §1.1
-for the full noun-group registry.
+``push send`` is listed in the plan noun registry but has no flat
+predecessor to migrate; that's Phase 2 work.
+
+The old flat spelling (``setup-push``) is stubbed in ``_main.py`` to
+emit ``hard_rename_error`` (plan PR #337 §2, Q1 decision).
 """
+# ruff: noqa: E402
 
 from __future__ import annotations
 
@@ -19,11 +21,15 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
 
 @click.group(
     "push",
-    short_help="APNs / push-notification plumbing",
-    help="APNs / push-notification plumbing (setup, send).",
+    short_help="Push-notification plumbing",
+    help="Push-notification plumbing (setup).",
 )
 def push() -> None:
-    """Push-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """Push-scoped verbs (Phase 1d Step C)."""
 
+
+from scitex_orochi._cli.commands.server_cmd import setup_push as _setup_push
+
+push.add_command(_setup_push, name="setup")
 
 annotate_help_with_availability(push)

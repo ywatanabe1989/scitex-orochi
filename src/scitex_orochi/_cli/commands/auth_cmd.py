@@ -1,13 +1,11 @@
-"""``scitex-orochi auth`` — empty noun group (Phase 1d Step B).
+"""``scitex-orochi auth {login}`` (Phase 1d Step C).
 
-Step B (PR plan §2 / #337) lays the dispatcher skeleton. This group is
-deliberately empty — the verb (``auth login``, replacing top-level
-``login``) moves here in Step C. Step B only ensures ``scitex-orochi
-auth --help`` works and the group appears in top-level help with an
-``(Available Now)`` suffix when the hub is reachable.
+The verb body lives in ``messaging_cmd.py`` (historical wiring — the
+flat command was plain ``login``). We re-expose it under the ``auth``
+noun group with a short name.
 
-See ``src/scitex_orochi/_skills/scitex-orochi/convention-cli.md`` §1.1
-for the full noun-group registry.
+The old flat spelling (``login``) is stubbed in ``_main.py`` to emit
+``hard_rename_error`` (plan PR #337 §2, Q1 decision).
 """
 
 from __future__ import annotations
@@ -23,7 +21,11 @@ from scitex_orochi._cli._help_availability import annotate_help_with_availabilit
     help="Credential / session management (login).",
 )
 def auth() -> None:
-    """Auth-scoped verbs. Subcommands populate in Phase 1d Step C."""
+    """Auth-scoped verbs (Phase 1d Step C)."""
 
+
+from scitex_orochi._cli.commands.messaging_cmd import login as _login  # noqa: E402
+
+auth.add_command(_login, name="login")
 
 annotate_help_with_availability(auth)
