@@ -1,0 +1,138 @@
+/* Machines tab — orochi-cron panel styles.
+ *
+ * Phase 2 of the Orochi unified cron (lead msg#16406 / msg#16408).
+ * Matches the Machines tab typography (11px meta font, #888 muted
+ * label colour). The panel attaches under each .res-card so every
+ * selector is scoped to .cron-panel to avoid bleeding into the
+ * donut / resource rows above it.
+ */
+
+.cron-panel {
+  margin-top: 8px;
+  border-top: 1px solid #2a2a2a;
+  padding-top: 6px;
+  font-size: 11px;
+  color: #aaa;
+}
+
+.cron-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+  color: #888;
+  /* Clickable affordance on hover; matches the donut-row link tone. */
+  transition: color 0.15s;
+}
+.cron-header:hover {
+  color: #e0e0e0;
+}
+.cron-header:focus-visible {
+  outline: 1px solid #4ecdc4;
+  outline-offset: 1px;
+  color: #e0e0e0;
+}
+
+.cron-chevron {
+  display: inline-block;
+  width: 10px;
+  text-align: center;
+  font-size: 9px;
+  color: #666;
+}
+.cron-header:hover .cron-chevron {
+  color: #4ecdc4;
+}
+.cron-title {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Stale badge — mirrors the machine card stale LED styling. */
+.cron-stale {
+  display: inline-block;
+  padding: 0 4px;
+  font-size: 10px;
+  line-height: 14px;
+  border-radius: 3px;
+  background: #3a2416;
+  color: #f59e0b;
+  margin-left: 4px;
+}
+
+.cron-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 14px; /* line up with the text after the chevron */
+}
+.cron-rows-empty {
+  padding: 4px 0 4px 14px;
+  color: #666;
+  font-style: italic;
+}
+
+.cron-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+  /* Tight line height so a 4-job panel doesn't blow up the card height. */
+  line-height: 16px;
+  /* Wrap on narrow cards — the last_run / arrow / next_run chips stay
+   * on one line while the name truncates (ellipsis below). */
+  white-space: nowrap;
+}
+
+.cron-glyph {
+  text-align: center;
+  font-size: 12px;
+  /* Fix the glyph column width so names left-align across rows even
+   * when the glyph is an emoji vs. ASCII. */
+  line-height: 16px;
+}
+
+.cron-name {
+  color: #e0e0e0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.cron-last {
+  color: #888;
+  font-variant-numeric: tabular-nums;
+}
+
+.cron-arrow {
+  color: #555;
+}
+
+.cron-next {
+  color: #aaa;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row status colouring — the glyph does most of the work, but a
+ * subtle name tint helps the warning rows jump out in a long list. */
+.cron-row-ok .cron-glyph {
+  color: #4ecdc4;
+}
+.cron-row-warn .cron-glyph {
+  color: #ef4444;
+}
+.cron-row-warn .cron-name {
+  color: #f5b0a8;
+}
+.cron-row-pending .cron-glyph,
+.cron-row-disabled .cron-glyph {
+  color: #666;
+}
+.cron-row-disabled .cron-name {
+  color: #888;
+  text-decoration: line-through;
+}

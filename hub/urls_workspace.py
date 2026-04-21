@@ -93,6 +93,10 @@ urlpatterns = [
     path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Orochi unified cron Phase 2 (msg#16406 / msg#16408) — mounted on
+    # the workspace subdomain so dashboard sessions on ``<slug>.scitex-
+    # orochi.com`` can fetch it without the ``/workspace/<slug>/`` prefix.
+    path("api/cron/", views.api_cron, name="api-cron-ws"),
     # Auto-dispatch operator triggers + inspection (Phase 1c msg#16477).
     path(
         "api/auto-dispatch/fire/",

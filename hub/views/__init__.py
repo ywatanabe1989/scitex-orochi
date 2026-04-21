@@ -22,6 +22,7 @@ from hub.views.api import (  # noqa: F401
     api_channels,
     api_config,
     api_connectivity,
+    api_cron,
     api_dms,
     api_event_tool_use,
     api_history,

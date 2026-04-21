@@ -3,6 +3,12 @@ import { apiUrl, escapeHtml, getAgentColor } from "../app/utils";
 import { syncHostHover } from "../connectivity-map";
 import { addTag } from "../filter/state";
 import { _applyMachinesViewVisibility, _machineIcons, _wireMachinesControls, donutHtml, hideMachineTooltip, moveMachineTooltip, resourceData, setMachineIcon, showMachineTooltip } from "./panel";
+import {
+  cronByHost,
+  fetchCronJobs,
+  renderCronJobsHtml,
+  wireCronToggles,
+} from "./cron-panel";
 import { activeTab } from "../tabs";
 
 /* Resource Monitor Panel + Resources Tab — part 2: renderers, card
@@ -257,6 +263,11 @@ export function renderResourcesTab() {
         syncHostHover(el.getAttribute("data-host-name"), false);
     });
   });
+  /* Orochi cron Phase 2 — wire the per-host collapse chevron so users
+   * can expand the cron-jobs subsection on the cards that matter to
+   * them. ``stopPropagation`` inside the handler prevents the click
+   * from bubbling up to the card-wide addTag listener above. */
+  wireCronToggles(grid, renderResourcesTab);
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
@@ -373,6 +384,10 @@ export function buildResourceCard(k) {
       : hbDate.toLocaleString();
     html += '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + "</div>";
   }
+  /* Orochi unified cron Phase 2 — collapsible cron-jobs subsection
+   * rendered from /api/cron/. Empty string when the host has no cron
+   * data so cards without an installed daemon stay unchanged. */
+  html += renderCronJobsHtml(k);
   html += "</div>";
   return html;
 }
@@ -492,6 +507,12 @@ export async function fetchResources() {
         gpu: gpuList,
       };
     });
+    /* Orochi cron Phase 2 — piggyback on the existing resource poll
+     * so the cron panel refreshes at the same cadence as the donut
+     * cards (currently 30s via init.ts). Awaiting in series keeps the
+     * render single-pass; a failed fetch is silent and leaves the
+     * previous cache in place. */
+    await fetchCronJobs();
     renderResources();
     if (activeTab === "resources") renderResourcesTab();
   } catch (e) {

@@ -418,6 +418,25 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 and info.get("sac_status")
                 else prev.get("sac_status") or {}
             ),
+            # Orochi unified cron state (msg#16406 / msg#16408 Phase 2).
+            # List of {name, interval, last_run, last_exit, last_skipped,
+            # last_duration_seconds, next_run, running, disabled, command,
+            # timeout} dicts produced by scitex_orochi._cron.render_cron_jobs
+            # and attached to every heartbeat by ``scitex-orochi heartbeat-push``.
+            # Source of truth for the Machines tab cron-jobs panel + the
+            # ``/api/cron/`` aggregator.
+            #
+            # Replace-on-present semantics: a heartbeat carrying a non-empty
+            # list always wins (the pusher re-runs the state reader every
+            # cycle, so the value is current). An empty list or absent field
+            # falls back to the previous value — a transient read glitch on
+            # the local state file doesn't blank the UI every 30s.
+            "cron_jobs": (
+                list(info.get("cron_jobs"))
+                if isinstance(info.get("cron_jobs"), (list, tuple))
+                and info.get("cron_jobs")
+                else prev.get("cron_jobs") or []
+            ),
         }
 
 
