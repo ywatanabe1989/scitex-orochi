@@ -13,6 +13,7 @@ top level. Django's default test discovery walks the sub-packages.
 
 # Top-level cross-cutting tests
 # Mirror-package tests
+from hub.tests.consumers.test_agent_message_echo import *  # noqa: F401,F403
 from hub.tests.consumers.test_agent_subscription import *  # noqa: F401,F403
 from hub.tests.consumers.test_dm import *  # noqa: F401,F403
 from hub.tests.consumers.test_mentions import *  # noqa: F401,F403

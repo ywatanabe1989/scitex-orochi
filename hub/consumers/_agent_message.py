@@ -109,9 +109,21 @@ async def handle_agent_message(consumer, content):
 
     # Update activity timestamp — this is a meaningful action,
     # distinct from a passive heartbeat.
-    from hub.registry import mark_activity
+    from hub.registry import mark_activity, mark_echo_alive
 
     mark_activity(consumer.agent_name, action=text[:120])
+
+    # msg#15538 — auto-green the 4th LED (ECHO) on any inbound agent
+    # message. Previously the LED only turned green after the hub→agent
+    # nonce round-trip in ``_hub_echo_loop`` succeeded; if the agent's
+    # MCP-client couldn't reply to the nonce the LED stayed amber / red
+    # even though the agent was obviously alive — it had just sent a
+    # chat message. ``mark_echo_alive`` advances the same
+    # ``last_nonce_echo_at`` timestamp the nonce-probe setter writes,
+    # so the existing LED renderer (no frontend change needed) sees the
+    # hot timestamp regardless of nonce-probe success. The two
+    # mechanisms together are a strictly stronger liveness signal.
+    mark_echo_alive(consumer.agent_name)
 
     # Persist message
     msg = await consumer._save_message(
