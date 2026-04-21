@@ -31,6 +31,7 @@ from ._agent_handlers import (
     handle_subscription,
     handle_task_update,
 )
+from ._agent_refresh import prehydrate_channels as _prehydrate_channels
 from ._echo import _hub_echo_loop
 from ._groups import _hub_ping_loop, _sanitize_group, log
 from ._helpers import (
@@ -94,6 +95,13 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         for ch_name in self._dm_channel_names:
             group = _sanitize_group(f"channel_{self.workspace_id}_{ch_name}")
             await self.channel_layer.group_add(group, self.channel_name)
+
+        # scitex-orochi#451 — eager channel-membership rehydration.
+        # Pre-hydrates persisted group memberships + seeds agent_meta so
+        # group messages aren't silently dropped during the window between
+        # connect and the client's register frame (or permanently, if the
+        # register frame never arrives). See ``_prehydrate_channels``.
+        await _prehydrate_channels(self)
 
         await self.accept()
 
@@ -315,6 +323,26 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         elif msg_type == "subagents_update":
             await handle_subagents_update(self, content)
         elif msg_type == "message":
+            # scitex-orochi#451 — deny message frames from un-registered
+            # connections. This makes the "orphan on reconnect" failure
+            # mode break LOUDLY (error response the client can log and
+            # surface) instead of silently (write succeeds but the agent
+            # never sees replies because it isn't in the reply groups).
+            # Clients MUST send a ``register`` frame on every reconnect
+            # and await the ``registered`` ack before sending messages.
+            if not getattr(self, "_registered", False):
+                await self.send_json(
+                    {
+                        "type": "error",
+                        "code": "not_registered",
+                        "message": (
+                            "send a `register` frame and await the "
+                            "`registered` ack before sending messages "
+                            "(scitex-orochi#451)"
+                        ),
+                    }
+                )
+                return
             from ._agent_message import handle_agent_message
 
             await handle_agent_message(self, content)
