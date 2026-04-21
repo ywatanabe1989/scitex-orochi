@@ -2,8 +2,7 @@
 import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
 import { apiUrl, cleanAgentName, escapeHtml, getAgentColor, orochiHeaders, timeAgo } from "../app/utils";
 import { buildAttachmentsHtml } from "../chat/chat-attachments";
-import { initMentionAutocomplete, mentionDropdown, mentionSelectedIndex } from "../mention";
-import { openSketch } from "../sketch";
+import { renderComposer } from "../composer/composer";
 import { _linkifyThreadContent, _pushThreadUrlState, _renderThreadAttachmentTray, _stageThreadFiles } from "./state";
 import { _debounceSave, clearDraft, loadDraft } from "../composer/draft-store";
 
@@ -11,7 +10,18 @@ function _threadDraftTarget(parentId) {
   return "msg" + String(parentId);
 }
 
-/* Threading — panel open/close, replies render, send, WS handlers */
+/* Thread composer instance — created in openThreadPanel, destroyed in
+ * closeThreadPanel. Module-scoped so both paths can reference it
+ * without a DOM round-trip. */
+var _threadComposer = null;
+
+/* Threading — panel open/close, replies render, send, WS handlers.
+ * Reply composer (textarea + attach/sketch/voice/send buttons) is
+ * provided by composer.ts::renderComposer(surface: "reply") since the
+ * SSoT unification (msg#16286); this file owns the surrounding chrome
+ * (header, parent preview, replies list, pending-attachments tray)
+ * plus the thread-specific voice-lang button sync + draft-store
+ * hydration. */
 /* globals: apiUrl, orochiHeaders, escapeHtml, timeAgo, getAgentColor,
    cleanAgentName, getSenderIcon, getResolvedAgentColor,
    (globalThis as any).threadPanel, (globalThis as any).threadPanelParentId, (globalThis as any).threadPendingAttachments,
@@ -23,6 +33,10 @@ export function closeThreadPanel(opts) {
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  if (_threadComposer) {
+    try { _threadComposer.destroy(); } catch (_) {}
+    _threadComposer = null;
+  }
   if ((globalThis as any).threadPanel && (globalThis as any).threadPanel.parentNode) {
     (globalThis as any).threadPanel.parentNode.removeChild((globalThis as any).threadPanel);
   }
@@ -51,6 +65,13 @@ export async function openThreadPanel(parentId, opts) {
 
   (globalThis as any).threadPanel = document.createElement("div");
   (globalThis as any).threadPanel.className = "thread-panel";
+  /* Thread panel shell only; composer DOM (textarea, attach/sketch/voice
+   * buttons, send button, hidden file input) is built by renderComposer
+   * below and mounted into #thread-composer-slot. Legacy IDs
+   * (#thread-input, #thread-attach-btn, #thread-sketch-btn,
+   * #thread-voice-btn, #thread-voice-lang-btn, #thread-file-input,
+   * .thread-send-btn) are preserved by the surface="reply" DOM-builder
+   * in composer.ts so voice-input.ts + existing selectors keep working. */
   (globalThis as any).threadPanel.innerHTML =
     '<div class="thread-header">' +
     '<button type="button" class="thread-back" onclick="closeThreadPanel()" aria-label="Back to chat">' +
@@ -72,19 +93,7 @@ export async function openThreadPanel(parentId, opts) {
     '<div class="thread-replies" id="thread-replies"></div>' +
     '<div class="thread-input-row">' +
     '<div id="thread-pending-attachments" class="thread-pending-attachments" style="display:none"></div>' +
-    '<div class="thread-compose-row">' +
-    '<textarea id="thread-input" placeholder="Reply in thread…" rows="2"></textarea>' +
-    '<div class="thread-bottom-row">' +
-    '<div class="thread-input-actions">' +
-    '<button type="button" id="thread-attach-btn" tabindex="-1" title="Attach file (Ctrl+U)">📎</button>' +
-    '<button type="button" id="thread-sketch-btn" tabindex="-1" title="Draw sketch">✏️</button>' +
-    '<button type="button" id="thread-voice-btn" tabindex="-1" title="Voice input">🎤</button>' +
-    '<button type="button" id="thread-voice-lang-btn" tabindex="-1" title="Switch language (EN/JA)" style="font-size:11px;padding:2px 5px;opacity:0.7;">EN</button>' +
-    '<input type="file" id="thread-file-input" style="display:none" multiple>' +
-    "</div>" +
-    '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
-    "</div>" +
-    "</div>" +
+    '<div class="thread-compose-row" id="thread-composer-slot"></div>' +
     "</div>";
   /* Append as flex sibling of .main inside .container (Slack-style side-by-side) */
   var container = document.querySelector(".container");
@@ -95,8 +104,54 @@ export async function openThreadPanel(parentId, opts) {
   }
 
   await loadThreadReplies(parentId);
-  var ta = document.getElementById("thread-input");
-  if (ta) {
+
+  var composerSlot = document.getElementById("thread-composer-slot");
+  (globalThis as any).threadPendingAttachments = [];
+  _renderThreadAttachmentTray();
+
+  if (composerSlot) {
+    _threadComposer = renderComposer(composerSlot as HTMLElement, {
+      surface: "reply",
+      placeholder: "Reply in thread\u2026",
+      stageFiles: function (files) {
+        return _stageThreadFiles(files);
+      },
+      onSketchOpen: function () {
+        /* openSketch() sends to currentChannel; we flag _threadSketchActive
+         * so the sketch-submit path knows to post as a thread-reply. */
+        (globalThis as any)._threadSketchActive = true;
+      },
+      features: {
+        mention: true,
+        paste: true,
+        dragDrop: false /* thread panel had no drop handler pre-SSoT; preserve current UX */,
+        attach: true,
+        camera: false /* Reply composer never had a camera button */,
+        sketch: true,
+        voice: true,
+        sendButton: true,
+        cmdEnterSubmit: true,
+        shiftEnterNewline: true,
+        autoResize: true,
+        tabAwareFocus: false,
+        /* voice-input.ts's global chord handler bails when focus is
+         * inside .thread-panel, so the composer owns Alt/Ctrl+Enter
+         * here. */
+        localVoiceChord: true,
+      },
+      maxResizePx: 120,
+      onSubmit: function () {
+        sendThreadReply();
+      },
+    });
+
+    /* Add legacy class names additively so existing .thread-* CSS still
+     * applies. */
+    var ta = _threadComposer.input;
+    ta.classList.add("thread-textarea");
+    var sendBtn = composerSlot.querySelector(".composer-btn-send");
+    if (sendBtn) sendBtn.classList.add("thread-send-btn");
+
     /* msg#16324: hydrate any persisted thread-reply draft so the user's
      * in-progress text survives page reload / deploy. Target key is
      * "msg<parentId>" per spec (orochi.draft.thread.msg12345). */
@@ -104,50 +159,20 @@ export async function openThreadPanel(parentId, opts) {
       var _saved = loadDraft("thread", _threadDraftTarget(parentId));
       if (_saved && !ta.value) {
         ta.value = _saved;
-        /* Match the auto-resize behavior used by the input handler. */
+        /* Match the auto-resize behavior used by the composer. */
         ta.style.height = "auto";
         ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
       }
     } catch (_) {}
-    ta.focus();
+    try { ta.focus(); } catch (_) {}
     /* Place cursor at end of restored draft. */
     try {
       var _len = ta.value ? ta.value.length : 0;
       ta.setSelectionRange(_len, _len);
     } catch (_) {}
-    ta.addEventListener("keydown", function (e) {
-      /* Alt+Enter / Ctrl+Enter in thread: toggle voice directed at thread textarea */
-      if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
-        e.preventDefault();
-        e.stopPropagation(); /* prevent global voice handler from double-firing */
-        if (typeof window.toggleVoiceInput === "function") {
-          /* Focus thread textarea so _toggleVoice captures it as target */
-          var tIn = document.getElementById("thread-input");
-          if (tIn) tIn.focus();
-          window.toggleVoiceInput();
-        }
-        return;
-      }
-      /* Plain Enter (no modifier) sends reply */
-      if (e.key === "Enter" && !e.shiftKey) {
-        /* Don't send if mention dropdown is open and an item is selected */
-        if (
-          typeof mentionDropdown !== "undefined" &&
-          mentionDropdown &&
-          mentionDropdown.classList.contains("visible") &&
-          mentionSelectedIndex >= 0
-        ) {
-          return; /* Let handleMentionKeydown handle it */
-        }
-        e.preventDefault();
-        sendThreadReply();
-      }
-    });
-    /* Auto-resize: grow with content up to 120px; also persist the
-     * draft (debounced at 300ms via draft-store) so reload restores. */
+
+    /* Persist every keystroke (debounced at 300ms via draft-store). */
     ta.addEventListener("input", function () {
-      this.style.height = "auto";
-      this.style.height = Math.min(this.scrollHeight, 120) + "px";
       try {
         _debounceSave(
           "thread",
@@ -156,73 +181,22 @@ export async function openThreadPanel(parentId, opts) {
         );
       } catch (_) {}
     });
-    /* Enable @mention autocomplete in thread input */
-    if (typeof initMentionAutocomplete === "function") {
-      initMentionAutocomplete(ta);
+
+    /* Thread-specific voice language button: sync label with the Chat
+     * voice-lang button (voice-input.ts manages the shared state). This
+     * is the one bit of wiring the generic composer can't own because
+     * the language button is thread-only chrome. */
+    var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
+    if (voiceLangBtn) {
+      var mainLangBtn = document.getElementById("msg-voice-lang");
+      if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+      voiceLangBtn.addEventListener("click", function () {
+        if (typeof (window as any).cycleVoiceLang === "function") {
+          (window as any).cycleVoiceLang();
+          if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+        }
+      });
     }
-    /* Ctrl+U → trigger file picker in thread panel */
-    ta.addEventListener("keydown", function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "u") {
-        e.preventDefault();
-        var fi = document.getElementById("thread-file-input");
-        if (fi) fi.click();
-      }
-    });
-  }
-
-  /* Wire thread action buttons */
-  (globalThis as any).threadPendingAttachments = [];
-  _renderThreadAttachmentTray();
-
-  var attachBtn = document.getElementById("thread-attach-btn");
-  var fileInput = document.getElementById("thread-file-input");
-  var sketchBtn = document.getElementById("thread-sketch-btn");
-  var voiceBtn = document.getElementById("thread-voice-btn");
-  var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
-
-  if (attachBtn && fileInput) {
-    attachBtn.addEventListener("click", function () {
-      fileInput.click();
-    });
-    fileInput.addEventListener("change", function () {
-      _stageThreadFiles(Array.from(fileInput.files || []));
-      fileInput.value = "";
-    });
-  }
-
-  if (sketchBtn) {
-    sketchBtn.addEventListener("click", function () {
-      /* openSketch() sends to currentChannel; we override the callback */
-      if (typeof openSketch === "function") {
-        (globalThis as any)._threadSketchActive = true;
-        openSketch();
-      }
-    });
-  }
-
-  if (voiceBtn) {
-    /* Toggle voice into the thread textarea */
-    voiceBtn.addEventListener("click", function () {
-      if (typeof window.toggleVoiceInput === "function") {
-        /* Focus thread textarea so _toggleVoice captures it as target */
-        var tIn = document.getElementById("thread-input");
-        if (tIn) tIn.focus();
-        window.toggleVoiceInput();
-      }
-    });
-  }
-
-  if (voiceLangBtn) {
-    /* Sync button label with voice-input.js current language on open */
-    var mainLangBtn = document.getElementById("msg-voice-lang");
-    if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
-    voiceLangBtn.addEventListener("click", function () {
-      if (typeof window.cycleVoiceLang === "function") {
-        window.cycleVoiceLang();
-        /* Sync label from main lang button */
-        if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
-      }
-    });
   }
 }
 
