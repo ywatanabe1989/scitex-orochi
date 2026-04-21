@@ -98,6 +98,27 @@ export function setCurrentChannel(ch) {
   /* Update channel topic banner (todo#402) — show for active channel,
    * or last active when in all-channels mode */
   _updateChannelTopicBanner(ch || lastActiveChannel);
+  /* msg#16324: hydrate the per-channel draft into the composer on
+   * channel switch. Each channel keeps its own in-progress text, so
+   * switching to a channel the user was previously drafting in brings
+   * that text back. Before hydrating, we (a) flush any debounced save
+   * pending for the OLD channel so its last keystrokes hit storage,
+   * and (b) clear the textarea so the new channel's draft can
+   * populate (the restore helper is a no-op when the textarea already
+   * has text). */
+  try {
+    var _flush = (window as any).orochiDraftStore
+      ? (window as any).orochiDraftStore.flushPendingSaves
+      : null;
+    if (typeof _flush === "function") _flush();
+    var _inp = document.getElementById("msg-input");
+    if (_inp) {
+      _inp.value = "";
+      _inp.style.height = "auto";
+    }
+    var _restore = (window as any).restoreDraftForCurrentChannel;
+    if (typeof _restore === "function") _restore();
+  } catch (_) {}
 }
 
 /* Friendly-label for a dm:<principal>|<principal> channel. Strips the

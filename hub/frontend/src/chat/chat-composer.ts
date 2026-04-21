@@ -5,6 +5,11 @@ import { ws, wsConnected } from "../app/websocket";
 import { _renderMermaidIn } from "./chat-attachments";
 import { clearPendingAttachments, getPendingAttachments } from "../upload";
 import { activeTab } from "../tabs";
+import {
+  _debounceSave,
+  clearDraft,
+  loadDraft,
+} from "../composer/draft-store";
 
 export function updateChannelSelect() {
   /* Channel select removed -- using sidebar selection instead */
@@ -49,10 +54,13 @@ export function sendMessage() {
   if (typeof clearPendingAttachments === "function") {
     clearPendingAttachments();
   }
-  /* Clear the per-channel draft now that the message has been sent. */
+  /* Clear the per-channel draft now that the message has been sent
+   * (msg#16324: localStorage-backed draft-store replaces the old
+   * sessionStorage scratch). */
   try {
-    sessionStorage.removeItem(
-      "orochi-draft-" + ((globalThis as any).currentChannel || "__default__"),
+    clearDraft(
+      "chat",
+      (globalThis as any).currentChannel || "__default__",
     );
   } catch (_) {}
   /* Hands-free voice dictation: if the mic is currently listening, the
@@ -70,39 +78,46 @@ export function sendMessage() {
 
 /* Auto-resize textarea as content grows + persist draft per channel.
  *
- * The draft is keyed by `(globalThis as any).currentChannel` so switching channels preserves
- * each channel's in-progress message. On page reload (or DOM re-render
- * accident), restoreDraftForCurrentChannel() puts the text back. We use
- * sessionStorage so drafts disappear when the tab closes — closer to a
- * "scratchpad" semantic than localStorage's "permanent" feel.
+ * Drafts are stored in localStorage (not sessionStorage anymore —
+ * msg#16324 ywatanabe: deploys / Cmd-R / reloads were clobbering
+ * in-progress messages). The draft-store module handles the
+ * per-(surface,target) keying, 24h stale-cutoff, and private-mode
+ * failure tolerance; this module just calls into it. Cursor is
+ * placed at end on restore so the user can keep typing without
+ * fighting caret position.
  */
-export function _draftKey() {
+export function _draftTarget() {
   try {
-    return "orochi-draft-" + ((globalThis as any).currentChannel || "__default__");
+    return (globalThis as any).currentChannel || "__default__";
   } catch (_) {
-    return "orochi-draft-__default__";
-  }
-}
-export function _saveDraft(value) {
-  try {
-    if (value && value.length > 0) {
-      sessionStorage.setItem(_draftKey(), value);
-    } else {
-      sessionStorage.removeItem(_draftKey());
-    }
-  } catch (_) {
-    /* sessionStorage may be unavailable in private mode */
+    return "__default__";
   }
 }
 export function restoreDraftForCurrentChannel() {
   try {
     var input = document.getElementById("msg-input");
     if (!input) return;
-    var saved = sessionStorage.getItem(_draftKey());
-    if (saved && !input.value) {
+    /* Don't clobber text the user is actively typing right now. */
+    if (input.value) return;
+    var saved = loadDraft("chat", _draftTarget());
+    if (saved) {
       input.value = saved;
       input.style.height = "auto";
       input.style.height = Math.min(input.scrollHeight, 200) + "px";
+      /* Place cursor at end (spec: msg#16324). */
+      try {
+        var end = saved.length;
+        input.setSelectionRange(end, end);
+      } catch (_) {}
+      /* If Chat is the active tab, blur-then-refocus so the caret
+       * visibly lands at the restored position. */
+      if (activeTab === "chat" && document.activeElement === input) {
+        try {
+          input.blur();
+          input.focus();
+          input.setSelectionRange(saved.length, saved.length);
+        } catch (_) {}
+      }
     }
   } catch (_) {}
 }
@@ -110,7 +125,7 @@ window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
 document.getElementById("msg-input").addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 200) + "px";
-  _saveDraft(this.value);
+  _debounceSave("chat", _draftTarget(), this.value);
 });
 restoreDraftForCurrentChannel();
 

@@ -86,6 +86,24 @@ function setCurrentChannel(ch) {
   /* Update channel topic banner (todo#402) — show for active channel,
    * or last active when in all-channels mode */
   _updateChannelTopicBanner(ch || lastActiveChannel);
+  /* msg#16324: flush the previous channel's pending save, clear the
+   * textarea, then hydrate the new channel's draft. */
+  try {
+    if (
+      window.orochiDraftStore &&
+      typeof window.orochiDraftStore.flushPendingSaves === "function"
+    ) {
+      window.orochiDraftStore.flushPendingSaves();
+    }
+    var _inp = document.getElementById("msg-input");
+    if (_inp) {
+      _inp.value = "";
+      _inp.style.height = "auto";
+    }
+    if (typeof window.restoreDraftForCurrentChannel === "function") {
+      window.restoreDraftForCurrentChannel();
+    }
+  } catch (_) {}
 }
 
 /* Friendly-label for a dm:<principal>|<principal> channel. Strips the

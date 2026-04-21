@@ -84,7 +84,25 @@ async function openThreadPanel(parentId, opts) {
   await loadThreadReplies(parentId);
   var ta = document.getElementById("thread-input");
   if (ta) {
+    /* msg#16324: hydrate any persisted thread-reply draft. */
+    try {
+      if (window.orochiDraftStore) {
+        var _saved = window.orochiDraftStore.loadDraft(
+          "thread",
+          "msg" + String(parentId),
+        );
+        if (_saved && !ta.value) {
+          ta.value = _saved;
+          ta.style.height = "auto";
+          ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+        }
+      }
+    } catch (_) {}
     ta.focus();
+    try {
+      var _len = ta.value ? ta.value.length : 0;
+      ta.setSelectionRange(_len, _len);
+    } catch (_) {}
     ta.addEventListener("keydown", function (e) {
       /* Alt+Enter / Ctrl+Enter in thread: toggle voice directed at thread textarea */
       if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
@@ -113,10 +131,20 @@ async function openThreadPanel(parentId, opts) {
         sendThreadReply();
       }
     });
-    /* Auto-resize: grow with content up to 120px */
+    /* Auto-resize: grow with content up to 120px; also persist the
+     * draft (debounced at 300ms via draft-store). */
     ta.addEventListener("input", function () {
       this.style.height = "auto";
       this.style.height = Math.min(this.scrollHeight, 120) + "px";
+      try {
+        if (window.orochiDraftStore) {
+          window.orochiDraftStore._debounceSave(
+            "thread",
+            "msg" + String(threadPanelParentId),
+            this.value,
+          );
+        }
+      } catch (_) {}
     });
     /* Enable @mention autocomplete in thread input */
     if (typeof initMentionAutocomplete === "function") {
@@ -353,6 +381,15 @@ async function sendThreadReply() {
       console.error("sendThreadReply failed:", res.status);
       return;
     }
+    /* msg#16324: drop the per-thread draft now that the reply landed. */
+    try {
+      if (window.orochiDraftStore) {
+        window.orochiDraftStore.clearDraft(
+          "thread",
+          "msg" + String(threadPanelParentId),
+        );
+      }
+    } catch (_) {}
     /* WS broadcast will refresh the panel; also optimistic reload */
     loadThreadReplies(threadPanelParentId);
   } catch (e) {

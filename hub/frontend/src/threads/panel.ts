@@ -5,6 +5,11 @@ import { buildAttachmentsHtml } from "../chat/chat-attachments";
 import { initMentionAutocomplete, mentionDropdown, mentionSelectedIndex } from "../mention";
 import { openSketch } from "../sketch";
 import { _linkifyThreadContent, _pushThreadUrlState, _renderThreadAttachmentTray, _stageThreadFiles } from "./state";
+import { _debounceSave, clearDraft, loadDraft } from "../composer/draft-store";
+
+function _threadDraftTarget(parentId) {
+  return "msg" + String(parentId);
+}
 
 /* Threading — panel open/close, replies render, send, WS handlers */
 /* globals: apiUrl, orochiHeaders, escapeHtml, timeAgo, getAgentColor,
@@ -92,7 +97,24 @@ export async function openThreadPanel(parentId, opts) {
   await loadThreadReplies(parentId);
   var ta = document.getElementById("thread-input");
   if (ta) {
+    /* msg#16324: hydrate any persisted thread-reply draft so the user's
+     * in-progress text survives page reload / deploy. Target key is
+     * "msg<parentId>" per spec (orochi.draft.thread.msg12345). */
+    try {
+      var _saved = loadDraft("thread", _threadDraftTarget(parentId));
+      if (_saved && !ta.value) {
+        ta.value = _saved;
+        /* Match the auto-resize behavior used by the input handler. */
+        ta.style.height = "auto";
+        ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+      }
+    } catch (_) {}
     ta.focus();
+    /* Place cursor at end of restored draft. */
+    try {
+      var _len = ta.value ? ta.value.length : 0;
+      ta.setSelectionRange(_len, _len);
+    } catch (_) {}
     ta.addEventListener("keydown", function (e) {
       /* Alt+Enter / Ctrl+Enter in thread: toggle voice directed at thread textarea */
       if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
@@ -121,10 +143,18 @@ export async function openThreadPanel(parentId, opts) {
         sendThreadReply();
       }
     });
-    /* Auto-resize: grow with content up to 120px */
+    /* Auto-resize: grow with content up to 120px; also persist the
+     * draft (debounced at 300ms via draft-store) so reload restores. */
     ta.addEventListener("input", function () {
       this.style.height = "auto";
       this.style.height = Math.min(this.scrollHeight, 120) + "px";
+      try {
+        _debounceSave(
+          "thread",
+          _threadDraftTarget((globalThis as any).threadPanelParentId),
+          this.value,
+        );
+      } catch (_) {}
     });
     /* Enable @mention autocomplete in thread input */
     if (typeof initMentionAutocomplete === "function") {
@@ -361,6 +391,13 @@ export async function sendThreadReply() {
       console.error("sendThreadReply failed:", res.status);
       return;
     }
+    /* msg#16324: drop the per-thread draft now that the reply landed. */
+    try {
+      clearDraft(
+        "thread",
+        _threadDraftTarget((globalThis as any).threadPanelParentId),
+      );
+    } catch (_) {}
     /* WS broadcast will refresh the panel; also optimistic reload */
     loadThreadReplies((globalThis as any).threadPanelParentId);
   } catch (e) {
