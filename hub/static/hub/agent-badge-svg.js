@@ -225,6 +225,7 @@
     var y = pos.y;
     var showName = opts.showName !== false;
     var showStar = opts.showStar !== false;
+    var showEye = opts.showEye !== false && !opts.isHuman;
     var showLeds = opts.showLeds !== false && !opts.isHuman;
     var iconSize = opts.iconSize || 14;
     /* todo#305 (Task 3, lead msg#15509): LED radius tuned to 3.5px so
@@ -249,50 +250,51 @@
     var nameText = opts.labelOverride || ident.displayName || a.name || "";
     var color = opts.isHuman ? "#fbbf24" : ident.color;
 
-    /* Canonical layout per ywatanabe 2026-04-20:
-     *   icon + 4 LEDs + name@hostname + star
-     * All elements laid out left→right starting at glyphX. Human nodes
-     * keep their simpler icon+name layout (no LEDs, no star slot). */
+    /* Canonical layout, todo#305 Task 7 (lead msg#15548):
+     *   icon + star + eye + 4 LEDs + name@hostname
+     * Matches the HTML agent-badge.js canonical order 1:1. */
     var iconHalf = iconSize / 2;
     var ledsWidth = 0;
     var ledBlock = { svg: "", width: 0 };
 
-    // Position the glyph (icon). For human: centered around x. For agent:
-    // leftmost element, with its CENTER at glyphX.
     var glyphX;
     if (opts.isHuman) {
       glyphX = x - 10;
     } else {
-      // Pack icon + 4 LEDs + name + star starting from glyphX, centering
-      // the whole cluster around pos.x. Compute total width first.
-      glyphX = x; // temp; will reposition below
+      glyphX = x;
     }
 
-    // Compute LED block width (4 LEDs spaced by 2*R+GAP).
     var ledStep = 2 * LED_R + GAP;
     if (showLeds) {
-      ledsWidth = 3 * ledStep + 2 * LED_R; // 4 LEDs span
+      ledsWidth = 3 * ledStep + 2 * LED_R;
     }
 
     var textW = Math.max(40, nameText.length * 6.5);
     var starW = showStar ? 14 : 0;
+    var eyeW = showEye ? 14 : 0;
 
     if (!opts.isHuman) {
-      // Total width: icon + gap + LEDs + gap + name + gap + star.
       var GAP_BETWEEN = 6;
       var total =
         iconSize +
+        (showStar ? GAP_BETWEEN + starW : 0) +
+        (showEye ? GAP_BETWEEN + eyeW : 0) +
         GAP_BETWEEN +
         ledsWidth +
         GAP_BETWEEN +
-        textW +
-        (showStar ? GAP_BETWEEN + starW : 0);
-      // Re-center: cluster centered on pos.x.
+        textW;
       var clusterLeft = x - total / 2;
-      glyphX = clusterLeft + iconHalf; // center of icon
-      var ledsStartCx = glyphX + iconHalf + GAP_BETWEEN + LED_R;
+      glyphX = clusterLeft + iconHalf;
+      var starX = showStar
+        ? glyphX + iconHalf + GAP_BETWEEN + starW / 2
+        : glyphX + iconHalf;
+      var eyeX = showEye
+        ? starX + (showStar ? starW / 2 : iconHalf) + GAP_BETWEEN + eyeW / 2
+        : starX;
+      var ledsStartCx = (showEye ? eyeX + eyeW / 2 : starX + (showStar ? starW / 2 : iconHalf)) +
+        GAP_BETWEEN +
+        LED_R;
       var nameX = ledsStartCx + ledsWidth - LED_R + GAP_BETWEEN;
-      var starX = nameX + textW + GAP_BETWEEN;
 
       var glyph = _renderAgentGlyphSvg(a, glyphX, y, iconSize, ident, opts);
 
@@ -317,7 +319,7 @@
           (y + 4).toFixed(1) +
           '" fill="' +
           (pinned ? "#fbbf24" : "#3a3a3a") +
-          '" font-size="13" style="cursor:pointer" data-pin-name="' +
+          '" font-size="13" style="cursor:pointer" text-anchor="middle" data-pin-name="' +
           _escape(a.name || "") +
           '" data-pin-next="' +
           (pinned ? "false" : "true") +
@@ -326,6 +328,50 @@
           "</title>" +
           (pinned ? "\u2605" : "\u2606") +
           "</text>";
+      }
+
+      /* Eye slot — 👁 SVG with optional red strike line when is_hidden.
+       * Matches the HTML eye (.agent-badge-eye) semantically — same
+       * classes so body-level delegation in agent-badge.js catches
+       * clicks on either DOM or SVG. todo#305 Task 7 (lead msg#15548). */
+      var eyeSvg = "";
+      if (showEye) {
+        var hiddenFlag = !!a.is_hidden;
+        var eyeCls =
+          "topo-agent-eye " +
+          (hiddenFlag ? "topo-agent-eye-off" : "topo-agent-eye-on");
+        var eyeGlyph =
+          '<text x="' +
+          eyeX.toFixed(1) +
+          '" y="' +
+          (y + 4).toFixed(1) +
+          '" font-size="11" text-anchor="middle" fill="#94a3b8" style="cursor:pointer">\uD83D\uDC41</text>';
+        var strike = hiddenFlag
+          ? '<line x1="' +
+            (eyeX - 5).toFixed(1) +
+            '" y1="' +
+            (y + 3).toFixed(1) +
+            '" x2="' +
+            (eyeX + 5).toFixed(1) +
+            '" y2="' +
+            (y - 3).toFixed(1) +
+            '" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" pointer-events="none"/>'
+          : "";
+        eyeSvg =
+          '<g class="' +
+          eyeCls +
+          '" data-eye-agent="' +
+          _escape(a.name || "") +
+          '" style="cursor:pointer"><title>' +
+          _escape(
+            hiddenFlag
+              ? "Show agent (un-hide)"
+              : "Hide agent (remove from list + graph)",
+          ) +
+          "</title>" +
+          eyeGlyph +
+          strike +
+          "</g>";
       }
 
       var nameSvg = "";
@@ -357,10 +403,11 @@
       var cls = "topo-node topo-agent";
       if (opts.isSelected) cls += " topo-agent-selected";
       if (opts.isDead) cls += " topo-agent-dead";
+      if (a.is_hidden) cls += " topo-agent-hidden";
       if (opts.extraClass) cls += " " + opts.extraClass;
 
       /* Order matches the HTML agent-badge.js canonical order:
-       *   icon + star + 4 LEDs + name (ywatanabe 2026-04-21). */
+       *   icon + star + eye + 4 LEDs + name (Task 7, msg#15548). */
       return (
         '<g class="' +
         cls +
@@ -373,6 +420,7 @@
         bg +
         glyph +
         starSvg +
+        eyeSvg +
         ledBlock.svg +
         nameSvg +
         "</g>"

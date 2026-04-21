@@ -149,6 +149,41 @@ export function _setChannelPref(ch, patch) {
   }
 }
 
+/* todo#305 Task 7 (lead msg#15548): flip the persistent per-agent
+ * is_hidden flag. Parallel to _setChannelPref({ is_hidden: ... })
+ * — same server contract, same re-render trigger. The 👁 eye glyph
+ * on an agent card (sidebar row or topology SVG) calls this from the
+ * body-level delegated handler in agent-badge.ts. */
+export function _setAgentHidden(name, isHidden) {
+  /* Optimistic local update so the next render reflects the new flag
+   * even before the server round-trip lands. __lastAgents is the
+   * single cache consumed by fetchAgents / renderActivityTab; keep
+   * it in sync so the sort / filter picks up the change. */
+  var live = (window as any).__lastAgents || [];
+  for (var i = 0; i < live.length; i++) {
+    if (live[i] && live[i].name === name) {
+      live[i].is_hidden = !!isHidden;
+      break;
+    }
+  }
+  fetch(apiUrl("/api/agent-profiles/"), {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({ name: name, is_hidden: !!isHidden }),
+  }).catch(function (_) {});
+  if (typeof fetchAgents === "function") fetchAgents();
+  if (typeof renderActivityTab === "function") {
+    /* Bust topo sticky signature so the canvas rebuilds with the new
+     * visibility filter; signature doesn't track per-agent prefs. */
+    if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
+    renderActivityTab();
+  }
+}
+
 /* Update an agent's display profile (icon_emoji etc) via
  * POST /api/agent-profiles/. Parallel to _setChannelIcon — keeps the
  * configuration story uniform across entity types. The registry
@@ -325,3 +360,9 @@ export function _renderStarredSection() {
 
 // Expose cross-file mutable state via globalThis:
 (globalThis as any)._topoLastSig = (typeof _topoLastSig !== 'undefined' ? _topoLastSig : undefined);
+
+/* todo#305 Task 7: expose _setAgentHidden on window so agent-badge.ts's
+ * body-level eye-click delegation (which runs in an IIFE outside this
+ * module's closure) can reach it without a static import cycle.
+ * Mirrors the pattern used for other top-level app helpers. */
+(window as any)._setAgentHidden = _setAgentHidden;

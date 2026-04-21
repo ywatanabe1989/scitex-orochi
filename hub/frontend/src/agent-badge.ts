@@ -12,8 +12,14 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
  * BADGES, INCLUDING ICON (changeable on click), STAR (toglable), 4 LEDs,
  * name, and host; NEVER ACCEPT ANY DIFFERENCES".
  *
- * Badge layout (left → right):
- *   [icon][star][LED1 WS][LED2 Ping][LED3 Local][LED4 Remote][name@host]
+ * Badge layout (left → right), todo#305 Task 7 (lead msg#15548):
+ *   [icon][star][eye][LED1 WS][LED2 Ping][LED3 Local][LED4 Remote][name@host]
+ *
+ * The 👁 eye slot was added after ★ and before the LEDs per lead's
+ * explicit ordering directive in msg#15548 / companion reference
+ * image `sidebar-agents-reference-2026-04-21.png`. Channel cards carry
+ * eye too — keeping parity across both entity types so a user who
+ * learned "eye = hide this row" on channels finds the same on agents.
  *
  * Loaded BEFORE app.js / activity-tab.js / agents-tab.js so the helpers
  * are in scope at render time. See dashboard.html <script> ordering.
@@ -22,6 +28,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
  * when they need to interleave other elements — e.g. drag handles):
  *   - renderAgentIcon(a, size)     — clickable avatar / emoji
  *   - renderAgentStar(a)           — togglable ☆/★
+ *   - renderAgentEye(a)            — togglable 👁 show/hide
  *   - renderAgentLeds(a, opts)     — four-LED liveness strip
  *   - renderAgentName(a)           — colored name (with @host suffix)
  *
@@ -118,6 +125,29 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
       '">' +
       (pinned ? "\u2605" : "\u2606") +
       "</button>"
+    );
+  }
+
+  // ── 2b. Eye (togglable show/hide, always visible, placeholder even when
+  //        not hidden so column geometry stays constant across rows).
+  // Mirrors the channel .ch-eye pattern 1:1: same 👁 glyph in both states,
+  // red diagonal strike drawn via the .agent-badge-eye-off::after CSS
+  // rule (defined in style-agents.css alongside the channel variant).
+  // todo#305 Task 7 (lead msg#15548).
+  function renderAgentEye(a) {
+    var hidden = !!a.is_hidden;
+    return (
+      '<span class="agent-badge-eye ' +
+      (hidden ? "agent-badge-eye-off" : "agent-badge-eye-on") +
+      '" data-eye-agent="' +
+      _escape(a.name || "") +
+      '" title="' +
+      _escape(
+        hidden
+          ? "Show agent (un-hide)"
+          : "Hide agent (remove from list + graph)",
+      ) +
+      '" style="cursor:pointer">\uD83D\uDC41</span>'
     );
   }
 
@@ -242,17 +272,20 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   // ── Composed badge (canonical layout) ─────────────────────────────
   function renderAgentBadge(a, opts) {
     opts = opts || {};
-    /* Canonical order per ywatanabe 2026-04-21:
-     *   icon + star + 4 LEDs + name@hostname
-     * Matches the channel badge (icon + star + eye + mute + name), so
-     * star sits in the same column position across both entity types.
-     * renderAgentStar always emits a placeholder span for non-starred
-     * agents so column alignment holds. */
+    /* Canonical order, todo#305 Task 7 (lead msg#15548):
+     *   icon + star + eye + 4 LEDs + name@hostname
+     * Matches the channel badge column order (icon + star + eye +
+     * mute + name) so a user who learned the glyph map on channels
+     * finds the same on agents. The eye was inserted between ★ and
+     * the LED strip per lead's explicit ordering directive in
+     * msg#15548 (deviation from Task 3's baseline, but Task 7 owns
+     * the slot for agents going forward). */
     var icon = renderAgentIcon(a, opts.iconSize);
     var star = renderAgentStar(a);
+    var eye = opts.hideEye ? "" : renderAgentEye(a);
     var leds = renderAgentLeds(a, { extraClass: opts.extraClass });
     var name = opts.hideName ? "" : renderAgentName(a, opts);
-    return icon + star + leds + name;
+    return icon + star + eye + leds + name;
   }
 
   // ── Background-class helper: dim when not all four LEDs green ─────
@@ -293,9 +326,76 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
     return false;
   }
 
+  // ── Eye toggle — persistent flip of AgentProfile.is_hidden ──────────
+  // Body-level delegated handler so EVERY agent-eye glyph anywhere in
+  // the DOM (sidebar row, Activity overview card, topology SVG) gets
+  // the same behavior without per-render binding. Mirrors the
+  // .ch-eye delegation pattern in channel-badge.js (see
+  // attachChannelBadgeHandlers there). Idempotent: only binds once.
+  var _agentEyeAttached = false;
+  function attachAgentEyeHandler() {
+    if (_agentEyeAttached) return;
+    _agentEyeAttached = true;
+    if (typeof document === "undefined") return;
+    document.body.addEventListener(
+      "click",
+      function (ev) {
+        var eye = ev.target.closest && ev.target.closest(
+          ".agent-badge-eye[data-eye-agent], .topo-agent-eye[data-eye-agent]",
+        );
+        if (!eye) return;
+        var name = eye.getAttribute("data-eye-agent");
+        if (!name) return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        /* Current state — read from live registry if available, fall
+         * back to the glyph's own class for first-click after load
+         * (before __lastAgents is populated). */
+        var live = (window as any).__lastAgents || [];
+        var curAgent = null;
+        for (var i = 0; i < live.length; i++) {
+          if (live[i] && live[i].name === name) {
+            curAgent = live[i];
+            break;
+          }
+        }
+        var curHidden = curAgent
+          ? !!curAgent.is_hidden
+          : eye.classList.contains("agent-badge-eye-off") ||
+            eye.classList.contains("topo-agent-eye-off");
+        var nextHidden = !curHidden;
+        /* Optimistic local update so the glyph flips immediately; the
+         * re-render triggered by _setAgentHidden → fetchAgents lands
+         * ~200-500ms later and is idempotent. */
+        if (curAgent) curAgent.is_hidden = nextHidden;
+        eye.classList.toggle("agent-badge-eye-on", !nextHidden);
+        eye.classList.toggle("agent-badge-eye-off", nextHidden);
+        eye.classList.toggle("topo-agent-eye-on", !nextHidden);
+        eye.classList.toggle("topo-agent-eye-off", nextHidden);
+        /* Persist via the existing agent-profiles endpoint — same
+         * mutation path as icon / color edits. The backend accepts
+         * is_hidden as an optional PATCH-style field (todo#305 Task 7;
+         * hub/views/api/_agents.py::api_agent_profiles). */
+        var setHidden = (window as any)._setAgentHidden;
+        if (typeof setHidden === "function") {
+          setHidden(name, nextHidden);
+        }
+      },
+      true, // capture — beat site-local click handlers that stopPropagation
+    );
+  }
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", attachAgentEyeHandler);
+    } else {
+      attachAgentEyeHandler();
+    }
+  }
+
   // Expose globals — script is loaded as a plain <script> tag.
   window.renderAgentIcon = renderAgentIcon;
   window.renderAgentStar = renderAgentStar;
+  window.renderAgentEye = renderAgentEye;
   window.renderAgentLeds = renderAgentLeds;
   window.renderAgentName = renderAgentName;
   window.renderAgentBadge = renderAgentBadge;
@@ -310,6 +410,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
 export const isAgentAllGreen = (window as any).isAgentAllGreen;
 export const isAgentVisible = (window as any).isAgentVisible;
 export const renderAgentBadge = (window as any).renderAgentBadge;
+export const renderAgentEye = (window as any).renderAgentEye;
 export const renderAgentIcon = (window as any).renderAgentIcon;
 export const renderAgentLeds = (window as any).renderAgentLeds;
 export const renderAgentName = (window as any).renderAgentName;

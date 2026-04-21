@@ -136,6 +136,9 @@ def api_agent_profiles(request):
                 "icon_image": p.icon_image,
                 "icon_text": p.icon_text,
                 "color": p.color,
+                # todo#305 Task 7: expose persistent is_hidden so
+                # sidebar + topology can dim / drop the card at load.
+                "is_hidden": bool(getattr(p, "is_hidden", False)),
                 "updated_at": p.updated_at.isoformat(),
             }
             for p in profiles
@@ -149,16 +152,35 @@ def api_agent_profiles(request):
     name = (body.get("name") or "").strip()
     if not name:
         return JsonResponse({"error": "name required"}, status=400)
-    profile, _ = AgentProfile.objects.update_or_create(
-        workspace=workspace,
-        name=name,
-        defaults={
-            "icon_emoji": (body.get("icon_emoji") or "")[:16],
-            "icon_image": (body.get("icon_image") or "")[:500],
-            "icon_text": (body.get("icon_text") or "")[:16],
-            "color": (body.get("color") or "")[:16],
-        },
-    )
+    # todo#305 Task 7 (lead msg#15548): accept optional is_hidden patch
+    # so the 👁 eye toggle on the agent card can flip the persistent
+    # hidden flag via the SAME endpoint it already uses for icon /
+    # color. Patch semantics: only fields present in the body are
+    # touched — existing icon/color are not clobbered by a sole
+    # {name, is_hidden} POST.
+    defaults = {}
+    if "icon_emoji" in body:
+        defaults["icon_emoji"] = (body.get("icon_emoji") or "")[:16]
+    if "icon_image" in body:
+        defaults["icon_image"] = (body.get("icon_image") or "")[:500]
+    if "icon_text" in body:
+        defaults["icon_text"] = (body.get("icon_text") or "")[:16]
+    if "color" in body:
+        defaults["color"] = (body.get("color") or "")[:16]
+    if "is_hidden" in body:
+        defaults["is_hidden"] = bool(body.get("is_hidden"))
+    if not defaults:
+        # Callers that only send {name} (e.g. touch / refresh pings)
+        # still get a valid row back — use setdefault-style update_or_create.
+        profile, _ = AgentProfile.objects.get_or_create(
+            workspace=workspace, name=name
+        )
+    else:
+        profile, _ = AgentProfile.objects.update_or_create(
+            workspace=workspace,
+            name=name,
+            defaults=defaults,
+        )
     # Push into the in-memory registry so the live card updates too
     from hub.registry import _agents, _lock
 
@@ -172,6 +194,7 @@ def api_agent_profiles(request):
                 _agents[name]["icon_text"] = profile.icon_text
             if profile.color:
                 _agents[name]["color"] = profile.color
+            _agents[name]["is_hidden"] = bool(profile.is_hidden)
     return JsonResponse(
         {
             "status": "ok",
@@ -180,6 +203,7 @@ def api_agent_profiles(request):
             "icon_image": profile.icon_image,
             "icon_text": profile.icon_text,
             "color": profile.color,
+            "is_hidden": bool(getattr(profile, "is_hidden", False)),
         }
     )
 

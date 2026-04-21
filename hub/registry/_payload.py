@@ -46,6 +46,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     "health_reason": p.health_reason or "",
                     "health_source": p.health_source or "",
                     "health_ts": p.health_ts,
+                    # todo#305 Task 7 (lead msg#15548): per-agent
+                    # is_hidden flag; dashboard's 👁 eye toggle reads
+                    # this to dim / drop agent cards in sidebar + graph.
+                    "is_hidden": bool(getattr(p, "is_hidden", False)),
                 }
         except Exception:
             pass
@@ -105,6 +109,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "icon_emoji": icon_emoji,
                 "icon_text": icon_text,
                 "color": prof.get("color") or a.get("color", ""),
+                # todo#305 Task 7 (lead msg#15548): persistent per-agent
+                # hidden flag. False by default for agents without a
+                # profile row. Frontend 👁 toggle reads this to dim / drop
+                # the agent card in sidebar + topology.
+                "is_hidden": bool(prof.get("is_hidden", False)),
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
                 "liveness": liveness,
