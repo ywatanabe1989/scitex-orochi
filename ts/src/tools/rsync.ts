@@ -12,7 +12,13 @@ import { readFileSync, mkdirSync, existsSync, createWriteStream } from "fs";
 import { basename, join as pathJoin } from "path";
 import { spawn } from "child_process";
 import { randomBytes } from "crypto";
-import { OROCHI_AGENT, httpBase, buildFetchHeaders } from "./_shared.js";
+import {
+  MCP_ERROR_CODES,
+  OROCHI_AGENT,
+  httpBase,
+  mcpError,
+  buildFetchHeaders,
+} from "./_shared.js";
 
 export interface RsyncJob {
   id: string;
@@ -62,23 +68,20 @@ export async function handleRsyncMedia(args: {
   // Validate allowed hosts (prevent shell injection via dst_host)
   const ALLOWED_HOSTS = new Set(["mba", "nas", "ywata-note-win", "spartan"]);
   if (!ALLOWED_HOSTS.has(dst_host)) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error: dst_host must be one of: ${[...ALLOWED_HOSTS].join(", ")}`,
-        },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INVALID_INPUT,
+      `dst_host must be one of: ${[...ALLOWED_HOSTS].join(", ")}`,
+      "pass an allowed fleet host name",
+    );
   }
 
   // Validate src_path exists locally
   if (!existsSync(src_path)) {
-    return {
-      content: [
-        { type: "text", text: `Error: src_path not found: ${src_path}` },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.NOT_FOUND,
+      `src_path not found: ${src_path}`,
+      "pass an absolute path that exists on this host",
+    );
   }
 
   // Ensure log dir
@@ -182,9 +185,11 @@ export async function handleRsyncStatus(args: {
 }): Promise<{ content: Array<{ type: string; text: string }> }> {
   const job = rsyncJobs.get(args.job_id);
   if (!job) {
-    return {
-      content: [{ type: "text", text: `Error: job not found: ${args.job_id}` }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.NOT_FOUND,
+      `job not found: ${args.job_id}`,
+      "pass a job_id returned by rsync_media in this MCP session",
+    );
   }
   const logPath = rsyncLogPath(job.id);
   const tail = tailLog(logPath, 10);

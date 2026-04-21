@@ -5,8 +5,10 @@ import { readFileSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import {
   ConnLike,
+  MCP_ERROR_CODES,
   OROCHI_AGENT,
   httpBase,
+  mcpError,
   tokenParam,
   buildFetchHeaders,
   buildWsUrl,
@@ -31,14 +33,11 @@ export async function handleHealth(args: {
     if (args.updates) body.updates = args.updates;
     else {
       if (!args.agent || !args.status) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: "Error: agent and status required (or pass updates[])",
-            },
-          ],
-        };
+        return mcpError(
+          MCP_ERROR_CODES.INVALID_INPUT,
+          "agent and status required (or pass updates[])",
+          "include both fields, or send a list under 'updates'",
+        );
       }
       body.agent = args.agent;
       body.status = args.status;
@@ -53,23 +52,28 @@ export async function handleHealth(args: {
     });
     if (!resp.ok) {
       const t = await resp.text();
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: HTTP ${resp.status} — ${t.slice(0, 200)}`,
-          },
-        ],
-      };
+      const code =
+        resp.status === 401 || resp.status === 403
+          ? MCP_ERROR_CODES.PERMISSION_DENIED
+          : resp.status === 404
+            ? MCP_ERROR_CODES.NOT_FOUND
+            : MCP_ERROR_CODES.INTERNAL_ERROR;
+      return mcpError(
+        code,
+        `health HTTP ${resp.status}`,
+        t.slice(0, 200) || "no response body",
+      );
     }
     const out = (await resp.json()) as { applied?: number };
     return {
       content: [{ type: "text", text: `health applied: ${out.applied ?? 0}` }],
     };
   } catch (err) {
-    return {
-      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INTERNAL_ERROR,
+      `health failed: ${(err as Error).message}`,
+      "check hub reachability",
+    );
   }
 }
 
@@ -78,7 +82,11 @@ export async function handleTask(
   args: { task: string },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
-    return { content: [{ type: "text", text: "Error: not connected" }] };
+    return mcpError(
+      MCP_ERROR_CODES.AGENT_OFFLINE,
+      `not connected (state=${conn.state})`,
+      "wait for the MCP sidecar to reconnect",
+    );
   }
   const task = (args.task || "").slice(0, 200);
   conn.send(
@@ -96,7 +104,11 @@ export async function handleSubagents(
   args: { subagents: Array<{ name?: string; task?: string; status?: string }> },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
-    return { content: [{ type: "text", text: "Error: not connected" }] };
+    return mcpError(
+      MCP_ERROR_CODES.AGENT_OFFLINE,
+      `not connected (state=${conn.state})`,
+      "wait for the MCP sidecar to reconnect",
+    );
   }
   const list = Array.isArray(args.subagents) ? args.subagents : [];
   conn.send(
@@ -143,14 +155,11 @@ export async function handleContext(args: {
     }
 
     if (contextPercent === null) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Could not parse context percentage from screen "${screenName}". Last 3 lines:\n${lines.slice(-3).join("\n")}`,
-          },
-        ],
-      };
+      return mcpError(
+        MCP_ERROR_CODES.NOT_FOUND,
+        `could not parse context percentage from screen "${screenName}"`,
+        `last lines: ${lines.slice(-3).join(" | ").slice(0, 200)}`,
+      );
     }
 
     return {
@@ -165,14 +174,11 @@ export async function handleContext(args: {
       ],
     };
   } catch (err) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error reading screen "${screenName}": ${(err as Error).message}`,
-        },
-      ],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.AGENT_OFFLINE,
+      `failed to read screen "${screenName}": ${(err as Error).message}`,
+      "ensure the screen/tmux session for this agent is alive on its host",
+    );
   }
 }
 
