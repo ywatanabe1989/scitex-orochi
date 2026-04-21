@@ -80,7 +80,9 @@ def api_reactions(request):
     if not message_id or not emoji:
         return JsonResponse({"error": "message_id and emoji required"}, status=400)
     try:
-        msg = Message.objects.get(id=message_id, workspace=workspace)
+        msg = Message.objects.select_related("channel").get(
+            id=message_id, workspace=workspace
+        )
     except Message.DoesNotExist:
         return JsonResponse({"error": "message not found"}, status=404)
 
@@ -106,7 +108,9 @@ def api_reactions(request):
         ).delete()
         action = "removed" if deleted else "not_found"
 
-    # Broadcast reaction update to workspace group
+    # Broadcast reaction update to workspace group. ``channel`` is
+    # required so the AgentConsumer read-side filter (#277) can drop
+    # events for channels the receiver is not a member of.
     layer = get_channel_layer()
     group = f"workspace_{workspace.id}"
     async_to_sync(layer.group_send)(
@@ -114,6 +118,7 @@ def api_reactions(request):
         {
             "type": "reaction.update",
             "message_id": msg.id,
+            "channel": msg.channel.name,
             "emoji": emoji,
             "reactor": reactor,
             "action": action,
