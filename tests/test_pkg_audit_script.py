@@ -17,7 +17,6 @@ package, emitted strictly to stdout.
 from __future__ import annotations
 
 import json
-import os
 import stat
 import subprocess
 from pathlib import Path
