@@ -117,6 +117,20 @@ urlpatterns = [
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Admin-scoped subscribe/unsubscribe (issue #262 §9.1). Routed to a
+    # dedicated view that requires the calling actor to hold the
+    # workspace ``admin`` (or ``staff``) role; non-admin agents get a
+    # structured ``permission_denied`` JSON envelope.
+    path(
+        "api/agents/<str:target>/subscribe/",
+        views.api_admin_agent_subscribe,
+        name="api-admin-agent-subscribe",
+    ),
+    path(
+        "api/agents/<str:target>/unsubscribe/",
+        views.api_admin_agent_unsubscribe,
+        name="api-admin-agent-unsubscribe",
+    ),
     # Per-agent single-screen detail payload (todo#420 MVP).
     path(
         "api/agents/<str:name>/detail/",

@@ -24,6 +24,10 @@ from hub.views.api._agents import (
 )
 from hub.views.api._agents_lifecycle import api_agents_kill, api_agents_restart
 from hub.views.api._agents_register import api_agents_register
+from hub.views.api._agents_subscribe import (
+    api_admin_agent_subscribe,
+    api_admin_agent_unsubscribe,
+)
 from hub.views.api._channels import (
     api_channel_members,
     api_channel_prefs,
@@ -59,6 +63,8 @@ __all__ = [
     "api_agents_pin",
     "api_agents_pinned",
     "api_agents_purge",
+    "api_admin_agent_subscribe",
+    "api_admin_agent_unsubscribe",
     "api_agents_register",
     "api_agents_registry",
     "api_agents_restart",

@@ -159,6 +159,19 @@ urlpatterns = [
         views.api_agents_register,
         name="api-agents-register",
     ),
+    # Admin subscribe/unsubscribe — issue #262 §9.1. Mirrored on the bare
+    # domain so MCP sidecars (which default to the apex) can hit the
+    # admin path without a subdomain.
+    path(
+        "api/agents/<str:target>/subscribe/",
+        views.api_admin_agent_subscribe,
+        name="api-admin-agent-subscribe-bare",
+    ),
+    path(
+        "api/agents/<str:target>/unsubscribe/",
+        views.api_admin_agent_unsubscribe,
+        name="api-admin-agent-unsubscribe-bare",
+    ),
     # Central container-agent registry — mounted on bare domain so the MCP
     # sidecar on localhost can reach it without the subdomain middleware.
     path(

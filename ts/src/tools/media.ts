@@ -5,9 +5,11 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { basename, dirname } from "path";
 import { createHash } from "crypto";
 import {
+  MCP_ERROR_CODES,
   OROCHI_AGENT,
   OROCHI_TOKEN,
   httpBase,
+  mcpError,
   tokenParam,
   buildFetchHeaders,
   MIME,
@@ -39,14 +41,17 @@ export async function handleDownloadMedia(args: {
       headers: buildFetchHeaders(),
     });
     if (!resp.ok) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: HTTP ${resp.status} downloading ${fullUrl}`,
-          },
-        ],
-      };
+      const code =
+        resp.status === 401 || resp.status === 403
+          ? MCP_ERROR_CODES.PERMISSION_DENIED
+          : resp.status === 404
+            ? MCP_ERROR_CODES.NOT_FOUND
+            : MCP_ERROR_CODES.INTERNAL_ERROR;
+      return mcpError(
+        code,
+        `HTTP ${resp.status} downloading ${fullUrl}`,
+        "verify the URL and that the workspace token is valid",
+      );
     }
 
     // Determine output path
@@ -72,9 +77,11 @@ export async function handleDownloadMedia(args: {
       ],
     };
   } catch (err) {
-    return {
-      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INTERNAL_ERROR,
+      `download_media failed: ${(err as Error).message}`,
+      "check hub reachability and local disk space",
+    );
   }
 }
 
@@ -84,11 +91,11 @@ export async function handleUploadMedia(args: {
 }): Promise<{ content: Array<{ type: string; text: string }> }> {
   try {
     if (!existsSync(args.file_path)) {
-      return {
-        content: [
-          { type: "text", text: `Error: file not found: ${args.file_path}` },
-        ],
-      };
+      return mcpError(
+        MCP_ERROR_CODES.NOT_FOUND,
+        `file not found: ${args.file_path}`,
+        "pass an absolute path that exists on this host",
+      );
     }
 
     const fileData = readFileSync(args.file_path);
@@ -169,14 +176,17 @@ export async function handleUploadMedia(args: {
 
     if (!resp.ok) {
       const body = await resp.text();
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: HTTP ${resp.status} — ${body.slice(0, 200)}`,
-          },
-        ],
-      };
+      const code =
+        resp.status === 401 || resp.status === 403
+          ? MCP_ERROR_CODES.PERMISSION_DENIED
+          : resp.status === 404
+            ? MCP_ERROR_CODES.NOT_FOUND
+            : MCP_ERROR_CODES.INTERNAL_ERROR;
+      return mcpError(
+        code,
+        `upload_media HTTP ${resp.status}`,
+        body.slice(0, 200) || "no response body",
+      );
     }
 
     const result = (await resp.json()) as {
@@ -200,8 +210,10 @@ export async function handleUploadMedia(args: {
       ],
     };
   } catch (err) {
-    return {
-      content: [{ type: "text", text: `Error: ${(err as Error).message}` }],
-    };
+    return mcpError(
+      MCP_ERROR_CODES.INTERNAL_ERROR,
+      `upload_media failed: ${(err as Error).message}`,
+      "check hub reachability and local disk",
+    );
   }
 }
