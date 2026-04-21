@@ -109,6 +109,18 @@ DEFAULT_PROBE_MAP: Mapping[str, ProbeKind] = {
     "serve": ProbeKind.HUB,
     "setup-push": ProbeKind.HUB,
     "doctor": ProbeKind.HUB,
+    # Phase 1d Step B: new empty noun dispatchers (plan §2 / PR #337).
+    # Verbs land in Step C; these entries make the top-level `--help`
+    # annotate the new groups with `(Available Now)` from day one.
+    "channel": ProbeKind.HUB,
+    "workspace": ProbeKind.HUB,
+    "invite": ProbeKind.HUB,
+    "message": ProbeKind.HUB,
+    "push": ProbeKind.HUB,
+    "server": ProbeKind.HUB,
+    "auth": ProbeKind.HUB,
+    "hook": ProbeKind.HUB,
+    "system": ProbeKind.HUB,
     # Local daemon-dependent commands
     "cron": ProbeKind.LOCAL_DAEMON,
     "chrome-watchdog": ProbeKind.LOCAL_DAEMON,
@@ -120,6 +132,9 @@ DEFAULT_PROBE_MAP: Mapping[str, ProbeKind] = {
     "launch": ProbeKind.PURE_LOCAL,
     "deploy": ProbeKind.PURE_LOCAL,
     "stop": ProbeKind.PURE_LOCAL,
+    # Phase 1d Step B: `config` is pure-local (config init writes local
+    # state only) — keep the suffix off to avoid false positives.
+    "config": ProbeKind.PURE_LOCAL,
     # Flat keeper `mcp start` is pure-local (stdio server startup): no
     # suffix added to keep external mcp.json contracts noise-free.
     "mcp": ProbeKind.PURE_LOCAL,

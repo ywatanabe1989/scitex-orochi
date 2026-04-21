@@ -261,3 +261,109 @@ def test_default_probe_map_covers_all_registered_top_level_commands() -> None:
     assert "agent" in hub_or_daemon_names
     assert "cron" in hub_or_daemon_names
     assert bogus  # keeps variables used; suppresses ruff unused-var
+
+
+# ---------------------------------------------------------------------------
+# Step B — new noun dispatchers participate in (Available Now) annotation.
+# ---------------------------------------------------------------------------
+
+
+# Nouns that depend on the hub (entry in DEFAULT_PROBE_MAP is HUB). Suffix
+# must appear when the hub is reachable, must NOT appear when it is not.
+STEP_B_HUB_NOUNS: list[str] = [
+    "agent",
+    "auth",
+    "channel",
+    "hook",
+    "invite",
+    "message",
+    "push",
+    "server",
+    "system",
+    "workspace",
+]
+
+
+# Nouns that are PURE_LOCAL and must NEVER show the suffix. `config` is the
+# only new Step B noun in this bucket (config init writes local state only).
+STEP_B_PURE_LOCAL_NOUNS: list[str] = ["config"]
+
+
+@pytest.mark.parametrize("noun", STEP_B_HUB_NOUNS)
+def test_step_b_noun_suffix_present_when_hub_reachable(noun: str) -> None:
+    """Each Step B hub-backed noun group gets `(Available Now)` next to
+    its short-help when the hub probe succeeds."""
+    from scitex_orochi._cli._main import orochi
+
+    runner = CliRunner()
+    with patch.object(ha, "probe_hub", return_value=True), patch.object(
+        ha, "probe_local_daemon", return_value=True
+    ):
+        result = runner.invoke(orochi, ["--help"], obj={"host": "h", "port": 9559})
+
+    assert result.exit_code == 0, result.output
+    line = next(
+        (
+            ln
+            for ln in result.output.splitlines()
+            if ln.lstrip().startswith(noun + " ")
+        ),
+        "",
+    )
+    assert AVAILABLE_SUFFIX in line, (
+        f"expected {AVAILABLE_SUFFIX} on {noun!r} line when hub reachable; "
+        f"got line {line!r}\nfull output:\n{result.output}"
+    )
+
+
+@pytest.mark.parametrize("noun", STEP_B_HUB_NOUNS)
+def test_step_b_noun_suffix_absent_when_hub_unreachable(noun: str) -> None:
+    """Each Step B hub-backed noun group drops the suffix when the hub
+    probe fails."""
+    from scitex_orochi._cli._main import orochi
+
+    runner = CliRunner()
+    with patch.object(ha, "probe_hub", return_value=False), patch.object(
+        ha, "probe_local_daemon", return_value=False
+    ):
+        result = runner.invoke(orochi, ["--help"], obj={"host": "h", "port": 9559})
+
+    assert result.exit_code == 0, result.output
+    line = next(
+        (
+            ln
+            for ln in result.output.splitlines()
+            if ln.lstrip().startswith(noun + " ")
+        ),
+        "",
+    )
+    assert AVAILABLE_SUFFIX not in line, (
+        f"{noun!r} must NOT show the suffix when hub is unreachable; "
+        f"got line {line!r}"
+    )
+
+
+@pytest.mark.parametrize("noun", STEP_B_PURE_LOCAL_NOUNS)
+def test_step_b_pure_local_noun_never_annotated(noun: str) -> None:
+    """PURE_LOCAL Step B nouns never show the suffix, even with both
+    probes green."""
+    from scitex_orochi._cli._main import orochi
+
+    runner = CliRunner()
+    with patch.object(ha, "probe_hub", return_value=True), patch.object(
+        ha, "probe_local_daemon", return_value=True
+    ):
+        result = runner.invoke(orochi, ["--help"], obj={"host": "h", "port": 9559})
+
+    assert result.exit_code == 0, result.output
+    line = next(
+        (
+            ln
+            for ln in result.output.splitlines()
+            if ln.lstrip().startswith(noun + " ")
+        ),
+        "",
+    )
+    assert AVAILABLE_SUFFIX not in line, (
+        f"pure-local {noun!r} must never show {AVAILABLE_SUFFIX}; got {line!r}"
+    )
