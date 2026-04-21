@@ -335,6 +335,11 @@ export function _renderActivityTopology(visible, grid) {
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="minus" title="Zoom out (−)">−</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="reset" title="Reset zoom (0)">0</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
+    /* todo#305: 整列 (Tidy) button — runs concentric-ring auto-layout
+     * (inner = channels, outer = agents + human) with two light
+     * repulsion passes so overlapping nodes spread out. Layout only
+     * runs on explicit click; drag / zoom / pan are unchanged. */
+    '<button type="button" class="topo-ctrl-btn topology-autolayout-btn" data-topo-ctrl="integrate" title="整列 (auto-layout: channels inner, agents outer)">整列</button>' +
     "</div>";
   var pool = _topoBuildPoolHtml(visible, channels);
   /* todo#67 — Time seekbar + play button docked at the bottom of the

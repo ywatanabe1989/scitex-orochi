@@ -293,11 +293,12 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
       }
       /* #284: channels are single-selection only. The legacy Ctrl/Cmd+Click
        * multi-select has been removed — any click replaces the current
-       * selection with exactly this row. */
-      if (currentChannel === ch) {
-        setCurrentChannel(null);
-        loadHistory();
-      } else {
+       * selection with exactly this row.
+       *
+       * todo#305 / lead msg#15493: clicking the currently-selected row
+       * is a NO-OP — there is always exactly one selected channel, and
+       * re-clicking must not deselect. */
+      if (currentChannel !== ch) {
         setCurrentChannel(ch);
         loadChannelHistory(ch);
       }
@@ -310,19 +311,16 @@ function _wireChannelItemHandlers(chContainer, prevSelected) {
       updateChannelUnreadBadges();
       /* todo#274 Part 1 + #293: single-select is the HARD invariant —
        * clear .selected across the ENTIRE sidebar (channel rows AND
-       * DM agent-cards), not just this chContainer. Previously only
-       * chContainer was cleared, which left a stale .selected on a
-       * DM row when the user switched from a DM to a channel and
-       * manifested as "two rows selected at once" (#293). */
-      var wasSelected = el.classList.contains("selected");
+       * DM agent-cards), not just this chContainer.
+       *
+       * todo#305: unconditionally re-select this row — re-click no
+       * longer deselects, so .selected always lands on this element. */
       document
         .querySelectorAll(".sidebar .channel-item.selected, .sidebar .dm-item.selected")
         .forEach(function (it) {
           it.classList.remove("selected");
         });
-      if (!wasSelected && currentChannel === ch) {
-        el.classList.add("selected");
-      }
+      el.classList.add("selected");
       if (typeof applyFeedFilter === "function") applyFeedFilter();
       fetchStats();
     });

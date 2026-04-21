@@ -305,6 +305,11 @@ function _wireTopoZoomPan(grid, W, H) {
     else if (action === "reset") _resetVB(svg);
     else if (action === "plus") _zoomAt(svg, 1 / 1.25, null, null);
     else if (action === "minus") _zoomAt(svg, 1.25, null, null);
+    else if (action === "integrate") {
+      /* todo#305: 整列 — concentric ring auto-layout. */
+      if (typeof _topoAutoLayout === "function") _topoAutoLayout();
+      if (typeof renderActivityTab === "function") renderActivityTab();
+    }
   });
   /* Keyboard — Escape = back; 0 = reset; +/= = zoom in; - = zoom out.
    * Only fires when an SVG is visible and no text input is focused. */

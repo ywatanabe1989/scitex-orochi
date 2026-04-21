@@ -395,15 +395,22 @@ body {
   font-size: 12px;
   color: #aaa;
   /* ywatanabe 2026-04-21: "enlarge height; we need to see more" —
-   * tighter vertical rhythm so more rows fit without scrolling. */
+   * tighter vertical rhythm so more rows fit without scrolling.
+   * todo#305 (lead msg#15493): padding + gap unified with the Agents
+   * sidebar card metrics (.sidebar .agent-card.sidebar-compact in
+   * style-messages.css) so Channels and Agents lists read at the same
+   * row height. font-size + min-height already matched; only padding
+   * + margin needed nudging. Icons (icon→★→👁→🔔→name) are still
+   * specific to channels — only container metrics align. */
   margin-bottom: 2px;
-  padding: 2px 8px;
+  padding: 4px 8px;
   border-radius: 4px;
   transition: background 0.15s;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
   min-height: 20px;
 }
 .unread-badge {

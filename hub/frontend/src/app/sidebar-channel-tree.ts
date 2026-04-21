@@ -8,7 +8,7 @@ import { setCurrentChannel } from "./state";
 import { channelUnread, escapeHtml } from "./utils";
 import { updateChannelUnreadBadges } from "./websocket";
 import { renderChannelBadgeHtml } from "../channel-badge";
-import { loadChannelHistory, loadHistory } from "../chat/chat-history";
+import { loadChannelHistory } from "../chat/chat-history";
 import { applyFeedFilter } from "../chat/chat-render";
 import { _activateTab, activeTab } from "../tabs";
 
@@ -307,11 +307,14 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
       }
       /* #284: channels are single-selection only. The legacy Ctrl/Cmd+Click
        * multi-select has been removed — any click replaces the current
-       * selection with exactly this row. */
-      if ((globalThis as any).currentChannel === ch) {
-        setCurrentChannel(null);
-        loadHistory();
-      } else {
+       * selection with exactly this row.
+       *
+       * todo#305 / lead msg#15493: clicking the currently-selected row
+       * is a NO-OP — there is always exactly one selected channel, and
+       * re-clicking must not deselect. Previously this branch set the
+       * channel to null (empty chat, no highlight); users reported it
+       * as a defect ("sometimes no channel is selected at all"). */
+      if ((globalThis as any).currentChannel !== ch) {
         setCurrentChannel(ch);
         loadChannelHistory(ch);
       }
@@ -327,16 +330,18 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
        * DM agent-cards), not just this chContainer. Previously only
        * chContainer was cleared, which left a stale .selected on a
        * DM row when the user switched from a DM to a channel and
-       * manifested as "two rows selected at once" (#293). */
-      var wasSelected = el.classList.contains("selected");
+       * manifested as "two rows selected at once" (#293).
+       *
+       * todo#305: unconditionally re-select this row — the click
+       * handler above no longer deselects on re-click, so the class
+       * must always land back on this element after the cross-sidebar
+       * clear. */
       document
         .querySelectorAll(".sidebar .channel-item.selected, .sidebar .dm-item.selected")
         .forEach(function (it) {
           it.classList.remove("selected");
         });
-      if (!wasSelected && (globalThis as any).currentChannel === ch) {
-        el.classList.add("selected");
-      }
+      el.classList.add("selected");
       if (typeof applyFeedFilter === "function") applyFeedFilter();
       fetchStats();
     });

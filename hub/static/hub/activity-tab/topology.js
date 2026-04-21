@@ -319,6 +319,8 @@ function _renderActivityTopology(visible, grid) {
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="minus" title="Zoom out (−)">−</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="reset" title="Reset zoom (0)">0</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
+    /* todo#305: 整列 (Tidy) button — concentric ring auto-layout. */
+    '<button type="button" class="topo-ctrl-btn topology-autolayout-btn" data-topo-ctrl="integrate" title="整列 (auto-layout: channels inner, agents outer)">整列</button>' +
     "</div>";
   var pool = _topoBuildPoolHtml(visible, channels);
   /* todo#67 — Time seekbar + play button docked at the bottom of the
