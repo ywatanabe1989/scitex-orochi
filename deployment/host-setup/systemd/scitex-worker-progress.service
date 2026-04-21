@@ -1,0 +1,42 @@
+# systemd user unit: worker-progress headless daemon (todo#272).
+#
+# Long-running Python daemon that subscribes to #progress / #heads /
+# #ywatanabe and emits a 60 s throttled digest line to #ywatanabe. This
+# is NOT an sac-managed agent and NOT a Claude process — it's a plain
+# Python loop that lives alongside the other fleet LaunchAgents.
+#
+# Install (user-scope):
+#   ./scripts/client/install-worker-progress.sh
+#   ./scripts/client/install-worker-progress.sh --dry-run    # smoke-test
+#   ./scripts/client/install-worker-progress.sh --uninstall
+#
+# The install helper rewrites __REPO__ / __DRY_RUN__ before copying
+# this template into ~/.config/systemd/user/ and running
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now scitex-worker-progress.service
+#
+# Logs: journalctl --user -u scitex-worker-progress.service
+#       plus ~/.local/state/scitex/worker-progress.log (Python FileHandler)
+
+[Unit]
+Description=scitex worker-progress headless daemon (todo#272)
+Documentation=https://github.com/ywatanabe1989/scitex-orochi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# SCITEX_OROCHI_TOKEN must be present in the user's env. The default
+# EnvironmentFile path matches scripts/client/install/bootstrap-host.sh.
+EnvironmentFile=-%h/.scitex/orochi/env
+ExecStart=/usr/bin/env python3 __REPO__/scripts/server/worker-progress.py __DRY_RUN__
+
+Restart=always
+RestartSec=30
+# Keep a dozen lines of history buffered so the daemon survives an
+# early log-rotation race on boot.
+StandardOutput=append:%h/.local/state/scitex/worker-progress.log
+StandardError=append:%h/.local/state/scitex/worker-progress.log
+
+[Install]
+WantedBy=default.target

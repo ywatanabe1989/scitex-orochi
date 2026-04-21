@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: worker-progress headless daemon (todo#272).
+
+  Long-running Python daemon that subscribes to #progress / #heads /
+  #ywatanabe and emits a 60 s throttled digest line to #ywatanabe. This
+  is NOT an sac-managed agent and NOT a Claude process — it's a plain
+  Python loop that lives alongside the other LaunchAgents in this
+  directory.
+
+  Install:
+    ./scripts/client/install-worker-progress.sh
+    ./scripts/client/install-worker-progress.sh --dry-run   # smoke-test
+    ./scripts/client/install-worker-progress.sh --uninstall
+
+  KeepAlive is true because this is a long-running daemon (distinct
+  from the interval-triggered LaunchAgents like
+  chrome-codesign-watchdog.plist and fleet-host-liveness-probe.plist
+  which only run periodically and exit). If the daemon exits for any
+  reason launchd will respawn it after ThrottleInterval seconds.
+
+  Logs: ~/Library/Logs/scitex/worker-progress.log (Python side also
+  writes structured logs there via FileHandler).
+
+  Replace __HOME__ / __REPO__ / __DRY_RUN__ with your actual paths and
+  mode before `launchctl load`. The companion install helper
+  scripts/client/install-worker-progress.sh does this rewrite
+  automatically.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.scitex.worker-progress</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/usr/bin/env</string>
+      <string>python3</string>
+      <string>__REPO__/scripts/server/worker-progress.py</string>
+      <string>__DRY_RUN__</string>
+    </array>
+
+    <!-- Long-running daemon: respawn on exit. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Don't respawn in a tight loop if the script exits non-zero. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/scitex/worker-progress.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/scitex/worker-progress.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+      <!--
+        SCITEX_OROCHI_TOKEN must be set in the user's env / .env so the
+        daemon can authenticate. See scripts/client/install/bootstrap-
+        host.sh for the canonical .env path.
+      -->
+    </dict>
+  </dict>
+</plist>

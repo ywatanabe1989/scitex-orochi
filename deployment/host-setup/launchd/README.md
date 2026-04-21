@@ -86,3 +86,45 @@ in the installed plist and re-running the install helper):
 
 See `skills/infra-hub-docker-disk-full.md` for why this cache is
 reaper-safe.
+
+## `com.scitex.worker-progress.plist`
+
+scitex-orochi#272. Long-running Python daemon (`KeepAlive=true`, no
+`StartInterval`) that subscribes to `#progress`, `#heads`,
+`#ywatanabe` and emits a 60 s throttled digest line to `#ywatanabe`.
+See `scripts/server/worker-progress.py` and
+`scripts/server/worker_progress_pkg/` for the implementation.
+
+Install (live mode):
+
+```bash
+./scripts/client/install-worker-progress.sh
+```
+
+Install in dry-run smoke-test mode (no posts, just logged):
+
+```bash
+./scripts/client/install-worker-progress.sh --dry-run
+```
+
+Uninstall:
+
+```bash
+./scripts/client/install-worker-progress.sh --uninstall
+```
+
+Status / logs:
+
+```bash
+launchctl list | grep com.scitex.worker-progress
+tail -n 200 ~/Library/Logs/scitex/worker-progress.log
+```
+
+Requires `SCITEX_OROCHI_TOKEN` in the launchd environment. The
+simplest path is to set it in `~/.zshenv` (interactive shells pick it
+up immediately; new launchd jobs see it after the next login or a
+manual `launchctl setenv SCITEX_OROCHI_TOKEN <value>`).
+
+Linux hosts use the systemd user-unit counterpart at
+`../systemd/scitex-worker-progress.service` — see
+`../systemd/README.md` for install / uninstall commands.
