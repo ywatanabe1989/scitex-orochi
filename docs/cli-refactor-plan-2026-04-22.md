@@ -507,6 +507,50 @@ src/scitex_orochi/_cli/commands/server_cmd.py (help epilogs)
 src/scitex_orochi/_cli/commands/agent_cmd/_*.py (help epilogs)
 ```
 
+## 9. Help-display policy (lead msg#16514, ywatanabe msg#16512)
+
+"最小限びっくり" — no verbose warnings, no red text, no popups. The only
+visible change in `--help` output is a quiet `(Available Now)` suffix
+next to each subcommand that is currently reachable.
+
+### Rendering rule
+```
+scitex-orochi --help:
+  agent      Launch / control agents           (Available Now)
+  machine    Heartbeat, probe, resources       (Available Now)
+  cron       Schedule daemon                   (Available Now)
+  dispatch   Auto-dispatch read-only           (Available Now)
+  todo       Todo listing and triage
+  workspace  Manage workspaces                 (Available Now)
+  ...
+```
+
+- `(Available Now)` suffix present iff the subcommand's backing
+  service is currently reachable (hub `/api/*` for server-dependent
+  commands, local daemon ping for host-local commands, nothing for
+  pure-local doc/help commands).
+- Suffix drops when unreachable — that is the only signal. No error
+  text, no colour flip, no `[DEGRADED]` label.
+- Reachability probe runs as a click eager callback on `--help`; must
+  short-circuit at ≤100 ms total (parallel probes with tight
+  timeout) so `--help` stays responsive.
+- For commands with no service dependency (e.g. `init`, `docs`,
+  `skills`), the suffix is omitted entirely — no false positive.
+
+### Deprecation warning style (Q2 decision integrating msg#16514)
+One-time-per-shell, stderr only, single line. Example:
+```
+note: `scitex-orochi list-agents` is deprecated; use `scitex-orochi agent list`.
+```
+No multi-line banner, no colour, no link. Same "最小限びっくり"
+principle as the help suffix. Opt-out via `SCITEX_OROCHI_NO_DEPRECATION=1`.
+
+### Why this matters for §3 Implementation order
+The `(Available Now)` suffix layer lands in **Step A** so it's in
+place before any rename — otherwise the alias layer has no way to
+signal degraded state quietly. Suffix implementation is shared
+infrastructure used by both new and alias command paths.
+
 ---
 
 End of plan. Approve, amend, or reject whole-cloth. No implementation
