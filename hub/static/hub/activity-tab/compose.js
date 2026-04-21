@@ -331,10 +331,84 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     document.addEventListener("mousedown", outsideClick, true);
   }, 50);
 
+  /* msg#16193: local-scoped pending attachments for this popup. Paste /
+   * drop stage here instead of routing to the Chat composer. */
+  var popPending = [];
+  var popTray = document.createElement("div");
+  popTray.className = "tcc-pending";
+  popTray.style.display = "none";
+  if (input && input.parentNode === pop) {
+    pop.insertBefore(popTray, input);
+  } else {
+    pop.insertBefore(popTray, pop.firstChild);
+  }
+
+  function _renderPopTray() {
+    if (!popPending.length) {
+      popTray.style.display = "none";
+      popTray.innerHTML = "";
+      return;
+    }
+    popTray.style.display = "flex";
+    popTray.innerHTML = "";
+    popPending.forEach(function (p, idx) {
+      var item = document.createElement("div");
+      item.className = "tcc-pending-item";
+      var isImage =
+        p.uploaded &&
+        p.uploaded.mime_type &&
+        p.uploaded.mime_type.indexOf("image/") === 0;
+      var thumb;
+      if (isImage) {
+        thumb = document.createElement("img");
+        thumb.src = p.uploaded.url;
+        thumb.className = "tcc-pending-thumb";
+        thumb.alt = p.uploaded.filename || "image";
+      } else {
+        thumb = document.createElement("span");
+        thumb.className = "tcc-pending-icon";
+        thumb.textContent = "\uD83D\uDCCE";
+      }
+      var label = document.createElement("span");
+      label.className = "tcc-pending-label";
+      label.textContent = (p.uploaded && p.uploaded.filename) || "";
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "tcc-pending-remove";
+      remove.title = "Remove";
+      remove.textContent = "\u2715";
+      remove.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        popPending.splice(idx, 1);
+        _renderPopTray();
+      });
+      item.appendChild(thumb);
+      item.appendChild(label);
+      item.appendChild(remove);
+      popTray.appendChild(item);
+    });
+  }
+
+  async function _stagePopFiles(files) {
+    if (!files || files.length === 0) return;
+    var uploaded =
+      typeof _uploadFilesAPI === "function" ? await _uploadFilesAPI(files) : [];
+    if (!uploaded || !uploaded.length) return;
+    if (!pop.parentNode) return;
+    uploaded.forEach(function (u, i) {
+      popPending.push({ file: files[i] || files[0], uploaded: u });
+    });
+    _renderPopTray();
+  }
+
   function send() {
     var text = (input.value || "").trim();
-    if (!text) return;
+    var attachments = popPending.map(function (p) {
+      return p.uploaded;
+    });
+    if (!text && attachments.length === 0) return;
     var payload = { channel: channel, content: text };
+    if (attachments.length > 0) payload.attachments = attachments;
     if (
       typeof wsConnected !== "undefined" &&
       wsConnected &&
@@ -386,57 +460,49 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
       close();
     }
   });
-  /* Paste support — images / files / long text. Native paste of plain
-   * text keeps the default behavior (lands in the textarea). If the
-   * clipboard carries a file/image, route to the Chat composer (the
-   * canonical paste-to-attach pipeline lives there) and re-dispatch
-   * the paste event so the upload.js handler does the work.
-   * ywatanabe 2026-04-19: "small input modal should support pasting". */
+  /* Paste support — msg#16193 regression-fix: stage LOCALLY instead of
+   * routing to Chat (which flipped the user out of the Overview tab).
+   * See hub/frontend/src/activity-tab/compose.ts for the canonical
+   * source and full rationale. */
   input.addEventListener("paste", function (ev) {
+    ev.stopPropagation();
     var cd =
       ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
     if (!cd) return;
-    var hasFile = false;
-    if (cd.files && cd.files.length) hasFile = true;
-    else if (cd.items) {
-      for (var i = 0; i < cd.items.length; i++) {
-        var it = cd.items[i];
+    var collected = [];
+    var seen = new Set();
+    function pushUnique(f) {
+      if (!f || !f.type || f.type.indexOf("image/") !== 0) return;
+      var key =
+        f.name + "|" + f.size + "|" + f.type + "|" + (f.lastModified || 0);
+      if (seen.has(key)) return;
+      seen.add(key);
+      collected.push(f);
+    }
+    var fileList = cd.files;
+    if (fileList && fileList.length) {
+      for (var i = 0; i < fileList.length; i++) pushUnique(fileList[i]);
+    } else if (cd.items) {
+      for (var j = 0; j < cd.items.length; j++) {
+        var it = cd.items[j];
         if (it && it.type && it.type.indexOf("image/") === 0) {
-          hasFile = true;
-          break;
+          pushUnique(it.getAsFile());
         }
       }
     }
-    /* Long text still attaches as a file via upload.js's
-     * _pastedTextShouldAttach heuristic — route for that case too. */
     var text = "";
     try {
       text = cd.getData("text/plain") || "";
     } catch (_) {}
-    var isLong = text.length > 1000;
-    if (hasFile || isLong) {
+    var attachText =
+      typeof _pastedTextShouldAttach === "function" &&
+      _pastedTextShouldAttach(text);
+    if (collected.length > 0 || attachText) {
       ev.preventDefault();
-      ev.stopPropagation();
-      close();
-      _routeToChat();
-      setTimeout(function () {
-        var msgInput = document.getElementById("msg-input");
-        if (!msgInput) return;
-        msgInput.focus();
-        /* Synthesize a paste event on msg-input so upload.js's
-         * handleClipboardPaste processes the same clipboard payload. */
-        try {
-          var newEv = new ClipboardEvent("paste", {
-            clipboardData: cd,
-            bubbles: true,
-            cancelable: true,
-          });
-          msgInput.dispatchEvent(newEv);
-        } catch (_) {
-          /* Some browsers don't allow constructing ClipboardEvent with
-           * populated data — let the user paste again in that case. */
-        }
-      }, 50);
+      if (attachText && typeof _buildPastedTextFile === "function") {
+        collected.push(_buildPastedTextFile(text));
+      }
+      _stagePopFiles(collected);
     }
   });
   expandBtn.addEventListener("click", function () {
@@ -476,9 +542,10 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
       window.toggleVoiceInput();
     }
   });
-  /* Drop files onto popup → route to Chat with attachments primed. */
+  /* Drop files onto popup → stage LOCALLY (msg#16193). */
   pop.addEventListener("dragover", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.add("tcc-drag-over");
   });
   pop.addEventListener("dragleave", function () {
@@ -486,11 +553,11 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
   });
   pop.addEventListener("drop", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.remove("tcc-drag-over");
     var files = ev.dataTransfer && ev.dataTransfer.files;
-    if (files && files.length && typeof handleFileUpload === "function") {
-      _routeToChat();
-      for (var i = 0; i < files.length; i++) handleFileUpload(files[i]);
+    if (files && files.length) {
+      _stagePopFiles(Array.prototype.slice.call(files));
     }
   });
 }
