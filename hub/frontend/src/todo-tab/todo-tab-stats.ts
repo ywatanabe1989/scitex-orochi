@@ -177,36 +177,80 @@ export function _renderTodoStatsLabels(labels) {
   );
 }
 
+/* BY REPO horizontal bar chart (msg#16206, msg#16207). Renders below
+ * DAILY VELOCITY + LABELS. Each repo is one row with a stacked
+ * open/closed bar and the pair of counts at the right. Sorted by
+ * total (open+closed) descending so the busiest repo is on top. The
+ * colour palette reuses the burndown legend swatches (opened=red,
+ * closed=green) so the three viz sections read consistently. */
 export function _renderTodoStatsByRepo(rows) {
   if (!rows || rows.length === 0) {
     return "";
   }
-  var body = rows
+  /* Work on a sorted copy so we don't mutate the cached payload the
+   * next render pass (or another section) may read. */
+  var sorted = rows.slice().sort(function (a, b) {
+    var ta = (a.open || 0) + (a.closed || 0);
+    var tb = (b.open || 0) + (b.closed || 0);
+    return tb - ta;
+  });
+  var maxTotal = 1;
+  sorted.forEach(function (r) {
+    var t = (r.open || 0) + (r.closed || 0);
+    if (t > maxTotal) maxTotal = t;
+  });
+  var body = sorted
     .map(function (r) {
+      var openN = r.open || 0;
+      var closedN = r.closed || 0;
+      /* Each segment's width is proportional to the count relative to
+       * the busiest repo's total — so repos with fewer issues render
+       * shorter bars, just like the LABELS chart. Clamp to >=0 so an
+       * empty row collapses rather than producing a negative width. */
+      var openPct = Math.max(0, (openN / maxTotal) * 100);
+      var closedPct = Math.max(0, (closedN / maxTotal) * 100);
       return (
-        "<tr>" +
-        "<td>" +
+        '<li class="todo-repo-row">' +
+        '<span class="todo-repo-name">' +
         escapeHtml(_shortRepo(r.repo)) +
-        "</td>" +
-        '<td class="todo-repo-num">' +
-        (r.open || 0) +
-        "</td>" +
-        '<td class="todo-repo-num">' +
-        (r.closed || 0) +
-        "</td>" +
-        "</tr>"
+        "</span>" +
+        '<span class="todo-repo-bar">' +
+        '<span class="todo-repo-fill todo-repo-fill-open" style="width:' +
+        openPct.toFixed(2) +
+        '%" title="Open: ' +
+        openN +
+        '"></span>' +
+        '<span class="todo-repo-fill todo-repo-fill-closed" style="width:' +
+        closedPct.toFixed(2) +
+        '%" title="Closed: ' +
+        closedN +
+        '"></span>' +
+        "</span>" +
+        '<span class="todo-repo-counts">' +
+        '<span class="todo-repo-count todo-repo-count-open">' +
+        openN +
+        "</span>" +
+        '<span class="todo-repo-count-sep">/</span>' +
+        '<span class="todo-repo-count todo-repo-count-closed">' +
+        closedN +
+        "</span>" +
+        "</span>" +
+        "</li>"
       );
     })
     .join("");
   return (
     '<div class="todo-stats-section">' +
-    '<div class="todo-stats-h">By repo</div>' +
-    '<table class="todo-repo-table">' +
-    "<thead><tr><th>Repo</th><th>Open</th><th>Closed</th></tr></thead>" +
-    "<tbody>" +
+    '<div class="todo-stats-h">By repo (open / closed, ' +
+    sorted.length +
+    ")</div>" +
+    '<div class="todo-chart-legend">' +
+    '<span class="todo-chart-swatch todo-chart-opened"></span>Open ' +
+    '<span class="todo-chart-swatch todo-chart-closed"></span>Closed' +
+    "</div>" +
+    '<ul class="todo-repo-list">' +
     body +
-    "</tbody>" +
-    "</table>" +
+    "</ul>" +
     "</div>"
   );
 }
