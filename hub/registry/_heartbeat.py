@@ -71,6 +71,27 @@ def set_subagent_count(name: str, count: int) -> None:
             _agents[name]["subagent_count"] = max(0, int(count or 0))
 
 
+def set_sac_status(name: str, sac_status: dict) -> None:
+    """Store the full ``scitex-agent-container status --terse --json`` dict.
+
+    Lead msg#16005 pivot: the heartbeat pusher shells out to ``sac
+    status --terse --json`` and forwards the resulting dict verbatim so
+    future additions to sac's terse projection (``context_pct``,
+    ``pane_state``, ``current_tool``, quota fields, ...) surface on
+    ``/api/agents/`` without per-field plumbing on the hub side.
+
+    Replace-on-present semantics — every heartbeat re-runs sac, so the
+    dict is always current. Non-dict / empty pushes are ignored (the
+    previous value is preserved) so a transient CLI failure doesn't
+    clear the field.
+    """
+    if not isinstance(sac_status, dict) or not sac_status:
+        return
+    with _lock:
+        if name in _agents:
+            _agents[name]["sac_status"] = dict(sac_status)
+
+
 def set_health(
     name: str, status: str, reason: str = "", source: str = "caduceus"
 ) -> None:

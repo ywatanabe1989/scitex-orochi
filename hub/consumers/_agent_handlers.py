@@ -218,6 +218,7 @@ async def handle_heartbeat(consumer, content):
 
     from hub.registry import (
         set_current_task,
+        set_sac_status,
         set_subagent_count,
         update_heartbeat,
     )
@@ -236,6 +237,12 @@ async def handle_heartbeat(consumer, content):
             )
         except (TypeError, ValueError):
             pass
+    # lead msg#16005: forward the whole ``sac status --terse --json``
+    # dict on every WS heartbeat too (not just the REST register path).
+    # Silently drop non-dict payloads.
+    sac = payload.get("sac_status")
+    if isinstance(sac, dict) and sac:
+        set_sac_status(consumer.agent_name, sac)
 
     await consumer.channel_layer.group_send(
         consumer.workspace_group,
