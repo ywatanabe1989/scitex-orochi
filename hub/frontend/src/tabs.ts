@@ -17,7 +17,13 @@ import { channelUnread } from "./app/utils";
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
    fetchWorkspaces */
 
-export var activeTab = "chat";
+/* Default landing tab — the Overview tab (internal id "activity" — see
+ * note below) is the leftmost tab and the first-load landing surface.
+ * The internal id stays "activity" even though the user-visible label
+ * reads "Overview"; renaming the id would churn every globalThis/SSE
+ * key that keys off it (_overviewExpanded, etc.), and the directory
+ * name `activity-tab/` is likewise left alone per Step 3 spec. */
+export var activeTab = "activity";
 
 /* PR #<this> Item 3 helper: pick a sensible default channel when the
  * Chat tab is activated without one. Preference order:
@@ -233,25 +239,39 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
   });
 });
 
-/* Restore last open tab across reloads */
+/* Restore last open tab across reloads.
+ *
+ * Step 3a (Overview promotion): default landing is the Overview tab
+ * (internal id "activity"). If localStorage has a remembered tab AND
+ * its button still exists in the DOM, honor it — otherwise fall back
+ * to Overview. Activating Overview on boot is what makes first paint
+ * land there; we intentionally do NOT rely on inline display:none on
+ * Chat surfaces — _activateTab("activity") hides them imperatively. */
 (function () {
   try {
     var last = localStorage.getItem("orochi_active_tab");
     /* Step 3c: the top-level Terminal tab has been removed (terminal
      * preview now lives only inside the agent-detail pane's SSH action).
-     * Users who left their last session on "terminal" would otherwise
-     * land on a nonexistent tab button; fall through to the default so
-     * the boot picks whatever the default tab is (initialised to "chat"
-     * above; a future Overview tab (Step 3a) can change that default
-     * without further work here). */
+     * Users who left their last session on "terminal" fall through. */
     if (last === "terminal") {
       last = null;
     }
-    if (last && last !== "chat") {
-      var btn = document.querySelector('.tab-btn[data-tab="' + last + '"]');
-      if (btn) _activateTab(last);
+    var target = last || "activity";
+    /* If the remembered tab no longer has a DOM button, fall back to
+     * Overview ("activity"). */
+    var btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
+    if (!btn) {
+      target = "activity";
+      btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
     }
-  } catch (_) {}
+    if (btn) _activateTab(target);
+  } catch (_) {
+    /* Even if localStorage is unavailable (private mode / quota), we
+     * still want to land on Overview. */
+    try {
+      _activateTab("activity");
+    } catch (__) {}
+  }
 })();
 
 /* Collapsible sidebar sections (#321 fix: use data-section for stable keys) */
