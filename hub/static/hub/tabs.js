@@ -142,6 +142,16 @@ document.querySelectorAll(".tab-btn").forEach(function (btn) {
 (function () {
   try {
     var last = localStorage.getItem("orochi_active_tab");
+    /* Step 3c: the top-level Terminal tab has been removed (terminal
+     * preview now lives only inside the agent-detail pane's SSH action).
+     * Users who left their last session on "terminal" would otherwise
+     * land on a nonexistent tab button; fall through to the default so
+     * the boot picks whatever the default tab is (initialised to "chat"
+     * above; a future Overview tab (Step 3a) can change that default
+     * without further work here). */
+    if (last === "terminal") {
+      last = null;
+    }
     if (last && last !== "chat") {
       var btn = document.querySelector('.tab-btn[data-tab="' + last + '"]');
       if (btn) _activateTab(last);
