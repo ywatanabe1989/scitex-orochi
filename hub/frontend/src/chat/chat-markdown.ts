@@ -5,7 +5,17 @@ import { cachedMemberNames } from "../mention";
 /* Chat module -- markdown / mention / link / code-block content rendering.
  * Extracted from appendMessage() so chat-render.js stays under the JS
  * line limit. Pure helper: takes raw content text, returns the
- * highlighted/escaped HTML string ready to drop into a .content div. */
+ * highlighted/escaped HTML string ready to drop into a .content div.
+ *
+ * Issue-reference linking policy (see #275):
+ *   - `owner/repo#N`  → linked + title-annotated via /api/github/issue-title.
+ *     This is the CANONICAL form. Users MUST write the repo prefix.
+ *   - bare `#N`       → left as plain text, NOT auto-linked. The old
+ *     behaviour of auto-linking `#N` to ywatanabe1989/todo issue N was
+ *     removed because cross-repo references (e.g. a scitex-orochi PR
+ *     number) were silently mislabelled with the wrong repo's title.
+ *   - `msg#NNN`       → still becomes a thread-jump link.
+ *   - `#general/#todo/...` (channel names) → still highlighted. */
 
 export function _processMessageMarkdown(content) {
   var escaped = escapeHtml(content);
@@ -180,8 +190,7 @@ export function _processMessageMarkdown(content) {
       '<span class="channel-highlight">$1</span>',
     )
     /* Cross-repo references: `owner/repo#N` → GitHub issue link.
-     * Must run before the bare `#N` rule so the slash-prefixed form wins
-     * (the bare rule has a `(?<![\/\w])` guard that lets this pass). */
+     * Bare `#N` is intentionally NOT linked (see top-of-file note / #275). */
     .replace(
       /(^|[^\w\/])([\w.-]+\/[\w.-]+)#(\d+)\b/g,
       function (_m, lead, repo, num) {
@@ -203,10 +212,6 @@ export function _processMessageMarkdown(content) {
           "</a>"
         );
       },
-    )
-    .replace(
-      /(?<![\/\w])#(\d+)\b/g,
-      '<a class="issue-link" data-issue-num="$1" data-issue-label="#$1" href="https://github.com/ywatanabe1989/todo/issues/$1" target="_blank">#$1</a>',
     )
     /* Auto-link plain URLs. The lookbehind only blocks URLs that are
      * already inside an HTML attribute value (`="...` or `'...`); the
