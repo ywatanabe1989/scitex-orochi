@@ -63,6 +63,15 @@ async def handle_register(consumer, content):
 
     register_agent(consumer.agent_name, consumer.workspace_id, consumer.agent_meta)
 
+    # scitex-orochi#451 — mark the consumer as registered. The
+    # ``receive_json`` dispatch uses this flag to deny ``message`` frames
+    # from un-registered connections so orphan-on-reconnect failures
+    # surface as a loud error instead of a silent deafness. The flag
+    # flips True only AFTER agent_meta + group_adds are in place, so a
+    # concurrent message frame either arrives before register completes
+    # (rejected) or after (accepted + delivered).
+    consumer._registered = True
+
     await consumer.channel_layer.group_send(
         consumer.workspace_group,
         {

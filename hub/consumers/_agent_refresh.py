@@ -4,12 +4,77 @@ Fired from ``hub.signals`` post_save/post_delete on ``ChannelMembership``
 (issue #282) so out-of-band subscription changes propagate to live WS
 consumers without waiting for reconnect. Extracted from ``_agent.py``
 to stay under the 512-line cap.
+
+This module also hosts :func:`prehydrate_channels` (scitex-orochi#451),
+the connect-time rehydration helper used by :class:`AgentConsumer` to
+make group-channel delivery robust to missing ``register`` frames.
 """
 
 from __future__ import annotations
 
-from ._groups import _sanitize_group
+from ._groups import _sanitize_group, log
 from ._helpers import _load_agent_channel_subs
+
+
+async def prehydrate_channels(consumer) -> None:
+    """Rejoin persisted group channels + seed ``agent_meta`` at connect.
+
+    scitex-orochi#451 — closes the orphan-on-reconnect deafness window.
+
+    Background. On a WS reconnect, the authoritative sequence is:
+
+        client  connects → server connect()              → joins DM groups
+        client  sends register                             → server handle_register
+                                                              → loads group subs from DB
+                                                              → group_add(each)
+                                                              → sets agent_meta["channels"]
+
+    Between ``connect()`` completing and ``handle_register`` running,
+    ``agent_meta`` is absent. The ``chat_message`` filter in
+    :class:`AgentConsumer` requires ``agent_meta["channels"]`` to contain
+    the target channel for group messages; without it every group
+    message is silently dropped. If the client never sends ``register``
+    (buggy reconnect logic, network blip between open and first send),
+    the agent is silently deaf forever — it appears connected but
+    receives no group-channel messages.
+
+    This helper runs at the end of ``connect()`` and makes the server
+    robust to both races: it pre-joins persisted group memberships from
+    the DB and seeds ``agent_meta["channels"]`` with the union of DM
+    channels + persisted group memberships. ``handle_register`` remains
+    idempotent and will refresh the same state (plus the richer metadata
+    payload) when the client's register frame arrives.
+
+    ``consumer._registered`` is set to False here; ``handle_register``
+    flips it True on success. The ``message``-frame dispatch guards on
+    ``_registered`` so un-registered connections can't silently succeed
+    at writes while missing replies (scitex-orochi#451 contract).
+    """
+    consumer._registered = False
+    try:
+        persisted = await _load_agent_channel_subs(
+            consumer.workspace_id, consumer.agent_name
+        )
+    except Exception:  # noqa: BLE001 — DB hiccups at connect must not tear down
+        log.exception(
+            "connect: pre-hydrate group channels failed for %s",
+            consumer.agent_name,
+        )
+        persisted = []
+
+    dm_names = list(getattr(consumer, "_dm_channel_names", []) or [])
+    channels = list(dm_names) + [c for c in persisted if c not in dm_names]
+
+    for ch_name in persisted:
+        group = _sanitize_group(
+            f"channel_{consumer.workspace_id}_{ch_name}"
+        )
+        await consumer.channel_layer.group_add(group, consumer.channel_name)
+
+    # Seed a minimal agent_meta so chat_message's membership filter
+    # works before ``handle_register`` runs. ``handle_register`` (which
+    # is idempotent) will replace this dict with the full payload.
+    consumer.agent_meta = {"channels": channels}
 
 
 async def handle_agent_subs_refresh(consumer, event):

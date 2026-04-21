@@ -379,6 +379,9 @@ class DMConsumerRoutingTest(TestCase):
         consumer.agent_name = "alice"
         consumer.agent_meta = {"channels": ["dm:alice|bob"]}
         consumer.workspace_member_id = self.mem_alice.id
+        # scitex-orochi#451 — message dispatch gates on _registered; the
+        # synthetic consumer here represents a fully-registered agent.
+        consumer._registered = True
 
         sent = []
 
@@ -444,6 +447,9 @@ class DMConsumerRoutingTest(TestCase):
         consumer.agent_name = "alice"
         consumer.agent_meta = {"channels": ["#general"]}
         consumer.workspace_member_id = self.mem_alice.id
+        # scitex-orochi#451 — message dispatch gates on _registered; the
+        # synthetic consumer here represents a fully-registered agent.
+        consumer._registered = True
 
         sent = []
 
