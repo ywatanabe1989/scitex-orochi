@@ -205,10 +205,20 @@ async def handle_heartbeat(consumer, content):
     payload = content.get("payload", {})
     consumer.agent_metrics = {
         "cpu_count": payload.get("cpu_count"),
+        "cpu_model": payload.get("cpu_model"),
         "load_avg_1m": payload.get("load_avg_1m"),
+        "load_avg_5m": payload.get("load_avg_5m"),
+        "load_avg_15m": payload.get("load_avg_15m"),
         "mem_used_percent": payload.get("mem_used_percent"),
         "mem_total_mb": payload.get("mem_total_mb"),
+        "mem_free_mb": payload.get("mem_free_mb"),
+        # ywatanabe msg#16215 — absolute MB + per-GPU list so the
+        # hub can render ``N/M GB``, ``N/M TB``, ``N/M`` GPU.
+        "mem_used_mb": payload.get("mem_used_mb"),
         "disk_used_percent": payload.get("disk_used_percent"),
+        "disk_total_mb": payload.get("disk_total_mb"),
+        "disk_used_mb": payload.get("disk_used_mb"),
+        "gpus": payload.get("gpus") or [],
         # Slurm cluster aggregates (todo#87). None on non-slurm hosts.
         "resource_source": payload.get("resource_source"),
         "cluster_nodes": payload.get("cluster_nodes"),
