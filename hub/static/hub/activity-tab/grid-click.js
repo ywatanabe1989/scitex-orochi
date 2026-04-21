@@ -5,7 +5,17 @@
 
 function _ovgWireClick(grid) {
   grid.addEventListener("click", function (ev) {
-    var pinBtn = ev.target.closest(".activity-pin-btn[data-pin-name]");
+    /* Star click on a topology agent-node OR on an overview-grid HTML
+     * pin button. The SVG star emitted by renderAgentBadgeSvg carries
+     * `.topo-agent-star` (SVG <text>, not a <button>), the HTML path
+     * carries `.activity-pin-btn`; both expose the same data-pin-name /
+     * data-pin-next contract. Matching both selectors gives the topology
+     * canvas the SAME toggle-favourite behaviour the sidebar and
+     * overview-grid star click already has (todo#305 Task 5, lead
+     * msg#15523 "FUNCTIONAL parity with sidebar"). */
+    var pinBtn = ev.target.closest(
+      ".activity-pin-btn[data-pin-name], .topo-agent-star[data-pin-name]",
+    );
     if (pinBtn && grid.contains(pinBtn)) {
       ev.stopPropagation();
       var pname = pinBtn.getAttribute("data-pin-name");
