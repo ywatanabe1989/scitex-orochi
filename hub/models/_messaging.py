@@ -131,9 +131,11 @@ class ChannelMembership(models.Model):
 
     PERM_READ_WRITE = "read-write"
     PERM_READ_ONLY = "read-only"
+    PERM_WRITE_ONLY = "write-only"
     PERM_CHOICES = [
         (PERM_READ_WRITE, "Read & Write"),
         (PERM_READ_ONLY, "Read Only"),
+        (PERM_WRITE_ONLY, "Write Only"),
     ]
 
     user = models.ForeignKey(

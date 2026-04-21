@@ -40,7 +40,16 @@ def _load_agent_channel_subs(workspace_id, agent_name):
     Agent subscriptions live in :class:`ChannelMembership` rows keyed to
     the agent's synthetic ``agent-<name>`` Django user. An agent is
     considered subscribed iff a ``ChannelMembership`` row exists; the
-    row's ``permission`` column governs read-only vs read-write.
+    row's ``permission`` column governs read-only vs read-write vs
+    write-only.
+
+    ``write-only`` memberships are excluded from the returned list so
+    the consumer does not join the channel-layer group and the channel
+    does not appear in ``agent_meta["channels"]``. This makes chat /
+    reaction / edit / delete fan-out skip the agent on the read side
+    while still permitting writes (msg#16880 — worker-progress posts
+    digests to ``#ywatanabe`` but must not receive ``#ywatanabe``
+    traffic back).
     """
     from django.contrib.auth.models import User
 
@@ -61,6 +70,7 @@ def _load_agent_channel_subs(workspace_id, agent_name):
         m.channel.name
         for m in memberships
         if m.channel.name not in ABOLISHED_AGENT_CHANNELS
+        and m.permission != ChannelMembership.PERM_WRITE_ONLY
     ]
 
 

@@ -287,7 +287,7 @@ def api_channel_members(request, slug=None):
             return JsonResponse({"status": "ok", "deleted": deleted})
 
         perm = body.get("permission", "read-write")
-        if perm not in ("read-write", "read-only"):
+        if perm not in ("read-write", "read-only", "write-only"):
             return JsonResponse({"error": "invalid permission"}, status=400)
 
         # ``#agent`` was abolished 2026-04-21 (lead directive, PR #293
