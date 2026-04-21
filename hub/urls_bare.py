@@ -143,6 +143,17 @@ urlpatterns = [
     ),
     path("api/agents/", views.api_agents, name="api-agents"),
     path("api/agents/health/", views.api_agent_health, name="api-agent-health"),
+    # Auto-dispatch operator triggers + inspection (Phase 1c msg#16477).
+    path(
+        "api/auto-dispatch/fire/",
+        views.api_auto_dispatch_fire,
+        name="api-auto-dispatch-fire-bare",
+    ),
+    path(
+        "api/auto-dispatch/status/",
+        views.api_auto_dispatch_status,
+        name="api-auto-dispatch-status-bare",
+    ),
     # Per-agent single-screen detail payload (todo#420 MVP).
     path(
         "api/agents/<str:name>/detail/",

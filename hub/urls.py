@@ -117,6 +117,17 @@ urlpatterns = [
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
+    # Auto-dispatch operator triggers + inspection (Phase 1c msg#16477).
+    path(
+        "api/auto-dispatch/fire/",
+        views.api_auto_dispatch_fire,
+        name="api-auto-dispatch-fire",
+    ),
+    path(
+        "api/auto-dispatch/status/",
+        views.api_auto_dispatch_status,
+        name="api-auto-dispatch-status",
+    ),
     # Admin-scoped subscribe/unsubscribe (issue #262 §9.1). Routed to a
     # dedicated view that requires the calling actor to hold the
     # workspace ``admin`` (or ``staff``) role; non-admin agents get a

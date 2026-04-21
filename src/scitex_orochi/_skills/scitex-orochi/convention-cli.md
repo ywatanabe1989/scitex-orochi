@@ -9,22 +9,88 @@ These conventions apply to all CLI tools built within the SciTeX ecosystem and O
 
 ## Command Structure
 
-### Verb-Noun Pattern (Preferred)
+### Canonical shape: `scitex-orochi <noun> <verb>` (House style)
+
+As of Phase 1b/1c (PR #336 + #337, msg#16414 / msg#16477), every new
+scitex-orochi subcommand MUST be exposed as a `<noun> <verb>` pair —
+click group = noun, command = verb. This is the SAME style scitex-dev
+uses and what we are migrating the whole fleet toward.
+
 ```bash
-scitex-orochi list-agents          # verb-noun, hyphenated
-scitex-orochi show-history #general
-scitex-orochi send-message #general "hi"
+scitex-orochi machine heartbeat send         # noun=machine, verb=heartbeat send
+scitex-orochi machine resources show         # resource snapshot for this host
+scitex-orochi cron start                     # unified cron daemon
+scitex-orochi host-liveness probe            # fleet-watch probe
+scitex-orochi hungry-signal check            # idle→lead ping
+scitex-orochi disk pressure-probe            # df-based alert
+scitex-orochi chrome-watchdog check          # kernel_task CPU escape hatch
+scitex-orochi todo list --lane infrastructure
+scitex-orochi todo next --lane hub-admin
+scitex-orochi todo triage --lane hub-admin --json
+scitex-orochi dispatch run --head mba --todo 123
+scitex-orochi dispatch status
 ```
 
-### Subcommand Hierarchy (For grouped operations)
-```bash
-scitex-dev skills list             # noun → verb
-scitex-dev skills export
-scitex-dev mcp start
-scitex-dev mcp doctor
-```
+### Complete subcommand-group registry (as of Phase 1c)
 
-Pick one style per package and stay consistent. Existing scitex-orochi uses verb-noun for top-level CLI; scitex-dev uses subcommands.
+1. **`machine`** — host-level operations
+   * `machine heartbeat {send,status}` — push agent metadata / inspect registry
+   * `machine resources show` — CPU / RAM / Storage / GPU snapshot (matches Machines tab)
+2. **`host-liveness`** — fleet-watch host reachability probe
+   * `host-liveness probe`
+3. **`hungry-signal`** — Layer 2 idle-head → lead ping
+   * `hungry-signal check`
+4. **`disk`** — host disk hygiene
+   * `disk reaper-dry-run` — cache/sticker dir cleanup
+   * `disk pressure-probe` — NDJSON alert pipeline
+5. **`chrome-watchdog`** — macOS kernel_task CPU escape hatch
+   * `chrome-watchdog check`
+6. **`cron`** — unified Orochi cron daemon (msg#16406 / #16410)
+   * `cron start|stop|list|run|status|reload`
+7. **`todo`** — fleet todo queue (PR #320 helper reused)
+   * `todo list [--lane LABEL]`
+   * `todo next --lane LABEL` — pick-one path
+   * `todo triage [--lane LABEL]` — scored ranking
+8. **`dispatch`** — operator-side auto-dispatch control
+   * `dispatch run --head HOST [--todo N]` — force-fire
+   * `dispatch status` — per-head streak / cooldown table
+9. **`host-identity`** — local-vs-remote resolver (read-only)
+
+Legacy top-level verb-noun commands (`list-agents`, `show-history`,
+`send-message`, etc.) are kept for backwards compatibility but are
+**deprecated for new additions** — reach for a `<noun> <verb>`
+group instead. When a legacy verb-noun command is logically part of
+an existing group, the acceptable migration path is: (a) add the
+`<noun> <verb>` form, (b) keep the old alias as a thin shim, (c)
+mark the shim deprecated in `--help`.
+
+### Why this shape
+
+* Groups keep the `--help` tree navigable. `scitex-orochi machine --help`
+  lists every host-level verb without polluting the top level.
+* Subcommand-level monkeypatching (the PR #336 test pattern) is
+  cleaner when the verb is the last path component.
+* The shell wrappers (`scripts/client/*.sh`) become trivial
+  `exec scitex-orochi <noun> <verb> "$@"` shims — one idiom, no
+  per-script flag handling.
+
+### Deprecated: legacy per-script shell-call convention
+
+Before Phase 1b (PR #336), each host-side concern lived in its own
+bash script under `scripts/client/` with hand-rolled flag parsing,
+inconsistent exit codes, and no unit tests. That convention is now
+deprecated:
+
+* **Do NOT** add new bash-only scripts for host-side operations.
+  Implement the logic as a click subcommand under an existing or
+  new `<noun>` group; if a shell-callable entry point is needed
+  (launchd / systemd / cron), write a three-line wrapper that
+  `exec`s `scitex-orochi <noun> <verb> "$@"`.
+* **Do NOT** add new flags directly to existing legacy bash scripts.
+  Port the script to a click subcommand first, then add the flag.
+* **Do NOT** invent new top-level verb-noun entries (`scitex-orochi
+  foo-bar-baz`). Put them inside an existing group or propose a new
+  group in the PR description.
 
 ## Standard Flags (All Commands)
 
