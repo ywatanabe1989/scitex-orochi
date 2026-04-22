@@ -7,10 +7,6 @@ import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type WebSocket from "ws";
 import { OROCHI_AGENT } from "../src/config.js";
 import { addMessage } from "../src/message_buffer.js";
-import {
-  refreshIssueTitleCache,
-  decorateIssueRefs,
-} from "../src/issue_cache.js";
 import { dbg } from "./guards.js";
 
 // Dedup: track recently delivered message IDs to prevent duplicate notifications
@@ -246,10 +242,15 @@ export async function handleWsMessage(
 
     const attachmentInfo = normalizeAttachments(msg, payload);
 
-    refreshIssueTitleCache();
-    const decoratedContent = decorateIssueRefs(content);
-
-    const notifContent = `${decoratedContent}${attachmentInfo}`;
+    // msg#17571 / msg#17577 — receiver-side `#NN (title)` decoration
+    // removed. Sender bots already embed `#NN (gh-title)` at compose
+    // time (scitex-agent-container / mgr-code-quality composers), so
+    // running decorateIssueRefs here produced the duplicated wrong-repo
+    // title pattern observed in msg#17471 / #17498 / #17548. Frontend
+    // policy from #275 / PR #292 already landed the same "bare #N stays
+    // plain text" stance on the renderer side; aligning the sidecar
+    // with it keeps behaviour consistent across both paths.
+    const notifContent = `${content}${attachmentInfo}`;
     // Meta values must all be strings — Claude Code ignores
     // notifications where meta contains non-string values (numbers, null).
     const notifMeta: Record<string, string> = {
