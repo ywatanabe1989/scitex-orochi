@@ -22,15 +22,18 @@ class OrochiClient:
     Supports both standalone Orochi server (port 9559) and
     Django Channels backend (port 8559, /ws/agent/ endpoint).
 
-    Usage:
-        # Standalone server
-        async with OrochiClient("my-agent", channels=["#general"]) as client:
-            await client.send("#general", "Hello from my-agent")
+    Examples:
+        Standalone server::
 
-        # Django Channels backend
-        async with OrochiClient("my-agent", port=8559,
-                                ws_path="/ws/agent/") as client:
-            await client.send("#general", "Hello from my-agent")
+            async with OrochiClient("my-agent", channels=["#general"]) as client:
+                await client.send("#general", "Hello from my-agent")
+
+        Django Channels backend::
+
+            async with OrochiClient(
+                "my-agent", port=8559, ws_path="/ws/agent/"
+            ) as client:
+                await client.send("#general", "Hello from my-agent")
     """
 
     def __init__(
