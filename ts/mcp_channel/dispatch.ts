@@ -7,10 +7,6 @@ import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import type WebSocket from "ws";
 import { OROCHI_AGENT } from "../src/config.js";
 import { addMessage } from "../src/message_buffer.js";
-import {
-  refreshIssueTitleCache,
-  decorateIssueRefs,
-} from "../src/issue_cache.js";
 import { dbg } from "./guards.js";
 
 // Dedup: track recently delivered message IDs to prevent duplicate notifications
@@ -246,10 +242,10 @@ export async function handleWsMessage(
 
     const attachmentInfo = normalizeAttachments(msg, payload);
 
-    refreshIssueTitleCache();
-    const decoratedContent = decorateIssueRefs(content);
-
-    const notifContent = `${decoratedContent}${attachmentInfo}`;
+    /* Bare-`#NN` decoration intentionally NOT applied: receive-side had no
+     * repo context and pulled titles from hardcoded `ywatanabe1989/todo`,
+     * causing wrong-repo annotations. Matches frontend policy #275. #367. */
+    const notifContent = `${content}${attachmentInfo}`;
     // Meta values must all be strings — Claude Code ignores
     // notifications where meta contains non-string values (numbers, null).
     const notifMeta: Record<string, string> = {
