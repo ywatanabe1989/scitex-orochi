@@ -153,6 +153,12 @@ def make_rename_stub(old_name: str, new_name: str):
     swallowed by ``UNPROCESSED`` and the user still gets the rename
     error. This is simpler than enumerating every old sub-verb and is
     correct per the plan: the old path is dead, not re-routed.
+
+    The stub is registered with ``hidden=True`` so it does not clutter
+    the top-level ``scitex-orochi --help`` output. Back-compat is
+    preserved (the stub still resolves and emits the canonical rename
+    error when invoked directly), but discoverable help only advertises
+    the canonical noun-verb groups.
     """
     import click as _click
 
@@ -166,6 +172,11 @@ def make_rename_stub(old_name: str, new_name: str):
             f"exists only to give a clear error message; invoking it "
             f"exits non-zero."
         ),
+        # Hide from `scitex-orochi --help` listings — the stub still
+        # resolves so back-compat scripts and muscle memory keep working,
+        # but only the canonical noun-verb commands appear in the help
+        # listing for new users to discover.
+        hidden=True,
         # Accept any extra args so users who ran the old form with its
         # old options still hit the rename error (not a click parse error).
         context_settings={

@@ -92,3 +92,60 @@ def test_old_form_hard_errors(old: str, new_path: list[str]) -> None:
         f"error: `scitex-orochi {old}` was renamed to "
         f"`scitex-orochi {expected_new}`."
     ) in result.output
+
+
+# ---------------------------------------------------------------------------
+# Hidden-from-help discipline (msg#17078 follow-up)
+# ---------------------------------------------------------------------------
+#
+# The rename stubs must keep working (back-compat for scripts and muscle
+# memory) but they must NOT appear in the top-level ``scitex-orochi --help``
+# Commands listing — the canonical noun-verb groups are what users discover.
+
+
+@pytest.mark.parametrize("old,_new_path", RENAMES)
+def test_old_form_hidden_from_top_level_help(
+    old: str, _new_path: list[str]
+) -> None:
+    """Rename stubs are registered with ``hidden=True`` and so must not
+    appear as bullet entries in the top-level ``--help`` Commands list.
+
+    We look for the stub's short-help signature (``Renamed -- use``) on a
+    line that also begins with the legacy name. A naive substring check
+    on ``old`` alone would false-match noun groups whose names overlap
+    (e.g. ``stop`` matches inside ``host-liveness`` short-help).
+    """
+    runner = CliRunner()
+    result = runner.invoke(
+        orochi, ["--help"], obj={"host": "127.0.0.1", "port": 9559}
+    )
+    assert result.exit_code == 0, result.output
+
+    rename_marker = "Renamed -- use"
+    offending = [
+        ln
+        for ln in result.output.splitlines()
+        if rename_marker in ln and ln.lstrip().startswith(old + " ")
+    ]
+    assert not offending, (
+        f"deprecated stub {old!r} should be hidden from top-level help "
+        f"but appeared on line(s): {offending}\nfull output:\n{result.output}"
+    )
+
+
+@pytest.mark.parametrize("old,_new_path", RENAMES)
+def test_old_form_help_subcommand_still_resolves(
+    old: str, _new_path: list[str]
+) -> None:
+    """Even though hidden from the top-level listing, ``<old> --help``
+    must still resolve cleanly so back-compat is preserved (a script
+    introspecting the legacy name does not break)."""
+    runner = CliRunner()
+    result = runner.invoke(
+        orochi, [old, "--help"], obj={"host": "127.0.0.1", "port": 9559}
+    )
+    assert result.exit_code == 0, (
+        f"hidden stub {old!r} --help must still resolve; "
+        f"got exit {result.exit_code}\noutput: {result.output}"
+    )
+    assert "Usage:" in result.output

@@ -189,9 +189,12 @@ def test_make_rename_stub_swallows_trailing_args() -> None:
     assert "was renamed" in result.output
 
 
-def test_make_rename_stub_short_help_mentions_new_form() -> None:
-    """``--help`` on the top-level group surfaces the rename target so
-    users browsing help still see the forward pointer."""
+def test_make_rename_stub_hidden_from_parent_help() -> None:
+    """Rename stubs are registered with ``hidden=True`` so the parent
+    group's ``--help`` Commands listing does NOT advertise them. Back-
+    compat is preserved (the stub still resolves), but new-user
+    discovery is funnelled through the canonical noun-verb commands.
+    """
     import click
     from click.testing import CliRunner
 
@@ -206,7 +209,28 @@ def test_make_rename_stub_short_help_mentions_new_form() -> None:
     runner = CliRunner()
     result = runner.invoke(root, ["--help"])
     assert result.exit_code == 0
-    # Either the short-help or the command listing should carry the
-    # new form. We accept either placement to avoid coupling too tightly
-    # to click's formatter output.
+    # The deprecated alias must not appear as a bullet in the parent
+    # help output — that listing is reserved for canonical commands.
+    assert "doctor" not in result.output
+    assert "Renamed" not in result.output
+
+
+def test_make_rename_stub_help_self_surfaces_new_form() -> None:
+    """The stub's own ``--help`` still surfaces the rename target so
+    users who explicitly probe the legacy name see the forward pointer.
+    """
+    import click
+    from click.testing import CliRunner
+
+    stub = dep.make_rename_stub("doctor", "system doctor")
+
+    @click.group()
+    def root() -> None:
+        pass
+
+    root.add_command(stub)
+
+    runner = CliRunner()
+    result = runner.invoke(root, ["doctor", "--help"])
+    assert result.exit_code == 0
     assert "system doctor" in result.output
