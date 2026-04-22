@@ -210,7 +210,7 @@ def _score_issue(
 
 @click.group("todo")
 def todo() -> None:
-    """Fleet todo queue — list / next / triage (PR #320 core reused)."""
+    """Fleet todo queue — list, pick, triage."""
 
 
 # ---------------------------------------------------------------------------
@@ -316,7 +316,7 @@ def todo_next(
     exclude: str,
     limit: int,
 ) -> None:
-    """Pick the next todo for ``--lane`` (auto-dispatch-pick-todo.py parity).
+    """Pick the next todo for ``--lane``.
 
     Exits non-zero when nothing matches (so cron / subshells can branch).
     """

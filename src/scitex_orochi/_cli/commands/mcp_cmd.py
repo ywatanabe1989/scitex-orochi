@@ -24,7 +24,7 @@ from __future__ import annotations
 import click
 
 
-@click.group(help="MCP (Model Context Protocol) glue — flat keeper per Q5 plan.")
+@click.group(help="MCP (Model Context Protocol) integration.")
 def mcp() -> None:
     """Group for MCP-related verbs. Only ``start`` is implemented in Step A."""
 

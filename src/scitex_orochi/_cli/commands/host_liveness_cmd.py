@@ -341,7 +341,7 @@ _SEVERITY_CODE = {"ok": 0, "advisory": 1, "warn": 2, "critical": 3}
 
 @click.group("host-liveness")
 def host_liveness() -> None:
-    """Fleet host liveness probe (ex-``host-liveness-probe.sh``)."""
+    """Fleet host liveness probe."""
 
 
 @host_liveness.command("probe")
