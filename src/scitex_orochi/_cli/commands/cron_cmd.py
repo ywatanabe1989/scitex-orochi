@@ -84,7 +84,7 @@ def _repo_root() -> Path:
 
 @click.group("cron")
 def cron() -> None:
-    """Manage the unified Orochi cron daemon (msg#16406 / msg#16410)."""
+    """Manage the unified Orochi cron daemon."""
 
 
 # ----------------------------------------------------------------------

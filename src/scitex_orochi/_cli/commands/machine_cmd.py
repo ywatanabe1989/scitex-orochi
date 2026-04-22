@@ -72,7 +72,7 @@ def machine() -> None:
 
 @machine.group("heartbeat")
 def heartbeat() -> None:
-    """Heartbeat publishing + inspection (replaces ``agent_meta.py --push``)."""
+    """Heartbeat publishing + inspection."""
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ def heartbeat() -> None:
     "once",
     is_flag=True,
     default=True,
-    help="Single push cycle (default, matches ``agent_meta.py --push --once``).",
+    help="Single push cycle (default).",
 )
 @click.option("--verbose", is_flag=True, help="Print per-agent push status to stderr.")
 def heartbeat_send(
@@ -106,12 +106,7 @@ def heartbeat_send(
     once: bool,  # noqa: ARG001 - preserved for flag parity
     verbose: bool,
 ) -> None:
-    """Enumerate local agents, collect their metadata, POST to the hub.
-
-    Drop-in replacement for ``scripts/client/agent_meta.py --push --once``.
-    Logic delegates to ``agent_meta_pkg.push_all`` so changes there stay
-    visible without a code change here.
-    """
+    """Enumerate local agents, collect their metadata, POST to the hub."""
     push_all, _collect = _import_agent_meta_pkg()
     resolved_token = token or load_workspace_token()
     try:

@@ -243,7 +243,7 @@ def _send_dm(
 
 @click.group("hungry-signal")
 def hungry_signal() -> None:
-    """Idle-head coordinated-dispatch signalling (ex-``hungry-signal.sh``)."""
+    """Idle-head coordinated-dispatch signalling."""
 
 
 @hungry_signal.command("check")

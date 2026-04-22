@@ -35,7 +35,7 @@ DEFAULT_HUB = "https://scitex-orochi.com"
 
 @click.group("dispatch")
 def dispatch() -> None:
-    """Operator-side control of the server-side auto-dispatch (PR #334)."""
+    """Operator-side control of the server-side auto-dispatch."""
 
 
 def _resolve_token(token: str | None) -> str:

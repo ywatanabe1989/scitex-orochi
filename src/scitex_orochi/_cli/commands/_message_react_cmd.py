@@ -56,7 +56,7 @@ DEFAULT_HUB = "https://scitex-orochi.com"
     ),
 )
 def react() -> None:
-    """Message-reaction verbs (msg#16489, Phase 1d follow-up)."""
+    """Add or remove emoji reactions on a message."""
 
 
 def _resolve_token(token: str | None) -> str:
