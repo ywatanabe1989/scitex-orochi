@@ -1,15 +1,15 @@
-"""Tests for the Phase 1d Step C noun dispatchers + rename stubs.
+"""Tests for the Phase 1d Step C noun dispatchers.
 
 Step B (PR #342) introduced empty noun groups. Step C (plan PR #337 §2)
-now:
+migrates the verb bodies under each noun group (``agent launch`` =
+former ``agent-launch``, ``message send`` = former ``send``, etc.).
 
-* migrates the verb bodies under each noun group (``agent launch`` =
-  former ``agent-launch``, ``message send`` = former ``send``, etc.);
-* replaces the flat command registrations in ``_main.py`` with
-  hard-error stubs that exit non-zero with the rename message.
-
-This test file asserts both invariants for every row of the rename
-table in plan §2.
+The legacy flat verb-noun aliases that briefly co-existed as hard-error
+rename stubs were deleted in the msg#17078 follow-up — their grace
+period under interface-cli §5 has ended. This file therefore asserts
+the canonical noun-verb surface only; the post-removal contract for
+legacy names is locked in
+``test_phase1d_step_c_rename_functional.test_legacy_flat_alias_is_unknown_command``.
 """
 
 from __future__ import annotations
@@ -53,38 +53,6 @@ EXPECTED_NOUN_VERBS: dict[str, set[str]] = {
     "workspace": {"create", "delete", "list"},
 }
 
-
-#: Rename table — (old_flat_name, new_noun_verb_path) per plan §2.
-RENAME_TABLE: list[tuple[str, str]] = [
-    ("agent-launch", "agent launch"),
-    ("agent-restart", "agent restart"),
-    ("agent-status", "agent status"),
-    ("agent-stop", "agent stop"),
-    ("list-agents", "agent list"),
-    ("fleet", "agent fleet-list"),
-    ("launch", "agent launch"),
-    ("stop", "agent stop"),
-    ("send", "message send"),
-    ("listen", "message listen"),
-    ("show-history", "channel history"),
-    ("join", "channel join"),
-    ("list-channels", "channel list"),
-    ("list-members", "channel members"),
-    ("create-invite", "invite create"),
-    ("list-invites", "invite list"),
-    ("create-workspace", "workspace create"),
-    ("delete-workspace", "workspace delete"),
-    ("list-workspaces", "workspace list"),
-    ("show-status", "server status"),
-    ("serve", "server start"),
-    ("deploy", "server deploy"),
-    ("setup-push", "push setup"),
-    ("init", "config init"),
-    ("doctor", "system doctor"),
-    ("login", "auth login"),
-    ("heartbeat-push", "machine heartbeat send"),
-    ("report", "hook report"),
-]
 
 #: Flat keepers (Q5) that must remain registered and functional.
 FLAT_KEEPERS: list[str] = ["docs", "skills", "mcp"]
@@ -154,66 +122,6 @@ def test_noun_group_is_availability_annotated(noun: str) -> None:
     group = orochi.commands[noun]
     assert isinstance(group, AvailabilityAnnotatedGroup), (
         f"{noun!r} must be annotated; got class {type(group).__name__}"
-    )
-
-
-# ---------------------------------------------------------------------------
-# Rename stubs (Step C Q1: hard-error, not alias)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("old,new", RENAME_TABLE)
-def test_rename_stub_registered(old: str, new: str) -> None:
-    """Each legacy flat name is still reachable as a command (the stub)."""
-    assert old in orochi.commands, (
-        f"legacy flat command {old!r} must remain registered as a "
-        f"hard-error rename stub (plan PR #337 §2, Q1 decision)"
-    )
-
-
-@pytest.mark.parametrize("old,new", RENAME_TABLE)
-def test_rename_stub_exits_nonzero_with_canonical_message(old: str, new: str) -> None:
-    """Invoking the old flat command prints the canonical rename error
-    to stderr and exits non-zero (exit code 2 per Step A helper).
-
-    Note: Click 8.3 dropped ``CliRunner(mix_stderr=False)``; stdout and
-    stderr are merged into ``result.output`` in the default runner. The
-    assertion below therefore checks the combined stream — sufficient
-    because ``hard_rename_error`` targets stderr exclusively and the
-    stub emits nothing on stdout before exiting.
-    """
-    runner = CliRunner()
-    result = runner.invoke(orochi, [old], obj={"host": "127.0.0.1", "port": 9559})
-    assert result.exit_code != 0, (
-        f"{old!r} stub should exit non-zero; got {result.exit_code}\n"
-        f"output: {result.output!r}"
-    )
-    expected_line = (
-        f"error: `scitex-orochi {old}` was renamed to "
-        f"`scitex-orochi {new}`."
-    )
-    assert expected_line in result.output, (
-        f"{old!r} stub did not print expected rename message.\n"
-        f"Expected line: {expected_line!r}\n"
-        f"Got output: {result.output!r}"
-    )
-
-
-@pytest.mark.parametrize("old,new", RENAME_TABLE)
-def test_rename_stub_swallows_extra_args(old: str, new: str) -> None:
-    """Users who still run the old form with old flags/args must hit the
-    rename error (not a click usage error). The stub accepts arbitrary
-    trailing tokens."""
-    runner = CliRunner()
-    result = runner.invoke(
-        orochi,
-        [old, "--some-old-flag", "extra", "args"],
-        obj={"host": "127.0.0.1", "port": 9559},
-    )
-    assert result.exit_code != 0
-    assert "was renamed" in result.output, (
-        f"{old!r} stub should print rename message even with trailing "
-        f"args; got output: {result.output!r}"
     )
 
 

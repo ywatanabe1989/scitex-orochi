@@ -112,66 +112,15 @@ def orochi(
 
 
 # ── Register subcommands ────────────────────────────────────────
-# Phase 1d Step C (plan PR #337 §2, Q1 decision): flat command names
-# are now hard-error stubs that tell the user the new form. The verb
-# bodies live under the noun dispatchers below.
-from scitex_orochi._cli._deprecation import make_rename_stub
+# Phase 1d Step C (plan PR #337 §2): the legacy flat verb-noun command
+# names (e.g. ``agent-launch``, ``list-agents``, ``send``) have been
+# removed entirely. Their grace period under interface-cli §5 is over;
+# users who type a removed name now get Click's standard
+# ``Error: No such command 'agent-launch'.`` and exit 2. The canonical
+# noun-verb forms (``agent launch``, ``agent list``, ``message send``,
+# …) are the only entry points.
 from scitex_orochi._cli.commands.docs_cmd import docs
 from scitex_orochi._cli.commands.skills_cmd import skills
-
-# Rename table (plan §2). Each tuple is (old_flat_name, new_noun_verb).
-# The stub accepts any trailing args so users who still run the old
-# form with its old flags still hit the rename error rather than a
-# confusing click parse failure.
-_RENAMES: list[tuple[str, str]] = [
-    # Agent lifecycle
-    ("agent-launch", "agent launch"),
-    ("agent-restart", "agent restart"),
-    ("agent-status", "agent status"),
-    ("agent-stop", "agent stop"),
-    ("list-agents", "agent list"),
-    ("fleet", "agent fleet-list"),
-    # Flat `launch` (group with master/head/all) and flat `stop` both
-    # mapped to the agent-lifecycle nouns per plan §2 (ambiguous-stop
-    # resolution: implementation targets fleet agents).
-    ("launch", "agent launch"),
-    ("stop", "agent stop"),
-    # Messaging
-    ("send", "message send"),
-    ("listen", "message listen"),
-    # Channels
-    ("show-history", "channel history"),
-    ("join", "channel join"),
-    ("list-channels", "channel list"),
-    ("list-members", "channel members"),
-    # Invites
-    ("create-invite", "invite create"),
-    ("list-invites", "invite list"),
-    # Workspaces
-    ("create-workspace", "workspace create"),
-    ("delete-workspace", "workspace delete"),
-    ("list-workspaces", "workspace list"),
-    # Server
-    ("show-status", "server status"),
-    ("serve", "server start"),
-    ("deploy", "server deploy"),
-    # Push
-    ("setup-push", "push setup"),
-    # Config
-    ("init", "config init"),
-    # System
-    ("doctor", "system doctor"),
-    # Auth
-    ("login", "auth login"),
-    # Machine (Q1 rename, even though `machine heartbeat send` already
-    # exists from PR #336 — the flat form still needs a hard error).
-    ("heartbeat-push", "machine heartbeat send"),
-    # Hook
-    ("report", "hook report"),
-]
-
-for _old, _new in _RENAMES:
-    orochi.add_command(make_rename_stub(_old, _new))
 
 # Flat keepers (Q5): docs and skills stay flat, no rename.
 orochi.add_command(docs)
