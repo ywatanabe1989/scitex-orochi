@@ -85,6 +85,14 @@ export function _setChannelPref(ch, patch) {
       if (pinEl) {
         pinEl.classList.toggle("ch-pin-on", !!pref.is_starred);
         pinEl.classList.toggle("ch-pin-off", !pref.is_starred);
+        /* msg#17599 — the gold ⭐ color is driven by `.ch-star-on`
+         * (style-channels.css: `color: #f5a623`). Markup at
+         * channel-badge.ts:125-126 emits `ch-pin-on ch-star-on` as a
+         * pair at initial render, so the optimistic toggle must flip
+         * BOTH halves or the persistent state reads from a stale
+         * `.ch-star-off` and the gold color never sticks after click. */
+        pinEl.classList.toggle("ch-star-on", !!pref.is_starred);
+        pinEl.classList.toggle("ch-star-off", !pref.is_starred);
         pinEl.setAttribute(
           "title",
           pref.is_starred ? "Unpin" : "Pin (float to top)",
