@@ -133,6 +133,42 @@ export function escapeHtml(s) {
  * "head-mba"), but the dashboard already shows "@<host>" separately,
  * so the duplication just adds noise. This renderer-level fix keeps
  * the registered IDs intact and only affects display. */
+/**
+ * Display-layer map from raw `hostname(1)` → canonical fleet label.
+ *
+ * msg#17472 — heartbeat payloads now carry the raw `os.hostname()` on
+ * the identity path (lead msg#15578 fix guarantees identity can't be
+ * spoofed via env), which means the display path has to map the raw
+ * value to the short canonical host label (`mba` / `nas` / `spartan`
+ * / `ywata-note-win`). Keys cover both the short form and any common
+ * fqdn the kernel might return.
+ *
+ * Mirrors the server-side ``hostname_aliases`` declared in the shared
+ * config at ``~/.dotfiles/src/.scitex/orochi/shared/config.yaml``. Keep
+ * these two lists in sync when fleet hosts change. todo#fut — serve
+ * the yaml via /api/config so the frontend doesn't need a hard-coded
+ * copy (tracked as the follow-up to this PR).
+ */
+export var HOSTNAME_ALIASES: Record<string, string> = {
+  "Yusukes-MacBook-Air": "mba",
+  "Yusukes-MacBook-Air.local": "mba",
+  "DXP480TPLUS-994": "nas",
+  "nas.local": "nas",
+  "spartan-login1": "spartan",
+  "spartan-login1.hpc.unimelb.edu.au": "spartan",
+  // ywata-note-win is its own canonical label — no entry needed.
+};
+
+/**
+ * Resolve a raw hostname to the short canonical fleet label.
+ * Falls back to the input unchanged for unknown hosts so the UI degrades
+ * gracefully on new machines before HOSTNAME_ALIASES gets updated.
+ */
+export function canonicalHost(raw) {
+  if (!raw) return raw;
+  return HOSTNAME_ALIASES[raw] || raw;
+}
+
 export function cleanAgentName(name) {
   if (!name) return name;
   var parts = name.split("@");
@@ -145,10 +181,16 @@ export function cleanAgentName(name) {
   if (parts.length === 2) {
     var lead = parts[0];
     var host = parts[1];
+    /* msg#17472 — alias-map the embedded host before the dedupe so the
+     * `<role>-<host>@<host>` collapse sees the canonical label on both
+     * sides (e.g. `lead@Yusukes-MacBook-Air` → `lead@mba`,
+     * `head-mba@Yusukes-MacBook-Air` → `head@mba`). */
+    host = canonicalHost(host);
     var suffix = "-" + host;
     if (host && lead.length > suffix.length && lead.endsWith(suffix)) {
       return lead.slice(0, -suffix.length) + "@" + host;
     }
+    return lead + "@" + host;
   }
   return name;
 }
@@ -173,8 +215,9 @@ export function hostedAgentName(a) {
   var host = a && a.hostname ? a.hostname : a && a.machine ? a.machine : "";
   /* Always pipe the constructed "<name>@<host>" string through
    * cleanAgentName so the role-host suffix gets collapsed
-   * (head-mba@mba → head@mba). The earlier form returned the raw
-   * concatenation and the dedupe never fired. */
+   * (head-mba@mba → head@mba) AND the alias-map fires
+   * (lead@Yusukes-MacBook-Air → lead@mba, msg#17472). The earlier form
+   * returned the raw concatenation and neither transform ran. */
   return host ? cleanAgentName(name + "@" + host) : name;
 }
 

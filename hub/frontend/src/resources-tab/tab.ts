@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { apiUrl, escapeHtml, getAgentColor } from "../app/utils";
+import { apiUrl, escapeHtml, getAgentColor, HOSTNAME_ALIASES } from "../app/utils";
 import { syncHostHover } from "../connectivity-map";
 import { addTag } from "../filter/state";
 import { _applyMachinesViewVisibility, _machineIcons, _wireMachinesControls, donutHtml, hideMachineTooltip, moveMachineTooltip, resourceData, setMachineIcon, showMachineTooltip } from "./panel";
@@ -392,16 +392,17 @@ export function buildResourceCard(k) {
   return html;
 }
 
-/* todo#337: friendly canonical names so DXP480TPLUS-994 shows as "nas" etc. */
-export var MACHINE_ALIASES = {
-  "DXP480TPLUS-994": "nas",
-  "Yusukes-MacBook-Air.local": "mba",
-  "spartan-login1.hpc.unimelb.edu.au": "spartan",
-  "spartan-login1": "spartan",
-};
+/* todo#337: friendly canonical names so DXP480TPLUS-994 shows as "nas" etc.
+ *
+ * msg#17472 — the alias map used to be hard-coded here (resources tab
+ * local). Consolidated to ``HOSTNAME_ALIASES`` in ``app/utils.ts`` so
+ * the chat header / sidebar / agents-tab all apply the same canonical
+ * labels. Re-export under the old name for any external caller that
+ * still imports it directly. */
+export var MACHINE_ALIASES = HOSTNAME_ALIASES;
 export function _friendlyMachine(raw) {
   if (!raw) return raw;
-  if (MACHINE_ALIASES[raw]) return MACHINE_ALIASES[raw] + " (" + raw + ")";
+  if (HOSTNAME_ALIASES[raw]) return HOSTNAME_ALIASES[raw] + " (" + raw + ")";
   return raw;
 }
 
