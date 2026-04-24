@@ -83,20 +83,19 @@ export function _setChannelPref(ch, patch) {
       var pref = _channelPrefs[elNorm] || _channelPrefs[elCh] || {};
       var pinEl = el.querySelector(".ch-pin");
       if (pinEl) {
-        /* msg#16979: renderChannelBadgeHtml SSoT emits BOTH .ch-pin-on/off
-         * AND .ch-star-on/off; the star's yellow fill is owned by
-         * .ch-star-on. Toggle both pairs + swap the ★/☆ glyph so the
-         * optimistic update produces the same visual as the SSoT render
-         * (prior code only toggled .ch-pin-* which left the star looking
-         * unchanged until fetchStats re-ran). */
         pinEl.classList.toggle("ch-pin-on", !!pref.is_starred);
         pinEl.classList.toggle("ch-pin-off", !pref.is_starred);
+        /* msg#17599 — the gold ⭐ color is driven by `.ch-star-on`
+         * (style-channels.css: `color: #f5a623`). Markup at
+         * channel-badge.ts:125-126 emits `ch-pin-on ch-star-on` as a
+         * pair at initial render, so the optimistic toggle must flip
+         * BOTH halves or the persistent state reads from a stale
+         * `.ch-star-off` and the gold color never sticks after click. */
         pinEl.classList.toggle("ch-star-on", !!pref.is_starred);
         pinEl.classList.toggle("ch-star-off", !pref.is_starred);
-        pinEl.textContent = pref.is_starred ? "\u2605" : "\u2606";
         pinEl.setAttribute(
           "title",
-          pref.is_starred ? "Unstar" : "Star (float to top)",
+          pref.is_starred ? "Unpin" : "Pin (float to top)",
         );
       }
       var watchEl = el.querySelector(".ch-watch");
@@ -112,19 +111,12 @@ export function _setChannelPref(ch, patch) {
       }
       /* Keep the per-row eye icon (todo#418) in sync immediately after a
        * hide/unhide click so the user gets instant visual feedback before
-       * fetchStats() re-renders the list.
-       *
-       * msg#16979: renderChannelBadgeHtml uses the SAME 👁 glyph in both
-       * states — the red diagonal strike is drawn by .ch-eye-off::after
-       * in style-channels.css. Don't rewrite textContent to 🚫 here; the
-       * class toggle alone drives the red overlay via CSS, and staying
-       * aligned with the SSoT prevents a brief 🚫 flicker before
-       * fetchStats re-renders back to 👁. */
+       * fetchStats() re-renders the list. */
       var eyeEl = el.querySelector(".ch-eye");
       if (eyeEl) {
         eyeEl.classList.toggle("ch-eye-on", !pref.is_hidden);
         eyeEl.classList.toggle("ch-eye-off", !!pref.is_hidden);
-        eyeEl.textContent = "\uD83D\uDC41";
+        eyeEl.textContent = pref.is_hidden ? "\uD83D\uDEAB" : "\uD83D\uDC41";
         eyeEl.setAttribute(
           "title",
           pref.is_hidden
@@ -160,41 +152,6 @@ export function _setChannelPref(ch, patch) {
    * render actually rebuilds the SVG instead of short-circuiting
    * on the unchanged agent-data sig. */
   if (typeof renderActivityTab === "function") {
-    if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
-    renderActivityTab();
-  }
-}
-
-/* todo#305 Task 7 (lead msg#15548): flip the persistent per-agent
- * is_hidden flag. Parallel to _setChannelPref({ is_hidden: ... })
- * — same server contract, same re-render trigger. The 👁 eye glyph
- * on an agent card (sidebar row or topology SVG) calls this from the
- * body-level delegated handler in agent-badge.ts. */
-export function _setAgentHidden(name, isHidden) {
-  /* Optimistic local update so the next render reflects the new flag
-   * even before the server round-trip lands. __lastAgents is the
-   * single cache consumed by fetchAgents / renderActivityTab; keep
-   * it in sync so the sort / filter picks up the change. */
-  var live = (window as any).__lastAgents || [];
-  for (var i = 0; i < live.length; i++) {
-    if (live[i] && live[i].name === name) {
-      live[i].is_hidden = !!isHidden;
-      break;
-    }
-  }
-  fetch(apiUrl("/api/agent-profiles/"), {
-    method: "POST",
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      "X-CSRFToken": getCsrfToken(),
-    },
-    body: JSON.stringify({ name: name, is_hidden: !!isHidden }),
-  }).catch(function (_) {});
-  if (typeof fetchAgents === "function") fetchAgents();
-  if (typeof renderActivityTab === "function") {
-    /* Bust topo sticky signature so the canvas rebuilds with the new
-     * visibility filter; signature doesn't track per-agent prefs. */
     if (typeof window._topoLastSig !== "undefined") window._topoLastSig = "";
     renderActivityTab();
   }
@@ -283,15 +240,6 @@ export function _sortedStarred() {
     });
 }
 
-/* PR #<this> Item 1 (SSoT audit): this function predates channel-badge.ts
- * and renders its own inline channel-row markup. The DOM elements it
- * targets (#starred-heading, #starred-channels) do NOT exist in the
- * current dashboard.html / workspace_settings.html templates — the
- * function returns early on every call. Kept as-is to avoid surprise
- * removal in a polish PR; the next time a "Starred" subsection UI
- * surface is needed, this renderer MUST be rewritten to delegate to
- * renderChannelBadgeHtml(ch, {context:"starred", ...}) rather than
- * forking the markup again. */
 export function _renderStarredSection() {
   var heading = document.getElementById("starred-heading");
   var container = document.getElementById("starred-channels");
@@ -371,12 +319,13 @@ export function _renderStarredSection() {
       loadChannelHistory(ch);
       if (typeof applyFeedFilter === "function") applyFeedFilter();
     });
-    /* msg#16979: star (.ch-pin) clicks are owned by the body-level
-     * capture-phase delegate in channel-badge.ts. A per-row listener
-     * here caused a double-toggle race (the delegate's _setChannelPref
-     * ran first and kicked off a DOM rebuild; the bubble handler then
-     * fired on the detached old node and called _setChannelPref a
-     * second time, reverting the visual flip). */
+    var star = el.querySelector(".ch-pin");
+    if (star)
+      star.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var ch = star.getAttribute("data-ch");
+        _setChannelPref(ch, { is_starred: false });
+      });
     _addChannelContextMenu(el);
   });
   _addDragAndDrop(container, "starred");
@@ -384,9 +333,3 @@ export function _renderStarredSection() {
 
 // Expose cross-file mutable state via globalThis:
 (globalThis as any)._topoLastSig = (typeof _topoLastSig !== 'undefined' ? _topoLastSig : undefined);
-
-/* todo#305 Task 7: expose _setAgentHidden on window so agent-badge.ts's
- * body-level eye-click delegation (which runs in an IIFE outside this
- * module's closure) can reach it without a static import cycle.
- * Mirrors the pattern used for other top-level app helpers. */
-(window as any)._setAgentHidden = _setAgentHidden;

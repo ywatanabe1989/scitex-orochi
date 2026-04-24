@@ -6,7 +6,7 @@
  */
 import WebSocket from "ws";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { homedir } from "os";
+import { hostname, homedir } from "os";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
@@ -18,7 +18,6 @@ import {
 import { dbg } from "./guards.js";
 import { pushRegistryHeartbeat } from "./heartbeat.js";
 import { handleWsMessage } from "./dispatch.js";
-import { resolveHostLabel } from "./hostname.js";
 
 let _ws: WebSocket | null = null;
 let _heartbeatInterval: ReturnType<typeof setInterval> | null = null;
@@ -102,26 +101,26 @@ function onOpen(ws: WebSocket): void {
 
   // Register with the hub.
   //
-  // Host identity source order (post-PR#309 / post-ywatanabe msg#16102):
-  //   1. Live ``hostname()`` mapped through
-  //      ``spec.hostname_aliases`` in
-  //      ``~/.scitex/orochi/shared/config.yaml`` — so
-  //      ``Yusukes-MacBook-Air`` → ``mba``,
-  //      ``DXP480TPLUS-994`` → ``nas``, etc.
-  //   2. Raw short ``hostname()`` when no alias entry matches.
-  //   3. Env fallback (``SCITEX_OROCHI_MACHINE`` /
-  //      ``SCITEX_OROCHI_HOSTNAME`` /
-  //      ``SCITEX_AGENT_CONTAINER_HOSTNAME``) — only when
-  //      ``hostname()`` returns empty (stripped container).
+  // Host identity source order (lead msg#15578 root fix):
+  //   1. Live ``hostname()`` — the kernel's answer to "where am I
+  //      running right now". Always trusted when non-empty.
+  //   2. ``SCITEX_OROCHI_*`` env vars — explicit override, only honoured
+  //      if ``hostname()`` is empty (e.g. stripped container).
   //
-  // PR#309 flipped env/hostname priority (root fix for lead
-  // msg#15578 — stale ``SCITEX_OROCHI_HOSTNAME=mba`` inherited into
-  // a spartan process) but skipped the alias map on the TS side,
-  // which caused the ``Yusukes-MacBook-Air`` regression (ywatanabe
-  // msg#16102). Alias application restored here so the hub sees the
-  // canonical fleet short name.
-  const _machine = resolveHostLabel();
-  const _liveHostname = _machine;
+  // Previously the env vars were primary, which caused the
+  // proj-neurovista misreport: a stale ``SCITEX_OROCHI_HOSTNAME=mba``
+  // inherited from the shell/tmux env of the process that spawned the
+  // agent overrode the real host identity, so an agent running on
+  // spartan reported itself as mba. Per the lead fix: the agent sets
+  // its ``host`` field from its own ``hostname()``, never from
+  // inherited env or server-side inference.
+  const _liveHostname = hostname() || "";
+  const _machine =
+    _liveHostname ||
+    process.env.SCITEX_OROCHI_MACHINE ||
+    process.env.SCITEX_OROCHI_HOSTNAME ||
+    process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
+    "";
   ws.send(
     JSON.stringify({
       type: "register",
