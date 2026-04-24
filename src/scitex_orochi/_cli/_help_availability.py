@@ -1,7 +1,7 @@
 """(Available Now) help-suffix layer for scitex-orochi CLI.
 
-Implements the "最小限びっくり" help-display policy from §9 of the CLI refactor
-plan (PR #337 / msg#16514): the only visible difference in ``--help`` output
+Implements the "minimum-surprise" help-display policy from §9 of the CLI
+refactor plan (PR #337 / msg#16514): the only visible difference in ``--help`` output
 is a quiet ``(Available Now)`` suffix next to each subcommand whose backing
 service is currently reachable.
 
@@ -364,7 +364,9 @@ class AvailabilityAnnotatedGroup(click.Group):
     # don't force every Group subclass to pass a probe_map kwarg.
     _availability_probe_map: Mapping[str, ProbeKind] = DEFAULT_PROBE_MAP
 
-    def format_commands(self, ctx: click.Context, formatter: click.HelpFormatter) -> None:
+    def format_commands(
+        self, ctx: click.Context, formatter: click.HelpFormatter
+    ) -> None:
         names = list(self.list_commands(ctx))
         host, port = _get_hub_coords(ctx)
         cache_key = (host, port)
@@ -397,7 +399,11 @@ class AvailabilityAnnotatedGroup(click.Group):
                 continue
             short = cmd.get_short_help_str(limit=formatter.width or 80)
             res = cached.get(name)
-            if res is not None and res.reachable and res.kind is not ProbeKind.PURE_LOCAL:
+            if (
+                res is not None
+                and res.reachable
+                and res.kind is not ProbeKind.PURE_LOCAL
+            ):
                 short = f"{short} {AVAILABLE_SUFFIX}".strip()
             rows.append((name, short))
 
