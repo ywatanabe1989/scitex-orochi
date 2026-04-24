@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 14 KB) -->
 ---
 name: orochi-connectivity-probe
 description: Canonical way to probe remote host liveness, tmux sessions, and process counts over SSH without the non-interactive-shell pitfalls that bite every naive implementation.

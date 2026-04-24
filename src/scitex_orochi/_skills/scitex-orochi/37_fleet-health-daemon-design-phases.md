@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 15 KB) -->
 ---
 name: orochi-fleet-health-daemon-design-phases
 description: Phase 1 (Claude Code quota-state scraping), Phase 2 (multi-signal health probe), and Phase 3 (mamba-healer mesh) sections of the fleet-health-daemon design.

@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 13 KB) -->
 ---
 name: orochi-hpc-etiquette-general
 description: General HPC cluster etiquette — login nodes, schedulers, filesystems, modules, network, and absolute rules (never find /, never compute on login nodes, etc.). Sub-file of hpc-etiquette.md.

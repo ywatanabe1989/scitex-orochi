@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 21 KB) -->
 ---
 name: orochi-hpc-etiquette-spartan-policy
 description: UniMelb Research Computing canonical Spartan policy — login-node compute allowlist, TCP port policy, batch-only stance, account lifecycle, project expiration, inappropriate-use clauses. Reproduced verbatim from the upstream policy page with fleet implications.

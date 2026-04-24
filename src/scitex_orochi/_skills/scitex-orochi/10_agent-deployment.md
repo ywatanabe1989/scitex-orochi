@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 10 KB) -->
 <!-- ---
 !-- Timestamp: 2026-04-17 00:10:37
 !-- Author: ywatanabe

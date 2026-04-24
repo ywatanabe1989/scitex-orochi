@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 18 KB) -->
 ---
 name: orochi-fleet-health-daemon-design-deployment
 description: Host-specific deployment, resource discipline, cross-host coverage, probe-vs-pane liveness divergence, anti-patterns, open questions, implementation order, and related skills for the fleet-health-daemon design.

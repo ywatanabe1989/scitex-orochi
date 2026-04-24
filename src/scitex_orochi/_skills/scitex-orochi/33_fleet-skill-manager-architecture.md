@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 18 KB) -->
 ---
 name: orochi-skill-manager-architecture
 description: Two-layer architecture for fleet skill lifecycle. Splits `worker-skill-manager-<host>` (agent-layer worker, LLM-backed, on-demand queries) from `skill-sync-daemon` (process-layer daemon, no LLM, periodic rollup loop on primary host launchd primary + standby host systemd warm-standby via idempotent dual-run). First pilot of the hybrid-worker split pattern. Ratified 2026-04-14 msg#11475.

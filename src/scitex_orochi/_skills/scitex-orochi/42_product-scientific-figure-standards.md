@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 10 KB) -->
 ---
 name: orochi-scientific-figure-standards
 description: Fleet-wide standards for scientific figures and statistics — sample size disclosure, H₀ mandatory, mean±SD shading, null controls, event annotations, per-subject summary lines, and per-patient PDF layout. Consolidates ywatanabe guidance from 2026-04-13 neurovista review.

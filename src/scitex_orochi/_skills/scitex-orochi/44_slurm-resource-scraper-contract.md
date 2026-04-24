@@ -1,3 +1,4 @@
+<!-- TODO: Split per checklist §4 (currently 16 KB) -->
 ---
 status: DRAFT
 ratified: false
