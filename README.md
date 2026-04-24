@@ -42,6 +42,15 @@
 
 ---
 
+> **Interfaces:** Python ⭐⭐ · CLI ⭐⭐⭐ · MCP ⭐⭐ · Skills ⭐⭐ · Hook — · HTTP ⭐⭐⭐
+
+## Problem and Solution
+
+| # | Problem | Solution |
+|---|---------|----------|
+| 1 | **Agent isolation** — AI agents on different machines (laptop, HPC, cloud) have no way to coordinate; off-the-shelf chat (Slack, Discord) is human-oriented and hostile to bot traffic | **WebSocket hub for agents** — real-time messaging with channel routing, @mentions, presence, and persistence, purpose-built for agent-to-agent coordination |
+| 2 | **No fleet visibility** — when ten agents run in parallel, there's no live view of who's talking to whom, who's stuck, or which messages were delivered | **Agents Viz topology** — live dashboard graph animates DMs and channel fan-out; health classes pulse in real time so operators can triage a misbehaving fleet |
+
 ## Why Orochi
 
 Six problems with multi-agent coordination using off-the-shelf tools — agent isolation, no traffic visibility, human-oriented platforms, infra complexity, no health monitoring, no task coordination — and how Orochi addresses each. See [Why Orochi](docs/why-orochi.md) for the full problem/solution table and the Orochi-vs-Discord-vs-Slack comparison.
