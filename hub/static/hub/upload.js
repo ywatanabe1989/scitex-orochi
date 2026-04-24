@@ -5,6 +5,75 @@
  * "paste → immediate surprise send" behaviour. */
 /* globals: currentChannel, userName, sendOrochiMessage, token, apiUrl, csrfToken */
 
+/* msg#16193: shared ancestor-walk predicate — returns true when `target`
+ * (typically `event.target` on a paste/drop event) sits INSIDE the Chat-tab
+ * surface. Mirrors hub/frontend/src/upload.ts. */
+function _isTargetOnChatTab(target) {
+  if (!target) return false;
+  var el = target;
+  if (target && typeof target === "object" && "target" in target) {
+    try {
+      if (typeof target.composedPath === "function") {
+        var path = target.composedPath();
+        for (var i = 0; i < path.length; i++) {
+          if (_elementIsChatTab(path[i])) return true;
+        }
+        return false;
+      }
+    } catch (_) {}
+    el = target.target;
+  }
+  while (el && el !== document) {
+    if (_elementIsChatTab(el)) return true;
+    el = el.parentNode || (el.host && el.host);
+  }
+  return false;
+}
+
+function _elementIsChatTab(el) {
+  if (!el || el.nodeType !== 1) return false;
+  if (el.id === "msg-input") return true;
+  if (el.id === "messages") return true;
+  if (el.id === "chat-filter-input") return true;
+  if (el.id === "pending-attachments") return true;
+  if (el.classList && el.classList.contains("input-bar")) return true;
+  return false;
+}
+
+/* msg#16193: pure upload API — POST files to /api/upload and return the
+ * server-side metadata array. Does NOT touch the Chat-composer's pending
+ * tray. Exposed on globalThis so other tabs (graph-compose popup) can
+ * call it without bouncing files through the Chat tab. Returns [] on
+ * failure and logs. */
+async function _uploadFilesAPI(files) {
+  if (!files || files.length === 0) return [];
+  var formData = new FormData();
+  for (var i = 0; i < files.length; i++) {
+    formData.append("file", files[i]);
+  }
+  try {
+    var headers = {};
+    if (typeof csrfToken !== "undefined" && csrfToken) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
+    var res = await fetch(apiUrl("/api/upload"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      body: formData,
+    });
+    if (!res.ok) {
+      console.error("[orochi-upload] _uploadFilesAPI failed:", res.status);
+      return [];
+    }
+    var result = await res.json();
+    return (result && result.files) || (result && result.url ? [result] : []);
+  } catch (e) {
+    console.error("[orochi-upload] _uploadFilesAPI error:", e);
+    return [];
+  }
+}
+
 (function () {
   var fileInput = document.getElementById("file-input");
   if (fileInput && !fileInput.hasAttribute("multiple")) {
@@ -145,35 +214,11 @@ document
 async function stageFiles(files) {
   if (!files || files.length === 0) return;
   console.log("[orochi-upload] stageFiles:", files.length);
-  var formData = new FormData();
-  files.forEach(function (f) {
-    formData.append("file", f);
+  var uploaded = await _uploadFilesAPI(files);
+  uploaded.forEach(function (u, i) {
+    pendingAttachments.push({ file: files[i] || files[0], uploaded: u });
   });
-  try {
-    var headers = {};
-    if (typeof csrfToken !== "undefined" && csrfToken) {
-      headers["X-CSRFToken"] = csrfToken;
-    }
-    var res = await fetch(apiUrl("/api/upload"), {
-      method: "POST",
-      headers: headers,
-      credentials: "same-origin",
-      body: formData,
-    });
-    if (!res.ok) {
-      console.error("[orochi-upload] upload failed:", res.status);
-      return;
-    }
-    var result = await res.json();
-    var uploaded =
-      (result && result.files) || (result && result.url ? [result] : []);
-    uploaded.forEach(function (u, i) {
-      pendingAttachments.push({ file: files[i] || files[0], uploaded: u });
-    });
-    _renderAttachmentTray();
-  } catch (e) {
-    console.error("[orochi-upload] stage error:", e);
-  }
+  _renderAttachmentTray();
 }
 
 /* Backward-compat: some older call sites still invoke uploadFile/uploadFiles.
@@ -270,6 +315,27 @@ function _buildPastedTextFile(text) {
 }
 
 function handleClipboardPaste(e) {
+  /* Guard (msg#16116 Item 2 + msg#16193 regression-fix): mirrors
+   * hub/frontend/src/upload.ts. Two-layer gate:
+   *   1. Ancestor-walk the paste target — if it isn't inside the Chat
+   *      DOM, bail. Scope-local: correct even when multiple composers
+   *      coexist on the page (graph-compose popup on Overview, etc.).
+   *   2. Legacy focus+activeTab fallback for synthesized paste events. */
+  if (!_isTargetOnChatTab(e)) {
+    return;
+  }
+  var _activeTab =
+    typeof window !== "undefined" && typeof window.activeTab === "string"
+      ? window.activeTab
+      : typeof activeTab === "string"
+        ? activeTab
+        : "";
+  var _msgInputEl = document.getElementById("msg-input");
+  var _focusIsMsgInput =
+    _msgInputEl && document.activeElement === _msgInputEl;
+  if (!_focusIsMsgInput || _activeTab !== "chat") {
+    return;
+  }
   var cd =
     e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;

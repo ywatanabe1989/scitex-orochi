@@ -170,6 +170,22 @@ def api_messages(request, slug=None):
     except Exception:
         log.exception("push fan-out failed (REST path)")
 
+    # Cross-channel @mention push (msg#15767). Best-effort — a failure
+    # in the helper must not 500 the REST caller. The helper itself
+    # no-ops on DM channels and mention-less messages.
+    try:
+        from hub.mentions import expand_mentions_and_notify
+
+        expand_mentions_and_notify(
+            workspace_id=workspace.id,
+            source_channel=ch_name,
+            source_msg_id=msg.id,
+            sender_username=request.user.username,
+            text=text,
+        )
+    except Exception:
+        log.exception("mention push fan-out failed (REST path)")
+
     return JsonResponse({"status": "ok", "id": msg.id}, status=201)
 
 

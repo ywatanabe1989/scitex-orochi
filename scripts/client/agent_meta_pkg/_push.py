@@ -9,6 +9,7 @@ from ._collect import collect
 from ._log import log
 from ._multiplexer import _list_local_agents
 from ._oauth import read_oauth_metadata
+from ._sac_status import collect_sac_status
 
 
 def _http_post_json(url: str, payload: dict, timeout: float = 5.0) -> tuple[int, str]:
@@ -39,8 +40,16 @@ def _http_post_json(url: str, payload: dict, timeout: float = 5.0) -> tuple[int,
         return e.code, e.read().decode("utf-8", "replace")[:200]
 
 
-def _build_payload(meta: dict, tok: str) -> dict:
-    """Project the rich collect() output into the heartbeat wire format."""
+def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict:
+    """Project the rich collect() output into the heartbeat wire format.
+
+    ``sac_status`` is the nested ``scitex-agent-container status --terse
+    --json`` dict (lead msg#16005 pivot). Attached verbatim under the
+    top-level ``sac_status`` key so the hub forwards every future field
+    without per-field plumbing. ``subagent_count`` is still emitted at
+    the top level as a backwards-compat shortcut (multiple consumers
+    already key off it).
+    """
     return {
         "token": tok,
         "name": meta["agent"],
@@ -122,6 +131,15 @@ def _build_payload(meta: dict, tok: str) -> dict:
         # card on HPC hosts and is expected to be None on non-HPC.
         "metrics": meta.get("metrics") or {},
         "slurm": meta.get("slurm"),
+        # Lead msg#16005 pivot: forward the ENTIRE ``sac status --terse
+        # --json`` dict as a nested field. Future additions to sac's
+        # status projection (context_pct, pane_state, current_tool,
+        # quota, etc.) reach the hub registry + /api/agents/ payload
+        # automatically — no per-field plumbing. ``--terse`` keeps the
+        # per-agent bytes bounded (see TERSE_STATUS_FIELDS in
+        # scitex_agent_container.terse). Empty dict when the CLI is
+        # missing / errors — the hub treats absent = unknown.
+        "sac_status": sac_status or {},
     }
 
 
@@ -151,7 +169,13 @@ def push_all(url=None, token=None) -> int:
             meta = collect(agent)
             if not meta.get("alive"):
                 continue
-            payload = _build_payload(meta, tok)
+            # Lead msg#16005 pivot: shell out to ``sac status --terse
+            # --json`` and attach the dict as ``sac_status``. Fail-soft:
+            # ``collect_sac_status`` returns ``{}`` on any CLI / parse
+            # error (it also logs). Collected per-agent so each payload
+            # carries that agent's own status.
+            sac_status = collect_sac_status(agent)
+            payload = _build_payload(meta, tok, sac_status=sac_status)
             # todo#265: merge OAuth account public metadata into the
             # heartbeat payload. All 9 keys are whitelist-extracted
             # from ~/.claude.json — no tokens/secrets/credentials.

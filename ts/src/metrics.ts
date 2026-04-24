@@ -16,6 +16,13 @@ import { cpus, freemem, totalmem, loadavg, platform } from "os";
 import { execSync } from "child_process";
 import { readFileSync } from "fs";
 
+type Gpu = {
+  name: string;
+  utilization_percent: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+};
+
 type Metrics = {
   cpu_count: number;
   cpu_model: string;
@@ -24,8 +31,12 @@ type Metrics = {
   load_avg_15m: number;
   mem_free_mb: number;
   mem_total_mb: number;
+  mem_used_mb: number;
   mem_used_percent: number;
   disk_used_percent: number | null;
+  disk_total_mb: number | null;
+  disk_used_mb: number | null;
+  gpus: Gpu[];
 };
 
 /** Try scitex.resource.get_specs() via a short python subprocess. */
@@ -97,10 +108,64 @@ function _tryProcMeminfo(): Partial<Metrics> | null {
     return {
       mem_total_mb: Math.round(total / 1024),
       mem_free_mb: Math.round(avail / 1024),
+      mem_used_mb: Math.round(used / 1024),
       mem_used_percent: Math.round((used / total) * 100),
     };
   } catch (_) {
     return null;
+  }
+}
+
+/** Best-effort disk-total/used via ``df -k --output=``. ~200 ms max. */
+function _tryDiskTotals(): {
+  disk_total_mb: number;
+  disk_used_mb: number;
+  disk_used_percent: number;
+} | null {
+  try {
+    // POSIX df -Pk is portable (Darwin + Linux) and prints blocks in KB.
+    // Columns: Filesystem 1024-blocks Used Available Capacity Mounted
+    const out = execSync("df -Pk / | tail -1", { timeout: 3000 }).toString();
+    const cols = out.trim().split(/\s+/);
+    if (cols.length < 5) return null;
+    const totalKb = parseInt(cols[1], 10);
+    const usedKb = parseInt(cols[2], 10);
+    if (!Number.isFinite(totalKb) || !Number.isFinite(usedKb)) return null;
+    return {
+      disk_total_mb: Math.round(totalKb / 1024),
+      disk_used_mb: Math.round(usedKb / 1024),
+      disk_used_percent: Math.round((usedKb / Math.max(totalKb, 1)) * 100),
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Per-GPU list via ``nvidia-smi``. Empty when no NVIDIA GPU present. */
+function _tryGpus(): Gpu[] {
+  try {
+    const out = execSync(
+      "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits",
+      { timeout: 3000, stdio: ["ignore", "pipe", "ignore"] },
+    ).toString();
+    const gpus: Gpu[] = [];
+    for (const line of out.split("\n")) {
+      const parts = line.split(",").map((s) => s.trim());
+      if (parts.length < 4) continue;
+      const util = parseFloat(parts[1]);
+      const used = parseFloat(parts[2]);
+      const total = parseFloat(parts[3]);
+      if (!Number.isFinite(util) || !Number.isFinite(total)) continue;
+      gpus.push({
+        name: parts[0] || "gpu",
+        utilization_percent: util,
+        memory_used_mb: used,
+        memory_total_mb: total,
+      });
+    }
+    return gpus;
+  } catch (_) {
+    return [];
   }
 }
 
@@ -111,6 +176,7 @@ function _fromNodeOs(): Partial<Metrics> {
   return {
     mem_free_mb: Math.round(free / 1048576),
     mem_total_mb: Math.round(total / 1048576),
+    mem_used_mb: Math.round((total - free) / 1048576),
     mem_used_percent: Math.round(((total - free) / total) * 100),
   };
 }
@@ -119,13 +185,17 @@ export function getSystemMetrics(): Metrics {
   const cpuInfo = cpus();
   const load = loadavg();
 
-  // Disk usage via df (best-effort; overridden by scitex.resource when available)
-  let diskUsagePercent: number | null = null;
-  try {
-    const dfOut = execSync("df -h / | tail -1", { timeout: 3000 }).toString();
-    const match = dfOut.match(/(\d+)%/);
-    if (match) diskUsagePercent = parseInt(match[1]);
-  } catch (_) {}
+  // Disk: prefer full totals (ywatanabe msg#16215 — N/M TB display)
+  // with percent-only df fallback for parity with the pre-16215 shape.
+  const diskTotals = _tryDiskTotals();
+  let diskUsagePercent: number | null = diskTotals?.disk_used_percent ?? null;
+  if (diskUsagePercent == null) {
+    try {
+      const dfOut = execSync("df -h / | tail -1", { timeout: 3000 }).toString();
+      const match = dfOut.match(/(\d+)%/);
+      if (match) diskUsagePercent = parseInt(match[1]);
+    } catch (_) {}
+  }
 
   /* NOTE: `scitex.resource` has a module-import side effect that
    * spawns a local Flask dashboard on 127.0.0.1:5000. Sidecars must
@@ -144,7 +214,11 @@ export function getSystemMetrics(): Metrics {
     load_avg_15m: load[2],
     mem_free_mb: mem.mem_free_mb ?? 0,
     mem_total_mb: mem.mem_total_mb ?? 0,
+    mem_used_mb: mem.mem_used_mb ?? 0,
     mem_used_percent: mem.mem_used_percent ?? 0,
-    disk_used_percent: (mem.disk_used_percent ?? diskUsagePercent) ?? null,
+    disk_used_percent: diskUsagePercent ?? (mem.disk_used_percent ?? null),
+    disk_total_mb: diskTotals?.disk_total_mb ?? null,
+    disk_used_mb: diskTotals?.disk_used_mb ?? null,
+    gpus: _tryGpus(),
   };
 }

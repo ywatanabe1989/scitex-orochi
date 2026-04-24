@@ -1,6 +1,13 @@
 // @ts-nocheck
 import { _fetchActivityDetail, _refreshTopoPerms } from "./data";
 import { _renderActivityAgentDetail } from "./detail";
+import {
+  _graphFeedEnsureDefaultChannel,
+  _graphFeedPanelHtml,
+  _graphFeedPostRender,
+  _graphFeedPreRender,
+  _wireGraphFeed,
+} from "./graph-feed";
 import { _wireOverviewGridDelegation } from "./grid-delegation";
 import { _topoPoolApplyCanvasFilter, _topoPoolSelectionPaint, _topoSelectedNames } from "./multiselect";
 import { _topoSeekHeatRefresh, _topoSeekUpdateUI, _topoSeekbarHtml, _wireTopoSeekbar } from "./seekbar";
@@ -23,11 +30,19 @@ import { escapeHtml, userName } from "../app/utils";
 
 export function _renderActivityTopology(visible, grid) {
   _topoApplyStickyEdges();
-  /* Filter out agents the user hid via right-click. Edges involving
+  /* Filter out agents the user hid via right-click (session-only via
+   * _topoHidden) OR via the persistent 👁 eye on the agent card (Task 7,
+   * AgentProfile.is_hidden — sticks across sessions). Edges involving
    * hidden agents collapse automatically because they're dropped from
-   * the visible loop. Human node is protected inside _topoHide. */
+   * the visible loop. Human node is protected inside _topoHide and
+   * never has is_hidden on its payload. */
   visible = visible.filter(function (a) {
     if ((globalThis as any)._topoHidden.agents[a.name]) return false;
+    /* todo#305 Task 7 (lead msg#15548): mirror channel-hidden topo
+     * semantics — hidden agents are DROPPED from the canvas render
+     * (not dimmed in place). Consistent with how channels hidden via
+     * .ch-eye disappear from the topology. */
+    if (a.is_hidden) return false;
     /* Dead agents render only when pinned (kept as ghost/shadow);
      * unpinned dead agents are dropped entirely from the canvas. */
     if (_isDeadAgent(a) && !a.pinned) return false;
@@ -60,6 +75,9 @@ export function _renderActivityTopology(visible, grid) {
      * that slip in without changing the signature (rare but possible)
      * still get the correct dim treatment. */
     _topoPoolApplyCanvasFilter(grid);
+    /* Signature-unchanged path: the SVG is reused verbatim, so the
+     * graph-feed panel DOM is preserved automatically (we only rewrite
+     * innerHTML in the full-render branch). No-op here. */
     return;
   }
   (globalThis as any)._topoLastSig = sig;
@@ -335,6 +353,13 @@ export function _renderActivityTopology(visible, grid) {
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="minus" title="Zoom out (−)">−</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="reset" title="Reset zoom (0)">0</button>' +
     '<button type="button" class="topo-ctrl-btn" data-topo-ctrl="plus" title="Zoom in (+)">+</button>' +
+    /* todo#305 + PR #<this> Item 7: "Reset Layout" button — runs
+     * concentric-ring auto-layout (inner = channels, outer = agents +
+     * human) with force-directed repulsion so overlapping nodes spread
+     * out. Layout only runs on explicit click; drag / zoom / pan are
+     * unchanged. Internal action name stays `integrate` so existing
+     * dispatcher logic (zoompan.ts) continues to route correctly. */
+    '<button type="button" class="topo-ctrl-btn topology-autolayout-btn" data-topo-ctrl="integrate" title="Reset Layout (channels inner ring, agents outer ring)">Reset Layout</button>' +
     "</div>";
   var pool = _topoBuildPoolHtml(visible, channels);
   /* todo#67 — Time seekbar + play button docked at the bottom of the
@@ -343,16 +368,31 @@ export function _renderActivityTopology(visible, grid) {
    * from the playhead. All event listeners are attached via delegation
    * in _wireTopoSeekbar so they survive heartbeat-driven re-renders. */
   var seekBar = _topoSeekbarHtml();
+  /* Snapshot the current graph-feed DOM before grid.innerHTML is
+   * overwritten. Heartbeat re-renders would otherwise wipe the
+   * message feed every 2s. _graphFeedPostRender re-inflates it
+   * after the rebuild when the wired channel is unchanged. */
+  _graphFeedPreRender();
+  /* Persistent right-docked message feed (lead msg#15701): replaces
+   * the flash-and-disappear landing bubble as the primary way to read
+   * incoming replies while on the graph tab. Wired to the currently-
+   * focused channel; double-clicking a channel node or posting via
+   * the compose popup re-wires it. */
+  var feedPanel = _graphFeedPanelHtml();
   grid.innerHTML =
     '<div class="topo-wrap">' +
     hint +
     ctrls +
     pool +
     svg +
+    feedPanel +
     actionBar +
     seekBar +
     "</div>" +
     detailBox;
+  _graphFeedPostRender();
+  _graphFeedEnsureDefaultChannel();
+  _wireGraphFeed(grid);
 
   /* Delegated click: agent node → toggle expand. Bound ONCE on the
    * grid (the delegation helper guards with _overviewGridWired). We

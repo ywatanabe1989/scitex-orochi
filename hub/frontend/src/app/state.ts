@@ -1,6 +1,9 @@
 // @ts-nocheck
 import { _updateChannelTopicBanner } from "./members";
 import { chatFilterReset } from "../chat/chat-state";
+import { _normalizeChannelName } from "./utils";
+import { readLastOpened, writeLastOpened } from "./last-opened";
+import { writeHash } from "./url-router";
 
 /* Orochi Dashboard -- core globals, WS connection, sidebar (Django hub) */
 
@@ -48,13 +51,28 @@ var currentChannel = null;
  * Used as posting target when multi-select is active (currentChannel=null). */
 export var lastActiveChannel = null;
 try {
-  var _persistedCh = localStorage.getItem("orochi_active_channel");
+  /* msg#16999: hydrate from the unified `orochi.ui.lastOpened.v1` record;
+   * readLastOpened() also folds in the legacy `orochi_active_channel` key
+   * so a user whose bundle updated mid-session doesn't lose their spot. */
+  var _lastOpened = readLastOpened();
+  var _persistedCh = _lastOpened.activeChannel || null;
   if (_persistedCh && _persistedCh !== "__all__") {
-    currentChannel = _persistedCh;
-    lastActiveChannel = _persistedCh;
+    /* Normalize on hydrate too (msg#16691) — a prior session could have
+     * persisted the bare form. */
+    currentChannel = _normalizeChannelName(_persistedCh);
+    lastActiveChannel = currentChannel;
   }
 } catch (_) {}
 export function setCurrentChannel(ch) {
+  /* Normalize group channel names to the canonical ``#<name>`` form so
+   * every downstream comparator sees the same string the server emits on
+   * WS ``chat.message`` broadcasts and ``/api/stats``. Callers pass raw
+   * ``data-channel`` attribute values which, for some legacy sidebar rows,
+   * still arrive without the ``#`` prefix; without this normalize step the
+   * chat-render channel guard hid every inbound message for ``#ywatanabe``
+   * (msg#16691 root cause). DM channels (``dm:`` prefix) and ``null`` /
+   * empty (== all-channels mode) pass through unchanged. */
+  if (ch) ch = _normalizeChannelName(ch);
   currentChannel = ch;
   if (ch) lastActiveChannel = ch;
   /* #278: other modules read `(globalThis as any).currentChannel` — the
@@ -65,8 +83,24 @@ export function setCurrentChannel(ch) {
    * channel, and sendMessage() to post to the original channel instead of
    * the one the sidebar highlights. Mirror every update to the global. */
   (globalThis as any).currentChannel = ch;
+  /* msg#16999: persist the channel half of the last-opened UI record.
+   * writeLastOpened() also mirrors to the legacy `orochi_active_channel`
+   * key so older in-flight bundles keep reading a consistent value.
+   * Silently no-ops if storage is disabled / SecurityError. */
+  writeLastOpened({ activeChannel: ch == null ? null : ch });
+  /* msg#17039: keep the URL hash in sync with the current channel so
+   * a reload (or "copy URL") reproduces the same surface. Only sync
+   * when the user is actually looking at the Chat tab — other tabs
+   * carry their own params (thread=… on overview, etc.) and we don't
+   * want a sidebar click there to shove a `?channel=` into the hash
+   * for a tab that doesn't consume it. writeHash is a
+   * replaceState-based no-op if the hash is already correct. */
   try {
-    localStorage.setItem("orochi_active_channel", ch == null ? "__all__" : ch);
+    var _activeTab = (globalThis as any).activeTab || "";
+    if (_activeTab === "chat") {
+      var _ch = ch == null ? null : (typeof ch === "string" && ch.charAt(0) === "#" ? ch.slice(1) : ch);
+      writeHash("chat", _ch ? { channel: _ch } : {});
+    }
   } catch (_) {}
   /* Per-channel chat filter: reset whenever the user switches channels so
    * a stale filter from the previous channel doesn't hide messages here. */
@@ -98,6 +132,27 @@ export function setCurrentChannel(ch) {
   /* Update channel topic banner (todo#402) — show for active channel,
    * or last active when in all-channels mode */
   _updateChannelTopicBanner(ch || lastActiveChannel);
+  /* msg#16324: hydrate the per-channel draft into the composer on
+   * channel switch. Each channel keeps its own in-progress text, so
+   * switching to a channel the user was previously drafting in brings
+   * that text back. Before hydrating, we (a) flush any debounced save
+   * pending for the OLD channel so its last keystrokes hit storage,
+   * and (b) clear the textarea so the new channel's draft can
+   * populate (the restore helper is a no-op when the textarea already
+   * has text). */
+  try {
+    var _flush = (window as any).orochiDraftStore
+      ? (window as any).orochiDraftStore.flushPendingSaves
+      : null;
+    if (typeof _flush === "function") _flush();
+    var _inp = document.getElementById("msg-input");
+    if (_inp) {
+      _inp.value = "";
+      _inp.style.height = "auto";
+    }
+    var _restore = (window as any).restoreDraftForCurrentChannel;
+    if (typeof _restore === "function") _restore();
+  } catch (_) {}
 }
 
 /* Friendly-label for a dm:<principal>|<principal> channel. Strips the

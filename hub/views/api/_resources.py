@@ -45,7 +45,28 @@ def api_resources(request):
                     "mem_used_percent": metrics.get("mem_used_percent", 0),
                     "mem_total_mb": metrics.get("mem_total_mb", 0),
                     "mem_free_mb": metrics.get("mem_free_mb", 0),
+                    # ywatanabe msg#16215 — absolute MB for the ``N/M GB``
+                    # sidebar + tooltip display on mba/nas. Derive
+                    # ``mem_used_mb`` from ``total - free`` when the
+                    # producer didn't send it directly (pre-fix clients).
+                    "mem_used_mb": metrics.get(
+                        "mem_used_mb",
+                        max(
+                            0,
+                            int(metrics.get("mem_total_mb", 0) or 0)
+                            - int(metrics.get("mem_free_mb", 0) or 0),
+                        ),
+                    ),
                     "disk_used_percent": metrics.get("disk_used_percent", 0),
+                    # ywatanabe msg#16215 — storage as ``N/M TB``. Older
+                    # clients (before 2026-04-21) only sent percent, so
+                    # default to 0 and the frontend falls back to ``—``.
+                    "disk_total_mb": metrics.get("disk_total_mb", 0),
+                    "disk_used_mb": metrics.get("disk_used_mb", 0),
+                    # Per-GPU list for ``N/M`` GPU display + VRAM tooltip.
+                    # Empty ``[]`` on GPU-less hosts (mba, nas) → frontend
+                    # renders ``n/a`` per spec.
+                    "gpus": list(metrics.get("gpus") or []),
                     # Slurm cluster aggregates (todo#87) — absent on non-slurm hosts
                     "resource_source": metrics.get("resource_source", "local"),
                     "cluster_nodes": metrics.get("cluster_nodes", 0),
@@ -75,7 +96,10 @@ def api_resources(request):
                 "mem_used_percent",
                 "mem_total_mb",
                 "mem_free_mb",
+                "mem_used_mb",
                 "disk_used_percent",
+                "disk_total_mb",
+                "disk_used_mb",
                 "resource_source",
                 "cluster_nodes",
                 "cluster_cpus_allocated",
@@ -91,6 +115,21 @@ def api_resources(request):
                 val = metrics.get(key)
                 if val:
                     res[key] = val
+            # ``gpus`` is a list — ``if val:`` correctly skips ``[]``
+            # (GPU-less hosts) so a later agent without a GPU doesn't
+            # clobber a previously-observed GPU list. Non-empty wins.
+            if metrics.get("gpus"):
+                res["gpus"] = list(metrics["gpus"])
+            # ywatanabe msg#16215 derive-on-aggregate fallback: pre-fix
+            # clients only sent ``mem_total_mb`` + ``mem_free_mb`` (no
+            # ``mem_used_mb``). Compute it here so the N/M GB frontend
+            # renderer doesn't show ``—`` during the rolling deploy
+            # window where some hosts are updated and some aren't.
+            if not res.get("mem_used_mb"):
+                total = int(res.get("mem_total_mb") or 0)
+                free = int(res.get("mem_free_mb") or 0)
+                if total:
+                    res["mem_used_mb"] = max(0, total - free)
             # Prefer online status
             machines[machine]["status"] = "online"
             if a.get("last_heartbeat"):

@@ -28,7 +28,6 @@ class AgentChannelSubscriptionPersistenceTest(TestCase):
     """
 
     def setUp(self):
-        from hub.models import Channel, ChannelMembership
 
         self.ChannelMembership = ChannelMembership
         self.Channel = Channel
@@ -36,7 +35,6 @@ class AgentChannelSubscriptionPersistenceTest(TestCase):
 
     def test_persist_subscribe_creates_membership(self):
         from asgiref.sync import async_to_sync
-        from django.contrib.auth.models import User
 
         from hub.consumers import _persist_agent_subscription
 
@@ -111,7 +109,6 @@ class AgentChannelSubscriptionPersistenceTest(TestCase):
         subscribe op can't resurrect the channel.
         """
         from asgiref.sync import async_to_sync
-        from django.contrib.auth.models import User
 
         from hub.consumers import _persist_agent_subscription
 
@@ -126,13 +123,64 @@ class AgentChannelSubscriptionPersistenceTest(TestCase):
         # No synthetic agent user created as a side-effect either:
         self.assertFalse(User.objects.filter(username="agent-worker-e").exists())
 
+    def test_persist_subscribe_accepts_bits(self):
+        """lead msg#16884 bit-split — ``_persist_agent_subscription``
+        accepts ``can_read`` / ``can_write`` and writes them to the row.
+        """
+        from asgiref.sync import async_to_sync
+
+        from hub.consumers import _persist_agent_subscription
+
+        ok = async_to_sync(_persist_agent_subscription)(
+            self.ws.id,
+            "worker-wo",
+            "#digest",
+            True,
+            can_read=False,
+            can_write=True,
+        )
+        self.assertTrue(ok)
+        user = User.objects.get(username="agent-worker-wo")
+        ch = self.Channel.objects.get(workspace=self.ws, name="#digest")
+        row = self.ChannelMembership.objects.get(user=user, channel=ch)
+        self.assertFalse(row.can_read)
+        self.assertTrue(row.can_write)
+        self.assertEqual(row.permission, self.ChannelMembership.PERM_WRITE_ONLY)
+
+    def test_load_excludes_write_only_rows(self):
+        """``_load_agent_channel_subs`` hides rows where ``can_read=False``
+        — the consumer must not group_add those channels, so the agent
+        never receives fan-out for them (msg#16884 bit-split)."""
+        from asgiref.sync import async_to_sync
+
+        from hub.consumers import _load_agent_channel_subs
+
+        user = User.objects.create_user(username="agent-worker-readfilter")
+        readable = self.Channel.objects.create(
+            workspace=self.ws, name="#reads-this"
+        )
+        hidden = self.Channel.objects.create(
+            workspace=self.ws, name="#posts-only"
+        )
+        self.ChannelMembership.objects.create(
+            user=user, channel=readable, can_read=True, can_write=True
+        )
+        self.ChannelMembership.objects.create(
+            user=user, channel=hidden, can_read=False, can_write=True
+        )
+
+        subs = async_to_sync(_load_agent_channel_subs)(
+            self.ws.id, "worker-readfilter"
+        )
+        self.assertIn("#reads-this", subs)
+        self.assertNotIn("#posts-only", subs)
+
     def test_load_filters_abolished_agent_channel(self):
         """Stale ``#agent`` ``ChannelMembership`` rows from before the
         2026-04-21 abolition must NOT surface in ``_load_agent_channel_subs``
         — otherwise the WS consumer would re-join the group on connect.
         """
         from asgiref.sync import async_to_sync
-        from django.contrib.auth.models import User
 
         from hub.consumers import _load_agent_channel_subs
 

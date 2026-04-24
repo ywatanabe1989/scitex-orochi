@@ -71,6 +71,27 @@ def set_subagent_count(name: str, count: int) -> None:
             _agents[name]["subagent_count"] = max(0, int(count or 0))
 
 
+def set_sac_status(name: str, sac_status: dict) -> None:
+    """Store the full ``scitex-agent-container status --terse --json`` dict.
+
+    Lead msg#16005 pivot: the heartbeat pusher shells out to ``sac
+    status --terse --json`` and forwards the resulting dict verbatim so
+    future additions to sac's terse projection (``context_pct``,
+    ``pane_state``, ``current_tool``, quota fields, ...) surface on
+    ``/api/agents/`` without per-field plumbing on the hub side.
+
+    Replace-on-present semantics — every heartbeat re-runs sac, so the
+    dict is always current. Non-dict / empty pushes are ignored (the
+    previous value is preserved) so a transient CLI failure doesn't
+    clear the field.
+    """
+    if not isinstance(sac_status, dict) or not sac_status:
+        return
+    with _lock:
+        if name in _agents:
+            _agents[name]["sac_status"] = dict(sac_status)
+
+
 def set_health(
     name: str, status: str, reason: str = "", source: str = "caduceus"
 ) -> None:
@@ -134,6 +155,13 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
     message to ``#progress`` / ``#escalation`` / ``#ywatanabe`` when a
     window crosses the warn / escalate bands. Best-effort — the check
     never raises into the heartbeat hot path.
+
+    msg#16388: after quota pressure, run the auto-dispatch state machine
+    for ``head-*`` agents. ``check_agent_auto_dispatch()`` reads
+    ``subagent_count`` (just written by the heartbeat handler via
+    ``set_subagent_count``) and maintains a per-head idle streak + 15min
+    cooldown, firing a DM when a head stalls for N consecutive zero
+    readings. Also best-effort.
     """
     with _lock:
         if name in _agents:
@@ -152,6 +180,16 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
             from hub.quota_watch import check_agent_quota_pressure
 
             check_agent_quota_pressure(name)
+        except Exception:  # pragma: no cover — defense in depth
+            pass
+
+        # msg#16388 Layer 1 redesign — server-side auto-dispatch hook.
+        # Only fires for ``head-*`` agents (internal name prefix check).
+        # Deferred import to avoid a circular through hub.registry.
+        try:
+            from hub.auto_dispatch import check_agent_auto_dispatch
+
+            check_agent_auto_dispatch(name)
         except Exception:  # pragma: no cover — defense in depth
             pass
 

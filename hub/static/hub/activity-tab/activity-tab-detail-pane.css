@@ -18,7 +18,11 @@
 .activity-grid.activity-view-topology .topo-agent.topo-drop-target text {
   filter: drop-shadow(0 0 4px #4ecdc4);
 }
-.activity-grid.activity-view-topology .topo-channel.topo-drop-target polygon {
+/* msg#15599 Task C: channel nodes now use a .topo-channel-bg rect
+ * pill (not a diamond <polygon>); drop-target highlight targets the
+ * shared background class — same selector shape as the agent rule
+ * above. */
+.activity-grid.activity-view-topology .topo-channel.topo-drop-target .topo-channel-bg {
   stroke: #4ecdc4 !important;
   stroke-width: 3 !important;
   fill: rgba(78, 205, 196, 0.18) !important;

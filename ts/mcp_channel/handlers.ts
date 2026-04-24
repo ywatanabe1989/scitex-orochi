@@ -9,6 +9,7 @@ import {
 import { TOOL_DEFS } from "../src/tool_defs.js";
 import {
   handleContext,
+  handleCronStatus,
   handleDmList,
   handleDmOpen,
   handleDownloadMedia,
@@ -63,6 +64,7 @@ export function registerMcpHandlers(mcp: Server): void {
     if (name === "rsync_status") return handleRsyncStatus(args as any);
     if (name === "sidecar_status") return handleSidecarStatus();
     if (name === "connectivity_matrix") return handleConnectivityMatrix();
+    if (name === "cron_status") return handleCronStatus(args as any);
     if (name === "self_command") return handleSelfCommand(args as any);
     if (name === "dm_list") return handleDmList(args as any);
     if (name === "dm_open") return handleDmOpen(args as any);

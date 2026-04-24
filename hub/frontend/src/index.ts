@@ -7,10 +7,18 @@
 // ./window-bridge so all exported names are ready to be bridged.
 
 import "./config";
+/* msg#16324: draft-store must be loaded BEFORE chat-composer and any
+ * other surface that imports from it, so the window-level
+ * orochiDraftStore global is ready by the time those modules read it. */
+import { cleanupStaleDrafts } from "./composer/draft-store";
 import "./agent-icons";
 import "./agent-badge";
 import "./agent-badge-svg";
 import "./channel-badge";
+/* msg#17039: URL-hash router must load before state.ts and tabs.ts
+ * so their top-level imports find it live. The module itself has no
+ * DOM side-effects at import time — it only exposes helpers. */
+import "./app/url-router";
 import "./app/state";
 import "./app/members";
 import "./app/channel-prefs";
@@ -39,6 +47,14 @@ import "./chat/chat-history";
 import "./chat/chat-composer";
 import "./chat/chat-actions";
 import "./mention";
+/* Composer SSoT unification (msg#16286): shared module between the
+ * Chat / Overview / Reply surfaces. Loaded after mention.ts so
+ * wireComposerMention can reach the already-initialised dropdown
+ * state. */
+import "./composer/composer-paste";
+import "./composer/composer-mention";
+import "./composer/composer-attach";
+import "./composer/composer";
 import "./settings-tab";
 import "./emoji-picker";
 import "./filter/state";
@@ -67,6 +83,7 @@ import "./activity-tab/topology-signature";
 import "./activity-tab/topology-edges";
 import "./activity-tab/topology-nodes";
 import "./activity-tab/topology-pool";
+import "./activity-tab/graph-feed";
 import "./activity-tab/topology";
 import "./activity-tab/row";
 import "./activity-tab/click";
@@ -112,3 +129,11 @@ import "./password-rules";
 import "./settings";
 import "./blockers";
 import "./window-bridge";
+
+/* msg#16324: one-shot localStorage sweep to evict any orochi.draft.*
+ * entries older than 24h. Keeps the "reasonable total footprint" cap
+ * the spec asks for without a dedicated cron. try/catch because
+ * private-mode / quota can throw. */
+try {
+  cleanupStaleDrafts();
+} catch (_) {}

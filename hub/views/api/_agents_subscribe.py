@@ -95,12 +95,24 @@ def _admin_subscribe(request, target, *, slug=None, subscribe: bool):
 
     ch_name = normalize_channel_name(raw_channel)
 
+    # msg#16884 bit-split: admin callers may pass ``can_read`` /
+    # ``can_write`` booleans to install a write-only / read-only row
+    # instead of the default read-write. Omitted = True = pre-split
+    # behaviour, so existing admin scripts keep working untouched.
+    can_read = bool(body.get("can_read", True))
+    can_write = bool(body.get("can_write", True))
+
     # ``_persist_agent_subscription`` is an async helper; wrap it so the
     # synchronous view can call it without spinning a loop. It returns
     # ``False`` only when the workspace cannot be resolved — every other
     # failure raises.
     ok = async_to_sync(_persist_agent_subscription)(
-        workspace.id, target_name, ch_name, subscribe
+        workspace.id,
+        target_name,
+        ch_name,
+        subscribe,
+        can_read=can_read,
+        can_write=can_write,
     )
     if not ok:
         return JsonResponse(

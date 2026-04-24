@@ -298,3 +298,13 @@ if not SCITEX_OROCHI_VAPID_PUBLIC or not SCITEX_OROCHI_VAPID_PRIVATE:
         "VAPID keys not configured — web push notifications disabled. "
         "Set SCITEX_OROCHI_VAPID_PUBLIC and SCITEX_OROCHI_VAPID_PRIVATE."
     )
+
+# ── Auto-dispatch cooldown (msg#17078 lane A) ─────────────────────────
+# Per-head minimum gap between auto-dispatch DMs. Settings-level override
+# takes precedence over the ``SCITEX_AUTO_DISPATCH_COOLDOWN_SECONDS`` env
+# var (which is still read by ``hub.auto_dispatch._cooldown_seconds`` as
+# a secondary path, e.g. for one-off management-command runs). Default
+# matches the 15min figure the DM text advertises.
+AUTO_DISPATCH_COOLDOWN_SECONDS = int(
+    os.environ.get("SCITEX_AUTO_DISPATCH_COOLDOWN_SECONDS", "900")
+)

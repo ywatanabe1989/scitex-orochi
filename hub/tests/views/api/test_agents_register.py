@@ -126,6 +126,109 @@ class AgentMetaOAuthRegisterTest(TestCase):
         self.assertEqual(a["oauth_org_name"], "")
         self.assertIsNone(a["has_available_subscription"])
 
+    def test_register_persists_subagent_count(self):
+        """Heartbeat's ``subagent_count`` field reaches hub.registry and
+        is exposed via get_agents() unchanged.
+
+        Pinned here because the sidecar parses the tmux pane for
+        ``N local agent(s) running`` and relies on the hub treating the
+        field as authoritative (not silently overwriting it with the
+        length of the ``subagents`` list, which is empty on the Python
+        --push path)."""
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        for count in (0, 1, 3, 7):
+            resp = self._post(
+                {
+                    "token": self.token.token,
+                    "name": f"sub-count-{count}",
+                    "subagent_count": count,
+                }
+            )
+            self.assertEqual(resp.status_code, 200)
+            a = [
+                x
+                for x in get_agents(workspace_id=self.ws.id)
+                if x["name"] == f"sub-count-{count}"
+            ][0]
+            self.assertEqual(a["subagent_count"], count)
+
+    def test_register_persists_sac_status(self):
+        """lead msg#16005: the full ``scitex-agent-container status
+        --terse --json`` dict attached as ``sac_status`` is stored
+        verbatim and surfaced on ``/api/agents/``.
+
+        This pins the hub-side half of the pivot — every field the
+        pusher forwards reaches the dashboard payload without a
+        per-field allowlist. New fields in sac's terse projection
+        (``context_management.percent``, ``pane_state``,
+        ``current_tool``, ...) should therefore appear on
+        ``get_agents()[i]["sac_status"][<field>]`` the moment the
+        pusher sends them.
+        """
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        sac = {
+            "agent": "sac-full",
+            "state": "running",
+            "context_management.percent": 42.0,
+            "context_management.strategy": "compact",
+            "pids.claude_code": 54321,
+            "health.ok": True,
+            "tmux_alive": True,
+        }
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "sac-full",
+                "sac_status": sac,
+            }
+        )
+        self.assertEqual(resp.status_code, 200)
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "sac-full"
+        ][0]
+        self.assertEqual(a["sac_status"], sac)
+        # Nested-key access survives round-trip (the whole point of
+        # the pivot).
+        self.assertEqual(a["sac_status"]["context_management.percent"], 42.0)
+        self.assertTrue(a["sac_status"]["health.ok"])
+
+    def test_register_preserves_sac_status_when_absent(self):
+        """Two heartbeats in a row: first with sac_status, second
+        without. The second must NOT wipe the stored dict — the
+        prev-preserve rule in ``register_agent`` is load-bearing so a
+        transient ``sac status`` CLI failure doesn't blank the field
+        every 30s.
+        """
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        sac = {"agent": "sac-preserve", "state": "running"}
+        # First push populates the field.
+        self._post(
+            {
+                "token": self.token.token,
+                "name": "sac-preserve",
+                "sac_status": sac,
+            }
+        )
+        # Second push omits the field entirely.
+        self._post({"token": self.token.token, "name": "sac-preserve"})
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "sac-preserve"
+        ][0]
+        self.assertEqual(a["sac_status"], sac)
+
     def test_register_does_not_echo_tokens(self):
         """Even if a client tries to POST token-like fields under
         arbitrary keys, the registry's strict whitelist drops them.

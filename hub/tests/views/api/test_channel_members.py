@@ -161,6 +161,110 @@ class ChannelMembersAdminApiTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["deleted"], 0)
 
+    def test_post_accepts_can_read_can_write_bits(self):
+        """REST subscribe accepts ``can_read`` / ``can_write`` bits
+        (lead msg#16884). Body shape takes precedence over the legacy
+        ``permission`` enum when bits are present."""
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps(
+                {
+                    "channel": "#digest",
+                    "username": "agent-worker-x",
+                    "can_read": False,
+                    "can_write": True,
+                }
+            ),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertFalse(body["can_read"])
+        self.assertTrue(body["can_write"])
+        self.assertEqual(body["permission"], "write-only")
+        # DB reflects the bits.
+        ch = self.Channel.objects.get(workspace=self.ws, name="#digest")
+        row = self.ChannelMembership.objects.get(
+            user=self.agent_user, channel=ch
+        )
+        self.assertFalse(row.can_read)
+        self.assertTrue(row.can_write)
+
+    def test_patch_flips_bits_in_place(self):
+        """PATCH updates existing row bits (round-trip)."""
+        self.client.force_login(self.admin)
+        ch = self.Channel.objects.create(workspace=self.ws, name="#toggle")
+        self.ChannelMembership.objects.create(
+            user=self.agent_user, channel=ch, can_read=True, can_write=True
+        )
+        resp = self.client.patch(
+            "/api/channel-members/",
+            data=json.dumps(
+                {
+                    "channel": "#toggle",
+                    "username": "agent-worker-x",
+                    "can_read": True,
+                    "can_write": False,
+                }
+            ),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertTrue(body["can_read"])
+        self.assertFalse(body["can_write"])
+        self.assertEqual(body["permission"], "read-only")
+        row = self.ChannelMembership.objects.get(
+            user=self.agent_user, channel=ch
+        )
+        self.assertEqual(row.permission, "read-only")
+
+    def test_legacy_permission_enum_still_accepted(self):
+        """Callers that still pass ``permission`` (no bits) keep working
+        — bridge maps the enum to the right bit pair."""
+        self.client.force_login(self.admin)
+        resp = self.client.post(
+            "/api/channel-members/",
+            data=json.dumps(
+                {
+                    "channel": "#legacy-body",
+                    "username": "agent-worker-x",
+                    "permission": "write-only",
+                }
+            ),
+            content_type="application/json",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertFalse(body["can_read"])
+        self.assertTrue(body["can_write"])
+
+    def test_get_includes_bits_in_member_rows(self):
+        """GET /api/channel-members/?channel=… exposes bits alongside
+        the deprecated ``permission`` enum."""
+        self.client.force_login(self.admin)
+        ch = self.Channel.objects.create(workspace=self.ws, name="#get-bits")
+        self.ChannelMembership.objects.create(
+            user=self.agent_user, channel=ch, can_read=False, can_write=True
+        )
+        resp = self.client.get(
+            "/api/channel-members/?channel=%23get-bits",
+            HTTP_HOST=self.host,
+        )
+        self.assertEqual(resp.status_code, 200)
+        rows = resp.json()
+        match = next(
+            (r for r in rows if r["username"] == "agent-worker-x"), None
+        )
+        self.assertIsNotNone(match, "agent row missing in response")
+        self.assertFalse(match["can_read"])
+        self.assertTrue(match["can_write"])
+        self.assertEqual(match["permission"], "write-only")
+
     def test_post_subscribe_abolished_agent_channel_returns_403(self):
         """``#agent`` was abolished 2026-04-21 (lead directive, PR #293
         follow-up). POST/PATCH must return 403 so the client gets a real

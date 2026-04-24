@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { apiUrl, csrfToken } from "./app/utils";
+import { activeTab } from "./tabs";
 
 /* File upload — attach, drag-drop, clipboard paste (multi-file) with
  * staged preview. Files picked via paste/drag/file-picker are held in a
@@ -7,6 +8,90 @@ import { apiUrl, csrfToken } from "./app/utils";
  * Send (alongside whatever text they typed). This replaces the old
  * "paste → immediate surprise send" behaviour. */
 /* globals: currentChannel, userName, sendOrochiMessage, token, apiUrl, csrfToken */
+
+/* msg#16193: shared ancestor-walk predicate — returns true when `target`
+ * (typically `event.target` on a paste/drop event) sits INSIDE the Chat-tab
+ * surface. Walks composedPath() first for shadow-DOM cases, then falls back
+ * to parent traversal. The Chat tab's DOM is the `.input-bar` composer +
+ * the `#messages` feed; everything else (Overview/TODO/Agents/Files/…) is
+ * NOT Chat. Prefer this over a global `activeTab === "chat"` check: a
+ * composite page may have multiple compose inputs active simultaneously
+ * (graph-compose popup on the Overview tab, etc.), and the decision should
+ * be scoped to the actual paste target — not the tab that HAPPENS to be
+ * visible. */
+export function _isTargetOnChatTab(target) {
+  if (!target) return false;
+  /* Accept Event objects directly for ergonomic call sites. */
+  var el = target;
+  if (target && typeof target === "object" && "target" in target) {
+    /* composedPath() gives accurate ancestors even for events retargeted
+     * out of a shadow root. Browsers without it fall through to .target. */
+    try {
+      if (typeof target.composedPath === "function") {
+        var path = target.composedPath();
+        for (var i = 0; i < path.length; i++) {
+          if (_elementIsChatTab(path[i])) return true;
+        }
+        return false;
+      }
+    } catch (_) {}
+    el = target.target;
+  }
+  while (el && el !== document) {
+    if (_elementIsChatTab(el)) return true;
+    el = el.parentNode || (el.host && el.host);
+  }
+  return false;
+}
+
+function _elementIsChatTab(el) {
+  if (!el || el.nodeType !== 1) return false;
+  /* Chat-tab DOM surfaces: the compose input-bar (contains #msg-input,
+   * #pending-attachments, mention dropdown, filter etc.) and the
+   * `#messages` feed. Both are outside the per-tab `.todo-view` wrappers
+   * in dashboard.html. */
+  if (el.id === "msg-input") return true;
+  if (el.id === "messages") return true;
+  if (el.id === "chat-filter-input") return true;
+  if (el.id === "pending-attachments") return true;
+  if (el.classList && el.classList.contains("input-bar")) return true;
+  return false;
+}
+
+/* msg#16193: pure upload API — POST files to /api/upload and return the
+ * server-side metadata array. Does NOT touch the Chat-composer's pending
+ * tray. Other tabs (graph-compose popup, future inline composers) call
+ * this directly so an image paste stays local to whichever input the
+ * user is actually in, rather than silently bubbling into the Chat
+ * composer. Returns [] on failure and logs. */
+export async function _uploadFilesAPI(files) {
+  if (!files || files.length === 0) return [];
+  var formData = new FormData();
+  for (var i = 0; i < files.length; i++) {
+    formData.append("file", files[i]);
+  }
+  try {
+    var headers = {};
+    if (typeof csrfToken !== "undefined" && csrfToken) {
+      headers["X-CSRFToken"] = csrfToken;
+    }
+    var res = await fetch(apiUrl("/api/upload"), {
+      method: "POST",
+      headers: headers,
+      credentials: "same-origin",
+      body: formData,
+    });
+    if (!res.ok) {
+      console.error("[orochi-upload] _uploadFilesAPI failed:", res.status);
+      return [];
+    }
+    var result = await res.json();
+    return (result && result.files) || (result && result.url ? [result] : []);
+  } catch (e) {
+    console.error("[orochi-upload] _uploadFilesAPI error:", e);
+    return [];
+  }
+}
 
 (function () {
   var fileInput = document.getElementById("file-input");
@@ -148,35 +233,11 @@ document
 export async function stageFiles(files) {
   if (!files || files.length === 0) return;
   console.log("[orochi-upload] stageFiles:", files.length);
-  var formData = new FormData();
-  files.forEach(function (f) {
-    formData.append("file", f);
+  var uploaded = await _uploadFilesAPI(files);
+  uploaded.forEach(function (u, i) {
+    pendingAttachments.push({ file: files[i] || files[0], uploaded: u });
   });
-  try {
-    var headers = {};
-    if (typeof csrfToken !== "undefined" && csrfToken) {
-      headers["X-CSRFToken"] = csrfToken;
-    }
-    var res = await fetch(apiUrl("/api/upload"), {
-      method: "POST",
-      headers: headers,
-      credentials: "same-origin",
-      body: formData,
-    });
-    if (!res.ok) {
-      console.error("[orochi-upload] upload failed:", res.status);
-      return;
-    }
-    var result = await res.json();
-    var uploaded =
-      (result && result.files) || (result && result.url ? [result] : []);
-    uploaded.forEach(function (u, i) {
-      pendingAttachments.push({ file: files[i] || files[0], uploaded: u });
-    });
-    _renderAttachmentTray();
-  } catch (e) {
-    console.error("[orochi-upload] stage error:", e);
-  }
+  _renderAttachmentTray();
 }
 
 /* Backward-compat: some older call sites still invoke uploadFile/uploadFiles.
@@ -273,6 +334,33 @@ export function _buildPastedTextFile(text) {
 }
 
 export function handleClipboardPaste(e) {
+  /* Guard (msg#16116 Item 2 + msg#16193 regression-fix): this handler is
+   * bound to msg-input, but paste events on overlay popups that live
+   * inside #activity-view can still bubble here unless the popup calls
+   * stopPropagation(). Even with stopPropagation the TEXT case is safe,
+   * but the IMAGE case was re-dispatching a synthetic paste event to
+   * msg-input explicitly — bypassing every guard and staging images into
+   * the Chat tray, which in turn flipped the user into Chat.
+   *
+   * Two-layer gate, most specific first:
+   *   1. Ancestor-walk: if the paste target sits inside a non-Chat tab's
+   *      DOM, bail out. _isTargetOnChatTab walks event.target's ancestors
+   *      looking for the Chat-tab surface; anywhere else returns false.
+   *      This is the primary defense because it's scope-local (a
+   *      composite page may have many compose inputs).
+   *   2. Legacy focus+activeTab gate: kept as fallback for synthesized
+   *      paste events that have no real target (some browsers fire those
+   *      with target === document.body). */
+  if (!_isTargetOnChatTab(e)) {
+    /* Let the event pass through untouched. */
+    return;
+  }
+  var msgInputEl = document.getElementById("msg-input");
+  var focusIsMsgInput =
+    msgInputEl && document.activeElement === msgInputEl;
+  if (!focusIsMsgInput || activeTab !== "chat") {
+    return;
+  }
   var cd =
     e.clipboardData || (e.originalEvent && e.originalEvent.clipboardData);
   if (!cd) return;

@@ -1,15 +1,27 @@
-/* Threading — panel open/close, replies render, send, WS handlers */
+/* Threading — panel open/close, replies render, send, WS handlers.
+ * Reply composer (textarea + attach/sketch/voice/send buttons) is
+ * provided by composer.js::renderComposer(surface: "reply") since the
+ * SSoT unification. This file owns the surrounding chrome (header,
+ * parent preview, replies list, pending-attachments tray) plus the
+ * thread-specific voice-lang button sync + draft-store hydration. */
 /* globals: apiUrl, orochiHeaders, escapeHtml, timeAgo, getAgentColor,
-   cleanAgentName, getSenderIcon, getResolvedAgentColor,
-   threadPanel, threadPanelParentId, threadPendingAttachments,
+   cleanAgentName, getSenderIcon, getResolvedAgentColor, renderComposer,
+   threadPanel, threadPanelParentId,
    _threadSketchActive, _renderThreadAttachmentTray, _stageThreadFiles,
+   getThreadPendingAttachments, resetThreadPendingAttachments,
    _linkifyThreadContent, _pushThreadUrlState */
+
+var _threadComposer = null;
 
 function closeThreadPanel(opts) {
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  if (_threadComposer) {
+    try { _threadComposer.destroy(); } catch (_) {}
+    _threadComposer = null;
+  }
   if (threadPanel && threadPanel.parentNode) {
     threadPanel.parentNode.removeChild(threadPanel);
   }
@@ -59,21 +71,8 @@ async function openThreadPanel(parentId, opts) {
     '<div class="thread-replies" id="thread-replies"></div>' +
     '<div class="thread-input-row">' +
     '<div id="thread-pending-attachments" class="thread-pending-attachments" style="display:none"></div>' +
-    '<div class="thread-compose-row">' +
-    '<textarea id="thread-input" placeholder="Reply in thread…" rows="2"></textarea>' +
-    '<div class="thread-bottom-row">' +
-    '<div class="thread-input-actions">' +
-    '<button type="button" id="thread-attach-btn" tabindex="-1" title="Attach file (Ctrl+U)">📎</button>' +
-    '<button type="button" id="thread-sketch-btn" tabindex="-1" title="Draw sketch">✏️</button>' +
-    '<button type="button" id="thread-voice-btn" tabindex="-1" title="Voice input">🎤</button>' +
-    '<button type="button" id="thread-voice-lang-btn" tabindex="-1" title="Switch language (EN/JA)" style="font-size:11px;padding:2px 5px;opacity:0.7;">EN</button>' +
-    '<input type="file" id="thread-file-input" style="display:none" multiple>' +
-    "</div>" +
-    '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
-    "</div>" +
-    "</div>" +
+    '<div class="thread-compose-row" id="thread-composer-slot"></div>' +
     "</div>";
-  /* Append as flex sibling of .main inside .container (Slack-style side-by-side) */
   var container = document.querySelector(".container");
   if (container) {
     container.appendChild(threadPanel);
@@ -82,109 +81,93 @@ async function openThreadPanel(parentId, opts) {
   }
 
   await loadThreadReplies(parentId);
-  var ta = document.getElementById("thread-input");
-  if (ta) {
-    ta.focus();
-    ta.addEventListener("keydown", function (e) {
-      /* Alt+Enter / Ctrl+Enter in thread: toggle voice directed at thread textarea */
-      if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
-        e.preventDefault();
-        e.stopPropagation(); /* prevent global voice handler from double-firing */
-        if (typeof window.toggleVoiceInput === "function") {
-          /* Focus thread textarea so _toggleVoice captures it as target */
-          var tIn = document.getElementById("thread-input");
-          if (tIn) tIn.focus();
-          window.toggleVoiceInput();
-        }
-        return;
-      }
-      /* Plain Enter (no modifier) sends reply */
-      if (e.key === "Enter" && !e.shiftKey) {
-        /* Don't send if mention dropdown is open and an item is selected */
-        if (
-          typeof mentionDropdown !== "undefined" &&
-          mentionDropdown &&
-          mentionDropdown.classList.contains("visible") &&
-          mentionSelectedIndex >= 0
-        ) {
-          return; /* Let handleMentionKeydown handle it */
-        }
-        e.preventDefault();
-        sendThreadReply();
-      }
-    });
-    /* Auto-resize: grow with content up to 120px */
-    ta.addEventListener("input", function () {
-      this.style.height = "auto";
-      this.style.height = Math.min(this.scrollHeight, 120) + "px";
-    });
-    /* Enable @mention autocomplete in thread input */
-    if (typeof initMentionAutocomplete === "function") {
-      initMentionAutocomplete(ta);
-    }
-    /* Ctrl+U → trigger file picker in thread panel */
-    ta.addEventListener("keydown", function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "u") {
-        e.preventDefault();
-        var fi = document.getElementById("thread-file-input");
-        if (fi) fi.click();
-      }
-    });
-  }
 
-  /* Wire thread action buttons */
-  threadPendingAttachments = [];
+  var composerSlot = document.getElementById("thread-composer-slot");
+  /* msg#16527: clear IN PLACE so the shared reference stays authoritative. */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
 
-  var attachBtn = document.getElementById("thread-attach-btn");
-  var fileInput = document.getElementById("thread-file-input");
-  var sketchBtn = document.getElementById("thread-sketch-btn");
-  var voiceBtn = document.getElementById("thread-voice-btn");
-  var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
-
-  if (attachBtn && fileInput) {
-    attachBtn.addEventListener("click", function () {
-      fileInput.click();
-    });
-    fileInput.addEventListener("change", function () {
-      _stageThreadFiles(Array.from(fileInput.files || []));
-      fileInput.value = "";
-    });
-  }
-
-  if (sketchBtn) {
-    sketchBtn.addEventListener("click", function () {
-      /* openSketch() sends to currentChannel; we override the callback */
-      if (typeof openSketch === "function") {
+  if (composerSlot && typeof renderComposer === "function") {
+    _threadComposer = renderComposer(composerSlot, {
+      surface: "reply",
+      placeholder: "Reply in thread\u2026",
+      stageFiles: function (files) {
+        return _stageThreadFiles(files);
+      },
+      onSketchOpen: function () {
         _threadSketchActive = true;
-        openSketch();
-      }
+      },
+      features: {
+        mention: true,
+        paste: true,
+        dragDrop: false,
+        attach: true,
+        camera: false,
+        sketch: true,
+        voice: true,
+        sendButton: true,
+        cmdEnterSubmit: true,
+        shiftEnterNewline: true,
+        autoResize: true,
+        tabAwareFocus: false,
+        localVoiceChord: true,
+      },
+      maxResizePx: 120,
+      onSubmit: function () {
+        sendThreadReply();
+      },
     });
-  }
 
-  if (voiceBtn) {
-    /* Toggle voice into the thread textarea */
-    voiceBtn.addEventListener("click", function () {
-      if (typeof window.toggleVoiceInput === "function") {
-        /* Focus thread textarea so _toggleVoice captures it as target */
-        var tIn = document.getElementById("thread-input");
-        if (tIn) tIn.focus();
-        window.toggleVoiceInput();
-      }
-    });
-  }
+    var ta = _threadComposer.input;
+    ta.classList.add("thread-textarea");
+    var sendBtn = composerSlot.querySelector(".composer-btn-send");
+    if (sendBtn) sendBtn.classList.add("thread-send-btn");
 
-  if (voiceLangBtn) {
-    /* Sync button label with voice-input.js current language on open */
-    var mainLangBtn = document.getElementById("msg-voice-lang");
-    if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
-    voiceLangBtn.addEventListener("click", function () {
-      if (typeof window.cycleVoiceLang === "function") {
-        window.cycleVoiceLang();
-        /* Sync label from main lang button */
-        if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+    /* msg#16324: hydrate any persisted thread-reply draft. */
+    try {
+      if (window.orochiDraftStore) {
+        var _saved = window.orochiDraftStore.loadDraft(
+          "thread",
+          "msg" + String(parentId),
+        );
+        if (_saved && !ta.value) {
+          ta.value = _saved;
+          ta.style.height = "auto";
+          ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+        }
       }
+    } catch (_) {}
+    try { ta.focus(); } catch (_) {}
+    try {
+      var _len = ta.value ? ta.value.length : 0;
+      ta.setSelectionRange(_len, _len);
+    } catch (_) {}
+
+    /* Persist every keystroke (debounced at 300ms via draft-store). */
+    ta.addEventListener("input", function () {
+      try {
+        if (window.orochiDraftStore) {
+          window.orochiDraftStore._debounceSave(
+            "thread",
+            "msg" + String(threadPanelParentId),
+            this.value,
+          );
+        }
+      } catch (_) {}
     });
+
+    var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
+    if (voiceLangBtn) {
+      var mainLangBtn = document.getElementById("msg-voice-lang");
+      if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+      voiceLangBtn.addEventListener("click", function () {
+        if (typeof window.cycleVoiceLang === "function") {
+          window.cycleVoiceLang();
+          /* Sync label from main lang button */
+          if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+        }
+      });
+    }
   }
 }
 
@@ -319,7 +302,11 @@ async function sendThreadReply() {
   var ta = document.getElementById("thread-input");
   if (!ta) return;
   var text = ta.value.trim();
-  var attachments = threadPendingAttachments
+  /* msg#16527: read via the shared accessor so the mirror stays
+   * aligned with threads/state — panel.js used to reassign
+   * threadPendingAttachments on every open, which the ES-module build
+   * cannot do across module boundaries. */
+  var attachments = getThreadPendingAttachments()
     .filter(function (p) {
       return p.uploaded;
     })
@@ -335,8 +322,8 @@ async function sendThreadReply() {
       window.voiceInputResetAfterSend();
     } catch (_) {}
   }
-  /* Clear thread attachment tray */
-  threadPendingAttachments = [];
+  /* Clear thread attachment tray — in-place mutate (msg#16527). */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
   try {
     var res = await fetch(apiUrl("/api/threads/"), {
@@ -353,6 +340,15 @@ async function sendThreadReply() {
       console.error("sendThreadReply failed:", res.status);
       return;
     }
+    /* msg#16324: drop the per-thread draft now that the reply landed. */
+    try {
+      if (window.orochiDraftStore) {
+        window.orochiDraftStore.clearDraft(
+          "thread",
+          "msg" + String(threadPanelParentId),
+        );
+      }
+    } catch (_) {}
     /* WS broadcast will refresh the panel; also optimistic reload */
     loadThreadReplies(threadPanelParentId);
   } catch (e) {

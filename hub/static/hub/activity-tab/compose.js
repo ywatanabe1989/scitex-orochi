@@ -235,17 +235,9 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
   pop.id = "topo-channel-compose";
   pop.className = "topo-channel-compose";
   pop.setAttribute("data-channel", channel);
+  pop.setAttribute("data-composer-surface", "overview");
   pop.style.left = Math.max(8, clientX - 140) + "px";
   pop.style.top = Math.max(8, clientY + 12) + "px";
-  /* Minimal popup: no header, no close button, no + button, no send
-   * button. Just a textarea whose tooltip documents all the keyboard
-   * shortcuts, plus a small ▾ chevron at the bottom-right corner that
-   * reveals attach / camera / sketch / voice buttons. Enter sends, Esc
-   * closes, outside click closes. ywatanabe 2026-04-19: "make the
-   * modal minimal; no send button needed; no dm nor channel label
-   * needed; no plus button needed; not x button needed; just add a
-   * small chevron to the bottom to show other buttons; show tooltip
-   * with keyboard shortcuts even when they are not expanded to use". */
   var tccShortcuts =
     "Enter — send\n" +
     "Shift+Enter — newline\n" +
@@ -253,30 +245,194 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     "Drop files to attach\n" +
     "Paste image/file to attach\n" +
     "Click ▾ for attach / camera / sketch / voice";
+  /* Preview slot + pending tray + composer slot + chevron. Composer DOM
+   * injected by renderComposer into .tcc-composer-slot; its action row
+   * is moved into .tcc-extras so the chevron can toggle visibility
+   * (matches pre-SSoT UX). */
   pop.innerHTML =
-    '<textarea class="tcc-input" data-voice-input rows="2" placeholder="message #' +
-    escapeHtml(channel).replace(/^#/, "") +
-    '" title="' +
-    tccShortcuts.replace(/"/g, "&quot;") +
-    '"></textarea>' +
-    '<div class="tcc-extras" style="display:none">' +
-    '<button type="button" class="tcc-x tcc-attach" title="Attach file (paste also works)">\uD83D\uDCCE</button>' +
-    '<button type="button" class="tcc-x tcc-camera" title="Camera">\uD83D\uDCF7</button>' +
-    '<button type="button" class="tcc-x tcc-sketch" title="Sketch">\u270F\uFE0F</button>' +
-    '<button type="button" class="tcc-x tcc-voice" title="Voice input">\uD83C\uDFA4</button>' +
-    "</div>" +
+    '<div class="tcc-pending" style="display:none"></div>' +
+    '<div class="tcc-composer-slot"></div>' +
     '<button type="button" class="tcc-expand" title="' +
     tccShortcuts.replace(/"/g, "&quot;") +
     '" aria-label="More options">\u25BE</button>';
   document.body.appendChild(pop);
-  var input = pop.querySelector(".tcc-input");
-  var extras = pop.querySelector(".tcc-extras");
+
+  var popTray = pop.querySelector(".tcc-pending");
+  var composerSlot = pop.querySelector(".tcc-composer-slot");
   var expandBtn = pop.querySelector(".tcc-expand");
+
+  var popPending = [];
+
+  function _renderPopTray() {
+    if (!popPending.length) {
+      popTray.style.display = "none";
+      popTray.innerHTML = "";
+      return;
+    }
+    popTray.style.display = "flex";
+    popTray.innerHTML = "";
+    popPending.forEach(function (p, idx) {
+      var item = document.createElement("div");
+      item.className = "tcc-pending-item";
+      var isImage =
+        p.uploaded &&
+        p.uploaded.mime_type &&
+        p.uploaded.mime_type.indexOf("image/") === 0;
+      var thumb;
+      if (isImage) {
+        thumb = document.createElement("img");
+        thumb.src = p.uploaded.url;
+        thumb.className = "tcc-pending-thumb";
+        thumb.alt = p.uploaded.filename || "image";
+      } else {
+        thumb = document.createElement("span");
+        thumb.className = "tcc-pending-icon";
+        thumb.textContent = "\uD83D\uDCCE";
+      }
+      var label = document.createElement("span");
+      label.className = "tcc-pending-label";
+      label.textContent = (p.uploaded && p.uploaded.filename) || "";
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "tcc-pending-remove";
+      remove.title = "Remove";
+      remove.textContent = "\u2715";
+      remove.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        popPending.splice(idx, 1);
+        _renderPopTray();
+      });
+      item.appendChild(thumb);
+      item.appendChild(label);
+      item.appendChild(remove);
+      popTray.appendChild(item);
+    });
+  }
+
+  async function _stagePopFiles(files) {
+    if (!files || files.length === 0) return;
+    var uploaded =
+      typeof _uploadFilesAPI === "function" ? await _uploadFilesAPI(files) : [];
+    if (!uploaded || !uploaded.length) return;
+    if (!pop.parentNode) return;
+    uploaded.forEach(function (u, i) {
+      popPending.push({ file: files[i] || files[0], uploaded: u });
+    });
+    _renderPopTray();
+  }
+
+  /* Build composer via SSoT module. Mention autocomplete, paste, attach/
+   * camera/sketch/voice, keyboard shortcuts — all shared with Chat + Reply. */
+  var composerInstance =
+    typeof renderComposer === "function"
+      ? renderComposer(composerSlot, {
+          surface: "overview",
+          placeholder:
+            "message #" + String(channel || "").replace(/^#/, ""),
+          stageFiles: _stagePopFiles,
+          features: {
+            mention: true,
+            paste: true,
+            dragDrop: false,
+            attach: true,
+            camera: true,
+            sketch: true,
+            voice: true,
+            sendButton: false,
+            shiftEnterNewline: true,
+            autoResize: false,
+            cmdEnterSubmit: true,
+            tabAwareFocus: false,
+            localVoiceChord: true,
+          },
+          maxResizePx: 0,
+          onSubmit: function () {
+            send();
+          },
+        })
+      : null;
+  var input = composerInstance ? composerInstance.input : null;
+  if (input) {
+    input.classList.add("tcc-input");
+    input.title = tccShortcuts;
+    input.rows = 2;
+  }
+
+  /* Move composer action row into .tcc-extras so the chevron can toggle. */
+  var actionsRow = composerSlot.querySelector(".composer-actions");
+  var extras = document.createElement("div");
+  extras.className = "tcc-extras";
+  extras.style.display = "none";
+  if (actionsRow) extras.appendChild(actionsRow);
+  composerSlot.appendChild(extras);
+
+  var actionBtns = extras.querySelectorAll(".composer-btn");
+  actionBtns.forEach(function (b) {
+    b.classList.add("tcc-x");
+    if (b.classList.contains("composer-btn-attach")) b.classList.add("tcc-attach");
+    else if (b.classList.contains("composer-btn-camera")) b.classList.add("tcc-camera");
+    else if (b.classList.contains("composer-btn-sketch")) b.classList.add("tcc-sketch");
+    else if (b.classList.contains("composer-btn-voice")) b.classList.add("tcc-voice");
+  });
+
+  /* msg#16324: restore any persisted draft + wire debounced save. */
+  try {
+    if (
+      typeof window.orochiDraftStore !== "undefined" &&
+      window.orochiDraftStore
+    ) {
+      var _saved = window.orochiDraftStore.loadDraft("overview-popup", channel);
+      if (input && _saved) input.value = _saved;
+    }
+  } catch (_) {}
+  if (input) {
+    input.addEventListener("input", function () {
+      try {
+        if (
+          typeof window.orochiDraftStore !== "undefined" &&
+          window.orochiDraftStore &&
+          typeof window.orochiDraftStore._debounceSave === "function"
+        ) {
+          window.orochiDraftStore._debounceSave(
+            "overview-popup",
+            channel,
+            input.value,
+          );
+        }
+      } catch (_) {}
+    });
+  }
   setTimeout(function () {
-    if (input) input.focus();
+    if (input) {
+      try {
+        input.focus();
+        var _len = input.value ? input.value.length : 0;
+        input.setSelectionRange(_len, _len);
+      } catch (_) {}
+    }
   }, 10);
 
+  /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
+   * was failing on this popup. Refocus the textarea on ANY pointer
+   * interaction inside the popup unless the target is an action button. */
+  function _refocusInput(ev) {
+    if (!input) return;
+    if (
+      ev.target &&
+      ev.target.closest &&
+      ev.target.closest(".tcc-x, .tcc-expand, .composer-btn")
+    ) {
+      return;
+    }
+    if (document.activeElement !== input) {
+      try { input.focus(); } catch (_) {}
+    }
+  }
+  pop.addEventListener("mousedown", _refocusInput);
+  pop.addEventListener("contextmenu", _refocusInput);
+
   function close() {
+    try { if (composerInstance) composerInstance.destroy(); } catch (_) {}
     if (pop.parentNode) pop.parentNode.removeChild(pop);
     document.removeEventListener("mousedown", outsideClick, true);
   }
@@ -287,10 +443,25 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
     document.addEventListener("mousedown", outsideClick, true);
   }, 50);
 
+  /* Esc closes the popup; Enter / Shift+Enter handled by composer. */
+  if (input) {
+    input.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        ev.preventDefault();
+        close();
+      }
+    });
+  }
+
   function send() {
+    if (!input) return;
     var text = (input.value || "").trim();
-    if (!text) return;
+    var attachments = popPending.map(function (p) {
+      return p.uploaded;
+    });
+    if (!text && attachments.length === 0) return;
     var payload = { channel: channel, content: text };
+    if (attachments.length > 0) payload.attachments = attachments;
     if (
       typeof wsConnected !== "undefined" &&
       wsConnected &&
@@ -307,134 +478,33 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
         payload: payload,
       });
     }
-    close();
-  }
-  input.addEventListener("keydown", function (ev) {
-    /* Voice-toggle shortcuts — same as Chat composer. Keep these BEFORE
-     * the plain-Enter branch so Ctrl+Enter / Alt+Enter don't fall through
-     * to send(). Ctrl+M and Alt+V also toggle voice. */
-    if (ev.key === "Enter" && (ev.ctrlKey || ev.altKey)) {
-      ev.preventDefault();
-      ev.stopPropagation(); /* prevent global voice handler from double-firing */
-      if (typeof window.toggleVoiceInput === "function") {
-        input.focus(); /* ensure _toggleVoice sees our textarea as active */
-        window.toggleVoiceInput();
-      }
-      return;
-    }
-    if (
-      (ev.ctrlKey && (ev.key === "m" || ev.key === "M")) ||
-      (ev.altKey && (ev.key === "v" || ev.key === "V"))
-    ) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (typeof window.toggleVoiceInput === "function") {
-        input.focus();
-        window.toggleVoiceInput();
-      }
-      return;
-    }
-    if (ev.key === "Enter" && !ev.shiftKey) {
-      ev.preventDefault();
-      send();
-    } else if (ev.key === "Escape") {
-      ev.preventDefault();
-      close();
-    }
-  });
-  /* Paste support — images / files / long text. Native paste of plain
-   * text keeps the default behavior (lands in the textarea). If the
-   * clipboard carries a file/image, route to the Chat composer (the
-   * canonical paste-to-attach pipeline lives there) and re-dispatch
-   * the paste event so the upload.js handler does the work.
-   * ywatanabe 2026-04-19: "small input modal should support pasting". */
-  input.addEventListener("paste", function (ev) {
-    var cd =
-      ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
-    if (!cd) return;
-    var hasFile = false;
-    if (cd.files && cd.files.length) hasFile = true;
-    else if (cd.items) {
-      for (var i = 0; i < cd.items.length; i++) {
-        var it = cd.items[i];
-        if (it && it.type && it.type.indexOf("image/") === 0) {
-          hasFile = true;
-          break;
-        }
-      }
-    }
-    /* Long text still attaches as a file via upload.js's
-     * _pastedTextShouldAttach heuristic — route for that case too. */
-    var text = "";
+    /* msg#16316: keep popup OPEN after send; clear textarea + tray. */
+    input.value = "";
+    popPending.length = 0;
+    _renderPopTray();
+    /* msg#16324: clear the stored draft ONLY on successful send. */
     try {
-      text = cd.getData("text/plain") || "";
+      if (
+        typeof window.orochiDraftStore !== "undefined" &&
+        window.orochiDraftStore &&
+        typeof window.orochiDraftStore.clearDraft === "function"
+      ) {
+        window.orochiDraftStore.clearDraft("overview-popup", channel);
+      }
     } catch (_) {}
-    var isLong = text.length > 1000;
-    if (hasFile || isLong) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      close();
-      _routeToChat();
-      setTimeout(function () {
-        var msgInput = document.getElementById("msg-input");
-        if (!msgInput) return;
-        msgInput.focus();
-        /* Synthesize a paste event on msg-input so upload.js's
-         * handleClipboardPaste processes the same clipboard payload. */
-        try {
-          var newEv = new ClipboardEvent("paste", {
-            clipboardData: cd,
-            bubbles: true,
-            cancelable: true,
-          });
-          msgInput.dispatchEvent(newEv);
-        } catch (_) {
-          /* Some browsers don't allow constructing ClipboardEvent with
-           * populated data — let the user paste again in that case. */
-        }
-      }, 50);
-    }
-  });
+    try { input.focus(); } catch (_) {}
+  }
+
   expandBtn.addEventListener("click", function () {
     var on = extras.style.display === "none";
     extras.style.display = on ? "" : "none";
     expandBtn.textContent = on ? "\u25B4" : "\u25BE";
   });
-  /* Delegate extras — pop the channel into currentChannel so existing
-   * global helpers target the right place, then invoke them. Fallback
-   * to focusing the main composer for modes that don't have a headless
-   * API surface. */
-  function _routeToChat() {
-    if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
-    if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
-    var tabBtn = document.querySelector('[data-tab="chat"]');
-    if (tabBtn) tabBtn.click();
-    close();
-  }
-  pop.querySelector(".tcc-attach").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openAttachmentPicker === "function") openAttachmentPicker();
-  });
-  pop.querySelector(".tcc-camera").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openCameraCapture === "function") openCameraCapture();
-  });
-  pop.querySelector(".tcc-sketch").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openSketchPanel === "function") openSketchPanel();
-  });
-  pop.querySelector(".tcc-voice").addEventListener("click", function () {
-    /* Dictate into THIS popup's textarea — don't route to Chat.
-     * Focus the popup textarea so _toggleVoice's selector-based
-     * target resolution picks it up, then toggle. */
-    if (typeof window.toggleVoiceInput === "function") {
-      input.focus();
-      window.toggleVoiceInput();
-    }
-  });
-  /* Drop files onto popup → route to Chat with attachments primed. */
+
+  /* Drop files onto popup → stage LOCALLY (msg#16193). */
   pop.addEventListener("dragover", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.add("tcc-drag-over");
   });
   pop.addEventListener("dragleave", function () {
@@ -442,11 +512,11 @@ function _topoOpenChannelCompose(channel, clientX, clientY) {
   });
   pop.addEventListener("drop", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.remove("tcc-drag-over");
     var files = ev.dataTransfer && ev.dataTransfer.files;
-    if (files && files.length && typeof handleFileUpload === "function") {
-      _routeToChat();
-      for (var i = 0; i < files.length; i++) handleFileUpload(files[i]);
+    if (files && files.length) {
+      _stagePopFiles(Array.prototype.slice.call(files));
     }
   });
 }

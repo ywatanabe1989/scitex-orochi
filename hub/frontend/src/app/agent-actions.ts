@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { _channelPrefs } from "./members";
 import { fetchAgents } from "./sidebar-agents";
+import { fetchStats } from "./sidebar-stats";
 import { setCurrentChannel } from "./state";
 import { apiUrl, getCsrfToken, token } from "./utils";
 import { fetchAgentsThrottled } from "./websocket";
@@ -148,6 +149,27 @@ export function _addDragAndDrop(container, section) {
       el.classList.add("ch-dragging");
       ev.dataTransfer.effectAllowed = "move";
       ev.dataTransfer.setData("text/plain", el.getAttribute("data-channel"));
+      /* msg#16988 (a): full-card drag image. See sidebar-agents.ts
+       * for the same treatment on agent cards. Without this the
+       * browser default ghost is just the text node under the cursor
+       * so the drop position is invisible. */
+      try {
+        var rect = el.getBoundingClientRect();
+        var clone = el.cloneNode(true);
+        clone.style.position = "absolute";
+        clone.style.top = "-10000px";
+        clone.style.left = "-10000px";
+        clone.style.width = rect.width + "px";
+        clone.style.pointerEvents = "none";
+        clone.classList.remove("ch-dragging");
+        document.body.appendChild(clone);
+        var ox = ev.clientX - rect.left;
+        var oy = ev.clientY - rect.top;
+        ev.dataTransfer.setDragImage(clone, ox, oy);
+        setTimeout(function () {
+          if (clone.parentNode) clone.parentNode.removeChild(clone);
+        }, 0);
+      } catch (_) {}
     });
 
     el.addEventListener("dragend", function () {
@@ -209,6 +231,18 @@ export function _addDragAndDrop(container, section) {
         }
       });
       el.classList.remove("ch-drop-target");
+      /* msg#16988 (b): synchronously re-render the sidebar from the
+       * updated local _channelPrefs — do NOT rely on the next
+       * fetchStats() tick / WS round-trip, which can arrive with
+       * stale server data (PATCH still in-flight) and revert the
+       * visible order until the user reloads. Bust the stats cache
+       * so fetchStats rebuilds from our sort_order snapshot, then
+       * call it imperatively. */
+      try {
+        var chContainer = document.getElementById("channels");
+        if (chContainer) chContainer._lastStatsJson = null;
+      } catch (_) {}
+      if (typeof fetchStats === "function") fetchStats();
     });
   });
 }

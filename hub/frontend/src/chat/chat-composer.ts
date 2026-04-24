@@ -3,12 +3,29 @@ import { lastActiveChannel } from "../app/state";
 import { sendOrochiMessage, userName } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
 import { _renderMermaidIn } from "./chat-attachments";
-import { clearPendingAttachments, getPendingAttachments } from "../upload";
+import {
+  clearPendingAttachments,
+  getPendingAttachments,
+  stageFiles,
+} from "../upload";
+import { activeTab } from "../tabs";
+import {
+  _debounceSave,
+  clearDraft,
+  loadDraft,
+} from "../composer/draft-store";
+import { renderComposer } from "../composer/composer";
 
 export function updateChannelSelect() {
   /* Channel select removed -- using sidebar selection instead */
 }
 
+/* sendMessage is invoked by renderComposer's onSubmit as well as by
+ * legacy entry points (mobile Safari send-button path etc.). Pulls
+ * attachments from upload.ts's pending tray (the Chat surface owns
+ * pendingAttachments — the Overview popup and Reply composer have
+ * their own per-surface stores so this module is unchanged by the
+ * unification). */
 export function sendMessage() {
   var input = document.getElementById("msg-input");
   /* In multi-select mode (globalThis as any).currentChannel is null; fall back to lastActiveChannel
@@ -48,10 +65,13 @@ export function sendMessage() {
   if (typeof clearPendingAttachments === "function") {
     clearPendingAttachments();
   }
-  /* Clear the per-channel draft now that the message has been sent. */
+  /* Clear the per-channel draft now that the message has been sent
+   * (msg#16324: localStorage-backed draft-store replaces the old
+   * sessionStorage scratch). */
   try {
-    sessionStorage.removeItem(
-      "orochi-draft-" + ((globalThis as any).currentChannel || "__default__"),
+    clearDraft(
+      "chat",
+      (globalThis as any).currentChannel || "__default__",
     );
   } catch (_) {}
   /* Hands-free voice dictation: if the mic is currently listening, the
@@ -67,49 +87,114 @@ export function sendMessage() {
   }
 }
 
-/* Auto-resize textarea as content grows + persist draft per channel.
- *
- * The draft is keyed by `(globalThis as any).currentChannel` so switching channels preserves
- * each channel's in-progress message. On page reload (or DOM re-render
- * accident), restoreDraftForCurrentChannel() puts the text back. We use
- * sessionStorage so drafts disappear when the tab closes — closer to a
- * "scratchpad" semantic than localStorage's "permanent" feel.
+/* Drafts are stored in localStorage (not sessionStorage anymore —
+ * msg#16324 ywatanabe: deploys / Cmd-R / reloads were clobbering
+ * in-progress messages). The draft-store module handles the
+ * per-(surface,target) keying, 24h stale-cutoff, and private-mode
+ * failure tolerance; this module just calls into it. Cursor is
+ * placed at end on restore so the user can keep typing without
+ * fighting caret position.
  */
-export function _draftKey() {
+export function _draftTarget() {
   try {
-    return "orochi-draft-" + ((globalThis as any).currentChannel || "__default__");
+    return (globalThis as any).currentChannel || "__default__";
   } catch (_) {
-    return "orochi-draft-__default__";
-  }
-}
-export function _saveDraft(value) {
-  try {
-    if (value && value.length > 0) {
-      sessionStorage.setItem(_draftKey(), value);
-    } else {
-      sessionStorage.removeItem(_draftKey());
-    }
-  } catch (_) {
-    /* sessionStorage may be unavailable in private mode */
+    return "__default__";
   }
 }
 export function restoreDraftForCurrentChannel() {
   try {
     var input = document.getElementById("msg-input");
     if (!input) return;
-    var saved = sessionStorage.getItem(_draftKey());
-    if (saved && !input.value) {
+    /* Don't clobber text the user is actively typing right now. */
+    if (input.value) return;
+    var saved = loadDraft("chat", _draftTarget());
+    if (saved) {
       input.value = saved;
       input.style.height = "auto";
       input.style.height = Math.min(input.scrollHeight, 200) + "px";
+      /* Place cursor at end (spec: msg#16324). */
+      try {
+        var end = saved.length;
+        input.setSelectionRange(end, end);
+      } catch (_) {}
+      /* If Chat is the active tab, blur-then-refocus so the caret
+       * visibly lands at the restored position. */
+      if (activeTab === "chat" && document.activeElement === input) {
+        try {
+          input.blur();
+          input.focus();
+          input.setSelectionRange(saved.length, saved.length);
+        } catch (_) {}
+      }
     }
   } catch (_) {}
 }
 window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
+
+/* SSoT composer — adopts the existing dashboard.html .input-bar DOM by
+ * selector rather than re-rendering so every legacy ID (#msg-input,
+ * #msg-send, #msg-attach, #msg-webcam, #msg-sketch, #msg-voice,
+ * #msg-voice-lang, #file-input, #pending-attachments) remains in place
+ * for voice-input.ts / upload.ts / webcam.ts / sketch.ts / etc.
+ *
+ * Several Chat features DON'T come from renderComposer because upload.ts
+ * already binds them globally on module load (Ctrl+U file picker,
+ * msg-input drop, paste handler), webcam.ts owns the camera button,
+ * sketch.ts owns the sketch button, and voice-input.ts owns the voice
+ * chord and button. The composer owns:
+ *   - #msg-send click  → sendMessage via onSubmit
+ *   - plain-Enter / Shift+Enter semantics
+ *   - auto-resize up to 200px
+ *   - tab-aware focus hint
+ * The parity matrix in the PR body documents this split. */
+var _chatComposer = (function () {
+  var inputBar = document.querySelector(".input-bar");
+  var msgInput = document.getElementById("msg-input");
+  if (!inputBar || !msgInput) return null;
+  inputBar.setAttribute("data-composer-surface", "chat");
+  return renderComposer(inputBar as HTMLElement, {
+    surface: "chat",
+    adoptRoot: inputBar as HTMLElement,
+    adoptSelectors: {
+      input: "#msg-input",
+      sendBtn: "#msg-send",
+    },
+    stageFiles: function (files) {
+      return stageFiles(files);
+    },
+    features: {
+      mention: false /* mention.ts already calls initMentionAutocomplete(#msg-input) */,
+      paste: false /* upload.ts owns msg-input paste */,
+      dragDrop: false /* upload.ts owns msg-input drop */,
+      attach: false /* upload.ts owns #msg-attach click + #file-input change */,
+      camera: false /* webcam.ts owns #msg-webcam click */,
+      sketch: false /* sketch.ts owns #msg-sketch click */,
+      voice: false /* voice-input.ts owns #msg-voice click */,
+      sendButton: true,
+      cmdEnterSubmit: true,
+      shiftEnterNewline: true,
+      autoResize: true,
+      tabAwareFocus: true,
+      /* voice-input.ts installs a global capture-phase Alt/Ctrl+Enter
+       * handler that fires for the Chat surface; the composer must
+       * not also handle it or the mic toggles twice. */
+      localVoiceChord: false,
+    },
+    maxResizePx: 200,
+    onSubmit: function (_payload) {
+      sendMessage();
+    },
+  });
+})();
+
+/* Persist draft on every input, debounced at 300ms via draft-store.
+ * Kept as a separate listener from the composer's internal autoresize
+ * because draft persistence is Chat-specific on this codepath (the
+ * Overview popup + thread reply own their own debounced-save wiring
+ * in their respective modules). */
 document.getElementById("msg-input").addEventListener("input", function () {
-  this.style.height = "auto";
-  this.style.height = Math.min(this.scrollHeight, 200) + "px";
-  _saveDraft(this.value);
+  _debounceSave("chat", _draftTarget(), this.value);
 });
 restoreDraftForCurrentChannel();
 
@@ -238,6 +323,14 @@ document.addEventListener("click", function (e) {
   if (!msgInput) return;
   msgInput.addEventListener("blur", function (e) {
     if (window.__voiceInputAllowBlur) return;
+    /* msg#16116 Item 2: never re-focus msg-input from a non-Chat tab.
+     * When the user is on Overview/TODO/etc the input bar is display:none
+     * and the watchdog's rAF refocus either silently no-ops (browsers
+     * refuse to focus display:none elements) or — under race conditions
+     * with rapid tab switches — can briefly park focus on msg-input and
+     * cascade into a Chat-tab flip via downstream focus-in handlers.
+     * Guard: if Chat isn't the active tab, leave the blur where it is. */
+    if (activeTab !== "chat") return;
     var savedStart = msgInput.selectionStart || 0;
     var savedEnd = msgInput.selectionEnd || 0;
     var rt = e && e.relatedTarget;
@@ -281,37 +374,3 @@ document.addEventListener("click", function (e) {
     });
   });
 })();
-
-document.getElementById("msg-send").addEventListener("click", function (e) {
-  e.preventDefault();
-  /* On mobile Safari, tapping the send button blurs the textarea before
-   * the click handler fires, which can dismiss the keyboard and cause
-   * unexpected scrolling. We call sendMessage synchronously here. */
-  sendMessage();
-  /* Re-focus the textarea so the keyboard stays open on mobile */
-  document.getElementById("msg-input").focus();
-});
-document.getElementById("msg-input").addEventListener("keydown", function (e) {
-  /* Ctrl+U / Cmd+U → trigger file upload picker (msg#9877) */
-  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-  if ((isMac ? e.metaKey : e.ctrlKey) && e.key === "u") {
-    e.preventDefault();
-    var fi = document.getElementById("file-input");
-    if (fi) fi.click();
-    return;
-  }
-  if (e.key === "Enter") {
-    var dd = document.getElementById("mention-dropdown");
-    if (dd && dd.classList.contains("visible")) return;
-    /* todo#332 v2: Alt+Enter is reserved for voice toggle (see voice-input.js).
-     * Shift+Enter remains the newline shortcut. Plain Enter sends. */
-    if (e.shiftKey) return;
-    if (e.altKey) {
-      /* Voice toggle handled by voice-input.js global handler — just prevent default */
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    sendMessage();
-  }
-});

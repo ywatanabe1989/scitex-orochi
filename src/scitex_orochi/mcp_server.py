@@ -125,16 +125,40 @@ if _FASTMCP_AVAILABLE:
         )
 
     @mcp.tool()
-    async def orochi_subscribe(channel: str) -> str:
+    async def orochi_subscribe(
+        channel: str,
+        read: bool = True,
+        write: bool = True,
+    ) -> str:
         """Subscribe to an Orochi channel at runtime (no restart needed).
 
         The subscription is persisted server-side (ChannelMembership row),
-        so it survives agent reboot. Default permission is read-write;
-        use ``/api/channel-members/`` PATCH to change to read-only.
+        so it survives agent reboot. The two independent flags map to
+        the lead msg#16884 bit-split:
+
+        * ``read=True, write=True``  — full read-write (default)
+        * ``read=True, write=False`` — listen only (no posts)
+        * ``read=False, write=True`` — write-only digest target
+          (post without pulling the firehose back — e.g. worker-progress
+          → ``#ywatanabe``)
+
+        Both flags default to True so existing call sites (``subscribe
+        #chan``) keep the pre-split behaviour.
         """
-        async with _make_client(channels=[channel]) as client:
-            await client.subscribe(channel)
-        return json.dumps({"status": "subscribed", "channel": channel})
+        async with _make_client(channels=[channel] if read else []) as client:
+            await client.subscribe(
+                channel,
+                can_read=bool(read),
+                can_write=bool(write),
+            )
+        return json.dumps(
+            {
+                "status": "subscribed",
+                "channel": channel,
+                "can_read": bool(read),
+                "can_write": bool(write),
+            }
+        )
 
     @mcp.tool()
     async def orochi_unsubscribe(channel: str) -> str:

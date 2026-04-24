@@ -8,8 +8,13 @@ import { _memSelectOnChange } from "../app/sidebar-memory-handlers";
 /* activity-tab/grid-delegation.js — delegated listeners on the
  * overview grid. Per-handler code lives in grid-click.js / grid-mouse.js
  * / grid-ctx.js / grid-hover.js; this file just wires them up once
- * (guard flag) and defines the standalone _topoSvgPoint helper used
- * by both zoom/pan and drag gestures. */
+ * (guard flag) and defines the standalone _topoSvgPoint helper used by
+ * both zoom/pan and drag gestures.
+ *
+ * msg#16319 (ywatanabe msg#16317): the channel-hover-preview popover
+ * (PR #311 task 11) is removed — the double-click graph-compose popup
+ * is the primary path for peeking at / replying to a channel, so the
+ * hover preview is redundant. */
 
 export function _wireOverviewGridDelegation(grid) {
   if ((globalThis as any)._overviewGridWired || !grid) return;

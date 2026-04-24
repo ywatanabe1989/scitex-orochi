@@ -479,3 +479,111 @@
   margin: 0 2px;
 }
 
+/* todo#305 Task 7 (lead msg#15548): 👁 eye show/hide toggle on agent
+ * cards. Mirrors the channel .ch-eye rule in style-channels.css — same
+ * geometry (fixed 14×14 slot so rows line up), same glyph cascade
+ * (same 👁 emoji in both states with a red diagonal strike via ::after
+ * when hidden), same visibility interaction (placeholder always
+ * rendered so the column geometry is stable; opacity 0.75 when off so
+ * the un-hide affordance is still discoverable on a hidden row). */
+.agent-badge-eye {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  line-height: 1;
+  font-size: 11px;
+  /* Monochrome so the color emoji doesn't outscreech the surrounding
+   * ★ / LEDs. Matches the .ch-mute and .ch-eye treatment. Item 12
+   * (msg#15661): default tone bumped from #94a3b8 to #cbd5e1 so the
+   * visible-state eye reads brightly; -off variant overrides back to
+   * dim grey for the hidden state. */
+  filter: grayscale(1);
+  color: #cbd5e1;
+  cursor: pointer;
+  position: relative;
+}
+.agent-badge-eye-on {
+  /* Item 12: visible state — brighter glyph (slate-300). Opacity
+   * bumped from 0.7 to 1.0 so the brightened colour actually reaches
+   * the viewer; previous 0.7 muted the new tone back to the old
+   * ambiguous grey. */
+  opacity: 1;
+  color: #cbd5e1;
+}
+.agent-badge-eye-off {
+  /* Item 12: hidden state — grey eye body, red slash (below) is the
+   * dominant semantic cue. */
+  opacity: 0.85;
+  color: #64748b;
+}
+.agent-badge-eye-off::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  /* Item 12: bump slash to 2.5 px so it reads cleanly over the grey
+   * glyph, matching .ch-eye-off::after. */
+  height: 2.5px;
+  background: #ef4444;
+  transform: rotate(-20deg);
+  transform-origin: center;
+  border-radius: 1px;
+  pointer-events: none;
+}
+.sidebar-agent-row:hover .agent-badge-eye,
+.agent-card:hover .agent-badge-eye {
+  opacity: 1;
+}
+
+/* msg#16116 Item 4: subagent count chip — rendered inline at the end
+ * of the canonical agent-badge strip when the agent has >=1 active
+ * Agent-tool subagent. Hidden entirely when count == 0 (the render
+ * fn returns an empty string), so idle agents keep the existing row
+ * silhouette untouched. Tone matches the running-subagent bubble in
+ * components-agent-cards.css (.subagent-running) so callers who see
+ * the yellow glyph associate it with "currently working". */
+.agent-badge-subcount {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  margin-left: 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #ffd93d;
+  background: rgba(255, 217, 61, 0.12);
+  border: 1px solid rgba(255, 217, 61, 0.3);
+  line-height: 1.4;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* todo#305 Task 7: hidden-agent row — mirrors .channel-item.ch-hidden.
+ * Keep the row at full opacity (PR #293/#295 rule — no row-level
+ * dimming); hidden state is communicated ONLY via the eye-with-slash
+ * glyph. Only affordance: cursor:pointer so the whole row looks
+ * clickable when the user wants to un-hide. */
+.agent-card.agent-hidden {
+  cursor: pointer;
+}
+
+/* SVG variant for topology canvas — .topo-agent-eye is an SVG <text>
+ * group, not an HTML span, so only :hover + the ::after-equivalent
+ * (rendered as a sibling <line> with a red stroke inside the SVG
+ * group) matter here. The off-vs-on classes are still applied for
+ * optimistic-flip signal in the body-level delegated handler. */
+.topo-agent-eye-on {
+  opacity: 0.7;
+}
+.topo-agent-eye-off {
+  opacity: 0.9;
+}
+.topo-agent:hover .topo-agent-eye-on,
+.topo-agent:hover .topo-agent-eye-off {
+  opacity: 1;
+}

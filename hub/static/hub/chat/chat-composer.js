@@ -1,3 +1,15 @@
+/* chat-composer.js — mirror of chat-composer.ts.
+ *
+ * Since the composer SSoT unification (feat/composer-ssot-unification)
+ * the core keydown / send / autoresize / mention wiring is owned by
+ * composer.js::renderComposer(). Chat-specific extras (draft-store
+ * hydration, blur watchdog, diagnostic blur logger, show-more toggle,
+ * mermaid raw-script toggle) remain in this file because they are not
+ * cross-surface concerns. */
+/* globals: ws, wsConnected, sendOrochiMessage, userName, currentChannel,
+   lastActiveChannel, getPendingAttachments, clearPendingAttachments,
+   stageFiles, renderComposer, activeTab, _renderMermaidIn */
+
 function updateChannelSelect() {
   /* Channel select removed -- using sidebar selection instead */
 }
@@ -41,18 +53,19 @@ function sendMessage() {
   if (typeof clearPendingAttachments === "function") {
     clearPendingAttachments();
   }
-  /* Clear the per-channel draft now that the message has been sent. */
+  /* Clear the per-channel draft now that the message has been sent
+   * (msg#16324: localStorage-backed draft-store replaces the old
+   * sessionStorage scratch). */
   try {
-    sessionStorage.removeItem(
-      "orochi-draft-" + (currentChannel || "__default__"),
-    );
+    if (window.orochiDraftStore) {
+      window.orochiDraftStore.clearDraft(
+        "chat",
+        currentChannel || "__default__",
+      );
+    }
   } catch (_) {}
-  /* Hands-free voice dictation: if the mic is currently listening, the
-   * next recognition.result event would re-render the entire cumulative
-   * session transcript on top of the now-empty input. Tell voice-input.js
-   * to reset its baseText snapshot AND restart the recognition session
-   * so the input stays clean. ywatanabe wants to leave the mic on for
-   * continuous dictation across multiple sends (msg#6500 / msg#6504). */
+  /* Hands-free voice dictation: reset voice input baseText + restart
+   * session so the textarea stays clean across sends. */
   if (typeof window.voiceInputResetAfterSend === "function") {
     try {
       window.voiceInputResetAfterSend();
@@ -60,61 +73,85 @@ function sendMessage() {
   }
 }
 
-/* Auto-resize textarea as content grows + persist draft per channel.
- *
- * The draft is keyed by `currentChannel` so switching channels preserves
- * each channel's in-progress message. On page reload (or DOM re-render
- * accident), restoreDraftForCurrentChannel() puts the text back. We use
- * sessionStorage so drafts disappear when the tab closes — closer to a
- * "scratchpad" semantic than localStorage's "permanent" feel.
- */
-function _draftKey() {
+function _draftTarget() {
   try {
-    return "orochi-draft-" + (currentChannel || "__default__");
+    return currentChannel || "__default__";
   } catch (_) {
-    return "orochi-draft-__default__";
-  }
-}
-function _saveDraft(value) {
-  try {
-    if (value && value.length > 0) {
-      sessionStorage.setItem(_draftKey(), value);
-    } else {
-      sessionStorage.removeItem(_draftKey());
-    }
-  } catch (_) {
-    /* sessionStorage may be unavailable in private mode */
+    return "__default__";
   }
 }
 function restoreDraftForCurrentChannel() {
   try {
     var input = document.getElementById("msg-input");
     if (!input) return;
-    var saved = sessionStorage.getItem(_draftKey());
-    if (saved && !input.value) {
+    if (input.value) return; /* don't clobber live text */
+    var ds = window.orochiDraftStore;
+    if (!ds) return;
+    var saved = ds.loadDraft("chat", _draftTarget());
+    if (saved) {
       input.value = saved;
       input.style.height = "auto";
       input.style.height = Math.min(input.scrollHeight, 200) + "px";
+      try {
+        input.setSelectionRange(saved.length, saved.length);
+      } catch (_) {}
     }
   } catch (_) {}
 }
 window.restoreDraftForCurrentChannel = restoreDraftForCurrentChannel;
+
+/* SSoT composer — adopts the existing dashboard.html .input-bar DOM. All
+ * per-module wiring (paste / drop / attach / camera / sketch / voice) is
+ * owned by upload.js / webcam.js / sketch.js / voice-input.js; the
+ * composer only provides keyboard shortcuts + send dispatch here. */
+(function () {
+  var inputBar = document.querySelector(".input-bar");
+  var msgInput = document.getElementById("msg-input");
+  if (!inputBar || !msgInput || typeof renderComposer !== "function") return;
+  inputBar.setAttribute("data-composer-surface", "chat");
+  renderComposer(inputBar, {
+    surface: "chat",
+    adoptRoot: inputBar,
+    adoptSelectors: {
+      input: "#msg-input",
+      sendBtn: "#msg-send",
+    },
+    stageFiles: function (files) {
+      if (typeof stageFiles === "function") return stageFiles(files);
+    },
+    features: {
+      mention: false /* mention.js already attaches handlers to #msg-input */,
+      paste: false /* upload.js owns msg-input paste */,
+      dragDrop: false /* upload.js owns msg-input drop */,
+      attach: false /* upload.js owns #msg-attach click + #file-input change */,
+      camera: false /* webcam.js owns #msg-webcam click */,
+      sketch: false /* sketch.js owns #msg-sketch click */,
+      voice: false /* voice-input.js owns #msg-voice click */,
+      sendButton: true,
+      cmdEnterSubmit: true,
+      shiftEnterNewline: true,
+      autoResize: true,
+      tabAwareFocus: true,
+      localVoiceChord: false,
+    },
+    maxResizePx: 200,
+    onSubmit: function () {
+      sendMessage();
+    },
+  });
+})();
+
+/* Persist draft on every input, debounced at 300ms via draft-store. */
 document.getElementById("msg-input").addEventListener("input", function () {
-  this.style.height = "auto";
-  this.style.height = Math.min(this.scrollHeight, 200) + "px";
-  _saveDraft(this.value);
+  try {
+    if (window.orochiDraftStore) {
+      window.orochiDraftStore._debounceSave("chat", _draftTarget(), this.value);
+    }
+  } catch (_) {}
 });
 restoreDraftForCurrentChannel();
 
-/* Diagnostic blur logger for todo#225 — captures every blur event on
- * #msg-input with timestamp, relatedTarget, and a trimmed stack trace,
- * stored in sessionStorage so a user (or mamba-verifier-mba via
- * playwright) can inspect the last N events with
- *   JSON.parse(sessionStorage.getItem("orochi-blurlog") || "[]")
- * after reproducing the bug. Async-safe (uses requestAnimationFrame to
- * also catch deferred re-blurs that happen after a synchronous
- * focus-restore). Capacity-bounded at 50 entries so it never grows
- * unbounded. Strictly diagnostic — no UI side-effect. */
+/* Diagnostic blur logger for todo#225. */
 (function () {
   var input = document.getElementById("msg-input");
   if (!input) return;
@@ -147,14 +184,12 @@ restoreDraftForCurrentChannel();
   }
   input.addEventListener("blur", function (e) {
     _logBlur("sync-blur", e);
-    /* Also check after one frame in case something defers focus theft */
     requestAnimationFrame(function () {
       if (document.activeElement !== input) {
         _logBlur("post-rAF-still-blurred", e);
       }
     });
   });
-  /* Also expose a one-shot getter for convenience */
   window.getBlurLog = function () {
     try {
       return JSON.parse(sessionStorage.getItem("orochi-blurlog") || "[]");
@@ -164,17 +199,7 @@ restoreDraftForCurrentChannel();
   };
 })();
 
-/* Focus-theft guard removed: the capture-phase mousedown delegate that
- * kept #msg-input focused when the user clicked feed buttons/links felt
- * too aggressive. Browser default focus behavior is now in effect —
- * clicks on feed elements shift focus naturally. The save→render→
- * restore pattern in the render functions still preserves mid-typing
- * state across polling re-renders; it just no longer fights user
- * clicks. */
-
-/* Show more / Show less toggle for long messages.
- * Uses delegated click on document to handle dynamically inserted buttons.
- * Replaces the previous fragile inline onclick with arguments.callee. */
+/* Show more / Show less toggle for long messages. */
 document.addEventListener("click", function (e) {
   var btn = e.target.closest(".msg-fold-btn");
   if (!btn) return;
@@ -189,8 +214,7 @@ document.addEventListener("click", function (e) {
     fullEl.style.display = "block";
     previewEl.style.display = "none";
     btn.textContent = "Show less";
-    /* Render mermaid diagrams that became visible in the expanded section */
-    _renderMermaidIn(fullEl);
+    if (typeof _renderMermaidIn === "function") _renderMermaidIn(fullEl);
   } else {
     fullEl.style.display = "none";
     previewEl.style.display = "block";
@@ -212,30 +236,22 @@ document.addEventListener("click", function (e) {
   btn.textContent = isHidden ? "Hide raw" : "Show raw";
 });
 
-/* Defensive blur watchdog (todo#225 second-order regression).
- * msg#6692: ywatanabe says focus drops *after an idle period when a
- * delayed post arrives* — i.e. NOT a click event, so the mousedown
- * delegate above can't catch it. Some async setInterval / WS-driven
- * DOM mutation is firing focus() on something else, or the textarea
- * itself is being briefly unmounted by a re-render. Rather than chase
- * every async path, install a one-shot watchdog: if #msg-input loses
- * focus AND nothing else useful (form control / link the user clicked
- * intentionally) took focus within the next paint frame, snap focus
- * straight back. The selection range is restored too so the cursor
- * lands where the user left it. We only re-focus when the textarea
- * still has user-typed content AND the focus shifted to <body> /
- * <button> / <a> — the "implicit blur" pattern — so we never fight
- * an intentional click into another textarea / input / select. */
+/* Defensive blur watchdog (todo#225 second-order regression). */
 (function () {
   var msgInput = document.getElementById("msg-input");
   if (!msgInput) return;
   msgInput.addEventListener("blur", function (e) {
     if (window.__voiceInputAllowBlur) return;
+    var _activeTab =
+      typeof window !== "undefined" && typeof window.activeTab === "string"
+        ? window.activeTab
+        : typeof activeTab === "string"
+          ? activeTab
+          : "";
+    if (_activeTab !== "chat") return;
     var savedStart = msgInput.selectionStart || 0;
     var savedEnd = msgInput.selectionEnd || 0;
     var rt = e && e.relatedTarget;
-    /* If the user clicked into another form control on purpose, leave
-     * the focus where they put it. */
     if (rt && rt.tagName) {
       var tn = rt.tagName.toUpperCase();
       if (tn === "TEXTAREA" || tn === "INPUT" || tn === "SELECT") return;
@@ -244,15 +260,11 @@ document.addEventListener("click", function (e) {
     requestAnimationFrame(function () {
       var still = document.activeElement;
       if (still === msgInput) return;
-      /* Don't fight a real focus into another control. */
       if (still && still.tagName) {
         var stn = still.tagName.toUpperCase();
         if (stn === "TEXTAREA" || stn === "INPUT" || stn === "SELECT") return;
         if (still.isContentEditable) return;
       }
-      /* todo#315: don't snap focus back if the user is actively
-       * selecting text inside the message feed — refocusing would
-       * collapse the selection and make copy impossible. */
       try {
         var sel = window.getSelection && window.getSelection();
         if (sel && sel.toString().length > 0) {
@@ -274,37 +286,3 @@ document.addEventListener("click", function (e) {
     });
   });
 })();
-
-document.getElementById("msg-send").addEventListener("click", function (e) {
-  e.preventDefault();
-  /* On mobile Safari, tapping the send button blurs the textarea before
-   * the click handler fires, which can dismiss the keyboard and cause
-   * unexpected scrolling. We call sendMessage synchronously here. */
-  sendMessage();
-  /* Re-focus the textarea so the keyboard stays open on mobile */
-  document.getElementById("msg-input").focus();
-});
-document.getElementById("msg-input").addEventListener("keydown", function (e) {
-  /* Ctrl+U / Cmd+U → trigger file upload picker (msg#9877) */
-  var isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-  if ((isMac ? e.metaKey : e.ctrlKey) && e.key === "u") {
-    e.preventDefault();
-    var fi = document.getElementById("file-input");
-    if (fi) fi.click();
-    return;
-  }
-  if (e.key === "Enter") {
-    var dd = document.getElementById("mention-dropdown");
-    if (dd && dd.classList.contains("visible")) return;
-    /* todo#332 v2: Alt+Enter is reserved for voice toggle (see voice-input.js).
-     * Shift+Enter remains the newline shortcut. Plain Enter sends. */
-    if (e.shiftKey) return;
-    if (e.altKey) {
-      /* Voice toggle handled by voice-input.js global handler — just prevent default */
-      e.preventDefault();
-      return;
-    }
-    e.preventDefault();
-    sendMessage();
-  }
-});

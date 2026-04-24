@@ -326,6 +326,13 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # re-post warn / escalate on every poll (spam regression).
             "quota_state_5h": prev.get("quota_state_5h") or "ok",
             "quota_state_7d": prev.get("quota_state_7d") or "ok",
+            # msg#16388 — server-side auto-dispatch streak + cooldown state.
+            # Owned by ``hub.auto_dispatch.check_agent_auto_dispatch``. Same
+            # prev-preserve pattern as quota_state_*: without it every
+            # heartbeat would reset the streak to 0 and the firing
+            # condition (N consecutive zero readings) could never be met.
+            "idle_streak": prev.get("idle_streak") or 0,
+            "auto_dispatch_last_fire_ts": prev.get("auto_dispatch_last_fire_ts"),
             "mcp_servers": (
                 list(info.get("mcp_servers"))
                 if isinstance(info.get("mcp_servers"), (list, tuple))
@@ -392,6 +399,44 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "account_email": info.get("account_email")
             or prev.get("account_email")
             or "",
+            # lead msg#16005: full ``scitex-agent-container status --terse
+            # --json`` dict attached to the heartbeat by the pusher
+            # (``scripts/client/agent_meta_pkg/_sac_status.py``). Stored
+            # verbatim so future fields added to sac's terse projection
+            # (context_pct, pane_state, current_tool, quota, ...) reach
+            # the dashboard via ``/api/agents/`` without per-field
+            # plumbing here.
+            #
+            # Replace-on-present semantics: a fresh heartbeat carrying
+            # a non-empty dict always wins (the pusher re-runs sac
+            # every cycle, so the value is current). Absent / empty
+            # dict falls back to the previous value — older pushers
+            # that don't emit the field yet don't wipe it.
+            "sac_status": (
+                dict(info.get("sac_status"))
+                if isinstance(info.get("sac_status"), dict)
+                and info.get("sac_status")
+                else prev.get("sac_status") or {}
+            ),
+            # Orochi unified cron state (msg#16406 / msg#16408 Phase 2).
+            # List of {name, interval, last_run, last_exit, last_skipped,
+            # last_duration_seconds, next_run, running, disabled, command,
+            # timeout} dicts produced by scitex_orochi._cron.render_cron_jobs
+            # and attached to every heartbeat by ``scitex-orochi heartbeat-push``.
+            # Source of truth for the Machines tab cron-jobs panel + the
+            # ``/api/cron/`` aggregator.
+            #
+            # Replace-on-present semantics: a heartbeat carrying a non-empty
+            # list always wins (the pusher re-runs the state reader every
+            # cycle, so the value is current). An empty list or absent field
+            # falls back to the previous value — a transient read glitch on
+            # the local state file doesn't blank the UI every 30s.
+            "cron_jobs": (
+                list(info.get("cron_jobs"))
+                if isinstance(info.get("cron_jobs"), (list, tuple))
+                and info.get("cron_jobs")
+                else prev.get("cron_jobs") or []
+            ),
         }
 
 

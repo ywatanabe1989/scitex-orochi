@@ -2,6 +2,7 @@
 import { refreshActivityFromApi, startActivityAutoRefresh } from "./activity-tab/data";
 import { renderAgentsTab } from "./agents-tab/overview";
 import { restoreDraftForCurrentChannel } from "./chat/chat-composer";
+import { loadChannelHistory } from "./chat/chat-history";
 import { fetchFiles } from "./files-tab/files-tab-grid";
 import { renderResourcesTab } from "./resources-tab/tab";
 import { fetchSettings } from "./settings-tab";
@@ -9,15 +10,80 @@ import { renderTerminalTab } from "./terminal-tab";
 import { fetchTodoList } from "./todo-tab/todo-tab-list";
 import { renderVizTab, stopVizTab } from "./viz-tab";
 import { fetchWorkspaces } from "./workspaces-tab";
+import { setCurrentChannel } from "./app/state";
+import { channelUnread } from "./app/utils";
+import {
+  clearLastOpenedChannel,
+  readLastOpened,
+  writeLastOpened,
+} from "./app/last-opened";
+import {
+  onHashChange,
+  parseHash,
+  scrollMessageIntoView,
+  writeHash,
+} from "./app/url-router";
+import { openThreadForMessage } from "./threads/panel";
 
 /* Tab switching, collapsible sections, mobile sidebar */
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
    fetchWorkspaces */
 
-export var activeTab = "chat";
+/* Default landing tab — the Overview tab (internal id "activity" — see
+ * note below) is the leftmost tab and the first-load landing surface.
+ * The internal id stays "activity" even though the user-visible label
+ * reads "Overview"; renaming the id would churn every globalThis/SSE
+ * key that keys off it (_overviewExpanded, etc.), and the directory
+ * name `activity-tab/` is likewise left alone per Step 3 spec. */
+export var activeTab = "activity";
+
+/* PR #<this> Item 3 helper: pick a sensible default channel when the
+ * Chat tab is activated without one. Preference order:
+ *   1. Channel with the highest unread count (proxy for "most recently
+ *      posted / most relevant right now").
+ *   2. First sidebar channel row in document order (i.e. first in the
+ *      user's star-sorted list).
+ * Returns null if no candidate exists (empty sidebar / first load
+ * before the stats fetch returns). Caller is responsible for null
+ * handling — we intentionally do NOT set a placeholder channel. */
+function _pickFallbackChannel(): string | null {
+  try {
+    /* 1. Highest unread. channelUnread keys are channel names (raw or
+     *    normalised). We filter out DM channels since those are owned
+     *    by the DM surface; Chat fallback should land on a group
+     *    channel. */
+    var best: string | null = null;
+    var bestCount = 0;
+    var unread = (channelUnread as Record<string, number>) || {};
+    Object.keys(unread).forEach(function (k) {
+      if (!k || k.indexOf("dm:") === 0) return;
+      var n = unread[k] || 0;
+      if (n > bestCount) {
+        bestCount = n;
+        best = k;
+      }
+    });
+    if (best) return best;
+    /* 2. First sidebar channel row. Skip hidden/dm rows. */
+    var row = document.querySelector(
+      '.sidebar .channel-item:not([data-hidden="1"])',
+    );
+    if (row) {
+      var ch = row.getAttribute("data-channel");
+      if (ch && ch.indexOf("dm:") !== 0) return ch;
+    }
+  } catch (_) {
+    /* Never let a fallback-pick error break the tab activation. */
+  }
+  return null;
+}
 
 export function _activateTab(tab) {
   activeTab = tab;
+  /* Mirror to globalThis so cross-module consumers (state.ts URL-hash
+   * sync, future routers) can read the current tab without a circular
+   * import on the tabs.ts export. msg#17039. */
+  (globalThis as any).activeTab = tab;
   document.querySelectorAll(".tab-btn").forEach(function (b) {
     b.classList.toggle("active", b.getAttribute("data-tab") === tab);
   });
@@ -62,6 +128,45 @@ export function _activateTab(tab) {
      * vanishes after the first tab switch. Banner content already tracks
      * the textarea target (see app.js _updateChannelTopicBanner). */
     if (topicBanner) topicBanner.style.display = "";
+    /* PR #<this> Item 3: Chat tab single-channel enforcement. On mount,
+     * if no channel is currently selected (and we're not in a DM), auto-
+     * select a reasonable default — prefer the channel with the most
+     * unread messages (closest proxy to "most recently posted"), fall
+     * back to the first visible sidebar channel. Never leave the Chat
+     * tab in the "Type a message (no channel selected)" state from its
+     * normal flow — that placeholder should only be reachable from the
+     * all-channels filter entry, never from Chat's mount path.
+     *
+     * DM exception: if the user is in a DM thread (currentChannel starts
+     * with "dm:"), we don't interfere — DMs are first-class chat
+     * targets. */
+    var cur = (globalThis as any).currentChannel;
+    var inDm = typeof cur === "string" && cur.indexOf("dm:") === 0;
+    if (!cur && !inDm) {
+      var picked = _pickFallbackChannel();
+      if (picked) {
+        setCurrentChannel(picked);
+        if (typeof loadChannelHistory === "function")
+          loadChannelHistory(picked);
+        /* Flip .selected on the sidebar row so the visual matches the
+         * state; the full sidebar re-render on next stats fetch will
+         * idempotently do the same, but this makes the transition feel
+         * instant. */
+        document
+          .querySelectorAll(
+            ".sidebar .channel-item.selected, .sidebar .dm-item.selected",
+          )
+          .forEach(function (it) {
+            it.classList.remove("selected");
+          });
+        var row = document.querySelector(
+          '.sidebar .channel-item[data-channel="' +
+            picked.replace(/"/g, '\\"') +
+            '"]',
+        );
+        if (row) row.classList.add("selected");
+      }
+    }
     /* Always default-focus the compose input when the chat tab is shown.
      * Per ywatanabe spec (msg 5470, 2026-04-12): the compose textarea is
      * the primary action target on the chat tab, so the user should never
@@ -137,28 +242,303 @@ export function _activateTab(tab) {
     settingsView.style.flex = "1";
     fetchSettings();
   }
+  /* msg#16999: persist the tab half of the last-opened UI record so a
+   * hard reload (Ctrl+Shift+R) lands the user back where they were.
+   * writeLastOpened() also mirrors to the legacy `orochi_active_tab`
+   * key for older in-flight bundles. */
+  writeLastOpened({ activeTab: tab });
+  /* msg#17039: keep the URL hash in sync with the active tab so the
+   * current view is deep-linkable. For the chat tab we also encode
+   * the active channel so reloads reproduce the exact surface. We
+   * use history.replaceState (inside writeHash) — never pushState —
+   * so the Back button stays usable (one entry per real navigation,
+   * not one per tab-click). */
   try {
-    localStorage.setItem("orochi_active_tab", tab);
+    const _cur = (globalThis as any).currentChannel || null;
+    const _params: Record<string, string | null> = {};
+    if (tab === "chat" && _cur) {
+      /* Strip leading # for compact URLs (#chat?channel=heads instead
+       * of #chat?channel=%23heads). DM channels keep their raw prefix
+       * so the round-trip stays lossless. */
+      _params.channel = typeof _cur === "string" && _cur.charAt(0) === "#" ? _cur.slice(1) : _cur;
+    }
+    writeHash(tab, _params);
   } catch (_) {}
 }
 
+/* msg#16116 Item 3: cmd-click / ctrl-click / middle-click on a tab
+ * button should open that view in a new browser tab so the user can
+ * lay Overview + TODO side-by-side. Tab buttons are <button> elements
+ * (dashboard.html), not <a>, so browsers don't offer the native
+ * "open in new tab" affordance by default. Rather than change the
+ * markup (which would cascade into every .tab-btn CSS selector), we
+ * intercept modifier-key and middle clicks at the JS layer:
+ *   - auxclick listener catches middle-button presses and calls
+ *     window.open(pathname + "#tab", "_blank").
+ *   - Regular click listener checks metaKey / ctrlKey / shiftKey; if
+ *     any is pressed, preventDefault and route through window.open.
+ *   - Plain left-click still runs _activateTab for the in-place
+ *     switch (the existing flow).
+ * The ``data-href`` attribute stays on the button as a hint for
+ * developers / a11y tools but is not honoured by the browser itself.
+ * The new tab lands on ``dashboard/#<tab>`` and the boot code below
+ * reads the hash to activate the requested tab. */
+function _isNewTabClick(ev) {
+  /* Middle mouse button = ev.button === 1. Cmd (mac) = metaKey.
+   * Ctrl (win/linux) = ctrlKey. Shift opens in a new window on most
+   * browsers; treat it the same (user intent = "not in place"). */
+  return ev.button === 1 || ev.metaKey || ev.ctrlKey || ev.shiftKey;
+}
+
 document.querySelectorAll(".tab-btn").forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    var tab = btn.getAttribute("data-tab");
-    if (tab === activeTab) return;
-    _activateTab(tab);
+  /* Install an anchor-style href so the browser exposes the standard
+   * "Open in new tab" / "Open in new window" context menu entries, and
+   * so middle-click raises a new background tab by default. Buttons
+   * themselves don't honour href (they're not anchors), but modifier-
+   * key clicks still get our custom handler below which opens a fresh
+   * tab via window.open. The href stays consistent with the hash-route
+   * the new tab's boot code looks for. */
+  var tab = btn.getAttribute("data-tab") || "";
+  if (tab && !btn.hasAttribute("data-href")) {
+    btn.setAttribute("data-href", "#" + tab);
+  }
+  /* Middle-click (auxclick) on a <button> fires regardless of href. */
+  btn.addEventListener("auxclick", function (ev) {
+    /* Middle button only (1). Right-click (2) lets the browser show
+     * its own context menu. */
+    if (ev.button !== 1) return;
+    ev.preventDefault();
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    try {
+      window.open(window.location.pathname + "#" + t, "_blank");
+    } catch (_) {}
+  });
+  btn.addEventListener("click", function (ev) {
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    if (_isNewTabClick(ev)) {
+      /* Cmd/Ctrl/Shift click — open a new tab/window. Use a blank
+       * target so each click spawns its own surface; suppress the
+       * in-place switch. */
+      ev.preventDefault();
+      try {
+        window.open(window.location.pathname + "#" + t, "_blank");
+      } catch (_) {}
+      return;
+    }
+    if (t === activeTab) return;
+    _activateTab(t);
   });
 });
 
-/* Restore last open tab across reloads */
+/* Restore last open tab across reloads.
+ *
+ * Step 3a (Overview promotion): default landing is the Overview tab
+ * (internal id "activity"). If localStorage has a remembered tab AND
+ * its button still exists in the DOM, honor it — otherwise fall back
+ * to Overview. Activating Overview on boot is what makes first paint
+ * land there; we intentionally do NOT rely on inline display:none on
+ * Chat surfaces — _activateTab("activity") hides them imperatively. */
 (function () {
   try {
-    var last = localStorage.getItem("orochi_active_tab");
-    if (last && last !== "chat") {
-      var btn = document.querySelector('.tab-btn[data-tab="' + last + '"]');
-      if (btn) _activateTab(last);
+    /* msg#16116 Item 3: hash-based tab routing. When a cmd/middle-click
+     * on a tab button opens a new browser tab, the fresh tab loads the
+     * dashboard with ``#<tab>`` as the URL fragment. Honor that hash
+     * FIRST — it reflects the explicit "open this view in a new tab"
+     * intent. Fall back to localStorage (in-place session continuity)
+     * and finally Overview.
+     *
+     * msg#17039: the hash format has grown to `#<tab>?<params>` so
+     * the URL can carry a channel / thread selection too. The legacy
+     * bare `#<tab>` still works — parseHash handles both shapes. */
+    var _routed = parseHash();
+    var hash = "";
+    var _hashParams: Record<string, string> = {};
+    if (_routed) {
+      hash = _routed.tab;
+      _hashParams = _routed.params || {};
+    } else {
+      try {
+        /* parseHash rejected (unknown tab / malformed) — fall through
+         * to legacy bare-tab parsing below, then localStorage. */
+        hash = (window.location.hash || "").replace(/^#/, "");
+        /* Strip any `?...` tail so the bare legacy path ignores
+         * params that parseHash couldn't validate. */
+        var _q = hash.indexOf("?");
+        if (_q !== -1) hash = hash.slice(0, _q);
+      } catch (_) {
+        hash = "";
+      }
     }
-  } catch (_) {}
+    /* msg#16999: read the unified last-opened record. readLastOpened()
+     * also folds in the legacy `orochi_active_tab` / `orochi_active_channel`
+     * keys so users on an older bundle at boot time don't lose their
+     * spot. */
+    var _lastOpened = readLastOpened();
+    var last = _lastOpened.activeTab || null;
+    /* Step 3c: the top-level Terminal tab has been removed (terminal
+     * preview now lives only inside the agent-detail pane's SSH action).
+     * Users who left their last session on "terminal" fall through. */
+    if (last === "terminal") {
+      last = null;
+    }
+    if (hash === "terminal") {
+      hash = "";
+    }
+    /* msg#16337: Overview loses its Viz/List toggle — Overview is
+     * Viz-only, and the List surface moves to the dedicated Agents
+     * tab. If the user's last session had activity + list subview
+     * selected, redirect their next boot to the Agents tab so they
+     * land on the list they were looking at (not an empty graph).
+     * Graph/topology users on activity land on Overview as before.
+     * Consumes the legacy orochi.overviewView key one time and
+     * rewrites it to "topology" to match the new UI contract. */
+    if (last === "activity") {
+      try {
+        var _legacyOverviewView = localStorage.getItem("orochi.overviewView");
+        if (_legacyOverviewView === "list" || _legacyOverviewView === "tiled") {
+          last = "agents-tab";
+          localStorage.setItem("orochi.overviewView", "topology");
+          writeLastOpened({ activeTab: "agents-tab" });
+        }
+      } catch (_) {}
+    }
+    var target = hash || last || "activity";
+    /* If the requested tab no longer has a DOM button, fall back to
+     * Overview ("activity"). */
+    var btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
+    if (!btn) {
+      target = "activity";
+      btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
+    }
+    if (btn) _activateTab(target);
+    /* msg#17039: hash-directed channel + thread selection. When the
+     * URL carries `?channel=<name>` or `?thread=<id>` we honour those
+     * over the localStorage persisted channel — the hash is the more
+     * explicit "open this exact surface" intent (user pasted / clicked
+     * a shared link). The chat-history load happens async so we defer
+     * the scroll-to-message until the DOM is populated; scrollMessage-
+     * IntoView returns false when the target isn't in the DOM yet and
+     * we retry once after a short settle window. */
+    var _hashChannel = _hashParams && _hashParams.channel;
+    var _hashThread = _hashParams && _hashParams.thread;
+    if (_routed && _hashChannel) {
+      try {
+        /* Defer — setCurrentChannel + loadChannelHistory need the
+         * state module to be live and the sidebar-row lookup to have
+         * something to match on. One rAF + a short grace window
+         * mirrors the pattern used below for the persisted channel. */
+        setTimeout(function () {
+          try {
+            var ch = String(_hashChannel);
+            /* Accept both "heads" and "#heads" in the URL; the state
+             * module normalises to the canonical form. */
+            setCurrentChannel(ch);
+            if (typeof loadChannelHistory === "function") {
+              loadChannelHistory((globalThis as any).currentChannel || ch);
+            }
+          } catch (__) {}
+        }, 50);
+      } catch (_) {}
+    }
+    if (_routed && _hashThread) {
+      try {
+        /* Thread panel auto-open: chat-history.ts already calls
+         * applyThreadUrlOnLoad() which reads `?thread=` off the
+         * query string (not the hash). We drive it explicitly here
+         * for the new hash scheme. The retry loop handles the common
+         * case where the parent message hasn't rendered yet. */
+        var _threadId = String(_hashThread);
+        var _attempts = 0;
+        var _tryOpen = function () {
+          _attempts++;
+          var parentEl = document.querySelector(
+            '[data-msg-id="' + _threadId + '"]',
+          );
+          if (parentEl && typeof openThreadForMessage === "function") {
+            try {
+              openThreadForMessage(_threadId);
+            } catch (__) {}
+            /* After opening, scroll + highlight the parent message
+             * with surrounding context. */
+            try {
+              scrollMessageIntoView(_threadId, { context: 5 });
+            } catch (__) {}
+            return;
+          }
+          if (_attempts < 20) setTimeout(_tryOpen, 250);
+        };
+        setTimeout(_tryOpen, 300);
+      } catch (_) {}
+    }
+    /* msg#17039: listen for external URL-hash edits (user paste, back
+     * button when a different surface wrote the hash, etc.) and sync
+     * the UI. Our own writeHash() calls are self-filtered inside the
+     * router so they don't cause a re-route cascade. */
+    try {
+      onHashChange(function (state) {
+        if (!state) return;
+        try {
+          if (state.tab && state.tab !== activeTab) {
+            _activateTab(state.tab);
+          }
+          var chParam = state.params && state.params.channel;
+          if (state.tab === "chat" && chParam) {
+            var _cur = (globalThis as any).currentChannel || "";
+            if (String(_cur).replace(/^#/, "") !== String(chParam).replace(/^#/, "")) {
+              setCurrentChannel(String(chParam));
+              if (typeof loadChannelHistory === "function") {
+                loadChannelHistory((globalThis as any).currentChannel || chParam);
+              }
+            }
+          }
+          var thrParam = state.params && state.params.thread;
+          if (thrParam && typeof openThreadForMessage === "function") {
+            var tid = String(thrParam);
+            if ((globalThis as any).threadPanelParentId !== Number(tid)) {
+              try { openThreadForMessage(tid); } catch (__) {}
+            }
+            setTimeout(function () {
+              try { scrollMessageIntoView(tid, { context: 5 }); } catch (__) {}
+            }, 200);
+          }
+        } catch (__) {}
+      });
+    } catch (_) {}
+    /* msg#16999: validate the persisted channel actually exists in the
+     * current sidebar. It may have been deleted, belong to a workspace
+     * the user no longer has access to, or simply never resolved. When
+     * the channel is missing we clear the persisted value so a
+     * subsequent reload doesn't keep hitting the same stale ref — the
+     * fallback-pick in _activateTab("chat") / the default feed handle
+     * the empty state without further intervention. The sidebar is
+     * populated asynchronously via /api/stats, so defer one rAF tick
+     * plus a short grace window to give the first stats render a
+     * chance to land. */
+    var _persistedCh = _lastOpened.activeChannel || null;
+    if (_persistedCh && _persistedCh !== "__all__") {
+      setTimeout(function () {
+        try {
+          var safe = _persistedCh.replace(/"/g, '\\"');
+          var row = document.querySelector(
+            '.sidebar .channel-item[data-channel="' +
+              safe +
+              '"], .sidebar [data-channel="' +
+              safe +
+              '"]',
+          );
+          if (!row) clearLastOpenedChannel();
+        } catch (__) {}
+      }, 2000);
+    }
+  } catch (_) {
+    /* Even if localStorage is unavailable (private mode / quota), we
+     * still want to land on Overview. */
+    try {
+      _activateTab("activity");
+    } catch (__) {}
+  }
 })();
 
 /* Collapsible sidebar sections (#321 fix: use data-section for stable keys) */

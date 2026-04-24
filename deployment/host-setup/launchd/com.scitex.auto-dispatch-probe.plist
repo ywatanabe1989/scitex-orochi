@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: auto-dispatch probe — "idle = forbidden" enforced by code.
+
+  Runs scripts/client/auto-dispatch-probe.sh every 5 minutes on this user's
+  login session. On each tick the probe queries the hub for this host's
+  head-<hostname> registry payload and, if subagent_count == 0 AND online
+  AND not in cooldown, picks the next high-priority TODO matching this
+  head's lane and injects a dispatch prompt into the tmux pane.
+
+  Install:
+    ./scripts/client/install-auto-dispatch-probe.sh
+
+  Logs: ~/Library/Logs/scitex/auto-dispatch.log (NDJSON per tick + severity
+  advisories). Rotate manually when large.
+
+  Replace __HOME__ and __REPO__ with your actual paths before `launchctl
+  load`. The companion install helper
+  scripts/client/install-auto-dispatch-probe.sh does this rewrite
+  automatically (two-level ../.. climb per PR #297 fix).
+
+  Why --yes in production: the whole point is to stop losing hours of fleet
+  throughput to idle heads. The install helper provides --dry-run-only for
+  observation mode.
+
+  Kill switch: set SCITEX_AUTO_DISPATCH_DISABLED=1 in the user env to pause
+  without uninstalling the agent.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.scitex.auto-dispatch-probe</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>__REPO__/scripts/client/auto-dispatch-probe.sh</string>
+      <string>__PROBE_MODE__</string>
+    </array>
+
+    <!-- Every 5 minutes. Matches other fleet-watch probes. -->
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Don't respawn in a tight loop if the script exits non-zero -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/scitex/auto-dispatch.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/scitex/auto-dispatch.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+  </dict>
+</plist>

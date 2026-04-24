@@ -1,0 +1,68 @@
+# Orochi unified cron — declarative schedule for one host.
+#
+# Copy to ~/.scitex/orochi/cron.yaml and tune. The install-orochi-cron.sh
+# helper copies this file on first install if the target doesn't yet
+# exist (never overwrites an operator-edited copy).
+#
+# Schema:
+#   tick_seconds: int  — how often the scheduler wakes to check due
+#                         jobs. Default 10. Smaller = tighter cadence,
+#                         more wakeups. Leave alone unless you have a
+#                         sub-minute job.
+#   jobs: list of
+#     name:     string, unique. Used for state + log file names.
+#     interval: cadence — "30s", "5m", "1h", "1d", or plain seconds.
+#     command:  shell command. ${VAR} expands against the daemon's env.
+#               ${SCITEX_OROCHI_REPO_ROOT} is auto-detected from the
+#               installed scitex_orochi package (stable-bin-path
+#               pattern, same shape as PR #326 todo#466).
+#     timeout:  optional. "10m" / 600 seconds default. Jobs that
+#               overrun are killed and logged skipped="timeout_after_…".
+#     disabled: optional bool. Kept in cron list so re-enabling is
+#               a one-line YAML edit, no manual crontab surgery.
+
+tick_seconds: 10
+
+jobs:
+  # Per-agent heartbeat push (replaces agent_meta.py --push daemon).
+  - name: agent-meta-push
+    interval: 5m
+    command: "scitex-orochi heartbeat-push --all"
+    timeout: 4m
+
+  # Layer 1 fleet-watch: detect dead tmux / missing expected agents
+  # and revive locally. Paired cadence with server-side liveness.
+  - name: fleet-host-liveness-probe
+    interval: 5m
+    command: "scitex-orochi host-liveness probe --yes"
+    timeout: 4m
+
+  # Layer 2: idle heads DM lead for coordinated dispatch. Cadence
+  # intentionally half of fleet-host-liveness so the HUNGRY_THRESHOLD=2
+  # counter maps to ~20 min of real idleness.
+  - name: hungry-signal
+    interval: 10m
+    command: "scitex-orochi hungry-signal check --yes"
+    timeout: 9m
+
+  # Chrome code_sign_clone reaper — hourly is plenty, the problem grows
+  # on the order of GB/day when it goes wrong.
+  - name: chrome-codesign-watchdog
+    interval: 1h
+    command: "scitex-orochi chrome-watchdog check"
+    timeout: 10m
+
+  # Disk pressure probe — hourly advisory on root-fs headroom. Emits
+  # NDJSON to $HOST_TELEMETRY_OUT_DIR and exits non-zero on warn/critical.
+  - name: disk-pressure-probe
+    interval: 1h
+    command: "scitex-orochi disk pressure-probe"
+    timeout: 2m
+
+  # Disk reaper — dry-run by default (no side effects), flip to --yes
+  # on hosts where you've accepted the safe-default reap list. Uncomment
+  # once disk thresholds on the host match your tolerance.
+  # - name: disk-reaper
+  #   interval: 1h
+  #   command: "scitex-orochi disk reaper-dry-run --yes"
+  #   timeout: 10m

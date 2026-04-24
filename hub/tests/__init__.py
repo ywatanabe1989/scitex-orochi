@@ -18,6 +18,7 @@ from hub.tests.consumers.test_agent_subscription import *  # noqa: F401,F403
 from hub.tests.consumers.test_dm import *  # noqa: F401,F403
 from hub.tests.consumers.test_mentions import *  # noqa: F401,F403
 from hub.tests.consumers.test_reexports import *  # noqa: F401,F403
+from hub.tests.consumers.test_subagent_count_roundtrip import *  # noqa: F401,F403
 from hub.tests.models.test_dm_schema import *  # noqa: F401,F403
 from hub.tests.models.test_identity import *  # noqa: F401,F403
 from hub.tests.models.test_messaging import *  # noqa: F401,F403
@@ -30,6 +31,7 @@ from hub.tests.registry.test_host_identity_from_client import *  # noqa: F401,F4
 from hub.tests.registry.test_reexports import *  # noqa: F401,F403
 from hub.tests.registry.test_singleton_enforcement import *  # noqa: F401,F403
 from hub.tests.test_auth import *  # noqa: F401,F403
+from hub.tests.test_mention_expansion import *  # noqa: F401,F403
 from hub.tests.test_oauth_helper import *  # noqa: F401,F403
 from hub.tests.views.api.test_admin_subscribe import *  # noqa: F401,F403
 from hub.tests.views.api.test_agent_detail import *  # noqa: F401,F403

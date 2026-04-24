@@ -5,10 +5,10 @@ import { _addChannelContextMenu } from "./context-menus";
 import { _channelPrefs } from "./members";
 import { fetchStats } from "./sidebar-stats";
 import { setCurrentChannel } from "./state";
-import { channelUnread, escapeHtml } from "./utils";
+import { channelUnread, escapeHtml, getAgentColor } from "./utils";
 import { updateChannelUnreadBadges } from "./websocket";
-import { renderChannelBadgeHtml } from "../channel-badge";
-import { loadChannelHistory, loadHistory } from "../chat/chat-history";
+import { channelBadgeModel, renderChannelBadgeHtml } from "../channel-badge";
+import { loadChannelHistory } from "../chat/chat-history";
 import { applyFeedFilter } from "../chat/chat-render";
 import { _activateTab, activeTab } from "../tabs";
 
@@ -152,6 +152,35 @@ export function _renderChannelRowHtml(row, ctx) {
           iconSize: 14,
         })
       : "";
+  /* todo#305 (ywatanabe msg#15510 / lead msg#15513): restore per-channel
+   * colour to the sidebar row. PR #285 dropped row-level colour-coding;
+   * the directive has since been reversed. Palette source = the SAME
+   * name-hash used by agent cards (getAgentColor → OROCHI_COLORS), so
+   * Channels and Agents lists share a coherent colour vocabulary.
+   *
+   * Apply via the --channel-accent CSS custom property on the row. CSS
+   * in style-channels.css tints the leading .ch-identity-icon glyph and
+   * draws a 2px left-edge accent stripe from this var. Nothing else on
+   * the row is coloured: no row background tint (PR #293's subtle
+   * selected-bg rule owns selection signalling) and no opacity change
+   * (PR #291 banned row-level opacity dim). The 🔔/👁/★ glyphs remain
+   * monochrome — colour is ONLY on the category icon at position 1.
+   *
+   * channelBadgeModel(c).color resolves to any user-set channel colour
+   * first, then falls back to _identityColor → getAgentColor(norm); we
+   * reuse it here so a channel's sidebar accent matches its pool chip
+   * label colour and its topology label fill. */
+  var accentColor = "";
+  if (typeof channelBadgeModel === "function") {
+    var m = channelBadgeModel(c);
+    accentColor = (m && m.color) || "";
+  }
+  if (!accentColor && typeof getAgentColor === "function") {
+    accentColor = getAgentColor(norm);
+  }
+  var accentStyle = accentColor
+    ? ' style="--channel-accent:' + escapeHtml(accentColor) + '"'
+    : "";
   return (
     divider +
     '<div class="channel-item ch-badge ch-badge-sidebar' +
@@ -166,6 +195,7 @@ export function _renderChannelRowHtml(row, ctx) {
     (entry.hidden ? ' data-hidden="1"' : "") +
     (row.inFolder ? ' data-folder="' + escapeHtml(row.inFolder) + '"' : "") +
     rowTitle +
+    accentStyle +
     ' draggable="true">' +
     badgeInner +
     "</div>"
@@ -180,16 +210,32 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
    * prevSelected contained multiple entries (from a stale DOM where
    * two rows both carried .selected — the regression this PR fixes),
    * we restore .selected to AT MOST ONE row, preferring the current
-   * channel. Anything else is dropped on the floor. */
+   * channel. Anything else is dropped on the floor.
+   *
+   * msg#17050 — the prevSelected gate used to require the OLD DOM to
+   * have already carried `.selected` on this row. That gate silently
+   * broke the msg#16999 last-opened-channel restore path: on a cold
+   * reload the sidebar is built from scratch via `innerHTML = …`, so
+   * NO row carries `.selected` yet, `prevSelected` is always empty,
+   * and `_wireChannelItemHandlers` never re-applied the class even
+   * though `(globalThis).currentChannel` had been correctly hydrated
+   * from localStorage. The visible symptom was "server restart drops
+   * me back to Overview" — the user saw Chat rendered with no
+   * highlighted channel in the sidebar and read that as the UI having
+   * forgotten their session. `currentChannel` is the authoritative
+   * source of truth; if it names a row present in the sidebar, that
+   * row is selected, full stop. `prevSelected` is retained only as an
+   * additional tiebreaker for the edge case where currentChannel has
+   * drifted out of sync with a DOM that still remembers the previous
+   * selection. */
   var restoredOne = false;
+  var _curCh = (globalThis as any).currentChannel;
   chContainer.querySelectorAll(".channel-item").forEach(function (el) {
     var elCh = el.getAttribute("data-channel");
-    if (
-      !restoredOne &&
-      elCh &&
-      prevSelected[elCh] &&
-      (globalThis as any).currentChannel === elCh
-    ) {
+    var _matchesCurrent = !!elCh && _curCh === elCh;
+    var _matchesPrev =
+      !!elCh && prevSelected[elCh] && (globalThis as any).currentChannel === elCh;
+    if (!restoredOne && (_matchesCurrent || _matchesPrev)) {
       el.classList.add("selected");
       restoredOne = true;
     } else {
@@ -197,50 +243,21 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
        * added it above. Belt-and-braces against any stale DOM state. */
       el.classList.remove("selected");
     }
-    /* Pin icon click — toggle is_starred (pinned-to-top) */
-    var pinEl = el.querySelector(".ch-pin");
-    if (pinEl) {
-      pinEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var norm = pinEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_starred: !curPref.is_starred });
-      });
-    }
-    /* Eye icon click — toggle is_muted (watching vs muted) */
-    var watchEl = el.querySelector(".ch-watch");
-    if (watchEl) {
-      watchEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        var norm = watchEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_muted: !curPref.is_muted });
-      });
-    }
-    /* Bell/mute placeholder click — toggle is_muted. Placeholder is
-     * always rendered (reserved slot) so channel-name columns line up
-     * whether the row is muted or not. */
-    var muteEl = el.querySelector(".ch-mute");
-    if (muteEl) {
-      muteEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        var norm = muteEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_muted: !curPref.is_muted });
-      });
-    }
-    /* Hide/unhide icon click — toggle is_hidden (todo#418). */
-    var eyeEl = el.querySelector(".ch-eye");
-    if (eyeEl) {
-      eyeEl.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        var norm = eyeEl.getAttribute("data-ch");
-        var curPref = _channelPrefs[norm] || {};
-        _setChannelPref(norm, { is_hidden: !curPref.is_hidden });
-      });
-    }
+    /* msg#16979 — channel-card double-handler race.
+     *
+     * Star (.ch-pin), eye (.ch-eye), mute (.ch-mute) and watch (.ch-watch)
+     * clicks are owned by the body-level capture-phase delegate in
+     * channel-badge.ts (attachChannelBadgeHandlers). Per-row wiring
+     * here duplicated the same _setChannelPref call on the same click,
+     * causing a double-toggle that looked like "nothing happens" — the
+     * second call inverted the optimistic update from the first (the
+     * per-row bubble handler ran on the detached old element even after
+     * the delegate tore down the DOM, and by that point _channelPrefs
+     * already held the new value, so !curPref.is_* flipped it back).
+     *
+     * The delegate covers every surface that renders a channel badge
+     * (sidebar row, pool chip, topology canvas), so the per-row
+     * listeners are intentionally omitted here. */
     /* Context menu */
     _addChannelContextMenu(el);
     /* todo#49: accept agent-card drops to toggle subscription. */
@@ -307,11 +324,14 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
       }
       /* #284: channels are single-selection only. The legacy Ctrl/Cmd+Click
        * multi-select has been removed — any click replaces the current
-       * selection with exactly this row. */
-      if ((globalThis as any).currentChannel === ch) {
-        setCurrentChannel(null);
-        loadHistory();
-      } else {
+       * selection with exactly this row.
+       *
+       * todo#305 / lead msg#15493: clicking the currently-selected row
+       * is a NO-OP — there is always exactly one selected channel, and
+       * re-clicking must not deselect. Previously this branch set the
+       * channel to null (empty chat, no highlight); users reported it
+       * as a defect ("sometimes no channel is selected at all"). */
+      if ((globalThis as any).currentChannel !== ch) {
         setCurrentChannel(ch);
         loadChannelHistory(ch);
       }
@@ -327,16 +347,18 @@ export function _wireChannelItemHandlers(chContainer, prevSelected) {
        * DM agent-cards), not just this chContainer. Previously only
        * chContainer was cleared, which left a stale .selected on a
        * DM row when the user switched from a DM to a channel and
-       * manifested as "two rows selected at once" (#293). */
-      var wasSelected = el.classList.contains("selected");
+       * manifested as "two rows selected at once" (#293).
+       *
+       * todo#305: unconditionally re-select this row — the click
+       * handler above no longer deselects on re-click, so the class
+       * must always land back on this element after the cross-sidebar
+       * clear. */
       document
         .querySelectorAll(".sidebar .channel-item.selected, .sidebar .dm-item.selected")
         .forEach(function (it) {
           it.classList.remove("selected");
         });
-      if (!wasSelected && (globalThis as any).currentChannel === ch) {
-        el.classList.add("selected");
-      }
+      el.classList.add("selected");
       if (typeof applyFeedFilter === "function") applyFeedFilter();
       fetchStats();
     });

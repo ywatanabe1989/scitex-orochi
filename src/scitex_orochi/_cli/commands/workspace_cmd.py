@@ -1,4 +1,10 @@
-"""CLI commands: workspace management (create, delete, list, invites)."""
+"""CLI commands: workspace management (create, delete, list, invites).
+
+Phase 1d Step C (plan PR #337): the ``workspace`` noun group now hosts
+``create / delete / list``, and the separate ``invite`` noun group
+hosts ``create / list`` (registered in ``invite_cmd.py``). The flat
+legacy verbs are stubbed in ``_main.py``.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +16,24 @@ import urllib.request
 
 import click
 
+from scitex_orochi._cli._help_availability import annotate_help_with_availability
 from scitex_orochi._cli._helpers import EXAMPLES_HEADER
+
+
+# ── Phase 1d Step C: noun dispatcher with migrated verbs ───────────────
+@click.group(
+    "workspace",
+    short_help="Manage workspaces",
+    help="Manage workspaces (create, delete, list).",
+)
+def workspace() -> None:
+    """Workspace-scoped verbs (Phase 1d Step C)."""
+
+
+# Verbs registered at the bottom of this file, after their flat
+# definitions, so we do not add_command before the command object
+# exists.
+
 
 # ── HTTP helper ───────────────────────────────────────────────────
 
@@ -296,3 +319,13 @@ def list_invites(ctx: click.Context, workspace_id: str, as_json: bool) -> None:
             max_u = inv.get("max_uses", 0)
             uses_str = f"{uses}/{max_u}" if max_u else f"{uses}/unlimited"
             click.echo(f"  {code}  role={inv_role}  uses={uses_str}")
+
+
+# ── Phase 1d Step C: register verbs under the noun groups ──────────────
+# ``workspace create / delete / list`` — the flat ``create-workspace`` /
+# ``delete-workspace`` / ``list-workspaces`` stubs live in ``_main.py``.
+workspace.add_command(create_workspace, name="create")
+workspace.add_command(delete_workspace, name="delete")
+workspace.add_command(list_workspaces, name="list")
+
+annotate_help_with_availability(workspace)

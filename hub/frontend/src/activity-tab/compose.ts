@@ -1,12 +1,18 @@
 // @ts-nocheck
 import { _activityChannelRequest, _invalidateTopoPerms } from "./data";
+import { _graphFeedSetChannel } from "./graph-feed";
 import { _showMiniToast } from "../app/agent-actions";
 import { _channelPrefs } from "../app/members";
 import { fetchAgents } from "../app/sidebar-agents";
-import { setCurrentChannel } from "../app/state";
-import { escapeHtml, sendOrochiMessage, userName } from "../app/utils";
+import { apiUrl, escapeHtml, sendOrochiMessage, userName } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
-import { loadChannelHistory } from "../chat/chat-history";
+import { _uploadFilesAPI } from "../upload";
+import { renderComposer } from "../composer/composer";
+import {
+  _debounceSave,
+  clearDraft,
+  loadDraft,
+} from "../composer/draft-store";
 
 /* activity-tab/compose.js — group compose modal (multi-select post)
  * + inline channel compose popup + drag-ghost helper + subscribe toast. */
@@ -245,17 +251,9 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
   pop.id = "topo-channel-compose";
   pop.className = "topo-channel-compose";
   pop.setAttribute("data-channel", channel);
+  pop.setAttribute("data-composer-surface", "overview");
   pop.style.left = Math.max(8, clientX - 140) + "px";
   pop.style.top = Math.max(8, clientY + 12) + "px";
-  /* Minimal popup: no header, no close button, no + button, no send
-   * button. Just a textarea whose tooltip documents all the keyboard
-   * shortcuts, plus a small ▾ chevron at the bottom-right corner that
-   * reveals attach / camera / sketch / voice buttons. Enter sends, Esc
-   * closes, outside click closes. ywatanabe 2026-04-19: "make the
-   * modal minimal; no send button needed; no dm nor channel label
-   * needed; no plus button needed; not x button needed; just add a
-   * small chevron to the bottom to show other buttons; show tooltip
-   * with keyboard shortcuts even when they are not expanded to use". */
   var tccShortcuts =
     "Enter — send\n" +
     "Shift+Enter — newline\n" +
@@ -263,30 +261,233 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     "Drop files to attach\n" +
     "Paste image/file to attach\n" +
     "Click ▾ for attach / camera / sketch / voice";
+  /* Item 15 (lead msg#15694): channel-node double-click shows a
+   * last-5-messages preview ABOVE the input area, so the user can see
+   * the conversation context before replying without triple-clicking
+   * into the full Chat tab. The preview is chronological (oldest →
+   * newest), scrolls internally if content overflows, and renders a
+   * loading placeholder while the fetch is in flight; a failed fetch
+   * turns into a muted "(no recent messages)" row rather than an error
+   * block so the compose input stays usable.
+   *
+   * (msg#16319: the older settled-hover channel-hover-preview popover
+   * has been removed — this in-popup preview is now the sole inline
+   * last-N surfacing for channels.)
+   *
+   * Composer DOM (textarea + action buttons) is injected by
+   * renderComposer into .tcc-composer-slot since the SSoT unification
+   * (msg#16286). The preview, pending tray, and chevron stay popup-
+   * owned chrome — the composer slots into .tcc-composer-slot and its
+   * action row is moved into .tcc-extras so the chevron can toggle
+   * visibility (matches pre-SSoT UX). */
   pop.innerHTML =
-    '<textarea class="tcc-input" data-voice-input rows="2" placeholder="message #' +
-    escapeHtml(channel).replace(/^#/, "") +
-    '" title="' +
-    tccShortcuts.replace(/"/g, "&quot;") +
-    '"></textarea>' +
-    '<div class="tcc-extras" style="display:none">' +
-    '<button type="button" class="tcc-x tcc-attach" title="Attach file (paste also works)">\uD83D\uDCCE</button>' +
-    '<button type="button" class="tcc-x tcc-camera" title="Camera">\uD83D\uDCF7</button>' +
-    '<button type="button" class="tcc-x tcc-sketch" title="Sketch">\u270F\uFE0F</button>' +
-    '<button type="button" class="tcc-x tcc-voice" title="Voice input">\uD83C\uDFA4</button>' +
+    '<div class="tcc-preview" data-tcc-preview>' +
+    '<div class="tcc-preview-loading">Loading recent messages\u2026</div>' +
     "</div>" +
+    '<div class="tcc-pending" style="display:none"></div>' +
+    '<div class="tcc-composer-slot"></div>' +
     '<button type="button" class="tcc-expand" title="' +
     tccShortcuts.replace(/"/g, "&quot;") +
     '" aria-label="More options">\u25BE</button>';
   document.body.appendChild(pop);
-  var input = pop.querySelector(".tcc-input");
-  var extras = pop.querySelector(".tcc-extras");
+  /* Item 15: fire off a last-5 history fetch. This is fire-and-forget
+   * — no await, no blocking of the compose input. If the popup has
+   * been closed by the time the response lands, the querySelector
+   * returns null and we silently skip painting. */
+  _tccLoadPreview(pop, channel);
+  /* Wire the persistent graph feed to this channel so replies to the
+   * outgoing post land in the right-docked panel instead of flashing
+   * off-screen as a 1.3s landing bubble (lead msg#15701 blocker). */
+  if (typeof _graphFeedSetChannel === "function") {
+    try {
+      _graphFeedSetChannel(channel);
+    } catch (_) {}
+  }
+
+  var popTray = pop.querySelector(".tcc-pending");
+  var composerSlot = pop.querySelector(".tcc-composer-slot");
   var expandBtn = pop.querySelector(".tcc-expand");
+
+  /* msg#16193: local-scoped pending attachments for this popup. Paste /
+   * drop stage here instead of routing to the Chat composer, so the
+   * user's Overview-tab interaction never flips them into Chat. The
+   * tray lives in popup chrome; the composer delegates file-staging to
+   * _stagePopFiles via opts.stageFiles (composer-paste.ts handles paste,
+   * popup-level drop handler below handles drag-drop onto the chrome). */
+  var popPending = [];
+
+  function _renderPopTray() {
+    if (!popPending.length) {
+      popTray.style.display = "none";
+      popTray.innerHTML = "";
+      return;
+    }
+    popTray.style.display = "flex";
+    popTray.innerHTML = "";
+    popPending.forEach(function (p, idx) {
+      var item = document.createElement("div");
+      item.className = "tcc-pending-item";
+      var isImage =
+        p.uploaded &&
+        p.uploaded.mime_type &&
+        p.uploaded.mime_type.indexOf("image/") === 0;
+      var thumb;
+      if (isImage) {
+        thumb = document.createElement("img");
+        thumb.src = p.uploaded.url;
+        thumb.className = "tcc-pending-thumb";
+        thumb.alt = p.uploaded.filename || "image";
+      } else {
+        thumb = document.createElement("span");
+        thumb.className = "tcc-pending-icon";
+        thumb.textContent = "\uD83D\uDCCE";
+      }
+      var label = document.createElement("span");
+      label.className = "tcc-pending-label";
+      label.textContent = (p.uploaded && p.uploaded.filename) || "";
+      var remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "tcc-pending-remove";
+      remove.title = "Remove";
+      remove.textContent = "\u2715";
+      remove.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        popPending.splice(idx, 1);
+        _renderPopTray();
+      });
+      item.appendChild(thumb);
+      item.appendChild(label);
+      item.appendChild(remove);
+      popTray.appendChild(item);
+    });
+  }
+
+  async function _stagePopFiles(files) {
+    if (!files || files.length === 0) return;
+    var uploaded = await _uploadFilesAPI(files);
+    if (!uploaded || !uploaded.length) return;
+    /* Popup may have closed while upload was in-flight — bail silently. */
+    if (!pop.parentNode) return;
+    uploaded.forEach(function (u, i) {
+      popPending.push({ file: files[i] || files[0], uploaded: u });
+    });
+    _renderPopTray();
+  }
+
+  /* Build the composer via the SSoT module. Mention autocomplete, paste,
+   * attach/camera/sketch/voice, keyboard shortcuts — all shared with
+   * Chat and Reply. Drag-drop is handled at the popup level (below) so
+   * the whole popup chrome is a drop target, not just the composer
+   * subtree. */
+  var composerInstance = renderComposer(composerSlot as HTMLElement, {
+    surface: "overview",
+    placeholder: "message #" + String(channel || "").replace(/^#/, ""),
+    stageFiles: _stagePopFiles,
+    features: {
+      mention: true,
+      paste: true,
+      dragDrop: false,
+      attach: true,
+      camera: true,
+      sketch: true,
+      voice: true,
+      sendButton: false /* chevron + Enter = send, matches pre-SSoT UX */,
+      shiftEnterNewline: true,
+      autoResize: false,
+      cmdEnterSubmit: true,
+      tabAwareFocus: false,
+      /* Overview popup is outside the voice-input.ts global chord
+       * handler's allowed surfaces (it bails on #topo-channel-compose),
+       * so the composer owns the local Alt/Ctrl+Enter handling. */
+      localVoiceChord: true,
+    },
+    maxResizePx: 0,
+    onSubmit: function () {
+      send();
+    },
+  });
+  var input = composerInstance.input;
+  input.classList.add("tcc-input");
+  input.title = tccShortcuts;
+  input.rows = 2;
+
+  /* Move composer's action row into a .tcc-extras wrapper so the
+   * chevron can toggle visibility (matches pre-SSoT UX). */
+  var actionsRow = composerSlot.querySelector(".composer-actions");
+  var extras = document.createElement("div");
+  extras.className = "tcc-extras";
+  extras.style.display = "none";
+  if (actionsRow) {
+    extras.appendChild(actionsRow);
+  }
+  composerSlot.appendChild(extras);
+
+  /* Tag individual action buttons with their legacy tcc-x classes so
+   * existing CSS rules keep working. Add-only: we do NOT drop the new
+   * composer-btn-* classes. */
+  var actionBtns = extras.querySelectorAll(".composer-btn");
+  actionBtns.forEach(function (b) {
+    b.classList.add("tcc-x");
+    if (b.classList.contains("composer-btn-attach")) b.classList.add("tcc-attach");
+    else if (b.classList.contains("composer-btn-camera")) b.classList.add("tcc-camera");
+    else if (b.classList.contains("composer-btn-sketch")) b.classList.add("tcc-sketch");
+    else if (b.classList.contains("composer-btn-voice")) b.classList.add("tcc-voice");
+  });
+
+  /* msg#16324: restore any draft the user was typing into this channel
+   * popup before the last reload. loadDraft returns null when nothing
+   * is stored, stored-but-stale (>24h), or localStorage is unavailable.
+   * Cursor lands at end so continued typing "just works". */
+  try {
+    var _savedPopDraft = loadDraft("overview-popup", channel);
+    if (input && _savedPopDraft) {
+      input.value = _savedPopDraft;
+    }
+  } catch (_) {}
+  /* Persist every keystroke (debounced at 300ms via draft-store). */
+  if (input) {
+    input.addEventListener("input", function () {
+      try {
+        _debounceSave("overview-popup", channel, input.value);
+      } catch (_) {}
+    });
+  }
   setTimeout(function () {
-    if (input) input.focus();
+    if (input) {
+      try {
+        input.focus();
+        var len = input.value ? input.value.length : 0;
+        input.setSelectionRange(len, len);
+      } catch (_) {}
+    }
   }, 10);
 
+  /* todo#305 Task 6 (lead msg#15528): Cmd+V / ⌘V / context-menu Paste
+   * was failing on this popup (Safari right-click focus issue). Refocus
+   * the textarea on ANY pointer interaction inside the popup unless the
+   * target is one of the action buttons. */
+  function _refocusInput(ev) {
+    if (!input) return;
+    if (
+      ev.target &&
+      ev.target.closest &&
+      ev.target.closest(".tcc-x, .tcc-expand, .composer-btn")
+    ) {
+      return;
+    }
+    if (document.activeElement !== input) {
+      try {
+        input.focus();
+      } catch (_) {}
+    }
+  }
+  pop.addEventListener("mousedown", _refocusInput);
+  pop.addEventListener("contextmenu", _refocusInput);
+
   function close() {
+    try {
+      composerInstance.destroy();
+    } catch (_) {}
     if (pop.parentNode) pop.parentNode.removeChild(pop);
     document.removeEventListener("mousedown", outsideClick, true);
   }
@@ -297,10 +498,23 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
     document.addEventListener("mousedown", outsideClick, true);
   }, 50);
 
+  /* Esc closes the popup — composer's renderComposer handles
+   * Enter/Shift+Enter via onSubmit; Esc is popup-level chrome. */
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") {
+      ev.preventDefault();
+      close();
+    }
+  });
+
   function send() {
     var text = (input.value || "").trim();
-    if (!text) return;
+    var attachments = popPending.map(function (p) {
+      return p.uploaded;
+    });
+    if (!text && attachments.length === 0) return;
     var payload = { channel: channel, content: text };
+    if (attachments.length > 0) payload.attachments = attachments;
     if (
       typeof wsConnected !== "undefined" &&
       wsConnected &&
@@ -317,134 +531,36 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
         payload: payload,
       });
     }
-    close();
-  }
-  input.addEventListener("keydown", function (ev) {
-    /* Voice-toggle shortcuts — same as Chat composer. Keep these BEFORE
-     * the plain-Enter branch so Ctrl+Enter / Alt+Enter don't fall through
-     * to send(). Ctrl+M and Alt+V also toggle voice. */
-    if (ev.key === "Enter" && (ev.ctrlKey || ev.altKey)) {
-      ev.preventDefault();
-      ev.stopPropagation(); /* prevent global voice handler from double-firing */
-      if (typeof window.toggleVoiceInput === "function") {
-        input.focus(); /* ensure _toggleVoice sees our textarea as active */
-        window.toggleVoiceInput();
-      }
-      return;
-    }
-    if (
-      (ev.ctrlKey && (ev.key === "m" || ev.key === "M")) ||
-      (ev.altKey && (ev.key === "v" || ev.key === "V"))
-    ) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (typeof window.toggleVoiceInput === "function") {
-        input.focus();
-        window.toggleVoiceInput();
-      }
-      return;
-    }
-    if (ev.key === "Enter" && !ev.shiftKey) {
-      ev.preventDefault();
-      send();
-    } else if (ev.key === "Escape") {
-      ev.preventDefault();
-      close();
-    }
-  });
-  /* Paste support — images / files / long text. Native paste of plain
-   * text keeps the default behavior (lands in the textarea). If the
-   * clipboard carries a file/image, route to the Chat composer (the
-   * canonical paste-to-attach pipeline lives there) and re-dispatch
-   * the paste event so the upload.js handler does the work.
-   * ywatanabe 2026-04-19: "small input modal should support pasting". */
-  input.addEventListener("paste", function (ev) {
-    var cd =
-      ev.clipboardData || (ev.originalEvent && ev.originalEvent.clipboardData);
-    if (!cd) return;
-    var hasFile = false;
-    if (cd.files && cd.files.length) hasFile = true;
-    else if (cd.items) {
-      for (var i = 0; i < cd.items.length; i++) {
-        var it = cd.items[i];
-        if (it && it.type && it.type.indexOf("image/") === 0) {
-          hasFile = true;
-          break;
-        }
-      }
-    }
-    /* Long text still attaches as a file via upload.js's
-     * _pastedTextShouldAttach heuristic — route for that case too. */
-    var text = "";
+    /* msg#16316 / ywatanabe msg#16313: keep the popup OPEN after send so
+     * the user can keep replying without re-double-clicking the channel
+     * node. Clear the textarea + pending attachment tray, refocus the
+     * input, and leave the popup mounted. */
+    input.value = "";
+    popPending.length = 0;
+    _renderPopTray();
+    /* Spec msg#16324: clear the stored draft ONLY on successful send.
+     * Close-without-send (Esc / outside-click) keeps the draft so the
+     * user can come back and finish the thought later. */
     try {
-      text = cd.getData("text/plain") || "";
+      clearDraft("overview-popup", channel);
     } catch (_) {}
-    var isLong = text.length > 1000;
-    if (hasFile || isLong) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      close();
-      _routeToChat();
-      setTimeout(function () {
-        var msgInput = document.getElementById("msg-input");
-        if (!msgInput) return;
-        msgInput.focus();
-        /* Synthesize a paste event on msg-input so upload.js's
-         * handleClipboardPaste processes the same clipboard payload. */
-        try {
-          var newEv = new ClipboardEvent("paste", {
-            clipboardData: cd,
-            bubbles: true,
-            cancelable: true,
-          });
-          msgInput.dispatchEvent(newEv);
-        } catch (_) {
-          /* Some browsers don't allow constructing ClipboardEvent with
-           * populated data — let the user paste again in that case. */
-        }
-      }, 50);
-    }
-  });
+    try {
+      input.focus();
+    } catch (_) {}
+  }
+
   expandBtn.addEventListener("click", function () {
     var on = extras.style.display === "none";
     extras.style.display = on ? "" : "none";
     expandBtn.textContent = on ? "\u25B4" : "\u25BE";
   });
-  /* Delegate extras — pop the channel into currentChannel so existing
-   * global helpers target the right place, then invoke them. Fallback
-   * to focusing the main composer for modes that don't have a headless
-   * API surface. */
-  function _routeToChat() {
-    if (typeof setCurrentChannel === "function") setCurrentChannel(channel);
-    if (typeof loadChannelHistory === "function") loadChannelHistory(channel);
-    var tabBtn = document.querySelector('[data-tab="chat"]');
-    if (tabBtn) tabBtn.click();
-    close();
-  }
-  pop.querySelector(".tcc-attach").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openAttachmentPicker === "function") openAttachmentPicker();
-  });
-  pop.querySelector(".tcc-camera").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openCameraCapture === "function") openCameraCapture();
-  });
-  pop.querySelector(".tcc-sketch").addEventListener("click", function () {
-    _routeToChat();
-    if (typeof openSketchPanel === "function") openSketchPanel();
-  });
-  pop.querySelector(".tcc-voice").addEventListener("click", function () {
-    /* Dictate into THIS popup's textarea — don't route to Chat.
-     * Focus the popup textarea so _toggleVoice's selector-based
-     * target resolution picks it up, then toggle. */
-    if (typeof window.toggleVoiceInput === "function") {
-      input.focus();
-      window.toggleVoiceInput();
-    }
-  });
-  /* Drop files onto popup → route to Chat with attachments primed. */
+
+  /* Drop files onto popup → stage LOCALLY (msg#16193). Kept popup-level
+   * (not composer-level) because the drop zone includes the preview +
+   * pending-attachments chrome around the composer. */
   pop.addEventListener("dragover", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.add("tcc-drag-over");
   });
   pop.addEventListener("dragleave", function () {
@@ -452,13 +568,102 @@ export function _topoOpenChannelCompose(channel, clientX, clientY) {
   });
   pop.addEventListener("drop", function (ev) {
     ev.preventDefault();
+    ev.stopPropagation();
     pop.classList.remove("tcc-drag-over");
     var files = ev.dataTransfer && ev.dataTransfer.files;
-    if (files && files.length && typeof handleFileUpload === "function") {
-      _routeToChat();
-      for (var i = 0; i < files.length; i++) handleFileUpload(files[i]);
+    if (files && files.length) {
+      _stagePopFiles(Array.prototype.slice.call(files));
     }
   });
+}
+
+/* Item 15 (lead msg#15694): fetch & render the last 5 messages for
+ * the double-clicked channel inside the compose popup's .tcc-preview
+ * slot. Runs fire-and-forget — never blocks the input or closes the
+ * popup on failure. API shape mirrors /api/history/ as used by
+ * graph-feed (newest-first; we reverse to chronological before
+ * rendering). */
+var _TCC_PREVIEW_LIMIT = 5;
+function _tccFmtTime(iso) {
+  if (!iso) return "";
+  try {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    var hh = String(d.getHours()).padStart(2, "0");
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    return hh + ":" + mm;
+  } catch (_e) {
+    return "";
+  }
+}
+function _tccTruncate(s, n) {
+  if (!s) return "";
+  s = String(s);
+  if (s.length <= n) return s;
+  return s.slice(0, n - 1) + "\u2026";
+}
+function _tccRenderRows(rows) {
+  if (!rows || !rows.length) {
+    return '<div class="tcc-preview-empty">(no recent messages)</div>';
+  }
+  return rows
+    .map(function (m) {
+      var sender = m.sender || "?";
+      var ts = _tccFmtTime(m.ts);
+      var content = _tccTruncate(m.content || "", 140);
+      return (
+        '<div class="tcc-preview-row">' +
+        '<div class="tcc-preview-meta">' +
+        '<span class="tcc-preview-sender">' +
+        escapeHtml(sender) +
+        "</span>" +
+        (ts
+          ? '<span class="tcc-preview-ts">' + escapeHtml(ts) + "</span>"
+          : "") +
+        "</div>" +
+        '<div class="tcc-preview-body">' +
+        escapeHtml(content) +
+        "</div>" +
+        "</div>"
+      );
+    })
+    .join("");
+}
+function _tccLoadPreview(pop, channel) {
+  if (!pop || !channel) return;
+  var encoded = encodeURIComponent(channel);
+  var url = apiUrl(
+    "/api/history/" + encoded + "?limit=" + _TCC_PREVIEW_LIMIT,
+  );
+  fetch(url, { credentials: "same-origin" })
+    .then(function (res) {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then(function (rows) {
+      /* Bail quietly if the popup is already gone (user pressed Esc,
+       * clicked outside, or double-clicked another channel). */
+      if (!pop.parentNode) return;
+      if (pop.getAttribute("data-channel") !== channel) return;
+      var slot = pop.querySelector("[data-tcc-preview]");
+      if (!slot) return;
+      /* API returns newest-first; flip so the compose preview reads
+       * chronologically (oldest → newest, same as Chat feed). */
+      var chrono = (rows || []).slice().reverse();
+      slot.innerHTML = _tccRenderRows(chrono);
+      /* Keep the latest message visible when overflow clips the
+       * preview — users care most about what they're about to reply
+       * to, which sits at the bottom. */
+      slot.scrollTop = slot.scrollHeight;
+    })
+    .catch(function () {
+      if (!pop.parentNode) return;
+      var slot = pop.querySelector("[data-tcc-preview]");
+      if (slot) {
+        slot.innerHTML =
+          '<div class="tcc-preview-empty">(no recent messages)</div>';
+      }
+    });
 }
 
 export function _topoSpawnGhost(svg, text, x, y) {

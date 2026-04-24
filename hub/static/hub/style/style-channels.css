@@ -202,7 +202,11 @@
   flex: 0 0 14px;
   font-size: 11px;
   line-height: 1;
-  margin-right: 2px;
+  /* msg#15599 Task A: drop per-slot margin-right — the sidebar row's
+   * flex `gap` (now unified at 4px with .sidebar-agent-row) handles
+   * inter-slot spacing, so each slot has the IDENTICAL width to the
+   * Agents section. Previous 2px margin-right added 2×4 = 8px of drift
+   * between the Agents and Channels icon columns. */
   cursor: pointer;
   transition:
     color 0.15s,
@@ -212,8 +216,11 @@
 .ch-pin-off {
   /* ywatanabe 2026-04-21 msg#15131: "全部今暗くなってて見にくい...
      普通に見えるように". Icons stay at normal brightness instead of
-     the prior hover-reveal pattern. */
+     the prior hover-reveal pattern.
+     PR #<this> Item 5: outlined-grey glyph, readable without being
+     loud — mid-grey matches the agent row's neutral glyph weight. */
   opacity: 1;
+  color: #94a3b8;
 }
 .channel-item:hover .ch-star-off,
 .channel-item:hover .ch-pin-off,
@@ -222,7 +229,12 @@
   opacity: 0.7;
 }
 .ch-star-on {
-  color: #f5a623;
+  /* PR #<this> Item 5: starred state uses a brighter filled yellow so
+   * the "this channel is starred" signal reads at the same saturation
+   * weight as agent LED greens / the pinned-agent yellow. #fbbf24 is
+   * the same tint the SVG canvas star uses (channel-badge renderSvg). */
+  color: #fbbf24;
+  opacity: 1;
 }
 .ch-pin-on {
   opacity: 1;
@@ -245,11 +257,20 @@
  * "eye hidden should use the same glyph with a red strike, matching
  * the bell". */
 .ch-eye-on {
+  /* Item 12 (msg#15661): visible-state glyph bumped from mid-grey
+   * #94a3b8 (slate-400) to brighter slate-300 #cbd5e1 so "channel is
+   * visible" reads unambiguously on the dark sidebar. Previous tone
+   * was dim enough to be misread as a disabled/hidden state. */
   opacity: 1;
+  color: #cbd5e1;
 }
 .ch-eye-off {
-  opacity: 0.75;
+  /* Item 12: eye body stays grey; the dominant semantic cue is the
+   * red diagonal slash in ::after below. Slightly more opaque so the
+   * grey glyph reads through the red overlay. */
+  opacity: 0.85;
   filter: none;
+  color: #64748b;
   position: relative;
 }
 .ch-eye-off::after {
@@ -258,7 +279,10 @@
   left: 1px;
   right: 1px;
   top: 50%;
-  height: 2px;
+  /* Item 12: bump stroke from 2 → 2.5 px so the red slash reads
+   * cleanly on the 14 px eye glyph against both sidebar-bg and
+   * graph-canvas-bg. Colour stays Tailwind red-500 per spec. */
+  height: 2.5px;
   background: #ef4444;
   transform: rotate(-20deg);
   transform-origin: center;
@@ -280,48 +304,57 @@
  * encodes the slash (U+1F515 "bell with slash"); no extra overlay
  * needed. */
 .ch-mute {
+  /* PR #<this> Item 5: bell glyph saturation bumped to match the agent
+   * LED visual weight. Keep grayscale filter for muted (see ch-mute-on)
+   * but let the not-muted / "notifications on" state carry a little
+   * more warmth so the read isn't flat against the sidebar. */
   filter: grayscale(1);
   opacity: 0.7;
   color: #94a3b8;
 }
 .ch-mute-on {
-  /* Muted — bell-with-slash glyph, slightly dimmer than the default
-   * state so the "notifications are off" read is not louder than
-   * "notifications are on". */
-  opacity: 0.55;
+  /* Muted — bell-with-slash glyph at neutral grey, dimmer than the
+   * active state. The slash glyph itself encodes "off"; no extra
+   * colour cue. */
+  opacity: 0.6;
+  color: #64748b;
 }
 .ch-mute-off {
-  /* Not muted — neutral bell, monochrome, same weight as the other
-   * row icons. No yellow emphasis. */
-  opacity: 0.7;
+  /* Not muted — bell glyph at medium-bright so the "notifications on"
+   * state reads at the same saturation as agent LED greens / star
+   * yellow, without overriding the row's per-channel accent colour.
+   * #fbbf24 (bell yellow) would compete with ch-star-on; go with a
+   * soft gold instead. Item 5 explicit ask: "medium-bright colour
+   * (bell-yellow or similar to agent highlight)". */
+  filter: none;
+  opacity: 0.9;
+  color: #e0b87a;
 }
 .channel-item:hover .ch-mute {
   opacity: 1;
 }
-.ch-pin,
-.ch-eye {
+/* .ch-pin and .ch-eye sizing is consolidated into the first
+ * .ch-star/.ch-pin/.ch-watch/.ch-eye/.ch-mute rule above (msg#15599
+ * Task A cleanup — the duplicate block here re-declared the same
+ * width/flex and served no purpose). */
+
+/* Custom channel icon slot in the sidebar (todo#101). Fixed-width
+ * wrapper — MUST clamp both width and flex-basis so rows with an
+ * emoji glyph, an image avatar, or the default '#' placeholder all
+ * line up the channel-name column. Without the flex-basis clamp, a
+ * wide emoji pushes the name right and column alignment breaks.
+ * msg#15599 Task A: slot width dropped from 18px to 14px and
+ * margin-right removed so the channel icon column is geometrically
+ * identical to the agent icon slot (.agent-badge-icon width:14px in
+ * agent-badge.ts, no margin — inter-slot spacing handled by the
+ * row's flex gap). */
+.ch-identity-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 14px;
   height: 14px;
   flex: 0 0 14px;
-  line-height: 1;
-}
-
-/* Custom channel icon slot in the sidebar (todo#101). Fixed-width
- * wrapper — MUST clamp both width and flex-basis so rows with an
- * emoji glyph, an image avatar, or the default '#' placeholder all
- * line up the channel-name column. Without the flex-basis clamp, a
- * wide emoji pushes the name right and column alignment breaks. */
-.ch-identity-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  margin-right: 4px;
   overflow: hidden;
   line-height: 1;
 }
@@ -344,10 +377,54 @@
   line-height: 1;
 }
 .ch-identity-icon img.agent-avatar {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 3px;
   object-fit: cover;
+}
+/* todo#305 (ywatanabe msg#15510 / lead msg#15513): per-channel colour
+ * on the sidebar row. The --channel-accent CSS var is set inline on
+ * .channel-item by sidebar-channel-tree.ts/js (hash of channel name
+ * through the shared OROCHI_COLORS palette — same palette agent cards
+ * use, so Channels and Agents read from a coherent colour vocabulary).
+ *
+ * Visual treatment — match the weight of the agent card's accent:
+ *   1. .ch-identity-icon at position 1 tinted to the accent (colour
+ *      only cascades to CSS-coloured glyphs: the default "#" text and
+ *      emoji text via `color:`). Image avatars (img.agent-avatar) are
+ *      bitmaps, so the tint doesn't bleed into user-uploaded icons.
+ *   2. Row name text tinted to the accent (see .ch-name rule below).
+ *
+ * Intentionally NOT coloured:
+ *   - Row background — the .selected rounded-rect tint owns selection
+ *     signalling. Adding a row-level tint would compete with .selected.
+ *   - Row text opacity — PR #295 / #291 banned per-row font-weight
+ *     and opacity-based dimming.
+ *   - 🔔/👁/★ glyphs — state icons, not identity icons.
+ *
+ * PR #<this> Item 2 (lead msg#15608): the 2px left-edge accent bar is
+ * REMOVED. ywatanabe explicitly disliked the left bar; selection
+ * signalling now uses the subtle rounded-rect background (Item 6).
+ * Unselected rows are plain — no left stripe, no right stripe. */
+.sidebar .channel-item {
+  /* No border-left here — Item 2 removed the accent bar. Row-level
+   * styling kept empty-but-present so future accent-adjacent rules
+   * (drag handles, drop targets, etc.) have a stable anchor. */
+}
+.sidebar .channel-item .ch-identity-icon {
+  color: var(--channel-accent, inherit);
+}
+/* msg#15599 Task B: row-wide colorization — the channel NAME text
+ * picks up the per-channel accent colour too, mirroring how agent
+ * cards tint the agent name via inline `color:` in agent-badge.ts.
+ * Previously only the icon + 2px stripe carried colour (PR #306 task
+ * 4); lead wanted the name to read coloured as well. The 👁/🔔 glyphs
+ * stay monochrome (they encode state, not identity), and the bell /
+ * eye grayscale filters in the rules above are untouched. Row
+ * background and opacity remain PR #293/#295 invariants (opacity 1,
+ * no per-row font-weight). */
+.sidebar .channel-item .ch-name {
+  color: var(--channel-accent, inherit);
 }
 .ch-pin:hover,
 .ch-watch:hover,

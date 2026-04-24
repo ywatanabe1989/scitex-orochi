@@ -29,9 +29,15 @@ export var ACTIVITY_FOLLOW_INTERVAL_MS = 3000;
 
 
 /* ── Overview controls state (filter / sort / view / color / expand) ── */
+/* Overview = Viz only (msg#16337). The Agents list lives in the
+ * dedicated Agents tab, so _overviewView is now effectively a constant
+ * "topology" — kept as a var (not a const) so existing code paths that
+ * branch on it still compile, and so future view-modes remain cheap to
+ * add. Any legacy localStorage value ("list" / "tiled") is migrated to
+ * "topology" on boot. */
 var _overviewFilter = "";
 var _overviewSort = "name";
-var _overviewView = "list";
+var _overviewView = "topology";
 var _overviewColor = "name";
 var _overviewExpanded = null;
 /* Topology channel-node size mode. "equal" = fixed radius; "subscribers" =
@@ -44,13 +50,17 @@ try {
   var _savedSort = localStorage.getItem("orochi.overviewSort");
   if (_savedSort === "name" || _savedSort === "machine")
     _overviewSort = _savedSort;
+  /* Overview is Viz-only now — ignore any legacy saved value and keep
+   * the constant "topology". The _overviewView localStorage key is
+   * retained only so code that reads it back elsewhere doesn't blow
+   * up; we actively migrate stale "list"/"tiled" values over. */
   var _savedView = localStorage.getItem("orochi.overviewView");
-  if (
-    _savedView === "list" ||
-    _savedView === "tiled" ||
-    _savedView === "topology"
-  )
-    _overviewView = _savedView;
+  if (_savedView && _savedView !== "topology") {
+    try {
+      localStorage.setItem("orochi.overviewView", "topology");
+    } catch (_e) {}
+  }
+  _overviewView = "topology";
   var _savedColor = localStorage.getItem("orochi.overviewColor");
   if (
     _savedColor === "name" ||

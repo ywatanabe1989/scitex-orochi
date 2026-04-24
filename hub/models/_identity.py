@@ -171,6 +171,12 @@ class AgentProfile(models.Model):
     icon_image = models.CharField(max_length=500, blank=True, default="")
     icon_text = models.CharField(max_length=16, blank=True, default="")
     color = models.CharField(max_length=16, blank=True, default="")
+    # todo#305 Task 7 (lead msg#15548): persistent per-agent hidden flag
+    # toggled by the 👁 eye icon on the agent card. Mirrors
+    # ChannelPreference.is_hidden — same semantics (row dropped from
+    # sidebar + topology; visible flag restorable via the eye toggle on
+    # any ghost/pool representation).
+    is_hidden = models.BooleanField(default=False)
     # Last-known caduceus-reported health — persisted so the Agents tab
     # + sidebar pills survive container restarts without agents having
     # to re-POST their diagnosis. Free-form status string per mamba's
@@ -179,6 +185,13 @@ class AgentProfile(models.Model):
     health_reason = models.CharField(max_length=200, blank=True, default="")
     health_source = models.CharField(max_length=64, blank=True, default="")
     health_ts = models.DateTimeField(null=True, blank=True)
+    # msg#17078 lane A — DB-persisted auto-dispatch cooldown timestamp.
+    # Hydrates the in-memory ``_agents[name]["auto_dispatch_last_fire_ts"]``
+    # on first lookup so the 15min cooldown survives hub restarts. Before
+    # this field the cooldown lived only in-memory and a hub restart
+    # re-enabled auto-dispatches ~1-5min after the previous fire even
+    # though the DM text advertised 15min.
+    last_auto_dispatch_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

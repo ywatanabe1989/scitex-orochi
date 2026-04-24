@@ -24,10 +24,15 @@ from hub.views.api._agents import (
 )
 from hub.views.api._agents_lifecycle import api_agents_kill, api_agents_restart
 from hub.views.api._agents_register import api_agents_register
+from hub.views.api._auto_dispatch import (
+    api_auto_dispatch_fire,
+    api_auto_dispatch_status,
+)
 from hub.views.api._agents_subscribe import (
     api_admin_agent_subscribe,
     api_admin_agent_unsubscribe,
 )
+from hub.views.api._cron import api_cron
 from hub.views.api._channels import (
     api_channel_members,
     api_channel_prefs,
@@ -68,12 +73,15 @@ __all__ = [
     "api_agents_register",
     "api_agents_registry",
     "api_agents_restart",
+    "api_auto_dispatch_fire",
+    "api_auto_dispatch_status",
     "api_channel_export",
     "api_channel_members",
     "api_channel_prefs",
     "api_channels",
     "api_config",
     "api_connectivity",
+    "api_cron",
     "api_dms",
     "api_event_tool_use",
     "api_history",

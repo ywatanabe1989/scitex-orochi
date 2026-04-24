@@ -1,0 +1,14 @@
+[Unit]
+# Timer companion for scitex-auto-dispatch-probe.service. Fires every 5
+# minutes with a 30s AccuracySec window.
+Description=SciTeX Orochi — trigger auto-dispatch probe every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=scitex-auto-dispatch-probe.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

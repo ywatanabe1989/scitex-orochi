@@ -98,8 +98,13 @@
   opacity: 1;
 }
 .ch-dragging {
-  opacity: 0.4;
+  opacity: 0.5;
   background: #0d1a28 !important;
+  /* msg#16988 (a): dashed accent outline makes the source row read
+   * clearly as "being dragged" in addition to the off-screen clone
+   * that rides the cursor (set via dataTransfer.setDragImage). */
+  outline: 2px dashed var(--accent, #4a9eff);
+  outline-offset: -2px;
 }
 .ch-drop-target {
   border-top: 2px solid #4af;
@@ -112,6 +117,9 @@
 .agent-card.agent-dragging {
   opacity: 0.5;
   background: #0d1a28 !important;
+  /* msg#16988 (a): see .ch-dragging above — same affordance. */
+  outline: 2px dashed var(--accent, #4a9eff);
+  outline-offset: -2px;
 }
 .channel-item.drop-target-agent-add {
   outline: 2px solid #22c55e;

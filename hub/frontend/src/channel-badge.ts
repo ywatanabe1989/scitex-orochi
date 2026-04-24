@@ -198,13 +198,27 @@ import { escapeHtml } from "./app/utils";
   }
 
   // ── SVG renderer: topology canvas ──────────────────────────────────
-  // Emits a <g class="topo-channel" data-channel="..."> group with:
-  //   diamond polygon + icon + star + eye + mute + label rect + label.
-  // Canonical element order: icon + star + eye + mute + name — IDENTICAL
-  // to renderChannelBadgeHtml above, so sidebar / pool / canvas all read
-  // left-to-right the same way. ywatanabe 2026-04-20: "ALL channel badge
-  // MUST have the SAME UI and functionalities".
-  // pos = {x, y, r}; r optional (default 12).
+  // Emits a <g class="topo-channel" data-channel="..."> group as a
+  // horizontal pill laid out icon + star + eye + mute + name —
+  // geometrically IDENTICAL to renderAgentBadgeSvg (agent-badge-svg.ts)
+  // so sidebar, pool chip and topology-canvas channel nodes all share
+  // the same visual + functional vocabulary (msg#15599 Task C, "lead:
+  // channels は visual + functional (star / eye / notification)
+  // 完全一致"). Click behaviour is wired through body-level
+  // delegation in attachChannelBadgeHandlers below — the glyphs carry
+  // `.ch-star` / `.ch-eye` / `.ch-mute` / `.ch-icon` with
+  // `data-channel`, so a click on the canvas triggers the same
+  // `_setChannelPref` path as a click on the sidebar row.
+  //
+  // Prior implementation rendered a rotated-square diamond with
+  // glyphs scattered at the four quadrants; this departed from the
+  // sidebar card and gave the channel nodes a second-class feel
+  // (msg#15599 "channel nodes render different visual than sidebar").
+  //
+  // pos = {x, y, r}; r is the legacy "diamond radius" input, here
+  // mapped to per-node sizing via the background pill stroke — we
+  // keep the param for call-site compatibility (topology-nodes.ts
+  // passes a per-channel r derived from subscriber count).
   function renderChannelBadgeSvg(name, pos, opts) {
     opts = opts || {};
     var m = channelBadgeModel(name);
@@ -212,27 +226,9 @@ import { escapeHtml } from "./app/utils";
     var showUnread = !!opts.showUnread;
     var x = pos.x;
     var y = pos.y;
-    var r = pos.r || 12;
     var count = opts.count != null ? opts.count : null;
     var labelText = count != null ? m.norm + " (" + count + ")" : m.norm;
     var extraClass = opts.extraClass || "";
-
-    var pts =
-      x +
-      "," +
-      (y - r) +
-      " " +
-      (x + r) +
-      "," +
-      y +
-      " " +
-      x +
-      "," +
-      (y + r) +
-      " " +
-      (x - r) +
-      "," +
-      y;
 
     var chCls = "topo-node topo-channel";
     if (m.isStarred) chCls += " topo-channel-starred";
@@ -240,89 +236,147 @@ import { escapeHtml } from "./app/utils";
     if (m.isHidden) chCls += " topo-channel-hidden";
     if (extraClass) chCls += " " + extraClass;
 
-    // Icon: URL → <image>, emoji → <text>, else no glyph.
+    // Slot geometry — mirrors renderAgentBadgeSvg (icon + star + eye
+    // + <agents have 4 LEDs here> + name). Channels skip the LED
+    // block (they don't carry liveness); the mute bell takes the
+    // same visual weight slot so the row still reads as a full pill.
+    var iconSize = opts.iconSize || 14;
+    var iconHalf = iconSize / 2;
+    var GAP = 6; // between-slot gap, same constant as agent badge
+    var slotW = 14; // star / eye / mute slot width, matches agent badge
+    var textW = Math.max(40, labelText.length * 6.5);
+    var total =
+      iconSize +
+      GAP +
+      slotW + // star
+      GAP +
+      (showEye ? slotW + GAP : 0) + // eye
+      slotW + // mute
+      GAP +
+      textW;
+    var clusterLeft = x - total / 2;
+    var glyphX = clusterLeft + iconHalf;
+    var starX = glyphX + iconHalf + GAP + slotW / 2;
+    var eyeX = showEye ? starX + slotW / 2 + GAP + slotW / 2 : starX;
+    var muteX =
+      (showEye ? eyeX : starX) + slotW / 2 + GAP + slotW / 2;
+    var nameX = muteX + slotW / 2 + GAP;
+
+    // Background pill — IDENTICAL rect shape and stroke classes as
+    // renderAgentBadgeSvg (.topo-channel-bg already styled in
+    // activity-tab-compose-edges.css to match .topo-agent-bg).
+    var badgeLeft = clusterLeft - 4;
+    var badgeWidth = total + 8;
+    var badgeY = y - 11;
+    var bg =
+      '<rect class="topo-channel-bg" x="' +
+      badgeLeft.toFixed(1) +
+      '" y="' +
+      badgeY.toFixed(1) +
+      '" width="' +
+      badgeWidth.toFixed(1) +
+      '" height="22" rx="11" ry="11"/>';
+
+    // Icon: URL → <image>, emoji → <text>, else fallback "#" text.
+    // Uses the same `.ch-icon` + `data-channel` contract as the HTML
+    // badge so the body-level `ch-icon` click delegate (emoji picker)
+    // catches canvas clicks unchanged.
     var iconGlyph = "";
     if (m.iconIsUrl) {
-      var imgSize = Math.max(14, Math.round(r * 1.6));
       iconGlyph =
         '<image class="topo-ch-icon-img ch-icon" data-channel="' +
         _escape(m.norm) +
         '" href="' +
         _escape(m.iconGlyph) +
         '" x="' +
-        (x - imgSize / 2).toFixed(1) +
+        (glyphX - iconHalf).toFixed(1) +
         '" y="' +
-        (y - imgSize / 2).toFixed(1) +
+        (y - iconHalf).toFixed(1) +
         '" width="' +
-        imgSize +
+        iconSize +
         '" height="' +
-        imgSize +
-        '" preserveAspectRatio="xMidYMid slice"/>';
+        iconSize +
+        '" preserveAspectRatio="xMidYMid slice" style="cursor:pointer"/>';
     } else if (m.iconGlyph) {
       iconGlyph =
         '<text class="topo-ch-emoji ch-icon" data-channel="' +
         _escape(m.norm) +
         '" x="' +
-        x.toFixed(1) +
+        glyphX.toFixed(1) +
         '" y="' +
         (y + 4).toFixed(1) +
         '" font-size="' +
-        Math.max(11, Math.round(r * 1.2)) +
-        '" text-anchor="middle" dominant-baseline="middle">' +
+        Math.max(11, iconSize - 2) +
+        '" text-anchor="middle" dominant-baseline="middle" style="cursor:pointer">' +
         _escape(m.iconGlyph) +
         "</text>";
+    } else {
+      // Fallback "#" placeholder — keeps the icon column populated so
+      // every channel node reads with the same 4-slot rhythm as the
+      // sidebar even when no emoji/avatar is set.
+      iconGlyph =
+        '<text class="topo-ch-emoji ch-icon" data-channel="' +
+        _escape(m.norm) +
+        '" x="' +
+        glyphX.toFixed(1) +
+        '" y="' +
+        (y + 4).toFixed(1) +
+        '" font-size="12" text-anchor="middle" dominant-baseline="middle" fill="' +
+        (m.color || "#94a3b8") +
+        '" style="cursor:pointer">#</text>';
     }
 
-    // Star — always rendered; filled gold when starred, dim outline when not.
+    // Star — always rendered (placeholder-empty when not starred) so
+    // the slot geometry stays constant across nodes, matching agent
+    // behaviour.
     var starFill = m.isStarred ? "#fbbf24" : "#3a3a3a";
     var starGlyph =
       '<text class="topo-ch-star ch-star" data-channel="' +
       _escape(m.norm) +
       '" x="' +
-      (x + r + 2).toFixed(1) +
+      starX.toFixed(1) +
       '" y="' +
-      (y - r + 4).toFixed(1) +
-      '" font-size="11" fill="' +
+      (y + 4).toFixed(1) +
+      '" font-size="13" fill="' +
       starFill +
-      '" style="cursor:pointer" title="' +
+      '" text-anchor="middle" style="cursor:pointer"><title>' +
       (m.isStarred ? "Unstar" : "Star") +
-      '">' +
+      "</title>" +
       (m.isStarred ? "\u2605" : "\u2606") +
       "</text>";
 
-    // Eye — optional. Mirrors the bell pattern: same 👁 glyph in both
-    // states, with a red diagonal stroke overlaid when hidden (no
-    // Unicode crossed-eye exists, so we draw a <line> across the text
-    // bbox). Glyph is wrapped in a <g class="topo-ch-eye"> so the
-    // stroke shares the click target.
+    // Eye — always rendered when showEye, with the SAME 👁 glyph in
+    // both states and a red strike when hidden. Wrapped in a <g> so
+    // the strike shares the click target (mirrors agent eye SVG).
+    //
+    // Item 12 (msg#15661): visible-state fill bumped from #94a3b8
+    // (slate-400) to #cbd5e1 (slate-300) so the eye reads brightly on
+    // the graph canvas, matching the sidebar CSS .ch-eye-on tone. The
+    // hidden-state eye body stays a dim grey (#64748b) and the slash
+    // becomes the dominant semantic cue — red-500 (#ef4444) at
+    // stroke-width 2 so it reads cleanly at canvas font-size 11.
     var eyeGlyph = "";
     if (showEye) {
-      var eyeX = (x - r - 12).toFixed(1);
-      var eyeY = (y + r + 8).toFixed(1);
+      var eyeFill = m.isHidden ? "#64748b" : "#cbd5e1";
       var eyeText =
         '<text x="' +
-        eyeX +
+        eyeX.toFixed(1) +
         '" y="' +
-        eyeY +
-        '" font-size="9" fill="#94a3b8">\uD83D\uDC41</text>';
+        (y + 4).toFixed(1) +
+        '" font-size="11" text-anchor="middle" fill="' +
+        eyeFill +
+        '" style="cursor:pointer">\uD83D\uDC41</text>';
       var eyeStrike = "";
       if (m.isHidden) {
-        // Diagonal red strike across the glyph's bbox. Glyph is ~9px
-        // tall + ~10px wide at font-size=9; strike goes from top-left
-        // to bottom-right of that bbox.
-        var sx1 = (x - r - 15).toFixed(1);
-        var sy1 = (parseFloat(eyeY) - 7).toFixed(1);
-        var sx2 = (x - r - 5).toFixed(1);
-        var sy2 = (parseFloat(eyeY) + 2).toFixed(1);
         eyeStrike =
           '<line x1="' +
-          sx1 +
+          (eyeX - 5).toFixed(1) +
           '" y1="' +
-          sy1 +
+          (y + 3).toFixed(1) +
           '" x2="' +
-          sx2 +
+          (eyeX + 5).toFixed(1) +
           '" y2="' +
-          sy2 +
+          (y - 3).toFixed(1) +
           '" stroke="#ef4444" stroke-width="2" stroke-linecap="round" pointer-events="none"/>';
       }
       eyeGlyph =
@@ -330,60 +384,61 @@ import { escapeHtml } from "./app/utils";
         (m.isHidden ? " ch-eye-off" : " ch-eye-on") +
         '" data-channel="' +
         _escape(m.norm) +
-        '" style="cursor:pointer">' +
+        '" style="cursor:pointer"><title>' +
+        (m.isHidden ? "Show channel (un-hide)" : "Hide channel") +
+        "</title>" +
         eyeText +
         eyeStrike +
         "</g>";
     }
 
-    // Mute — only rendered when muted (keeps diamond uncluttered).
+    // Mute bell — always rendered (placeholder when not muted) so the
+    // column geometry is stable; matches the sidebar pattern where
+    // .ch-mute is a reserved slot regardless of state.
+    var muteFill = m.isMuted ? "#94a3b8" : "#3a3a3a";
     var muteGlyph =
       '<text class="topo-ch-mute ch-mute" data-channel="' +
       _escape(m.norm) +
       '" x="' +
-      (x - r - 12).toFixed(1) +
+      muteX.toFixed(1) +
       '" y="' +
-      (y - r + 4).toFixed(1) +
-      '" font-size="9" fill="' +
-      (m.isMuted ? "#94a3b8" : "#3a3a3a") +
-      '" style="cursor:pointer">' +
+      (y + 4).toFixed(1) +
+      '" font-size="11" fill="' +
+      muteFill +
+      '" text-anchor="middle" style="cursor:pointer"><title>' +
+      (m.isMuted ? "Unmute" : "Mute") +
+      "</title>" +
       (m.isMuted ? "\uD83D\uDD15" : "\uD83D\uDD14") +
       "</text>";
 
-    // Label rect + text (channel label above diamond).
-    var labelW = Math.max(40, labelText.length * 6.5);
-    var labelX = x - labelW / 2 - 6;
-    var labelY = y - r - 18;
-    var labelRect =
-      '<rect class="topo-channel-bg" x="' +
-      labelX.toFixed(1) +
-      '" y="' +
-      labelY.toFixed(1) +
-      '" width="' +
-      (labelW + 12).toFixed(1) +
-      '" height="20" rx="10" ry="10"/>';
-    var labelTextSvg =
+    // Name label — uses the per-channel accent colour so canvas text
+    // matches the sidebar row's new row-wide colorization (Task B).
+    var nameColor = m.color || "#eaf1fb";
+    var nameSvg =
       '<text class="topo-label topo-label-ch" x="' +
-      x +
+      nameX.toFixed(1) +
       '" y="' +
-      (y - r - 4).toFixed(1) +
-      '" text-anchor="middle">' +
+      (y + 4).toFixed(1) +
+      '" fill="' +
+      _escape(nameColor) +
+      '">' +
       _escape(labelText) +
       "</text>";
 
-    // Optional unread bubble (not used on canvas today, but available).
+    // Optional unread bubble (not used on canvas today, kept for
+    // surface parity with the HTML renderer).
     var unreadSvg = "";
     if (showUnread && m.unread > 0) {
       unreadSvg =
         '<circle class="topo-ch-unread" cx="' +
-        (x + r + 6).toFixed(1) +
+        (badgeLeft + badgeWidth - 4).toFixed(1) +
         '" cy="' +
-        (y + r).toFixed(1) +
+        (y - 10).toFixed(1) +
         '" r="7" fill="#ef4444"/>' +
         '<text class="topo-ch-unread-text" x="' +
-        (x + r + 6).toFixed(1) +
+        (badgeLeft + badgeWidth - 4).toFixed(1) +
         '" y="' +
-        (y + r + 3).toFixed(1) +
+        (y - 7).toFixed(1) +
         '" font-size="9" fill="#fff" text-anchor="middle">' +
         (m.unread > 9 ? "9+" : m.unread) +
         "</text>";
@@ -399,15 +454,15 @@ import { escapeHtml } from "./app/utils";
       (count != null ? ' data-agent-count="' + count + '"' : "") +
       (attrs ? " " + attrs : "") +
       ">" +
-      '<polygon points="' +
-      pts +
-      '" fill="#1a1a1a" stroke="#444" stroke-width="1"/>' +
+      "<title>" +
+      _escape(m.tooltip || m.norm) +
+      "</title>" +
+      bg +
       iconGlyph +
       starGlyph +
       eyeGlyph +
       muteGlyph +
-      labelRect +
-      labelTextSvg +
+      nameSvg +
       unreadSvg +
       "</g>"
     );

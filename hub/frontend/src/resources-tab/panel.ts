@@ -68,48 +68,124 @@ export function _fmtMetricPct(p) {
   return { text: rounded + "%", cls: cls };
 }
 
+/* ywatanabe msg#16215 — classify an N/M metric by its fill ratio so
+ * the tooltip keeps the green/yellow/red health semantics the donut
+ * renderers already use. ``used/total`` in any units (MB, count, TB);
+ * unit formatting is the caller's job. */
+function _classifyRatio(used, total) {
+  if (!total || total <= 0) return "mh-tip-unknown";
+  var pct = (used / total) * 100;
+  return pct > 80 ? "mh-tip-crit" : pct > 60 ? "mh-tip-warn" : "mh-tip-ok";
+}
+
 export function _machineMetricsHtml(host) {
   var d = resourceData[host];
   if (!d) return "";
-  var cpu = (d.cpu && d.cpu.percent) || 0;
-  var ram = (d.memory && d.memory.percent) || 0;
-  var gpu = 0;
-  var vram = 0;
-  if (d.gpu && d.gpu.length > 0) {
-    var g0 = d.gpu[0];
-    gpu = g0.utilization_percent || 0;
-    if (g0.memory_percent) {
-      vram = g0.memory_percent;
-    } else if (g0.memory_total_mb) {
-      vram = ((g0.memory_used_mb || 0) / g0.memory_total_mb) * 100;
-    }
-  }
-  var disk = 0;
-  if (d.disk) {
-    var dk = Object.keys(d.disk)[0];
-    if (dk) disk = d.disk[dk].percent || 0;
-  }
-  function row(label, value) {
-    var m = _fmtMetricPct(value);
+  /* Spec (ywatanabe msg#16215):
+   *   CPU     — ``N cores`` (integer)
+   *   RAM     — ``N/M GB`` (integers)
+   *   Storage — ``N/M TB`` (1 decimal)
+   *   GPU     — ``N/M`` on GPU hosts, ``n/a`` on CPU-only
+   *   VRAM    — used/total GB when a GPU is present
+   *   Disk    — fallback percentage when the client only sent percent
+   *             (pre-msg#16215 heartbeat — rolling deploy window).
+   */
+  function row(label, text, cls) {
     return (
       '<div class="mh-tip-row"><span class="mh-tip-label">' +
       label +
       '</span><span class="mh-tip-val ' +
-      m.cls +
+      (cls || "mh-tip-ok") +
       '">' +
-      m.text +
+      escapeHtml(text) +
       "</span></div>"
     );
   }
+  var rows = [];
+  // CPU: N cores (integer count is the authoritative "shape" field).
+  var cpuCount = d._cpuCount || 0;
+  if (cpuCount > 0) {
+    rows.push(row("CPU", cpuCount + " cores", "mh-tip-ok"));
+  } else {
+    rows.push(row("CPU", "\u2014", "mh-tip-unknown"));
+  }
+  // RAM: N/M GB
+  var memTotalMb = d._memTotalMb || 0;
+  var memUsedMb = d._memUsedMb || 0;
+  if (!memUsedMb && memTotalMb > 0) {
+    memUsedMb = Math.max(0, memTotalMb - (d._memFreeMb || 0));
+  }
+  if (memTotalMb > 0) {
+    rows.push(
+      row(
+        "RAM",
+        Math.round(memUsedMb / 1024) + "/" + Math.round(memTotalMb / 1024) + " GB",
+        _classifyRatio(memUsedMb, memTotalMb),
+      ),
+    );
+  } else {
+    rows.push(row("RAM", "\u2014", "mh-tip-unknown"));
+  }
+  // Storage: N/M TB (fallback to legacy disk percent when only that
+  // was pushed — keeps pre-msg#16215 clients visible during rollout).
+  var diskTotalMb = d._diskTotalMb || 0;
+  var diskUsedMb = d._diskUsedMb || 0;
+  if (diskTotalMb > 0) {
+    var diskUsedTb = diskUsedMb / 1024 / 1024;
+    var diskTotalTb = diskTotalMb / 1024 / 1024;
+    rows.push(
+      row(
+        "Storage",
+        diskUsedTb.toFixed(1) + "/" + diskTotalTb.toFixed(1) + " TB",
+        _classifyRatio(diskUsedMb, diskTotalMb),
+      ),
+    );
+  } else {
+    var diskPct = 0;
+    if (d.disk) {
+      var dk = Object.keys(d.disk)[0];
+      if (dk) diskPct = d.disk[dk].percent || 0;
+    }
+    var dm = _fmtMetricPct(diskPct);
+    rows.push(row("Storage", dm.text, dm.cls));
+  }
+  // GPU: N/M (active/total) + mean-util% in the cell; per-GPU VRAM rows
+  // appended below so multi-GPU hosts don't collapse to one line.
+  if (d.gpu && d.gpu.length > 0) {
+    var totalGpus = d.gpu.length;
+    var usedGpus = d.gpu.filter(function (g) {
+      return (g.utilization_percent || 0) > 5;
+    }).length;
+    var meanUtil =
+      d.gpu.reduce(function (acc, g) {
+        return acc + (g.utilization_percent || 0);
+      }, 0) / totalGpus;
+    rows.push(
+      row(
+        "GPU",
+        usedGpus + "/" + totalGpus + " \u00B7 " + Math.round(meanUtil) + "%",
+        _classifyRatio(usedGpus, totalGpus),
+      ),
+    );
+    /* Per-GPU VRAM — skipped for the synthetic cluster entry (no
+     * memory_total_mb; only aggregate counts). */
+    d.gpu.forEach(function (g, i) {
+      if (!g.memory_total_mb) return;
+      var usedGb = (g.memory_used_mb || 0) / 1024;
+      var totalGb = g.memory_total_mb / 1024;
+      rows.push(
+        row(
+          "VRAM" + (totalGpus > 1 ? i + 1 : ""),
+          usedGb.toFixed(1) + "/" + totalGb.toFixed(1) + " GB",
+          _classifyRatio(g.memory_used_mb || 0, g.memory_total_mb),
+        ),
+      );
+    });
+  } else {
+    rows.push(row("GPU", "n/a", "mh-tip-unknown"));
+  }
   return (
-    '<div class="mh-tip-host">' +
-    escapeHtml(host) +
-    "</div>" +
-    row("CPU", cpu) +
-    row("RAM", ram) +
-    row("GPU", gpu) +
-    row("VRAM", vram) +
-    row("Disk", disk)
+    '<div class="mh-tip-host">' + escapeHtml(host) + "</div>" + rows.join("")
   );
 }
 

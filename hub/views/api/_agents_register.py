@@ -200,6 +200,20 @@ def api_agents_register(request):
             "last_action_elapsed_s": body.get("last_action_elapsed_s"),
             "action_counts": body.get("action_counts") or {},
             "p95_elapsed_s_by_action": body.get("p95_elapsed_s_by_action") or {},
+            # lead msg#16005: whole ``scitex-agent-container status
+            # --terse --json`` dict forwarded by the orochi heartbeat
+            # pusher. Passed straight through to ``register_agent`` so
+            # new fields added to sac's terse projection land in the
+            # registry (and on ``/api/agents/``) automatically.
+            "sac_status": body.get("sac_status") or {},
+            # msg#16406 / msg#16408 Phase 2 — orochi-cron daemon state
+            # reported by ``scitex-orochi heartbeat-push``. List of job
+            # dicts (see scitex_orochi._cron._state.render_cron_jobs)
+            # that the Machines tab cron panel + ``/api/cron/`` aggregator
+            # key off. Absent / empty list preserves the previous value
+            # in ``register_agent`` (transient read glitch on the local
+            # state file doesn't wipe the UI every 30s).
+            "cron_jobs": body.get("cron_jobs") or [],
         },
     )
     # Persist subagent_count separately — register_agent() preserves prev

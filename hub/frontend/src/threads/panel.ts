@@ -2,15 +2,49 @@
 import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
 import { apiUrl, cleanAgentName, escapeHtml, getAgentColor, orochiHeaders, timeAgo } from "../app/utils";
 import { buildAttachmentsHtml } from "../chat/chat-attachments";
-import { initMentionAutocomplete, mentionDropdown, mentionSelectedIndex } from "../mention";
-import { openSketch } from "../sketch";
-import { _linkifyThreadContent, _pushThreadUrlState, _renderThreadAttachmentTray, _stageThreadFiles } from "./state";
+import { renderComposer } from "../composer/composer";
+import {
+  _linkifyThreadContent,
+  _pushThreadUrlState,
+  _renderThreadAttachmentTray,
+  _stageThreadFiles,
+  getThreadPendingAttachments,
+  resetThreadPendingAttachments,
+} from "./state";
+import { _debounceSave, clearDraft, loadDraft } from "../composer/draft-store";
 
-/* Threading — panel open/close, replies render, send, WS handlers */
+function _threadDraftTarget(parentId) {
+  return "msg" + String(parentId);
+}
+
+/* Thread composer instance — created in openThreadPanel, destroyed in
+ * closeThreadPanel. Module-scoped so both paths can reference it
+ * without a DOM round-trip. */
+var _threadComposer = null;
+
+/* Monotonic open-token guarding openThreadPanel against re-entrancy
+ * (msg#17058). Rapid re-opens — double-click the reply icon, popstate
+ * during an in-flight open, WS-triggered refresh racing a click —
+ * used to interleave so two `renderComposer` calls landed in the same
+ * #thread-composer-slot (bug A: stacked compose inputs) and a stale
+ * `loadThreadReplies` awaited fetch wrote into a detached panel
+ * (bug B: replies invisible). Each openThreadPanel bumps this token
+ * and stashes a local copy; any continuation after `await` checks the
+ * copy against the live token and bails if newer. */
+var _threadOpenToken = 0;
+
+/* Threading — panel open/close, replies render, send, WS handlers.
+ * Reply composer (textarea + attach/sketch/voice/send buttons) is
+ * provided by composer.ts::renderComposer(surface: "reply") since the
+ * SSoT unification (msg#16286); this file owns the surrounding chrome
+ * (header, parent preview, replies list, pending-attachments tray)
+ * plus the thread-specific voice-lang button sync + draft-store
+ * hydration. */
 /* globals: apiUrl, orochiHeaders, escapeHtml, timeAgo, getAgentColor,
    cleanAgentName, getSenderIcon, getResolvedAgentColor,
-   (globalThis as any).threadPanel, (globalThis as any).threadPanelParentId, (globalThis as any).threadPendingAttachments,
+   (globalThis as any).threadPanel, (globalThis as any).threadPanelParentId,
    (globalThis as any)._threadSketchActive, _renderThreadAttachmentTray, _stageThreadFiles,
+   getThreadPendingAttachments, resetThreadPendingAttachments,
    _linkifyThreadContent, _pushThreadUrlState */
 
 export function closeThreadPanel(opts) {
@@ -18,6 +52,10 @@ export function closeThreadPanel(opts) {
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
+  if (_threadComposer) {
+    try { _threadComposer.destroy(); } catch (_) {}
+    _threadComposer = null;
+  }
   if ((globalThis as any).threadPanel && (globalThis as any).threadPanel.parentNode) {
     (globalThis as any).threadPanel.parentNode.removeChild((globalThis as any).threadPanel);
   }
@@ -35,6 +73,10 @@ export function closeThreadPanel(opts) {
 }
 
 export async function openThreadPanel(parentId, opts) {
+  /* Invalidate any in-flight openThreadPanel before tearing down the
+   * previous panel — continuations below compare `myToken !==
+   * _threadOpenToken` to know they were superseded (msg#17058). */
+  var myToken = ++_threadOpenToken;
   closeThreadPanel({ skipPushState: true });
   (globalThis as any).threadPanelParentId = parentId;
   if (!(opts && opts.skipPushState)) {
@@ -46,6 +88,13 @@ export async function openThreadPanel(parentId, opts) {
 
   (globalThis as any).threadPanel = document.createElement("div");
   (globalThis as any).threadPanel.className = "thread-panel";
+  /* Thread panel shell only; composer DOM (textarea, attach/sketch/voice
+   * buttons, send button, hidden file input) is built by renderComposer
+   * below and mounted into #thread-composer-slot. Legacy IDs
+   * (#thread-input, #thread-attach-btn, #thread-sketch-btn,
+   * #thread-voice-btn, #thread-voice-lang-btn, #thread-file-input,
+   * .thread-send-btn) are preserved by the surface="reply" DOM-builder
+   * in composer.ts so voice-input.ts + existing selectors keep working. */
   (globalThis as any).threadPanel.innerHTML =
     '<div class="thread-header">' +
     '<button type="button" class="thread-back" onclick="closeThreadPanel()" aria-label="Back to chat">' +
@@ -67,19 +116,7 @@ export async function openThreadPanel(parentId, opts) {
     '<div class="thread-replies" id="thread-replies"></div>' +
     '<div class="thread-input-row">' +
     '<div id="thread-pending-attachments" class="thread-pending-attachments" style="display:none"></div>' +
-    '<div class="thread-compose-row">' +
-    '<textarea id="thread-input" placeholder="Reply in thread…" rows="2"></textarea>' +
-    '<div class="thread-bottom-row">' +
-    '<div class="thread-input-actions">' +
-    '<button type="button" id="thread-attach-btn" tabindex="-1" title="Attach file (Ctrl+U)">📎</button>' +
-    '<button type="button" id="thread-sketch-btn" tabindex="-1" title="Draw sketch">✏️</button>' +
-    '<button type="button" id="thread-voice-btn" tabindex="-1" title="Voice input">🎤</button>' +
-    '<button type="button" id="thread-voice-lang-btn" tabindex="-1" title="Switch language (EN/JA)" style="font-size:11px;padding:2px 5px;opacity:0.7;">EN</button>' +
-    '<input type="file" id="thread-file-input" style="display:none" multiple>' +
-    "</div>" +
-    '<button type="button" class="thread-send-btn" onclick="sendThreadReply()">Send</button>' +
-    "</div>" +
-    "</div>" +
+    '<div class="thread-compose-row" id="thread-composer-slot"></div>' +
     "</div>";
   /* Append as flex sibling of .main inside .container (Slack-style side-by-side) */
   var container = document.querySelector(".container");
@@ -90,109 +127,113 @@ export async function openThreadPanel(parentId, opts) {
   }
 
   await loadThreadReplies(parentId);
-  var ta = document.getElementById("thread-input");
-  if (ta) {
-    ta.focus();
-    ta.addEventListener("keydown", function (e) {
-      /* Alt+Enter / Ctrl+Enter in thread: toggle voice directed at thread textarea */
-      if (e.key === "Enter" && (e.altKey || e.ctrlKey)) {
-        e.preventDefault();
-        e.stopPropagation(); /* prevent global voice handler from double-firing */
-        if (typeof window.toggleVoiceInput === "function") {
-          /* Focus thread textarea so _toggleVoice captures it as target */
-          var tIn = document.getElementById("thread-input");
-          if (tIn) tIn.focus();
-          window.toggleVoiceInput();
-        }
-        return;
-      }
-      /* Plain Enter (no modifier) sends reply */
-      if (e.key === "Enter" && !e.shiftKey) {
-        /* Don't send if mention dropdown is open and an item is selected */
-        if (
-          typeof mentionDropdown !== "undefined" &&
-          mentionDropdown &&
-          mentionDropdown.classList.contains("visible") &&
-          mentionSelectedIndex >= 0
-        ) {
-          return; /* Let handleMentionKeydown handle it */
-        }
-        e.preventDefault();
-        sendThreadReply();
-      }
-    });
-    /* Auto-resize: grow with content up to 120px */
-    ta.addEventListener("input", function () {
-      this.style.height = "auto";
-      this.style.height = Math.min(this.scrollHeight, 120) + "px";
-    });
-    /* Enable @mention autocomplete in thread input */
-    if (typeof initMentionAutocomplete === "function") {
-      initMentionAutocomplete(ta);
-    }
-    /* Ctrl+U → trigger file picker in thread panel */
-    ta.addEventListener("keydown", function (e) {
-      if ((e.ctrlKey || e.metaKey) && e.key === "u") {
-        e.preventDefault();
-        var fi = document.getElementById("thread-file-input");
-        if (fi) fi.click();
-      }
-    });
-  }
+  /* A newer openThreadPanel started during the fetch — its
+   * closeThreadPanel already ripped our panel out and built a fresh
+   * one. Do not proceed to mount a composer into the new panel's
+   * slot; that's the newer call's job and doing it here would stack
+   * a second composer (msg#17058 bug A). */
+  if (myToken !== _threadOpenToken) return;
 
-  /* Wire thread action buttons */
-  (globalThis as any).threadPendingAttachments = [];
+  var composerSlot = document.getElementById("thread-composer-slot");
+  /* msg#16527: clear the shared pending-attachments array IN PLACE. Do
+   * NOT reassign `(globalThis as any).threadPendingAttachments` — under
+   * ES modules that would orphan state.ts's module-local reference, so
+   * pasted / dropped images would never reach sendThreadReply. */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
 
-  var attachBtn = document.getElementById("thread-attach-btn");
-  var fileInput = document.getElementById("thread-file-input");
-  var sketchBtn = document.getElementById("thread-sketch-btn");
-  var voiceBtn = document.getElementById("thread-voice-btn");
-  var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
-
-  if (attachBtn && fileInput) {
-    attachBtn.addEventListener("click", function () {
-      fileInput.click();
-    });
-    fileInput.addEventListener("change", function () {
-      _stageThreadFiles(Array.from(fileInput.files || []));
-      fileInput.value = "";
-    });
-  }
-
-  if (sketchBtn) {
-    sketchBtn.addEventListener("click", function () {
-      /* openSketch() sends to currentChannel; we override the callback */
-      if (typeof openSketch === "function") {
+  if (composerSlot) {
+    /* Belt-and-suspenders: if anything ever leaks DOM into this slot
+     * (e.g. a stale composer from an earlier race), wipe it before the
+     * new mount so we never end up with stacked inputs (msg#17058). */
+    composerSlot.innerHTML = "";
+    _threadComposer = renderComposer(composerSlot as HTMLElement, {
+      surface: "reply",
+      placeholder: "Reply in thread\u2026",
+      stageFiles: function (files) {
+        return _stageThreadFiles(files);
+      },
+      onSketchOpen: function () {
+        /* openSketch() sends to currentChannel; we flag _threadSketchActive
+         * so the sketch-submit path knows to post as a thread-reply. */
         (globalThis as any)._threadSketchActive = true;
-        openSketch();
-      }
+      },
+      features: {
+        mention: true,
+        paste: true,
+        dragDrop: false /* thread panel had no drop handler pre-SSoT; preserve current UX */,
+        attach: true,
+        camera: false /* Reply composer never had a camera button */,
+        sketch: true,
+        voice: true,
+        sendButton: true,
+        cmdEnterSubmit: true,
+        shiftEnterNewline: true,
+        autoResize: true,
+        tabAwareFocus: false,
+        /* voice-input.ts's global chord handler bails when focus is
+         * inside .thread-panel, so the composer owns Alt/Ctrl+Enter
+         * here. */
+        localVoiceChord: true,
+      },
+      maxResizePx: 120,
+      onSubmit: function () {
+        sendThreadReply();
+      },
     });
-  }
 
-  if (voiceBtn) {
-    /* Toggle voice into the thread textarea */
-    voiceBtn.addEventListener("click", function () {
-      if (typeof window.toggleVoiceInput === "function") {
-        /* Focus thread textarea so _toggleVoice captures it as target */
-        var tIn = document.getElementById("thread-input");
-        if (tIn) tIn.focus();
-        window.toggleVoiceInput();
-      }
-    });
-  }
+    /* Add legacy class names additively so existing .thread-* CSS still
+     * applies. */
+    var ta = _threadComposer.input;
+    ta.classList.add("thread-textarea");
+    var sendBtn = composerSlot.querySelector(".composer-btn-send");
+    if (sendBtn) sendBtn.classList.add("thread-send-btn");
 
-  if (voiceLangBtn) {
-    /* Sync button label with voice-input.js current language on open */
-    var mainLangBtn = document.getElementById("msg-voice-lang");
-    if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
-    voiceLangBtn.addEventListener("click", function () {
-      if (typeof window.cycleVoiceLang === "function") {
-        window.cycleVoiceLang();
-        /* Sync label from main lang button */
-        if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+    /* msg#16324: hydrate any persisted thread-reply draft so the user's
+     * in-progress text survives page reload / deploy. Target key is
+     * "msg<parentId>" per spec (orochi.draft.thread.msg12345). */
+    try {
+      var _saved = loadDraft("thread", _threadDraftTarget(parentId));
+      if (_saved && !ta.value) {
+        ta.value = _saved;
+        /* Match the auto-resize behavior used by the composer. */
+        ta.style.height = "auto";
+        ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
       }
+    } catch (_) {}
+    try { ta.focus(); } catch (_) {}
+    /* Place cursor at end of restored draft. */
+    try {
+      var _len = ta.value ? ta.value.length : 0;
+      ta.setSelectionRange(_len, _len);
+    } catch (_) {}
+
+    /* Persist every keystroke (debounced at 300ms via draft-store). */
+    ta.addEventListener("input", function () {
+      try {
+        _debounceSave(
+          "thread",
+          _threadDraftTarget((globalThis as any).threadPanelParentId),
+          this.value,
+        );
+      } catch (_) {}
     });
+
+    /* Thread-specific voice language button: sync label with the Chat
+     * voice-lang button (voice-input.ts manages the shared state). This
+     * is the one bit of wiring the generic composer can't own because
+     * the language button is thread-only chrome. */
+    var voiceLangBtn = document.getElementById("thread-voice-lang-btn");
+    if (voiceLangBtn) {
+      var mainLangBtn = document.getElementById("msg-voice-lang");
+      if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+      voiceLangBtn.addEventListener("click", function () {
+        if (typeof (window as any).cycleVoiceLang === "function") {
+          (window as any).cycleVoiceLang();
+          if (mainLangBtn) voiceLangBtn.textContent = mainLangBtn.textContent;
+        }
+      });
+    }
   }
 }
 
@@ -256,6 +297,20 @@ export async function loadThreadReplies(parentId) {
     var res = await fetch(apiUrl("/api/threads/?parent_id=" + parentId), {
       credentials: "same-origin",
     });
+    /* If a newer openThreadPanel ran during the fetch, our `container`
+     * was detached when closeThreadPanel removed the old panel. Writing
+     * replies into a detached node renders nothing (msg#17058 bug B).
+     * Re-query; if the live panel is for a *different* parent, bail
+     * and let its own loadThreadReplies fill it. */
+    if (!container.isConnected) {
+      container = document.getElementById("thread-replies");
+      if (
+        !container ||
+        Number((globalThis as any).threadPanelParentId) !== Number(parentId)
+      ) {
+        return;
+      }
+    }
     if (!res.ok) {
       container.innerHTML =
         '<p class="empty-notice">Failed to load thread.</p>';
@@ -327,7 +382,12 @@ export async function sendThreadReply() {
   var ta = document.getElementById("thread-input");
   if (!ta) return;
   var text = ta.value.trim();
-  var attachments = (globalThis as any).threadPendingAttachments
+  /* msg#16527: read from the shared SSoT accessor, not
+   * `(globalThis as any).threadPendingAttachments`. The globalThis
+   * mirror falls out of sync across ES-module boundaries every time
+   * panel.ts reassigned it, so pasted / dropped images sat in
+   * state.ts's local array but were missed by the send payload. */
+  var attachments = getThreadPendingAttachments()
     .filter(function (p) {
       return p.uploaded;
     })
@@ -343,8 +403,9 @@ export async function sendThreadReply() {
       window.voiceInputResetAfterSend();
     } catch (_) {}
   }
-  /* Clear thread attachment tray */
-  (globalThis as any).threadPendingAttachments = [];
+  /* Clear thread attachment tray — in-place mutate so the state.ts
+   * module-local reference stays authoritative. */
+  resetThreadPendingAttachments();
   _renderThreadAttachmentTray();
   try {
     var res = await fetch(apiUrl("/api/threads/"), {
@@ -361,6 +422,13 @@ export async function sendThreadReply() {
       console.error("sendThreadReply failed:", res.status);
       return;
     }
+    /* msg#16324: drop the per-thread draft now that the reply landed. */
+    try {
+      clearDraft(
+        "thread",
+        _threadDraftTarget((globalThis as any).threadPanelParentId),
+      );
+    } catch (_) {}
     /* WS broadcast will refresh the panel; also optimistic reload */
     loadThreadReplies((globalThis as any).threadPanelParentId);
   } catch (e) {

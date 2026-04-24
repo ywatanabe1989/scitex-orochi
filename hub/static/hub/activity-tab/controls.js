@@ -5,15 +5,13 @@ var _overviewControlsWired = false;
 function _wireOverviewControls() {
   if (_overviewControlsWired) return;
   var sortSelect = document.getElementById("activity-sort-select");
-  var viewSwitch = document.querySelector(".activity-view-switch");
   var colorSelect = document.getElementById("activity-color-select");
   var sizeSelect = document.getElementById("activity-size-select");
-  if (!sortSelect || !viewSwitch) return;
-  sortSelect.value = _overviewSort;
-  /* Legacy localStorage value "tiled" -> fall back to "list" since the
-   * switch is now binary (Viz / List). "topology" still accepted. */
-  if (_overviewView !== "list" && _overviewView !== "topology")
-    _overviewView = "list";
+  /* msg#16337: Overview is Viz-only — no Viz/List switch in the
+   * template. Don't gate control wiring on the (now removed)
+   * .activity-view-switch element. */
+  if (sortSelect) sortSelect.value = _overviewSort;
+  _overviewView = "topology";
   if (colorSelect) colorSelect.value = _overviewColor;
   if (sizeSelect) sizeSelect.value = _topoSizeBy;
   /* Filter input removed — users filter via the global Ctrl+K fuzzy
@@ -21,41 +19,20 @@ function _wireOverviewControls() {
    * 19: "filtering should be always Ctrl K in the scope"). The module
    * var _overviewFilter stays zero so the old filter logic is a no-op. */
   _overviewFilter = "";
-  function _setViewBtnActive() {
-    viewSwitch
-      .querySelectorAll(".activity-view-switch-btn")
-      .forEach(function (b) {
-        b.classList.toggle(
-          "active",
-          b.getAttribute("data-view") === _overviewView,
-        );
-      });
+  if (sortSelect) {
+    sortSelect.addEventListener("change", function () {
+      _overviewSort = sortSelect.value;
+      try {
+        localStorage.setItem("orochi.overviewSort", _overviewSort);
+      } catch (_e) {}
+      renderActivityTab();
+      /* The sort dropdown now also drives the sidebar AGENTS list
+       * (ywatanabe 2026-04-21). Re-run fetchAgents on the existing
+       * cached payload so the new order takes effect without waiting
+       * for the next heartbeat. */
+      if (typeof fetchAgents === "function") fetchAgents();
+    });
   }
-  _setViewBtnActive();
-  sortSelect.addEventListener("change", function () {
-    _overviewSort = sortSelect.value;
-    try {
-      localStorage.setItem("orochi.overviewSort", _overviewSort);
-    } catch (_e) {}
-    renderActivityTab();
-    /* The sort dropdown now also drives the sidebar AGENTS list
-     * (ywatanabe 2026-04-21). Re-run fetchAgents on the existing
-     * cached payload so the new order takes effect without waiting
-     * for the next heartbeat. */
-    if (typeof fetchAgents === "function") fetchAgents();
-  });
-  viewSwitch.addEventListener("click", function (ev) {
-    var btn = ev.target.closest(".activity-view-switch-btn[data-view]");
-    if (!btn) return;
-    var next = btn.getAttribute("data-view");
-    if (next === _overviewView) return;
-    _overviewView = next;
-    try {
-      localStorage.setItem("orochi.overviewView", _overviewView);
-    } catch (_e) {}
-    _setViewBtnActive();
-    renderActivityTab();
-  });
   if (colorSelect) {
     colorSelect.addEventListener("change", function () {
       _overviewColor = colorSelect.value;

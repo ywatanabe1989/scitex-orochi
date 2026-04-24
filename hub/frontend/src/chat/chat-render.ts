@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
-import { cleanAgentName, escapeHtml, hostedAgentName, timeAgo, userName } from "../app/utils";
+import { channelsEqual, cleanAgentName, escapeHtml, hostedAgentName, timeAgo, userName } from "../app/utils";
 import { _renderMermaidIn, buildAttachmentsHtml } from "./chat-attachments";
 import { _processMessageMarkdown } from "./chat-markdown";
 import { _chatFilterQuery, _mentionRegex, _pulseSidebarRow, _voiceDeferQueue, applyIssueTitleHints, isKnownAgent } from "./chat-state";
@@ -257,7 +257,15 @@ export function appendMessage(msg) {
   /* Hydrate PDF first-page thumbnails in this message's attachments
    * (todo#89). Safe no-op if pdf-thumbnail.js hasn't loaded yet. */
   if (window.pdfThumb) window.pdfThumb.hydrateAll(el);
-  if ((globalThis as any).currentChannel && channel !== (globalThis as any).currentChannel) {
+  /* Channel guard: hide this row if we're currently filtered to a single
+   * channel and the incoming message doesn't belong to it. Use channelsEqual
+   * (msg#16691) so ``#ywatanabe`` vs ``ywatanabe`` is treated as the same
+   * channel — the mismatch was the root cause of the silent-feed regression
+   * where every inbound WS message landed in the DOM with display:none. */
+  if (
+    (globalThis as any).currentChannel &&
+    !channelsEqual(channel, (globalThis as any).currentChannel)
+  ) {
     el.style.display = "none";
   }
   var container = document.getElementById("messages");
@@ -324,7 +332,10 @@ export function appendMessage(msg) {
   /* Sidebar pulses — only for messages arriving AFTER initial load,
    * and only if the message is in a non-focused channel. */
   if ((globalThis as any)._initialLoadComplete && !(globalThis as any)._isLoadingHistory && channel) {
-    var _isFocused = channel === (globalThis as any).currentChannel;
+    /* `#`-prefix-agnostic match (msg#16691) — same rationale as the
+     * display-guard above. Without this, own-channel arrivals could wrongly
+     * pulse the sidebar row as "unread mention" on legacy channel rows. */
+    var _isFocused = channelsEqual(channel, (globalThis as any).currentChannel);
     if (!_isFocused) {
       if (_hasMention) {
         _pulseSidebarRow(channel, "mention");
@@ -427,14 +438,24 @@ export function applyFeedFilter() {
         el.style.display = "";
       } else {
         var ch0 = el.getAttribute("data-channel");
-        el.style.display = ch0 === (globalThis as any).currentChannel ? "" : "none";
+        /* channelsEqual (msg#16691) tolerates ``#``-prefix asymmetry between
+         * the stored message ``data-channel`` and the sidebar-driven
+         * currentChannel — see chat-render guard above and utils.ts. */
+        el.style.display = channelsEqual(ch0, (globalThis as any).currentChannel)
+          ? ""
+          : "none";
       }
       return;
     }
     var ch = el.getAttribute("data-channel");
     var sender = el.getAttribute("data-sender");
+    /* Normalize the incoming channel so a selected sidebar row in either
+     * ``#foo`` or ``foo`` form matches an equivalent message. */
     var chOk =
-      selectedChannels.length === 0 || selectedChannels.indexOf(ch) !== -1;
+      selectedChannels.length === 0 ||
+      selectedChannels.some(function (sc) {
+        return channelsEqual(sc, ch);
+      });
     var agOk =
       selectedAgents.length === 0 || selectedAgents.indexOf(sender) !== -1;
     el.style.display = chOk && agOk ? "" : "none";

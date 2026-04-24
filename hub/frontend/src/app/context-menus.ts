@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { _agentSubscribe, _openAgentDmSimple, _toggleAgentChannelSubscription, openChannelExport } from "./agent-actions";
-import { _setAgentIcon, _setChannelIcon, _setChannelPref } from "./channel-prefs";
+import { _setChannelPref } from "./channel-prefs";
 import { _channelPrefs } from "./members";
+import { setCurrentChannel } from "./state";
 import { escapeHtml, userName } from "./utils";
+import { loadChannelHistory } from "../chat/chat-history";
 
 /* Context menu for channel items — right-click shows pref options */
 export function _addChannelContextMenu(el) {
@@ -34,38 +36,42 @@ export var _ctxMenu = null;
 export function _showChannelCtxMenu(ch, x, y) {
   _hideChannelCtxMenu();
   var prefs = _channelPrefs[ch] || {};
-  var starred = prefs.is_starred;
-  var muted = prefs.is_muted;
-  var hidden = prefs.is_hidden;
   var notif = prefs.notification_level || "all";
+  /* Item 13 (msg#15675): star/mute/hidden state is read directly via
+   * the channel-badge icons in sidebar/graph — this menu no longer
+   * toggles them. Locals removed to reflect the narrower scope. */
 
   var menu = document.createElement("div");
   menu.className = "ch-ctx-menu";
   menu.style.cssText =
     "position:fixed;z-index:9999;left:" + x + "px;top:" + y + "px;";
-  /* Reserve a fixed-width glyph slot at the start of every row so the
-   * channel-name / label column lines up whether a row has a prefix
-   * (☆/★/🔇/🔔/⤓) or not. Without the empty placeholder, rows without a
-   * glyph start flush-left and names jitter into misaligned columns.
-   * todo#99. ywatanabe 2026-04-19. */
-  var G_STAR_OFF = "\u2606"; /* ☆ */
-  var G_STAR_ON = "\u2605"; /* ★ */
-  var G_MUTE_OFF = "\uD83D\uDD14"; /* 🔔 bell — mute OFF (will mute on click) */
-  var G_MUTE_ON = "\uD83D\uDD15"; /* 🔕 bell-with-slash — currently muted */
   var G_EXPORT = "\u2935"; /* ⤵ export */
+  var G_OPEN_CHAT = "\u21AA"; /* ↪ open-in-chat */
   var G_EMPTY = "";
   function _glyph(g) {
     return '<span class="ch-ctx-glyph">' + g + "</span>";
   }
+  /* Item 13 (lead msg#15675 / msg#15678) — deduplicate the channel
+   * right-click menu against the direct badge icons (★ / 👁 / 🔔 / icon).
+   * Lead's canonical delete-list: Star, Mute, Set Icon, Clear Icon,
+   * Delete Channel, Show Channel, Hide Channel, Mute Notifications.
+   * Kept: Export Channel (no icon equivalent). Also kept: Notifications
+   * level chooser (All / @ Mentions only / Nothing) — this is a 3-way
+   * selector and is NOT duplicated by the bell icon's boolean toggle,
+   * so it survives the dedup. Also kept: "Hide node (Viz topology)" —
+   * this is a session-only viz hide, distinct from the persistent
+   * eye-icon is_hidden that propagates across surfaces. */
   menu.innerHTML = [
-    '<div class="ch-ctx-item" data-action="star">' +
-      _glyph(starred ? G_STAR_ON : G_STAR_OFF) +
-      (starred ? "Unstar" : "Star channel") +
-      "</div>",
-    '<div class="ch-ctx-item" data-action="mute">' +
-      _glyph(muted ? G_MUTE_ON : G_MUTE_OFF) +
-      (muted ? "Unmute" : "Mute channel") +
-      "</div>",
+    /* Item 14 (lead msg#15694): graph channel-node right-click menu
+     * needs an "Open in Chat" entry so a user browsing the topology
+     * can jump straight to the full Chat surface for that channel
+     * without having to triple-click the node or navigate via the
+     * sidebar. Pinned to the top of the menu so it's the first thing
+     * users see after right-click; mirrors the muscle-memory of the
+     * channel-badge "→" affordance. */
+    '<div class="ch-ctx-item ch-ctx-open-chat" data-action="open-chat">' +
+      _glyph(G_OPEN_CHAT) +
+      "Open in Chat</div>",
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-label">Notifications</div>',
     '<div class="ch-ctx-item ch-ctx-notif' +
@@ -84,21 +90,9 @@ export function _showChannelCtxMenu(ch, x, y) {
       _glyph(G_EMPTY) +
       "Nothing</div>",
     '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item" data-action="set-icon">' +
-      _glyph("\uD83C\uDFA8") +
-      "Set icon\u2026</div>",
-    '<div class="ch-ctx-item" data-action="clear-icon">' +
-      _glyph(G_EMPTY) +
-      "Clear icon</div>",
-    '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-export" data-action="export">' +
       _glyph(G_EXPORT) +
       "Export channel\u2026</div>",
-    '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item ch-ctx-hide" data-action="hide">' +
-      _glyph(G_EMPTY) +
-      (hidden ? "Show channel" : "Hide channel") +
-      "</div>",
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-hide" data-action="topo-hide">' +
       _glyph(G_EMPTY) +
@@ -112,9 +106,25 @@ export function _showChannelCtxMenu(ch, x, y) {
   menu.querySelectorAll(".ch-ctx-item").forEach(function (item) {
     item.addEventListener("click", function () {
       var action = item.getAttribute("data-action");
-      if (action === "star") _setChannelPref(ch, { is_starred: !starred });
-      else if (action === "mute") _setChannelPref(ch, { is_muted: !muted });
-      else if (action === "notif-all")
+      /* Item 13: trimmed action set — star / mute / hide / set-icon /
+       * clear-icon are now handled exclusively by the channel-badge
+       * icons (delegation in channel-badge.ts attachChannelBadgeHandlers).
+       * Remaining: notification-level trio, export, topo-hide. */
+      if (action === "open-chat") {
+        /* Item 14: switch the Chat tab to this channel and activate
+         * it. Mirrors the triple-click-channel path in
+         * activity-tab/click.ts _topoFlushClick so the behaviour is
+         * consistent across entry surfaces. */
+        _hideChannelCtxMenu();
+        try {
+          if (typeof setCurrentChannel === "function") setCurrentChannel(ch);
+          if (typeof loadChannelHistory === "function") loadChannelHistory(ch);
+          var chatBtn = document.querySelector('[data-tab="chat"]');
+          if (chatBtn) (chatBtn as HTMLElement).click();
+        } catch (_) {}
+        return;
+      }
+      if (action === "notif-all")
         _setChannelPref(ch, { notification_level: "all" });
       else if (action === "notif-mentions")
         _setChannelPref(ch, { notification_level: "mentions" });
@@ -124,22 +134,7 @@ export function _showChannelCtxMenu(ch, x, y) {
         _hideChannelCtxMenu();
         openChannelExport(ch);
         return;
-      } else if (action === "set-icon") {
-        _hideChannelCtxMenu();
-        if (typeof window.openEmojiPicker === "function") {
-          window.openEmojiPicker(function (emoji) {
-            _setChannelIcon(ch, { icon_emoji: emoji });
-          });
-        }
-        return;
-      } else if (action === "clear-icon") {
-        _setChannelIcon(ch, {
-          icon_emoji: "",
-          icon_image: "",
-          icon_text: "",
-        });
-      } else if (action === "hide") _setChannelPref(ch, { is_hidden: !hidden });
-      else if (action === "topo-hide") {
+      } else if (action === "topo-hide") {
         if (typeof window._topoHide === "function") {
           try {
             window._topoHide("channel", ch);
@@ -240,13 +235,18 @@ export function _showAgentContextMenu(agent, x, y) {
       '<div class="ch-ctx-item ch-ctx-hide" data-topo-hide="1">' +
       "Hide node (Viz topology)</div>"
     : "";
+  /* Item 13 (msg#15675 / msg#15678) — same dedup principle as the
+   * channel ctx-menu: drop icon-equivalent rows. The agent avatar is
+   * already an .avatar-clickable trigger for the emoji picker (see
+   * agent-badge.ts), so "Set icon" / "Clear icon" here duplicate the
+   * icon affordance. Kept: Add-to / DM / Remove-from submenus (no
+   * icon equivalent), plus the session-only "Hide node (Viz
+   * topology)" row which is distinct from the persistent eye-icon
+   * is_hidden that propagates across surfaces. */
   menu.innerHTML = [
     '<div class="ch-ctx-label">Agent: ' + escapeHtml(agent) + "</div>",
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="add">Add to channel&nbsp;&hellip; &#9656;</div>',
     '<div class="ch-ctx-item ch-ctx-sub" data-sub="dm">DM with agent&nbsp;&hellip; &#9656;</div>',
-    '<div class="ch-ctx-sep"></div>',
-    '<div class="ch-ctx-item" data-action="set-icon">\uD83C\uDFA8 Set icon\u2026</div>',
-    '<div class="ch-ctx-item" data-action="clear-icon">Clear icon</div>',
     '<div class="ch-ctx-sep"></div>',
     '<div class="ch-ctx-item ch-ctx-sub ch-ctx-hide" data-sub="remove">Remove from channel&nbsp;&hellip; &#9656;</div>',
     hideRow,
@@ -264,32 +264,10 @@ export function _showAgentContextMenu(agent, x, y) {
       _hideAgentCtxMenu();
     });
   }
-  /* Set icon — emoji picker for the agent's AgentProfile.icon_emoji.
-   * Mirrors the channel "Set icon" flow in _showChannelCtxMenu so
-   * configuration is uniform across entity types (TODO.md Entity
-   * Consistency: "Icons (svg/png) must be configurable"). */
-  var setIconItem = menu.querySelector('.ch-ctx-item[data-action="set-icon"]');
-  if (setIconItem) {
-    setIconItem.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      _hideAgentCtxMenu();
-      if (typeof window.openEmojiPicker === "function") {
-        window.openEmojiPicker(function (emoji) {
-          _setAgentIcon(agent, { icon_emoji: emoji });
-        });
-      }
-    });
-  }
-  var clearIconItem = menu.querySelector(
-    '.ch-ctx-item[data-action="clear-icon"]',
-  );
-  if (clearIconItem) {
-    clearIconItem.addEventListener("click", function (ev) {
-      ev.stopPropagation();
-      _setAgentIcon(agent, { icon_emoji: "" });
-      _hideAgentCtxMenu();
-    });
-  }
+  /* Item 13: "Set icon" / "Clear icon" rows dropped here — the agent
+   * avatar carries .avatar-clickable which opens the emoji picker
+   * directly (see agent-badge.ts, delegated in sidebar-agents.ts /
+   * dms.ts / agents-tab/overview.ts). */
 
   var subEl = null;
   function openSub(anchor, html, onPick) {

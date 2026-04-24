@@ -46,11 +46,26 @@ var lastActiveChannel = null;
 try {
   var _persistedCh = localStorage.getItem("orochi_active_channel");
   if (_persistedCh && _persistedCh !== "__all__") {
-    currentChannel = _persistedCh;
-    lastActiveChannel = _persistedCh;
+    /* Normalize on hydrate (msg#16691) — a prior session could have
+     * persisted the bare form. See app/utils.ts::_normalizeChannelName. */
+    currentChannel =
+      typeof _normalizeChannelName === "function"
+        ? _normalizeChannelName(_persistedCh)
+        : _persistedCh;
+    lastActiveChannel = currentChannel;
   }
 } catch (_) {}
 function setCurrentChannel(ch) {
+  /* Normalize group channel names to the canonical ``#<name>`` form so
+   * every downstream comparator sees the same string the server emits
+   * (msg#16691). Callers pass raw ``data-channel`` attribute values which,
+   * for some legacy sidebar rows, still arrive without the ``#`` prefix;
+   * without this normalize step the chat-render channel guard hid every
+   * inbound message for ``#ywatanabe``. DM channels (``dm:`` prefix) and
+   * null / empty (== all-channels mode) pass through unchanged. */
+  if (ch && typeof _normalizeChannelName === "function") {
+    ch = _normalizeChannelName(ch);
+  }
   currentChannel = ch;
   if (ch) lastActiveChannel = ch;
   try {
@@ -86,6 +101,24 @@ function setCurrentChannel(ch) {
   /* Update channel topic banner (todo#402) — show for active channel,
    * or last active when in all-channels mode */
   _updateChannelTopicBanner(ch || lastActiveChannel);
+  /* msg#16324: flush the previous channel's pending save, clear the
+   * textarea, then hydrate the new channel's draft. */
+  try {
+    if (
+      window.orochiDraftStore &&
+      typeof window.orochiDraftStore.flushPendingSaves === "function"
+    ) {
+      window.orochiDraftStore.flushPendingSaves();
+    }
+    var _inp = document.getElementById("msg-input");
+    if (_inp) {
+      _inp.value = "";
+      _inp.style.height = "auto";
+    }
+    if (typeof window.restoreDraftForCurrentChannel === "function") {
+      window.restoreDraftForCurrentChannel();
+    }
+  } catch (_) {}
 }
 
 /* Friendly-label for a dm:<principal>|<principal> channel. Strips the

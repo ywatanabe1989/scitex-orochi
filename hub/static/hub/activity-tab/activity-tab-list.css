@@ -198,7 +198,15 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  /* ywatanabe 2026-04-21: tighter row height so more agents fit. */
+  /* ywatanabe 2026-04-21: tighter row height so more agents fit.
+   * msg#15599 Task A originally widened border-left to 2px to match
+   * a corresponding 2px accent stripe on the Channels section; PR
+   * #<this> Item 2 removed that Channels stripe per ywatanabe
+   * msg#15608 ("left bar disliked"). To keep both sidebar sections
+   * column-aligned, the agent row reverts to a uniform 1px transparent
+   * border on all four sides. Accent colour continues to be applied to
+   * the name text via inline color in agent-badge.ts renderAgentName
+   * (identity-on-name matches Channels' .ch-name colour rule). */
   padding: 1px 6px;
   margin-bottom: 1px;
   border-radius: 3px;

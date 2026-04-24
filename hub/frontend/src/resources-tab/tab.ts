@@ -3,6 +3,12 @@ import { apiUrl, escapeHtml, getAgentColor, HOSTNAME_ALIASES } from "../app/util
 import { syncHostHover } from "../connectivity-map";
 import { addTag } from "../filter/state";
 import { _applyMachinesViewVisibility, _machineIcons, _wireMachinesControls, donutHtml, hideMachineTooltip, moveMachineTooltip, resourceData, setMachineIcon, showMachineTooltip } from "./panel";
+import {
+  cronByHost,
+  fetchCronJobs,
+  renderCronJobsHtml,
+  wireCronToggles,
+} from "./cron-panel";
 import { activeTab } from "../tabs";
 
 /* Resource Monitor Panel + Resources Tab — part 2: renderers, card
@@ -39,40 +45,74 @@ export function renderResources() {
   /* Sidebar machines = one-line rows (ywatanabe 2026-04-19: "name only
    * and connectivity and pin; X%, Y/Z GB, A/B TB"). Connectivity dot
    * on the left; host name color-coded by its own hash; compact chips
-   * for CPU% / Mem Y/Z GB / Disk%. Total disk GB/TB isn't pushed by
-   * heartbeat yet, so disk stays percent-only for now. */
+   * for CPU cores / Mem N/M GB / Disk N/M TB / GPU N/M.
+   *
+   * ywatanabe msg#16215 (2026-04-21): mba + nas were rendering empty
+   * fields because the producer only sent ``disk_used_percent`` (no
+   * total). Spec target — CPU = ``N cores`` (integer), RAM = ``N/M
+   * GB`` (integers), Storage = ``N/M TB`` (1dp), GPU = ``N/M`` when
+   * present else ``n/a``. Renderer prefers the absolute used/total
+   * fields from the updated heartbeat, falls back to legacy percent-
+   * only display during the rolling deploy window. */
   container.innerHTML = keys
     .map(function (k) {
       var d = resourceData[k];
       var health = (d.health && d.health.status) || "healthy";
       var healthy = health === "healthy";
-      var cpu = (d.cpu && d.cpu.percent) || 0;
-      var memPct = (d.memory && d.memory.percent) || 0;
-      var memTotalMb =
-        (d.memory && d.memory.total_mb) ||
-        (d._metrics && d._metrics.mem_total_mb) ||
-        0;
+      var cpuCount = d._cpuCount || 0;
+      var cpuStr = cpuCount > 0 ? cpuCount + " cores" : "—";
+      var memTotalMb = d._memTotalMb || 0;
+      var memUsedMb = d._memUsedMb || 0;
+      if (!memUsedMb && memTotalMb > 0) {
+        /* Pre-msg#16215 hosts only sent total+free — derive used. */
+        memUsedMb = Math.max(0, memTotalMb - (d._memFreeMb || 0));
+      }
       var memStr = "—";
       if (memTotalMb > 0) {
-        var memTotalGb = memTotalMb / 1024;
-        var memUsedGb = (memTotalMb * memPct) / 100 / 1024;
-        memStr = memUsedGb.toFixed(1) + "/" + memTotalGb.toFixed(0) + "GB";
-      } else if (memPct > 0) {
-        memStr = memPct.toFixed(0) + "%";
+        memStr =
+          Math.round(memUsedMb / 1024) +
+          "/" +
+          Math.round(memTotalMb / 1024) +
+          " GB";
       }
-      var diskPct = 0;
-      if (d.disk) {
-        var dk = Object.keys(d.disk)[0];
-        if (dk) diskPct = d.disk[dk].percent || 0;
+      var diskTotalMb = d._diskTotalMb || 0;
+      var diskUsedMb = d._diskUsedMb || 0;
+      var diskStr = "—";
+      if (diskTotalMb > 0) {
+        var diskTotalTb = diskTotalMb / 1024 / 1024;
+        var diskUsedTb = diskUsedMb / 1024 / 1024;
+        diskStr = diskUsedTb.toFixed(1) + "/" + diskTotalTb.toFixed(1) + " TB";
+      } else if (d.disk) {
+        var _dk = Object.keys(d.disk)[0];
+        if (_dk) {
+          var _p = d.disk[_dk].percent || 0;
+          if (_p > 0) diskStr = Math.round(_p) + "%";
+        }
       }
       var color =
         typeof getAgentColor === "function" ? getAgentColor(k) : "#e6e6e6";
       var gpuStr = "";
       if (d.gpu && d.gpu.length > 0) {
+        /* Multi-GPU: aggregate util as used/total count of "active"
+         * GPUs, and show mean-util% in the title. For single-GPU
+         * hosts (most fleet nodes), this degrades to ``1/1`` with the
+         * single card's utilisation in the title. */
+        var totalGpus = d.gpu.length;
+        var usedGpus = d.gpu.filter(function (g) {
+          return (g.utilization_percent || 0) > 5;
+        }).length;
+        var meanUtil =
+          d.gpu.reduce(function (acc, g) {
+            return acc + (g.utilization_percent || 0);
+          }, 0) / totalGpus;
         gpuStr =
-          ' <span class="res-chip" title="GPU utilization">' +
-          Math.round(d.gpu[0].utilization_percent || 0) +
-          "% gpu</span>";
+          ' <span class="res-chip" title="GPU ' +
+          Math.round(meanUtil) +
+          '% avg util">' +
+          usedGpus +
+          "/" +
+          totalGpus +
+          " gpu</span>";
       }
       var slurmStr = "";
       if (d.slurm && d.slurm.total_jobs > 0) {
@@ -144,15 +184,15 @@ export function renderResources() {
         })() +
         "</span>" +
         '<span class="res-metrics">' +
-        '<span class="res-chip" title="CPU %">' +
-        Math.round(cpu) +
-        "%</span>" +
-        '<span class="res-chip" title="Mem used/total">' +
+        '<span class="res-chip" title="CPU cores">' +
+        escapeHtml(cpuStr) +
+        "</span>" +
+        '<span class="res-chip" title="RAM used/total">' +
         escapeHtml(memStr) +
         "</span>" +
-        '<span class="res-chip" title="Disk %">' +
-        Math.round(diskPct) +
-        "%</span>" +
+        '<span class="res-chip" title="Storage used/total">' +
+        escapeHtml(diskStr) +
+        "</span>" +
         gpuStr +
         slurmStr +
         "</span>" +
@@ -223,6 +263,11 @@ export function renderResourcesTab() {
         syncHostHover(el.getAttribute("data-host-name"), false);
     });
   });
+  /* Orochi cron Phase 2 — wire the per-host collapse chevron so users
+   * can expand the cron-jobs subsection on the cards that matter to
+   * them. ``stopPropagation`` inside the handler prevents the click
+   * from bubbling up to the card-wide addTag listener above. */
+  wireCronToggles(grid, renderResourcesTab);
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
@@ -263,9 +308,28 @@ export function buildResourceCard(k) {
   }
   var memDetail = "";
   if (d._memTotalMb) {
-    var usedMb = Math.round(d._memTotalMb - (d._memFreeMb || 0));
+    /* ywatanabe msg#16215 — spec shape ``N/M GB`` (integers). The
+     * aggregator derives ``mem_used_mb`` from total-free for pre-fix
+     * clients so the spec format renders uniformly across the fleet. */
+    var usedMb = d._memUsedMb || Math.round(d._memTotalMb - (d._memFreeMb || 0));
     memDetail =
-      '<div class="res-meta">' + usedMb + " / " + d._memTotalMb + " MB</div>";
+      '<div class="res-meta">RAM: ' +
+      Math.round(usedMb / 1024) +
+      " / " +
+      Math.round(d._memTotalMb / 1024) +
+      " GB</div>";
+  }
+  var diskDetail = "";
+  if (d._diskTotalMb) {
+    /* Storage: ``N/M TB`` (1 decimal) per ywatanabe msg#16215. */
+    var diskUsedTb = (d._diskUsedMb || 0) / 1024 / 1024;
+    var diskTotalTb = d._diskTotalMb / 1024 / 1024;
+    diskDetail =
+      '<div class="res-meta">Storage: ' +
+      diskUsedTb.toFixed(1) +
+      " / " +
+      diskTotalTb.toFixed(1) +
+      " TB</div>";
   }
   var cpuInfo = "";
   if (d._cpuCount) {
@@ -302,7 +366,7 @@ export function buildResourceCard(k) {
     gpuRow += "</div>";
     html += gpuRow;
   }
-  html += loadHtml + cpuInfo + memDetail;
+  html += loadHtml + cpuInfo + memDetail + diskDetail;
   if (d.subagents !== undefined) {
     html += '<div class="res-meta">Subagents: ' + d.subagents + "</div>";
   }
@@ -320,6 +384,10 @@ export function buildResourceCard(k) {
       : hbDate.toLocaleString();
     html += '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + "</div>";
   }
+  /* Orochi unified cron Phase 2 — collapsible cron-jobs subsection
+   * rendered from /api/cron/. Empty string when the host has no cron
+   * data so cards without an installed daemon stay unchanged. */
+  html += renderCronJobsHtml(k);
   html += "</div>";
   return html;
 }
@@ -355,6 +423,37 @@ export async function fetchResources() {
         (existing.memory || {}).percent > 0
       )
         return;
+      /* ywatanabe msg#16215 — GPU projection.
+       *
+       * Local-GPU hosts (heartbeat carries ``r.gpus = [...]``):
+       *   pass through verbatim so tooltip can render VRAM used/total.
+       * Slurm login nodes (``resource_source == "slurm"``):
+       *   project cluster totals into a single synthetic entry so the
+       *   sidebar renders ``allocated/total GPU`` for the cluster.
+       * GPU-less (mba, nas): ``[]`` → sidebar emits no GPU chip,
+       *   tooltip reads ``n/a`` per spec. */
+      var gpuList = null;
+      if (Array.isArray(r.gpus) && r.gpus.length > 0) {
+        gpuList = r.gpus.map(function (g) {
+          return {
+            name: g.name || "gpu",
+            utilization_percent: g.utilization_percent || 0,
+            memory_used_mb: g.memory_used_mb || 0,
+            memory_total_mb: g.memory_total_mb || 0,
+          };
+        });
+      } else if (r.cluster_gpus_total > 0) {
+        gpuList = [
+          {
+            name: "cluster",
+            utilization_percent: Math.round(
+              ((r.cluster_gpus_allocated || 0) / r.cluster_gpus_total) * 100,
+            ),
+            total: r.cluster_gpus_total,
+            allocated: r.cluster_gpus_allocated || 0,
+          },
+        ];
+      }
       resourceData[agentName] = {
         hostname: _friendlyMachine(entry.machine || agentName),
         agent: agentName,
@@ -382,6 +481,14 @@ export async function fetchResources() {
         _loadAvg: [r.load_avg_1m || 0, r.load_avg_5m || 0, r.load_avg_15m || 0],
         _memFreeMb: r.mem_free_mb || 0,
         _memTotalMb: r.mem_total_mb || 0,
+        /* ywatanabe msg#16215 — absolute MB so the sidebar renderer
+         * can compose ``N/M GB`` + ``N/M TB`` without backsolving from
+         * percent. ``mem_used_mb`` is derived by the hub aggregator on
+         * rolling-deploy clients that only send total+free (see
+         * hub/views/api/_resources.py). */
+        _memUsedMb: r.mem_used_mb || 0,
+        _diskTotalMb: r.disk_total_mb || 0,
+        _diskUsedMb: r.disk_used_mb || 0,
         // Slurm cluster aggregates (todo#87). Populated only when the
         // host reports `resource_source == "slurm"` — login-node metrics
         // are replaced with cluster-wide CPU/RAM at the agent, so the
@@ -398,25 +505,15 @@ export async function fetchResources() {
                 cluster_cpus_allocated: r.cluster_cpus_allocated || 0,
               }
             : null,
-        gpu:
-          r.cluster_gpus_total > 0
-            ? [
-                {
-                  utilization_percent:
-                    r.cluster_gpus_total > 0
-                      ? Math.round(
-                          ((r.cluster_gpus_allocated || 0) /
-                            r.cluster_gpus_total) *
-                            100,
-                        )
-                      : 0,
-                  total: r.cluster_gpus_total,
-                  allocated: r.cluster_gpus_allocated || 0,
-                },
-              ]
-            : null,
+        gpu: gpuList,
       };
     });
+    /* Orochi cron Phase 2 — piggyback on the existing resource poll
+     * so the cron panel refreshes at the same cadence as the donut
+     * cards (currently 30s via init.ts). Awaiting in series keeps the
+     * render single-pass; a failed fetch is silent and leaves the
+     * previous cache in place. */
+    await fetchCronJobs();
     renderResources();
     if (activeTab === "resources") renderResourcesTab();
   } catch (e) {

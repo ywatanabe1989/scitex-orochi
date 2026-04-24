@@ -9,20 +9,20 @@
           content="black-translucent">
     <link rel="manifest" href="{% static 'hub/manifest.json' %}">
     <link rel="apple-touch-icon" href="{% static 'hub/orochi-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'hub/style/style-base.css' %}?v=136">
+    <link rel="stylesheet" href="{% static 'hub/style/style-base.css' %}?v=137">
     <link rel="stylesheet" href="{% static 'hub/style/style-main.css' %}?v=134">
     <link rel="stylesheet"
-          href="{% static 'hub/style/style-messages.css' %}?v=135">
+          href="{% static 'hub/style/style-messages.css' %}?v=136">
     <link rel="stylesheet"
           href="{% static 'hub/style/style-composer.css' %}?v=134">
     <link rel="stylesheet"
-          href="{% static 'hub/style/style-agents.css' %}?v=134">
+          href="{% static 'hub/style/style-agents.css' %}?v=136">
     <link rel="stylesheet"
-          href="{% static 'hub/style/style-channels.css' %}?v=138">
+          href="{% static 'hub/style/style-channels.css' %}?v=139">
     <link rel="stylesheet"
           href="{% static 'hub/style/style-menus.css' %}?v=135">
     <link rel="stylesheet"
-          href="{% static 'hub/style/style-modals.css' %}?v=134">
+          href="{% static 'hub/style/style-modals.css' %}?v=135">
     <link rel="stylesheet"
           href="{% static 'hub/components/components-badges-filter.css' %}?v=105">
     <link rel="stylesheet"
@@ -30,13 +30,13 @@
     <link rel="stylesheet"
           href="{% static 'hub/components/components-messages.css' %}?v=105">
     <link rel="stylesheet"
-          href="{% static 'hub/components/components-agent-detail.css' %}?v=105">
+          href="{% static 'hub/components/components-agent-detail.css' %}?v=106">
     <link rel="stylesheet"
           href="{% static 'hub/components/components-mcp-viewer.css' %}?v=105">
     <link rel="stylesheet"
           href="{% static 'hub/todo-tab/todo-tab-list.css' %}?v=108">
     <link rel="stylesheet"
-          href="{% static 'hub/todo-tab/todo-tab-stats.css' %}?v=108">
+          href="{% static 'hub/todo-tab/todo-tab-stats.css' %}?v=109">
     <link rel="stylesheet"
           href="{% static 'hub/attachments/attachments-media.css' %}?v=101">
     <link rel="stylesheet"
@@ -44,6 +44,10 @@
     <link rel="stylesheet" href="{% static 'hub/responsive.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/push.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/resources.css' %}?v=102">
+    <!-- Orochi unified cron Phase 2 (msg#16406 / msg#16408) — Machines
+         tab cron-jobs panel. Loaded after resources.css so cron-panel
+         rules sit under each .res-card via the shared 11px meta font. -->
+    <link rel="stylesheet" href="{% static 'hub/style/style-cron-panel.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
@@ -53,11 +57,11 @@
     <link rel="stylesheet"
           href="{% static 'hub/activity-tab/activity-tab-list.css' %}?v=166">
     <link rel="stylesheet"
-          href="{% static 'hub/activity-tab/activity-tab-topology.css' %}?v=165">
+          href="{% static 'hub/activity-tab/activity-tab-topology.css' %}?v=167">
     <link rel="stylesheet"
-          href="{% static 'hub/activity-tab/activity-tab-topology-nodes.css' %}?v=165">
+          href="{% static 'hub/activity-tab/activity-tab-topology-nodes.css' %}?v=166">
     <link rel="stylesheet"
-          href="{% static 'hub/activity-tab/activity-tab-compose-edges.css' %}?v=165">
+          href="{% static 'hub/activity-tab/activity-tab-compose-edges.css' %}?v=166">
     <link rel="stylesheet"
           href="{% static 'hub/activity-tab/activity-tab-detail-pane.css' %}?v=165">
     <link rel="stylesheet"
@@ -180,13 +184,13 @@
                 title="Collapse sidebar (Ctrl+B)">&lsaquo;</button>
         <div class="main">
             <div class="tab-bar">
-                <button class="tab-btn active" data-tab="chat">Chat</button>
+                <button class="tab-btn active" data-tab="activity">Overview</button>
+                <button class="tab-btn" data-tab="agents-tab">Agents</button>
+                <button class="tab-btn" data-tab="chat">Chat</button>
                 <button class="tab-btn" data-tab="todo">TODO</button>
-                <button class="tab-btn" data-tab="activity">Agents</button>
                 <button class="tab-btn" data-tab="resources">Machines</button>
                 <button class="tab-btn" data-tab="files">Files</button>
                 <button class="tab-btn" data-tab="releases">Releases</button>
-                <button class="tab-btn" data-tab="terminal">Terminal</button>
                 {% if is_admin %}<button class="tab-btn" data-tab="settings">Settings</button>{% endif %}
             </div>
             <div id="channel-topic-banner"
@@ -291,19 +295,12 @@
             </div>
             <div id="activity-view" class="todo-view" style="display:none">
                 <!-- hook-bypass: inline-style -->
+                <!-- Overview (internal id "activity") is Viz-only per
+                     msg#16337 — the Agents list lives in the dedicated
+                     #agents-tab-view. The Viz/List switch that used to
+                     sit here is gone; only the topology size dropdown
+                     and the summary pill row remain. -->
                 <div id="activity-subtabs" class="activity-subtabs">
-                    <div class="activity-view-switch"
-                         role="tablist"
-                         aria-label="overview view mode">
-                        <button type="button"
-                                class="activity-view-switch-btn"
-                                data-view="topology"
-                                title="topology (agents ↔ channels map)">Viz</button>
-                        <button type="button"
-                                class="activity-view-switch-btn active"
-                                data-view="list"
-                                title="one-line rows">List</button>
-                    </div>
                     <!-- sort + color dropdowns moved to the sidebar (ywatanabe 2026-04-21) -->
                     <select id="activity-size-select"
                             class="activity-sort-select"

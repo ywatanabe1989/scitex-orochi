@@ -108,7 +108,13 @@ export async function fetchAgents() {
      * selection (name / machine) within each group. ywatanabe
      * 2026-04-21: "starred agents should be placed upper" +
      * "functionally, no; please make it functional" (sort dropdown
-     * must actually sort the sidebar list, not just the Agents tab). */
+     * must actually sort the sidebar list, not just the Agents tab).
+     *
+     * todo#305 Task 7 (lead msg#15548): hidden agents (👁 eye off)
+     * sort to the BOTTOM, mirroring the sidebar Channels section —
+     * channels.firstHiddenIdx is the same pattern. The row stays in
+     * the DOM at opacity 1 (no row dim — PR #293/#295 rule) so users
+     * can click the eye again to un-hide. */
     var sortBy =
       typeof (globalThis as any)._overviewSort === "string" && (globalThis as any)._overviewSort
         ? (globalThis as any)._overviewSort
@@ -126,6 +132,11 @@ export async function fetchAgents() {
       return String(dn || "").toLowerCase();
     };
     sidebarVisible.sort(function (a, b) {
+      /* Hidden → bottom. Same treatment as channel-prefs.is_hidden
+       * sort in sidebar-stats.ts. */
+      var ha = a.is_hidden ? 1 : 0;
+      var hb = b.is_hidden ? 1 : 0;
+      if (ha !== hb) return ha - hb;
       var pa = a.pinned ? 0 : 1;
       var pb = b.pinned ? 0 : 1;
       if (pa !== pb) return pa - pb;
@@ -177,15 +188,23 @@ export async function fetchAgents() {
           : "Star (keeps as ghost when offline, floats to top)";
         return (
           // Single source of truth — agent-badge.js owns icon + star +
-          // 4 LEDs + name. Same call lives in activity-tab.js list view
-          // and topology pool chip. NEVER inline a fork here.
+          // eye + 4 LEDs + name. Same call lives in activity-tab.js
+          // list view and topology pool chip. NEVER inline a fork here.
           '<div class="agent-card sidebar-agent-row' +
           (typeof isAgentAllGreen === "function" && !isAgentAllGreen(a)
             ? " activity-card-ghost"
             : "") +
+          /* todo#305 Task 7: agent-hidden class mirrors .ch-hidden on
+           * channel rows. Keeps the row in the DOM at full opacity
+           * (PR #293/#295 rule) — only the eye-slash glyph signals
+           * hidden state. Class is kept so CSS can add affordances
+           * (cursor:pointer, subtle divider above first hidden row)
+           * without touching brightness. */
+          (a.is_hidden ? " agent-hidden" : "") +
           ghostClass +
           '" data-agent-name="' +
           escapeHtml(rawName) +
+          (a.is_hidden ? '" data-hidden="1' : "") +
           '" data-agent-channels="' +
           escapeHtml(chList) +
           '" draggable="true" title="' +
@@ -214,6 +233,28 @@ export async function fetchAgents() {
             /* Carry current subscriptions so the drop handler can render
              * add/remove affordance without an extra fetch. */
             ev.dataTransfer.setData("application/x-orochi-agent-channels", chs);
+            /* msg#16988 (a): browser default ghost is often just the
+             * text node under the cursor, leaving the drop position
+             * invisible. Hand setDragImage a full off-screen clone of
+             * the card (bg + border + icon + name) so the user sees
+             * exactly what they're moving. The clone is removed on
+             * the next microtask — the browser has already rasterised
+             * it by the time dragstart returns. */
+            var rect = el.getBoundingClientRect();
+            var clone = el.cloneNode(true);
+            clone.style.position = "absolute";
+            clone.style.top = "-10000px";
+            clone.style.left = "-10000px";
+            clone.style.width = rect.width + "px";
+            clone.style.pointerEvents = "none";
+            clone.classList.remove("agent-dragging");
+            document.body.appendChild(clone);
+            var ox = ev.clientX - rect.left;
+            var oy = ev.clientY - rect.top;
+            ev.dataTransfer.setDragImage(clone, ox, oy);
+            setTimeout(function () {
+              if (clone.parentNode) clone.parentNode.removeChild(clone);
+            }, 0);
           } catch (e) {}
           window.__orochiDragAgent = { name: n, channels: chs };
         });

@@ -8,7 +8,8 @@
    syncHostHover, resourceData, _machineIcons, donutHtml,
    _wireMachinesControls, _applyMachinesViewVisibility,
    showMachineTooltip, moveMachineTooltip, hideMachineTooltip,
-   setMachineIcon */
+   setMachineIcon,
+   cronByHost, fetchCronJobs, renderCronJobsHtml, wireCronToggles */
 
 function renderResources() {
   var msgInput = document.getElementById("msg-input");
@@ -29,43 +30,65 @@ function renderResources() {
     }
     return;
   }
-  /* Sidebar machines = one-line rows (ywatanabe 2026-04-19: "name only
-   * and connectivity and pin; X%, Y/Z GB, A/B TB"). Connectivity dot
-   * on the left; host name color-coded by its own hash; compact chips
-   * for CPU% / Mem Y/Z GB / Disk%. Total disk GB/TB isn't pushed by
-   * heartbeat yet, so disk stays percent-only for now. */
+  /* Sidebar machines = one-line rows (ywatanabe 2026-04-19). ywatanabe
+   * msg#16215 (2026-04-21): mba + nas rendered empty fields because the
+   * producer only sent ``disk_used_percent`` (no total). Spec target —
+   * CPU=``N cores`` (integer), RAM=``N/M GB`` (integers), Storage=``N/M TB``
+   * (1 decimal), GPU=``N/M`` when present else ``n/a``. */
   container.innerHTML = keys
     .map(function (k) {
       var d = resourceData[k];
       var health = (d.health && d.health.status) || "healthy";
       var healthy = health === "healthy";
-      var cpu = (d.cpu && d.cpu.percent) || 0;
-      var memPct = (d.memory && d.memory.percent) || 0;
-      var memTotalMb =
-        (d.memory && d.memory.total_mb) ||
-        (d._metrics && d._metrics.mem_total_mb) ||
-        0;
+      var cpuCount = d._cpuCount || 0;
+      var cpuStr = cpuCount > 0 ? cpuCount + " cores" : "—";
+      var memTotalMb = d._memTotalMb || 0;
+      var memUsedMb = d._memUsedMb || 0;
+      if (!memUsedMb && memTotalMb > 0) {
+        memUsedMb = Math.max(0, memTotalMb - (d._memFreeMb || 0));
+      }
       var memStr = "—";
       if (memTotalMb > 0) {
-        var memTotalGb = memTotalMb / 1024;
-        var memUsedGb = (memTotalMb * memPct) / 100 / 1024;
-        memStr = memUsedGb.toFixed(1) + "/" + memTotalGb.toFixed(0) + "GB";
-      } else if (memPct > 0) {
-        memStr = memPct.toFixed(0) + "%";
+        memStr =
+          Math.round(memUsedMb / 1024) +
+          "/" +
+          Math.round(memTotalMb / 1024) +
+          " GB";
       }
-      var diskPct = 0;
-      if (d.disk) {
-        var dk = Object.keys(d.disk)[0];
-        if (dk) diskPct = d.disk[dk].percent || 0;
+      var diskTotalMb = d._diskTotalMb || 0;
+      var diskUsedMb = d._diskUsedMb || 0;
+      var diskStr = "—";
+      if (diskTotalMb > 0) {
+        var diskTotalTb = diskTotalMb / 1024 / 1024;
+        var diskUsedTb = diskUsedMb / 1024 / 1024;
+        diskStr = diskUsedTb.toFixed(1) + "/" + diskTotalTb.toFixed(1) + " TB";
+      } else if (d.disk) {
+        var _dk = Object.keys(d.disk)[0];
+        if (_dk) {
+          var _p = d.disk[_dk].percent || 0;
+          if (_p > 0) diskStr = Math.round(_p) + "%";
+        }
       }
       var color =
         typeof getAgentColor === "function" ? getAgentColor(k) : "#e6e6e6";
       var gpuStr = "";
       if (d.gpu && d.gpu.length > 0) {
+        var totalGpus = d.gpu.length;
+        var usedGpus = d.gpu.filter(function (g) {
+          return (g.utilization_percent || 0) > 5;
+        }).length;
+        var meanUtil =
+          d.gpu.reduce(function (acc, g) {
+            return acc + (g.utilization_percent || 0);
+          }, 0) / totalGpus;
         gpuStr =
-          ' <span class="res-chip" title="GPU utilization">' +
-          Math.round(d.gpu[0].utilization_percent || 0) +
-          "% gpu</span>";
+          ' <span class="res-chip" title="GPU ' +
+          Math.round(meanUtil) +
+          '% avg util">' +
+          usedGpus +
+          "/" +
+          totalGpus +
+          " gpu</span>";
       }
       var slurmStr = "";
       if (d.slurm && d.slurm.total_jobs > 0) {
@@ -137,15 +160,15 @@ function renderResources() {
         })() +
         "</span>" +
         '<span class="res-metrics">' +
-        '<span class="res-chip" title="CPU %">' +
-        Math.round(cpu) +
-        "%</span>" +
-        '<span class="res-chip" title="Mem used/total">' +
+        '<span class="res-chip" title="CPU cores">' +
+        escapeHtml(cpuStr) +
+        "</span>" +
+        '<span class="res-chip" title="RAM used/total">' +
         escapeHtml(memStr) +
         "</span>" +
-        '<span class="res-chip" title="Disk %">' +
-        Math.round(diskPct) +
-        "%</span>" +
+        '<span class="res-chip" title="Storage used/total">' +
+        escapeHtml(diskStr) +
+        "</span>" +
         gpuStr +
         slurmStr +
         "</span>" +
@@ -216,6 +239,10 @@ function renderResourcesTab() {
         syncHostHover(el.getAttribute("data-host-name"), false);
     });
   });
+  /* Orochi cron Phase 2 — per-host collapse chevron. */
+  if (typeof wireCronToggles === "function") {
+    wireCronToggles(grid, renderResourcesTab);
+  }
   if (inputHasFocus && document.activeElement !== msgInput) {
     msgInput.focus();
     try {
@@ -256,9 +283,24 @@ function buildResourceCard(k) {
   }
   var memDetail = "";
   if (d._memTotalMb) {
-    var usedMb = Math.round(d._memTotalMb - (d._memFreeMb || 0));
+    var usedMb = d._memUsedMb || Math.round(d._memTotalMb - (d._memFreeMb || 0));
     memDetail =
-      '<div class="res-meta">' + usedMb + " / " + d._memTotalMb + " MB</div>";
+      '<div class="res-meta">RAM: ' +
+      Math.round(usedMb / 1024) +
+      " / " +
+      Math.round(d._memTotalMb / 1024) +
+      " GB</div>";
+  }
+  var diskDetail = "";
+  if (d._diskTotalMb) {
+    var diskUsedTb = (d._diskUsedMb || 0) / 1024 / 1024;
+    var diskTotalTb = d._diskTotalMb / 1024 / 1024;
+    diskDetail =
+      '<div class="res-meta">Storage: ' +
+      diskUsedTb.toFixed(1) +
+      " / " +
+      diskTotalTb.toFixed(1) +
+      " TB</div>";
   }
   var cpuInfo = "";
   if (d._cpuCount) {
@@ -295,7 +337,7 @@ function buildResourceCard(k) {
     gpuRow += "</div>";
     html += gpuRow;
   }
-  html += loadHtml + cpuInfo + memDetail;
+  html += loadHtml + cpuInfo + memDetail + diskDetail;
   if (d.subagents !== undefined) {
     html += '<div class="res-meta">Subagents: ' + d.subagents + "</div>";
   }
@@ -312,6 +354,10 @@ function buildResourceCard(k) {
       ? d._lastHeartbeat
       : hbDate.toLocaleString();
     html += '<div class="res-meta">Heartbeat: ' + escapeHtml(hbStr) + "</div>";
+  }
+  /* Orochi unified cron Phase 2 — collapsible cron-jobs subsection. */
+  if (typeof renderCronJobsHtml === "function") {
+    html += renderCronJobsHtml(k);
   }
   html += "</div>";
   return html;
@@ -347,6 +393,29 @@ async function fetchResources() {
         (existing.memory || {}).percent > 0
       )
         return;
+      /* ywatanabe msg#16215 — GPU projection. See TS mirror for rationale. */
+      var gpuList = null;
+      if (Array.isArray(r.gpus) && r.gpus.length > 0) {
+        gpuList = r.gpus.map(function (g) {
+          return {
+            name: g.name || "gpu",
+            utilization_percent: g.utilization_percent || 0,
+            memory_used_mb: g.memory_used_mb || 0,
+            memory_total_mb: g.memory_total_mb || 0,
+          };
+        });
+      } else if (r.cluster_gpus_total > 0) {
+        gpuList = [
+          {
+            name: "cluster",
+            utilization_percent: Math.round(
+              ((r.cluster_gpus_allocated || 0) / r.cluster_gpus_total) * 100,
+            ),
+            total: r.cluster_gpus_total,
+            allocated: r.cluster_gpus_allocated || 0,
+          },
+        ];
+      }
       resourceData[agentName] = {
         hostname: _friendlyMachine(entry.machine || agentName),
         agent: agentName,
@@ -374,6 +443,10 @@ async function fetchResources() {
         _loadAvg: [r.load_avg_1m || 0, r.load_avg_5m || 0, r.load_avg_15m || 0],
         _memFreeMb: r.mem_free_mb || 0,
         _memTotalMb: r.mem_total_mb || 0,
+        /* ywatanabe msg#16215 absolute MB for N/M display. */
+        _memUsedMb: r.mem_used_mb || 0,
+        _diskTotalMb: r.disk_total_mb || 0,
+        _diskUsedMb: r.disk_used_mb || 0,
         // Slurm cluster aggregates (todo#87). Populated only when the
         // host reports `resource_source == "slurm"` — login-node metrics
         // are replaced with cluster-wide CPU/RAM at the agent, so the
@@ -390,25 +463,13 @@ async function fetchResources() {
                 cluster_cpus_allocated: r.cluster_cpus_allocated || 0,
               }
             : null,
-        gpu:
-          r.cluster_gpus_total > 0
-            ? [
-                {
-                  utilization_percent:
-                    r.cluster_gpus_total > 0
-                      ? Math.round(
-                          ((r.cluster_gpus_allocated || 0) /
-                            r.cluster_gpus_total) *
-                            100,
-                        )
-                      : 0,
-                  total: r.cluster_gpus_total,
-                  allocated: r.cluster_gpus_allocated || 0,
-                },
-              ]
-            : null,
+        gpu: gpuList,
       };
     });
+    /* Orochi cron Phase 2 — piggyback fetch on the 30s resource poll. */
+    if (typeof fetchCronJobs === "function") {
+      await fetchCronJobs();
+    }
     renderResources();
     if (activeTab === "resources") renderResourcesTab();
   } catch (e) {

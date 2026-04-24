@@ -46,6 +46,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     "health_reason": p.health_reason or "",
                     "health_source": p.health_source or "",
                     "health_ts": p.health_ts,
+                    # todo#305 Task 7 (lead msg#15548): per-agent
+                    # is_hidden flag; dashboard's 👁 eye toggle reads
+                    # this to dim / drop agent cards in sidebar + graph.
+                    "is_hidden": bool(getattr(p, "is_hidden", False)),
                 }
         except Exception:
             pass
@@ -116,6 +120,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "icon_emoji": icon_emoji,
                 "icon_text": icon_text,
                 "color": prof.get("color") or a.get("color", ""),
+                # todo#305 Task 7 (lead msg#15548): persistent per-agent
+                # hidden flag. False by default for agents without a
+                # profile row. Frontend 👁 toggle reads this to dim / drop
+                # the agent card in sidebar + topology.
+                "is_hidden": bool(prof.get("is_hidden", False)),
                 "channels": list(set(a.get("channels", []))),  # deduplicate
                 "status": a.get("status", "online"),
                 "liveness": liveness,
@@ -244,6 +253,21 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
                 "statusline_model": a.get("statusline_model", ""),
                 "account_email": a.get("account_email", ""),
+                # lead msg#16005 — whole ``scitex-agent-container status
+                # --terse --json`` payload. Dashboard consumers (Agents
+                # tab, future dashboards) can key off
+                # ``sac_status.<any-field>`` without this module needing
+                # a per-field allowlist. ``--terse`` projects the source
+                # onto dotted keys (see
+                # scitex_agent_container.terse.TERSE_STATUS_FIELDS) so
+                # flat reads via ``a["sac_status"]["context_management.percent"]``
+                # work today and on whatever fields get added tomorrow.
+                "sac_status": dict(a.get("sac_status") or {}),
+                # Orochi unified cron state (msg#16406 / msg#16408 Phase 2).
+                # Per-heartbeat snapshot of the local orochi-cron daemon's job
+                # list (empty list when the daemon isn't running on this host).
+                # Consumed by /api/cron/ and the Machines tab cron-jobs panel.
+                "cron_jobs": list(a.get("cron_jobs") or []),
             }
         )
     return result

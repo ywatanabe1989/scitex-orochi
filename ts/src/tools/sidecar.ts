@@ -1,5 +1,5 @@
 /**
- * Fleet observability tools: connectivity_matrix, sidecar_status.
+ * Fleet observability tools: connectivity_matrix, sidecar_status, cron_status.
  *
  * connectivity_matrix — fleet 4×4 reachability matrix (todo#297 layer 3).
  *   Reads connectivity rows produced by the per-host fleet-watch producers
@@ -10,10 +10,23 @@
  * sidecar_status — Orochi-side sidecar PID visibility (todo#287 Slice A).
  *   Returns mcp_server PID + outstanding rsync_media jobs. The orochi half
  *   of the 3-layer PID model agreed in msg#8120.
+ *
+ * cron_status — fleet-wide cron daemon status (lead msg#16684 follow-up
+ *   to PR #346). Thin pass-through to ``GET /api/cron/`` on the hub,
+ *   using the workspace token. Lets any agent observe per-host cron
+ *   jobs without hitting the dashboard.
  */
 import { readFileSync, existsSync } from "fs";
 import { join as pathJoin } from "path";
-import { OROCHI_AGENT, MCP_SERVER_STARTED_AT } from "./_shared.js";
+import {
+  MCP_ERROR_CODES,
+  MCP_SERVER_STARTED_AT,
+  OROCHI_AGENT,
+  OROCHI_TOKEN,
+  buildFetchHeaders,
+  httpBase,
+  mcpError,
+} from "./_shared.js";
 import { rsyncJobs } from "./rsync.js";
 
 function connectivityCacheDir(): string {
@@ -89,6 +102,52 @@ export async function handleConnectivityMatrix(): Promise<{
       },
     ],
   };
+}
+
+export async function handleCronStatus(args: {
+  host?: string;
+}): Promise<{ content: Array<{ type: string; text: string }> }> {
+  // Build ``${base}/api/cron/?token=<wks>&agent=<self>[&host=<name>]``.
+  // The ``&agent=`` param is how ``resolve_workspace_and_actor`` picks
+  // the actor identity for token-auth paths; same convention as
+  // ``channel_members`` / ``my_subscriptions``.
+  const params = new URLSearchParams();
+  if (OROCHI_TOKEN) params.set("token", OROCHI_TOKEN);
+  if (OROCHI_AGENT) params.set("agent", OROCHI_AGENT);
+  const hostArg = (args?.host || "").trim();
+  if (hostArg) params.set("host", hostArg);
+  const qs = params.toString();
+  const url = `${httpBase}/api/cron/${qs ? `?${qs}` : ""}`;
+  try {
+    const resp = await fetch(url, {
+      method: "GET",
+      headers: buildFetchHeaders({ Accept: "application/json" }),
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      const code =
+        resp.status === 401 || resp.status === 403
+          ? MCP_ERROR_CODES.PERMISSION_DENIED
+          : resp.status === 404
+            ? MCP_ERROR_CODES.NOT_FOUND
+            : resp.status === 400
+              ? MCP_ERROR_CODES.INVALID_INPUT
+              : MCP_ERROR_CODES.INTERNAL_ERROR;
+      return mcpError(
+        code,
+        `cron_status HTTP ${resp.status}`,
+        body.slice(0, 200) || "no response body",
+      );
+    }
+    const out = await resp.json();
+    return { content: [{ type: "text", text: JSON.stringify(out) }] };
+  } catch (err) {
+    return mcpError(
+      MCP_ERROR_CODES.INTERNAL_ERROR,
+      `cron_status request failed: ${(err as Error).message}`,
+      "check hub reachability and SCITEX_OROCHI_URL",
+    );
+  }
 }
 
 export async function handleSidecarStatus(): Promise<{

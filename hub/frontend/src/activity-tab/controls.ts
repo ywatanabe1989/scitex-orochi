@@ -10,15 +10,20 @@ export var _overviewControlsWired = false;
 export function _wireOverviewControls() {
   if (_overviewControlsWired) return;
   var sortSelect = document.getElementById("activity-sort-select");
-  var viewSwitch = document.querySelector(".activity-view-switch");
   var colorSelect = document.getElementById("activity-color-select");
   var sizeSelect = document.getElementById("activity-size-select");
-  if (!sortSelect || !viewSwitch) return;
-  sortSelect.value = (globalThis as any)._overviewSort;
-  /* Legacy localStorage value "tiled" -> fall back to "list" since the
-   * switch is now binary (Viz / List). "topology" still accepted. */
-  if ((globalThis as any)._overviewView !== "list" && (globalThis as any)._overviewView !== "topology")
-    (globalThis as any)._overviewView = "list";
+  /* msg#16337: Overview is Viz-only; the List subtab (and its switch
+   * button) has been removed from the template. The remaining controls
+   * (sort / color live in the sidebar, size lives inline here) don't
+   * gate on the view switch. Keep going even when the switch is
+   * absent — skipping early here used to short-circuit the size
+   * dropdown wiring too. */
+  if (sortSelect) sortSelect.value = (globalThis as any)._overviewSort;
+  /* Overview is Viz-only — force the globalThis mirror to "topology"
+   * so row.ts/topology.ts dispatch always lands on the graph branch,
+   * regardless of any stale localStorage value that snuck past the
+   * state.ts migration. */
+  (globalThis as any)._overviewView = "topology";
   if (colorSelect) colorSelect.value = (globalThis as any)._overviewColor;
   if (sizeSelect) sizeSelect.value = (globalThis as any)._topoSizeBy;
   /* Filter input removed — users filter via the global Ctrl+K fuzzy
@@ -26,41 +31,20 @@ export function _wireOverviewControls() {
    * 19: "filtering should be always Ctrl K in the scope"). The module
    * var (globalThis as any)._overviewFilter stays zero so the old filter logic is a no-op. */
   (globalThis as any)._overviewFilter = "";
-  function _setViewBtnActive() {
-    viewSwitch
-      .querySelectorAll(".activity-view-switch-btn")
-      .forEach(function (b) {
-        b.classList.toggle(
-          "active",
-          b.getAttribute("data-view") === (globalThis as any)._overviewView,
-        );
-      });
+  if (sortSelect) {
+    sortSelect.addEventListener("change", function () {
+      (globalThis as any)._overviewSort = sortSelect.value;
+      try {
+        localStorage.setItem("orochi.overviewSort", (globalThis as any)._overviewSort);
+      } catch (_e) {}
+      renderActivityTab();
+      /* The sort dropdown now also drives the sidebar AGENTS list
+       * (ywatanabe 2026-04-21). Re-run fetchAgents on the existing
+       * cached payload so the new order takes effect without waiting
+       * for the next heartbeat. */
+      if (typeof fetchAgents === "function") fetchAgents();
+    });
   }
-  _setViewBtnActive();
-  sortSelect.addEventListener("change", function () {
-    (globalThis as any)._overviewSort = sortSelect.value;
-    try {
-      localStorage.setItem("orochi.overviewSort", (globalThis as any)._overviewSort);
-    } catch (_e) {}
-    renderActivityTab();
-    /* The sort dropdown now also drives the sidebar AGENTS list
-     * (ywatanabe 2026-04-21). Re-run fetchAgents on the existing
-     * cached payload so the new order takes effect without waiting
-     * for the next heartbeat. */
-    if (typeof fetchAgents === "function") fetchAgents();
-  });
-  viewSwitch.addEventListener("click", function (ev) {
-    var btn = ev.target.closest(".activity-view-switch-btn[data-view]");
-    if (!btn) return;
-    var next = btn.getAttribute("data-view");
-    if (next === (globalThis as any)._overviewView) return;
-    (globalThis as any)._overviewView = next;
-    try {
-      localStorage.setItem("orochi.overviewView", (globalThis as any)._overviewView);
-    } catch (_e) {}
-    _setViewBtnActive();
-    renderActivityTab();
-  });
   if (colorSelect) {
     colorSelect.addEventListener("change", function () {
       (globalThis as any)._overviewColor = colorSelect.value;

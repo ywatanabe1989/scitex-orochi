@@ -112,89 +112,17 @@ def orochi(
 
 
 # ── Register subcommands ────────────────────────────────────────
-from scitex_orochi._cli.commands.agent_cmd import (
-    agent_launch,
-    agent_restart,
-    agent_status,
-    agent_stop,
-)
-from scitex_orochi._cli.commands.deploy_cmd import deploy
+# Phase 1d Step C (plan PR #337 §2): the legacy flat verb-noun command
+# names (e.g. ``agent-launch``, ``list-agents``, ``send``) have been
+# removed entirely. Their grace period under interface-cli §5 is over;
+# users who type a removed name now get Click's standard
+# ``Error: No such command 'agent-launch'.`` and exit 2. The canonical
+# noun-verb forms (``agent launch``, ``agent list``, ``message send``,
+# …) are the only entry points.
 from scitex_orochi._cli.commands.docs_cmd import docs
-from scitex_orochi._cli.commands.doctor_cmd import doctor_cmd
-from scitex_orochi._cli.commands.fleet_cmd import fleet
-from scitex_orochi._cli.commands.init_cmd import init_cmd
-from scitex_orochi._cli.commands.launch_cmd import launch
-from scitex_orochi._cli.commands.messaging_cmd import join, listen, login, send
-from scitex_orochi._cli.commands.query_cmd import (
-    list_agents,
-    list_channels,
-    list_members,
-    show_history,
-    show_status,
-)
-from scitex_orochi._cli.commands.report_cmd import report
-from scitex_orochi._cli.commands.server_cmd import serve, setup_push
 from scitex_orochi._cli.commands.skills_cmd import skills
 
-# Agent lifecycle (direct screen-based management)
-orochi.add_command(agent_launch)
-orochi.add_command(agent_restart)
-orochi.add_command(agent_stop)
-orochi.add_command(agent_status)
-
-# Fleet
-orochi.add_command(fleet)
-
-# Messaging
-orochi.add_command(send)
-orochi.add_command(listen)
-orochi.add_command(login)
-orochi.add_command(join)
-
-# Queries
-orochi.add_command(list_agents)
-orochi.add_command(show_status)
-orochi.add_command(list_channels)
-orochi.add_command(list_members)
-orochi.add_command(show_history)
-
-# Server
-orochi.add_command(serve)
-orochi.add_command(doctor_cmd)
-orochi.add_command(setup_push)
-
-from scitex_orochi._cli.commands.stop_cmd import stop as stop_cmd
-
-# Deployment (legacy agent-container based)
-orochi.add_command(init_cmd)
-orochi.add_command(launch)
-orochi.add_command(deploy)
-orochi.add_command(stop_cmd)
-
-# Workspace
-from scitex_orochi._cli.commands.workspace_cmd import (
-    create_invite,
-    create_workspace,
-    delete_workspace,
-    list_invites,
-    list_workspaces,
-)
-
-orochi.add_command(create_workspace)
-orochi.add_command(delete_workspace)
-orochi.add_command(list_workspaces)
-orochi.add_command(create_invite)
-orochi.add_command(list_invites)
-
-# Hook-driven liveness reporting (#143)
-orochi.add_command(report)
-
-# Non-agentic heartbeat pusher (consumes scitex-agent-container CLI)
-from scitex_orochi._cli.commands.heartbeat_cmd import heartbeat_push
-
-orochi.add_command(heartbeat_push)
-
-# Integration
+# Flat keepers (Q5): docs and skills stay flat, no rename.
 orochi.add_command(docs)
 orochi.add_command(skills)
 
@@ -202,6 +130,75 @@ orochi.add_command(skills)
 from scitex_orochi._cli.commands.host_identity_cmd import host_identity
 
 orochi.add_command(host_identity)
+
+# Unified cron daemon (msg#16406 / msg#16410)
+from scitex_orochi._cli.commands.cron_cmd import cron as cron_group
+
+orochi.add_command(cron_group)
+
+# ── Host-side ops (migrated from scripts/client/*.sh) ────────
+from scitex_orochi._cli.commands.chrome_watchdog_cmd import chrome_watchdog
+from scitex_orochi._cli.commands.disk_cmd import disk
+from scitex_orochi._cli.commands.host_liveness_cmd import host_liveness
+from scitex_orochi._cli.commands.hungry_signal_cmd import hungry_signal
+from scitex_orochi._cli.commands.machine_cmd import machine
+
+orochi.add_command(machine)
+orochi.add_command(host_liveness)
+orochi.add_command(hungry_signal)
+orochi.add_command(disk)
+orochi.add_command(chrome_watchdog)
+
+# ── Fleet-coordination verbs (Phase 1c, msg#16477) ───────────
+from scitex_orochi._cli.commands.dispatch_cmd import dispatch as dispatch_group
+from scitex_orochi._cli.commands.todo_cmd import todo as todo_group
+
+orochi.add_command(todo_group)
+orochi.add_command(dispatch_group)
+
+# ── Phase 1d Step A: flat-keeper `mcp start` (Q5, plan PR #337) ─
+# Only mcp-client configs read this literal path, so it stays flat.
+from scitex_orochi._cli.commands.mcp_cmd import mcp as mcp_group
+
+orochi.add_command(mcp_group)
+
+# ── Phase 1d Step C: noun dispatchers with migrated verbs (plan §2, PR #337) ─
+# Click groups for every canonical top-level noun. Verbs have been
+# migrated under them (Step C). Flat legacy verbs now hard-error via
+# the rename table above.
+from scitex_orochi._cli.commands.agent_cmd import agent as agent_group
+from scitex_orochi._cli.commands.auth_cmd import auth as auth_group
+from scitex_orochi._cli.commands.channel_cmd import channel as channel_group
+from scitex_orochi._cli.commands.config_cmd import config as config_group
+from scitex_orochi._cli.commands.hook_cmd import hook as hook_group
+from scitex_orochi._cli.commands.invite_cmd import invite as invite_group
+from scitex_orochi._cli.commands.message_cmd import message as message_group
+from scitex_orochi._cli.commands.push_cmd import push as push_group
+from scitex_orochi._cli.commands.server_cmd import server as server_group
+from scitex_orochi._cli.commands.system_cmd import system as system_group
+from scitex_orochi._cli.commands.workspace_cmd import workspace as workspace_group
+
+orochi.add_command(agent_group)
+orochi.add_command(auth_group)
+orochi.add_command(channel_group)
+orochi.add_command(config_group)
+orochi.add_command(hook_group)
+orochi.add_command(invite_group)
+orochi.add_command(message_group)
+orochi.add_command(push_group)
+orochi.add_command(server_group)
+orochi.add_command(system_group)
+orochi.add_command(workspace_group)
+
+# ── Phase 1d Step A: (Available Now) help-suffix layer ───────
+# Annotates `--help` output of the top-level group with a quiet
+# "(Available Now)" next to each reachable subcommand. See plan §9
+# (PR #337). Top-level was Step A; Step B extends the probe map to
+# cover the new noun groups and applies the same decorator to each
+# of them (so Step C's nested verbs inherit it for free).
+from scitex_orochi._cli._help_availability import annotate_help_with_availability
+
+annotate_help_with_availability(orochi)
 
 
 def main() -> None:

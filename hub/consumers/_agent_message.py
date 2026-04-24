@@ -197,3 +197,19 @@ async def handle_agent_message(consumer, content):
         )
     except Exception:
         log.exception("push fan-out failed (agent path)")
+
+    # Cross-channel @mention push (msg#15767). Best-effort; failures
+    # must never break the parent write. The helper no-ops on DM
+    # channels and on messages without mention tokens.
+    try:
+        from hub.mentions import expand_mentions_and_notify
+
+        await _sta(expand_mentions_and_notify)(
+            workspace_id=consumer.workspace_id,
+            source_channel=ch_name,
+            source_msg_id=msg["id"] if msg else None,
+            sender_username=f"agent-{consumer.agent_name}",
+            text=text,
+        )
+    except Exception:
+        log.exception("mention push fan-out failed (agent path)")

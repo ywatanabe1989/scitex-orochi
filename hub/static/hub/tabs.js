@@ -2,7 +2,12 @@
 /* globals: activeTab, fetchTodoList, renderAgentsTab, renderResourcesTab,
    fetchWorkspaces */
 
-var activeTab = "chat";
+/* Default landing tab — the Overview tab (internal id "activity") is
+ * the leftmost tab and the first-load landing surface. The internal id
+ * stays "activity" even though the user-visible label reads "Overview";
+ * renaming the id would churn every globalThis/SSE key that keys off it
+ * (_overviewExpanded, etc.). */
+var activeTab = "activity";
 
 function _activateTab(tab) {
   activeTab = tab;
@@ -130,23 +135,93 @@ function _activateTab(tab) {
   } catch (_) {}
 }
 
+/* msg#16116 Item 3: cmd-click / middle-click a tab → open in a new
+ * browser tab. See hub/frontend/src/tabs.ts for the full rationale. */
+function _isNewTabClick(ev) {
+  return ev.button === 1 || ev.metaKey || ev.ctrlKey || ev.shiftKey;
+}
 document.querySelectorAll(".tab-btn").forEach(function (btn) {
-  btn.addEventListener("click", function () {
-    var tab = btn.getAttribute("data-tab");
-    if (tab === activeTab) return;
-    _activateTab(tab);
+  var tab = btn.getAttribute("data-tab") || "";
+  if (tab && !btn.hasAttribute("data-href")) {
+    btn.setAttribute("data-href", "#" + tab);
+  }
+  btn.addEventListener("auxclick", function (ev) {
+    if (ev.button !== 1) return;
+    ev.preventDefault();
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    try {
+      window.open(window.location.pathname + "#" + t, "_blank");
+    } catch (_) {}
+  });
+  btn.addEventListener("click", function (ev) {
+    var t = btn.getAttribute("data-tab");
+    if (!t) return;
+    if (_isNewTabClick(ev)) {
+      ev.preventDefault();
+      try {
+        window.open(window.location.pathname + "#" + t, "_blank");
+      } catch (_) {}
+      return;
+    }
+    if (t === activeTab) return;
+    _activateTab(t);
   });
 });
 
-/* Restore last open tab across reloads */
+/* Restore last open tab across reloads.
+ *
+ * Step 3a (Overview promotion): default landing is the Overview tab
+ * (internal id "activity"). If localStorage has a remembered tab AND
+ * its button still exists in the DOM, honor it — otherwise fall back
+ * to Overview. Activating Overview on boot is what makes first paint
+ * land there; we intentionally do NOT rely on inline display:none on
+ * Chat surfaces — _activateTab("activity") hides them imperatively. */
 (function () {
   try {
-    var last = localStorage.getItem("orochi_active_tab");
-    if (last && last !== "chat") {
-      var btn = document.querySelector('.tab-btn[data-tab="' + last + '"]');
-      if (btn) _activateTab(last);
+    /* msg#16116 Item 3: honor #hash for cmd/middle-click new-tab flow. */
+    var hash = "";
+    try {
+      hash = (window.location.hash || "").replace(/^#/, "");
+    } catch (_) {
+      hash = "";
     }
-  } catch (_) {}
+    var last = localStorage.getItem("orochi_active_tab");
+    if (last === "terminal") {
+      last = null;
+    }
+    if (hash === "terminal") {
+      hash = "";
+    }
+    /* msg#16337: Overview loses its Viz/List toggle — users whose
+     * last session was activity + list subview land on the dedicated
+     * Agents tab instead. */
+    if (last === "activity") {
+      try {
+        var _legacyOverviewView = localStorage.getItem("orochi.overviewView");
+        if (_legacyOverviewView === "list" || _legacyOverviewView === "tiled") {
+          last = "agents-tab";
+          localStorage.setItem("orochi.overviewView", "topology");
+          localStorage.setItem("orochi_active_tab", "agents-tab");
+        }
+      } catch (_) {}
+    }
+    var target = hash || last || "activity";
+    /* If the requested tab no longer has a DOM button, fall back to
+     * Overview ("activity"). */
+    var btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
+    if (!btn) {
+      target = "activity";
+      btn = document.querySelector('.tab-btn[data-tab="' + target + '"]');
+    }
+    if (btn) _activateTab(target);
+  } catch (_) {
+    /* Even if localStorage is unavailable (private mode / quota), we
+     * still want to land on Overview. */
+    try {
+      _activateTab("activity");
+    } catch (__) {}
+  }
 })();
 
 /* Collapsible sidebar sections (#321 fix: use data-section for stable keys) */

@@ -286,9 +286,23 @@ def api_channel_members(request, slug=None):
             ).delete()
             return JsonResponse({"status": "ok", "deleted": deleted})
 
-        perm = body.get("permission", "read-write")
-        if perm not in ("read-write", "read-only"):
-            return JsonResponse({"error": "invalid permission"}, status=400)
+        # msg#16884 bit-split body shape. Callers may send either the
+        # legacy ``permission`` enum (still accepted, backwards-compat)
+        # OR the two independent bits ``can_read`` / ``can_write``.
+        # When both are present the bits win — they are the new
+        # authoritative surface, the enum is the one-release deprecation
+        # bridge. Missing bits default to True (full read-write), which
+        # matches the pre-split default.
+        has_can_read = "can_read" in body
+        has_can_write = "can_write" in body
+        if has_can_read or has_can_write:
+            can_read = bool(body.get("can_read", True))
+            can_write = bool(body.get("can_write", True))
+        else:
+            perm = body.get("permission", "read-write")
+            if perm not in ("read-write", "read-only", "write-only"):
+                return JsonResponse({"error": "invalid permission"}, status=400)
+            can_read, can_write = ChannelMembership.perm_to_bits(perm)
 
         # ``#agent`` was abolished 2026-04-21 (lead directive, PR #293
         # follow-up). Block any subscribe/update attempt at the REST layer
@@ -313,17 +327,22 @@ def api_channel_members(request, slug=None):
                 return JsonResponse({"error": "channel not found"}, status=404)
 
         m, created = ChannelMembership.objects.get_or_create(
-            user=user, channel=ch, defaults={"permission": perm}
+            user=user,
+            channel=ch,
+            defaults={"can_read": can_read, "can_write": can_write},
         )
         if not created and request.method == "PATCH":
-            m.permission = perm
-            m.save(update_fields=["permission"])
+            m.can_read = can_read
+            m.can_write = can_write
+            m.save(update_fields=["can_read", "can_write"])
         return JsonResponse(
             {
                 "status": "ok",
                 "username": username,
                 "channel": ch_name,
                 "permission": m.permission,
+                "can_read": m.can_read,
+                "can_write": m.can_write,
                 "created": created,
             }
         )
@@ -339,9 +358,11 @@ def api_channel_members(request, slug=None):
 
     from hub.models import ChannelMembership
 
-    # Explicit memberships
+    # Explicit memberships — keyed by username, carrying the row itself
+    # so the lookup below can surface both the legacy enum AND the new
+    # bits (msg#16884 bit-split) without an extra query.
     memberships = {
-        m.user.username: m.permission
+        m.user.username: m
         for m in ChannelMembership.objects.filter(channel=ch).select_related("user")
     }
     # Only return explicitly subscribed members (not all workspace members).
@@ -357,7 +378,14 @@ def api_channel_members(request, slug=None):
         except WorkspaceMember.DoesNotExist:
             role = ""
         data.append(
-            {"username": uname, "permission": m.permission, "kind": kind, "role": role}
+            {
+                "username": uname,
+                "permission": m.permission,
+                "can_read": m.can_read,
+                "can_write": m.can_write,
+                "kind": kind,
+                "role": role,
+            }
         )
     # Always include human workspace members (ywatanabe etc.) for visibility
     human_members = WorkspaceMember.objects.filter(workspace=workspace).select_related(
@@ -367,11 +395,21 @@ def api_channel_members(request, slug=None):
     for wm in human_members:
         uname = wm.user.username
         if uname not in existing and not uname.startswith("agent-"):
-            perm = memberships.get(uname, "read-write")
+            row = memberships.get(uname)
+            if row is None:
+                perm = "read-write"
+                can_read = True
+                can_write = True
+            else:
+                perm = row.permission
+                can_read = row.can_read
+                can_write = row.can_write
             data.append(
                 {
                     "username": uname,
                     "permission": perm,
+                    "can_read": can_read,
+                    "can_write": can_write,
                     "kind": "human",
                     "role": wm.role,
                 }
@@ -417,6 +455,8 @@ def api_my_subscriptions(request, slug=None):
             "channel": m.channel.name,
             "joined_at": m.joined_at.isoformat() if m.joined_at else None,
             "role": m.permission,
+            "can_read": m.can_read,
+            "can_write": m.can_write,
         }
         for m in memberships
     ]

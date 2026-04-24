@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 from pathlib import Path
 
 _COMPOSE_CHEVRON = "❯"
@@ -26,30 +27,151 @@ _BYPASS_MARKERS = ("Bypass Permissions", "2. Yes, I accept")
 _DEVCHAN_MARKERS = ("1. I am using this for local development",)
 _YN_MARKERS = ("y/n", "[y/N]", "[Y/n]")
 
-# Markers that indicate the agent is actively doing something (busy /
-# animating). When present, the pane is NOT stale regardless of whether
-# the tail bytes changed between samples.
-_BUSY_ANIMATION_MARKERS = (
+# ---------------------------------------------------------------------------
+# Busy-marker groups (2026-04-21 expansion, fix/classifier-busy-markers-expand)
+#
+# Previously this was one opaque tuple of literal substrings. The
+# contradiction-log evidence from `~/.local/state/scitex/fleet-pane-
+# contradictions.log` (81 KB on head-mba, 480 KB on head-ywata-note-win)
+# showed several false-positive stale classifications where the pane
+# tail was byte-identical across cycles *but the agent was alive and
+# deliberating*. The fix is to split the marker set into documented
+# groups — each rationale-commented — so future additions have a clear
+# home and tests can target one group at a time.
+#
+# Semantics: any match in ANY group => pane is NOT stale.
+# ---------------------------------------------------------------------------
+
+# Group A: Claude Code spinner present-tense gerunds.
+# Rationale: the CC TUI rotates through a fixed set of "‑ing" verbs
+# while the model is streaming tokens. Observed variants include
+# Mulling / Pondering / Churning / Roosting / Thinking / Cogitating /
+# Musing / Reflecting / Working / Contemplating / Deliberating /
+# Considering / Analysing / Brewing / Baking / Cooking / Crunching.
+# We keep the bare form (no ellipsis) because tmux capture sometimes
+# drops the trailing … when wrapping.
+_BUSY_SPINNER_GERUNDS = (
     "Mulling",
-    "Mulling…",
-    "Mulling...",
     "Pondering",
-    "Pondering…",
-    "Pondering...",
     "Churning",
-    "Churning…",
-    "Churning...",
     "Roosting",
-    "Roosting…",
     "Thinking",
-    "Thinking…",
     "Cogitating",
     "Musing",
     "Reflecting",
     "Working",
-    "Working…",
-    "Working...",
+    "Contemplating",
+    "Deliberating",
+    "Considering",
+    "Analysing",
+    "Analyzing",
+    "Brewing",
+    "Baking",
+    "Cooking",
+    "Crunching",
+    "Simmering",
+    "Percolating",
+    "Noodling",
+    "Ruminating",
+)
+
+# Group B: Claude Code spinner past-tense "X for Ns" lines.
+# Rationale: immediately AFTER a streaming burst completes the TUI
+# shows `✻ Baked for 40s`, `✻ Brewed for 35s`, `✻ Cogitated for 39s`,
+# `✻ Cooked for 1m 28s` etc. This line is static (doesn't change until
+# the next turn) but absolutely indicates a live agent that just
+# finished thinking — a prime false-positive source for `stale`.
+# Observed verbatim in log: `Baked for`, `Brewed for`, `Cogitated for`,
+# `Cooked for`. Matched as substrings (no regex) because the duration
+# suffix varies.
+_BUSY_SPINNER_PAST_TENSE = (
+    "Baked for",
+    "Brewed for",
+    "Cogitated for",
+    "Cooked for",
+    "Mulled for",
+    "Pondered for",
+    "Churned for",
+    "Roosted for",
+    "Thought for",
+    "Mused for",
+    "Reflected for",
+    "Worked for",
+    "Contemplated for",
+    "Deliberated for",
+    "Considered for",
+    "Analysed for",
+    "Analyzed for",
+    "Crunched for",
     "Crunched",
+    "Simmered for",
+    "Percolated for",
+    "Noodled for",
+    "Ruminated for",
+)
+
+# Group C: "N local agent(s) still running" — strong liveness signal.
+# Rationale: the CC TUI footer shows this when the user has dispatched
+# `Agent(...)` subagents that are still working. Static text but the
+# main session is very much alive, just waiting on children.
+_BUSY_SUBAGENT_MARKERS = (
+    "local agent still running",
+    "local agents still running",
+    "Backgrounded agent",
+)
+
+# Group D: TodoWrite / task-list static views.
+# Rationale: the #1 false-positive class from the contradiction log.
+# When the agent renders its task list (`TodoWrite` output) the pane
+# looks like:
+#     1 tasks (0 done, 1 in progress, 0 open)
+#     ◼ pane-state classifier: 3rd-stale vs 4th-green contradiction dete…
+# The text is perfectly static between cycles (nothing animates) but
+# the agent is mid-deliberation. We match this via regex — the opaque
+# literal-substring approach can't handle the numeric variance.
+# The `_BUSY_ANIMATION_REGEXES` tuple below holds compiled patterns.
+_BUSY_TASK_LIST_MARKERS = (
+    # "◼" checkbox bullet is the distinctive TodoWrite in-progress glyph.
+    # Its presence anywhere in the scan window means the agent is
+    # tracking work — treat as alive.
+    "◼ ",
+)
+
+# Group E: regex patterns for busy markers that vary numerically /
+# temporally. Each entry: (compiled_pattern, human_rationale).
+_BUSY_ANIMATION_REGEXES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (
+        re.compile(r"\d+\s+tasks?\s+\(\d+\s+done,\s+\d+\s+in\s+progress"),
+        "TodoWrite task-list header: 'N tasks (M done, K in progress...)'",
+    ),
+    (
+        re.compile(r"[✻✽✶✳✢✣]\s+[A-Z][a-z]+(?:ed|ted|ked|wed|ned|med|sed)\s+for\s+\d"),
+        "Claude Code past-tense spinner with star glyph ('✻ Baked for 40s')",
+    ),
+    (
+        re.compile(r"[✻✽✶✳✢✣]\s+[A-Z][a-z]+(?:ing|ling|ning|ming|ting|king)\b"),
+        "Claude Code present-tense spinner with star glyph ('✻ Mulling…')",
+    ),
+    (
+        re.compile(r"\(esc to interrupt\)"),
+        "Streaming-in-progress hint (redundant with _PROGRESS_MARKERS but cheap)",
+    ),
+    (
+        re.compile(r"Press up to edit queued messages?"),
+        "Queued-message hint — implies active session with pending work",
+    ),
+)
+
+# Consolidated literal-substring marker tuple (A + B + C + D + legacy).
+# Kept as a module-level attribute for back-compat with any caller that
+# imports `_BUSY_ANIMATION_MARKERS` directly (e.g. tests).
+_BUSY_ANIMATION_MARKERS: tuple[str, ...] = (
+    *_BUSY_SPINNER_GERUNDS,
+    *(f"{g}…" for g in _BUSY_SPINNER_GERUNDS),
+    *(f"{g}..." for g in _BUSY_SPINNER_GERUNDS),
+    *_BUSY_SPINNER_PAST_TENSE,
+    *_BUSY_SUBAGENT_MARKERS,
+    *_BUSY_TASK_LIST_MARKERS,
     "Press up to edit queued messages",
 )
 
@@ -101,13 +223,29 @@ def _extract_compose_text(tail: str) -> str:
 
 
 def _has_busy_animation(hay: str) -> bool:
-    """True when the pane shows a busy-animation marker (mulling / working / …).
+    """True when the pane shows a busy-animation / known-alive marker.
 
-    Conservative: if *any* animation-style keyword appears in the scan
-    window we consider the pane busy and therefore NOT stale, even when
-    the bytes didn't change between two samples.
+    Checks in this order (cheapest first):
+      1. Literal substrings from `_BUSY_ANIMATION_MARKERS` — the union
+         of groups A (present-tense gerunds), B (past-tense "X for Ns"),
+         C (subagent markers) and D (task-list bullets).
+      2. Compiled regexes from `_BUSY_ANIMATION_REGEXES` — handle the
+         TodoWrite task-list header and star-glyph spinner variants
+         where numerics / verb tense prevent a pure literal match.
+
+    Conservative: if *any* marker matches in the scan window we consider
+    the pane busy and therefore NOT stale, even when the bytes didn't
+    change between two samples. Rationale: false-negative (missing a
+    busy marker) → user sees a spurious `stale` LED; false-positive
+    (over-matching) → user sees a missed stall. The latter is recoverable
+    via the 10-minute heartbeat timeout; the former spams the dashboard.
     """
-    return any(m in hay for m in _BUSY_ANIMATION_MARKERS)
+    if any(m in hay for m in _BUSY_ANIMATION_MARKERS):
+        return True
+    for pattern, _rationale in _BUSY_ANIMATION_REGEXES:
+        if pattern.search(hay):
+            return True
+    return False
 
 
 def _pane_digest(tail_clean: str, full_pane: str) -> str:
