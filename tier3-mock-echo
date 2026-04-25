@@ -138,7 +138,12 @@ async def main() -> int:
     # Cloudflare BIC (Browser Integrity Check) rejects WS handshakes
     # whose User-Agent doesn't look browser-like; set a Mozilla UA so
     # the proxied tunnel passes the upgrade through to the origin.
-    extra = {"User-Agent": "Mozilla/5.0 (compatible; scitex-orochi mock-echo)"}
+    extra = {
+        "User-Agent": (
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
     async with websockets.connect(url, additional_headers=extra) as ws:
         print(f"[mock-echo] connected as agent={AGENT_NAME}")
         async for raw in ws:
