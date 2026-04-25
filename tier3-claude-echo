@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+"""tier3-claude-echo — Tier 3 dispatch test against a real Claude Code CLI.
+
+Same WebSocket + HTTP-reply pattern as ``tier3-mock-echo``, but on
+inbound ``a2a.dispatch`` runs ``claude --print`` (one-shot mode) with
+the user's text and forwards Claude's stdout as the A2A reply.
+
+This is the minimal evidence that the dispatch bridge can drive a
+real LLM agent end-to-end:
+
+    A2A caller → a2a.scitex.ai (NAS Django, bearer-auth)
+              → scitex-orochi.com (orochi hub Channels group_send)
+              → AgentConsumer.a2a_dispatch (WS frame)
+              → THIS script (claude --print)
+              → /api/a2a/reply/ (unblocks dispatch waiter)
+              → 200 to caller
+
+Env vars (same shape as tier3-mock-echo):
+    SCITEX_OROCHI_HUB_URL    base URL, default https://scitex-orochi.com
+    SCITEX_OROCHI_WS_URL     ws/wss URL, default wss://scitex-orochi.com/ws/agent/
+    SCITEX_OROCHI_WS_TOKEN   workspace token (required)
+    SCITEX_OROCHI_WS_NAME    agent name, default claude-echo
+    CLAUDE_BIN               path to claude CLI, default `claude`
+    CLAUDE_MODEL             optional --model override
+    CLAUDE_TIMEOUT_S         per-call timeout, default 25
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+
+import websockets
+
+HUB_URL = os.environ.get("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com").rstrip("/")
+WS_URL = os.environ.get("SCITEX_OROCHI_WS_URL", "wss://scitex-orochi.com/ws/agent/")
+WS_TOKEN = os.environ.get("SCITEX_OROCHI_WS_TOKEN", "")
+AGENT_NAME = os.environ.get("SCITEX_OROCHI_WS_NAME", "claude-echo")
+CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "")
+CLAUDE_TIMEOUT_S = float(os.environ.get("CLAUDE_TIMEOUT_S", "25"))
+
+REPLY_URL = f"{HUB_URL}/api/a2a/reply/"
+
+SYSTEM_PROMPT = (
+    "You are a brief responder. Reply to the user in one or two short "
+    "sentences. Do not run any tools, do not ask follow-up questions."
+)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _run_claude(text: str) -> tuple[bool, str]:
+    """Run ``claude --print`` once with ``text``. Return (ok, response)."""
+    cmd = [CLAUDE_BIN, "--print", "--append-system-prompt", SYSTEM_PROMPT]
+    if CLAUDE_MODEL:
+        cmd.extend(["--model", CLAUDE_MODEL])
+    try:
+        res = subprocess.run(
+            cmd,
+            input=text,
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT_S,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"claude CLI timeout after {CLAUDE_TIMEOUT_S:.0f}s"
+    except FileNotFoundError:
+        return False, f"claude CLI not found at {CLAUDE_BIN!r}"
+    if res.returncode != 0:
+        return False, (
+            f"claude CLI failed (rc={res.returncode}): "
+            f"{res.stderr.strip()[:300]}"
+        )
+    return True, res.stdout.strip() or "(empty response)"
+
+
+def _build_reply(reply_id: str, body: dict) -> dict:
+    rpc_id = body.get("id")
+    method = body.get("method", "tasks/send")
+    params = body.get("params", {}) or {}
+    if method != "tasks/send":
+        return {
+            "reply_id": reply_id,
+            "result": {
+                "jsonrpc": "2.0",
+                "id": rpc_id,
+                "error": {
+                    "code": -32601,
+                    "message": (
+                        f"claude-echo only handles tasks/send (got {method})"
+                    ),
+                },
+            },
+        }
+    msg = params.get("message", {}) or {}
+    parts = msg.get("parts") or []
+    user_text = next(
+        (p.get("text", "") for p in parts if p.get("type") == "text"),
+        "",
+    )
+
+    ok, response = _run_claude(user_text)
+    return {
+        "reply_id": reply_id,
+        "result": {
+            "jsonrpc": "2.0",
+            "id": rpc_id,
+            "result": {
+                "id": f"claude-{reply_id[:12]}",
+                "sessionId": params.get("sessionId"),
+                "status": {
+                    "state": "completed" if ok else "failed",
+                    "message": None if ok else {"text": response},
+                    "timestamp": _now_iso(),
+                },
+                "history": [
+                    msg,
+                    {
+                        "role": "agent",
+                        "parts": [{"type": "text", "text": response}],
+                    },
+                ],
+                "artifacts": [],
+                "metadata": {
+                    "x-orochi": {
+                        "agent": AGENT_NAME,
+                        "runtime": "tier3-claude-cli",
+                        "served_by": "orochi-hub",
+                        "claude_ok": ok,
+                        "generated_at": _now_iso(),
+                    }
+                },
+            },
+        },
+    }
+
+
+def _post_reply(payload: dict) -> tuple[int, str]:
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        REPLY_URL,
+        data=data,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ),
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
+            return resp.status, resp.read().decode()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode()
+    except (urllib.error.URLError, OSError) as exc:
+        return 0, str(exc)
+
+
+async def main() -> int:
+    if not WS_TOKEN:
+        print("error: SCITEX_OROCHI_WS_TOKEN is required", file=sys.stderr)
+        return 2
+    url = f"{WS_URL}?token={WS_TOKEN}&agent={AGENT_NAME}"
+    print(f"[claude-echo] connecting to {url.split('?')[0]}...")
+    extra = {
+        "User-Agent": (
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
+    }
+    async with websockets.connect(url, additional_headers=extra) as ws:
+        print(f"[claude-echo] connected as agent={AGENT_NAME}")
+        async for raw in ws:
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if msg.get("type") != "a2a.dispatch":
+                continue
+            reply_id = msg.get("reply_id") or ""
+            body = msg.get("body") or {}
+            print(f"[claude-echo] dispatching reply_id={reply_id[:8]}", flush=True)
+            payload = _build_reply(reply_id, body)
+            code, _ = _post_reply(payload)
+            print(f"[claude-echo]   -> reply HTTP {code}", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))
