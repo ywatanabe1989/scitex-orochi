@@ -135,7 +135,11 @@ async def main() -> int:
         return 2
     url = f"{WS_URL}?token={WS_TOKEN}&agent={AGENT_NAME}"
     print(f"[mock-echo] connecting to {url.split('?')[0]}...")
-    async with websockets.connect(url) as ws:
+    # Cloudflare BIC (Browser Integrity Check) rejects WS handshakes
+    # whose User-Agent doesn't look browser-like; set a Mozilla UA so
+    # the proxied tunnel passes the upgrade through to the origin.
+    extra = {"User-Agent": "Mozilla/5.0 (compatible; scitex-orochi mock-echo)"}
+    async with websockets.connect(url, additional_headers=extra) as ws:
         print(f"[mock-echo] connected as agent={AGENT_NAME}")
         async for raw in ws:
             try:
