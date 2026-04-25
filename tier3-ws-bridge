@@ -29,6 +29,10 @@ Env vars:
     SCITEX_OROCHI_WS_TOKEN   workspace token (required)
     SCITEX_OROCHI_WS_NAME    agent name as it appears in v3 YAML (required)
     SCITEX_OROCHI_WS_HANDLER one of {echo, claude_cli, exec}, default echo
+    SCITEX_OROCHI_WS_A2A_URL optional; if set, this URL is registered as
+                             this agent's a2a_url so the hub can prefer
+                             HTTP-direct dispatch for same-host calls
+                             (Tier 3 same-host optimization)
     CLAUDE_BIN               claude CLI path, default `claude` (claude_cli only)
     CLAUDE_MODEL             optional --model override (claude_cli only)
     CLAUDE_TIMEOUT_S         per-call timeout, default 25 (claude_cli only)
@@ -55,6 +59,7 @@ WS_URL = os.environ.get("SCITEX_OROCHI_WS_URL", "wss://scitex-orochi.com/ws/agen
 WS_TOKEN = os.environ.get("SCITEX_OROCHI_WS_TOKEN", "")
 AGENT_NAME = os.environ.get("SCITEX_OROCHI_WS_NAME", "")
 HANDLER_NAME = os.environ.get("SCITEX_OROCHI_WS_HANDLER", "echo")
+A2A_URL = os.environ.get("SCITEX_OROCHI_WS_A2A_URL", "")
 
 REPLY_URL = f"{HUB_URL}/api/a2a/reply/"
 
@@ -228,6 +233,26 @@ async def main() -> int:
 
     async with websockets.connect(url, additional_headers={"User-Agent": CHROME_UA}) as ws:
         print(f"[ws-bridge] connected as agent={AGENT_NAME}")
+        # Register frame — tells the hub our agent_meta, including
+        # the optional a2a_url for Tier 3 same-host HTTP-direct
+        # dispatch. Hub falls back to WS if the URL is empty/unreachable.
+        register_frame = {
+            "type": "register",
+            "payload": {
+                "agent_id": AGENT_NAME,
+                "role": _runtime_label().replace("tier3-", ""),
+                "model": "tier3-bridge",
+                "machine": os.environ.get("SCITEX_OROCHI_MACHINE", ""),
+                "channels": [],
+                "a2a_url": A2A_URL,
+            },
+        }
+        await ws.send(json.dumps(register_frame))
+        print(
+            f"[ws-bridge] registered (handler={HANDLER_NAME}, "
+            f"a2a_url={A2A_URL or 'none'})"
+        )
+
         async for raw in ws:
             try:
                 msg = json.loads(raw)

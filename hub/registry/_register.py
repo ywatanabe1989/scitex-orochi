@@ -72,8 +72,16 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # name (the ghost-mba bug from #256). Preserved — a new
             # instance_id from a heartbeat means a different process
             # took over (or a fast restart happened).
-            "instance_id": info.get("instance_id", "")
-            or prev.get("instance_id", ""),
+            "instance_id": info.get("instance_id", "") or prev.get("instance_id", ""),
+            # A2A protocol surface URL for this agent (Tier 3 same-host
+            # optimization). When present and reachable, the hub's A2A
+            # dispatch view (api_a2a_dispatch) HTTP-POSTs directly to
+            # this URL instead of going through WS group_send. Empty
+            # string means "WS-only routing"; agents without a sidecar
+            # A2A server omit this and the hub falls back to WS.
+            # Preserved across re-registers — same prev-preserve pattern
+            # as instance_id.
+            "a2a_url": info.get("a2a_url", "") or prev.get("a2a_url", ""),
             # Whether this instance considers itself a non-primary
             # proxy (rank > 0 in its YAML priority list). True means
             # the agent should be silent in public channels per
@@ -414,8 +422,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # that don't emit the field yet don't wipe it.
             "sac_status": (
                 dict(info.get("sac_status"))
-                if isinstance(info.get("sac_status"), dict)
-                and info.get("sac_status")
+                if isinstance(info.get("sac_status"), dict) and info.get("sac_status")
                 else prev.get("sac_status") or {}
             ),
             # Orochi unified cron state (msg#16406 / msg#16408 Phase 2).

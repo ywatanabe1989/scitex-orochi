@@ -4,20 +4,29 @@ Wires the canonical A2A capability surface at ``a2a.scitex.ai`` into
 the running fleet of agents on the orochi hub:
 
 * :func:`api_a2a_dispatch` — POST entry: NAS Django proxies inbound
-  A2A JSON-RPC here; the hub fans out to the target agent's WebSocket
-  consumer via the per-agent Channels group, then blocks until either
-  the agent posts a reply or the timeout fires.
-* :func:`api_a2a_reply` — POST callback: the agent's MCP side calls
-  this to deliver the reply, which unblocks the dispatch waiter.
+  A2A JSON-RPC here. Two transports, in priority order:
 
-Reply correlation uses an in-process ``asyncio.Event`` map keyed by a
-random ``reply_id``. This works because the hub today is a single
-process; if it ever scales horizontally, the map moves to Redis pub/sub.
+  1. **HTTP-direct (Tier 3 same-host optimization)** — if the registry
+     has an ``a2a_url`` for the agent, the hub HTTPs directly there
+     with a short timeout. Fast path; no WS round-trip, no reply
+     correlation. Used when the agent runs a sidecar A2A server (sac
+     ``spec.a2a.port`` or tier3-ws-bridge with announced url).
+  2. **WS dispatch (cross-host fallback)** — fall back to the
+     persistent WebSocket transport: ``group_send`` to the per-agent
+     Channels group, agent receives, processes, POSTs back to
+     ``api_a2a_reply``, the dispatch waiter unblocks. Required for
+     agents behind NAT (most fleet hosts) since outbound-WS is the
+     only universal transport without per-agent tunnel ops.
 
-For Tier 3 mock (mock-echo) the agent is a tiny Python WS client that
-joins ``agent_<ws_id>_mock-echo`` and replies on receipt. The same code
-path serves real Claude Code agents once they grow an A2A-dispatch
-handler in their MCP channel.
+* :func:`api_a2a_reply` — POST callback for the WS path: the agent's
+  WS-bridge calls this to deliver the reply, which unblocks the
+  dispatch waiter.
+
+Reply correlation (WS path only) uses an in-process ``asyncio.Event``
+map keyed by a random ``reply_id``. This works because the hub today
+is a single process; if it ever scales horizontally, the map moves
+to Redis pub/sub. The HTTP-direct path doesn't need this — the agent
+returns the response synchronously.
 """
 
 from __future__ import annotations
@@ -27,6 +36,8 @@ import json
 import logging
 import secrets
 import time
+import urllib.error
+import urllib.request
 from typing import Any
 
 from asgiref.sync import async_to_sync
@@ -43,6 +54,24 @@ log = logging.getLogger("orochi.a2a")
 _PENDING: dict[str, dict[str, Any]] = {}
 
 DISPATCH_TIMEOUT_SECONDS = 30.0
+HTTP_DIRECT_TIMEOUT_SECONDS = 25.0
+
+
+def _try_http_direct(a2a_url: str, body: dict[str, Any]) -> tuple[bool, dict | None]:
+    """Try HTTP POST to the agent's a2a_url. Return (ok, parsed_response)."""
+    try:
+        data = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(
+            a2a_url,
+            data=data,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=HTTP_DIRECT_TIMEOUT_SECONDS) as resp:
+            return True, json.loads(resp.read())
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError) as exc:
+        log.info("a2a HTTP-direct to %s failed: %s — falling back to WS", a2a_url, exc)
+        return False, None
 
 
 def _agent_group(workspace_id: int, agent: str) -> str:
@@ -83,6 +112,19 @@ def api_a2a_dispatch(request, slug: str, agent: str):
         body = json.loads(request.body.decode() or "{}")
     except (json.JSONDecodeError, ValueError) as exc:
         return JsonResponse({"error": f"bad JSON: {exc}"}, status=400)
+
+    # Tier 3 same-host optimization: if the registry has an a2a_url
+    # for this agent, try HTTP-direct first. WS dispatch remains the
+    # cross-host fallback transport.
+    from hub.registry import _agents  # in-memory registry
+
+    reg_entry = _agents.get(agent) or {}
+    a2a_url = (reg_entry.get("a2a_url") or "").strip()
+    if a2a_url:
+        ok, http_result = _try_http_direct(a2a_url, body)
+        if ok and http_result is not None:
+            return JsonResponse(http_result, json_dumps_params={"ensure_ascii": False})
+        # Else fall through to WS dispatch (logged inside _try_http_direct).
 
     reply_id = secrets.token_urlsafe(16)
     event = asyncio.Event()

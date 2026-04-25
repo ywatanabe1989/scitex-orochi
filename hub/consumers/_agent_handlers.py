@@ -64,6 +64,13 @@ async def handle_register(consumer, content):
         "multiplexer": payload.get("multiplexer", ""),
         "channels": channels,
         "claude_md": payload.get("claude_md", ""),
+        # A2A protocol surface URL for this agent (Tier 3 same-host
+        # optimization). Agents that run a sidecar A2A server (sac
+        # `spec.a2a.port` or tier3-ws-bridge with SCITEX_OROCHI_WS_A2A_URL)
+        # report it here. The hub's A2A dispatch view (api_a2a_dispatch)
+        # tries this URL first before falling back to WS group_send.
+        # Empty string → WS-only routing.
+        "a2a_url": payload.get("a2a_url", ""),
     }
 
     from hub.registry import register_agent
