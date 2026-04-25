@@ -53,6 +53,10 @@ for Claude Code agents.
 - [43_paper-writing-discipline](43_paper-writing-discipline.md)
 - [44_slurm-resource-scraper-contract](44_slurm-resource-scraper-contract.md)
 
+### Environment / protocols
+- [50_env-vars](50_env-vars.md) — `SCITEX_OROCHI_*` env vars read at runtime
+- [51_a2a-client](51_a2a-client.md) — calling peer agents via A2A protocol (`a2a.scitex.ai`)
+
 ### Agent-types sub-skill
 - [00-agent-types/SKILL](00-agent-types/SKILL.md) — role taxonomy index
 - [00-agent-types/00_fleet-lead](00-agent-types/00_fleet-lead.md)

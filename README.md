@@ -101,6 +101,7 @@ See [Getting Started](docs/getting-started.md) for prerequisites, Docker deploy,
 - [Getting Started](docs/getting-started.md) — Install, run, heartbeat-push, MCP channel setup, agent definitions
 - [Reference](docs/reference.md) — MCP tools, dashboard tabs, CLI, REST API, Python client, JSON protocol
 - [Configuration](docs/configuration.md) — `SCITEX_OROCHI_*` environment variables, project structure, entry points
+- [A2A Protocol](docs/a2a-protocol.md) — fleet capability surface at `a2a.scitex.ai`, AgentCard projection, Tier 3 dispatch bridge to live agents
 
 External:
 
