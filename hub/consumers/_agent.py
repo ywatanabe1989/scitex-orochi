@@ -85,6 +85,12 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_group = f"workspace_{self.workspace_id}"
         await self.channel_layer.group_add(self.workspace_group, self.channel_name)
 
+        # Per-agent group — addressable by api/agents/<name>/(un)subscribe and
+        # the A2A dispatch bridge (api_a2a_dispatch). Matches the naming used
+        # by hub.views.api._a2a_dispatch._agent_group.
+        self.agent_group = f"agent_{self.workspace_id}_{self.agent_name}"
+        await self.channel_layer.group_add(self.agent_group, self.channel_name)
+
         # Spec v3 §3.1 — auto-subscribe to all DM channels the agent is
         # a participant of. The canonical DM channel name is stored on
         # ``agent_meta["channels"]`` (populated/extended at register time)
@@ -301,6 +307,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
+            if hasattr(self, "agent_group"):
+                await self.channel_layer.group_discard(
+                    self.agent_group, self.channel_name
+                )
             log.info("Agent %s disconnected", agent_name)
 
     async def receive_json(self, content, **kwargs):

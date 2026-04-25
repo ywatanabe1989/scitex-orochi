@@ -51,13 +51,18 @@ def _agent_group(workspace_id: int, agent: str) -> str:
 
 
 def _resolve_workspace_id(slug_or_id: str) -> int | None:
-    """Resolve a workspace slug or numeric id to its DB id."""
+    """Resolve a workspace name or numeric id to its DB id.
+
+    The Workspace model has no ``slug`` field — the URL kwarg is named
+    ``slug`` for parity with other ``api/workspace/<slug:slug>/...``
+    routes, but the DB lookup is by ``name``.
+    """
     from hub.models import Workspace
 
     if slug_or_id.isdigit():
         ws = Workspace.objects.filter(id=int(slug_or_id)).first()
     else:
-        ws = Workspace.objects.filter(slug=slug_or_id).first()
+        ws = Workspace.objects.filter(name=slug_or_id).first()
     return ws.id if ws else None
 
 
