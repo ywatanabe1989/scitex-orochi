@@ -44,3 +44,5 @@ export {
   handleSelfCommand,
   isSafeForSelfCommand,
 } from "./tools/self_command.js";
+
+export { handleA2aCall } from "./tools/a2a.js";

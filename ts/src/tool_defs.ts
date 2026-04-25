@@ -417,7 +417,7 @@ export const TOOL_DEFS = [
       "Mirrors the ``GET /api/cron/`` endpoint that powers the Machines " +
       "tab cron panel, exposed via MCP so any agent can observe daemon " +
       "state without scraping the dashboard. Returns " +
-      "``{\"hosts\": {<machine>: {agent, last_heartbeat_at, stale, " +
+      '``{"hosts": {<machine>: {agent, last_heartbeat_at, stale, ' +
       "jobs}}}``. Optional ``host`` arg filters to a single host " +
       "server-side. Workspace-scoped via the MCP sidecar's token; " +
       "read-only.",
@@ -460,6 +460,41 @@ export const TOOL_DEFS = [
         },
       },
       required: ["chat_id"],
+    },
+  },
+  {
+    name: "a2a_call",
+    description:
+      "Call a peer agent via the A2A protocol (POST JSON-RPC to https://a2a.scitex.ai/v1/agents/<agent>). Bearer token is read from disk by the MCP server; never enters the agent transcript. Default method is tasks/send.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        agent: {
+          type: "string",
+          description:
+            "Target agent id (e.g. 'lead', 'mgr-scitex', 'head-mba').",
+        },
+        method: {
+          type: "string",
+          description:
+            "JSON-RPC method. Default: tasks/send. Other supported: tasks/get.",
+        },
+        text: {
+          type: "string",
+          description:
+            "Convenience for tasks/send: wrapped as message.parts[0].text. Ignored if 'params' is set.",
+        },
+        task_id: {
+          type: "string",
+          description: "Task id for tasks/get. Ignored if 'params' is set.",
+        },
+        params: {
+          type: "object",
+          description:
+            "Raw JSON-RPC params. Overrides text/task_id if provided. Use for advanced calls.",
+        },
+      },
+      required: ["agent"],
     },
   },
 ];
