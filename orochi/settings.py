@@ -171,12 +171,25 @@ TEMPLATES = [
 WSGI_APPLICATION = "orochi.wsgi.application"
 ASGI_APPLICATION = "orochi.asgi.application"
 
-# Channel layers — in-memory for dev, Redis for production
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
-    },
-}
+# Channel layer choice — Redis when ``REDIS_URL`` is set, otherwise
+# in-memory. The in-memory layer is a single-loop queue and does NOT
+# deliver between Django ASGI async views and Channels consumers in
+# this daphne setup; ``api_a2a_dispatch`` requires Redis to round-trip
+# group_send → consumer → reply. Production deploys MUST set REDIS_URL.
+_REDIS_URL = os.environ.get("REDIS_URL", "").strip()
+if _REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [_REDIS_URL]},
+        },
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
 
 # Database — SQLite for simplicity, PostgreSQL for production
 _db_path = os.environ.get("SCITEX_OROCHI_DB_PATH", str(BASE_DIR / "db.sqlite3"))

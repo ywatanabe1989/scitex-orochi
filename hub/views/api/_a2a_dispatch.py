@@ -40,7 +40,7 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from asgiref.sync import async_to_sync
+from channels.db import database_sync_to_async
 from channels.layers import get_channel_layer
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -79,6 +79,7 @@ def _agent_group(workspace_id: int, agent: str) -> str:
     return f"agent_{workspace_id}_{agent}"
 
 
+@database_sync_to_async
 def _resolve_workspace_id(slug_or_id: str) -> int | None:
     """Resolve a workspace name or numeric id to its DB id.
 
@@ -97,14 +98,18 @@ def _resolve_workspace_id(slug_or_id: str) -> int | None:
 
 @csrf_exempt
 @require_POST
-def api_a2a_dispatch(request, slug: str, agent: str):
+async def api_a2a_dispatch(request, slug: str, agent: str):
     """Forward an A2A JSON-RPC body to ``agent`` on workspace ``slug``.
 
     Body: the raw A2A JSON-RPC envelope (``{jsonrpc, id, method, params}``).
     Returns: the agent's JSON-RPC reply, or 504 on timeout, or 404 if
     the agent is not currently connected.
+
+    Async-native because ``InMemoryChannelLayer`` only delivers within a
+    single event loop; a sync view bridging via ``async_to_sync`` opens
+    a fresh loop per call and the consumer never sees the message.
     """
-    ws_id = _resolve_workspace_id(slug)
+    ws_id = await _resolve_workspace_id(slug)
     if ws_id is None:
         return JsonResponse({"error": f"workspace not found: {slug}"}, status=404)
 
@@ -115,13 +120,14 @@ def api_a2a_dispatch(request, slug: str, agent: str):
 
     # Tier 3 same-host optimization: if the registry has an a2a_url
     # for this agent, try HTTP-direct first. WS dispatch remains the
-    # cross-host fallback transport.
+    # cross-host fallback transport. ``_try_http_direct`` uses blocking
+    # urllib; run it on a worker thread so the event loop stays free.
     from hub.registry import _agents  # in-memory registry
 
     reg_entry = _agents.get(agent) or {}
     a2a_url = (reg_entry.get("a2a_url") or "").strip()
     if a2a_url:
-        ok, http_result = _try_http_direct(a2a_url, body)
+        ok, http_result = await asyncio.to_thread(_try_http_direct, a2a_url, body)
         if ok and http_result is not None:
             return JsonResponse(http_result, json_dumps_params={"ensure_ascii": False})
         # Else fall through to WS dispatch (logged inside _try_http_direct).
@@ -137,7 +143,7 @@ def api_a2a_dispatch(request, slug: str, agent: str):
 
     group = _agent_group(ws_id, agent)
     try:
-        async_to_sync(layer.group_send)(
+        await layer.group_send(
             group,
             {
                 "type": "a2a.dispatch",
@@ -150,15 +156,12 @@ def api_a2a_dispatch(request, slug: str, agent: str):
         log.exception("a2a dispatch group_send failed: %s", exc)
         return JsonResponse({"error": f"dispatch failed: {exc}"}, status=502)
 
-    async def _await_reply() -> dict[str, Any] | None:
+    try:
         try:
             await asyncio.wait_for(event.wait(), timeout=DISPATCH_TIMEOUT_SECONDS)
-            return _PENDING[reply_id]["value"]
+            result = _PENDING[reply_id]["value"]
         except asyncio.TimeoutError:
-            return None
-
-    try:
-        result = async_to_sync(_await_reply)()
+            result = None
     finally:
         _PENDING.pop(reply_id, None)
 
@@ -178,12 +181,15 @@ def api_a2a_dispatch(request, slug: str, agent: str):
 
 @csrf_exempt
 @require_POST
-def api_a2a_reply(request):
+async def api_a2a_reply(request):
     """Agent-side callback: deliver an A2A reply by ``reply_id``.
 
     Body: ``{"reply_id": "...", "result": {...JSON-RPC body...}}``.
     The matching :func:`api_a2a_dispatch` waiter unblocks and returns
     the ``result`` to its caller.
+
+    Async to share the event loop with the dispatch waiter — setting a
+    plain ``asyncio.Event`` only wakes coroutines on the same loop.
     """
     try:
         body = json.loads(request.body.decode() or "{}")
