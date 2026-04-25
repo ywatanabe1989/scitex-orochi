@@ -54,23 +54,36 @@ api_a2a_dispatch waiter unblocks → returns the reply as 200 to NAS
 NAS returns the same body to the original caller
 ```
 
-## Reference implementations
+## Reference implementation
 
-Two minimal Python WS clients live at the repo root and prove the bridge works without involving sac/Claude Code:
+A single parameterised Python WS client at the repo root proves the bridge works without involving sac/Claude Code:
 
-| Script | What it does |
-| --- | --- |
-| [`tier3-mock-echo`](../tier3-mock-echo) | canned A2A echo reply — used as the smoke-test agent |
-| [`tier3-claude-echo`](../tier3-claude-echo) | runs `claude --print` on the user message and forwards stdout — proves real-LLM dispatch |
+[`tier3-ws-bridge`](../tier3-ws-bridge) — connects to the orochi hub WS as a regular agent, on inbound `a2a.dispatch` runs the configured handler (`echo` / `claude_cli` / `exec`) to produce a reply, POSTs it via `/api/a2a/reply/`. Replaces the earlier `tier3-mock-echo` + `tier3-claude-echo` pair (371 lines combined) with one parameterised script (~180 lines).
 
-Both connect to the orochi hub WS as a regular agent (with a workspace token), join the per-agent Channels group, and post replies via `/api/a2a/reply/`.
-
-Run locally:
+Run locally with either handler:
 
 ```bash
-SCITEX_OROCHI_WS_TOKEN=<workspace-token> ./tier3-mock-echo
-SCITEX_OROCHI_WS_TOKEN=<workspace-token> ./tier3-claude-echo
+# Canned echo reply (smoke test, zero deps)
+SCITEX_OROCHI_WS_TOKEN=<workspace-token> \
+SCITEX_OROCHI_WS_NAME=mock-echo \
+SCITEX_OROCHI_WS_HANDLER=echo \
+  ./tier3-ws-bridge
+
+# Real Claude CLI dispatch (requires `claude` on PATH)
+SCITEX_OROCHI_WS_TOKEN=<workspace-token> \
+SCITEX_OROCHI_WS_NAME=claude-echo \
+SCITEX_OROCHI_WS_HANDLER=claude_cli \
+  ./tier3-ws-bridge
+
+# Custom handler script (BRIDGE_EXEC_COMMAND receives user text on stdin)
+SCITEX_OROCHI_WS_TOKEN=<workspace-token> \
+SCITEX_OROCHI_WS_NAME=my-agent \
+SCITEX_OROCHI_WS_HANDLER=exec \
+BRIDGE_EXEC_COMMAND=/path/to/my-handler.sh \
+  ./tier3-ws-bridge
 ```
+
+The handler vocabulary mirrors `sac a2a serve --handler` (see [scitex-agent-container `_skills/07_a2a-protocol.md`](https://github.com/ywatanabe1989/scitex-agent-container/blob/develop/src/scitex_agent_container/_skills/scitex-agent-container/07_a2a-protocol.md)). Long-term goal is to import sac's handlers directly here; presently inlined to keep `scitex-orochi` independent of `scitex-agent-container`.
 
 Verify from any host with internet:
 
