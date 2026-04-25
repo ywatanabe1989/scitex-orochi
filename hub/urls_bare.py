@@ -174,6 +174,19 @@ urlpatterns = [
         views.api_agents_register,
         name="api-agents-register",
     ),
+    # A2A protocol dispatch bridge (Tier 3): NAS Django proxies inbound
+    # A2A JSON-RPC here; the hub forwards via the per-agent Channels
+    # group to the agent's WebSocket and blocks awaiting the reply.
+    path(
+        "api/a2a/dispatch/<slug:slug>/<str:agent>/",
+        views.api_a2a_dispatch,
+        name="api-a2a-dispatch-bare",
+    ),
+    path(
+        "api/a2a/reply/",
+        views.api_a2a_reply,
+        name="api-a2a-reply-bare",
+    ),
     # Admin subscribe/unsubscribe — issue #262 §9.1. Mirrored on the bare
     # domain so MCP sidecars (which default to the apex) can hit the
     # admin path without a subdomain.

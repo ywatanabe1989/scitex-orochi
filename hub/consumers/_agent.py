@@ -423,6 +423,25 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
     async def system_message(self, event):
         pass
 
+    async def a2a_dispatch(self, event):
+        """A2A dispatch envelope from the hub bridge — forward to WS.
+
+        Triggered by ``group_send(agent_<ws>_<name>, {"type":"a2a.dispatch",
+        "reply_id":..., "body":...})`` in
+        :func:`hub.views.api._a2a_dispatch.api_a2a_dispatch`.
+
+        The agent's MCP side handles this WS frame, calls its own
+        a2a-handler logic, then POSTs the reply to ``/api/a2a/reply/``
+        with the same ``reply_id`` to unblock the bridge waiter.
+        """
+        await self.send_json(
+            {
+                "type": "a2a.dispatch",
+                "reply_id": event.get("reply_id"),
+                "body": event.get("body"),
+            }
+        )
+
     async def agent_subs_refresh(self, event):
         """Re-sync ``agent_meta["channels"]`` from DB (#282).
 

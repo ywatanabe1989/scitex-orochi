@@ -12,6 +12,7 @@ it directly from ``hub.views.api`` to share the DM lazy-creation logic
 with the REST write path.
 """
 
+from hub.views.api._a2a_dispatch import api_a2a_dispatch, api_a2a_reply
 from hub.views.api._agents import (
     api_agent_health,
     api_agent_profiles,
@@ -24,15 +25,14 @@ from hub.views.api._agents import (
 )
 from hub.views.api._agents_lifecycle import api_agents_kill, api_agents_restart
 from hub.views.api._agents_register import api_agents_register
-from hub.views.api._auto_dispatch import (
-    api_auto_dispatch_fire,
-    api_auto_dispatch_status,
-)
 from hub.views.api._agents_subscribe import (
     api_admin_agent_subscribe,
     api_admin_agent_unsubscribe,
 )
-from hub.views.api._cron import api_cron
+from hub.views.api._auto_dispatch import (
+    api_auto_dispatch_fire,
+    api_auto_dispatch_status,
+)
 from hub.views.api._channels import (
     api_channel_members,
     api_channel_prefs,
@@ -41,6 +41,7 @@ from hub.views.api._channels import (
     api_stats,
     api_workspaces,
 )
+from hub.views.api._cron import api_cron
 from hub.views.api._dms import _ensure_dm_channel, api_dms
 from hub.views.api._export import api_channel_export, api_media
 from hub.views.api._fleet import api_scheduled, fleet_report, fleet_state
@@ -61,6 +62,8 @@ from hub.views.api._resources import api_resources
 
 __all__ = [
     "_ensure_dm_channel",
+    "api_a2a_dispatch",
+    "api_a2a_reply",
     "api_agent_health",
     "api_agent_profiles",
     "api_agents",
