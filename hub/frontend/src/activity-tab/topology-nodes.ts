@@ -15,7 +15,13 @@ import { renderChannelBadgeSvg } from "../channel-badge";
  * identity badge だけで十分"). No parallel renderer; no diamond
  * fallback. */
 
-export function _topoBuildChannelsSvg(visible, channels, chPos, chSet, _chPrefs) {
+export function _topoBuildChannelsSvg(
+  visible,
+  channels,
+  chPos,
+  chSet,
+  _chPrefs,
+) {
   /* Per-channel subscriber counts across the visible agents. Used to
    * scale each channel badge — "based on the number of agents, the
    * channel node can be larger" (ywatanabe 2026-04-19). */
@@ -85,21 +91,31 @@ export function _topoBuildAgentsSvg(visible, agentPos) {
     .map(function (a) {
       var p = agentPos[a.name];
       var connected = (a.status || "online") !== "offline";
-      /* Dead-state detection — heartbeat fresh but no tool / action
-       * for >3min. Catches the classic "silent death" where the
-       * sidecar keeps heartbeating but the LLM process is gone
-       * (ywatanabe 2026-04-19). */
-      var toolSec =
-        typeof _secondsSinceIso === "function"
-          ? _secondsSinceIso(a.last_tool_at)
-          : null;
-      var actSec =
-        typeof _secondsSinceIso === "function"
-          ? _secondsSinceIso(a.last_action)
-          : null;
-      var noTool = toolSec == null || toolSec > 180;
-      var noAct = actSec == null || actSec > 180;
-      var isDead = connected && noTool && noAct;
+      /* Dead-state detection — defers to the agent_meta classifier's
+       * `pane_state` field (`stale` = 3+ cycles unchanged with no busy
+       * markers AND not at an empty `❯ ` idle prompt). Falls back to
+       * the legacy 180s tool/action timer when pane_state is missing
+       * (e.g. agent_meta.py not deployed on a host). Single source of
+       * truth: same logic as `_isDeadAgent` in ./utils.ts. */
+      var pane = (a.pane_state || "").toLowerCase();
+      var isDead;
+      if (pane === "stale") {
+        isDead = connected;
+      } else if (pane) {
+        isDead = false;
+      } else {
+        var toolSec =
+          typeof _secondsSinceIso === "function"
+            ? _secondsSinceIso(a.last_tool_at)
+            : null;
+        var actSec =
+          typeof _secondsSinceIso === "function"
+            ? _secondsSinceIso(a.last_action)
+            : null;
+        var noTool = toolSec == null || toolSec > 180;
+        var noAct = actSec == null || actSec > 180;
+        isDead = connected && noTool && noAct;
+      }
       return renderAgentBadgeSvg(
         a,
         { x: p.x, y: p.y, r: 12 },
