@@ -45,6 +45,11 @@ dependencies = [
     # The ``[http-server]`` extra pulls in starlette + sse-starlette,
     # which the SDK's route factories require for JSON-RPC + streaming.
     "a2a-sdk[http-server]>=1.0.2",
+    # a2a-sdk 1.0.2 reads FieldDescriptor.label which protobuf 7.x
+    # removed; pin to <7 until SDK catches up. Caught during prod
+    # smoke 2026-04-26: SendMessage failed with FieldDescriptor.label
+    # AttributeError on a fresh container with protobuf 7.34.1.
+    "protobuf<7",
 ]
 
 [project.optional-dependencies]
