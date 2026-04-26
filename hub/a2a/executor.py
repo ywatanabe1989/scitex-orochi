@@ -77,9 +77,7 @@ class OrochiAgentExecutor(AgentExecutor):
     :class:`WorkspaceTokenContextBuilder` extracts.
     """
 
-    async def execute(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> None:
+    async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         state = (context.call_context and context.call_context.state) or {}
         workspace = state.get("workspace")
         agent_name = state.get("agent_name") or ""
@@ -127,19 +125,19 @@ class OrochiAgentExecutor(AgentExecutor):
             )
             return
 
-        # Synthesise the legacy A2A JSON-RPC envelope so the agent's
-        # WS bridge / sidecar can keep using the existing handler.
+        # SDK 1.x JSON-RPC envelope — the agent's sac sidecar serves
+        # pure a2a-sdk 1.x (no v0.3 compat) after Phase 1, so we use
+        # the gRPC-style ``SendMessage`` method with proto snake_case
+        # params. The WS bridge handler must accept the same shape.
         body = {
             "jsonrpc": "2.0",
             "id": context.task_id,
-            "method": "tasks/send",
+            "method": "SendMessage",
             "params": {
-                "id": context.task_id,
                 "message": {
-                    "role": "user",
-                    "parts": [
-                        {"type": "text", "text": _extract_text_from_message(context.message)}
-                    ],
+                    "message_id": context.task_id,
+                    "role": "ROLE_USER",
+                    "parts": [{"text": _extract_text_from_message(context.message)}],
                 },
             },
         }
@@ -152,9 +150,7 @@ class OrochiAgentExecutor(AgentExecutor):
         a2a_url = (reg_entry.get("a2a_url") or "").strip()
         result: dict | None = None
         if a2a_url:
-            ok, http_result = await asyncio.to_thread(
-                _try_http_direct, a2a_url, body
-            )
+            ok, http_result = await asyncio.to_thread(_try_http_direct, a2a_url, body)
             if ok and http_result is not None:
                 result = http_result
 
@@ -164,9 +160,11 @@ class OrochiAgentExecutor(AgentExecutor):
             if ws_id is None:
                 await updater.failed(
                     updater.new_agent_message(
-                        [self._text_part(
-                            f"workspace not found: {getattr(workspace, 'id', '?')}"
-                        )]
+                        [
+                            self._text_part(
+                                f"workspace not found: {getattr(workspace, 'id', '?')}"
+                            )
+                        ]
                     )
                 )
                 return
@@ -210,9 +208,11 @@ class OrochiAgentExecutor(AgentExecutor):
         if result is None:
             await updater.failed(
                 updater.new_agent_message(
-                    [self._text_part(
-                        f"timeout waiting for reply from agent {agent_name!r}"
-                    )]
+                    [
+                        self._text_part(
+                            f"timeout waiting for reply from agent {agent_name!r}"
+                        )
+                    ]
                 )
             )
             return
@@ -223,9 +223,7 @@ class OrochiAgentExecutor(AgentExecutor):
         text = self._reply_text(result)
         await updater.complete(updater.new_agent_message([self._text_part(text)]))
 
-    async def cancel(
-        self, context: RequestContext, event_queue: EventQueue
-    ) -> None:
+    async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         # The legacy bridge has no cancel channel; mark the task
         # cancelled locally so the SDK state machine stays consistent.
         updater = TaskUpdater(
@@ -235,7 +233,11 @@ class OrochiAgentExecutor(AgentExecutor):
         )
         await updater.cancel(
             updater.new_agent_message(
-                [self._text_part("cancellation requested; agent bridge has no cancel hook")]
+                [
+                    self._text_part(
+                        "cancellation requested; agent bridge has no cancel hook"
+                    )
+                ]
             )
         )
 
