@@ -116,11 +116,9 @@ urlpatterns = [
     path("api/agents/pin/", views.api_agents_pin, name="api-agents-pin"),
     path("api/agents/pinned/", views.api_agents_pinned, name="api-agents-pinned"),
     path("api/agents/register/", views.api_agents_register, name="api-agents-register"),
-    path(
-        "api/a2a/dispatch/<slug:slug>/<str:agent>/",
-        views.api_a2a_dispatch,
-        name="api-a2a-dispatch",
-    ),
+    # A2A dispatch is now served by the SDK at /v1/agents/<name>/
+    # (mounted in orochi/asgi.py — see hub.a2a.mount.build_a2a_app).
+    # Only the WS-bridge reply callback remains Django-served.
     path("api/a2a/reply/", views.api_a2a_reply, name="api-a2a-reply"),
     path("api/agents/registry/", views.api_agents_registry, name="api-agents-registry"),
     # Orochi unified cron Phase 2 (lead msg#16406 / msg#16408).

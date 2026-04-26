@@ -40,6 +40,11 @@ dependencies = [
     # so the terminal consumer can stream into fleet hosts without
     # shelling out to the openssh binary.
     "asyncssh>=2.14",
+    # A2A SDK — orochi serves the canonical A2A interface at
+    # ``/v1/agents/<name>/`` (Phase 3 of GITIGNORED/A2A_MIGRATION.md).
+    # The ``[http-server]`` extra pulls in starlette + sse-starlette,
+    # which the SDK's route factories require for JSON-RPC + streaming.
+    "a2a-sdk[http-server]>=1.0.2",
 ]
 
 [project.optional-dependencies]

@@ -2,7 +2,6 @@
 
 from hub.views.agent_detail import api_agent_detail  # noqa: F401
 from hub.views.api import (  # noqa: F401
-    api_a2a_dispatch,
     api_a2a_reply,
     api_admin_agent_subscribe,
     api_admin_agent_unsubscribe,
