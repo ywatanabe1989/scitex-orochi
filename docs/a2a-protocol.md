@@ -23,7 +23,8 @@ The full chain from outside-internet POST to a live agent's reply:
 caller                                                   (e.g. another agent on any host)
     │  POST https://a2a.scitex.ai/v1/agents/<agent>
     │       Authorization: Bearer <gitea-pat>
-    │       JSON-RPC tasks/send body
+    │       A2A-Version: 1.0
+    │       JSON-RPC SendMessage body (a2a-sdk 1.x, gRPC-style)
     ▼
 NAS Django  apps/infra/a2a_app/views.py::agent_jsonrpc
     │  validates bearer at git.scitex.ai (read:user)
@@ -31,12 +32,17 @@ NAS Django  apps/infra/a2a_app/views.py::agent_jsonrpc
     │      _dispatch.py forwards body
     ▼
 NAS Django → orochi hub (over Cloudflare tunnel)
-    │  POST https://scitex-orochi.com/api/a2a/dispatch/<workspace>/<agent>/
+    │  POST https://scitex-orochi.com/v1/agents/<agent>/
+    │       Authorization: Bearer wks_...
+    │       A2A-Version: 1.0
+    │       JSON-RPC SendMessage body
     ▼
-mba Daphne  hub/views/api/_a2a_dispatch.py::api_a2a_dispatch
-    │  generates reply_id, registers an asyncio.Event, group_send to
+mba Daphne  hub/a2a/mount.py — official a2a-sdk Starlette app
+    │  WorkspaceTokenContextBuilder resolves Workspace from bearer
+    │  OrochiAgentExecutor.execute() generates reply_id, registers
+    │  an asyncio.Event, group_send to
     │  agent_<ws_id>_<agent> with type=a2a.dispatch
-    │  blocks waiting for the event (30s timeout)
+    │  awaits the event (30s timeout) and emits TaskStatusUpdateEvent
     ▼
 hub/consumers/_agent.py::AgentConsumer.a2a_dispatch
     │  forwards the body to the agent's WebSocket
@@ -92,8 +98,10 @@ TOKEN=$(cat ~/.bash.d/secrets/010_scitex/orochi-gitea-agents/<your-agent>.a2a-to
 curl -s -X POST https://a2a.scitex.ai/v1/agents/claude-echo \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"t","method":"tasks/send",
-       "params":{"message":{"role":"user","parts":[{"type":"text","text":"What is 2+2?"}]}}}' \
+  -H 'A2A-Version: 1.0' \
+  -d '{"jsonrpc":"2.0","id":"t","method":"SendMessage",
+       "params":{"message":{"message_id":"m1","role":"ROLE_USER",
+                            "parts":[{"text":"What is 2+2?"}]}}}' \
   | jq '.result | {state: .status.state, runtime: .metadata."x-orochi".runtime,
                    reply: .history[1].parts[0].text}'
 ```
@@ -119,8 +127,8 @@ On `scitex-cloud-prod-django-1` (set in `deployment/docker/docker_prod/.env`):
 | Variable | Example | Purpose |
 | --- | --- | --- |
 | `SCITEX_OROCHI_A2A_DISPATCHABLE_AGENTS` | `mock-echo,claude-echo` | comma-separated agent ids that get the live dispatch path; others fall back to canned echo |
-| `SCITEX_OROCHI_HUB_URL` | `https://scitex-orochi.com` | base URL where `/api/a2a/dispatch/...` reaches a connected hub |
-| `SCITEX_OROCHI_A2A_WORKSPACE` | `main` | workspace name (or numeric id) used in the dispatch URL path |
+| `SCITEX_OROCHI_HUB_URL` | `https://scitex-orochi.com` | base URL where `/v1/agents/<name>/` reaches a connected hub |
+| `SCITEX_OROCHI_A2A_WORKSPACE` | `main` | workspace name (or numeric id); supplied as the `wks_*` bearer token's owning workspace |
 | `SCITEX_OROCHI_AGENTS_DIR` | `/app/agents-orochi` | path to agent YAML dir (mounted from dotfiles); used by AgentCard projection |
 
 `_dispatch.is_dispatchable()` reads `SCITEX_OROCHI_A2A_DISPATCHABLE_AGENTS` at import time — change the env, recreate the Django container.
