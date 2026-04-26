@@ -1,5 +1,5 @@
 /**
- * A2A protocol client tool — call peer agents via JSON-RPC.
+ * A2A protocol client tool — call peer agents via JSON-RPC (SDK 1.x).
  *
  * Posts to `https://a2a.scitex.ai/v1/agents/<agent>` with the bearer
  * read from the per-agent `.a2a-token` file (path injected via
@@ -8,9 +8,16 @@
  * Bearer never enters the agent transcript: the MCP server reads it
  * from disk per call and includes it in the outbound HTTP request.
  *
+ * SDK 1.x alignment (Phase 5 of A2A_MIGRATION.md):
+ *   - default method → ``SendMessage`` (not legacy ``tasks/send``)
+ *   - polling      → ``GetTask`` (params: ``{id}``)
+ *   - proto snake_case message fields (``message_id``, ``task_id``)
+ *   - ``A2A-Version: 1.0`` header on every outbound request
+ *
  * Cross-refs:
  *   - skill: scitex-orochi/_skills/scitex-orochi/51_a2a-client.md
- *   - master nav: scitex-orochi/GITIGNORED/A2A_PROTOCOL_SUPPORT.md
+ *   - master nav: scitex-orochi/GITIGNORED/A2A_MIGRATION.md (Phase 5)
+ *   - sac SDK reference: /tmp/wt-sac-a2a/tests/test_a2a_server.py
  */
 import { readFileSync } from "node:fs";
 
@@ -23,9 +30,10 @@ interface A2aCallArgs {
   text?: string;
   params?: Record<string, unknown>;
   task_id?: string;
+  message_id?: string;
 }
 
-function readBearer(): string {
+export function readBearer(): string {
   const path = process.env.SCITEX_OROCHI_A2A_TOKEN_PATH;
   if (!path) {
     throw new Error(
@@ -40,19 +48,37 @@ function readBearer(): string {
   }
 }
 
+export function a2aBaseUrl(): string {
+  return (process.env.SCITEX_OROCHI_A2A_BASE_URL ?? DEFAULT_BASE).replace(
+    /\/+$/,
+    "",
+  );
+}
+
+export function a2aHeaders(bearer: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${bearer}`,
+    "Content-Type": "application/json",
+    "A2A-Version": "1.0",
+  };
+}
+
 function buildParams(args: A2aCallArgs): Record<string, unknown> {
   if (args.params) return args.params;
-  const method = args.method ?? "tasks/send";
-  if (method === "tasks/send") {
+  const method = args.method ?? "SendMessage";
+  if (method === "SendMessage" || method === "SendStreamingMessage") {
     const text = args.text ?? "";
     return {
       message: {
-        role: "user",
-        parts: [{ type: "text", text }],
+        message_id: args.message_id ?? `mcp-msg-${Date.now()}`,
+        role: "ROLE_USER",
+        parts: [{ text }],
       },
     };
   }
-  if (method === "tasks/get") {
+  if (method === "GetTask" || method === "CancelTask") {
+    // SDK 1.x: GetTask/CancelTask take ``{id}``; we accept ``task_id`` from
+    // the caller and map it to the proto-style ``id`` field.
     return { id: args.task_id ?? "" };
   }
   return {};
@@ -64,11 +90,8 @@ export async function handleA2aCall(args: A2aCallArgs): Promise<{
   if (!args || !args.agent) {
     throw new Error("a2a_call requires 'agent' argument");
   }
-  const method = args.method ?? "tasks/send";
-  const baseUrl = (
-    process.env.SCITEX_OROCHI_A2A_BASE_URL ?? DEFAULT_BASE
-  ).replace(/\/+$/, "");
-  const url = `${baseUrl}/v1/agents/${encodeURIComponent(args.agent)}`;
+  const method = args.method ?? "SendMessage";
+  const url = `${a2aBaseUrl()}/v1/agents/${encodeURIComponent(args.agent)}`;
   const bearer = readBearer();
   const body = JSON.stringify({
     jsonrpc: "2.0",
@@ -83,10 +106,7 @@ export async function handleA2aCall(args: A2aCallArgs): Promise<{
   try {
     resp = await fetch(url, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${bearer}`,
-        "Content-Type": "application/json",
-      },
+      headers: a2aHeaders(bearer),
       body,
       signal: ctrl.signal,
     });

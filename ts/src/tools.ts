@@ -46,3 +46,7 @@ export {
 } from "./tools/self_command.js";
 
 export { handleA2aCall } from "./tools/a2a.js";
+export { handleA2aSendStreaming } from "./tools/a2a_streaming.js";
+export { handleA2aGetTask } from "./tools/a2a_get_task.js";
+export { handleA2aCancelTask } from "./tools/a2a_cancel_task.js";
+export { handleA2aListAgents } from "./tools/a2a_list_agents.js";
