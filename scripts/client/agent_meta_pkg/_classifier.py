@@ -222,6 +222,24 @@ def _extract_compose_text(tail: str) -> str:
     return compose
 
 
+def _has_idle_compose_prompt(tail: str) -> bool:
+    """True when the pane shows a clean empty `❯` compose prompt.
+
+    An empty compose chevron means the agent is sitting at the prompt
+    with no draft text — it is *self-reporting* "idle, ready for input"
+    each cycle. The pane bytes are static (nothing animates) but the
+    agent is alive and waiting. Without this signal, the digest-based
+    stagnation check escalates these legitimate idle agents to `stale`.
+    """
+    for line in tail.splitlines()[-12:]:
+        stripped = line.lstrip()
+        if stripped.startswith(_COMPOSE_CHEVRON):
+            rest = stripped[len(_COMPOSE_CHEVRON) :].strip()
+            if not rest:
+                return True
+    return False
+
+
 def _has_busy_animation(hay: str) -> bool:
     """True when the pane shows a busy-animation / known-alive marker.
 
@@ -355,9 +373,14 @@ def _classify_pane_state(
     if agent:
         digest = _pane_digest(tail_clean, full_pane)
         same_cycles = _update_stagnation_count(agent, digest)
-        if same_cycles >= _STALE_CYCLES_THRESHOLD and not _has_busy_animation(
-            hay
-        ):
+        if same_cycles >= _STALE_CYCLES_THRESHOLD and not _has_busy_animation(hay):
+            # An empty `❯ ` compose chevron is the agent self-reporting
+            # "idle, ready for input" — bytes-identical across cycles by
+            # design. Treat as `idle`, not `stale`. Without this carve-out,
+            # any agent peacefully waiting at the prompt for >90s gets
+            # ghosted on the topology canvas.
+            if _has_idle_compose_prompt(tail_clean):
+                return "idle"
             return "stale"
     return "idle"
 
@@ -411,9 +434,7 @@ def _detect_contradiction(pane_state: str, liveness: str | None) -> str:
     `online` (green) is a hard contradiction — the pane says nothing
     is happening but the hub is still receiving fresh heartbeats.
     """
-    if (pane_state or "").strip().lower() == "stale" and _is_liveness_green(
-        liveness
-    ):
+    if (pane_state or "").strip().lower() == "stale" and _is_liveness_green(liveness):
         return _CONTRADICTION_STALE_VS_GREEN
     return ""
 
