@@ -5,7 +5,6 @@ import { escapeHtml } from "../app/utils";
  * Pure functions: strip ANSI, formatters, liveness labels/order,
  * task parse, computeAgentState, health + issue linkify, isDeadAgent. */
 
-
 /* Strip ANSI escape sequences for clean terminal display */
 export function _stripAnsi(str) {
   return str
@@ -14,7 +13,6 @@ export function _stripAnsi(str) {
     .replace(/\x1B[@-_][0-?]*[ -/]*[@-~]/g, "")
     .replace(/\r/g, "");
 }
-
 
 export function _formatIdle(seconds) {
   if (seconds == null) return "";
@@ -220,23 +218,31 @@ export function _computeAgentState(a) {
   return "idle";
 }
 
-
 /* Radial topology renderer. Agents sit on an outer ring, channels on
  * an inner ring, with straight-line edges between subscribed pairs.
  * Pure SVG + vanilla JS — no d3, no external deps. Click an agent node
  * to toggle the inline detail panel (same hook the list view uses;
  * re-uses _renderActivityAgentDetail + _fetchActivityDetail so state
  * survives heartbeat-driven re-renders). */
-/* Classify an agent's "dead" state — heartbeat fresh but no tool/
- * action reaction in ~3min (same logic inlined in the node render).
- * Exposed as a helper so the filter + the render use identical
- * criteria. User 2026-04-20: "Functionally dead and registered
- * agents must be shown in shadow; dead agents but not registered
- * should just not be rendered". */
+/* Classify an agent's "dead" state.
+ *
+ * Trusts the classifier's `pane_state` (agent_meta_pkg/_classifier.py)
+ * as the authoritative signal. Only `stale` (3+ cycles of unchanged
+ * pane content with no busy-animation markers) means "stuck and needs
+ * help". `idle` means at-prompt-waiting — a legitimate live state, not
+ * dead. Compose/permission/y_n/auth_error states are awaiting input,
+ * also not dead.
+ *
+ * Falls back to the legacy 180s tool/action heuristic only when
+ * `pane_state` is missing (e.g. the agent's heartbeat path predates
+ * agent_meta classifier output). */
 export function _isDeadAgent(a) {
   if (!a) return false;
   var connected = (a.status || "online") !== "offline";
   if (!connected) return false;
+  var pane = (a.pane_state || "").toLowerCase();
+  if (pane === "stale") return true;
+  if (pane) return false;
   var toolSec =
     typeof _secondsSinceIso === "function"
       ? _secondsSinceIso(a.last_tool_at)
@@ -252,4 +258,3 @@ export function _isDeadAgent(a) {
 /* Expose for app.js (sidebar ghost rule) and other modules — single
  * source of truth for "dead agent" across every render surface. */
 window._isDeadAgent = _isDeadAgent;
-

@@ -63,12 +63,30 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         hb_ts = a.get("last_heartbeat")
         action_ts = a.get("last_action")
         # Liveness classification distinct from WS connection state.
-        # An agent can be "online" (WS open) but "stale" (no activity for >2min).
+        # Prefer the pane_state classifier (agent_meta_pkg/_classifier.py)
+        # which already separates "idle at prompt" (alive, waiting) from
+        # "stale" (3+ cycles unchanged, no busy markers — actually stuck).
+        # Falls back to the last_action timer when pane_state is missing.
         liveness = a.get("status", "online")
+        pane = (a.get("pane_state") or "").lower()
         idle_seconds = None
         if action_ts:
             idle_seconds = int(now - action_ts)
-            if a.get("status") == "online":
+        if a.get("status") == "online":
+            if pane == "running":
+                liveness = "online"
+            elif pane == "stale" or pane == "auth_error":
+                liveness = "stale"
+            elif pane == "idle":
+                liveness = "idle"
+            elif pane in (
+                "compose_pending_unsent",
+                "bypass_permissions_prompt",
+                "dev_channels_prompt",
+                "y_n_prompt",
+            ):
+                liveness = "idle"  # awaiting input — not stuck
+            elif idle_seconds is not None:
                 if idle_seconds > 600:
                     liveness = "stale"  # >10min silent — probably stuck
                 elif idle_seconds > 120:
