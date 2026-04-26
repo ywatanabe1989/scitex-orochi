@@ -23,7 +23,8 @@ The full chain from outside-internet POST to a live agent's reply:
 caller                                                   (e.g. another agent on any host)
     │  POST https://a2a.scitex.ai/v1/agents/<agent>
     │       Authorization: Bearer <gitea-pat>
-    │       JSON-RPC tasks/send body
+    │       A2A-Version: 1.0
+    │       JSON-RPC SendMessage body (a2a-sdk 1.x, gRPC-style)
     ▼
 NAS Django  apps/infra/a2a_app/views.py::agent_jsonrpc
     │  validates bearer at git.scitex.ai (read:user)
@@ -33,7 +34,8 @@ NAS Django  apps/infra/a2a_app/views.py::agent_jsonrpc
 NAS Django → orochi hub (over Cloudflare tunnel)
     │  POST https://scitex-orochi.com/v1/agents/<agent>/
     │       Authorization: Bearer wks_...
-    │       JSON-RPC tasks/send body
+    │       A2A-Version: 1.0
+    │       JSON-RPC SendMessage body
     ▼
 mba Daphne  hub/a2a/mount.py — official a2a-sdk Starlette app
     │  WorkspaceTokenContextBuilder resolves Workspace from bearer
@@ -96,8 +98,10 @@ TOKEN=$(cat ~/.bash.d/secrets/010_scitex/orochi-gitea-agents/<your-agent>.a2a-to
 curl -s -X POST https://a2a.scitex.ai/v1/agents/claude-echo \
   -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":"t","method":"tasks/send",
-       "params":{"message":{"role":"user","parts":[{"type":"text","text":"What is 2+2?"}]}}}' \
+  -H 'A2A-Version: 1.0' \
+  -d '{"jsonrpc":"2.0","id":"t","method":"SendMessage",
+       "params":{"message":{"message_id":"m1","role":"ROLE_USER",
+                            "parts":[{"text":"What is 2+2?"}]}}}' \
   | jq '.result | {state: .status.state, runtime: .metadata."x-orochi".runtime,
                    reply: .history[1].parts[0].text}'
 ```

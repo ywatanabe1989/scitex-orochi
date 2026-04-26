@@ -2,14 +2,15 @@
 
 Covers:
 - The Starlette app mounts and serves ``.well-known/agent-card.json``.
-- ``message/send`` round-trips against an in-memory test executor.
+- ``SendMessage`` round-trips against an in-memory test executor.
 - Agent-not-found returns a JSON-RPC error (mapped through SDK status).
 - Auth: requests without a ``WorkspaceToken`` are rejected (the
   executor publishes a ``failed`` status with an auth-required message).
 
-Smoke / unit tests only — full ``message/stream`` SSE wiring is
-exercised against a local daphne when available, otherwise the import
-+ route table is asserted so the deployment-time check is meaningful.
+Pure a2a-sdk 1.x: only gRPC-style method names (``SendMessage`` /
+``SendStreamingMessage`` / ``GetTask`` / ``CancelTask``) — no v0.3
+``message/send`` / ``tasks/send`` back-compat. Requests carry the
+``A2A-Version: 1.0`` header that the SDK 1.x router expects.
 """
 
 from __future__ import annotations
@@ -54,9 +55,7 @@ async def _call_app(app, scope, body: bytes = b"") -> tuple[int, bytes, list]:
         sent.append(msg)
 
     await app(scope, receive, send)
-    status = next(
-        (m["status"] for m in sent if m["type"] == "http.response.start"), 0
-    )
+    status = next((m["status"] for m in sent if m["type"] == "http.response.start"), 0)
     headers = next(
         (m.get("headers", []) for m in sent if m["type"] == "http.response.start"),
         [],
@@ -79,9 +78,7 @@ class A2ASDKMountTests(unittest.TestCase):
         status, body, _ = asyncio.run(
             _call_app(
                 app,
-                _make_scope(
-                    "GET", "/v1/agents/test-agent/.well-known/agent-card.json"
-                ),
+                _make_scope("GET", "/v1/agents/test-agent/.well-known/agent-card.json"),
             )
         )
         self.assertEqual(status, 200)
@@ -121,12 +118,12 @@ class A2AAuthTests(TransactionTestCase):
                 {
                     "jsonrpc": "2.0",
                     "id": "req-1",
-                    "method": "message/send",
+                    "method": "SendMessage",
                     "params": {
                         "message": {
-                            "messageId": "m1",
-                            "role": "user",
-                            "parts": [{"kind": "text", "text": "hi"}],
+                            "message_id": "m1",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "hi"}],
                         }
                     },
                 }
@@ -137,7 +134,10 @@ class A2AAuthTests(TransactionTestCase):
                     _make_scope(
                         "POST",
                         "/v1/agents/unauth-agent/",
-                        headers=[(b"content-type", b"application/json")],
+                        headers=[
+                            (b"content-type", b"application/json"),
+                            (b"a2a-version", b"1.0"),
+                        ],
                     ),
                     body=body,
                 )
@@ -175,12 +175,12 @@ class A2AAgentNotFoundTests(TransactionTestCase):
                 {
                     "jsonrpc": "2.0",
                     "id": "req-2",
-                    "method": "message/send",
+                    "method": "SendMessage",
                     "params": {
                         "message": {
-                            "messageId": "m2",
-                            "role": "user",
-                            "parts": [{"kind": "text", "text": "hi"}],
+                            "message_id": "m2",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "hi"}],
                         }
                     },
                 }
@@ -194,6 +194,7 @@ class A2AAgentNotFoundTests(TransactionTestCase):
                         headers=[
                             (b"content-type", b"application/json"),
                             (b"authorization", f"Bearer {tok.token}".encode()),
+                            (b"a2a-version", b"1.0"),
                         ],
                     ),
                     body=body,
@@ -209,7 +210,7 @@ class A2AAgentNotFoundTests(TransactionTestCase):
 
 
 class A2AMessageSendRoundtripTests(TransactionTestCase):
-    """End-to-end ``message/send`` against a stubbed HTTP-direct agent."""
+    """End-to-end ``SendMessage`` against a stubbed HTTP-direct agent."""
 
     def test_message_send_completes_via_http_direct(self) -> None:
         from hub.a2a import _dispatch_internals
@@ -257,12 +258,12 @@ class A2AMessageSendRoundtripTests(TransactionTestCase):
                 {
                     "jsonrpc": "2.0",
                     "id": "rt-1",
-                    "method": "message/send",
+                    "method": "SendMessage",
                     "params": {
                         "message": {
-                            "messageId": "rt-msg",
-                            "role": "user",
-                            "parts": [{"kind": "text", "text": "ping"}],
+                            "message_id": "rt-msg",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "ping"}],
                         }
                     },
                 }
@@ -276,6 +277,7 @@ class A2AMessageSendRoundtripTests(TransactionTestCase):
                         headers=[
                             (b"content-type", b"application/json"),
                             (b"authorization", f"Bearer {tok.token}".encode()),
+                            (b"a2a-version", b"1.0"),
                         ],
                     ),
                     body=body,

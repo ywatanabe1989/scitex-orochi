@@ -94,10 +94,10 @@ def _build_inner_app() -> Starlette:
             request_handler=handler,
             rpc_url="/",
             context_builder=builder,
-            # v0.3 compat lets older clients keep using ``message/send``
-            # and ``tasks/send`` method names alongside the gRPC-style
-            # ``SendMessage`` names that the SDK 1.x core expects.
-            enable_v0_3_compat=True,
+            # Pure a2a-sdk 1.x: gRPC-style method names only
+            # (``SendMessage`` / ``SendStreamingMessage`` / ``GetTask`` /
+            # ``CancelTask``). No v0.3 ``message/send`` / ``tasks/send``
+            # back-compat — clients must speak SDK 1.0.
         )
     )
     # Custom well-known route — the SDK's ``create_agent_card_routes``
