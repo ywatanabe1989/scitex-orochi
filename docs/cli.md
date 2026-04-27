@@ -17,7 +17,7 @@ single source of truth for:
 - The deprecation policy (hard-error on rename, soft one-time-per-shell
   notes, `SCITEX_OROCHI_NO_DEPRECATION=1` opt-out)
 - The list of flat keepers (only `-h/--help`, `--help-recursive`,
-  `--version`, `--json`, `mcp start`)
+  `--orochi_version`, `--json`, `mcp start`)
 - The `(Available Now)` help-suffix rendering rule
 - Standard flags, exit codes, stdout/stderr discipline
 

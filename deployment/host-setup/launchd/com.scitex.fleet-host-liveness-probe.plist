@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml orochi_version="1.0" encoding="UTF-8"?>
 <!--
   LaunchAgent: fleet host-liveness probe with auto-revive (todo#271).
 
@@ -24,7 +24,7 @@
   automatic revive.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
+<plist orochi_version="1.0">
   <dict>
     <key>Label</key>
     <string>com.scitex.fleet-host-liveness-probe</string>

@@ -107,5 +107,5 @@ async def _dispatch_action(gitea: GiteaClient, action: str, params: dict) -> Any
     if action == "list_repos":
         return await gitea.list_repos(org=params.get("org", ""))
     if action == "get_version":
-        return {"version": await gitea.get_version()}
+        return {"orochi_version": await gitea.get_version()}
     return None

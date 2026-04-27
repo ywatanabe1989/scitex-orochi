@@ -78,7 +78,7 @@ def _build_inner_app() -> Starlette:
     placeholder = AgentCard()
     placeholder.name = "orochi-fleet"
     placeholder.description = "orochi A2A surface — see /v1/agents/<name>/"
-    placeholder.version = "scitex-orochi/1"
+    placeholder.orochi_version = "scitex-orochi/1"
 
     handler = DefaultRequestHandler(
         agent_executor=OrochiAgentExecutor(),

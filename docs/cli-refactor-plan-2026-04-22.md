@@ -585,7 +585,7 @@ avoids partial-state regressions.
 Force `<noun> <verb>` for everything **except**:
 - `-h` / `--help`
 - `--help-recursive`
-- `--version`
+- `--orochi_version`
 - `--json` (global flag)
 - `mcp start` (keep flat — external contract with MCP client
   configs that reference this literal path)

@@ -184,16 +184,16 @@ async def handle_post_message(request: web.Request) -> web.Response:
 
 async def handle_config(_request: web.Request) -> web.Response:
     """GET /api/config -- dashboard configuration."""
-    from importlib.metadata import version
+    from importlib.metadata import orochi_version
 
     try:
-        ver = version("scitex-orochi")
+        ver = orochi_version("scitex-orochi")
     except Exception:
         ver = "dev"
 
     return web.json_response(
         {
-            "version": ver,
+            "orochi_version": ver,
             "ws_upstream": DASHBOARD_WS_UPSTREAM or "",
         }
     )

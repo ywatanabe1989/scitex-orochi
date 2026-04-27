@@ -41,7 +41,7 @@ machines:
       - Yusukes-MacBook-Air.local
     os:
       family: Darwin
-      version: macOS
+      orochi_version: macOS
     hardware:
       arch: arm64
       cpu_cores: 8           # Apple Silicon — confirm exact via `sysctl -n hw.ncpu` on next probe
@@ -107,7 +107,7 @@ machines:
       - nas.local
     os:
       family: Linux
-      version: Debian 12
+      orochi_version: Debian 12
     hardware:
       arch: x86_64
       cpu_cores: 12
@@ -166,7 +166,7 @@ machines:
       - spartan-login1.hpc.unimelb.edu.au
     os:
       family: Linux
-      version: RHEL/CentOS HPC
+      orochi_version: RHEL/CentOS HPC
     hardware:
       arch: x86_64
       cpu_cores: 64           # head-spartan analysis msg#8054
@@ -216,7 +216,7 @@ machines:
       - wsl-ywata
     os:
       family: Linux
-      version: Ubuntu 22.04 (WSL2 on Windows)
+      orochi_version: Ubuntu 22.04 (WSL2 on Windows)
     hardware:
       arch: x86_64
       cpu_cores: 8            # to be confirmed, depends on Windows host

@@ -44,7 +44,7 @@ def _build_a2a_section(agent: str) -> dict:
         "sac_a2a_observations": obs,
         "orochi_comm_state": verdict["label"],
         "orochi_comm_state_evidence": verdict["evidence"],
-        "orochi_comm_state_version": verdict["version"],
+        "orochi_comm_state_version": verdict["orochi_version"],
         # Back-compat: existing top-level scalars derived from the
         # observations. Consumers that already read these keep working.
         "sac_a2a_active_task_count": obs.get("sac_a2a_active_task_count", 0),
@@ -70,7 +70,7 @@ def collect(agent: str) -> dict:
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
         pid, ppid, started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
-        runtime, version, orochi_subagent_count.
+        runtime, orochi_version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
     """
@@ -272,13 +272,13 @@ def collect(agent: str) -> dict:
         #                                 marker hits, idle chevron, etc.)
         #   `orochi_pane_state`               — Layer B v3 label (back-compat)
         #   `orochi_pane_state_evidence`      — Layer B reasoning string
-        #   `orochi_pane_state_version`       — schema version for the verdict
+        #   `orochi_pane_state_version`       — schema orochi_version for the verdict
         # Consumers can read just `orochi_pane_state` (legacy), or the full
         # observation dict to render their own classifications.
         "orochi_pane_observations": orochi_pane_observations,
         "orochi_pane_state": orochi_pane_state,
         "orochi_pane_state_evidence": pane_verdict["evidence"],
-        "orochi_pane_state_version": pane_verdict["version"],
+        "orochi_pane_state_version": pane_verdict["orochi_version"],
         "orochi_stuck_prompt_text": orochi_stuck_prompt_text,
         "orochi_classifier_note": orochi_classifier_note,
         # A2A state pipeline (Layer A → Layer B):
@@ -287,7 +287,7 @@ def collect(agent: str) -> dict:
         #                           endpoint reachability, etc.)
         #   `orochi_comm_state`          — Layer B v1 verdict label
         #   `orochi_comm_state_evidence` — Layer B reasoning string
-        #   `orochi_comm_state_version`  — schema version
+        #   `orochi_comm_state_version`  — schema orochi_version
         # Plus three back-compat top-level fields derived from the
         # observations so existing consumers don't need to change yet.
         **_build_a2a_section(agent),
@@ -296,7 +296,7 @@ def collect(agent: str) -> dict:
         # push_all()'s whitelist can forward each one verbatim.
         **_collect_hook_events(agent),
         "runtime": "claude-code",
-        "version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
+        "orochi_version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
         # Machine resource snapshot (todo#329 — Machines tab populate).
         "metrics": collect_machine_metrics(),
         # SLURM compute snapshot (todo#59). None on non-HPC hosts so the

@@ -72,7 +72,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "orochi_subagent_count": int(meta.get("orochi_subagent_count") or 0),
         "orochi_skills_loaded": list(meta.get("orochi_skills_loaded") or []),
         "started_at": meta.get("started_at", ""),
-        "version": meta.get("version", ""),
+        "orochi_version": meta.get("orochi_version", ""),
         "runtime": meta.get("runtime", ""),
         "orochi_current_task": meta.get("orochi_current_task", ""),
         # Intentionally no "channels" key. Subscriptions are

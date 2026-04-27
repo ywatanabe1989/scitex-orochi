@@ -1,4 +1,4 @@
-/* Bumped aggressively — every version change invalidates all old caches on
+/* Bumped aggressively — every orochi_version change invalidates all old caches on
  * activate. The previous v5 served cache-first, which shadowed every JS/CSS
  * fix we shipped today. Do not drop below the highest previously-deployed
  * value or old clients will keep serving stale assets. */
@@ -51,7 +51,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Network-first for JS/CSS/HTML under /static/ so fixes ship without
-  // needing a cache version bump. The previous cache-first strategy caused
+  // needing a cache orochi_version bump. The previous cache-first strategy caused
   // the fleet to keep serving stale scripts for hours after deploys.
   if (url.pathname.startsWith("/static/")) {
     event.respondWith(

@@ -163,7 +163,7 @@ post-mortem.
 
 ## NDJSON schema (v2)
 
-Schema version `scitex-orochi/tmux-unstick/v2`. Each record:
+Schema orochi_version `scitex-orochi/tmux-unstick/v2`. Each record:
 
 ```json
 {

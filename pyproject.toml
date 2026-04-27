@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [orochi_project]
 name = "scitex-orochi"
-version = "0.14.0"
+orochi_version = "0.14.0"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -117,7 +117,7 @@ library_dirs = ["src", "tests", "hub", "orochi"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-orochi_version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]

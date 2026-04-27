@@ -24,7 +24,7 @@ from hub.views.api._common import (
 def api_config(request):
     """GET /api/config — dashboard configuration."""
     workspace = get_workspace(request)
-    version = getattr(settings, "OROCHI_VERSION", "0.0.0")
+    orochi_version = getattr(settings, "OROCHI_VERSION", "0.0.0")
     # Server metadata
     uptime_secs = int(time.time() - _server_start_time)
     orochi_hostname = os.environ.get("SCITEX_OROCHI_HOSTNAME", platform.node())
@@ -32,14 +32,14 @@ def api_config(request):
 
     data = {
         "workspace": workspace.name,
-        "version": version,
+        "orochi_version": orochi_version,
         "deployed_at": getattr(settings, "OROCHI_DEPLOYED_AT", ""),
         "build_id": getattr(settings, "OROCHI_BUILD_ID", ""),
         "server": {
             "orochi_hostname": orochi_hostname,
             "external_ip": external_ip,
             "uptime": uptime_secs,
-            "version": version,
+            "orochi_version": orochi_version,
         },
     }
     # Expose dashboard token if set on workspace

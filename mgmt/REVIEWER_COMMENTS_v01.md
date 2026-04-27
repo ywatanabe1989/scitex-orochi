@@ -45,7 +45,7 @@ async def handle_config(request: web.Request) -> web.Response:
     """GET /api/config -- dashboard configuration."""
     ...
     return web.json_response({
-        "version": ver,
+        "orochi_version": ver,
         "ws_upstream": DASHBOARD_WS_UPSTREAM or "",
         "dashboard_token": ADMIN_TOKEN,  # <-- LEAKED
     })
@@ -104,12 +104,12 @@ This is a developer's personal TODO repo hardcoded into the proxy. It should be 
 ### I4. Version mismatch between `__init__.py` and `pyproject.toml`
 
 - `src/scitex_orochi/__init__.py:3` declares `__version__ = "0.2.0"`
-- `pyproject.toml:7` declares `version = "0.4.0"`
+- `pyproject.toml:7` declares `orochi_version = "0.4.0"`
 
-The runtime version and the build version are out of sync. Anyone calling `scitex_orochi.__version__` gets stale information.
+The runtime orochi_version and the build orochi_version are out of sync. Anyone calling `scitex_orochi.__version__` gets stale information.
 
 **Severity:** Important
-**Fix:** Use `importlib.metadata.version("scitex-orochi")` as the single source of truth, or keep them in sync via hatchling's version hook.
+**Fix:** Use `importlib.metadata.orochi_version("scitex-orochi")` as the single source of truth, or keep them in sync via hatchling's orochi_version hook.
 
 ### I5. Module reload pattern for configuration is fragile
 
@@ -279,7 +279,7 @@ The orochi_project root contains `node_modules/`, suggesting a Node.js dependenc
 | Severity | Count | Key Items |
 |----------|-------|-----------|
 | CRITICAL | 2 | Auth bypass (missing `await`), Admin token leaked via `/api/config` |
-| IMPORTANT | 8 | Unauthenticated endpoints, hardcoded repo, dead code, version mismatch, Django residue, fragile config reload, duplicate server setup |
+| IMPORTANT | 8 | Unauthenticated endpoints, hardcoded repo, dead code, orochi_version mismatch, Django residue, fragile config reload, duplicate server setup |
 | NICE-TO-HAVE | 10 | No rate limiting, disk I/O per message, query-string tokens, double-print bug, etc. |
 
 ---

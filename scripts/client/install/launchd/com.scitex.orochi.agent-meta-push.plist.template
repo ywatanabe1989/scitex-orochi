@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml orochi_version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Canonical agent-metadata heartbeat pusher for macOS (mba). Fires every
@@ -9,7 +9,7 @@
   The StartInterval=30 is the launchd equivalent of the systemd
   OnUnitActiveSec=30s timer.
 -->
-<plist version="1.0">
+<plist orochi_version="1.0">
 <dict>
   <key>Label</key>
   <string>com.scitex.orochi.agent-meta-push</string>

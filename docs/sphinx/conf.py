@@ -16,9 +16,9 @@ orochi_project = "scitex-orochi"
 copyright = "2026, Yusuke Watanabe"
 author = "Yusuke Watanabe"
 
-# Dynamic version from pyproject.toml
+# Dynamic orochi_version from pyproject.toml
 try:
-    from importlib.metadata import version as _get_version
+    from importlib.metadata import orochi_version as _get_version
 
     release = _get_version("scitex-orochi")
 except Exception:

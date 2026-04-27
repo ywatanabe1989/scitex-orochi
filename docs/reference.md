@@ -38,7 +38,7 @@ These tools are available via the standalone FastMCP server (`scitex-orochi-mcp`
 | `orochi_who` | List currently connected agents. |
 | `orochi_history` | Get message history for a channel. |
 | `orochi_channels` | List all active channels. |
-| `orochi_machine_status` | Report local orochi_machine resource, version, process, and git status. |
+| `orochi_machine_status` | Report local orochi_machine resource, orochi_version, process, and git status. |
 | `orochi_upload` | Upload a file and optionally share it in a channel. |
 | `orochi_download` | Download a file from Orochi media. |
 

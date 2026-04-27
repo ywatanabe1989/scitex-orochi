@@ -72,7 +72,7 @@ def _make_client(channels: list[str] | None = None) -> "OrochiClient":
 
 
 if _FASTMCP_AVAILABLE:
-    mcp = FastMCP("orochi-mcp", version="0.1.0")
+    mcp = FastMCP("orochi-mcp", orochi_version="0.1.0")
 
     @mcp.tool()
     async def orochi_send(channel: str, message: str) -> str:
@@ -186,7 +186,7 @@ if _FASTMCP_AVAILABLE:
 
     @mcp.tool()
     async def orochi_machine_status() -> str:
-        """Report the local orochi_machine's resource, version, process, and git status.
+        """Report the local orochi_machine's resource, orochi_version, process, and git status.
 
         Uses scitex_orochi._status.get_machine_status() if available.
         Safe to call from any agent; returns stdlib-collected data only.

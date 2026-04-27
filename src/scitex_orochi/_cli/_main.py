@@ -15,10 +15,10 @@ import click
 
 
 def _get_version() -> str:
-    from importlib.metadata import version
+    from importlib.metadata import orochi_version
 
     try:
-        return version("scitex-orochi")
+        return orochi_version("scitex-orochi")
     except Exception:
         return "dev"
 

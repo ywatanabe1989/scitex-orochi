@@ -61,7 +61,7 @@ def project_card(name: str, base_url: str = "") -> AgentCard:
     card = AgentCard()
     card.name = name
     card.description = description
-    card.version = "scitex-orochi/1"
+    card.orochi_version = "scitex-orochi/1"
     card.capabilities.streaming = True
     card.capabilities.push_notifications = False
     card.default_input_modes.extend(["text/plain", "application/json"])

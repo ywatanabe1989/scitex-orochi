@@ -4,7 +4,7 @@
  * Sets:
  *   window.__orochiWsUpstream  -- WS URL override (dev -> stable sync)
  *   window.__orochiApiUpstream -- REST URL override (dev -> stable sends)
- *   window.__orochiVersion     -- package version for display
+ *   window.__orochiVersion     -- package orochi_version for display
  *   window.__orochiToken       -- dashboard token for WS + REST auth
  */
 (function () {
@@ -36,13 +36,13 @@
         _tick();
         setInterval(_tick, 1000);
       })();
-      if (cfg.version) {
-        window.__orochiVersion = cfg.version;
+      if (cfg.orochi_version) {
+        window.__orochiVersion = cfg.orochi_version;
         window.__orochiDeployedAt = cfg.deployed_at || "";
-        var el = document.getElementById("orochi-version");
+        var el = document.getElementById("orochi-orochi_version");
         if (el) {
-          /* Compact: just version, full build ID in tooltip */
-          el.textContent = "v" + cfg.version;
+          /* Compact: just orochi_version, full build ID in tooltip */
+          el.textContent = "v" + cfg.orochi_version;
           if (cfg.build_id) {
             el.title = "build " + cfg.build_id +
               (cfg.deployed_at ? " (" + cfg.deployed_at + ")" : "");
@@ -97,7 +97,7 @@
           var lines = [];
           if (s.orochi_hostname)    lines.push('<span class="server-label">Host:</span><span class="server-value">' + s.orochi_hostname + '</span>');
           if (s.external_ip) lines.push('<span class="server-label">IP:</span><span class="server-value">' + s.external_ip + '</span>');
-          if (s.version)     lines.push('<span class="server-label">Ver:</span><span class="server-value">v' + s.version + '</span>');
+          if (s.orochi_version)     lines.push('<span class="server-label">Ver:</span><span class="server-value">v' + s.orochi_version + '</span>');
           lines.push('<span class="server-label">Up:</span><span class="server-value">' + uptimeStr + '</span>');
           var msgInput = document.getElementById("msg-input");
           var inputHasFocus = msgInput && document.activeElement === msgInput;
@@ -130,7 +130,7 @@
         if (req.status !== 200) return;
         try {
           var cfg = JSON.parse(req.responseText);
-          var bid = cfg.build_id || cfg.version || "";
+          var bid = cfg.build_id || cfg.orochi_version || "";
           if (!bid) return;
           if (bootstrapBuild === null) {
             bootstrapBuild = bid;

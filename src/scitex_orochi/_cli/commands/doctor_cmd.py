@@ -31,7 +31,7 @@ def _check(label: str, ok: bool, detail: str = "") -> dict:
 @click.pass_context
 def doctor_cmd(ctx: click.Context, as_json: bool) -> None:
     """Diagnose connectivity, services, and configuration."""
-    from importlib.metadata import version as pkg_version
+    from importlib.metadata import orochi_version as pkg_version
 
     from scitex_orochi._config import (
         CORS_ORIGINS,
@@ -208,7 +208,7 @@ def doctor_cmd(ctx: click.Context, as_json: bool) -> None:
         click.echo(
             json.dumps(
                 {
-                    "version": ver,
+                    "orochi_version": ver,
                     "checks": results,
                     "ok": ok_count,
                     "errors": errors,

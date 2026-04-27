@@ -124,7 +124,7 @@ def api_agents_register(request):
             "context_management": body.get("context_management"),
             "orochi_skills_loaded": body.get("orochi_skills_loaded") or [],
             "started_at": body.get("started_at", ""),
-            "version": body.get("version", ""),
+            "orochi_version": body.get("orochi_version", ""),
             "runtime": body.get("runtime", ""),
             "orochi_subagent_count": body.get("orochi_subagent_count") or 0,
             # v0.11.0 Agents-tab visibility fields (todo#155). The

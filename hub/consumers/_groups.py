@@ -49,7 +49,7 @@ def _sanitize_group(name: str) -> str:
     """Sanitize a channel/group name for Django Channels.
 
     Channels requires names matching ^[a-zA-Z0-9._-]{1,99}$. The previous
-    version only handled #, @, and space, which broke registration when
+    orochi_version only handled #, @, and space, which broke registration when
     channels included other characters (slashes, colons, unicode, etc.).
     """
     sanitized = re.sub(r"[^a-zA-Z0-9._-]", "-", name)

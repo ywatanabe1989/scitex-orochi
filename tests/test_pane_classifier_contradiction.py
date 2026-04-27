@@ -100,8 +100,8 @@ def test_busy_animation_suppresses_stale(_isolate_state):
 
 def test_pane_change_resets_stagnation_counter(_isolate_state):
     agent = "t-agent-reset"
-    pane_a = "> version A\n"
-    pane_b = "> version B\n"
+    pane_a = "> orochi_version A\n"
+    pane_b = "> orochi_version B\n"
     # 4 identical cycles — would flip to stale on the 4th.
     for _ in range(3):
         _classifier._classify_orochi_pane_state(pane_a, pane_a, agent=agent)

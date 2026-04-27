@@ -192,7 +192,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 else prev.get("orochi_skills_loaded") or []
             ),
             "started_at": info.get("started_at") or prev.get("started_at") or "",
-            "version": info.get("version") or prev.get("version") or "",
+            "orochi_version": info.get("orochi_version") or prev.get("orochi_version") or "",
             "runtime": info.get("runtime") or prev.get("runtime") or "",
             # v0.11.0 Agents-tab visibility fields. Recent action log
             # + tmux pane tail + workspace CLAUDE.md head + MCP server

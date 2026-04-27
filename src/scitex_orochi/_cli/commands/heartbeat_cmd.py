@@ -134,7 +134,7 @@ def _wrap_with_orochi_fields(
         "sac_hooks_p95_elapsed_s_by_action": status.get("sac_hooks_p95_elapsed_s_by_action") or {},
         # Accounting.
         "orochi_account_email": status.get("orochi_account_email") or "",
-        "version": status.get("version") or "",
+        "orochi_version": status.get("orochi_version") or "",
     }
     # Orochi unified cron state (msg#16406 / msg#16410). Surfaced in
     # every heartbeat so Phase 2 can wire the Machines tab directly off

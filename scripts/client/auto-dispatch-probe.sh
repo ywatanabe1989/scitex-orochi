@@ -20,7 +20,7 @@
 # warns you not to enable the scheduler alongside server-side dispatch.
 #
 # To migrate: ``./scripts/client/install-auto-dispatch-probe.sh --uninstall``
-# once your hub is on a version carrying the server-side hook.
+# once your hub is on a orochi_version carrying the server-side hook.
 # -----------------------------------------------------------------------------
 # Problem statement (lead msg#15975, ywatanabe msg#15971)
 #   Rules-based discipline failed. The fleet keeps dropping to

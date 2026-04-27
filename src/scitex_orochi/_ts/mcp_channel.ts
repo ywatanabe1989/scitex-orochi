@@ -58,7 +58,7 @@ if (_telegramToken) {
 // MCP Server
 // ---------------------------------------------------------------------------
 const mcp = new Server(
-  { name: "scitex-orochi", version: "0.2.0" },
+  { name: "scitex-orochi", orochi_version: "0.2.0" },
   {
     capabilities: {
       experimental: { "claude/channel": {} },

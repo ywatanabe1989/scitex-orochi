@@ -1,6 +1,6 @@
 """Communication state scheme v1 (Layer B).
 
-Pure function: A2A observations → ``{"label", "evidence", "version"}``.
+Pure function: A2A observations → ``{"label", "evidence", "orochi_version"}``.
 
 Conservative — only emits coarse labels; deliberately avoids picking
 "stuck" thresholds at this layer. Consumers that want to alert on
@@ -101,4 +101,4 @@ def derive_orochi_comm_state(obs: dict[str, Any]) -> dict[str, str]:
 
 
 def _verdict(label: str, evidence: str) -> dict[str, str]:
-    return {"label": label, "evidence": evidence, "version": VERSION}
+    return {"label": label, "evidence": evidence, "orochi_version": VERSION}

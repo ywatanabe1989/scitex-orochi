@@ -87,7 +87,7 @@
 #                                  keys (default 0; overridden to 1
 #                                  during the safe-start window)
 #
-# Schema version: scitex-orochi/tmux-unstick/v2 (bumped from v1 POC).
+# Schema orochi_version: scitex-orochi/tmux-unstick/v2 (bumped from v1 POC).
 # -----------------------------------------------------------------------------
 
 set -u
