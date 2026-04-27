@@ -114,7 +114,7 @@ export function statusGlyph(job: CronJob): { glyph: string; cls: string; label: 
   }
   var exit = job.last_exit;
   if (exit === null || exit === undefined) {
-    /* Running right now (not finished), or state file wrote started_at
+    /* Running right now (not finished), or state file wrote orochi_started_at
      * before ended_at — treat as pending. */
     return { glyph: "⏸", cls: "cron-row-pending", label: "pending" };
   }

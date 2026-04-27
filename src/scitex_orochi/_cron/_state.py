@@ -43,7 +43,7 @@ class JobRun:
     per-job NDJSON log.
     """
 
-    started_at: float = 0.0
+    orochi_started_at: float = 0.0
     ended_at: float = 0.0
     duration_seconds: float = 0.0
     exit_code: int | None = None
@@ -171,7 +171,7 @@ def _state_from_dict(data: dict[str, Any]) -> CronState:
                 next_run_at=float(j.get("next_run_at", 0) or 0),
                 running=bool(j.get("running", False)),
                 last_run=JobRun(
-                    started_at=float(last_run_raw.get("started_at", 0) or 0),
+                    orochi_started_at=float(last_run_raw.get("orochi_started_at", 0) or 0),
                     ended_at=float(last_run_raw.get("ended_at", 0) or 0),
                     duration_seconds=float(
                         last_run_raw.get("duration_seconds", 0) or 0
@@ -209,7 +209,7 @@ def render_cron_jobs(state: CronState | None) -> list[dict[str, Any]]:
             {
                 "name": j.name,
                 "interval": j.interval_seconds,
-                "last_run": j.last_run.ended_at or j.last_run.started_at or None,
+                "last_run": j.last_run.ended_at or j.last_run.orochi_started_at or None,
                 "last_exit": j.last_run.exit_code,
                 "last_skipped": j.last_run.skipped or None,
                 "last_duration_seconds": j.last_run.duration_seconds or None,

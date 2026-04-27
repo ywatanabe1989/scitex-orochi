@@ -51,7 +51,7 @@ class ContainerAgent(models.Model):
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.RUNNING
     )
-    started_at = models.DateTimeField(auto_now_add=True)
+    orochi_started_at = models.DateTimeField(auto_now_add=True)
     last_seen = models.DateTimeField(auto_now=True)
     metadata = models.JSONField(default=dict, blank=True)
 

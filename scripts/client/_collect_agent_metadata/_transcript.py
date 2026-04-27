@@ -95,14 +95,14 @@ def parse_transcript(jsonls: list[Path]) -> dict:
     """Parse the newest JSONL for orochi_model, orochi_context_pct, orochi_current_tool, recent_actions.
 
     Returns dict with keys: orochi_model, last_activity, orochi_context_pct,
-    orochi_current_tool, started_at, recent_actions.
+    orochi_current_tool, orochi_started_at, recent_actions.
     """
     out = {
         "orochi_model": "",
         "last_activity": "",
         "orochi_context_pct": 0.0,
         "orochi_current_tool": "",
-        "started_at": "",
+        "orochi_started_at": "",
         "recent_actions": [],
     }
     if not jsonls:
@@ -115,10 +115,10 @@ def parse_transcript(jsonls: list[Path]) -> dict:
         lines = []
     tail = lines[-50:]
 
-    # started_at = mtime of earliest jsonl for this orochi_project (ISO UTC)
+    # orochi_started_at = mtime of earliest jsonl for this orochi_project (ISO UTC)
     try:
         earliest = min(jsonls, key=lambda p: p.stat().st_mtime)
-        out["started_at"] = datetime.fromtimestamp(
+        out["orochi_started_at"] = datetime.fromtimestamp(
             earliest.stat().st_mtime, tz=timezone.utc
         ).isoformat()
     except Exception:

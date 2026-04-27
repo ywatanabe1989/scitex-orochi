@@ -67,7 +67,7 @@ def _serialize(agent):
         "yaml_path": agent.yaml_path,
         "status": agent.status,
         "workspace": agent.workspace.name,
-        "started_at": agent.started_at.isoformat(),
+        "orochi_started_at": agent.orochi_started_at.isoformat(),
         "last_seen": agent.last_seen.isoformat(),
         "metadata": agent.metadata or {},
     }

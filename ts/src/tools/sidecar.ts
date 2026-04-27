@@ -169,7 +169,7 @@ export async function handleSidecarStatus(): Promise<{
     dst_host: j.dst_host,
     dst_path: j.dst_path,
     channel: j.channel,
-    started_at: j.started_at,
+    orochi_started_at: j.orochi_started_at,
     finished_at: j.finished_at ?? null,
     exit_code: j.exit_code ?? null,
   }));
@@ -180,7 +180,7 @@ export async function handleSidecarStatus(): Promise<{
       agent: OROCHI_AGENT || null,
       pid: process.pid,
       ppid: typeof process.ppid === "number" ? process.ppid : null,
-      started_at: MCP_SERVER_STARTED_AT,
+      orochi_started_at: MCP_SERVER_STARTED_AT,
       uptime_seconds: uptimeSeconds,
       orochi_runtime: typeof Bun !== "undefined" ? "bun" : "node",
     },

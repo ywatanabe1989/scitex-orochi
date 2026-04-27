@@ -123,7 +123,7 @@ def api_agents_register(request):
             # has context_management.strategy=noop or unconfigured.
             "context_management": body.get("context_management"),
             "orochi_skills_loaded": body.get("orochi_skills_loaded") or [],
-            "started_at": body.get("started_at", ""),
+            "orochi_started_at": body.get("orochi_started_at", ""),
             "orochi_version": body.get("orochi_version", ""),
             "orochi_runtime": body.get("orochi_runtime", ""),
             "orochi_subagent_count": body.get("orochi_subagent_count") or 0,

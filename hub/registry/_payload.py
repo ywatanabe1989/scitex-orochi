@@ -205,7 +205,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_context_pct": a.get("orochi_context_pct"),
                 "context_management": a.get("context_management"),
                 "orochi_skills_loaded": list(a.get("orochi_skills_loaded") or []),
-                "started_at": a.get("started_at", ""),
+                "orochi_started_at": a.get("orochi_started_at", ""),
                 "orochi_version": a.get("orochi_version", ""),
                 "orochi_runtime": a.get("orochi_runtime", ""),
                 # v0.11.0 Agents-tab visibility fields.

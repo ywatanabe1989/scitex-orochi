@@ -200,7 +200,7 @@ class CronDaemon:
             if prev is not None and prev.is_alive():
                 with self._state_lock:
                     js.last_run = JobRun(
-                        started_at=now,
+                        orochi_started_at=now,
                         ended_at=now,
                         duration_seconds=0.0,
                         exit_code=None,
@@ -246,7 +246,7 @@ class CronDaemon:
             js.running = True
         self._persist_state()
 
-        run = JobRun(started_at=start)
+        run = JobRun(orochi_started_at=start)
         try:
             if self.dry_run:
                 logger.info("cron[dry-run]: would run %s -> %s", name, job.command)
@@ -318,7 +318,7 @@ class CronDaemon:
             skipped = ""
         end = time.time()
         return JobRun(
-            started_at=start,
+            orochi_started_at=start,
             ended_at=end,
             duration_seconds=end - start,
             exit_code=exit_code,
@@ -357,7 +357,7 @@ class CronDaemon:
         start = time.time()
         if self.dry_run:
             return JobRun(
-                started_at=start,
+                orochi_started_at=start,
                 ended_at=start,
                 duration_seconds=0.0,
                 exit_code=0,

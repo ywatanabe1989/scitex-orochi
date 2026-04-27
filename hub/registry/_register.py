@@ -57,7 +57,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # arch info in the agent detail pane (HANDOFF.md #1 spec).
             "uname": info.get("uname", "") or prev.get("uname", ""),
             # Process start time as unix epoch (float). Distinct from
-            # `started_at` (ISO string) — the unix form is the
+            # `orochi_started_at` (ISO string) — the unix form is the
             # authoritative tiebreaker for singleton enforcement
             # (HANDOFF #255: oldest start_ts wins when two processes
             # claim the same name). Preserved across re-registers so
@@ -191,7 +191,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("orochi_skills_loaded"), (list, tuple))
                 else prev.get("orochi_skills_loaded") or []
             ),
-            "started_at": info.get("started_at") or prev.get("started_at") or "",
+            "orochi_started_at": info.get("orochi_started_at") or prev.get("orochi_started_at") or "",
             "orochi_version": info.get("orochi_version") or prev.get("orochi_version") or "",
             "orochi_runtime": info.get("orochi_runtime") or prev.get("orochi_runtime") or "",
             # v0.11.0 Agents-tab visibility fields. Recent action log

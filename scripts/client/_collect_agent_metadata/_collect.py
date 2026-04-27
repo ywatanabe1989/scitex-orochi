@@ -69,7 +69,7 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        pid, ppid, started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
+        pid, ppid, orochi_started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
         orochi_runtime, orochi_version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
@@ -110,7 +110,7 @@ def collect(agent: str) -> dict:
     last_activity = tr["last_activity"]
     orochi_context_pct = tr["orochi_context_pct"]
     orochi_current_tool = tr["orochi_current_tool"]
-    started_at = tr["started_at"]
+    orochi_started_at = tr["orochi_started_at"]
     recent_actions = tr["recent_actions"]
 
     # Process info: first claude child pid under the multiplexer session.
@@ -241,7 +241,7 @@ def collect(agent: str) -> dict:
         "orochi_model": resolved_model,
         "pid": pid,
         "ppid": ppid,
-        "started_at": started_at,
+        "orochi_started_at": orochi_started_at,
         "workdir": workspace,
         "orochi_project": orochi_project,
         "orochi_machine": orochi_machine,
