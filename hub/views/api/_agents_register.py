@@ -132,7 +132,7 @@ def api_agents_register(request):
             # tmux pane tail, the workspace CLAUDE.md head, and the
             # MCP server list so the dashboard can render meaningful
             # cards instead of "no task reported".
-            "recent_actions": body.get("recent_actions") or [],
+            "orochi_recent_actions": body.get("orochi_recent_actions") or [],
             "orochi_pane_tail": body.get("orochi_pane_tail", ""),
             "orochi_pane_tail_block": body.get("orochi_pane_tail_block", ""),
             # todo#47 — ~500 filtered lines of tmux scrollback for the

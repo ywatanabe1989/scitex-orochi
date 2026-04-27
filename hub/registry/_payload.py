@@ -209,7 +209,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_version": a.get("orochi_version", ""),
                 "orochi_runtime": a.get("orochi_runtime", ""),
                 # v0.11.0 Agents-tab visibility fields.
-                "recent_actions": list(a.get("recent_actions") or []),
+                "orochi_recent_actions": list(a.get("orochi_recent_actions") or []),
                 "orochi_pane_tail": a.get("orochi_pane_tail", ""),
                 "orochi_pane_tail_block": a.get("orochi_pane_tail_block", ""),
                 # todo#47 — full scrollback; empty string if the agent

@@ -200,10 +200,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # heartbeat via api_agents_register; the dashboard reads
             # them from get_agents() to render meaningful cards.
             # todo#155.
-            "recent_actions": (
-                list(info.get("recent_actions"))
-                if isinstance(info.get("recent_actions"), (list, tuple))
-                else prev.get("recent_actions") or []
+            "orochi_recent_actions": (
+                list(info.get("orochi_recent_actions"))
+                if isinstance(info.get("orochi_recent_actions"), (list, tuple))
+                else prev.get("orochi_recent_actions") or []
             ),
             "orochi_pane_tail": info.get("orochi_pane_tail") or prev.get("orochi_pane_tail") or "",
             "orochi_pane_tail_block": info.get("orochi_pane_tail_block")

@@ -154,7 +154,7 @@ async def _maybe_mention_reply(consumer, text: str, ch_name: str) -> None:
 
     Parses all @word tokens from the message. For each token that matches
     a known agent name in the registry, posts a system message with the
-    agent's last recent_actions (up to 5 lines) and its online/offline
+    agent's last orochi_recent_actions (up to 5 lines) and its online/offline
     status.
     """
     from hub.registry import get_agents
@@ -188,7 +188,7 @@ async def _maybe_mention_reply(consumer, text: str, ch_name: str) -> None:
         if not info:
             continue
         status = info.get("status", "unknown")
-        recent = info.get("recent_actions") or []
+        recent = info.get("orochi_recent_actions") or []
         lines = list(recent)[-5:]  # last 5 actions
         last_seen = info.get("last_seen", "")
         if lines:

@@ -111,7 +111,7 @@ def collect(agent: str) -> dict:
     orochi_context_pct = tr["orochi_context_pct"]
     orochi_current_tool = tr["orochi_current_tool"]
     orochi_started_at = tr["orochi_started_at"]
-    recent_actions = tr["recent_actions"]
+    orochi_recent_actions = tr["orochi_recent_actions"]
 
     # Process info: first claude child orochi_pid under the orochi_multiplexer session.
     orochi_pid, orochi_ppid = find_session_pids(agent, orochi_multiplexer)
@@ -236,7 +236,7 @@ def collect(agent: str) -> dict:
         # counter, orochi_pane_state.py classifier) can compute "did the agent
         # actually do anything?" without being fooled by inbound chatter.
         "orochi_pane_tail_block_clean": orochi_pane_tail_block_clean,
-        "recent_actions": recent_actions,
+        "orochi_recent_actions": orochi_recent_actions,
         "last_activity": last_activity,
         "orochi_model": resolved_model,
         "orochi_pid": orochi_pid,

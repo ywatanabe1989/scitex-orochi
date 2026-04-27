@@ -10,7 +10,7 @@ and this orochi_project adheres to [Semantic Versioning](https://semver.org/spec
 ### 🚀 Features
 - feat(hub/agents-tab): each agent card now shows its **last 10 tool
   calls with timestamps** as a mini activity log, sourced from
-  `agent_meta.recent_actions` (transcript JSONL parse, skips
+  `agent_meta.orochi_recent_actions` (transcript JSONL parse, skips
   housekeeping `mcp__scitex-orochi__*` tools, includes the first input
   arg as preview). msg#6608 / msg#6615.
 - feat(hub/agents-tab): card pulls in workspace `CLAUDE.md` first line

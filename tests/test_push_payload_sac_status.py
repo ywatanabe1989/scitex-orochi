@@ -29,7 +29,7 @@ _MIN_META = {
     # doesn't KeyError.
     "orochi_skills_loaded": [],
     "orochi_mcp_servers": [],
-    "recent_actions": [],
+    "orochi_recent_actions": [],
     "sac_hooks_recent_tools": [],
     "sac_hooks_recent_prompts": [],
     "sac_hooks_agent_calls": [],
