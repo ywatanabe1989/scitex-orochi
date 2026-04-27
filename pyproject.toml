@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.15.5"
+version = "0.15.6"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -50,6 +50,13 @@ dependencies = [
     # smoke 2026-04-26: SendMessage failed with FieldDescriptor.label
     # AttributeError on a fresh container with protobuf 7.34.1.
     "protobuf<7",
+    # Maintained vendor-prefix detectors (GitHub, AWS, Slack, Anthropic,
+    # OpenAI, JWT, Stripe, ...) used by the .env viewer's redaction
+    # pipeline (`scripts/client/_collect_agent_metadata/_files.py`).
+    # Replaces the hand-rolled vendor-prefix list so the catalog
+    # tracks upstream when vendors change token formats. The library's
+    # high-entropy plugins are explicitly skipped — see _files.py.
+    "detect-secrets>=1.5",
 ]
 
 [project.optional-dependencies]

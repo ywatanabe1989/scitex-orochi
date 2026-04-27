@@ -42,6 +42,10 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("sk-ant", re.compile(r"sk-ant-[A-Za-z0-9_\-]{10,}")),
     # GitHub personal access tokens / fine-grained tokens / app tokens.
     ("ghp", re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}")),
+    # GitHub fine-grained personal access tokens (newer prefix).
+    ("github_pat", re.compile(r"github_pat_[A-Za-z0-9_]{20,}")),
+    # Slack tokens.
+    ("slack", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
     # JWTs (three base64url segments separated by dots). Used by OAuth
     # id_tokens, Django session JWTs, etc.
     (
@@ -50,12 +54,20 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
     # OpenAI-style keys.
     ("sk-", re.compile(r"\bsk-[A-Za-z0-9]{20,}")),
-    # AWS access-key-id prefixes.
-    ("aws", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    # AWS access-key-id prefixes (incl. session keys).
+    ("aws", re.compile(r"\b[AS]KIA[0-9A-Z]{16}\b")),
     # Generic "Bearer <token>" authorization headers in curl/log output.
     ("bearer", re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}")),
     # Anything that looks like a password-store grep result.
     ("password", re.compile(r"(?i)password[:=]\s*\S{4,}")),
+    # URL/DSN userinfo: postgres://user:pw@host, redis://:pw@host,
+    # https://user:pw@host, amqp://, mongodb+srv://, etc. Mask the whole
+    # `user:pw@` chunk (audit 2026-04-27 §1: the previous regex set let
+    # DATABASE_URL etc. through both the producer and the hub).
+    (
+        "url-userinfo",
+        re.compile(r"([a-zA-Z][\w+.\-]*://)([^/@\s]+@)"),
+    ),
 )
 
 # Matches a full line that contains credential-file paths. The whole line
@@ -82,8 +94,14 @@ def redact_secrets(text: str) -> str:
         if any(p.search(line) for p in _CREDENTIAL_LINE_PATTERNS):
             cleaned.append("[REDACTED credential-referencing line]")
             continue
-        for _label, pat in _SECRET_PATTERNS:
-            line = pat.sub("[REDACTED]", line)
+        for label, pat in _SECRET_PATTERNS:
+            if label == "url-userinfo":
+                # Keep scheme://, mask userinfo segment so DATABASE_URL,
+                # SENTRY_DSN, REDIS_URL etc. stay readable as "what
+                # service is this" without leaking the credential.
+                line = pat.sub(r"\1[REDACTED]@", line)
+            else:
+                line = pat.sub("[REDACTED]", line)
         cleaned.append(line)
     # Preserve a trailing newline when the source had one so the
     # frontend's scroll-to-bottom heuristic still works.
