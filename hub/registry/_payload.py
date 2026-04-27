@@ -241,7 +241,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_last_action_at": a.get("sac_hooks_last_action_at", ""),
                 "sac_hooks_last_action_name": a.get("sac_hooks_last_action_name", ""),
                 "sac_hooks_last_action_outcome": a.get("sac_hooks_last_action_outcome", ""),
-                "last_action_elapsed_s": a.get("last_action_elapsed_s"),
+                "sac_hooks_last_action_elapsed_s": a.get("sac_hooks_last_action_elapsed_s"),
                 "action_counts": dict(a.get("action_counts") or {}),
                 "sac_hooks_p95_elapsed_s_by_action": dict(a.get("sac_hooks_p95_elapsed_s_by_action") or {}),
                 # UI-aligned quota keys — long-name variants surfaced so

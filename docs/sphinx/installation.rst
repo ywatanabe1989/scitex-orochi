@@ -30,6 +30,6 @@ Requirements
   no knowledge of Orochi. The container's per-host ``actions.db``
   additionally supplies the PaneAction summary fields
   (``sac_hooks_last_action_at`` / ``sac_hooks_last_action_name`` / ``sac_hooks_last_action_outcome``
-  / ``last_action_elapsed_s`` / ``action_counts`` /
+  / ``sac_hooks_last_action_elapsed_s`` / ``action_counts`` /
   ``sac_hooks_p95_elapsed_s_by_action``) that ``heartbeat-push`` forwards to
   the hub.

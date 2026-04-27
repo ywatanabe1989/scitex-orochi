@@ -129,7 +129,7 @@ def _wrap_with_orochi_fields(
         "sac_hooks_last_action_at": status.get("sac_hooks_last_action_at") or "",
         "sac_hooks_last_action_name": status.get("sac_hooks_last_action_name") or "",
         "sac_hooks_last_action_outcome": status.get("sac_hooks_last_action_outcome") or "",
-        "last_action_elapsed_s": status.get("last_action_elapsed_s"),
+        "sac_hooks_last_action_elapsed_s": status.get("sac_hooks_last_action_elapsed_s"),
         "action_counts": status.get("action_counts") or {},
         "sac_hooks_p95_elapsed_s_by_action": status.get("sac_hooks_p95_elapsed_s_by_action") or {},
         # Accounting.

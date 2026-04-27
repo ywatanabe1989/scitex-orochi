@@ -182,8 +182,8 @@ function _renderActivityAgentDetail(a, grid) {
           (d.sac_hooks_last_action_name || "?") +
           " " +
           (d.sac_hooks_last_action_outcome || "?") +
-          (d.last_action_elapsed_s != null
-            ? ", " + Number(d.last_action_elapsed_s).toFixed(1) + "s"
+          (d.sac_hooks_last_action_elapsed_s != null
+            ? ", " + Number(d.sac_hooks_last_action_elapsed_s).toFixed(1) + "s"
             : "") +
           ")"
         : "-",

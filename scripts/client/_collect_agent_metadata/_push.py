@@ -105,7 +105,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "sac_hooks_last_action_name": meta.get("sac_hooks_last_action_name") or "",
         "sac_hooks_last_action_at": meta.get("sac_hooks_last_action_at") or "",
         "sac_hooks_last_action_outcome": meta.get("sac_hooks_last_action_outcome") or "",
-        "last_action_elapsed_s": meta.get("last_action_elapsed_s"),
+        "sac_hooks_last_action_elapsed_s": meta.get("sac_hooks_last_action_elapsed_s"),
         "sac_hooks_p95_elapsed_s_by_action": meta.get("sac_hooks_p95_elapsed_s_by_action") or {},
         # scitex-orochi #132 — subagent activity for the Agents tab
         # AGENT CALLS / BACKGROUND TASKS panels and the

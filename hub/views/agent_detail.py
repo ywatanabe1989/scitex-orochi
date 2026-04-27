@@ -319,7 +319,7 @@ def api_agent_detail(request, name: str):
         "sac_hooks_last_action_at": agent.get("sac_hooks_last_action_at") or "",
         "sac_hooks_last_action_name": agent.get("sac_hooks_last_action_name") or "",
         "sac_hooks_last_action_outcome": agent.get("sac_hooks_last_action_outcome") or "",
-        "last_action_elapsed_s": agent.get("last_action_elapsed_s"),
+        "sac_hooks_last_action_elapsed_s": agent.get("sac_hooks_last_action_elapsed_s"),
         "action_counts": agent.get("action_counts") or {},
         "sac_hooks_p95_elapsed_s_by_action": agent.get("sac_hooks_p95_elapsed_s_by_action") or {},
         # scitex-orochi#255: most recent singleton-cardinality conflict

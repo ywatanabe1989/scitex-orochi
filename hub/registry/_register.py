@@ -293,10 +293,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "sac_hooks_last_action_outcome": info.get("sac_hooks_last_action_outcome")
             or prev.get("sac_hooks_last_action_outcome")
             or "",
-            "last_action_elapsed_s": (
-                info.get("last_action_elapsed_s")
-                if info.get("last_action_elapsed_s") is not None
-                else prev.get("last_action_elapsed_s")
+            "sac_hooks_last_action_elapsed_s": (
+                info.get("sac_hooks_last_action_elapsed_s")
+                if info.get("sac_hooks_last_action_elapsed_s") is not None
+                else prev.get("sac_hooks_last_action_elapsed_s")
             ),
             "action_counts": (
                 dict(info.get("action_counts"))

@@ -16,7 +16,7 @@ _HOOK_EVENT_KEYS = (
     "sac_hooks_last_action_name",
     "sac_hooks_last_action_at",
     "sac_hooks_last_action_outcome",
-    "last_action_elapsed_s",
+    "sac_hooks_last_action_elapsed_s",
     "sac_hooks_p95_elapsed_s_by_action",
     # scitex-orochi #132 — subagent activity. sac_hooks_agent_calls is the
     # projected Agent/Task tool-invocation ring buffer; subagents is

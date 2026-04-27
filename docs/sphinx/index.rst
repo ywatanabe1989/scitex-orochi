@@ -40,7 +40,7 @@ Key Features
   ``sac_hooks_last_action_at`` / ``sac_hooks_last_action_name`` (e.g. ``nonce-probe``,
   ``compact``) / ``sac_hooks_last_action_outcome`` (``success`` /
   ``completion_timeout`` / ``precondition_fail`` / ``send_error`` /
-  ``skipped_by_policy``) / ``last_action_elapsed_s``, with
+  ``skipped_by_policy``) / ``sac_hooks_last_action_elapsed_s``, with
   ``action_counts`` and ``sac_hooks_p95_elapsed_s_by_action`` rollups. All
   surface in the per-agent detail meta grid (e.g. "Last action: 12s
   ago (nonce-probe success, 3.2s)") so "TUI frozen mid-render" is
