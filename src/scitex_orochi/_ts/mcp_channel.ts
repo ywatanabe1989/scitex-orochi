@@ -2,7 +2,7 @@
  * scitex-orochi MCP channel bridge -- connects Claude Code to the Orochi hub.
  *
  * v0.2.0: WSS support, ping/pong stale detection, connection state tracking.
- * Modules: src/config.ts, src/connection.ts, src/metrics.ts, src/tools.ts
+ * Modules: src/config.ts, src/connection.ts, src/orochi_metrics.ts, src/tools.ts
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";

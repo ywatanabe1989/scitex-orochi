@@ -46,7 +46,7 @@ Agent host ┐
 
 Status reporting never touches an LLM. The flow is a one-way dependency chain:
 
-1. `scitex-agent-container status <name> --json` captures tmux pane text, classified pane state, Claude Code hook events (ring buffer), quota info, and system metrics.
+1. `scitex-agent-container status <name> --json` captures tmux pane text, classified pane state, Claude Code hook events (ring buffer), quota info, and system orochi_metrics.
 2. `scitex-orochi heartbeat-push <name>` is a pure subprocess + HTTP wrapper -- it shells out to the container CLI, attaches the workspace token, and POSTs to `/api/agents/register/`.
 3. `scitex-agent-container` has **zero knowledge** of Orochi. Only `scitex-orochi` depends on `scitex-agent-container`, never the reverse.
 

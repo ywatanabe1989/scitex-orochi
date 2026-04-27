@@ -28,7 +28,7 @@ def api_resources(request):
     machines: dict[str, dict] = {}
     for a in agents:
         orochi_machine = a.get("orochi_machine") or a["name"]
-        metrics = a.get("metrics") or {}
+        orochi_metrics = a.get("orochi_metrics") or {}
 
         if orochi_machine not in machines:
             machines[orochi_machine] = {
@@ -37,55 +37,55 @@ def api_resources(request):
                 "last_heartbeat": a.get("last_heartbeat"),
                 "agents": [],
                 "resources": {
-                    "cpu_count": metrics.get("cpu_count", 0),
-                    "cpu_model": metrics.get("cpu_model", ""),
-                    "load_avg_1m": metrics.get("load_avg_1m", 0),
-                    "load_avg_5m": metrics.get("load_avg_5m", 0),
-                    "load_avg_15m": metrics.get("load_avg_15m", 0),
-                    "mem_used_percent": metrics.get("mem_used_percent", 0),
-                    "mem_total_mb": metrics.get("mem_total_mb", 0),
-                    "mem_free_mb": metrics.get("mem_free_mb", 0),
+                    "cpu_count": orochi_metrics.get("cpu_count", 0),
+                    "cpu_model": orochi_metrics.get("cpu_model", ""),
+                    "load_avg_1m": orochi_metrics.get("load_avg_1m", 0),
+                    "load_avg_5m": orochi_metrics.get("load_avg_5m", 0),
+                    "load_avg_15m": orochi_metrics.get("load_avg_15m", 0),
+                    "mem_used_percent": orochi_metrics.get("mem_used_percent", 0),
+                    "mem_total_mb": orochi_metrics.get("mem_total_mb", 0),
+                    "mem_free_mb": orochi_metrics.get("mem_free_mb", 0),
                     # ywatanabe msg#16215 — absolute MB for the ``N/M GB``
                     # sidebar + tooltip display on mba/nas. Derive
                     # ``mem_used_mb`` from ``total - free`` when the
                     # producer didn't send it directly (pre-fix clients).
-                    "mem_used_mb": metrics.get(
+                    "mem_used_mb": orochi_metrics.get(
                         "mem_used_mb",
                         max(
                             0,
-                            int(metrics.get("mem_total_mb", 0) or 0)
-                            - int(metrics.get("mem_free_mb", 0) or 0),
+                            int(orochi_metrics.get("mem_total_mb", 0) or 0)
+                            - int(orochi_metrics.get("mem_free_mb", 0) or 0),
                         ),
                     ),
-                    "disk_used_percent": metrics.get("disk_used_percent", 0),
+                    "disk_used_percent": orochi_metrics.get("disk_used_percent", 0),
                     # ywatanabe msg#16215 — storage as ``N/M TB``. Older
                     # clients (before 2026-04-21) only sent percent, so
                     # default to 0 and the frontend falls back to ``—``.
-                    "disk_total_mb": metrics.get("disk_total_mb", 0),
-                    "disk_used_mb": metrics.get("disk_used_mb", 0),
+                    "disk_total_mb": orochi_metrics.get("disk_total_mb", 0),
+                    "disk_used_mb": orochi_metrics.get("disk_used_mb", 0),
                     # Per-GPU list for ``N/M`` GPU display + VRAM tooltip.
                     # Empty ``[]`` on GPU-less hosts (mba, nas) → frontend
                     # renders ``n/a`` per spec.
-                    "gpus": list(metrics.get("gpus") or []),
+                    "gpus": list(orochi_metrics.get("gpus") or []),
                     # Slurm cluster aggregates (todo#87) — absent on non-orochi_slurm hosts
-                    "resource_source": metrics.get("resource_source", "local"),
-                    "cluster_nodes": metrics.get("cluster_nodes", 0),
-                    "cluster_cpus_allocated": metrics.get("cluster_cpus_allocated", 0),
-                    "cluster_cpus_total": metrics.get("cluster_cpus_total", 0),
-                    "cluster_mem_free_mb": metrics.get("cluster_mem_free_mb", 0),
-                    "cluster_mem_total_mb": metrics.get("cluster_mem_total_mb", 0),
-                    "cluster_gpus_total": metrics.get("cluster_gpus_total", 0),
-                    "cluster_gpus_allocated": metrics.get("cluster_gpus_allocated", 0),
-                    "orochi_slurm_total_jobs": metrics.get("orochi_slurm_total_jobs", 0),
-                    "orochi_slurm_running": metrics.get("orochi_slurm_running", 0),
-                    "orochi_slurm_pending": metrics.get("orochi_slurm_pending", 0),
+                    "resource_source": orochi_metrics.get("resource_source", "local"),
+                    "cluster_nodes": orochi_metrics.get("cluster_nodes", 0),
+                    "cluster_cpus_allocated": orochi_metrics.get("cluster_cpus_allocated", 0),
+                    "cluster_cpus_total": orochi_metrics.get("cluster_cpus_total", 0),
+                    "cluster_mem_free_mb": orochi_metrics.get("cluster_mem_free_mb", 0),
+                    "cluster_mem_total_mb": orochi_metrics.get("cluster_mem_total_mb", 0),
+                    "cluster_gpus_total": orochi_metrics.get("cluster_gpus_total", 0),
+                    "cluster_gpus_allocated": orochi_metrics.get("cluster_gpus_allocated", 0),
+                    "orochi_slurm_total_jobs": orochi_metrics.get("orochi_slurm_total_jobs", 0),
+                    "orochi_slurm_running": orochi_metrics.get("orochi_slurm_running", 0),
+                    "orochi_slurm_pending": orochi_metrics.get("orochi_slurm_pending", 0),
                 },
             }
 
         machines[orochi_machine]["agents"].append(a["name"])
 
-        # Update with latest metrics if this agent has fresher data
-        if metrics and a.get("status") == "online":
+        # Update with latest orochi_metrics if this agent has fresher data
+        if orochi_metrics and a.get("status") == "online":
             res = machines[orochi_machine]["resources"]
             for key in (
                 "cpu_count",
@@ -112,14 +112,14 @@ def api_resources(request):
                 "orochi_slurm_running",
                 "orochi_slurm_pending",
             ):
-                val = metrics.get(key)
+                val = orochi_metrics.get(key)
                 if val:
                     res[key] = val
             # ``gpus`` is a list — ``if val:`` correctly skips ``[]``
             # (GPU-less hosts) so a later agent without a GPU doesn't
             # clobber a previously-observed GPU list. Non-empty wins.
-            if metrics.get("gpus"):
-                res["gpus"] = list(metrics["gpus"])
+            if orochi_metrics.get("gpus"):
+                res["gpus"] = list(orochi_metrics["gpus"])
             # ywatanabe msg#16215 derive-on-aggregate fallback: pre-fix
             # clients only sent ``mem_total_mb`` + ``mem_free_mb`` (no
             # ``mem_used_mb``). Compute it here so the N/M GB frontend

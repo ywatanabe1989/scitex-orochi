@@ -150,7 +150,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
             "orochi_subagents": list(prev.get("orochi_subagents") or []),
             "health": prev.get("health") or {},
-            "metrics": prev.get("metrics") or {},
+            "orochi_metrics": prev.get("orochi_metrics") or {},
             # todo#46 — preserve ping/pong state across re-registers
             # (heartbeat, WS reconnect). Without this, every heartbeat
             # wiped last_pong_ts/last_rtt_ms back to absent, so the RT

@@ -98,7 +98,7 @@ function renderResources() {
           " jobs</span>";
       }
       /* #284 Machine card order: [icon] [star] [LED] [<host-label>
-       * (<orochi_hostname-canonical>)] [metrics].
+       * (<orochi_hostname-canonical>)] [orochi_metrics].
        *
        * The single LED replaces the old leading connection dot; it
        * sits BETWEEN star and the name so the icon/star columns line
@@ -159,7 +159,7 @@ function renderResources() {
           );
         })() +
         "</span>" +
-        '<span class="res-metrics">' +
+        '<span class="res-orochi_metrics">' +
         '<span class="res-chip" title="CPU cores">' +
         escapeHtml(cpuStr) +
         "</span>" +
@@ -384,7 +384,7 @@ async function fetchResources() {
     Object.keys(data).forEach(function (agentName) {
       var entry = data[agentName];
       var r = entry.resources || {};
-      /* Don't overwrite richer WS data with empty REST metrics (#337) */
+      /* Don't overwrite richer WS data with empty REST orochi_metrics (#337) */
       var existing = resourceData[agentName];
       if (
         existing &&
@@ -448,7 +448,7 @@ async function fetchResources() {
         _diskTotalMb: r.disk_total_mb || 0,
         _diskUsedMb: r.disk_used_mb || 0,
         // Slurm cluster aggregates (todo#87). Populated only when the
-        // host reports `resource_source == "orochi_slurm"` — login-node metrics
+        // host reports `resource_source == "orochi_slurm"` — login-node orochi_metrics
         // are replaced with cluster-wide CPU/RAM at the agent, so the
         // existing cpu/memory bars above now reflect cluster busy%.
         _resourceSource: r.resource_source || "local",

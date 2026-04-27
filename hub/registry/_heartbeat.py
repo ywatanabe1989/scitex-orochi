@@ -145,8 +145,8 @@ def set_health(
             pass
 
 
-def update_heartbeat(name: str, metrics: dict | None = None) -> None:
-    """Update heartbeat timestamp and optional metrics.
+def update_heartbeat(name: str, orochi_metrics: dict | None = None) -> None:
+    """Update heartbeat timestamp and optional orochi_metrics.
 
     todo#272: after the timestamp/metric write, run the quota-pressure
     state orochi_machine for this agent. The check reads the quota fields that
@@ -167,8 +167,8 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
         if name in _agents:
             _agents[name]["last_heartbeat"] = time.time()
             _agents[name]["status"] = "online"
-            if metrics:
-                _agents[name]["metrics"] = metrics
+            if orochi_metrics:
+                _agents[name]["orochi_metrics"] = orochi_metrics
             has_agent = True
         else:
             has_agent = False

@@ -397,7 +397,7 @@ body {
   /* ywatanabe 2026-04-21: "enlarge height; we need to see more" —
    * tighter vertical rhythm so more rows fit without scrolling.
    * todo#305 (lead msg#15493): padding + gap unified with the Agents
-   * sidebar card metrics (.sidebar .agent-card.sidebar-compact in
+   * sidebar card orochi_metrics (.sidebar .agent-card.sidebar-compact in
    * style-messages.css) so Channels and Agents lists read at the same
    * row height. font-size + min-height already matched; only padding
    * + margin needed nudging.

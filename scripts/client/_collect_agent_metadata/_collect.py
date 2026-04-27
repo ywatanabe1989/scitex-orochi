@@ -298,7 +298,7 @@ def collect(agent: str) -> dict:
         "orochi_runtime": "claude-code",
         "orochi_version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
         # Machine resource snapshot (todo#329 — Machines tab populate).
-        "metrics": collect_machine_metrics(),
+        "orochi_metrics": collect_machine_metrics(),
         # SLURM compute snapshot (todo#59). None on non-HPC hosts so the
         # Machines tab can hide the SLURM card cleanly.
         "orochi_slurm": collect_orochi_slurm_status(),

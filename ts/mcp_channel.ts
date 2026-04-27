@@ -10,7 +10,7 @@
  *   - mcp_channel/connection.ts  WebSocket connect/reconnect + `conn` adapter
  *   - mcp_channel/handlers.ts    MCP ListTools / CallTool dispatch table
  *
- * Existing helper modules: src/config.ts, src/connection.ts, src/metrics.ts,
+ * Existing helper modules: src/config.ts, src/connection.ts, src/orochi_metrics.ts,
  * src/tools.ts, src/message_buffer.ts, src/issue_cache.ts, src/tool_defs.ts.
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";

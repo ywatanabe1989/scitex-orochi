@@ -228,7 +228,7 @@ def api_agents_register(request):
         from hub.registry import set_orochi_subagents
 
         set_orochi_subagents(name, body.get("orochi_subagents") or [])
-    update_heartbeat(name, metrics=body.get("metrics") or {})
+    update_heartbeat(name, orochi_metrics=body.get("orochi_metrics") or {})
     task = body.get("orochi_current_task") or ""
     if task:
         set_orochi_current_task(name, task)

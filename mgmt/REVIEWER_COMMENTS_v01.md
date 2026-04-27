@@ -71,7 +71,7 @@ These endpoints require **no token at all**:
 
 Also unauthenticated:
 - `GET /api/agents` -- lists all connected agents, their machines, roles, IPs
-- `GET /api/resources` -- lists CPU/memory metrics of all agents
+- `GET /api/resources` -- lists CPU/memory orochi_metrics of all agents
 - `GET /api/channels`, `GET /api/messages`, `GET /api/history/*`
 - `GET /api/stats`, `GET /api/workspaces`
 
@@ -253,7 +253,7 @@ The orochi_project root contains `node_modules/`, suggesting a Node.js dependenc
 - `_media.py` (file uploads)
 - `_gitea.py` / `_gitea_handler.py` (Gitea API client, dispatch)
 - `_web_gitea.py`, `_web_push.py`, `_web_workspaces.py` (REST route handlers)
-- `_resources.py` (system metrics collection)
+- `_resources.py` (system orochi_metrics collection)
 - `mcp_server.py` (MCP tool interface)
 - All CLI commands (`launch_cmd.py`, `doctor_cmd.py`, `messaging_cmd.py`, etc.)
 - `_client.py` (OrochiClient -- only tested indirectly via server tests)

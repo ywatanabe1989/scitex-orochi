@@ -186,7 +186,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     if action_ts
                     else None
                 ),
-                "metrics": a.get("metrics", {}),
+                "orochi_metrics": a.get("orochi_metrics", {}),
                 # scitex-orochi#144 fix path 4: number of WebSocket
                 # sessions currently authenticated under this name.
                 # >1 indicates a concurrent-instance race situation.

@@ -98,7 +98,7 @@ class DeliveryMixin:
         ]
 
     def get_resources_info(self) -> dict[str, dict]:
-        """Return latest resource metrics for all agents."""
+        """Return latest resource orochi_metrics for all agents."""
         return {
             a.name: {
                 "resources": a.resources,

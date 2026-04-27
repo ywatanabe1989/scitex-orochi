@@ -55,7 +55,7 @@ scitex-orochi heartbeat-push head-mba \
 scitex-orochi heartbeat-push head-mba --loop 30 --verbose
 ```
 
-This wraps `scitex-agent-container status <name> --json` and POSTs the result (pane text, pane state, tool/prompt ring buffers, quota, metrics) to `/api/agents/register/`. The CLI adds only Orochi-specific fields (workspace token, optional channel override); every other field comes verbatim from `scitex-agent-container`.
+This wraps `scitex-agent-container status <name> --json` and POSTs the result (pane text, pane state, tool/prompt ring buffers, quota, orochi_metrics) to `/api/agents/register/`. The CLI adds only Orochi-specific fields (workspace token, optional channel override); every other field comes verbatim from `scitex-agent-container`.
 
 ## Functional Heartbeat
 

@@ -297,7 +297,7 @@ for a in (data if isinstance(data, list) else []):
         found = "1"
         status = str(a.get("status") or "")
         count = int(a.get("orochi_subagent_count") or 0)
-        m = a.get("metrics") or {}
+        m = a.get("orochi_metrics") or {}
         pane = str(m.get("orochi_pane_state") or a.get("orochi_pane_state") or "unknown")
         break
 print(f"{found}\t{status}\t{count}\t{pane}")

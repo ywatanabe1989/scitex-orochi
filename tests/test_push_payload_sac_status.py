@@ -37,7 +37,7 @@ _MIN_META = {
     "orochi_subagents": [],
     "sac_hooks_tool_counts": {},
     "sac_hooks_p95_elapsed_s_by_action": {},
-    "metrics": {},
+    "orochi_metrics": {},
     "orochi_slurm": None,
 }
 

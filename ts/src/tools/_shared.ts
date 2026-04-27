@@ -11,7 +11,7 @@ import {
 } from "../config.js";
 
 // Lightweight interface — avoids importing connection.ts which pulls in
-// metrics.ts + execSync, interfering with MCP stdio notifications.
+// orochi_metrics.ts + execSync, interfering with MCP stdio notifications.
 export interface ConnLike {
   send(data: string): void;
   isConnected: boolean;

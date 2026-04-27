@@ -1,4 +1,4 @@
-"""Cross-OS host resource metrics + SLURM snapshot (todo#329 / todo#59)."""
+"""Cross-OS host resource orochi_metrics + SLURM snapshot (todo#329 / todo#59)."""
 
 from __future__ import annotations
 

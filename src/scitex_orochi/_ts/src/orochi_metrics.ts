@@ -1,5 +1,5 @@
 /**
- * System metrics collection for heartbeat payloads.
+ * System orochi_metrics collection for heartbeat payloads.
  */
 import { cpus, freemem, totalmem, loadavg } from "os";
 import { execSync, execFileSync } from "child_process";

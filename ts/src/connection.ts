@@ -4,7 +4,7 @@
 import WebSocket from "ws";
 import { orochi_hostname } from "os";
 import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
-import { getSystemMetrics } from "./metrics.js";
+import { getSystemMetrics } from "./orochi_metrics.js";
 import { getAgentMeta, startAgentMetaRefresh } from "./collect_agent_metadata.js";
 
 // ---------------------------------------------------------------------------

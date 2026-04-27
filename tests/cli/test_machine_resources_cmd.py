@@ -21,7 +21,7 @@ def test_resources_group_registered() -> None:
 
 
 def _fake_metrics() -> dict:
-    """Canonical metrics dict shape used in the Machines tab."""
+    """Canonical orochi_metrics dict shape used in the Machines tab."""
     return {
         "cpu_count": 8,
         "cpu_model": "Apple M1",
@@ -64,21 +64,21 @@ def test_resources_show_json_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     assert payload["display"]["ram"] == "12.0/16.0 GB"
     assert payload["display"]["storage"] == "0.49/2.00 TB"
     assert payload["display"]["gpu"] == "n/a"
-    # raw metrics must round-trip unmodified
+    # raw orochi_metrics must round-trip unmodified
     assert payload["raw"]["cpu_count"] == 8
     assert payload["raw"]["mem_total_mb"] == 16 * 1024
 
 
 def test_resources_show_with_gpu(monkeypatch: pytest.MonkeyPatch) -> None:
     """GPU summary line is built from the per-GPU list."""
-    metrics = _fake_metrics()
-    metrics["gpus"] = [
+    orochi_metrics = _fake_metrics()
+    orochi_metrics["gpus"] = [
         {"name": "A100", "utilization_percent": 50.0,
          "memory_used_mb": 10 * 1024, "memory_total_mb": 40 * 1024},
         {"name": "A100", "utilization_percent": 0.0,
          "memory_used_mb": 0, "memory_total_mb": 40 * 1024},
     ]
-    monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: lambda: metrics)
+    monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: lambda: orochi_metrics)
     runner = CliRunner()
     result = runner.invoke(orochi, ["orochi_machine", "resources", "show"], obj={})
     assert result.exit_code == 0, result.output
@@ -101,8 +101,8 @@ def test_resources_show_pretty(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_resources_show_missing_mb_degrades(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """When the producer can't read some metrics, display is ``-``, not 'None'."""
-    metrics = {
+    """When the producer can't read some orochi_metrics, display is ``-``, not 'None'."""
+    orochi_metrics = {
         "cpu_count": None,
         "mem_used_mb": None,
         "mem_total_mb": None,
@@ -110,7 +110,7 @@ def test_resources_show_missing_mb_degrades(
         "disk_total_mb": None,
         "gpus": [],
     }
-    monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: lambda: metrics)
+    monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: lambda: orochi_metrics)
     runner = CliRunner()
     result = runner.invoke(orochi, ["orochi_machine", "resources", "show"], obj={})
     assert result.exit_code == 0, result.output

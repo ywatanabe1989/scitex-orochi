@@ -110,7 +110,7 @@ async def handle_agents_registry(request: web.Request) -> web.Response:
 
 
 async def handle_resources(request: web.Request) -> web.Response:
-    """GET /api/resources -- latest system resource metrics for all agents."""
+    """GET /api/resources -- latest system resource orochi_metrics for all agents."""
     server: OrochiServer = request.app["orochi_server"]
     return web.json_response(server.get_resources_info())
 

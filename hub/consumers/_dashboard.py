@@ -237,7 +237,7 @@ class DashboardConsumer(AsyncJsonWebsocketConsumer):
                 "type": "agent_info",
                 "agent": event["agent"],
                 "info": event.get("info", {}),
-                "metrics": event.get("metrics", {}),
+                "orochi_metrics": event.get("orochi_metrics", {}),
             }
         )
 

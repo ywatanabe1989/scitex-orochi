@@ -1,6 +1,6 @@
-"""System resource metrics collection for Orochi heartbeats.
+"""System resource orochi_metrics collection for Orochi heartbeats.
 
-Collects CPU, memory, disk, and load metrics using /proc and os module.
+Collects CPU, memory, disk, and load orochi_metrics using /proc and os module.
 No external dependencies (psutil not required).
 
 Slurm override (todo#87): when the host has ``sinfo`` on PATH, the local
@@ -9,7 +9,7 @@ values from ``sinfo``/``squeue`` so the Machines tab shows actual
 available compute rather than the login node's snapshot. See
 ``_orochi_slurm.collect_orochi_slurm_metrics``. The orochi_slurm call is best-effort and
 bounded at ~3s per heartbeat; any failure falls back silently to the
-``/proc`` metrics collected above.
+``/proc`` orochi_metrics collected above.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ log = logging.getLogger("orochi.resources")
 
 
 def collect_metrics() -> dict[str, str | int | float]:
-    """Collect system resource metrics.
+    """Collect system resource orochi_metrics.
 
     Returns dict with keys matching _RESOURCE_KEYS in _server.py:
         cpu_count, cpu_model, load_avg_1m, load_avg_5m, load_avg_15m,
@@ -32,19 +32,19 @@ def collect_metrics() -> dict[str, str | int | float]:
     overridden with cluster aggregates and supplemental orochi_slurm keys
     (``orochi_slurm_total_jobs``, ``cluster_cpus_total`` …) are appended.
     """
-    metrics: dict[str, str | int | float] = {}
+    orochi_metrics: dict[str, str | int | float] = {}
 
     # CPU count
     cpu_count = os.cpu_count()
     if cpu_count is not None:
-        metrics["cpu_count"] = cpu_count
+        orochi_metrics["cpu_count"] = cpu_count
 
     # CPU orochi_model from /proc/cpuinfo
     try:
         cpuinfo = Path("/proc/cpuinfo").read_text()
         for line in cpuinfo.splitlines():
             if line.startswith("orochi_model name"):
-                metrics["cpu_model"] = line.split(":", 1)[1].strip()
+                orochi_metrics["cpu_model"] = line.split(":", 1)[1].strip()
                 break
     except OSError:
         pass
@@ -52,9 +52,9 @@ def collect_metrics() -> dict[str, str | int | float]:
     # Load averages
     try:
         load1, load5, load15 = os.getloadavg()
-        metrics["load_avg_1m"] = round(load1, 2)
-        metrics["load_avg_5m"] = round(load5, 2)
-        metrics["load_avg_15m"] = round(load15, 2)
+        orochi_metrics["load_avg_1m"] = round(load1, 2)
+        orochi_metrics["load_avg_5m"] = round(load5, 2)
+        orochi_metrics["load_avg_15m"] = round(load15, 2)
     except OSError:
         pass
 
@@ -70,16 +70,16 @@ def collect_metrics() -> dict[str, str | int | float]:
 
         if "MemTotal" in mem:
             total_mb = mem["MemTotal"] // 1024
-            metrics["mem_total_mb"] = total_mb
+            orochi_metrics["mem_total_mb"] = total_mb
 
             # Use MemAvailable if present (Linux 3.14+), else MemFree
             free_kb = mem.get("MemAvailable", mem.get("MemFree", 0))
             free_mb = free_kb // 1024
-            metrics["mem_free_mb"] = free_mb
+            orochi_metrics["mem_free_mb"] = free_mb
 
             if total_mb > 0:
                 used_pct = round((1 - free_mb / total_mb) * 100, 1)
-                metrics["mem_used_percent"] = used_pct
+                orochi_metrics["mem_used_percent"] = used_pct
     except (OSError, ValueError):
         pass
 
@@ -90,12 +90,12 @@ def collect_metrics() -> dict[str, str | int | float]:
         free = st.f_bavail * st.f_frsize
         if total > 0:
             used_pct = round((1 - free / total) * 100, 1)
-            metrics["disk_used_percent"] = used_pct
+            orochi_metrics["disk_used_percent"] = used_pct
     except OSError:
         pass
 
     # Slurm override for cluster login nodes (todo#87). Runs last so any
-    # parsing failure leaves the /proc-based metrics intact. Disk is left
+    # parsing failure leaves the /proc-based orochi_metrics intact. Disk is left
     # untouched because Slurm doesn't track shared-fs usage.
     try:
         from scitex_orochi._orochi_slurm import collect_orochi_slurm_metrics
@@ -105,6 +105,6 @@ def collect_metrics() -> dict[str, str | int | float]:
         log.debug("Slurm metric collection raised", exc_info=True)
         orochi_slurm_metrics = {}
     if orochi_slurm_metrics:
-        metrics.update(orochi_slurm_metrics)
+        orochi_metrics.update(orochi_slurm_metrics)
 
-    return metrics
+    return orochi_metrics

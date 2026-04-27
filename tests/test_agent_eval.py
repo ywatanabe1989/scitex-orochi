@@ -45,7 +45,7 @@ def test_agent_response_is_polite_and_helpful():
     # Imported lazily so the test module can be collected without DeepEval
     # installed (e.g. when running ``pytest -m "not llm_eval"``).
     from deepeval import assert_test
-    from deepeval.metrics import GEval
+    from deepeval.orochi_metrics import GEval
     from deepeval.test_case import LLMTestCase, LLMTestCaseParams
 
     prompt = "I'm stuck on a Python import error, can you help?"

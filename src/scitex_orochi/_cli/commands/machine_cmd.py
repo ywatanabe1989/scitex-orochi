@@ -304,7 +304,7 @@ def resources_show(ctx: click.Context, pretty: bool) -> None:
             "storage": "N/M TB",
             "gpu":  "N x — VRAM N/M GB"   # or "n/a"
           },
-          "raw": { ...full metrics dict... }
+          "raw": { ...full orochi_metrics dict... }
         }
 
     ``--json`` (top-level) or ``--pretty`` honoured. Human output prints
@@ -313,22 +313,22 @@ def resources_show(ctx: click.Context, pretty: bool) -> None:
     """
     collect = _import_metrics()
     try:
-        metrics = collect()
+        orochi_metrics = collect()
     except Exception as exc:  # noqa: BLE001 - must degrade
         raise click.ClickException(f"collect_machine_metrics failed: {exc}") from exc
 
     display = {
-        "cpu": _fmt_cores(metrics.get("cpu_count")),
-        "ram": _fmt_gb_ratio(metrics.get("mem_used_mb"), metrics.get("mem_total_mb")),
+        "cpu": _fmt_cores(orochi_metrics.get("cpu_count")),
+        "ram": _fmt_gb_ratio(orochi_metrics.get("mem_used_mb"), orochi_metrics.get("mem_total_mb")),
         "storage": _fmt_tb_ratio(
-            metrics.get("disk_used_mb"), metrics.get("disk_total_mb")
+            orochi_metrics.get("disk_used_mb"), orochi_metrics.get("disk_total_mb")
         ),
-        "gpu": _fmt_gpu(metrics.get("gpus") or []),
+        "gpu": _fmt_gpu(orochi_metrics.get("gpus") or []),
     }
     payload = {
         "host": resolve_self_host(),
         "display": display,
-        "raw": metrics,
+        "raw": orochi_metrics,
     }
     as_json = bool(ctx.obj and ctx.obj.get("json"))
     if as_json or pretty:

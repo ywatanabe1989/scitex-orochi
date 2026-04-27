@@ -29,7 +29,7 @@ Key Features
 - **Non-Agentic Status Collection**: ``scitex-orochi heartbeat-push``
   shells out to ``scitex-agent-container status <name> --json`` and
   POSTs the result (tmux pane text, Claude Code hook events, quota,
-  metrics) to ``/api/agents/register/``. No LLM in the loop.
+  orochi_metrics) to ``/api/agents/register/``. No LLM in the loop.
 - **Functional Heartbeat**: Derived shortcuts propagated from the
   hook ring buffer —
   ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (newest ``PreToolUse``, i.e.

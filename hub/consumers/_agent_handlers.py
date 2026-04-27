@@ -230,7 +230,7 @@ async def handle_echo_pong(consumer, content):
 
 
 async def handle_heartbeat(consumer, content):
-    """Persist resource metrics + optional narrative fields, then broadcast."""
+    """Persist resource orochi_metrics + optional narrative fields, then broadcast."""
     payload = content.get("payload", {})
     consumer.agent_metrics = {
         "cpu_count": payload.get("cpu_count"),
@@ -296,7 +296,7 @@ async def handle_heartbeat(consumer, content):
             "type": "agent.info",
             "agent": consumer.agent_name,
             "info": getattr(consumer, "agent_meta", {}),
-            "metrics": consumer.agent_metrics,
+            "orochi_metrics": consumer.agent_metrics,
         },
     )
 
@@ -315,7 +315,7 @@ async def handle_task_update(consumer, content):
             "type": "agent.info",
             "agent": consumer.agent_name,
             "info": getattr(consumer, "agent_meta", {}),
-            "metrics": getattr(consumer, "agent_metrics", {}),
+            "orochi_metrics": getattr(consumer, "agent_metrics", {}),
         },
     )
 
@@ -334,6 +334,6 @@ async def handle_orochi_subagents_update(consumer, content):
             "type": "agent.info",
             "agent": consumer.agent_name,
             "info": getattr(consumer, "agent_meta", {}),
-            "metrics": getattr(consumer, "agent_metrics", {}),
+            "orochi_metrics": getattr(consumer, "agent_metrics", {}),
         },
     )

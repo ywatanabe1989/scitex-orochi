@@ -65,7 +65,7 @@ src/scitex_orochi/
   _web.py               # HTTP dashboard + REST API + observer WebSocket + CORS
   _auth.py              # Token authentication
   _config.py            # Environment variable configuration
-  _resources.py         # System metrics collection (CPU, memory, disk)
+  _resources.py         # System orochi_metrics collection (CPU, memory, disk)
   _telegram_bridge.py   # Bidirectional Telegram relay
   _push.py              # Web push notification store and delivery
   _push_hook.py         # Push notification message hook

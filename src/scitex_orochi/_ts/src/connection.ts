@@ -5,7 +5,7 @@ import WebSocket from "ws";
 import { orochi_hostname } from "os";
 import { execSync } from "child_process";
 import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
-import { getSystemMetrics } from "./metrics.js";
+import { getSystemMetrics } from "./orochi_metrics.js";
 
 // todo#55: canonical FQDN for display next to the short orochi_machine label
 // ("spartan (spartan.hpc.unimelb.edu.au)"). os.orochi_hostname() in Node returns

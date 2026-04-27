@@ -1,4 +1,4 @@
-"""Pin the orochi_machine-metrics wire shape for the Machines-tab display
+"""Pin the orochi_machine-orochi_metrics wire shape for the Machines-tab display
 (ywatanabe msg#16215).
 
 Sidebar MACHINES + Machines-tab tooltip expect the producer to emit
@@ -56,7 +56,7 @@ def test_collect_machine_metrics_has_all_required_keys():
     """Pin the wire contract the hub aggregator reads."""
     m = collect_machine_metrics()
     missing = REQUIRED_KEYS - set(m.keys())
-    assert not missing, f"missing keys in heartbeat metrics: {missing}"
+    assert not missing, f"missing keys in heartbeat orochi_metrics: {missing}"
 
 
 def test_gpus_is_a_list():

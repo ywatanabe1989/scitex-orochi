@@ -169,8 +169,8 @@ class OrochiClient:
         """Send a heartbeat to the server.
 
         Args:
-            resources: Optional system metrics dict. If None and
-                       auto_resources is not disabled, collects metrics
+            resources: Optional system orochi_metrics dict. If None and
+                       auto_resources is not disabled, collects orochi_metrics
                        automatically via _resources.collect_metrics().
         """
         if not self._ws:
@@ -186,7 +186,7 @@ class OrochiClient:
         await self._ws.send(msg.to_json())
 
     async def start_heartbeat(self, interval: int = 30) -> asyncio.Task:
-        """Start a background task that sends heartbeats with resource metrics.
+        """Start a background task that sends heartbeats with resource orochi_metrics.
 
         Args:
             interval: Seconds between heartbeats (default: 30).

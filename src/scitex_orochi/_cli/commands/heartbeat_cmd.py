@@ -99,8 +99,8 @@ def _wrap_with_orochi_fields(
         "quota_7d_used_pct": status.get("quota_7d_used_pct"),
         "quota_5h_reset_at": status.get("quota_5h_reset_at") or "",
         "quota_7d_reset_at": status.get("quota_7d_reset_at") or "",
-        # Machine-level metrics (host-level, dedupe concern on the server).
-        "metrics": status.get("metrics") or {},
+        # Machine-level orochi_metrics (host-level, dedupe concern on the server).
+        "orochi_metrics": status.get("orochi_metrics") or {},
         # Terminal pane + classified state.
         "pane_text": status.get("pane_text") or "",
         "orochi_pane_tail_block": status.get("pane_text") or "",
