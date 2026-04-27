@@ -179,6 +179,49 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("[REDACTED]", out)
         self.assertEqual(redact_secrets(""), "")
 
+    def test_redact_secrets_dsn_userinfo(self):
+        """v02 audit §1: DATABASE_URL / SENTRY_DSN / REDIS_URL etc. were
+        leaking the userinfo (``user:pw@``) portion through the hub-side
+        redactor because the previous regex set didn't catch DSN shapes.
+        The hub-side ``url-userinfo`` pattern (added 2026-04-28) masks
+        the userinfo and leaves the scheme/host visible so operators can
+        still see *which* service the leak would have referenced.
+
+        The producer-side equivalent lives at
+        ``tests/test_env_redaction.py`` — that test is skipped in pytest
+        without DJANGO_SETTINGS_MODULE; this case is the Django-runner
+        mirror.
+        """
+        from hub.views.agent_detail import redact_secrets
+
+        cases = [
+            # (input, secret_that_must_NOT_appear_in_output)
+            ("postgres://orochi:hunter2@db.example.com:5432/orochi", "hunter2"),
+            ("redis://:r3d1sP4ss@redis.example.com:6379/0", "r3d1sP4ss"),
+            ("https://user:pw@example.com/path", "user:pw"),
+            ("amqp://rabbit:bunny@queue.example.com//", "bunny"),
+            ("mongodb+srv://admin:l1mbo@cluster.mongodb.net/db", "l1mbo"),
+            (
+                "SENTRY_DSN=https://abcdef0123456789@o123.ingest.sentry.io/42",
+                "abcdef0123456789",
+            ),
+        ]
+        for src, secret in cases:
+            out = redact_secrets(src)
+            self.assertNotIn(
+                secret,
+                out,
+                msg=f"hub-side redact_secrets bypass: {src!r} -> {out!r} still "
+                f"contains {secret!r}",
+            )
+            # Scheme should still be visible — masking, not erasing.
+            scheme = src.split("://", 1)[0].split("=")[-1]
+            self.assertIn(
+                f"{scheme}://",
+                out,
+                msg=f"scheme {scheme!r} should be preserved in {out!r}",
+            )
+
     def test_orochi_hostname_canonical_exposed(self):
         """todo#55: detail endpoint must forward the canonical FQDN
         pushed by the heartbeat (PR #215/#216). Empty string when the
@@ -274,6 +317,8 @@ class AgentDetailApiTest(TestCase):
         data = self._get().json()
         self.assertEqual(data["sac_hooks_last_tool_at"], "2026-04-18T11:00:00+00:00")
         self.assertEqual(data["sac_hooks_last_tool_name"], "Bash")
-        self.assertEqual(data["sac_hooks_last_mcp_tool_name"], "mcp__scitex-orochi__send_message")
+        self.assertEqual(
+            data["sac_hooks_last_mcp_tool_name"], "mcp__scitex-orochi__send_message"
+        )
         self.assertEqual(data["sac_hooks_last_action_name"], "nonce_probe")
         self.assertEqual(data["sac_hooks_last_action_outcome"], "SUCCESS")

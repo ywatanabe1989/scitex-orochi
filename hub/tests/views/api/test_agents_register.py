@@ -189,11 +189,9 @@ class AgentMetaOAuthRegisterTest(TestCase):
             }
         )
         self.assertEqual(resp.status_code, 200)
-        a = [
-            x
-            for x in get_agents(workspace_id=self.ws.id)
-            if x["name"] == "sac-full"
-        ][0]
+        a = [x for x in get_agents(workspace_id=self.ws.id) if x["name"] == "sac-full"][
+            0
+        ]
         self.assertEqual(a["sac_status"], sac)
         # Nested-key access survives round-trip (the whole point of
         # the pivot).
@@ -275,3 +273,75 @@ class AgentMetaOAuthRegisterTest(TestCase):
             self.assertNotIn("token", kl)
             self.assertNotIn("secret", kl)
             self.assertFalse(kl.endswith("key"), f"key-like field: {k}")
+
+
+class AgentRegisterAuthMatrixTest(TestCase):
+    """v02 audit §1 follow-up: ``/api/agents/register/`` accepts the
+    workspace token via JSON body OR ``Authorization: Bearer <token>``
+    header, and rejects ``?token=`` (logs/Referer leak path).
+
+    Pins the three auth modes + the explicit-reject case so the security
+    fix can't silently regress on the next refactor of
+    ``hub/views/api/_agents_register.py``.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="auth-matrix-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="auth-matrix"
+        )
+
+    def _post(self, payload, *, headers=None, query=""):
+        return self.client.post(
+            f"/api/agents/register/{query}",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **(headers or {}),
+        )
+
+    def test_body_token_accepted(self):
+        resp = self._post({"token": self.token.token, "name": "body-agent"})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["status"], "ok")
+
+    def test_authorization_bearer_accepted(self):
+        resp = self._post(
+            {"name": "bearer-agent"},
+            headers={"HTTP_AUTHORIZATION": f"Bearer {self.token.token}"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["status"], "ok")
+
+    def test_authorization_lowercase_accepted(self):
+        # The check is case-insensitive on the scheme keyword.
+        resp = self._post(
+            {"name": "bearer-lower"},
+            headers={"HTTP_AUTHORIZATION": f"bearer {self.token.token}"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_query_string_token_rejected_with_400(self):
+        # Even when the body has a valid token, a query-string token
+        # is a config-bug signal — fail loudly so misconfigured agents
+        # don't silently leak via webserver access logs.
+        resp = self._post(
+            {"token": self.token.token, "name": "no-query"},
+            query=f"?token={self.token.token}",
+        )
+        self.assertEqual(resp.status_code, 400, resp.content)
+        body = resp.json()
+        self.assertIn("query string", body["error"])
+
+    def test_missing_token_returns_401(self):
+        resp = self._post({"name": "no-auth"})
+        self.assertEqual(resp.status_code, 401, resp.content)
+        self.assertEqual(resp.json()["error"], "token required")
+
+    def test_invalid_bearer_returns_401(self):
+        resp = self._post(
+            {"name": "bad-bearer"},
+            headers={"HTTP_AUTHORIZATION": "Bearer not_a_real_token"},
+        )
+        self.assertEqual(resp.status_code, 401, resp.content)
+        self.assertEqual(resp.json()["error"], "invalid token")
