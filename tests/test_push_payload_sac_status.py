@@ -36,7 +36,7 @@ _MIN_META = {
     "background_tasks": [],
     "subagents": [],
     "tool_counts": {},
-    "p95_elapsed_s_by_action": {},
+    "sac_hooks_p95_elapsed_s_by_action": {},
     "metrics": {},
     "slurm": None,
 }

@@ -199,7 +199,7 @@ def api_agents_register(request):
             "last_action_outcome": body.get("last_action_outcome") or "",
             "last_action_elapsed_s": body.get("last_action_elapsed_s"),
             "action_counts": body.get("action_counts") or {},
-            "p95_elapsed_s_by_action": body.get("p95_elapsed_s_by_action") or {},
+            "sac_hooks_p95_elapsed_s_by_action": body.get("sac_hooks_p95_elapsed_s_by_action") or {},
             # lead msg#16005: whole ``scitex-agent-container status
             # --terse --json`` dict forwarded by the orochi heartbeat
             # pusher. Passed straight through to ``register_agent`` so

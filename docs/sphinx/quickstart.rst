@@ -40,7 +40,7 @@ Quickstart
    ``last_action_outcome`` (``success`` / ``completion_timeout`` /
    ``precondition_fail`` / ``send_error`` / ``skipped_by_policy``),
    ``last_action_elapsed_s``, plus ``action_counts`` and
-   ``p95_elapsed_s_by_action`` rollups. All render in the per-agent
+   ``sac_hooks_p95_elapsed_s_by_action`` rollups. All render in the per-agent
    detail meta grid (e.g. "Last tool: 12s ago (Edit)", "Last MCP:
    45s ago (mcp__orochi__send_message)", "Last action: 12s ago
    (nonce-probe success, 3.2s)"). Note: ``last_action_name`` is the

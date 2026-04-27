@@ -321,7 +321,7 @@ def api_agent_detail(request, name: str):
         "last_action_outcome": agent.get("last_action_outcome") or "",
         "last_action_elapsed_s": agent.get("last_action_elapsed_s"),
         "action_counts": agent.get("action_counts") or {},
-        "p95_elapsed_s_by_action": agent.get("p95_elapsed_s_by_action") or {},
+        "sac_hooks_p95_elapsed_s_by_action": agent.get("sac_hooks_p95_elapsed_s_by_action") or {},
         # scitex-orochi#255: most recent singleton-cardinality conflict
         # for this agent within ``SINGLETON_EVENT_WINDOW_S``. ``None``
         # when no conflict has been recorded recently. Each event has

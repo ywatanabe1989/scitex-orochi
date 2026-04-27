@@ -243,7 +243,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "last_action_outcome": a.get("last_action_outcome", ""),
                 "last_action_elapsed_s": a.get("last_action_elapsed_s"),
                 "action_counts": dict(a.get("action_counts") or {}),
-                "p95_elapsed_s_by_action": dict(a.get("p95_elapsed_s_by_action") or {}),
+                "sac_hooks_p95_elapsed_s_by_action": dict(a.get("sac_hooks_p95_elapsed_s_by_action") or {}),
                 # UI-aligned quota keys — long-name variants surfaced so
                 # the Agents-tab meta grid sees them under the names it
                 # reads.

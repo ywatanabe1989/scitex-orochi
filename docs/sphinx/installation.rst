@@ -31,5 +31,5 @@ Requirements
   additionally supplies the PaneAction summary fields
   (``last_action_at`` / ``last_action_name`` / ``last_action_outcome``
   / ``last_action_elapsed_s`` / ``action_counts`` /
-  ``p95_elapsed_s_by_action``) that ``heartbeat-push`` forwards to
+  ``sac_hooks_p95_elapsed_s_by_action``) that ``heartbeat-push`` forwards to
   the hub.

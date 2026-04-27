@@ -303,10 +303,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("action_counts"), dict)
                 else prev.get("action_counts") or {}
             ),
-            "p95_elapsed_s_by_action": (
-                dict(info.get("p95_elapsed_s_by_action"))
-                if isinstance(info.get("p95_elapsed_s_by_action"), dict)
-                else prev.get("p95_elapsed_s_by_action") or {}
+            "sac_hooks_p95_elapsed_s_by_action": (
+                dict(info.get("sac_hooks_p95_elapsed_s_by_action"))
+                if isinstance(info.get("sac_hooks_p95_elapsed_s_by_action"), dict)
+                else prev.get("sac_hooks_p95_elapsed_s_by_action") or {}
             ),
             # UI-aligned quota keys (long names).
             "quota_5h_used_pct": (

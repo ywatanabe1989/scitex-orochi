@@ -227,7 +227,7 @@ class PaneActionSummaryRegistryTest(TestCase):
 
       last_action_at / last_action / last_action_outcome /
       last_action_elapsed_s / action_counts /
-      p95_elapsed_s_by_action
+      sac_hooks_p95_elapsed_s_by_action
     """
 
     def setUp(self):
@@ -273,7 +273,7 @@ class PaneActionSummaryRegistryTest(TestCase):
                 last_action_outcome="success",
                 last_action_elapsed_s=3.2,
                 action_counts={"nonce-probe:success": 42, "compact:success": 4},
-                p95_elapsed_s_by_action={"nonce-probe": 5.9, "compact": 9.0},
+                sac_hooks_p95_elapsed_s_by_action={"nonce-probe": 5.9, "compact": 9.0},
             )
         )
         self.assertEqual(resp.status_code, 200)
@@ -284,7 +284,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         self.assertEqual(a["last_action_outcome"], "success")
         self.assertEqual(a["last_action_elapsed_s"], 3.2)
         self.assertEqual(a["action_counts"]["nonce-probe:success"], 42)
-        self.assertEqual(a["p95_elapsed_s_by_action"]["compact"], 9.0)
+        self.assertEqual(a["sac_hooks_p95_elapsed_s_by_action"]["compact"], 9.0)
 
     def test_detail_api_surfaces_action_summary(self):
         self._post(
@@ -315,4 +315,4 @@ class PaneActionSummaryRegistryTest(TestCase):
         self.assertEqual(data["last_action_outcome"], "")
         self.assertIsNone(data["last_action_elapsed_s"])
         self.assertEqual(data["action_counts"], {})
-        self.assertEqual(data["p95_elapsed_s_by_action"], {})
+        self.assertEqual(data["sac_hooks_p95_elapsed_s_by_action"], {})
