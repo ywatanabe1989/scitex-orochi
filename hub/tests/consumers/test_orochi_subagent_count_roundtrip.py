@@ -72,7 +72,7 @@ class SubagentCountRoundtripTest(TestCase):
         register_agent(
             "head-test",
             self.ws.id,
-            {"agent_id": "head-test", "machine": "TEST", "role": "head"},
+            {"agent_id": "head-test", "orochi_machine": "TEST", "role": "head"},
         )
 
     def _send_heartbeat(self, orochi_subagent_count):
@@ -343,7 +343,7 @@ class SetSubagentCountDirectTest(TestCase):
         register_agent(
             "head-x",
             self.ws.id,
-            {"agent_id": "head-x", "machine": "TEST", "role": "head"},
+            {"agent_id": "head-x", "orochi_machine": "TEST", "role": "head"},
         )
 
     def test_set_monotonic_sequence(self):

@@ -225,7 +225,7 @@ class OrochiAgentExecutor(AgentExecutor):
 
     async def cancel(self, context: RequestContext, event_queue: EventQueue) -> None:
         # The legacy bridge has no cancel channel; mark the task
-        # cancelled locally so the SDK state machine stays consistent.
+        # cancelled locally so the SDK state orochi_machine stays consistent.
         updater = TaskUpdater(
             event_queue=event_queue,
             task_id=context.task_id,

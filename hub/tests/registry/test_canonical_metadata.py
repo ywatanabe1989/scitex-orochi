@@ -36,23 +36,23 @@ class CanonicalMetadataAcceptedTest(TestCase):
         _agents.clear()
 
     def test_hostname_stored_separately_from_machine(self):
-        """`machine` (YAML label) and `hostname` (live hostname(1)) are
+        """`orochi_machine` (YAML label) and `hostname` (live hostname(1)) are
         distinct — the dashboard must render the latter, not the former."""
         register_agent(
             "agent-x",
             workspace_id=1,
             info={
-                "machine": "ywata-note-win",
+                "orochi_machine": "ywata-note-win",
                 "hostname": "ywata-note-win",
             },
         )
         a = get_agent("agent-x")
-        self.assertEqual(a["machine"], "ywata-note-win")
+        self.assertEqual(a["orochi_machine"], "ywata-note-win")
         self.assertEqual(a["hostname"], "ywata-note-win")
 
     def test_all_257_fields_round_trip(self):
         info = {
-            "machine": "spartan",
+            "orochi_machine": "spartan",
             "hostname": "spartan",
             "uname": "Linux spartan 5.15.0 #1 SMP x86_64 GNU/Linux",
             "instance_id": "11111111-2222-3333-4444-555555555555",
@@ -78,7 +78,7 @@ class CanonicalMetadataAcceptedTest(TestCase):
             "proj-neurovista",
             workspace_id=1,
             info={
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
                 "instance_id": "abc",
                 "start_ts_unix": 1234.5,
@@ -94,7 +94,7 @@ class CanonicalMetadataAcceptedTest(TestCase):
         register_agent(
             "proj-neurovista",
             workspace_id=1,
-            info={"machine": "spartan"},
+            info={"orochi_machine": "spartan"},
         )
         a = get_agent("proj-neurovista")
         self.assertEqual(a["hostname"], "spartan")
@@ -114,7 +114,7 @@ class CanonicalMetadataAcceptedTest(TestCase):
         register_agent(
             "legacy-agent",
             workspace_id=1,
-            info={"machine": "ywata-note-win"},
+            info={"orochi_machine": "ywata-note-win"},
         )
         a = get_agent("legacy-agent")
         self.assertEqual(a["hostname"], "")

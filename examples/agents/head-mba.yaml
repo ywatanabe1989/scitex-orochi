@@ -9,7 +9,7 @@ metadata:
   labels:
     role: head
     team: orochi
-    machine: CHANGEME
+    orochi_machine: CHANGEME
     capabilities: ios-simulator,xcode,swift,mobile-testing
 spec:
   runtime: claude-code

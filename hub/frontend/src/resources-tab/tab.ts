@@ -12,7 +12,7 @@ import {
 import { activeTab } from "../tabs";
 
 /* Resource Monitor Panel + Resources Tab — part 2: renderers, card
- * builder, machine aliases, fetchResources. Split from resources-tab.js
+ * builder, orochi_machine aliases, fetchResources. Split from resources-tab.js
  * (697 lines) — depends on resources-tab/panel.js (resourceData,
  * _machineIcons, donutHtml, _wireMachinesControls,
  * _applyMachinesViewVisibility, showMachineTooltip, moveMachineTooltip,
@@ -135,21 +135,21 @@ export function renderResources() {
        * always available on the hover tooltip regardless. */
       var mStarred = !!(d && d._starred);
       return (
-        '<div class="res-card res-card-compact" data-machine="' +
+        '<div class="res-card res-card-compact" data-orochi_machine="' +
         escapeHtml(k) +
         '" title="' +
         escapeHtml(k) +
         (d._status ? " · " + d._status : "") +
         '">' +
-        '<span class="res-machine-icon" title="right-click to change" aria-hidden="true">' +
+        '<span class="res-orochi_machine-icon" title="right-click to change" aria-hidden="true">' +
         (_machineIcons[k] || "\uD83D\uDDA5\uFE0F") +
         "</span>" +
         '<span class="res-star ' +
         (mStarred ? "res-star-on" : "res-star-off") +
-        '" data-machine="' +
+        '" data-orochi_machine="' +
         escapeHtml(k) +
         '" title="' +
-        (mStarred ? "Unstar machine" : "Star machine (float to top)") +
+        (mStarred ? "Unstar orochi_machine" : "Star orochi_machine (float to top)") +
         '">' +
         (mStarred ? "\u2605" : "\u2606") +
         "</span>" +
@@ -158,7 +158,7 @@ export function renderResources() {
         '" title="' +
         (healthy ? "Host healthy" : "Host stale / degraded") +
         '"></span>' +
-        /* Spec: machine: [icon] [star] [LED] [<host-label>
+        /* Spec: orochi_machine: [icon] [star] [LED] [<host-label>
          * (<hostname-canonical>)] — show the canonical FQDN in
          * parentheses after the short label when it differs
          * meaningfully from the label. Uses the same collapse rules
@@ -201,14 +201,14 @@ export function renderResources() {
     })
     .join("");
   /* todo#86: hover tooltip on sidebar rows with CPU/RAM/GPU/VRAM/Disk. */
-  container.querySelectorAll(".res-card[data-machine]").forEach(function (el) {
-    var host = el.getAttribute("data-machine");
+  container.querySelectorAll(".res-card[data-orochi_machine]").forEach(function (el) {
+    var host = el.getAttribute("data-orochi_machine");
     el.addEventListener("mouseenter", function (ev) {
       showMachineTooltip(host, ev);
     });
     el.addEventListener("mousemove", moveMachineTooltip);
     el.addEventListener("mouseleave", hideMachineTooltip);
-    /* Right-click → emoji picker to customize the machine icon.
+    /* Right-click → emoji picker to customize the orochi_machine icon.
      * Stored in localStorage so each user's pick survives reloads
      * without a new Django model (TODO.md Entity Consistency). */
     el.addEventListener("contextmenu", function (ev) {
@@ -455,7 +455,7 @@ export async function fetchResources() {
         ];
       }
       resourceData[agentName] = {
-        hostname: _friendlyMachine(entry.machine || agentName),
+        hostname: _friendlyMachine(entry.orochi_machine || agentName),
         agent: agentName,
         cpu: {
           percent: Math.round(
@@ -474,7 +474,7 @@ export async function fetchResources() {
         },
         _api: true,
         _status: entry.status || "unknown",
-        _machine: entry.machine || "",
+        _machine: entry.orochi_machine || "",
         _lastHeartbeat: entry.last_heartbeat || "",
         _cpuModel: r.cpu_model || "",
         _cpuCount: r.cpu_count || 0,

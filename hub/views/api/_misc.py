@@ -54,7 +54,7 @@ def api_config(request):
 def api_event_tool_use(request):
     """POST /api/events/tool-use/ — receive a tool-use event from a Claude Code hook.
 
-    Hooks (PreToolUse/PostToolUse) on each agent's machine POST here to
+    Hooks (PreToolUse/PostToolUse) on each agent's orochi_machine POST here to
     record meaningful activity. Updates the in-memory registry's
     last_action timestamp and orochi_current_task. Authenticates via workspace
     token query param so hooks don't need Django sessions.
@@ -125,7 +125,7 @@ def api_watchdog_alerts(request):
                     "liveness": liveness,
                     "idle_seconds": idle,
                     "orochi_current_task": task,
-                    "machine": a.get("machine", ""),
+                    "orochi_machine": a.get("orochi_machine", ""),
                     "last_action": a.get("last_action"),
                     "suggested_action": (
                         "escalate" if liveness == "stale" else "nudge"
@@ -165,11 +165,11 @@ def api_connectivity(request):
             "id": "ywata-note-win",
             "label": "ywata-note-win",
             "role": "deployer/coordinator",
-            "type": "machine",
+            "type": "orochi_machine",
         },
-        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "machine"},
-        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "machine"},
-        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "machine"},
+        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "orochi_machine"},
+        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "orochi_machine"},
+        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "orochi_machine"},
         # Cloudflare bastion nodes (outer ring)
         {
             "id": "bastion-win",
@@ -202,7 +202,7 @@ def api_connectivity(request):
     # 2026-04-27: spartan bastion entry removed; spartan reaches the rest via
     # plain ssh / proxyjump, never via cloudflared.
     raw = [
-        # Bastion → host anchors (CF tunnel terminates at machine)
+        # Bastion → host anchors (CF tunnel terminates at orochi_machine)
         ("bastion-mba", "mba", "ok", "cf-tunnel"),
         ("bastion-nas", "nas", "ok", "cf-tunnel"),
         ("bastion-win", "ywata-note-win", "ok", "cf-tunnel"),

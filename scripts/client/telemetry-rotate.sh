@@ -2,7 +2,7 @@
 # telemetry-rotate.sh — daily rotation + gzip + retention for NDJSON telemetry
 # -----------------------------------------------------------------------------
 # Rotates NDJSON files under ~/.scitex/orochi/runtime/{quota-telemetry,
-# fleet-watch/{machine-info,ping,connection,process-info}}/ to prevent
+# fleet-watch/{orochi_machine-info,ping,connection,process-info}}/ to prevent
 # unbounded growth from 30-60s probe collectors.
 #
 # Policy:
@@ -26,7 +26,7 @@ DRY_RUN="${DRY_RUN:-0}"
 
 TELEMETRY_DIRS=(
     "${HOME}/.scitex/orochi/runtime/quota-telemetry"
-    "${HOME}/.scitex/orochi/runtime/fleet-watch/machine-info"
+    "${HOME}/.scitex/orochi/runtime/fleet-watch/orochi_machine-info"
     "${HOME}/.scitex/orochi/runtime/fleet-watch/ping"
     "${HOME}/.scitex/orochi/runtime/fleet-watch/connection"
     "${HOME}/.scitex/orochi/runtime/fleet-watch/process-info"

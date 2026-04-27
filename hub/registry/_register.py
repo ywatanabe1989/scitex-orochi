@@ -36,9 +36,9 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "name": name,
             "workspace_id": workspace_id,
             "agent_id": info.get("agent_id", name),
-            "machine": info.get("machine", ""),
+            "orochi_machine": info.get("orochi_machine", ""),
             # todo#55: canonical FQDN reported by the heartbeat via
-            # `socket.getfqdn()`. Display-only — the short `machine` field
+            # `socket.getfqdn()`. Display-only — the short `orochi_machine` field
             # remains the join key for cards/channels. Preserved across
             # heartbeats that omit the field (older clients).
             "orochi_hostname_canonical": info.get("orochi_hostname_canonical", "")
@@ -47,7 +47,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # `hostname` is what `hostname(1)` returns on the running
             # process — single source of truth for "where am I", per
             # ywatanabe msg #14726/#14730: never display a fabricated or
-            # cached @host label. Distinct from `machine` (YAML config
+            # cached @host label. Distinct from `orochi_machine` (YAML config
             # label) and `orochi_hostname_canonical` (FQDN via getfqdn()).
             # If the heartbeat omits it, fall through to the previous
             # value rather than wiping — older clients that haven't
@@ -325,12 +325,12 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "quota_7d_reset_at": info.get("quota_7d_reset_at")
             or prev.get("quota_7d_reset_at")
             or "",
-            # todo#272 — per-window quota state machine slot (ok / warn /
+            # todo#272 — per-window quota state orochi_machine slot (ok / warn /
             # escalate). Owned by ``hub.quota_watch.check_agent_quota_pressure``
             # which reads it before evaluate() and writes the new state
             # after. Preserved across heartbeats so threshold transitions
             # fire exactly once per crossing — without the prev-preserve
-            # the state machine would reset to "ok" every heartbeat and
+            # the state orochi_machine would reset to "ok" every heartbeat and
             # re-post warn / escalate on every poll (spam regression).
             "quota_state_5h": prev.get("quota_state_5h") or "ok",
             "quota_state_7d": prev.get("quota_state_7d") or "ok",

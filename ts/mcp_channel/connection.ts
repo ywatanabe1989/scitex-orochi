@@ -126,11 +126,11 @@ function onOpen(ws: WebSocket): void {
       type: "register",
       sender: OROCHI_AGENT,
       payload: {
-        machine: _machine,
-        // Live hostname(1) surfaced separately from ``machine`` so the
+        orochi_machine: _machine,
+        // Live hostname(1) surfaced separately from ``orochi_machine`` so the
         // hub / frontend can render the authoritative ``<name>@<host>``
         // badge directly from the kernel's answer, bypassing any
-        // env-var-driven ``machine`` override.
+        // env-var-driven ``orochi_machine`` override.
         hostname: _liveHostname,
         role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
         model: OROCHI_MODEL,

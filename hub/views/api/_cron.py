@@ -19,7 +19,7 @@ Shape::
           "last_heartbeat_at": "2026-04-22T...Z",
           "stale": false,
           "jobs": [
-            {"name": "machine-heartbeat",
+            {"name": "orochi_machine-heartbeat",
              "last_run": 1713792000.0,
              "last_exit": 0,
              "next_run": 1713792120.0,
@@ -64,14 +64,14 @@ HEARTBEAT_STALE_THRESHOLD_S = 600
 
 
 def _host_key(agent_row: dict) -> str:
-    """Prefer the short ``machine`` label, fall back to ``hostname`` then agent name.
+    """Prefer the short ``orochi_machine`` label, fall back to ``hostname`` then agent name.
 
-    The Machines tab keys cards by ``machine`` (e.g. "mba", "nas") so we
+    The Machines tab keys cards by ``orochi_machine`` (e.g. "mba", "nas") so we
     do the same here — a head and its per-host workers collapse to one
     row per physical host.
     """
     return (
-        (agent_row.get("machine") or "").strip()
+        (agent_row.get("orochi_machine") or "").strip()
         or (agent_row.get("hostname") or "").strip()
         or agent_row.get("name", "")
     )
@@ -102,17 +102,17 @@ def api_cron(request):
     host sets.
 
     Query params:
-        host: optional host key (machine label, e.g. ``mba``). When
+        host: optional host key (orochi_machine label, e.g. ``mba``). When
             present, the response is filtered server-side to that
             single host. If the host is unknown, ``{"hosts": {}}`` is
             returned — the same shape as "no hosts reporting".
 
-    Returns ``{"hosts": {<machine>: {agent, last_heartbeat_at, stale,
+    Returns ``{"hosts": {<orochi_machine>: {agent, last_heartbeat_at, stale,
     jobs}}}``. An empty registry (or a workspace with no heads) returns
     ``{"hosts": {}}``; never 404 — the Machines tab panel renders an
     "no hosts reporting" placeholder in that case.
 
-    Collision strategy when multiple agents report from the same machine
+    Collision strategy when multiple agents report from the same orochi_machine
     (e.g. head-mba + healer-mba + the nas head sharing a hostname):
     the newest non-empty ``cron_jobs`` wins. Heads are the authoritative
     cron-job source (Phase 1 installs the daemon on heads only), so this

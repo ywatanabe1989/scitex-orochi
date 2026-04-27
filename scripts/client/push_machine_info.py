@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-push_machine_info.py — per-host machine info pusher for the Orochi fleet.
+push_machine_info.py — per-host orochi_machine info pusher for the Orochi fleet.
 
 One-shot: collects OS / arch / CPU / memory / disk / uptime / load for the
 running host, appends an NDJSON line to ~/.scitex/orochi/runtime/fleet-watch/
-machine-info/<host>.ndjson, and optionally POSTs to the hub.
+orochi_machine-info/<host>.ndjson, and optionally POSTs to the hub.
 
 Idempotent. Designed to be run from cron / systemd timer every N minutes,
 or as `--loop 300` for a long-running daemon-style process.
@@ -106,7 +106,7 @@ def collect() -> dict[str, Any]:
         "host": _canonical_host(),
         "os": platform.system(),
         "os_release": platform.release(),
-        "arch": platform.machine(),
+        "arch": platform.orochi_machine(),
         "python": platform.python_version(),
         "cpu_count": _cpu_count(),
         "mem_mb": _mem_mb(),
@@ -120,7 +120,7 @@ def collect() -> dict[str, Any]:
 
 def _ndjson_path(host: str) -> Path:
     root = (
-        Path.home() / ".scitex" / "orochi" / "runtime" / "fleet-watch" / "machine-info"
+        Path.home() / ".scitex" / "orochi" / "runtime" / "fleet-watch" / "orochi_machine-info"
     )
     root.mkdir(parents=True, exist_ok=True)
     return root / f"{host}.ndjson"

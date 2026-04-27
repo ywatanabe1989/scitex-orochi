@@ -103,7 +103,7 @@ DEPLOY_RUNTIME_SUBDIRS=(
     runtime/quota-telemetry
     runtime/tmux-unstick-state
     runtime/fleet-watch
-    runtime/fleet-watch/machine-info
+    runtime/fleet-watch/orochi_machine-info
     runtime/fleet-watch/ping
     runtime/fleet-watch/connection
     runtime/fleet-watch/process-info

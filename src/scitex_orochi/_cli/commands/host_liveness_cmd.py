@@ -1,7 +1,7 @@
 """``scitex-orochi host-liveness probe`` subcommand.
 
 Python port of ``scripts/client/fleet-watch/host-liveness-probe.sh``.
-Enumerates every machine in ``orochi-machines.yaml``, SSH-probes it
+Enumerates every orochi_machine in ``orochi-machines.yaml``, SSH-probes it
 (or short-circuits to local ``bash``), and emits one NDJSON line per
 host on stdout. With ``--yes`` it revives missing expected tmux
 sessions via the local healer's inbox or a direct ``ssh
@@ -14,7 +14,7 @@ Flag            Meaning
 ==============  ============================================================
 --dry-run       default — log "would revive" actions without side effects.
 --yes / -y      actually revive missing agents.
---host NAME     constrain to one machine.
+--host NAME     constrain to one orochi_machine.
 ==============  ============================================================
 """
 

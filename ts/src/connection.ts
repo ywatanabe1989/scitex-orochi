@@ -164,7 +164,7 @@ export class OrochiConnection {
         type: "register",
         sender: OROCHI_AGENT,
         payload: {
-          machine: hostname(),
+          orochi_machine: hostname(),
           role: "claude-code",
           model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${hostname()}`,

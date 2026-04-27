@@ -18,7 +18,7 @@ export function _renderAgentDetail(a) {
     d.liveness || a.liveness || (isAgentInactive(a) ? "offline" : "online");
   var statusColor = livenessColor(liveness);
   var role = d.role || a.role || "agent";
-  var machine = d.machine || a.machine || "?";
+  var orochi_machine = d.orochi_machine || a.orochi_machine || "?";
   /* todo#56: some transcripts surface <synthetic> / <none> / <compact>
    * placeholder tokens for model when the assistant turn was synthesised
    * (e.g. after /compact). Show a dash with the raw token in the tooltip
@@ -52,9 +52,9 @@ export function _renderAgentDetail(a) {
     }
     return true;
   }
-  var machineDisplay = _fqdnAddsInfo(machine, machineCanonical)
-    ? machine + " (" + machineCanonical + ")"
-    : machine;
+  var machineDisplay = _fqdnAddsInfo(orochi_machine, machineCanonical)
+    ? orochi_machine + " (" + machineCanonical + ")"
+    : orochi_machine;
   var modelClean = _cleanModel(d.model || a.model || "");
   var ctxPct = d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
   var currentTask = d.orochi_current_task || a.orochi_current_task || "";
@@ -126,7 +126,7 @@ export function _renderAgentDetail(a) {
     [
       "Machine",
       machineDisplay,
-      _fqdnAddsInfo(machine, machineCanonical)
+      _fqdnAddsInfo(orochi_machine, machineCanonical)
         ? "short label · canonical FQDN reported by the heartbeat"
         : machineCanonical
           ? "FQDN is just the short label + redundant mDNS suffix; hidden"

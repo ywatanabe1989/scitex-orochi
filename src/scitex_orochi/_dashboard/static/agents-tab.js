@@ -1,4 +1,4 @@
-/* Agents Tab -- registry table with location/machine visualization */
+/* Agents Tab -- registry table with location/orochi_machine visualization */
 /* globals: escapeHtml, getAgentColor, isAgentInactive, timeAgo, addTag, activeTab */
 var _agentsTabInterval = null;
 
@@ -12,10 +12,10 @@ async function renderAgentsTab() {
         '<p style="color:#555;font-size:13px;">No agents connected</p>';
       return;
     }
-    /* Group agents by machine for summary */
+    /* Group agents by orochi_machine for summary */
     var machineMap = {};
     agents.forEach(function (a) {
-      var m = a.machine || "unknown";
+      var m = a.orochi_machine || "unknown";
       if (!machineMap[m]) machineMap[m] = [];
       machineMap[m].push(a);
     });
@@ -25,7 +25,7 @@ async function renderAgentsTab() {
       agents.length +
       " agent(s) across " +
       Object.keys(machineMap).length +
-      " machine(s)" +
+      " orochi_machine(s)" +
       "</span>" +
       Object.keys(machineMap)
         .map(function (m) {
@@ -36,7 +36,7 @@ async function renderAgentsTab() {
           var color =
             online === total ? "#4ecdc4" : online > 0 ? "#ffd93d" : "#ef4444";
           return (
-            '<span class="machine-badge" style="background:' +
+            '<span class="orochi_machine-badge" style="background:' +
             color +
             "22;color:" +
             color +
@@ -152,7 +152,7 @@ function buildAgentRow(a) {
     escapeHtml(a.role || "agent") +
     "</td>" +
     '<td style="font-family:monospace;font-size:12px">' +
-    escapeHtml(a.machine || "unknown") +
+    escapeHtml(a.orochi_machine || "unknown") +
     "</td>" +
     '<td style="color:#888;font-size:12px">' +
     escapeHtml(a.model || "-") +

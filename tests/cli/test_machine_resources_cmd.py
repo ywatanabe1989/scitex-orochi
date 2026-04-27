@@ -1,4 +1,4 @@
-"""Tests for ``scitex-orochi machine resources show`` (Phase 1c msg#16477)."""
+"""Tests for ``scitex-orochi orochi_machine resources show`` (Phase 1c msg#16477)."""
 
 from __future__ import annotations
 
@@ -12,11 +12,11 @@ from scitex_orochi._cli.commands import machine_cmd
 
 
 def test_resources_group_registered() -> None:
-    """``machine resources show`` must be wired into the group tree."""
-    assert "machine" in orochi.commands
-    machine = orochi.commands["machine"]
-    assert "resources" in machine.commands  # type: ignore[attr-defined]
-    res = machine.commands["resources"]  # type: ignore[attr-defined]
+    """``orochi_machine resources show`` must be wired into the group tree."""
+    assert "orochi_machine" in orochi.commands
+    orochi_machine = orochi.commands["orochi_machine"]
+    assert "resources" in orochi_machine.commands  # type: ignore[attr-defined]
+    res = orochi_machine.commands["resources"]  # type: ignore[attr-defined]
     assert set(res.commands.keys()) == {"show"}
 
 
@@ -43,7 +43,7 @@ def test_resources_show_human_output(monkeypatch: pytest.MonkeyPatch) -> None:
     """Default output prints the four Machines-tab lines."""
     monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: _fake_metrics)
     runner = CliRunner()
-    result = runner.invoke(orochi, ["machine", "resources", "show"], obj={})
+    result = runner.invoke(orochi, ["orochi_machine", "resources", "show"], obj={})
     assert result.exit_code == 0, result.output
     assert "CPU:     8 cores" in result.output
     assert "RAM:     12.0/16.0 GB" in result.output
@@ -56,7 +56,7 @@ def test_resources_show_json_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: _fake_metrics)
     runner = CliRunner()
     result = runner.invoke(
-        orochi, ["--json", "machine", "resources", "show"], obj={}
+        orochi, ["--json", "orochi_machine", "resources", "show"], obj={}
     )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output.strip().splitlines()[-1])
@@ -80,7 +80,7 @@ def test_resources_show_with_gpu(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
     monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: lambda: metrics)
     runner = CliRunner()
-    result = runner.invoke(orochi, ["machine", "resources", "show"], obj={})
+    result = runner.invoke(orochi, ["orochi_machine", "resources", "show"], obj={})
     assert result.exit_code == 0, result.output
     # 2 GPUs, 10/80 GB VRAM total.
     assert "GPU:     2x — VRAM 10.0/80.0 GB" in result.output
@@ -91,7 +91,7 @@ def test_resources_show_pretty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: _fake_metrics)
     runner = CliRunner()
     result = runner.invoke(
-        orochi, ["machine", "resources", "show", "--pretty"], obj={}
+        orochi, ["orochi_machine", "resources", "show", "--pretty"], obj={}
     )
     assert result.exit_code == 0
     # Two-space indent is the tell.
@@ -112,7 +112,7 @@ def test_resources_show_missing_mb_degrades(
     }
     monkeypatch.setattr(machine_cmd, "_import_metrics", lambda: lambda: metrics)
     runner = CliRunner()
-    result = runner.invoke(orochi, ["machine", "resources", "show"], obj={})
+    result = runner.invoke(orochi, ["orochi_machine", "resources", "show"], obj={})
     assert result.exit_code == 0, result.output
     assert "CPU:     -" in result.output
     assert "RAM:     -" in result.output

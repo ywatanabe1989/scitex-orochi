@@ -141,9 +141,9 @@ from scitex_orochi._cli.commands.chrome_watchdog_cmd import chrome_watchdog
 from scitex_orochi._cli.commands.disk_cmd import disk
 from scitex_orochi._cli.commands.host_liveness_cmd import host_liveness
 from scitex_orochi._cli.commands.hungry_signal_cmd import hungry_signal
-from scitex_orochi._cli.commands.machine_cmd import machine
+from scitex_orochi._cli.commands.machine_cmd import orochi_machine
 
-orochi.add_command(machine)
+orochi.add_command(orochi_machine)
 orochi.add_command(host_liveness)
 orochi.add_command(hungry_signal)
 orochi.add_command(disk)

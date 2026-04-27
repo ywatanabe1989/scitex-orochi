@@ -44,7 +44,7 @@ def _load_agent_meta(path) -> dict:
     return {
         "name": meta.get("name", path.stem),
         "role": labels.get("role", "unknown"),
-        "machine": labels.get("machine", "unknown"),
+        "orochi_machine": labels.get("orochi_machine", "unknown"),
         "model": spec.get("model", ""),
         "screen": (spec.get("screen", {}) or {}).get("name", ""),
         "file": str(path),
@@ -66,7 +66,7 @@ def _load_agent_meta(path) -> dict:
     help="Override agents directory.",
 )
 def fleet(as_json: bool, agents_dir: str | None) -> None:
-    """List all agent YAML configs with name, role, machine, and status."""
+    """List all agent YAML configs with name, role, orochi_machine, and status."""
     from pathlib import Path
 
     search_dir = Path(agents_dir) if agents_dir else None
@@ -98,7 +98,7 @@ def fleet(as_json: bool, agents_dir: str | None) -> None:
     for a in agents:
         status_color = "green" if a["status"] == "running" else "red"
         click.echo(
-            f"{a['name']:<30} {a['role']:<10} {a['machine']:<20} "
+            f"{a['name']:<30} {a['role']:<10} {a['orochi_machine']:<20} "
             f"{click.style(a['status'], fg=status_color):<19} {a.get('model', '')}"
         )
     click.echo(

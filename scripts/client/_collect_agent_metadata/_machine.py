@@ -1,4 +1,4 @@
-"""Canonical fleet-machine label resolution from shared/config.yaml hostname_aliases.
+"""Canonical fleet-orochi_machine label resolution from shared/config.yaml hostname_aliases.
 
 Resolution chain (first wins):
   1. hostname_aliases[hostname -s] from shared/config.yaml
@@ -28,7 +28,7 @@ from pathlib import Path
 
 
 def resolve_machine_label() -> str:
-    """Return the canonical fleet-machine label for THIS host.
+    """Return the canonical fleet-orochi_machine label for THIS host.
 
     Trust order (highest trust first):
 

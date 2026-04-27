@@ -41,7 +41,7 @@ orochi:
     channels: ["#general", "#orchestrator"]
 
   heads:
-    # Each head runs on a specific machine, executing tasks delegated by master
+    # Each head runs on a specific orochi_machine, executing tasks delegated by master
     # Name format: orochi-agent:head:<user>@<host>
     - ssh: "ssh server1"
       host: server1

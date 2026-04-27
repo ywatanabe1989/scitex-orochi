@@ -11,12 +11,12 @@ import { renderResources } from "./tab";
 
 export var resourceData = {};
 
-/* Per-user machine icon overrides stored in localStorage. Keyed by
- * machine short-label. Custom emoji only (image upload deferred —
+/* Per-user orochi_machine icon overrides stored in localStorage. Keyed by
+ * orochi_machine short-label. Custom emoji only (image upload deferred —
  * parallel to the channel canvas image fix). Right-click on a
- * sidebar machine row opens the shared emoji picker to set; empty
+ * sidebar orochi_machine row opens the shared emoji picker to set; empty
  * string clears back to the default 🖥. TODO.md Entity Consistency:
- * "Icons (svg/png) must be configurable ... machine: which icon
+ * "Icons (svg/png) must be configurable ... orochi_machine: which icon
  * would be good?" — default 🖥, user can pick anything from the
  * shared emoji picker. */
 export var _MACHINE_ICON_KEY = "orochi.machineIcons";
@@ -45,13 +45,13 @@ export function setMachineIcon(name, emoji) {
 }
 window.setMachineIcon = setMachineIcon;
 
-/* todo#86: hover tooltip for machine nodes/sidebar rows. Shared singleton
+/* todo#86: hover tooltip for orochi_machine nodes/sidebar rows. Shared singleton
  * popover positioned near cursor, populated from resourceData[host]. */
 export var _machineTooltipEl = null;
 export function _machineTooltip() {
   if (_machineTooltipEl) return _machineTooltipEl;
   var el = document.createElement("div");
-  el.className = "machine-hover-tooltip";
+  el.className = "orochi_machine-hover-tooltip";
   el.setAttribute("role", "tooltip");
   el.style.display = "none";
   document.body.appendChild(el);
@@ -224,7 +224,7 @@ export function hideMachineTooltip() {
   if (_machineTooltipEl) _machineTooltipEl.style.display = "none";
 }
 
-/* Expose for connectivity-map.js (SVG machine nodes). */
+/* Expose for connectivity-map.js (SVG orochi_machine nodes). */
 window.showMachineTooltip = showMachineTooltip;
 window.moveMachineTooltip = moveMachineTooltip;
 window.hideMachineTooltip = hideMachineTooltip;
@@ -329,7 +329,7 @@ export function barHtml(label, percent) {
   );
 }
 
-/* Donut (pie-chart) for machine resources — inline SVG, no deps */
+/* Donut (pie-chart) for orochi_machine resources — inline SVG, no deps */
 export function donutHtml(label, percent) {
   var p = Math.min(100, Math.max(0, Math.round(percent)));
   var radius = 26;

@@ -44,7 +44,7 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
       2. ``~/.scitex/orochi/agents/<name>/<name>.yaml`` (dir-per-agent)
       3. ``~/.scitex/orochi/agents/head-<name>/head-<name>.yaml``
          (dir-per-agent with "head-" prefix, e.g. ``head-mba``)
-      4. ``~/.scitex/orochi/agents/<name>-*/` — machine-suffix convention,
+      4. ``~/.scitex/orochi/agents/<name>-*/` — orochi_machine-suffix convention,
          e.g. ``master`` resolves to ``master-ywata-note-win`` if that is
          the only matching directory. If multiple matches exist, returns
          None (ambiguous — caller should use --agent-config explicitly).

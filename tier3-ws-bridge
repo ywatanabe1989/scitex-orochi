@@ -242,7 +242,7 @@ async def main() -> int:
                 "agent_id": AGENT_NAME,
                 "role": _runtime_label().replace("tier3-", ""),
                 "model": "tier3-bridge",
-                "machine": os.environ.get("SCITEX_OROCHI_MACHINE", ""),
+                "orochi_machine": os.environ.get("SCITEX_OROCHI_MACHINE", ""),
                 "channels": [],
                 "a2a_url": A2A_URL,
             },

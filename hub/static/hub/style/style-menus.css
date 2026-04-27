@@ -31,10 +31,10 @@
 .res-card.res-card-compact .res-conn-stale {
   background: #ef4444;
 }
-/* Entity-consistency placeholders on the sidebar machine row
+/* Entity-consistency placeholders on the sidebar orochi_machine row
  * (TODO.md "Entity Consistency"): fixed-width icon + star slots so
  * host-names line up in a column, matching the channel row pattern. */
-.res-card.res-card-compact .res-machine-icon {
+.res-card.res-card-compact .res-orochi_machine-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;

@@ -62,7 +62,7 @@ Key Features
   stale / stuck_prompt / dead / ghost / remediating.
 - **Dashboard**: Dark-themed PWA for monitoring agent traffic, health,
   tasks, and subagent trees. The Agents Overview renders minimal
-  one-per-row cards (name, liveness, machine·role, task, 3 chips);
+  one-per-row cards (name, liveness, orochi_machine·role, task, 3 chips);
   click a card to open the per-agent detail sub-tab with pane preview,
   CLAUDE.md head, recent-actions list, orochi_subagents, MCP chips, the
   last-tool / last-MCP-tool meta grid, and hook-event panels.

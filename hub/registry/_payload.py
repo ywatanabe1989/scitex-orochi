@@ -113,12 +113,12 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
             {
                 "name": a["name"],
                 "agent_id": a.get("agent_id", a["name"]),
-                "machine": a.get("machine", ""),
+                "orochi_machine": a.get("orochi_machine", ""),
                 # #257 — live ``hostname(1)`` reported by the heartbeat.
                 # This is the authoritative "where is this process
                 # running right now" field. The frontend badge
                 # (hostedAgentName) prefers ``hostname`` over
-                # ``machine`` because the latter can drift (stale
+                # ``orochi_machine`` because the latter can drift (stale
                 # YAML label / env override) while the former is the
                 # kernel's answer from the live process. Exposed here
                 # so the sidebar card shows ``proj-neurovista@spartan``
@@ -126,7 +126,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # msg#15578 fix).
                 "hostname": a.get("hostname", ""),
                 # todo#55: FQDN / canonical hostname for display next to
-                # the short machine label. Empty string = older client
+                # the short orochi_machine label. Empty string = older client
                 # that didn't push this field.
                 "orochi_hostname_canonical": a.get("orochi_hostname_canonical", ""),
                 "role": a.get("role", ""),

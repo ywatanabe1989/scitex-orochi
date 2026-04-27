@@ -219,7 +219,7 @@ async function fetchResources() {
       var entry = data[agentName];
       var r = entry.resources || {};
       resourceData[agentName] = {
-        hostname: entry.machine || agentName,
+        hostname: entry.orochi_machine || agentName,
         agent: agentName,
         cpu: {
           percent: Math.round(
@@ -238,7 +238,7 @@ async function fetchResources() {
         },
         _api: true,
         _status: entry.status || "unknown",
-        _machine: entry.machine || "",
+        _machine: entry.orochi_machine || "",
         _lastHeartbeat: entry.last_heartbeat || "",
         _cpuModel: r.cpu_model || "",
         _cpuCount: r.cpu_count || 0,

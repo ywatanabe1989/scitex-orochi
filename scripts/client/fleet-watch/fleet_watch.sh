@@ -392,13 +392,13 @@ post_connectivity_to_hub() {
     local hub_url="${SCITEX_OROCHI_HUB_URL:-https://scitex-orochi.com}"
     local endpoint="$hub_url/api/fleet/report"
 
-    # Build the wrapper envelope: entity_type=machine, entity_id=nas,
+    # Build the wrapper envelope: entity_type=orochi_machine, entity_id=nas,
     # payload = the connectivity row JSON we just wrote.
     local wrapper_file="${row_file}.wrapper"
     if command -v jq >/dev/null 2>&1; then
         jq -n \
             --arg token "$token" \
-            --arg entity_type "machine" \
+            --arg entity_type "orochi_machine" \
             --arg entity_id "nas" \
             --arg source "head-nas" \
             --slurpfile payload "$row_file" \

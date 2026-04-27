@@ -73,7 +73,7 @@
         name: label,
         status: "offline",
         liveness: "offline",
-        machine: (p && p.machine) || "",
+        orochi_machine: (p && p.orochi_machine) || "",
       };
     }
     return {

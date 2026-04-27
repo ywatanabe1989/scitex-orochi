@@ -11,7 +11,7 @@ single source of truth for:
 
 - The `scitex-orochi <noun> <verb>` canonical command shape
 - The complete registry of noun groups (`agent`, `channel`, `workspace`,
-  `invite`, `message`, `machine`, `cron`, `disk`, `host-liveness`,
+  `invite`, `message`, `orochi_machine`, `cron`, `disk`, `host-liveness`,
   `hungry-signal`, `chrome-watchdog`, `dispatch`, `todo`, `push`,
   `server`, `config`, `system`, `auth`, `hook`, `host-identity`)
 - The deprecation policy (hard-error on rename, soft one-time-per-shell

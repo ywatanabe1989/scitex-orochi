@@ -15,7 +15,7 @@ class PinnedAgent(models.Model):
     )
     name = models.CharField(max_length=150)
     role = models.CharField(max_length=100, blank=True, default="")
-    machine = models.CharField(max_length=200, blank=True, default="")
+    orochi_machine = models.CharField(max_length=200, blank=True, default="")
     icon_emoji = models.CharField(max_length=16, blank=True, default="")
     added_at = models.DateTimeField(auto_now_add=True)
 
@@ -32,8 +32,8 @@ class ContainerAgent(models.Model):
     """Central registry of scitex-agent-container processes across the fleet.
 
     Distinct from the in-memory WebSocket presence registry: this tracks the
-    container/process state (yaml path, machine, tmux-ish session info,
-    restart history) so fleet-wide visibility and cross-machine management
+    container/process state (yaml path, orochi_machine, tmux-ish session info,
+    restart history) so fleet-wide visibility and cross-orochi_machine management
     are possible without relying on local ``~/.scitex/agent-container/registry/``.
     """
 
@@ -46,7 +46,7 @@ class ContainerAgent(models.Model):
         Workspace, on_delete=models.CASCADE, related_name="container_agents"
     )
     name = models.CharField(max_length=200, unique=True, db_index=True)
-    machine = models.CharField(max_length=200, db_index=True)
+    orochi_machine = models.CharField(max_length=200, db_index=True)
     yaml_path = models.CharField(max_length=500, blank=True, default="")
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.RUNNING
@@ -57,14 +57,14 @@ class ContainerAgent(models.Model):
 
     class Meta:
         app_label = "hub"
-        ordering = ["machine", "name"]
+        ordering = ["orochi_machine", "name"]
         indexes = [
-            models.Index(fields=["workspace", "machine"]),
+            models.Index(fields=["workspace", "orochi_machine"]),
             models.Index(fields=["status"]),
         ]
 
     def __str__(self):
-        return f"container:{self.name}@{self.machine} ({self.status})"
+        return f"container:{self.name}@{self.orochi_machine} ({self.status})"
 
 
 class ScheduledAction(models.Model):

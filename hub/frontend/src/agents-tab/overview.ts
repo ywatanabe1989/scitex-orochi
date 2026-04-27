@@ -16,7 +16,7 @@ import { activeTab } from "../tabs";
 export function _buildOverviewHtml(agents) {
   var machineMap = {};
   agents.forEach(function (a) {
-    var m = a.machine || "unknown";
+    var m = a.orochi_machine || "unknown";
     if (!machineMap[m]) machineMap[m] = [];
     machineMap[m].push(a);
   });
@@ -38,7 +38,7 @@ export function _buildOverviewHtml(agents) {
     offlineCount +
     " offline across " +
     Object.keys(machineMap).length +
-    " machine(s)" +
+    " orochi_machine(s)" +
     "</span>" +
     purgeBtn +
     Object.keys(machineMap)
@@ -49,12 +49,12 @@ export function _buildOverviewHtml(agents) {
         var total = machineMap[m].length;
         var cls =
           online === total
-            ? "machine-ok"
+            ? "orochi_machine-ok"
             : online > 0
-              ? "machine-warn"
-              : "machine-off";
+              ? "orochi_machine-warn"
+              : "orochi_machine-off";
         return (
-          '<span class="machine-badge ' +
+          '<span class="orochi_machine-badge ' +
           cls +
           '">' +
           escapeHtml(m) +
@@ -228,7 +228,7 @@ export function buildAgentRow(a) {
     escapeHtml(a.role || "agent") +
     "</td>" +
     '<td class="monospace-cell">' +
-    escapeHtml(a.machine || "unknown") +
+    escapeHtml(a.orochi_machine || "unknown") +
     "</td>" +
     '<td class="muted-cell">' +
     escapeHtml(a.model || "-") +

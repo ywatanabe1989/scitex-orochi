@@ -31,7 +31,7 @@ class HandlersMixin:
         # Legacy clients that still send a channels payload are respected
         # here for backward compatibility but new installs should send none.
         channels = set(msg.payload.get("channels", []))
-        machine = msg.payload.get("machine", "")
+        orochi_machine = msg.payload.get("orochi_machine", "")
         role = msg.payload.get("role", "")
         model = msg.payload.get("model", "")
         project = msg.payload.get("project", "")
@@ -43,7 +43,7 @@ class HandlersMixin:
             orochi_subagent_count = 0
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
-            machine_name = machine or platform.node()
+            machine_name = orochi_machine or platform.node()
             agent_id = f"{name}@{machine_name}"
         # Evict stale entry for the same agent name (reconnection)
         old = self.agents.pop(name, None)
@@ -56,15 +56,15 @@ class HandlersMixin:
                 await old.ws.close(4000, "Replaced by new connection")
             except Exception:
                 pass
-        # Evict stale agents from the same machine (handles agent renames).
+        # Evict stale agents from the same orochi_machine (handles agent renames).
         # Only remove agents that haven't heartbeated recently.
-        if machine:
+        if orochi_machine:
             now = datetime.now(timezone.utc)
             stale_from_machine: list[str] = []
             for other_name, other in self.agents.items():
                 if other_name == name:
                     continue
-                if other.machine == machine:
+                if other.orochi_machine == orochi_machine:
                     try:
                         hb_dt = datetime.fromisoformat(other.last_heartbeat)
                         delta = (now - hb_dt).total_seconds()
@@ -74,9 +74,9 @@ class HandlersMixin:
                         stale_from_machine.append(other_name)
             for stale_name in stale_from_machine:
                 log.info(
-                    "Evicting stale agent %s from machine %s (replaced by %s)",
+                    "Evicting stale agent %s from orochi_machine %s (replaced by %s)",
                     stale_name,
-                    machine,
+                    orochi_machine,
                     name,
                 )
                 self._remove_agent(stale_name)  # type: ignore[attr-defined]
@@ -85,7 +85,7 @@ class HandlersMixin:
             name=name,
             ws=ws,
             channels=channels,
-            machine=machine,
+            orochi_machine=orochi_machine,
             role=role,
             model=model,
             agent_id=agent_id,
@@ -265,7 +265,7 @@ class HandlersMixin:
             "status",
             "orochi_current_task",
             "orochi_subagent_count",
-            "machine",
+            "orochi_machine",
             "role",
             "project",
             "agent_id",
@@ -291,7 +291,7 @@ class HandlersMixin:
                     "status": agent.status,
                     "orochi_current_task": agent.orochi_current_task,
                     "orochi_subagent_count": agent.orochi_subagent_count,
-                    "machine": agent.machine,
+                    "orochi_machine": agent.orochi_machine,
                     "role": agent.role,
                     "agent_id": agent.agent_id,
                     "project": agent.project,

@@ -92,15 +92,15 @@ class ApiCronTest(TestCase):
     # ------------------------------------------------------------------
 
     def test_two_hosts_both_visible(self):
-        """Two heartbeats with distinct ``machine`` → two host entries."""
+        """Two heartbeats with distinct ``orochi_machine`` → two host entries."""
         self._post_heartbeat(
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [
                     {
-                        "name": "machine-heartbeat",
+                        "name": "orochi_machine-heartbeat",
                         "interval": 120,
                         "last_run": time.time() - 60,
                         "last_exit": 0,
@@ -113,7 +113,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-nas",
-                "machine": "nas",
+                "orochi_machine": "nas",
                 "cron_jobs": [
                     {
                         "name": "host-liveness-probe",
@@ -134,7 +134,7 @@ class ApiCronTest(TestCase):
         self.assertEqual(data["hosts"]["nas"]["agent"], "head-nas")
         self.assertEqual(len(data["hosts"]["mba"]["jobs"]), 1)
         self.assertEqual(
-            data["hosts"]["mba"]["jobs"][0]["name"], "machine-heartbeat"
+            data["hosts"]["mba"]["jobs"][0]["name"], "orochi_machine-heartbeat"
         )
         self.assertFalse(data["hosts"]["mba"]["stale"])
 
@@ -147,7 +147,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-legacy",
-                "machine": "legacy-host",
+                "orochi_machine": "legacy-host",
             }
         )
         resp = self._get_cron()
@@ -167,10 +167,10 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-stale",
-                "machine": "stale-host",
+                "orochi_machine": "stale-host",
                 "cron_jobs": [
                     {
-                        "name": "machine-heartbeat",
+                        "name": "orochi_machine-heartbeat",
                         "interval": 120,
                         "last_run": time.time() - 30,
                         "last_exit": 0,
@@ -189,7 +189,7 @@ class ApiCronTest(TestCase):
         self.assertTrue(host["stale"])
         # Stale cards still carry their last-known jobs.
         self.assertEqual(len(host["jobs"]), 1)
-        self.assertEqual(host["jobs"][0]["name"], "machine-heartbeat")
+        self.assertEqual(host["jobs"][0]["name"], "orochi_machine-heartbeat")
 
     def test_fresh_heartbeat_not_stale(self):
         """Heartbeat inside the 10-minute window must not be marked stale."""
@@ -197,7 +197,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-fresh",
-                "machine": "fresh-host",
+                "orochi_machine": "fresh-host",
                 "cron_jobs": [],
             }
         )
@@ -223,7 +223,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-preserve",
-                "machine": "preserve-host",
+                "orochi_machine": "preserve-host",
                 "cron_jobs": jobs,
             }
         )
@@ -232,7 +232,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-preserve",
-                "machine": "preserve-host",
+                "orochi_machine": "preserve-host",
             }
         )
         resp = self._get_cron()
@@ -242,7 +242,7 @@ class ApiCronTest(TestCase):
         self.assertEqual(host["jobs"][0]["name"], "hungry-signal")
 
     def test_freshness_wins_when_two_agents_share_host(self):
-        """If two agents report from the same machine, the freshest
+        """If two agents report from the same orochi_machine, the freshest
         non-empty ``cron_jobs`` wins (heads are the authoritative source
         of daemon state — the non-head agent's empty array mustn't clobber
         the head's populated one).
@@ -252,10 +252,10 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [
                     {
-                        "name": "machine-heartbeat",
+                        "name": "orochi_machine-heartbeat",
                         "interval": 120,
                         "last_run": time.time() - 30,
                         "last_exit": 0,
@@ -269,7 +269,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "healer-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
             }
         )
         resp = self._get_cron()
@@ -277,7 +277,7 @@ class ApiCronTest(TestCase):
         host = resp.json()["hosts"]["mba"]
         # Head's jobs array wins even though healer's heartbeat is newer.
         self.assertEqual(len(host["jobs"]), 1)
-        self.assertEqual(host["jobs"][0]["name"], "machine-heartbeat")
+        self.assertEqual(host["jobs"][0]["name"], "orochi_machine-heartbeat")
 
     def test_response_shape_matches_spec(self):
         """Per-host entry contains {agent, last_heartbeat_at, stale, jobs}
@@ -287,10 +287,10 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [
                     {
-                        "name": "machine-heartbeat",
+                        "name": "orochi_machine-heartbeat",
                         "interval": 120,
                         "last_run": time.time() - 60,
                         "last_exit": 0,
@@ -317,7 +317,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [
                     {
                         "name": "chrome-watchdog",
@@ -335,7 +335,7 @@ class ApiCronTest(TestCase):
         self.assertEqual(jobs[0]["name"], "chrome-watchdog")
 
     def test_host_key_falls_back_to_hostname_when_machine_absent(self):
-        """If a heartbeat omits ``machine`` we still produce a row
+        """If a heartbeat omits ``orochi_machine`` we still produce a row
         (``hostname`` fallback) instead of silently dropping it.
         """
         self._post_heartbeat(
@@ -361,10 +361,10 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [
                     {
-                        "name": "machine-heartbeat",
+                        "name": "orochi_machine-heartbeat",
                         "interval": 120,
                         "last_run": time.time() - 60,
                         "last_exit": 0,
@@ -377,7 +377,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-nas",
-                "machine": "nas",
+                "orochi_machine": "nas",
                 "cron_jobs": [],
             }
         )
@@ -395,7 +395,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [],
             }
         )
@@ -415,7 +415,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [],
             }
         )
@@ -433,7 +433,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-mba",
-                "machine": "mba",
+                "orochi_machine": "mba",
                 "cron_jobs": [],
             }
         )
@@ -441,7 +441,7 @@ class ApiCronTest(TestCase):
             {
                 "token": self.token.token,
                 "name": "head-nas",
-                "machine": "nas",
+                "orochi_machine": "nas",
                 "cron_jobs": [],
             }
         )

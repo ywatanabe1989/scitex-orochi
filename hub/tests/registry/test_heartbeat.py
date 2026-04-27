@@ -65,7 +65,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         payload = {
             "token": self.token.token,
             "name": "hb-agent",
-            "machine": "MBA",
+            "orochi_machine": "MBA",
             "role": "head",
         }
         payload.update(overrides)
@@ -257,7 +257,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         payload = {
             "token": self.token.token,
             "name": "act-agent",
-            "machine": "MBA",
+            "orochi_machine": "MBA",
             "role": "head",
         }
         payload.update(overrides)

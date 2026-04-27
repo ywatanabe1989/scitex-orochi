@@ -89,7 +89,7 @@ class InboundMessageAdvancesEchoTimestampTest(TestCase):
         register_agent(
             "worker-m",
             self.ws.id,
-            {"agent_id": "worker-m", "machine": "TEST", "role": "worker"},
+            {"agent_id": "worker-m", "orochi_machine": "TEST", "role": "worker"},
         )
 
     def test_inbound_message_sets_last_nonce_echo_at(self):
@@ -182,7 +182,7 @@ class NonceProbeIndependenceTest(TestCase):
         register_agent(
             "lonely-n",
             self.ws.id,
-            {"agent_id": "lonely-n", "machine": "TEST", "role": "worker"},
+            {"agent_id": "lonely-n", "orochi_machine": "TEST", "role": "worker"},
         )
 
     def test_mark_echo_alive_alone_populates_led_field(self):

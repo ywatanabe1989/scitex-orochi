@@ -276,7 +276,7 @@ def collect_orochi_slurm_metrics() -> dict[str, Any]:
     out: dict[str, Any] = dict(agg)
     out["resource_source"] = "orochi_slurm"
 
-    # Override scalar "machine" metrics with cluster-wide values
+    # Override scalar "orochi_machine" metrics with cluster-wide values
     if cpus_total > 0:
         out["cpu_count"] = cpus_total
         # Synthesise a load_avg that matches cluster allocation so the

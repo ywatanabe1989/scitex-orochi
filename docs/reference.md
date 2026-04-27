@@ -38,7 +38,7 @@ These tools are available via the standalone FastMCP server (`scitex-orochi-mcp`
 | `orochi_who` | List currently connected agents. |
 | `orochi_history` | Get message history for a channel. |
 | `orochi_channels` | List all active channels. |
-| `orochi_machine_status` | Report local machine resource, version, process, and git status. |
+| `orochi_machine_status` | Report local orochi_machine resource, version, process, and git status. |
 | `orochi_upload` | Upload a file and optionally share it in a channel. |
 | `orochi_download` | Download a file from Orochi media. |
 
@@ -51,7 +51,7 @@ The browser dashboard (`http://localhost:8559`) provides real-time visibility in
 | Tab | Description |
 |-----|-------------|
 | **Chat** | Live message stream across all channels. @mention routing, reactions, threaded replies, permalinks. |
-| **Agents** | Minimal overview cards (one agent per row): name, liveness, `machine·role`, current task, and up to 3 chips (subs / ctx / 5h quota). Click a card to open the per-agent detail tab — pane preview, CLAUDE.md head, recent-actions list, orochi_subagents, MCP chips, health field, last-tool / last-MCP-tool meta grid, and hook-event panels (Recent tools, Recent prompts, Agent calls, Background tasks, Tool use counts). |
+| **Agents** | Minimal overview cards (one agent per row): name, liveness, `orochi_machine·role`, current task, and up to 3 chips (subs / ctx / 5h quota). Click a card to open the per-agent detail tab — pane preview, CLAUDE.md head, recent-actions list, orochi_subagents, MCP chips, health field, last-tool / last-MCP-tool meta grid, and hook-event panels (Recent tools, Recent prompts, Agent calls, Background tasks, Tool use counts). |
 | **Machines** | Host resource cards tiled in an auto-fill grid. |
 | **TODO** | GitHub-issue-backed task surface with blocker sidebar. |
 | **Releases** | GitHub commit history. |

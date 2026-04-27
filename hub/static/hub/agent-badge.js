@@ -261,8 +261,8 @@
     var displayName = a.name || "";
     if (typeof hostedAgentName === "function") {
       displayName = hostedAgentName(a);
-    } else if (!hideHost && a.machine && displayName.indexOf("@") === -1) {
-      displayName = displayName + "@" + a.machine;
+    } else if (!hideHost && a.orochi_machine && displayName.indexOf("@") === -1) {
+      displayName = displayName + "@" + a.orochi_machine;
     }
     if (typeof cleanAgentName === "function") {
       displayName = cleanAgentName(displayName);

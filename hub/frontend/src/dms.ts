@@ -91,7 +91,7 @@ import { loadChannelHistory, loadHistory } from "./chat/chat-history";
         name: label,
         status: "offline",
         liveness: "offline",
-        machine: (p && p.machine) || "",
+        orochi_machine: (p && p.orochi_machine) || "",
       };
     }
     /* Human principal: synthesise a minimal agent-shape object. All

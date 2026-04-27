@@ -55,6 +55,6 @@ Status reporting never touches an LLM. The flow is a one-way dependency chain:
 - **Orochi** (hub) -- the server itself, routing all traffic
 - **Mamba** (task manager) -- periodic task dispatch, duplicate scans, GitHub-issue mirroring
 - **Caduceus** (fleet medic) -- health classification with digit-handshake liveness checks and SSH heal
-- **Head agents** (`head@<machine>`) -- per-host Claude Code workers with MCP sidecar
+- **Head agents** (`head@<orochi_machine>`) -- per-host Claude Code workers with MCP sidecar
 
 <!-- EOF -->

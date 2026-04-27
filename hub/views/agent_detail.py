@@ -145,10 +145,10 @@ def api_agent_detail(request, name: str):
         {
           "name": str,
           "role": str,
-          "machine": str,                # YAML config label (join key)
+          "orochi_machine": str,                # YAML config label (join key)
           # #257 canonical heartbeat metadata — authoritative per-process
           # truth. Empty/None for legacy clients that haven't been
-          # upgraded; UI falls back to `machine` until populated.
+          # upgraded; UI falls back to `orochi_machine` until populated.
           "hostname": str,               # `hostname(1)` of the running process
           "orochi_hostname_canonical": str,     # FQDN via socket.getfqdn()
           "uname": str,                  # `uname -a` output
@@ -216,17 +216,17 @@ def api_agent_detail(request, name: str):
     payload = {
         "name": agent.get("name", name),
         "role": agent.get("role", ""),
-        "machine": agent.get("machine", ""),
+        "orochi_machine": agent.get("orochi_machine", ""),
         # todo#55: canonical FQDN reported by the heartbeat, displayed
-        # next to the short `machine` label in the detail header.
+        # next to the short `orochi_machine` label in the detail header.
         "orochi_hostname_canonical": agent.get("orochi_hostname_canonical", ""),
         # ── #257 canonical heartbeat metadata ─────────────────────────
         # `hostname` is the authoritative `hostname(1)` of the running
         # process. The dashboard's `@host` label MUST be rendered from
-        # this, not from `machine` (YAML config) — fabricated/cached
+        # this, not from `orochi_machine` (YAML config) — fabricated/cached
         # labels were the root of the ghost-mba bug (#256). Empty for
         # legacy clients that haven't been upgraded; UI falls back to
-        # `machine` until the heartbeat carries it.
+        # `orochi_machine` until the heartbeat carries it.
         "hostname": agent.get("hostname", ""),
         "uname": agent.get("uname", ""),
         "instance_id": agent.get("instance_id", ""),

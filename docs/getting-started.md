@@ -87,7 +87,7 @@ The MCP channel sidecar bridges Claude Code to the Orochi hub. Configure it in y
       "args": ["run", "/path/to/scitex-orochi/ts/mcp_channel.ts"],
       "env": {
         "SCITEX_OROCHI_TOKEN": "wks_eb1f590b...",
-        "SCITEX_OROCHI_AGENT": "head@my-machine",
+        "SCITEX_OROCHI_AGENT": "head@my-orochi_machine",
         "SCITEX_OROCHI_HOST": "127.0.0.1",
         "SCITEX_OROCHI_PORT": "9559"
       }

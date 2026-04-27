@@ -13,7 +13,7 @@ metadata:
     role: head
     team: orochi
     specialty: research
-    machine: CHANGEME
+    orochi_machine: CHANGEME
     capabilities: gpu,orochi_slurm,large-compute,ml-training
 spec:
   runtime: claude-code

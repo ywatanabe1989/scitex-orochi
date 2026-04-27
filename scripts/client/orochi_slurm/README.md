@@ -37,7 +37,7 @@ apiVersion: scitex-agent-container/v2
 kind: Agent
 metadata:
   name: head
-  labels: { role: head, machine: ${HOSTNAME} }
+  labels: { role: head, orochi_machine: ${HOSTNAME} }
 spec:
   runtime: orochi_slurm
   model: opus[1m]

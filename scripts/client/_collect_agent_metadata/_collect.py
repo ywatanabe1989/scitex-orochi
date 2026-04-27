@@ -69,7 +69,7 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        pid, ppid, started_at, workdir, project, machine, orochi_skills_loaded,
+        pid, ppid, started_at, workdir, project, orochi_machine, orochi_skills_loaded,
         runtime, version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
@@ -120,7 +120,7 @@ def collect(agent: str) -> dict:
     orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
     orochi_mcp_servers = collect_orochi_mcp_servers(workspace)
     project = agent
-    machine = resolve_machine_label()
+    orochi_machine = resolve_machine_label()
 
     # CLAUDE.md head + full, .mcp.json full (todo#460 viewers).
     orochi_claude_md_head, orochi_claude_md_full = collect_orochi_claude_md(workspace)
@@ -134,7 +134,7 @@ def collect(agent: str) -> dict:
     # and the classifier degrades to its legacy stateless behavior.
     # Live hostname(1) — the kernel's answer to "where is this process
     # running right now". This is the authoritative host-identity signal
-    # the hub's badge renderer (hostedAgentName) prefers over ``machine``.
+    # the hub's badge renderer (hostedAgentName) prefers over ``orochi_machine``.
     # Collected here so ``_build_payload`` can forward it unconditionally,
     # never letting env vars or server-side inference speak for the
     # process (lead msg#15578 root fix).
@@ -244,13 +244,13 @@ def collect(agent: str) -> dict:
         "started_at": started_at,
         "workdir": workspace,
         "project": project,
-        "machine": machine,
+        "orochi_machine": orochi_machine,
         # Live hostname(1) — see the comment above live_hostname for why
         # we send this unconditionally. The hub stores this as ``hostname``
-        # distinct from ``machine`` (YAML label) and
+        # distinct from ``orochi_machine`` (YAML label) and
         # ``orochi_hostname_canonical`` (FQDN).
         "hostname": live_hostname,
-        # todo#55: canonical FQDN for display next to the short machine
+        # todo#55: canonical FQDN for display next to the short orochi_machine
         # label in the dashboard.
         "orochi_hostname_canonical": _resolve_canonical_hostname(),
         "orochi_skills_loaded": orochi_skills_loaded,

@@ -138,8 +138,8 @@ function _bindActivityPaneControls(grid, name, pane, paneFull) {
   grid.querySelectorAll('[data-act-pane-action="ssh"]').forEach(function (btn) {
     btn.addEventListener("click", function (ev) {
       ev.preventDefault();
-      var machine = btn.getAttribute("data-machine") || "";
-      _activityPaneOpenSsh(grid, name, machine, btn);
+      var orochi_machine = btn.getAttribute("data-orochi_machine") || "";
+      _activityPaneOpenSsh(grid, name, orochi_machine, btn);
     });
   });
 }
@@ -149,7 +149,7 @@ function _bindActivityPaneControls(grid, name, pane, paneFull) {
  * disposes the previous session cleanly. */
 var _activityPaneSshState = Object.create(null);
 
-function _activityPaneOpenSsh(grid, name, machine, btn) {
+function _activityPaneOpenSsh(grid, name, orochi_machine, btn) {
   var loadAssets = window._termLoadAssets;
   if (typeof loadAssets !== "function") {
     alert("Terminal assets not available.");
@@ -160,7 +160,7 @@ function _activityPaneOpenSsh(grid, name, machine, btn) {
   /* If this pane already has an SSH session, clicking toggles back to
    * the scrollback view. */
   var existing = _activityPaneSshState[name];
-  if (existing && existing.host === (machine || "local")) {
+  if (existing && existing.host === (orochi_machine || "local")) {
     _activityPaneCloseSsh(name);
     if (btn) {
       btn.classList.remove("agent-detail-pane-btn-on");
@@ -180,7 +180,7 @@ function _activityPaneOpenSsh(grid, name, machine, btn) {
       if (!livePre || !livePre.parentNode) return;
       if (!existing) {
         _activityPaneSshState[name] = {
-          host: machine || "local",
+          host: orochi_machine || "local",
           ws: null,
           term: null,
           fitAddon: null,
@@ -212,7 +212,7 @@ function _activityPaneOpenSsh(grid, name, machine, btn) {
         } catch (_) {}
       }, 50);
       var proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      var host = machine || "local";
+      var host = orochi_machine || "local";
       var wsUrl =
         proto +
         "//" +

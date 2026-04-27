@@ -39,7 +39,7 @@ function _topoBuildPoolHtmlLegacy(visible, channels) {
        * agent row and the canvas node. Replaces the ad-hoc "🤖" glyph
        * and the raw a.name tooltip with the unified agentIdentity()
        * cascade (image > emoji > text > snake SVG) and the
-       * "<id> (<machine>)" hover text. */
+       * "<id> (<orochi_machine>)" hover text. */
       var _ident =
         typeof agentIdentity === "function"
           ? agentIdentity(a)

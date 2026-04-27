@@ -23,7 +23,7 @@ from _collect_agent_metadata._push import _build_payload  # noqa: E402
 
 _MIN_META = {
     "agent": "worker-mba",
-    "machine": "mba",
+    "orochi_machine": "mba",
     "orochi_subagent_count": 2,
     # Typical collect() keys — fill enough that _build_payload
     # doesn't KeyError.

@@ -16,9 +16,9 @@ was two-fold:
 
 2. Hub-side: ``hub/registry/_payload.py::get_agents()`` never exposed
    the ``hostname`` field in the dashboard payload, so the frontend
-   badge (``hostedAgentName``) always fell through to ``machine`` —
+   badge (``hostedAgentName``) always fell through to ``orochi_machine`` —
    meaning the lead's #257 work (capturing ``hostname`` distinct from
-   ``machine``) was never reaching the UI.
+   ``orochi_machine``) was never reaching the UI.
 
 The fix is "agents set their ``host`` field in heartbeat from their
 own ``hostname()`` call, never from server-side auth/inference, and
@@ -57,23 +57,23 @@ class ClientSuppliedHostnameTest(TestCase):
             "proj-neurovista",
             workspace_id=1,
             info={
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
             },
         )
         rows = [a for a in get_agents(workspace_id=1) if a["name"] == "proj-neurovista"]
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["hostname"], "spartan")
-        self.assertEqual(rows[0]["machine"], "spartan")
+        self.assertEqual(rows[0]["orochi_machine"], "spartan")
 
     def test_hostname_distinct_from_machine_preserved(self):
-        """When ``machine`` and ``hostname`` disagree (e.g. an agent
+        """When ``orochi_machine`` and ``hostname`` disagree (e.g. an agent
         whose YAML-config host label drifted from the live process
         host), the hub preserves both verbatim so the frontend can
         prefer the authoritative ``hostname`` signal.
 
         This is the direct regression case for the proj-neurovista
-        bug: machine label might say ``mba`` (stale env) but
+        bug: orochi_machine label might say ``mba`` (stale env) but
         hostname must report ``spartan`` because that's what the
         kernel said."""
         register_agent(
@@ -81,8 +81,8 @@ class ClientSuppliedHostnameTest(TestCase):
             workspace_id=1,
             info={
                 # Simulate the buggy client that reported the wrong
-                # machine label due to env pollution.
-                "machine": "mba",
+                # orochi_machine label due to env pollution.
+                "orochi_machine": "mba",
                 # And the live hostname the kernel actually returned.
                 "hostname": "spartan",
             },
@@ -91,7 +91,7 @@ class ClientSuppliedHostnameTest(TestCase):
         self.assertEqual(len(rows), 1)
         # Both fields round-trip verbatim — the hub never rewrites
         # either one based on auth or server-side inference.
-        self.assertEqual(rows[0]["machine"], "mba")
+        self.assertEqual(rows[0]["orochi_machine"], "mba")
         self.assertEqual(rows[0]["hostname"], "spartan")
 
     def test_hostname_missing_defaults_to_empty_string(self):
@@ -102,11 +102,11 @@ class ClientSuppliedHostnameTest(TestCase):
         register_agent(
             "legacy-agent",
             workspace_id=1,
-            info={"machine": "mba"},
+            info={"orochi_machine": "mba"},
         )
         rows = [a for a in get_agents(workspace_id=1) if a["name"] == "legacy-agent"]
         self.assertEqual(rows[0]["hostname"], "")
-        self.assertEqual(rows[0]["machine"], "mba")
+        self.assertEqual(rows[0]["orochi_machine"], "mba")
 
 
 class HostnameFromRestPushTest(TestCase):
@@ -146,7 +146,7 @@ class HostnameFromRestPushTest(TestCase):
             self.token_a.token,
             {
                 "name": "proj-neurovista",
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
             },
         )
@@ -157,7 +157,7 @@ class HostnameFromRestPushTest(TestCase):
         ]
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["hostname"], "spartan")
-        self.assertEqual(rows[0]["machine"], "spartan")
+        self.assertEqual(rows[0]["orochi_machine"], "spartan")
 
     def test_hostname_not_inferred_from_token(self):
         """The auth token DOES NOT set the host identity.
@@ -174,7 +174,7 @@ class HostnameFromRestPushTest(TestCase):
             {
                 "name": "proj-neurovista",
                 # ...but report the real host from the live process.
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
             },
         )
@@ -184,9 +184,9 @@ class HostnameFromRestPushTest(TestCase):
             if a["name"] == "proj-neurovista"
         ]
         self.assertEqual(rows[0]["hostname"], "spartan")
-        # And the ``machine`` YAML label the client sent is also kept
+        # And the ``orochi_machine`` YAML label the client sent is also kept
         # verbatim — the hub does not rewrite either field.
-        self.assertEqual(rows[0]["machine"], "spartan")
+        self.assertEqual(rows[0]["orochi_machine"], "spartan")
 
     def test_hostname_persists_across_reregisters_via_different_tokens(self):
         """Two sequential pushes with different tokens must both
@@ -196,7 +196,7 @@ class HostnameFromRestPushTest(TestCase):
             self.token_a.token,
             {
                 "name": "proj-neurovista",
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
             },
         )
@@ -206,7 +206,7 @@ class HostnameFromRestPushTest(TestCase):
             self.token_b.token,
             {
                 "name": "proj-neurovista",
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
             },
         )
@@ -224,7 +224,7 @@ class HostnameFromRestPushTest(TestCase):
             self.token_a.token,
             {
                 "name": "proj-neurovista",
-                "machine": "spartan",
+                "orochi_machine": "spartan",
                 "hostname": "spartan",
             },
         )
@@ -233,7 +233,7 @@ class HostnameFromRestPushTest(TestCase):
             self.token_a.token,
             {
                 "name": "proj-neurovista",
-                "machine": "spartan",
+                "orochi_machine": "spartan",
             },
         )
         rows = [

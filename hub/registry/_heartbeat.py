@@ -149,14 +149,14 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
     """Update heartbeat timestamp and optional metrics.
 
     todo#272: after the timestamp/metric write, run the quota-pressure
-    state machine for this agent. The check reads the quota fields that
+    state orochi_machine for this agent. The check reads the quota fields that
     ``register_agent()`` just wrote (``quota_5h_used_pct`` / ``quota_7d_used_pct``
     + reset timestamps + prior state) and posts a threshold-crossing
     message to ``#progress`` / ``#escalation`` / ``#ywatanabe`` when a
     window crosses the warn / escalate bands. Best-effort — the check
     never raises into the heartbeat hot path.
 
-    msg#16388: after quota pressure, run the auto-dispatch state machine
+    msg#16388: after quota pressure, run the auto-dispatch state orochi_machine
     for ``head-*`` agents. ``check_agent_auto_dispatch()`` reads
     ``orochi_subagent_count`` (just written by the heartbeat handler via
     ``set_orochi_subagent_count``) and maintains a per-head idle streak + 15min

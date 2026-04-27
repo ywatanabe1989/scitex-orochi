@@ -7,7 +7,7 @@ the MCP ``react`` tool (``ts/src/tools/messaging.ts``); this CLI is the
 shell-script / non-Claude client-side convenience.
 
 Auth: workspace token (``$SCITEX_OROCHI_TOKEN``, ``--token``, or
-dotfiles secret file) — same pattern as ``dispatch`` and ``machine``.
+dotfiles secret file) — same pattern as ``dispatch`` and ``orochi_machine``.
 The endpoint derives the workspace from the token; ``--workspace`` is
 accepted as an advisory override (forwarded in the body; server ignores
 today, honoured if/when a future PR adds cross-workspace moderation).

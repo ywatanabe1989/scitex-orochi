@@ -41,9 +41,9 @@ export function renderActivityTab() {
     var pb = b.pinned ? 0 : 1;
     if (pa !== pb) return pa - pb;
     var ka, kb;
-    if ((globalThis as any)._overviewSort === "machine") {
-      ka = (a.machine || "") + "/" + (a.name || "");
-      kb = (b.machine || "") + "/" + (b.name || "");
+    if ((globalThis as any)._overviewSort === "orochi_machine") {
+      ka = (a.orochi_machine || "") + "/" + (a.name || "");
+      kb = (b.orochi_machine || "") + "/" + (b.name || "");
     } else {
       ka = a.name || "";
       kb = b.name || "";
@@ -57,7 +57,7 @@ export function renderActivityTab() {
       var hay = (
         (a.name || "") +
         " " +
-        (a.machine || "") +
+        (a.orochi_machine || "") +
         " " +
         (a.role || "")
       ).toLowerCase();

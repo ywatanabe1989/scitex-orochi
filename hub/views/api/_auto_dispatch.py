@@ -2,7 +2,7 @@
 
 Companion to ``hub.auto_dispatch.check_agent_auto_dispatch`` (PR #334),
 which runs from the heartbeat hot path. These endpoints expose the
-auto-dispatch state machine to the CLI (``scitex-orochi dispatch
+auto-dispatch state orochi_machine to the CLI (``scitex-orochi dispatch
 {run,status}``, Phase 1c msg#16477):
 
 * ``POST /api/auto-dispatch/fire/`` — force an immediate dispatch DM to
@@ -14,7 +14,7 @@ auto-dispatch state machine to the CLI (``scitex-orochi dispatch
 * ``GET /api/auto-dispatch/status/`` — surface per-head ``idle_streak``,
   ``auto_dispatch_last_fire_ts`` (ISO), and derived ``cooldown_active``
   from the in-memory ``hub.registry`` dict. Read-only. Complements the
-  machine-card resource view so operators can see "why isn't head-X
+  orochi_machine-card resource view so operators can see "why isn't head-X
   being dispatched?" without tailing logs.
 
 Auth: workspace token (same pattern as ``api_agents``) — the CLI already

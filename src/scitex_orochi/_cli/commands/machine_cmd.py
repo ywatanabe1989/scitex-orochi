@@ -1,4 +1,4 @@
-"""``scitex-orochi machine {heartbeat,resources} ...`` subcommands.
+"""``scitex-orochi orochi_machine {heartbeat,resources} ...`` subcommands.
 
 ``heartbeat send``    — drop-in for ``scripts/client/agent_meta.py --push --once``.
                        Enumerate local tmux/screen agent sessions, collect their
@@ -65,18 +65,18 @@ def _import_agent_meta_pkg():
 # Groups
 # ---------------------------------------------------------------------------
 
-@click.group("machine")
-def machine() -> None:
+@click.group("orochi_machine")
+def orochi_machine() -> None:
     """Host-level operations (heartbeat push, registry inspection, ...)."""
 
 
-@machine.group("heartbeat")
+@orochi_machine.group("heartbeat")
 def heartbeat() -> None:
     """Heartbeat publishing + inspection."""
 
 
 # ---------------------------------------------------------------------------
-# machine heartbeat send
+# orochi_machine heartbeat send
 # ---------------------------------------------------------------------------
 
 @heartbeat.command("send")
@@ -115,14 +115,14 @@ def heartbeat_send(
         raise click.ClickException(f"push_all failed: {exc}") from exc
     if verbose:
         click.echo(
-            f"[machine heartbeat send] pushed={n} url={url or 'default'}",
+            f"[orochi_machine heartbeat send] pushed={n} url={url or 'default'}",
             err=True,
         )
     click.echo(json.dumps({"pushed": n}, separators=(",", ":")))
 
 
 # ---------------------------------------------------------------------------
-# machine heartbeat status
+# orochi_machine heartbeat status
 # ---------------------------------------------------------------------------
 
 @heartbeat.command("status")
@@ -209,10 +209,10 @@ def heartbeat_status(
 
 
 # ---------------------------------------------------------------------------
-# machine resources show
+# orochi_machine resources show
 # ---------------------------------------------------------------------------
 
-@machine.group("resources")
+@orochi_machine.group("resources")
 def resources() -> None:
     """Local host resource snapshot (CPU / RAM / Storage / GPU)."""
 
@@ -346,4 +346,4 @@ def resources_show(ctx: click.Context, pretty: bool) -> None:
     click.echo(f"GPU:     {display['gpu']}")
 
 
-__all__ = ["machine"]
+__all__ = ["orochi_machine"]

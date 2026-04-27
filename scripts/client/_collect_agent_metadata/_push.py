@@ -55,7 +55,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "name": meta["agent"],
         "agent_id": meta["agent"],
         "role": "agent",
-        "machine": meta.get("machine", ""),
+        "orochi_machine": meta.get("orochi_machine", ""),
         # Live hostname(1) — authoritative per-process identity. Client-
         # supplied via ``collect()`` from ``socket.gethostname()``; never
         # derived from env or server-side inference. Root fix for the
@@ -113,7 +113,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "sac_hooks_agent_calls": meta.get("sac_hooks_agent_calls") or [],
         "sac_hooks_background_tasks": meta.get("sac_hooks_background_tasks") or [],
         "orochi_subagents": meta.get("orochi_subagents") or [],
-        # scitex-orochi todo#369 — host-level machine metrics (CPU / mem
+        # scitex-orochi todo#369 — host-level orochi_machine metrics (CPU / mem
         # / disk / load) + optional SLURM cluster snapshot. Without
         # these two keys the hub's /api/resources rollup has no data
         # to populate the Machines tab card for agents pushed via this
@@ -126,7 +126,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # body["metrics"] verbatim (see hub/views/api/_agents_register.py
         # line `update_heartbeat(name, metrics=body.get("metrics") or
         # {})`), and the merged per-agent snapshot is flattened into
-        # each machine's aggregate card by hub/views/api/_resources.py.
+        # each orochi_machine's aggregate card by hub/views/api/_resources.py.
         # `orochi_slurm` is a nested dict used by the Machines tab's SLURM
         # card on HPC hosts and is expected to be None on non-HPC.
         "metrics": meta.get("metrics") or {},

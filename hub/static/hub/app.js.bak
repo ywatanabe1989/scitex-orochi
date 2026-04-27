@@ -406,7 +406,7 @@ async function fetchAgents() {
           "</span>" +
           workdirHtml +
           '<div class="meta">' +
-          escapeHtml(a.machine || "unknown") +
+          escapeHtml(a.orochi_machine || "unknown") +
           " / " +
           escapeHtml(a.role || "agent") +
           "</div>" +

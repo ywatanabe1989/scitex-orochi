@@ -30,7 +30,7 @@ class Agent:
     name: str
     ws: Any  # ServerConnection
     channels: set[str] = field(default_factory=set)
-    machine: str = ""
+    orochi_machine: str = ""
     role: str = ""
     model: str = ""
     agent_id: str = ""

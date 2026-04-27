@@ -71,7 +71,7 @@ const SAMPLE_ALIASES_YAML = `
 apiVersion: scitex-orochi/v1
 kind: Config
 metadata:
-  machine: ywata-note-win
+  orochi_machine: ywata-note-win
 spec:
   hub:
     hosts: [192.168.11.22, scitex-orochi.com]
@@ -196,10 +196,10 @@ describe("resolveHostLabel", () => {
         rawHostname: "",
         env: {
           SCITEX_AGENT_CONTAINER_HOSTNAME: "container-host",
-          SCITEX_OROCHI_MACHINE: "machine-env",
+          SCITEX_OROCHI_MACHINE: "orochi_machine-env",
         } as NodeJS.ProcessEnv,
       }),
-    ).toBe("machine-env");
+    ).toBe("orochi_machine-env");
     // HOSTNAME beats MACHINE.
     expect(
       resolveHostLabel({
@@ -207,7 +207,7 @@ describe("resolveHostLabel", () => {
         rawHostname: "",
         env: {
           SCITEX_AGENT_CONTAINER_HOSTNAME: "container-host",
-          SCITEX_OROCHI_MACHINE: "machine-env",
+          SCITEX_OROCHI_MACHINE: "orochi_machine-env",
           SCITEX_OROCHI_HOSTNAME: "hostname-env",
         } as NodeJS.ProcessEnv,
       }),

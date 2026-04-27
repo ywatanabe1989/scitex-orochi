@@ -78,7 +78,7 @@ for dir in "${AGENT_DIR}"/*/; do
   [[ -f "$yaml" ]] || continue
 
   # Check if this agent belongs to this host
-  agent_host=$(grep -oP 'machine:\s*\K\S+' "$yaml" 2>/dev/null || echo "")
+  agent_host=$(grep -oP 'orochi_machine:\s*\K\S+' "$yaml" 2>/dev/null || echo "")
   if [[ -n "$agent_host" && "$agent_host" != "$HOST" ]]; then
     continue  # skip agents for other hosts
   fi

@@ -96,7 +96,7 @@ def test_collect_orochi_slurm_metrics_single_node_cluster():
     assert out["orochi_slurm_running"] == 6
     assert out["orochi_slurm_pending"] == 0
 
-    # Override propagates into the scalar "machine" keys used by the UI.
+    # Override propagates into the scalar "orochi_machine" keys used by the UI.
     assert out["cpu_count"] == 12
     assert out["mem_total_mb"] == 64038
     assert out["mem_free_mb"] == 826

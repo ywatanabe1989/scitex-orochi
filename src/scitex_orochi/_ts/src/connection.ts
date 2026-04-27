@@ -7,7 +7,7 @@ import { execSync } from "child_process";
 import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
 import { getSystemMetrics } from "./metrics.js";
 
-// todo#55: canonical FQDN for display next to the short machine label
+// todo#55: canonical FQDN for display next to the short orochi_machine label
 // ("spartan (spartan.hpc.unimelb.edu.au)"). os.hostname() in Node returns
 // the SHORT hostname on every platform we care about, so shell out to
 // `hostname -f` once per process and cache. Falls back to the short
@@ -177,7 +177,7 @@ export class OrochiConnection {
         type: "register",
         sender: OROCHI_AGENT,
         payload: {
-          machine: hostname(),
+          orochi_machine: hostname(),
           // todo#55: canonical FQDN for display next to the short label.
           orochi_hostname_canonical: canonicalHostname(),
           role: "claude-code",

@@ -447,7 +447,7 @@ body {
   text-align: right;
 }
 .agent-card,
-.machine-item {
+.orochi_machine-item {
   cursor: pointer;
 }
 .channel-item:hover {

@@ -40,7 +40,7 @@ class UpdateEchoPongRegistryTests(TestCase):
             self.ws.id,
             {
                 "agent_id": name,
-                "machine": "MBA",
+                "orochi_machine": "MBA",
                 "role": "head",
             },
         )
@@ -91,7 +91,7 @@ class UpdateEchoPongRegistryTests(TestCase):
             self.ws.id,
             {
                 "agent_id": "echo-agent",
-                "machine": "MBA",
+                "orochi_machine": "MBA",
                 "role": "head",
             },
         )
@@ -153,7 +153,7 @@ class AgentDetailEchoFieldsTests(TestCase):
                 {
                     "token": self.token.token,
                     "name": name,
-                    "machine": "MBA",
+                    "orochi_machine": "MBA",
                     "role": "head",
                 }
             ),

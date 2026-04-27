@@ -161,7 +161,7 @@ async def _try_host(
     agent_name: str,
     orochi: OrochiSpec,
     token: str,
-    machine: str,
+    orochi_machine: str,
     role: str,
     channels: list[str],
 ) -> object | None:
@@ -173,9 +173,9 @@ async def _try_host(
             port=orochi.port,
             channels=channels,
             token=token,
-            machine=machine,
+            orochi_machine=orochi_machine,
             role=role,
-            agent_id=f"{agent_name}@{machine}",
+            agent_id=f"{agent_name}@{orochi_machine}",
             ws_path=orochi.ws_path,
         )
         await asyncio.wait_for(client.connect(), timeout=10)
@@ -201,7 +201,7 @@ async def _connect_loop(
         )
         return
 
-    machine = agent_labels.get("machine", platform.node())
+    orochi_machine = agent_labels.get("orochi_machine", platform.node())
     role = agent_labels.get("role", "")
     channels = orochi.channels or ["#general"]
     attempt = 0
@@ -249,7 +249,7 @@ async def _connect_loop(
                 agent_name,
                 orochi,
                 token,
-                machine,
+                orochi_machine,
                 role,
                 channels,
             )
@@ -267,7 +267,7 @@ async def _connect_loop(
                 status_line,
                 connected_host,
                 agent_name,
-                machine,
+                orochi_machine,
                 channels,
             )
         else:

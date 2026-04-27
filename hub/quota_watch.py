@@ -9,7 +9,7 @@ pushes utilization figures into the heartbeat as
 posts escalation messages so the fleet (or ywatanabe) can migrate
 accounts *before* the hard cap triggers a 100% wedge.
 
-State machine per (agent, window):
+State orochi_machine per (agent, window):
     ok -> warn        : post to #progress
     warn -> escalate  : post to #escalation AND #ywatanabe
     escalate -> ok    : post recovery to #progress (once)
@@ -139,7 +139,7 @@ def evaluate(
     prev_state_7d: str,
     post: PostFn = _default_post,
 ) -> tuple[str, str, list[tuple[str, str]]]:
-    """Run the quota state machine for one heartbeat.
+    """Run the quota state orochi_machine for one heartbeat.
 
     Returns (new_state_5h, new_state_7d, posts) where ``posts`` is the
     list of (channel, text) pairs that were emitted via ``post``.
@@ -233,14 +233,14 @@ def _coerce_utilization(value) -> Optional[float]:
 
 
 def check_agent_quota_pressure(name: str, post: Optional[PostFn] = None) -> None:
-    """Run the quota state machine for one agent based on registry state.
+    """Run the quota state orochi_machine for one agent based on registry state.
 
     Called from the heartbeat hot path (REST
     ``/api/agents/register/`` + WS ``agent_heartbeat`` handler). Reads
     the agent's current quota utilization + reset timestamps + previous
     per-window state from the in-memory registry, calls
     :func:`evaluate`, and writes back the new per-window state so the
-    state machine transitions fire exactly once per crossing.
+    state orochi_machine transitions fire exactly once per crossing.
 
     Best-effort: any exception is logged and swallowed — quota_watch
     must never block or crash the heartbeat path.

@@ -302,7 +302,7 @@ async function fetchAgents() {
             : "") +
           "</span>" +
           '<div class="meta">' +
-          escapeHtml(a.machine || "unknown") +
+          escapeHtml(a.orochi_machine || "unknown") +
           " / " +
           escapeHtml(a.role || "agent") +
           "</div>" +

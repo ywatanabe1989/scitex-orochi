@@ -18,7 +18,7 @@ def api_agents_register(request):
         {
           "token": "wks_...",
           "name": "caduceus@host",
-          "machine": "host",
+          "orochi_machine": "host",
           "role": "healer",
           "model": "stdlib",
           "channels": ["#general"],
@@ -96,10 +96,10 @@ def api_agents_register(request):
         workspace_id=wt.workspace_id,
         info={
             "agent_id": body.get("agent_id") or name,
-            "machine": body.get("machine", ""),
+            "orochi_machine": body.get("orochi_machine", ""),
             # #257 — live ``hostname(1)`` of the running agent process.
             # Authoritative "where am I" signal that the frontend badge
-            # (hostedAgentName) prefers over ``machine``. Client-supplied
+            # (hostedAgentName) prefers over ``orochi_machine``. Client-supplied
             # from the agent's own ``socket.gethostname()`` / Node
             # ``os.hostname()`` — NEVER derived from the auth token or
             # source IP on the hub side (lead msg#15578: server-side

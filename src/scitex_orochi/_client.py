@@ -40,7 +40,7 @@ class OrochiClient:
         port: int = PORT,
         channels: list[str] | None = None,
         token: str | None = None,
-        machine: str = "",
+        orochi_machine: str = "",
         role: str = "",
         agent_id: str = "",
         project: str = "",
@@ -50,12 +50,12 @@ class OrochiClient:
 
         self.name = name
         self.channels = channels or ["#general"]
-        self.machine = machine
+        self.orochi_machine = orochi_machine
         self.role = role
         self.project = project
         self.agent_id = agent_id
         if not self.agent_id:
-            machine_name = machine or _platform.node()
+            machine_name = orochi_machine or _platform.node()
             self.agent_id = f"{name}@{machine_name}"
         self._token = token or OROCHI_TOKEN
         self._ws_path = ws_path
@@ -87,7 +87,7 @@ class OrochiClient:
                         "type": "register",
                         "payload": {
                             "channels": self.channels,
-                            "machine": self.machine or _plat.node(),
+                            "orochi_machine": self.orochi_machine or _plat.node(),
                             "role": self.role,
                             "model": "",
                             "agent_id": self.agent_id,
@@ -108,7 +108,7 @@ class OrochiClient:
                 sender=self.name,
                 payload={
                     "channels": self.channels,
-                    "machine": self.machine,
+                    "orochi_machine": self.orochi_machine,
                     "role": self.role,
                     "agent_id": self.agent_id,
                     "project": self.project,

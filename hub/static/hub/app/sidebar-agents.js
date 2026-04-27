@@ -94,7 +94,7 @@ async function fetchAgents() {
       return connected(a) || !!a.pinned;
     });
     /* Starred first (like channels), then apply the sort-dropdown
-     * selection (name / machine) within each group. ywatanabe
+     * selection (name / orochi_machine) within each group. ywatanabe
      * 2026-04-21: "starred agents should be placed upper" +
      * "functionally, no; please make it functional" (sort dropdown
      * must actually sort the sidebar list, not just the Agents tab). */
@@ -103,8 +103,8 @@ async function fetchAgents() {
         ? _overviewSort
         : "name";
     var sortKey = function (a) {
-      if (sortBy === "machine") {
-        return (a.machine || "") + "\u0001" + (a.name || "");
+      if (sortBy === "orochi_machine") {
+        return (a.orochi_machine || "") + "\u0001" + (a.name || "");
       }
       /* Default "name" — use the same display-name that renders in the
        * badge so visual order matches what the user reads. */
@@ -159,7 +159,7 @@ async function fetchAgents() {
                 tooltip:
                   (a.agent_id || rawName) +
                   " (" +
-                  (a.machine || "unknown") +
+                  (a.orochi_machine || "unknown") +
                   ")",
                 iconHtml: function () {
                   return "";

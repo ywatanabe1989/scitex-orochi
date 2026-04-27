@@ -1,6 +1,6 @@
 /* Resource monitor cards & bars */
 
-/* Machines tab grid: tile the machine cards in a responsive grid
+/* Machines tab grid: tile the orochi_machine cards in a responsive grid
  * (overrides the single-column .todo-grid default so the view
  * looks populated once the fleet has more than one host). */
 #resources-grid.todo-grid {

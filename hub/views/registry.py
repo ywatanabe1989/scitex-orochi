@@ -3,17 +3,17 @@
 This is a workspace-token-authenticated CRUD surface over the
 ``ContainerAgent`` model. It replaces the local-only
 ``~/.scitex/agent-container/registry/`` directory that scitex-agent-container
-writes on each machine with a hub-hosted, fleet-wide registry.
+writes on each orochi_machine with a hub-hosted, fleet-wide registry.
 
 Distinct from the in-memory WebSocket presence registry (``api_agents``):
-this endpoint tracks container/process state (yaml path, machine, status,
+this endpoint tracks container/process state (yaml path, orochi_machine, status,
 restart history) — not runtime websocket presence.
 
 Endpoints (mounted under both ``urls.py`` and ``urls_bare.py`` so the MCP
 sidecar on ``localhost`` can reach them without the subdomain middleware):
 
     POST   /api/registry/agents/           — register (upsert) a container agent
-    GET    /api/registry/agents/           — list all (optional ?machine=, ?status=)
+    GET    /api/registry/agents/           — list all (optional ?orochi_machine=, ?status=)
     PATCH  /api/registry/agents/<name>/    — update status / last_seen / metadata
     DELETE /api/registry/agents/<name>/    — unregister
 
@@ -63,7 +63,7 @@ def _parse_body(request):
 def _serialize(agent):
     return {
         "name": agent.name,
-        "machine": agent.machine,
+        "orochi_machine": agent.orochi_machine,
         "yaml_path": agent.yaml_path,
         "status": agent.status,
         "workspace": agent.workspace.name,
@@ -90,9 +90,9 @@ def api_registry_agents(request):
 
     if request.method == "GET":
         qs = ContainerAgent.objects.filter(workspace=workspace)
-        machine = request.GET.get("machine")
-        if machine:
-            qs = qs.filter(machine=machine)
+        orochi_machine = request.GET.get("orochi_machine")
+        if orochi_machine:
+            qs = qs.filter(orochi_machine=orochi_machine)
         status_filter = request.GET.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
@@ -104,9 +104,9 @@ def api_registry_agents(request):
     name = (body.get("name") or "").strip()
     if not name:
         return JsonResponse({"error": "name required"}, status=400)
-    machine = (body.get("machine") or "").strip()
-    if not machine:
-        return JsonResponse({"error": "machine required"}, status=400)
+    orochi_machine = (body.get("orochi_machine") or "").strip()
+    if not orochi_machine:
+        return JsonResponse({"error": "orochi_machine required"}, status=400)
 
     status_val = (body.get("status") or ContainerAgent.Status.RUNNING).strip()
     if status_val not in dict(ContainerAgent.Status.choices):
@@ -116,7 +116,7 @@ def api_registry_agents(request):
 
     defaults = {
         "workspace": workspace,
-        "machine": machine,
+        "orochi_machine": orochi_machine,
         "yaml_path": (body.get("yaml_path") or "")[:500],
         "status": status_val,
         "metadata": body.get("metadata") or {},
@@ -164,8 +164,8 @@ def api_registry_agent_detail(request, name):
     if "yaml_path" in body:
         agent.yaml_path = (body.get("yaml_path") or "")[:500]
         changed = True
-    if "machine" in body:
-        agent.machine = (body.get("machine") or "").strip() or agent.machine
+    if "orochi_machine" in body:
+        agent.orochi_machine = (body.get("orochi_machine") or "").strip() or agent.orochi_machine
         changed = True
     if "metadata" in body and isinstance(body.get("metadata"), dict):
         # Shallow-merge so callers can patch individual keys (e.g. restart_count)

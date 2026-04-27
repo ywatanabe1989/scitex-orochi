@@ -417,7 +417,7 @@ export const TOOL_DEFS = [
       "Mirrors the ``GET /api/cron/`` endpoint that powers the Machines " +
       "tab cron panel, exposed via MCP so any agent can observe daemon " +
       "state without scraping the dashboard. Returns " +
-      '``{"hosts": {<machine>: {agent, last_heartbeat_at, stale, ' +
+      '``{"hosts": {<orochi_machine>: {agent, last_heartbeat_at, stale, ' +
       "jobs}}}``. Optional ``host`` arg filters to a single host " +
       "server-side. Workspace-scoped via the MCP sidecar's token; " +
       "read-only.",

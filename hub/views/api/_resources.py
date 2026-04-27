@@ -1,7 +1,7 @@
-"""``GET /api/resources`` — per-machine resource aggregation from the agent registry.
+"""``GET /api/resources`` — per-orochi_machine resource aggregation from the agent registry.
 
 Split out of ``_agents.py`` so both sub-files stay under the 500-line
-ceiling. The endpoint is conceptually about machine hardware (CPU,
+ceiling. The endpoint is conceptually about orochi_machine hardware (CPU,
 memory, disk, Slurm cluster rollups), not about agent identity, so it
 earns its own module.
 """
@@ -17,22 +17,22 @@ from hub.views.api._common import (
 @login_required
 @require_GET
 def api_resources(request):
-    """GET /api/resources — resource usage aggregated per machine from agent registry."""
+    """GET /api/resources — resource usage aggregated per orochi_machine from agent registry."""
     workspace = get_workspace(request)
 
     from hub.registry import get_agents
 
     agents = get_agents(workspace_id=workspace.id)
 
-    # Aggregate by machine hostname (fall back to agent name)
+    # Aggregate by orochi_machine hostname (fall back to agent name)
     machines: dict[str, dict] = {}
     for a in agents:
-        machine = a.get("machine") or a["name"]
+        orochi_machine = a.get("orochi_machine") or a["name"]
         metrics = a.get("metrics") or {}
 
-        if machine not in machines:
-            machines[machine] = {
-                "machine": machine,
+        if orochi_machine not in machines:
+            machines[orochi_machine] = {
+                "orochi_machine": orochi_machine,
                 "status": a.get("status", "unknown"),
                 "last_heartbeat": a.get("last_heartbeat"),
                 "agents": [],
@@ -82,11 +82,11 @@ def api_resources(request):
                 },
             }
 
-        machines[machine]["agents"].append(a["name"])
+        machines[orochi_machine]["agents"].append(a["name"])
 
         # Update with latest metrics if this agent has fresher data
         if metrics and a.get("status") == "online":
-            res = machines[machine]["resources"]
+            res = machines[orochi_machine]["resources"]
             for key in (
                 "cpu_count",
                 "cpu_model",
@@ -131,8 +131,8 @@ def api_resources(request):
                 if total:
                     res["mem_used_mb"] = max(0, total - free)
             # Prefer online status
-            machines[machine]["status"] = "online"
+            machines[orochi_machine]["status"] = "online"
             if a.get("last_heartbeat"):
-                machines[machine]["last_heartbeat"] = a["last_heartbeat"]
+                machines[orochi_machine]["last_heartbeat"] = a["last_heartbeat"]
 
     return JsonResponse(machines, safe=False)

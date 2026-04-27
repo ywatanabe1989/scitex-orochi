@@ -2,7 +2,7 @@
 display (ywatanabe msg#16215).
 
 The hub aggregator in ``hub/views/api/_resources.py`` projects each
-registered agent's ``metrics`` dict into a per-machine ``resources``
+registered agent's ``metrics`` dict into a per-orochi_machine ``resources``
 dict. The sidebar MACHINES list + Machines-tab tooltip read this
 projection; if a key is missing the frontend renders an empty field
 (the mba + nas regression fixed in this change).
@@ -98,7 +98,7 @@ def test_resources_aggregation_includes_new_fields(fresh_registry):
     from hub.views.api._resources import api_resources  # noqa: F401
 
     register_agent(
-        "worker-mba", workspace_id=1, info={"machine": "mba", "agent_id": "worker-mba"}
+        "worker-mba", workspace_id=1, info={"orochi_machine": "mba", "agent_id": "worker-mba"}
     )
     update_heartbeat("worker-mba", _mba_metrics_payload())
 
@@ -144,7 +144,7 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     register_agent(
         "legacy-worker",
         workspace_id=1,
-        info={"machine": "legacy-host", "agent_id": "legacy-worker"},
+        info={"orochi_machine": "legacy-host", "agent_id": "legacy-worker"},
     )
     update_heartbeat("legacy-worker", _legacy_metrics_payload())
 
@@ -158,10 +158,10 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     a["status"] = "online"
 
     from hub.views.api._resources import api_resources  # noqa: F401
-    # Manually replay the machine projection to avoid Django's login_required:
+    # Manually replay the orochi_machine projection to avoid Django's login_required:
     metrics = a.get("metrics") or {}
 
-    # Reproduce the aggregator's initial-machine branch.
+    # Reproduce the aggregator's initial-orochi_machine branch.
     mem_used_mb_init = metrics.get(
         "mem_used_mb",
         max(

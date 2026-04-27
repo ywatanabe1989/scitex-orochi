@@ -15,7 +15,7 @@ def collect_machine_metrics() -> dict:
 
     Reads CPU/memory/disk/load via psutil if available; falls back to a
     minimal stdlib best-effort if psutil is missing. Output keys match
-    what ``hub/views/api.py:api_resources`` projects into the per-machine
+    what ``hub/views/api.py:api_resources`` projects into the per-orochi_machine
     Machines tab card. Empty/None on any read error so the receiver
     degrades gracefully.
 

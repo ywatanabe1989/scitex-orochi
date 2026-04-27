@@ -10,7 +10,7 @@ metadata:
     role: head
     team: orochi
     specialty: deploy
-    machine: CHANGEME
+    orochi_machine: CHANGEME
     capabilities: docker,deployment,ci-cd,persistent-services
 spec:
   runtime: claude-code

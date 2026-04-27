@@ -107,7 +107,7 @@ export function loadHostnameAliases(
 }
 
 /**
- * Return the canonical fleet-machine label for THIS host.
+ * Return the canonical fleet-orochi_machine label for THIS host.
  *
  * See module docstring for full resolution order. Env fallbacks are
  * honoured only when the live hostname is empty.

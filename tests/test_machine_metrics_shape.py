@@ -1,4 +1,4 @@
-"""Pin the machine-metrics wire shape for the Machines-tab display
+"""Pin the orochi_machine-metrics wire shape for the Machines-tab display
 (ywatanabe msg#16215).
 
 Sidebar MACHINES + Machines-tab tooltip expect the producer to emit
@@ -63,7 +63,7 @@ def test_gpus_is_a_list():
     """``gpus`` must always be a list (possibly empty) — not None.
 
     The hub aggregator in ``hub/views/api/_resources.py`` iterates on
-    ``gpus`` to project them into the per-machine resources dict; if
+    ``gpus`` to project them into the per-orochi_machine resources dict; if
     this became ``None``, the aggregator would need a branch.
     """
     m = collect_machine_metrics()

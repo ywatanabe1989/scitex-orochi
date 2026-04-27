@@ -9,7 +9,7 @@ metadata:
   labels:
     role: master
     team: orochi
-    machine: CHANGEME
+    orochi_machine: CHANGEME
     capabilities: telegram,delegation,orchestration
 spec:
   runtime: claude-code

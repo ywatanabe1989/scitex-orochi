@@ -80,7 +80,7 @@ class DeliveryMixin:
             {
                 "name": a.name,
                 "channels": list(a.channels),
-                "machine": a.machine,
+                "orochi_machine": a.orochi_machine,
                 "role": a.role,
                 "model": a.model,
                 "agent_id": a.agent_id,
@@ -103,7 +103,7 @@ class DeliveryMixin:
             a.name: {
                 "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,
-                "machine": a.machine,
+                "orochi_machine": a.orochi_machine,
                 "status": a.status,
             }
             for a in self.agents.values()

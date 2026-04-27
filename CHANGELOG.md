@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - feat(hub/agents-tab): wider card grid (`minmax(360px, 1fr)`) and
   `.activity-name { white-space: normal }` so long names like
   `mamba-quality-checker-mba` never truncate. msg#6611.
-- feat(hub/agents-tab): short machine label (`MBA` / `NAS` / `spartan`
+- feat(hub/agents-tab): short orochi_machine label (`MBA` / `NAS` / `spartan`
   / `win`) instead of `Yusukes-MacBook-Air.local`, computed in
   `agent_meta.collect()`. msg#6549.
 

@@ -95,13 +95,13 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     // first was the root cause of lead msg#15578 (proj-neurovista
     // misreporting as mba) — a stale SCITEX_OROCHI_HOSTNAME env var
     // inherited into a spartan process would override the real host.
-    machine:
+    orochi_machine:
       hostname() ||
       process.env.SCITEX_OROCHI_MACHINE ||
       process.env.SCITEX_OROCHI_HOSTNAME ||
       process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
       "",
-    // Live hostname(1) — surfaced distinctly from ``machine`` so the
+    // Live hostname(1) — surfaced distinctly from ``orochi_machine`` so the
     // hub / frontend can prefer this authoritative signal when deriving
     // the ``<name>@<host>`` badge. Never sourced from env.
     hostname: hostname() || "",

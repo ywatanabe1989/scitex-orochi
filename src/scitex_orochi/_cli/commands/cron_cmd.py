@@ -23,7 +23,7 @@ Subcommand matrix
 * ``reload``  — ``kill -HUP`` the daemon so it re-reads cron.yaml
                 without a full restart.
 
-All subcommands honour the top-level ``--json`` flag for machine
+All subcommands honour the top-level ``--json`` flag for orochi_machine
 readable output; tail commands also accept explicit ``--text`` / ``--json``
 overrides when the parent context is unavailable (e.g. direct imports
 from other CLI entry points).

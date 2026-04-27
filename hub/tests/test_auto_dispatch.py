@@ -125,7 +125,7 @@ class EnvConfigTest(TestCase):
     def test_streak_threshold_min_one(self):
         with mock.patch.dict("os.environ", {"SCITEX_AUTO_DISPATCH_STREAK_THRESHOLD": "0"}):
             # ``max(..., 1)`` floors the threshold at 1 so the state
-            # machine can't be accidentally disabled by a bad config.
+            # orochi_machine can't be accidentally disabled by a bad config.
             self.assertEqual(_streak_threshold(), 1)
 
     def test_cooldown_default(self):
@@ -483,7 +483,7 @@ class CheckAgentAutoDispatchTest(TestCase):
     def test_cooldown_skip_does_not_reset_streak(self):
         """Per spec: cooldown skip leaves streak intact — a subsequent
         zero tick must still evaluate cooldown (not silently re-arm the
-        state machine by zeroing the streak).
+        state orochi_machine by zeroing the streak).
         """
         pick = {"number": 17, "title": "t"}
         self._set_orochi_subagent_count(0)

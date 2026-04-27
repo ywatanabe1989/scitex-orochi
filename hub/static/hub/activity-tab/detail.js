@@ -75,7 +75,7 @@ function _renderActivityAgentDetail(a, grid) {
   /* todo#55/#56/#58: collapse redundant FQDN suffixes and hide
    * <synthetic>-style model placeholders, mirroring the same polish on
    * the Agents tab detail card. */
-  var _machine = a.machine || "?";
+  var _machine = a.orochi_machine || "?";
   var _fqdn = a.orochi_hostname_canonical || "";
   var _redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
   var _fqdnUseful = _fqdn && _fqdn !== _machine;
@@ -318,10 +318,10 @@ function _renderActivityAgentDetail(a, grid) {
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-act-pane-action="ssh" data-agent="' +
     escapeHtml(a.name) +
-    '" data-machine="' +
-    escapeHtml(a.machine || "") +
+    '" data-orochi_machine="' +
+    escapeHtml(a.orochi_machine || "") +
     '" title="Open SSH terminal to ' +
-    escapeHtml(a.machine || "this host") +
+    escapeHtml(a.orochi_machine || "this host") +
     '">SSH</button>' +
     "</span>" +
     "</div>" +

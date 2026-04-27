@@ -56,11 +56,11 @@ def api_agents_restart(request):
         parts = agent_name.split("-", 1)
         if len(parts) < 2:
             return "localhost"
-        machine = parts[1]
+        orochi_machine = parts[1]
         local_hostname = platform.node()
-        if machine == local_hostname or machine in local_hostname:
+        if orochi_machine == local_hostname or orochi_machine in local_hostname:
             return "localhost"
-        return machine
+        return orochi_machine
 
     host = _derive_host(name)
     is_local = host in ("localhost", "127.0.0.1", "::1", "")
@@ -198,11 +198,11 @@ def api_agents_kill(request):
         parts = agent_name.split("-", 1)
         if len(parts) < 2:
             return "localhost"
-        machine = parts[1]
+        orochi_machine = parts[1]
         local_hostname = platform.node()
-        if machine == local_hostname or machine in local_hostname:
+        if orochi_machine == local_hostname or orochi_machine in local_hostname:
             return "localhost"
-        return machine
+        return orochi_machine
 
     host = _derive_host(name)
     is_local = host in ("localhost", "127.0.0.1", "::1", "")
