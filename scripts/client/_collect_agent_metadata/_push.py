@@ -99,7 +99,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "sac_hooks_recent_prompts": meta.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_tool_counts": meta.get("sac_hooks_tool_counts") or {},
         "sac_hooks_last_tool_name": meta.get("sac_hooks_last_tool_name") or "",
-        "last_tool_at": meta.get("last_tool_at") or "",
+        "sac_hooks_last_tool_at": meta.get("sac_hooks_last_tool_at") or "",
         "last_mcp_tool_name": meta.get("last_mcp_tool_name") or "",
         "last_mcp_tool_at": meta.get("last_mcp_tool_at") or "",
         "last_action_name": meta.get("last_action_name") or "",

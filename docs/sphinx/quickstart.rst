@@ -32,7 +32,7 @@ Quickstart
    This shells out to ``scitex-agent-container status my-agent --json``
    and POSTs the result to ``/api/agents/register/``. The payload
    includes functional-heartbeat shortcuts derived from the hook ring
-   buffer — ``last_tool_at`` / ``sac_hooks_last_tool_name`` (LLM-level liveness)
+   buffer — ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (LLM-level liveness)
    and ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (proves the MCP
    sidecar route works) — plus a PaneAction summary from the
    container's per-host ``actions.db``: ``last_action_at``,

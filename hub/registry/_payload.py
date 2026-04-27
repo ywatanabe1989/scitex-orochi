@@ -229,7 +229,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_tool_counts": dict(a.get("sac_hooks_tool_counts") or {}),
                 # Functional-heartbeat shortcuts (derived by
                 # event_log.summarize() in agent-container).
-                "last_tool_at": a.get("last_tool_at", ""),
+                "sac_hooks_last_tool_at": a.get("sac_hooks_last_tool_at", ""),
                 "sac_hooks_last_tool_name": a.get("sac_hooks_last_tool_name", ""),
                 "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
                 "last_mcp_tool_name": a.get("last_mcp_tool_name", ""),

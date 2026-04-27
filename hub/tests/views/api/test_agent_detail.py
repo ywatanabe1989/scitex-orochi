@@ -246,7 +246,7 @@ class AgentDetailApiTest(TestCase):
         self._register()
         data = self._get().json()
         for key in (
-            "last_tool_at",
+            "sac_hooks_last_tool_at",
             "sac_hooks_last_tool_name",
             "last_mcp_tool_at",
             "last_mcp_tool_name",
@@ -260,10 +260,10 @@ class AgentDetailApiTest(TestCase):
             self.assertIn(key, data, f"missing key: {key}")
 
     def test_event_log_shortcuts_forwarded_when_registered(self):
-        """When the heartbeat includes last_tool_at / sac_hooks_last_tool_name,
+        """When the heartbeat includes sac_hooks_last_tool_at / sac_hooks_last_tool_name,
         the detail endpoint forwards them verbatim."""
         self._register(
-            last_tool_at="2026-04-18T11:00:00+00:00",
+            sac_hooks_last_tool_at="2026-04-18T11:00:00+00:00",
             last_tool_name="Bash",
             last_mcp_tool_at="2026-04-18T11:00:05+00:00",
             last_mcp_tool_name="mcp__scitex-orochi__send_message",
@@ -272,7 +272,7 @@ class AgentDetailApiTest(TestCase):
             last_action_outcome="SUCCESS",
         )
         data = self._get().json()
-        self.assertEqual(data["last_tool_at"], "2026-04-18T11:00:00+00:00")
+        self.assertEqual(data["sac_hooks_last_tool_at"], "2026-04-18T11:00:00+00:00")
         self.assertEqual(data["sac_hooks_last_tool_name"], "Bash")
         self.assertEqual(data["last_mcp_tool_name"], "mcp__scitex-orochi__send_message")
         self.assertEqual(data["last_action_name"], "nonce_probe")

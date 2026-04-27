@@ -268,10 +268,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 else prev.get("sac_hooks_tool_counts") or {}
             ),
             # Functional-heartbeat shortcuts derived in agent-container's
-            # event_log.summarize(). last_tool_at is the newest pretool
+            # event_log.summarize(). sac_hooks_last_tool_at is the newest pretool
             # ts (LLM-level liveness); last_mcp_tool_at is newest for
             # mcp__* tools (proves the MCP sidecar route works).
-            "last_tool_at": info.get("last_tool_at") or prev.get("last_tool_at") or "",
+            "sac_hooks_last_tool_at": info.get("sac_hooks_last_tool_at") or prev.get("sac_hooks_last_tool_at") or "",
             "sac_hooks_last_tool_name": info.get("sac_hooks_last_tool_name")
             or prev.get("sac_hooks_last_tool_name")
             or "",

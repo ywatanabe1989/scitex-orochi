@@ -77,7 +77,7 @@ function _topoBuildAgentsSvg(visible, agentPos) {
        * (ywatanabe 2026-04-19). */
       var toolSec =
         typeof _secondsSinceIso === "function"
-          ? _secondsSinceIso(a.last_tool_at)
+          ? _secondsSinceIso(a.sac_hooks_last_tool_at)
           : null;
       var actSec =
         typeof _secondsSinceIso === "function"

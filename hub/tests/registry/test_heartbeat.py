@@ -33,7 +33,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
     ``POST /api/agents/register/`` -> registry ->
     ``GET /api/agents/<name>/detail/`` preserves:
 
-      - ``last_tool_at`` / ``sac_hooks_last_tool_name``  — LLM liveness signal
+      - ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name``  — LLM liveness signal
       - ``last_mcp_tool_at`` / ``last_mcp_tool_name`` — MCP sidecar route
       - ``sac_hooks_recent_tools`` / ``sac_hooks_recent_prompts`` / ``sac_hooks_agent_calls`` /
         ``background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
@@ -76,7 +76,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
 
         resp = self._post(
             self._base_payload(
-                last_tool_at="2026-04-17T00:00:00+00:00",
+                sac_hooks_last_tool_at="2026-04-17T00:00:00+00:00",
                 last_tool_name="Edit",
             )
         )
@@ -84,7 +84,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         agents = get_agents(workspace_id=self.ws.id)
         match = [a for a in agents if a["name"] == "hb-agent"]
         self.assertEqual(len(match), 1)
-        self.assertEqual(match[0]["last_tool_at"], "2026-04-17T00:00:00+00:00")
+        self.assertEqual(match[0]["sac_hooks_last_tool_at"], "2026-04-17T00:00:00+00:00")
         self.assertEqual(match[0]["sac_hooks_last_tool_name"], "Edit")
 
     def test_register_persists_last_mcp_tool_fields(self):
@@ -143,7 +143,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         """The four shortcuts must appear in /api/agents/<name>/detail/."""
         self._post(
             self._base_payload(
-                last_tool_at="2026-04-17T01:00:00+00:00",
+                sac_hooks_last_tool_at="2026-04-17T01:00:00+00:00",
                 last_tool_name="Write",
                 last_mcp_tool_at="2026-04-17T00:59:30+00:00",
                 last_mcp_tool_name="mcp__orochi__channel_info",
@@ -152,7 +152,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._get_detail("hb-agent")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["last_tool_at"], "2026-04-17T01:00:00+00:00")
+        self.assertEqual(data["sac_hooks_last_tool_at"], "2026-04-17T01:00:00+00:00")
         self.assertEqual(data["sac_hooks_last_tool_name"], "Write")
         self.assertEqual(data["last_mcp_tool_at"], "2026-04-17T00:59:30+00:00")
         self.assertEqual(data["last_mcp_tool_name"], "mcp__orochi__channel_info")
@@ -189,7 +189,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["sac_hooks_agent_calls"], [])
         self.assertEqual(data["background_tasks"], [])
         self.assertEqual(data["sac_hooks_tool_counts"], {})
-        self.assertEqual(data["last_tool_at"], "")
+        self.assertEqual(data["sac_hooks_last_tool_at"], "")
         self.assertEqual(data["sac_hooks_last_tool_name"], "")
         self.assertEqual(data["last_mcp_tool_at"], "")
         self.assertEqual(data["last_mcp_tool_name"], "")

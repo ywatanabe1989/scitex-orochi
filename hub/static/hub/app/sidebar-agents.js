@@ -77,14 +77,14 @@ async function fetchAgents() {
       var lastToolName = String(a.sac_hooks_last_tool_name || "").toLowerCase();
       if (lastToolName.indexOf("compact") !== -1) return "compacting";
       var lastToolSec =
-        a.last_tool_at || a.last_action
-          ? (Date.now() - new Date(a.last_tool_at || a.last_action).getTime()) /
+        a.sac_hooks_last_tool_at || a.last_action
+          ? (Date.now() - new Date(a.sac_hooks_last_tool_at || a.last_action).getTime()) /
             1000
           : null;
       if (lastToolSec != null && lastToolSec < 30) return "running";
       // Waiting: freshly registered, never recorded a tool call. Derived
       // from hub-side hook events (PreToolUse), NOT pane text scraping —
-      // no claude-hud / statusline dependency. last_tool_at is null until
+      // no claude-hud / statusline dependency. sac_hooks_last_tool_at is null until
       // the first PreToolUse hook fires, so a connected agent with no
       // tool history is provably "alive but never worked".
       if (lastToolSec == null) return "waiting";

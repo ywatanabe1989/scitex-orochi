@@ -211,7 +211,7 @@ function _computeAgentState(a) {
   if (lastTool.indexOf("compact") !== -1) return "compacting";
   var lastToolSec =
     typeof _secondsSinceIso === "function"
-      ? _secondsSinceIso(a.last_tool_at || a.last_action)
+      ? _secondsSinceIso(a.sac_hooks_last_tool_at || a.last_action)
       : null;
   if (lastToolSec != null && lastToolSec < 30) return "running";
   return "idle";
@@ -236,7 +236,7 @@ function _isDeadAgent(a) {
   if (!connected) return false;
   var toolSec =
     typeof _secondsSinceIso === "function"
-      ? _secondsSinceIso(a.last_tool_at)
+      ? _secondsSinceIso(a.sac_hooks_last_tool_at)
       : null;
   var actSec =
     typeof _secondsSinceIso === "function"

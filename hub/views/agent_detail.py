@@ -311,7 +311,7 @@ def api_agent_detail(request, name: str):
         "background_tasks": agent.get("background_tasks") or [],
         "sac_hooks_tool_counts": agent.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts.
-        "last_tool_at": agent.get("last_tool_at") or "",
+        "sac_hooks_last_tool_at": agent.get("sac_hooks_last_tool_at") or "",
         "sac_hooks_last_tool_name": agent.get("sac_hooks_last_tool_name") or "",
         "last_mcp_tool_at": agent.get("last_mcp_tool_at") or "",
         "last_mcp_tool_name": agent.get("last_mcp_tool_name") or "",

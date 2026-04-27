@@ -161,8 +161,8 @@ export function _renderActivityAgentDetail(a, grid) {
     ["Idle", _fmtSec(a.idle_seconds)],
     [
       "Last tool",
-      d.last_tool_at
-        ? _fmtSec(_secondsSinceIso(d.last_tool_at)) +
+      d.sac_hooks_last_tool_at
+        ? _fmtSec(_secondsSinceIso(d.sac_hooks_last_tool_at)) +
           " ago" +
           (d.sac_hooks_last_tool_name ? " (" + d.sac_hooks_last_tool_name + ")" : "")
         : "-",

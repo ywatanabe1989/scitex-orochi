@@ -32,7 +32,7 @@ Key Features
   metrics) to ``/api/agents/register/``. No LLM in the loop.
 - **Functional Heartbeat**: Derived shortcuts propagated from the
   hook ring buffer —
-  ``last_tool_at`` / ``sac_hooks_last_tool_name`` (newest ``PreToolUse``, i.e.
+  ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (newest ``PreToolUse``, i.e.
   LLM-level liveness) and
   ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (newest ``mcp__*``
   pretool, proves the MCP sidecar route works) — plus a PaneAction
