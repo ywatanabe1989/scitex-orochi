@@ -39,7 +39,7 @@ def collect_mcp_servers(workspace: str) -> list[str]:
     return mcp_servers
 
 
-def _claude_md_candidates(ws: str) -> list[Path]:
+def _orochi_claude_md_candidates(ws: str) -> list[Path]:
     """todo#53 prioritised candidate list of CLAUDE.md locations.
 
     Historically only head-* agents had a CLAUDE.md at
@@ -123,28 +123,28 @@ def _redact_secrets(obj):
     return obj
 
 
-def collect_claude_md(workspace: str) -> tuple[str, str]:
-    """Return (claude_md_head, claude_md_full).
+def collect_orochi_claude_md(workspace: str) -> tuple[str, str]:
+    """Return (orochi_claude_md_head, orochi_claude_md_full).
 
     head: first non-empty heading line (max 120 chars).
     full: full file truncated to 10000 chars.
     """
-    claude_md_head = ""
-    claude_md_full = ""
-    for cmd in _claude_md_candidates(workspace):
+    orochi_claude_md_head = ""
+    orochi_claude_md_full = ""
+    for cmd in _orochi_claude_md_candidates(workspace):
         try:
             if cmd.is_file():
                 text = cmd.read_text()
                 for ln in text.splitlines():
                     ln_stripped = ln.strip()
                     if ln_stripped and not ln_stripped.startswith("```"):
-                        claude_md_head = ln_stripped[:120]
+                        orochi_claude_md_head = ln_stripped[:120]
                         break
-                claude_md_full = text[:10000]
+                orochi_claude_md_full = text[:10000]
                 break
         except Exception:
             continue
-    return claude_md_head, claude_md_full
+    return orochi_claude_md_head, orochi_claude_md_full
 
 
 def collect_mcp_json(workspace: str) -> str:

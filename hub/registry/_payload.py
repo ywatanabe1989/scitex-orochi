@@ -198,7 +198,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     a.get("orochi_subagent_count") or len(a.get("subagents") or [])
                 ),
                 "health": a.get("health") or {},
-                "claude_md": a.get("claude_md", ""),
+                "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)
                 "pid": a.get("pid") or 0,
                 "ppid": a.get("ppid") or 0,
@@ -215,7 +215,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # todo#47 — full scrollback; empty string if the agent
                 # hasn't pushed the new field yet.
                 "orochi_pane_tail_full": a.get("orochi_pane_tail_full", ""),
-                "claude_md_head": a.get("claude_md_head", ""),
+                "orochi_claude_md_head": a.get("orochi_claude_md_head", ""),
                 "mcp_json": a.get("mcp_json", ""),
                 "orochi_pane_state": a.get("orochi_pane_state", ""),
                 "orochi_stuck_prompt_text": a.get("orochi_stuck_prompt_text", ""),

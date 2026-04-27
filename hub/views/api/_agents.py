@@ -72,7 +72,7 @@ def api_agents(request):
                     "subagents": [],
                     "orochi_subagent_count": 0,
                     "health": {},
-                    "claude_md": "",
+                    "orochi_claude_md": "",
                     "pinned": True,
                 }
             )

@@ -455,7 +455,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     )
     monkeypatch.setattr(
         _collect,
-        "collect_claude_md",
+        "collect_orochi_claude_md",
         lambda ws: ("", ""),
     )
     monkeypatch.setattr(

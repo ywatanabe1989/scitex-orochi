@@ -12,7 +12,7 @@ from ._classifier import (
     _log_contradiction_evidence,
 )
 from ._files import (
-    collect_claude_md,
+    collect_orochi_claude_md,
     collect_mcp_json,
     collect_mcp_servers,
     collect_orochi_skills_loaded,
@@ -123,7 +123,7 @@ def collect(agent: str) -> dict:
     machine = resolve_machine_label()
 
     # CLAUDE.md head + full, .mcp.json full (todo#460 viewers).
-    claude_md_head, claude_md_full = collect_claude_md(workspace)
+    orochi_claude_md_head, orochi_claude_md_full = collect_orochi_claude_md(workspace)
     mcp_json_full = collect_mcp_json(workspace)
 
     # Classifier (computed ONCE per collect — the stagnation counter
@@ -255,9 +255,9 @@ def collect(agent: str) -> dict:
         "orochi_hostname_canonical": _resolve_canonical_hostname(),
         "orochi_skills_loaded": orochi_skills_loaded,
         "mcp_servers": mcp_servers,
-        "claude_md_head": claude_md_head,
+        "orochi_claude_md_head": orochi_claude_md_head,
         # todo#460 full-content fields for the Agents tab viewer.
-        "claude_md": claude_md_full,
+        "orochi_claude_md": orochi_claude_md_full,
         "mcp_json": mcp_json_full,
         # todo#418: agent decision-transparency — classifier label + verbatim
         # stuck-prompt text. Computed from orochi_pane_tail_block_clean.

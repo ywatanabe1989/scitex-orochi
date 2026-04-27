@@ -59,7 +59,7 @@ export function _renderAgentDetail(a) {
   var ctxPct = d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
   var currentTask = d.orochi_current_task || a.orochi_current_task || "";
   var channels = d.channel_subs || a.channels || [];
-  var claudeMd = d.claude_md || a.claude_md || "";
+  var claudeMd = d.orochi_claude_md || a.orochi_claude_md || "";
   /* todo#460: .mcp.json is served by the detail endpoint only (not in the
    * registry summary row). Empty string = agent has not yet heartbeated
    * with dotfiles PR#71 agent_meta.py --push; we render an explicit

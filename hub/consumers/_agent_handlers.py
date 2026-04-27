@@ -63,7 +63,7 @@ async def handle_register(consumer, content):
         "color": payload.get("color", ""),
         "multiplexer": payload.get("multiplexer", ""),
         "channels": channels,
-        "claude_md": payload.get("claude_md", ""),
+        "orochi_claude_md": payload.get("orochi_claude_md", ""),
         # A2A protocol surface URL for this agent (Tier 3 same-host
         # optimization). Agents that run a sidecar A2A server (sac
         # `spec.a2a.port` or tier3-ws-bridge with SCITEX_OROCHI_WS_A2A_URL)

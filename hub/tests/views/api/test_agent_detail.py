@@ -56,7 +56,7 @@ class AgentDetailApiTest(TestCase):
             "model": "claude-opus-4-7",
             "channels": ["#general", "#agent"],
             "orochi_pane_tail_block": "line1\nline2\n",
-            "claude_md": "# CLAUDE.md\n",
+            "orochi_claude_md": "# CLAUDE.md\n",
             "mcp_servers": ["scitex-orochi"],
         }
         info.update(overrides)
@@ -86,7 +86,7 @@ class AgentDetailApiTest(TestCase):
             "last_action_ts",
             "last_heartbeat",
             "liveness",
-            "claude_md",
+            "orochi_claude_md",
             "pane_text",
             "pane_text_source",
             "channel_subs",

@@ -165,7 +165,7 @@ def api_agent_detail(request, name: str):
           "last_action_ts": iso8601 | None,
           "last_heartbeat": iso8601 | None,
           "liveness": str,
-          "claude_md": str,
+          "orochi_claude_md": str,
           "mcp_json": str,
           "orochi_pane_state": str,
           "orochi_stuck_prompt_text": str,
@@ -256,7 +256,7 @@ def api_agent_detail(request, name: str):
         "last_echo_rtt_ms": agent.get("last_echo_rtt_ms"),
         "last_echo_ok_ts": agent.get("last_echo_ok_ts"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
-        "claude_md": redact_secrets(agent.get("claude_md") or ""),
+        "orochi_claude_md": redact_secrets(agent.get("orochi_claude_md") or ""),
         # todo#460: serve the workspace .mcp.json for the Agents tab viewer.
         # agent_meta.py --push (dotfiles PR #71) already redacts SCITEX_OROCHI_TOKEN
         # and similar secrets before pushing, but we redact again defense-in-depth

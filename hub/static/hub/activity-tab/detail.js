@@ -18,7 +18,7 @@ function _renderActivityAgentDetail(a, grid) {
    * while still rendering something immediately from the registry. */
   var d = _activityDetailCache[a.name] || {};
   a = Object.assign({}, a, {
-    claude_md: d.claude_md || a.claude_md || a.claude_md_head || "",
+    orochi_claude_md: d.orochi_claude_md || a.orochi_claude_md || a.orochi_claude_md_head || "",
     orochi_pane_tail_block: d.pane_text || a.orochi_pane_tail_block || a.orochi_pane_tail || "",
     pane_text_full: d.pane_text_full || "",
   });
@@ -354,7 +354,7 @@ function _renderActivityAgentDetail(a, grid) {
    * before /detail/ returns or when the agent hasn't pushed one. User
    * reported the section silently disappearing ("often occurs"); a
    * placeholder makes the absence explicit instead of a data gap. */
-  var claudeMd = a.claude_md || a.claude_md_head || "";
+  var claudeMd = a.orochi_claude_md || a.orochi_claude_md_head || "";
   var claudeMdHtml =
     '<div class="agent-detail-section">' +
     '<div class="agent-detail-pane-label">CLAUDE.md</div>' +

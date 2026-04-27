@@ -140,7 +140,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("channels"), (list, tuple))
                 else prev.get("channels") or []
             ),
-            "claude_md": info.get("claude_md", "") or prev.get("claude_md", ""),
+            "orochi_claude_md": info.get("orochi_claude_md", "") or prev.get("orochi_claude_md", ""),
             "status": "online",
             "registered_at": prev.get("registered_at") or time.time(),
             "last_heartbeat": time.time(),
@@ -216,8 +216,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_pane_tail_full": info.get("orochi_pane_tail_full")
             or prev.get("orochi_pane_tail_full")
             or "",
-            "claude_md_head": info.get("claude_md_head")
-            or prev.get("claude_md_head")
+            "orochi_claude_md_head": info.get("orochi_claude_md_head")
+            or prev.get("orochi_claude_md_head")
             or "",
             # todo#460: full .mcp.json content for the Agents tab file viewer.
             # agent_meta.py --push (dotfiles PR #71) sends a size-capped,

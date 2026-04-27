@@ -80,7 +80,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # must not clobber them.
         # Observability fields for the per-agent detail view
         # (/api/agents/<name>/detail/).
-        "claude_md": meta.get("claude_md", ""),
+        "orochi_claude_md": meta.get("orochi_claude_md", ""),
         "mcp_json": meta.get("mcp_json", ""),
         "mcp_servers": list(meta.get("mcp_servers") or []),
         "orochi_pane_tail": meta.get("orochi_pane_tail", ""),

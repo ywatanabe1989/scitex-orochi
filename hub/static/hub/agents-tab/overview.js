@@ -280,7 +280,7 @@ function buildAgentRow(a) {
         : '<span class="muted-cell">-</span>') +
     "</td>" +
     "<td>" +
-    (a.claude_md
+    (a.orochi_claude_md
       ? '<button class="claude-md-btn" onclick="event.stopPropagation();toggleClaudeMd(this)" title="View CLAUDE.md">CLAUDE.md</button>'
       : '<span class="muted-cell">-</span>') +
     "</td>" +
@@ -322,9 +322,9 @@ function buildAgentRow(a) {
         "</pre></td></tr>"
       );
     })() +
-    (a.claude_md
+    (a.orochi_claude_md
       ? '<tr class="claude-md-detail" style="display:none"><td colspan="22"><pre class="claude-md-content">' +
-        escapeHtml(a.claude_md) +
+        escapeHtml(a.orochi_claude_md) +
         "</pre></td></tr>"
       : "")
   );
