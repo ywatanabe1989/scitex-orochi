@@ -298,4 +298,6 @@
   padding-top: 6px;
   border-top: 1px dashed #222;
   white-space: pre-wrap;
+  max-height: 50vh;
+  overflow-y: auto;
 }
