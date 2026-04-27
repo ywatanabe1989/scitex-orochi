@@ -270,7 +270,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "quota_weekly_pct": a.get("quota_weekly_pct"),
                 "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
                 "orochi_statusline_model": a.get("orochi_statusline_model", ""),
-                "account_email": a.get("account_email", ""),
+                "orochi_account_email": a.get("orochi_account_email", ""),
                 # lead msg#16005 — whole ``scitex-agent-container status
                 # --terse --json`` payload. Dashboard consumers (Agents
                 # tab, future dashboards) can key off

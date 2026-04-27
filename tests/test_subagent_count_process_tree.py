@@ -413,7 +413,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
             "quota_weekly_pct": None,
             "quota_weekly_remaining": None,
             "orochi_statusline_model": "",
-            "account_email": "",
+            "orochi_account_email": "",
         },
     )
     monkeypatch.setattr(

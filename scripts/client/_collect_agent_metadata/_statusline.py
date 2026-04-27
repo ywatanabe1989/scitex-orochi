@@ -28,7 +28,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
       - quota_weekly_pct: Optional[float]
       - quota_weekly_remaining: str
       - orochi_statusline_model: str
-      - account_email: str
+      - orochi_account_email: str
     """
     out: dict = {
         "statusline_context_pct": None,
@@ -37,7 +37,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
         "quota_weekly_pct": None,
         "quota_weekly_remaining": "",
         "orochi_statusline_model": "",
-        "account_email": "",
+        "orochi_account_email": "",
     }
     src = orochi_pane_tail_block or ""
 
@@ -49,7 +49,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
     # Extract account email
     m_email = re.search(r"([\w.+-]+@[\w.-]+\.\w+)", src)
     if m_email:
-        out["account_email"] = m_email.group(1)
+        out["orochi_account_email"] = m_email.group(1)
 
     # Extract percentages from statusline bars: ██░░ NN% (Xh Ym / 5h)
     pct_matches = re.findall(r"[█░▓▒]{2,}\s+(\d+)%(?:\s*\(([^)]+)\))?", src)

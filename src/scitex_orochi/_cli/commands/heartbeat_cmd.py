@@ -133,7 +133,7 @@ def _wrap_with_orochi_fields(
         "action_counts": status.get("action_counts") or {},
         "p95_elapsed_s_by_action": status.get("p95_elapsed_s_by_action") or {},
         # Accounting.
-        "account_email": status.get("account_email") or "",
+        "orochi_account_email": status.get("orochi_account_email") or "",
         "version": status.get("version") or "",
     }
     # Orochi unified cron state (msg#16406 / msg#16410). Surfaced in

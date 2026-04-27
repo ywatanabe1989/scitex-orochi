@@ -404,8 +404,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_statusline_model": info.get("orochi_statusline_model")
             or prev.get("orochi_statusline_model")
             or "",
-            "account_email": info.get("account_email")
-            or prev.get("account_email")
+            "orochi_account_email": info.get("orochi_account_email")
+            or prev.get("orochi_account_email")
             or "",
             # lead msg#16005: full ``scitex-agent-container status --terse
             # --json`` dict attached to the heartbeat by the pusher

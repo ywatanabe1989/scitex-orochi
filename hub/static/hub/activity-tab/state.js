@@ -76,7 +76,7 @@ try {
 function _colorKeyFor(a) {
   var key = "";
   if (_overviewColor === "host") key = a.machine || "";
-  else if (_overviewColor === "account") key = a.account_email || "";
+  else if (_overviewColor === "account") key = a.orochi_account_email || "";
   if (!key) key = a.name || "";
   return key;
 }

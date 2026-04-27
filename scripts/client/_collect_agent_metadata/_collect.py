@@ -99,7 +99,7 @@ def collect(agent: str) -> dict:
     quota_weekly_pct = sl["quota_weekly_pct"]
     quota_weekly_remaining = sl["quota_weekly_remaining"]
     orochi_statusline_model = sl["orochi_statusline_model"]
-    account_email = sl["account_email"]
+    orochi_account_email = sl["orochi_account_email"]
 
     # Locate latest transcript JSONL
     home = str(Path.home())
@@ -219,7 +219,7 @@ def collect(agent: str) -> dict:
         "quota_weekly_pct": quota_weekly_pct,
         "quota_weekly_remaining": quota_weekly_remaining,
         "orochi_statusline_model": orochi_statusline_model,
-        "account_email": account_email,
+        "orochi_account_email": orochi_account_email,
         # Live tail of the agent's tmux pane — what the user would see
         # if they attached right now. Bypasses the JSONL transcript so
         # mid-tool-call activity (e.g. a streaming Bash command) shows
