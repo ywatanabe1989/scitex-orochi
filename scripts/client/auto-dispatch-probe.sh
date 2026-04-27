@@ -20,21 +20,21 @@
 # warns you not to enable the scheduler alongside server-side dispatch.
 #
 # To migrate: ``./scripts/client/install-auto-dispatch-probe.sh --uninstall``
-# once your hub is on a orochi_version carrying the server-side hook.
+# once your hub is on a version carrying the server-side hook.
 # -----------------------------------------------------------------------------
 # Problem statement (lead msg#15975, ywatanabe msg#15971)
 #   Rules-based discipline failed. The fleet keeps dropping to
 #   ``orochi_subagent_count == 0`` on individual heads (2026-04-20: head-mba hit 0
 #   after the PR #315 revert). Replace rules with an automated probe+dispatch
 #   loop that runs every 5 minutes and, for each head:
-#     * queries the hub for this host's head-<orochi_hostname> registry payload
+#     * queries the hub for this host's head-<hostname> registry payload
 #     * if orochi_subagent_count == 0 AND agent is online AND no recent dispatch
 #       has been injected (cooldown), picks the next high-priority TODO
 #       matching this head's lane
 #     * skips any TODO already claimed by a running subagent on any head
 #       (best-effort via open-PR title/body cross-reference)
 #     * injects a dispatch prompt into the head's tmux pane:
-#           tmux send-keys -t head-<orochi_hostname>:0 '<prompt>' Enter
+#           tmux send-keys -t head-<hostname>:0 '<prompt>' Enter
 #
 # Shape follows scripts/client/fleet-watch/host-liveness-probe.sh — NDJSON to
 # stdout, severity advisories to stderr, log file under
@@ -108,7 +108,7 @@ rm -f "$STATE_FILE.init" 2>/dev/null || true
 
 TS_ISO="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 NOW_EPOCH="$(date -u +%s)"
-LOCAL_HOST="$(orochi_hostname -s 2>/dev/null || orochi_hostname)"
+LOCAL_HOST="$(hostname -s 2>/dev/null || hostname)"
 
 log() { printf '[%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" >>"$LOG_FILE"; }
 stderr() { printf '%s\n' "$*" >&2; }
@@ -297,7 +297,7 @@ for a in (data if isinstance(data, list) else []):
         found = "1"
         status = str(a.get("status") or "")
         count = int(a.get("orochi_subagent_count") or 0)
-        m = a.get("orochi_metrics") or {}
+        m = a.get("metrics") or {}
         pane = str(m.get("orochi_pane_state") or a.get("orochi_pane_state") or "unknown")
         break
 print(f"{found}\t{status}\t{count}\t{pane}")
@@ -508,17 +508,17 @@ inject_dispatch() {
 
 # -----------------------------------------------------------------------------
 # resolve_self_host — canonical fleet label for the box we're on.
-# Re-uses scripts/client/resolve-orochi_hostname if present. Falls back to env /
-# orochi_hostname -s.
+# Re-uses scripts/client/resolve-hostname if present. Falls back to env /
+# hostname -s.
 # -----------------------------------------------------------------------------
 resolve_self_host() {
   if [ -n "${SCITEX_OROCHI_HOSTNAME:-}" ]; then
     printf '%s' "$SCITEX_OROCHI_HOSTNAME"
     return
   fi
-  if [ -x "$SCRIPT_DIR/resolve-orochi_hostname" ]; then
+  if [ -x "$SCRIPT_DIR/resolve-hostname" ]; then
     local out
-    out="$("$SCRIPT_DIR/resolve-orochi_hostname" 2>/dev/null)"
+    out="$("$SCRIPT_DIR/resolve-hostname" 2>/dev/null)"
     if [ -n "$out" ]; then
       printf '%s' "$out"
       return

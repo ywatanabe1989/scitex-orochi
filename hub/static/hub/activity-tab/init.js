@@ -35,9 +35,9 @@ function renderActivityTab() {
     var pb = b.pinned ? 0 : 1;
     if (pa !== pb) return pa - pb;
     var ka, kb;
-    if (_overviewSort === "orochi_machine") {
-      ka = (a.orochi_machine || "") + "/" + (a.name || "");
-      kb = (b.orochi_machine || "") + "/" + (b.name || "");
+    if (_overviewSort === "machine") {
+      ka = (a.machine || "") + "/" + (a.name || "");
+      kb = (b.machine || "") + "/" + (b.name || "");
     } else {
       ka = a.name || "";
       kb = b.name || "";
@@ -51,7 +51,7 @@ function renderActivityTab() {
       var hay = (
         (a.name || "") +
         " " +
-        (a.orochi_machine || "") +
+        (a.machine || "") +
         " " +
         (a.role || "")
       ).toLowerCase();

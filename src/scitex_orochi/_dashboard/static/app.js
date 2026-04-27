@@ -295,14 +295,14 @@ async function fetchAgents() {
           (inactive ? "#666" : color) +
           '">' +
           escapeHtml(a.name) +
-          (a.orochi_model
+          (a.model
             ? ' <span style="color:#666;font-size:0.8em">(' +
-              escapeHtml(a.orochi_model) +
+              escapeHtml(a.model) +
               ")</span>"
             : "") +
           "</span>" +
           '<div class="meta">' +
-          escapeHtml(a.orochi_machine || "unknown") +
+          escapeHtml(a.machine || "unknown") +
           " / " +
           escapeHtml(a.role || "agent") +
           "</div>" +

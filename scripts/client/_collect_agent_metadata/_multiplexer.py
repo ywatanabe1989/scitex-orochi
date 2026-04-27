@@ -1,4 +1,4 @@
-"""tmux/screen orochi_multiplexer detection and enumeration."""
+"""tmux/screen multiplexer detection and enumeration."""
 
 from __future__ import annotations
 

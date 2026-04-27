@@ -1,7 +1,7 @@
 /* Root ESLint flat config.
  *
  * Purpose: satisfy the `post-tool-use/run_lint.sh` hook which invokes
- * `eslint --fix <file>` from the orochi_project root. ESLint 9 only discovers
+ * `eslint --fix <file>` from the project root. ESLint 9 only discovers
  * flat configs from cwd UPWARD, never DOWN into subdirectories, so a
  * config living only at `hub/frontend/eslint.config.js` is ignored when
  * the hook runs `eslint --fix hub/frontend/src/<file>` from here.

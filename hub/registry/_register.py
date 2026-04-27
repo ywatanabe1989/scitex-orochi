@@ -36,28 +36,28 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "name": name,
             "workspace_id": workspace_id,
             "agent_id": info.get("agent_id", name),
-            "orochi_machine": info.get("orochi_machine", ""),
+            "machine": info.get("machine", ""),
             # todo#55: canonical FQDN reported by the heartbeat via
-            # `socket.getfqdn()`. Display-only — the short `orochi_machine` field
+            # `socket.getfqdn()`. Display-only — the short `machine` field
             # remains the join key for cards/channels. Preserved across
             # heartbeats that omit the field (older clients).
             "orochi_hostname_canonical": info.get("orochi_hostname_canonical", "")
             or prev.get("orochi_hostname_canonical", ""),
             # ── #257 canonical heartbeat metadata ─────────────────────
-            # `orochi_hostname` is what `orochi_hostname(1)` returns on the running
+            # `hostname` is what `hostname(1)` returns on the running
             # process — single source of truth for "where am I", per
             # ywatanabe msg #14726/#14730: never display a fabricated or
-            # cached @host label. Distinct from `orochi_machine` (YAML config
+            # cached @host label. Distinct from `machine` (YAML config
             # label) and `orochi_hostname_canonical` (FQDN via getfqdn()).
             # If the heartbeat omits it, fall through to the previous
             # value rather than wiping — older clients that haven't
             # been upgraded yet keep working.
-            "orochi_hostname": info.get("orochi_hostname", "") or prev.get("orochi_hostname", ""),
+            "hostname": info.get("hostname", "") or prev.get("hostname", ""),
             # `uname -a` output. Lets the dashboard surface kernel /
             # arch info in the agent detail pane (HANDOFF.md #1 spec).
             "uname": info.get("uname", "") or prev.get("uname", ""),
             # Process start time as unix epoch (float). Distinct from
-            # `orochi_started_at` (ISO string) — the unix form is the
+            # `started_at` (ISO string) — the unix form is the
             # authoritative tiebreaker for singleton enforcement
             # (HANDOFF #255: oldest start_ts wins when two processes
             # claim the same name). Preserved across re-registers so
@@ -126,10 +126,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             ),
             # ── /#257 ─────────────────────────────────────────────────
             "role": info.get("role", ""),
-            "orochi_model": info.get("orochi_model", ""),
-            "orochi_multiplexer": info.get("orochi_multiplexer", ""),
-            "orochi_project": info.get("orochi_project", ""),
-            "orochi_workdir": info.get("orochi_workdir", ""),
+            "model": info.get("model", ""),
+            "multiplexer": info.get("multiplexer", ""),
+            "project": info.get("project", ""),
+            "workdir": info.get("workdir", ""),
             # Subscriptions are server-authoritative (ChannelMembership).
             # Preserve prev.channels when a heartbeat omits the field so
             # REST pushers (agent_meta.py) don't wipe subscriptions every
@@ -150,7 +150,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
             "orochi_subagents": list(prev.get("orochi_subagents") or []),
             "health": prev.get("health") or {},
-            "orochi_metrics": prev.get("orochi_metrics") or {},
+            "metrics": prev.get("metrics") or {},
             # todo#46 — preserve ping/pong state across re-registers
             # (heartbeat, WS reconnect). Without this, every heartbeat
             # wiped last_pong_ts/last_rtt_ms back to absent, so the RT
@@ -169,10 +169,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_echo_rtt_ms": prev.get("last_echo_rtt_ms"),
             "last_echo_ok_ts": prev.get("last_echo_ok_ts"),
             "last_nonce_echo_at": prev.get("last_nonce_echo_at"),
-            # Extended process/orochi_runtime metadata pushed by agent_meta.py --push.
+            # Extended process/runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
-            "orochi_pid": info.get("orochi_pid") or prev.get("orochi_pid") or 0,
-            "orochi_ppid": info.get("orochi_ppid") or prev.get("orochi_ppid") or 0,
+            "pid": info.get("pid") or prev.get("pid") or 0,
+            "ppid": info.get("ppid") or prev.get("ppid") or 0,
             "orochi_context_pct": (
                 info.get("orochi_context_pct")
                 if info.get("orochi_context_pct") is not None
@@ -191,19 +191,19 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("orochi_skills_loaded"), (list, tuple))
                 else prev.get("orochi_skills_loaded") or []
             ),
-            "orochi_started_at": info.get("orochi_started_at") or prev.get("orochi_started_at") or "",
-            "orochi_version": info.get("orochi_version") or prev.get("orochi_version") or "",
-            "orochi_runtime": info.get("orochi_runtime") or prev.get("orochi_runtime") or "",
+            "started_at": info.get("started_at") or prev.get("started_at") or "",
+            "version": info.get("version") or prev.get("version") or "",
+            "runtime": info.get("runtime") or prev.get("runtime") or "",
             # v0.11.0 Agents-tab visibility fields. Recent action log
             # + tmux pane tail + workspace CLAUDE.md head + MCP server
             # list. The bun sidecar pushes these on every 30s
             # heartbeat via api_agents_register; the dashboard reads
             # them from get_agents() to render meaningful cards.
             # todo#155.
-            "orochi_recent_actions": (
-                list(info.get("orochi_recent_actions"))
-                if isinstance(info.get("orochi_recent_actions"), (list, tuple))
-                else prev.get("orochi_recent_actions") or []
+            "recent_actions": (
+                list(info.get("recent_actions"))
+                if isinstance(info.get("recent_actions"), (list, tuple))
+                else prev.get("recent_actions") or []
             ),
             "orochi_pane_tail": info.get("orochi_pane_tail") or prev.get("orochi_pane_tail") or "",
             "orochi_pane_tail_block": info.get("orochi_pane_tail_block")
@@ -325,12 +325,12 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "quota_7d_reset_at": info.get("quota_7d_reset_at")
             or prev.get("quota_7d_reset_at")
             or "",
-            # todo#272 — per-window quota state orochi_machine slot (ok / warn /
+            # todo#272 — per-window quota state machine slot (ok / warn /
             # escalate). Owned by ``hub.quota_watch.check_agent_quota_pressure``
             # which reads it before evaluate() and writes the new state
             # after. Preserved across heartbeats so threshold transitions
             # fire exactly once per crossing — without the prev-preserve
-            # the state orochi_machine would reset to "ok" every heartbeat and
+            # the state machine would reset to "ok" every heartbeat and
             # re-post warn / escalate on every poll (spam regression).
             "quota_state_5h": prev.get("quota_state_5h") or "ok",
             "quota_state_7d": prev.get("quota_state_7d") or "ok",
@@ -473,11 +473,11 @@ def unregister_connection(name: str, conn_id: str) -> int:
     Returns the resulting active-session count after removal. When the
     count reaches zero, the agent is marked offline (caller need not
     invoke ``unregister_agent`` separately). When the count is still
-    >0 (a sibling session is still orochi_alive), the agent remains online.
+    >0 (a sibling session is still alive), the agent remains online.
 
     This is the fix for the symmetric half of scitex-orochi#144: before
     this change, the first-to-disconnect of N sibling sessions would
-    mark the agent offline even though other sessions were still orochi_alive.
+    mark the agent offline even though other sessions were still alive.
     """
     if not name or not conn_id:
         return _active_session_count(name)
@@ -635,7 +635,7 @@ def decide_singleton_winner(
     * ``"no_enforcement"`` — either side is missing the
       ``(instance_id, start_ts_unix)`` pair, so we fall back to the
       permissive multi-connection behaviour. Caller logs a WARNING and
-      keeps both sockets orochi_alive.
+      keeps both sockets alive.
 
     Algorithm — the older ``start_ts_unix`` wins (the original process
     keeps its claim). Ties and missing data fall through to

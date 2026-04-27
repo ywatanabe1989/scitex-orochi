@@ -114,10 +114,10 @@
   color: #f59e0b;
 }
 
-/* todo#86: hover tooltip for orochi_machine nodes (Viz) + sidebar rows.
+/* todo#86: hover tooltip for machine nodes (Viz) + sidebar rows.
  * Shared singleton popover positioned near cursor (position: fixed).
  * Populated from resourceData[host] with CPU/RAM/GPU/VRAM/Disk %. */
-.orochi_machine-hover-tooltip {
+.machine-hover-tooltip {
   position: fixed;
   z-index: 10000;
   min-width: 160px;

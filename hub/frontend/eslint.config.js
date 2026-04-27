@@ -1,6 +1,6 @@
 /* Minimal flat ESLint config for the hub TS bundle.
  * Most files start with `// @ts-nocheck` because the migration prioritised
- * orochi_runtime correctness over type purity. This config is intentionally
+ * runtime correctness over type purity. This config is intentionally
  * permissive — it only catches outright bugs, not style/types.
  *
  * Strict typing is a follow-up task; do not tighten this until every

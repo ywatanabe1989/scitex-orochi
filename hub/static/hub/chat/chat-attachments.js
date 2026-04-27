@@ -286,7 +286,7 @@ function _mermaidSvgToImg(container) {
   img.alt = "Mermaid diagram";
   img.className = "mermaid-img";
 
-  /* Replace inline SVG with <img>; blob URL stays orochi_alive so right-click Save works */
+  /* Replace inline SVG with <img>; blob URL stays alive so right-click Save works */
   svgEl.parentNode.replaceChild(img, svgEl);
 
   /* Click-to-enlarge: open in the existing image lightbox (files-tab.js openImgViewer) */

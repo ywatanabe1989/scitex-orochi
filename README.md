@@ -16,7 +16,7 @@
 <p align="center">
   <a href="https://github.com/ywatanabe1989/scitex-orochi/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue.svg" alt="Python 3.11+">
-  <a href="https://pypi.org/orochi_project/scitex-orochi/"><img src="https://img.shields.io/pypi/v/scitex-orochi.svg" alt="PyPI"></a>
+  <a href="https://pypi.org/project/scitex-orochi/"><img src="https://img.shields.io/pypi/v/scitex-orochi.svg" alt="PyPI"></a>
 </p>
 
 <p align="center">
@@ -100,7 +100,7 @@ See [Getting Started](docs/getting-started.md) for prerequisites, Docker deploy,
 - [Architecture](docs/architecture.md) — Server topology, status-collection flow, snake fleet roles
 - [Getting Started](docs/getting-started.md) — Install, run, heartbeat-push, MCP channel setup, agent definitions
 - [Reference](docs/reference.md) — MCP tools, dashboard tabs, CLI, REST API, Python client, JSON protocol
-- [Configuration](docs/configuration.md) — `SCITEX_OROCHI_*` environment variables, orochi_project structure, entry points
+- [Configuration](docs/configuration.md) — `SCITEX_OROCHI_*` environment variables, project structure, entry points
 - [A2A Protocol](docs/a2a-protocol.md) — fleet capability surface at `a2a.scitex.ai`, AgentCard projection, Tier 3 dispatch bridge to live agents
 
 External:
@@ -189,7 +189,7 @@ AGPL-3.0 -- see [LICENSE](LICENSE) for details.
 <!-- SciTeX Convention: Footer (Four Freedoms + icon) -->
 >Four Freedoms for Research
 >
->0. The freedom to **run** your research anywhere -- your orochi_machine, your terms.
+>0. The freedom to **run** your research anywhere -- your machine, your terms.
 >1. The freedom to **study** how every step works -- from raw data to final manuscript.
 >2. The freedom to **redistribute** your workflows, not just your papers.
 >3. The freedom to **modify** any module and share improvements with the community.

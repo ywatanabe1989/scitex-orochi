@@ -8,7 +8,7 @@ import { hideMachineTooltip, moveMachineTooltip, showMachineTooltip } from "./re
 export var connectivityCache = null;
 
 /* todo#51: bidirectional hover sync across SSH-mesh, res-cards,
- * activity-cards. Any DOM element with data-host-name / data-orochi_machine
+ * activity-cards. Any DOM element with data-host-name / data-machine
  * matching `host` gets `.mesh-hl`; removed on `off`. Exposed globally so
  * activity-tab.js and resources-tab.js can call it without a circular
  * require. */
@@ -17,7 +17,7 @@ export function syncHostHover(host, on) {
   var selectors = [
     '.conn-node[data-host-name="' + host + '"]',
     '.res-card[data-host-name="' + host + '"]',
-    '.activity-card[data-orochi_machine="' + host + '"]',
+    '.activity-card[data-machine="' + host + '"]',
   ];
   selectors.forEach(function (sel) {
     var els;
@@ -47,7 +47,7 @@ export async function fetchConnectivity() {
   }
 }
 
-/* Layout: orochi_machine nodes on inner ring, bastion nodes on outer ring, aligned to host */
+/* Layout: machine nodes on inner ring, bastion nodes on outer ring, aligned to host */
 export function _layoutNodes(nodes, cx, cy, innerRadius, outerRadius) {
   var positions = {};
   if (nodes.length === 0) return positions;
@@ -67,7 +67,7 @@ export function _layoutNodes(nodes, cx, cy, innerRadius, outerRadius) {
       y: cy + innerRadius * Math.sin(theta),
     };
   }
-  /* Bastion nodes: outer ring, aligned behind their host orochi_machine */
+  /* Bastion nodes: outer ring, aligned behind their host machine */
   bastions.forEach(function (b) {
     var hostPos = positions[b.host];
     if (hostPos) {
@@ -176,14 +176,14 @@ export function renderConnectivityMap() {
       '<path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b"/></marker>' +
       "</defs>",
   );
-  /* Separate orochi_machine vs bastion nodes */
+  /* Separate machine vs bastion nodes */
   var machineNodes = nodes.filter(function (n) {
     return n.type !== "bastion";
   });
   var bastionNodes = nodes.filter(function (n) {
     return n.type === "bastion";
   });
-  /* Separate bastion-anchor edges from orochi_machine-to-orochi_machine edges */
+  /* Separate bastion-anchor edges from machine-to-machine edges */
   var bastionAnchorEdges = edges.filter(function (e) {
     return (
       e.source.indexOf("bastion") === 0 || e.target.indexOf("bastion") === 0
@@ -223,7 +223,7 @@ export function renderConnectivityMap() {
     );
   });
 
-  /* Draw orochi_machine-to-orochi_machine edges */
+  /* Draw machine-to-machine edges */
   machineEdges.forEach(function (e) {
     var p1 = positions[e.source];
     var p2 = positions[e.target];
@@ -304,13 +304,13 @@ export function renderConnectivityMap() {
     );
   });
 
-  /* Draw orochi_machine nodes (inner ring) */
+  /* Draw machine nodes (inner ring) */
   machineNodes.forEach(function (n) {
     var p = positions[n.id];
     if (!p) return;
     /* todo#51: data-host-name lets hover-sync find the node from res-card
      * and activity-card mouseenter handlers. Use n.id (matches .res-card
-     * data-host-name and .activity-card data-orochi_machine). */
+     * data-host-name and .activity-card data-machine). */
     svgParts.push(
       '<g class="conn-node" data-host-name="' +
         escapeHtml(n.id) +
@@ -391,7 +391,7 @@ export function renderConnectivityMap() {
     svgParts.join("");
   container.innerHTML = html;
   /* todo#51: after innerHTML swap, re-attach hover handlers on each
-   * orochi_machine node. Delegation via the SVG root is awkward because the
+   * machine node. Delegation via the SVG root is awkward because the
    * event target is the inner <circle> or <text>. */
   Array.prototype.forEach.call(
     container.querySelectorAll(".conn-node[data-host-name]"),
@@ -399,7 +399,7 @@ export function renderConnectivityMap() {
       var host = g.getAttribute("data-host-name");
       g.addEventListener("mouseenter", function (ev) {
         syncHostHover(host, true);
-        /* todo#86: show CPU/RAM/GPU/VRAM/Disk tooltip on orochi_machine node hover. */
+        /* todo#86: show CPU/RAM/GPU/VRAM/Disk tooltip on machine node hover. */
         if (typeof showMachineTooltip === "function")
           showMachineTooltip(host, ev);
       });

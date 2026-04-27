@@ -379,7 +379,7 @@ def todo_triage(
     """Score every open todo on staleness + lane-fit + claimed + assigned.
 
     Output is a JSON array sorted by descending score. Use ``--json`` for
-    orochi_machine-readable output; the human form is a ranked table.
+    machine-readable output; the human form is a ranked table.
     """
     issues = _fetch_open_todos(repo, limit=limit)
     prs = _fetch_open_prs(repo, limit=100)

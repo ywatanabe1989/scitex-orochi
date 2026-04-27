@@ -180,7 +180,7 @@ class AgentProfile(models.Model):
     # Last-known caduceus-reported health — persisted so the Agents tab
     # + sidebar pills survive container restarts without agents having
     # to re-POST their diagnosis. Free-form status string per mamba's
-    # taxonomy-extension orochi_model; reason capped at 200 chars.
+    # taxonomy-extension model; reason capped at 200 chars.
     health_status = models.CharField(max_length=32, blank=True, default="")
     health_reason = models.CharField(max_length=200, blank=True, default="")
     health_source = models.CharField(max_length=64, blank=True, default="")

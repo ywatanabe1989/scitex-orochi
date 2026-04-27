@@ -1,4 +1,4 @@
-"""Claude Code JSONL transcript parsing — orochi_model, orochi_context_pct, current tool, recent actions."""
+"""Claude Code JSONL transcript parsing — model, orochi_context_pct, current tool, recent actions."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Tools to skip in orochi_current_tool / orochi_recent_actions selection. These are
+# Tools to skip in orochi_current_tool / recent_actions selection. These are
 # how the agent talks to the chat hub, NOT what the agent is actually
 # working on. Showing them as orochi_current_task makes every idle agent look
 # frozen on "reply" forever, which is the exact UX failure ywatanabe
@@ -78,7 +78,7 @@ def _preview_for(tool_name: str, tool_input: dict) -> str:
 def find_jsonl_transcripts(workspace: str) -> list[Path]:
     """Locate the Claude Code JSONL transcripts for an agent's workspace.
 
-    Returns transcripts sorted newest-first. Empty list if the orochi_project
+    Returns transcripts sorted newest-first. Empty list if the project
     directory doesn't exist.
     """
     encoded = workspace.replace("/", "-").replace(".", "-")
@@ -92,18 +92,18 @@ def find_jsonl_transcripts(workspace: str) -> list[Path]:
 
 
 def parse_transcript(jsonls: list[Path]) -> dict:
-    """Parse the newest JSONL for orochi_model, orochi_context_pct, orochi_current_tool, orochi_recent_actions.
+    """Parse the newest JSONL for model, orochi_context_pct, orochi_current_tool, recent_actions.
 
-    Returns dict with keys: orochi_model, orochi_last_activity, orochi_context_pct,
-    orochi_current_tool, orochi_started_at, orochi_recent_actions.
+    Returns dict with keys: model, last_activity, orochi_context_pct,
+    orochi_current_tool, started_at, recent_actions.
     """
     out = {
-        "orochi_model": "",
-        "orochi_last_activity": "",
+        "model": "",
+        "last_activity": "",
         "orochi_context_pct": 0.0,
         "orochi_current_tool": "",
-        "orochi_started_at": "",
-        "orochi_recent_actions": [],
+        "started_at": "",
+        "recent_actions": [],
     }
     if not jsonls:
         return out
@@ -115,16 +115,16 @@ def parse_transcript(jsonls: list[Path]) -> dict:
         lines = []
     tail = lines[-50:]
 
-    # orochi_started_at = mtime of earliest jsonl for this orochi_project (ISO UTC)
+    # started_at = mtime of earliest jsonl for this project (ISO UTC)
     try:
         earliest = min(jsonls, key=lambda p: p.stat().st_mtime)
-        out["orochi_started_at"] = datetime.fromtimestamp(
+        out["started_at"] = datetime.fromtimestamp(
             earliest.stat().st_mtime, tz=timezone.utc
         ).isoformat()
     except Exception:
         pass
 
-    # Most recent assistant turn -> orochi_model + orochi_context_pct
+    # Most recent assistant turn -> model + orochi_context_pct
     for line in reversed(tail):
         try:
             obj = json.loads(line)
@@ -132,10 +132,10 @@ def parse_transcript(jsonls: list[Path]) -> dict:
             continue
         if obj.get("type") == "assistant" and "message" in obj:
             msg = obj["message"]
-            if not out["orochi_model"]:
-                out["orochi_model"] = msg.get("orochi_model", "")
-            if not out["orochi_last_activity"]:
-                out["orochi_last_activity"] = obj.get("timestamp", "")
+            if not out["model"]:
+                out["model"] = msg.get("model", "")
+            if not out["last_activity"]:
+                out["last_activity"] = obj.get("timestamp", "")
             u = msg.get("usage", {})
             total = (
                 u.get("input_tokens", 0)
@@ -171,7 +171,7 @@ def parse_transcript(jsonls: list[Path]) -> dict:
     # of "16:05:02 Bash: docker compose build" etc. Skips SKIP_TOOLS
     # housekeeping calls and pulls the last ~200 lines so we don't miss
     # anything in a busy turn.
-    orochi_recent_actions: list[dict] = []
+    recent_actions: list[dict] = []
     wide_tail = lines[-200:] if lines else []
     for line in reversed(wide_tail):
         try:
@@ -188,15 +188,15 @@ def parse_transcript(jsonls: list[Path]) -> dict:
             tname = c.get("name", "")
             if tname in SKIP_TOOLS:
                 continue
-            orochi_recent_actions.append(
+            recent_actions.append(
                 {"ts": ts, "preview": _preview_for(tname, c.get("input") or {})}
             )
-            if len(orochi_recent_actions) >= 10:
+            if len(recent_actions) >= 10:
                 break
-        if len(orochi_recent_actions) >= 10:
+        if len(recent_actions) >= 10:
             break
     # Newest first → reverse to oldest first so the UI can render
     # top-down chronologically.
-    orochi_recent_actions.reverse()
-    out["orochi_recent_actions"] = orochi_recent_actions
+    recent_actions.reverse()
+    out["recent_actions"] = recent_actions
     return out

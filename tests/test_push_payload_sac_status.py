@@ -23,13 +23,13 @@ from _collect_agent_metadata._push import _build_payload  # noqa: E402
 
 _MIN_META = {
     "agent": "worker-mba",
-    "orochi_machine": "mba",
+    "machine": "mba",
     "orochi_subagent_count": 2,
     # Typical collect() keys — fill enough that _build_payload
     # doesn't KeyError.
     "orochi_skills_loaded": [],
     "orochi_mcp_servers": [],
-    "orochi_recent_actions": [],
+    "recent_actions": [],
     "sac_hooks_recent_tools": [],
     "sac_hooks_recent_prompts": [],
     "sac_hooks_agent_calls": [],
@@ -37,7 +37,7 @@ _MIN_META = {
     "orochi_subagents": [],
     "sac_hooks_tool_counts": {},
     "sac_hooks_p95_elapsed_s_by_action": {},
-    "orochi_metrics": {},
+    "metrics": {},
     "orochi_slurm": None,
 }
 

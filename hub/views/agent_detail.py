@@ -145,11 +145,11 @@ def api_agent_detail(request, name: str):
         {
           "name": str,
           "role": str,
-          "orochi_machine": str,                # YAML config label (join key)
+          "machine": str,                # YAML config label (join key)
           # #257 canonical heartbeat metadata — authoritative per-process
           # truth. Empty/None for legacy clients that haven't been
-          # upgraded; UI falls back to `orochi_machine` until populated.
-          "orochi_hostname": str,               # `orochi_hostname(1)` of the running process
+          # upgraded; UI falls back to `machine` until populated.
+          "hostname": str,               # `hostname(1)` of the running process
           "orochi_hostname_canonical": str,     # FQDN via socket.getfqdn()
           "uname": str,                  # `uname -a` output
           "instance_id": str,            # UUID set once at agent boot
@@ -159,7 +159,7 @@ def api_agent_detail(request, name: str):
           "priority_list": [str, ...],   # Full host: list from YAML
           "launch_method": str,          # sac | sac-ssh | sbatch | manual-* | unknown
           "heartbeat_seq": int | None,   # Monotonic per process
-          "orochi_model": str,
+          "model": str,
           "uptime_seconds": int | None,
           "registered_at": iso8601 | None,
           "last_action_ts": iso8601 | None,
@@ -175,7 +175,7 @@ def api_agent_detail(request, name: str):
           "orochi_mcp_servers": [str | dict, ...],
           "orochi_current_task": str,
           "orochi_context_pct": float | None,
-          "orochi_pid": int,
+          "pid": int,
           "orochi_subagents": [ ... ],
           "health": { ... }
         }
@@ -216,18 +216,18 @@ def api_agent_detail(request, name: str):
     payload = {
         "name": agent.get("name", name),
         "role": agent.get("role", ""),
-        "orochi_machine": agent.get("orochi_machine", ""),
+        "machine": agent.get("machine", ""),
         # todo#55: canonical FQDN reported by the heartbeat, displayed
-        # next to the short `orochi_machine` label in the detail header.
+        # next to the short `machine` label in the detail header.
         "orochi_hostname_canonical": agent.get("orochi_hostname_canonical", ""),
         # ── #257 canonical heartbeat metadata ─────────────────────────
-        # `orochi_hostname` is the authoritative `orochi_hostname(1)` of the running
+        # `hostname` is the authoritative `hostname(1)` of the running
         # process. The dashboard's `@host` label MUST be rendered from
-        # this, not from `orochi_machine` (YAML config) — fabricated/cached
+        # this, not from `machine` (YAML config) — fabricated/cached
         # labels were the root of the ghost-mba bug (#256). Empty for
         # legacy clients that haven't been upgraded; UI falls back to
-        # `orochi_machine` until the heartbeat carries it.
-        "orochi_hostname": agent.get("orochi_hostname", ""),
+        # `machine` until the heartbeat carries it.
+        "hostname": agent.get("hostname", ""),
         "uname": agent.get("uname", ""),
         "instance_id": agent.get("instance_id", ""),
         "start_ts_unix": agent.get("start_ts_unix"),
@@ -237,7 +237,7 @@ def api_agent_detail(request, name: str):
         "launch_method": agent.get("launch_method", ""),
         "heartbeat_seq": agent.get("heartbeat_seq"),
         # ── /#257 ─────────────────────────────────────────────────────
-        "orochi_model": agent.get("orochi_model", ""),
+        "model": agent.get("model", ""),
         "uptime_seconds": uptime_seconds,
         "registered_at": agent.get("registered_at"),
         "last_action_ts": agent.get("last_action"),
@@ -280,7 +280,7 @@ def api_agent_detail(request, name: str):
         "orochi_mcp_servers": list(agent.get("orochi_mcp_servers") or []),
         "orochi_current_task": agent.get("orochi_current_task", ""),
         "orochi_context_pct": agent.get("orochi_context_pct"),
-        "orochi_pid": int(agent.get("orochi_pid") or 0),
+        "pid": int(agent.get("pid") or 0),
         "orochi_subagents": list(agent.get("orochi_subagents") or []),
         "orochi_subagent_count": int(agent.get("orochi_subagent_count") or 0),
         # Quota surfaced from agent_meta.py --push heartbeat. The heartbeat

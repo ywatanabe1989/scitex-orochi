@@ -60,7 +60,7 @@ def main() -> None:
     async def _run_all() -> None:
         nonlocal telegram_bridge
         await server.store.open()
-        # Initialize workspace orochi_model
+        # Initialize workspace model
         from scitex_orochi._workspaces import WorkspaceStore
 
         assert server.store._db is not None, (

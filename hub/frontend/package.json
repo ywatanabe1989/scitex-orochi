@@ -1,7 +1,7 @@
 {
   "name": "orochi-hub-frontend",
   "private": true,
-  "orochi_version": "0.0.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "build": "vite build",

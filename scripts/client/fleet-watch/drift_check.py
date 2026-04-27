@@ -2,7 +2,7 @@
 """machines.yaml drift detection for NAS fleet_watch.sh (todo#283 follow-up).
 
 For one host alias, compares the declared `expected_tmux_sessions` in
-``orochi-machines.yaml`` against the orochi_runtime ``tmux_names`` field from
+``orochi-machines.yaml`` against the runtime ``tmux_names`` field from
 the most recent snapshot in ``~/.scitex/orochi/fleet-watch/<host>.json``.
 
 Prints exactly one line per (host, drift_kind) finding to stdout in a
@@ -95,13 +95,13 @@ def main(argv: list[str]) -> int:
         # Host not declared in machines.yaml — nothing to compare against.
         return 0
 
-    orochi_runtime = _runtime_sessions(host)
-    if orochi_runtime is None:
+    runtime = _runtime_sessions(host)
+    if runtime is None:
         # Snapshot not yet written or unreadable — defer.
         return 0
 
-    missing = sorted(expected - orochi_runtime)
-    unexpected = sorted(orochi_runtime - expected)
+    missing = sorted(expected - runtime)
+    unexpected = sorted(runtime - expected)
 
     if missing:
         print(f"DRIFT host={host} kind=missing sessions={','.join(missing)}")

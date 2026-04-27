@@ -60,9 +60,9 @@ export function _renderActivityAgentDetail(a, grid) {
   if (q5 != null) chips.push("5h " + q5.toFixed(0) + "%");
   if (q7 != null) chips.push("7d " + q7.toFixed(0) + "%");
   if (subCnt != null) chips.push("orochi_subagents " + subCnt);
-  if (a.orochi_model) chips.push(a.orochi_model);
-  if (a.orochi_multiplexer) chips.push(a.orochi_multiplexer);
-  if (a.orochi_pid) chips.push("orochi_pid " + a.orochi_pid);
+  if (a.model) chips.push(a.model);
+  if (a.multiplexer) chips.push(a.multiplexer);
+  if (a.pid) chips.push("pid " + a.pid);
   var uniqueCh = [...new Set(a.channels || [])];
   if (uniqueCh.length) chips.push("ch: " + uniqueCh.join(", "));
   function _fmtPct(v) {
@@ -81,9 +81,9 @@ export function _renderActivityAgentDetail(a, grid) {
     return d + "d " + Math.round((v % 86400) / 3600) + "h";
   }
   /* todo#55/#56/#58: collapse redundant FQDN suffixes and hide
-   * <synthetic>-style orochi_model placeholders, mirroring the same polish on
+   * <synthetic>-style model placeholders, mirroring the same polish on
    * the Agents tab detail card. */
-  var _machine = a.orochi_machine || "?";
+  var _machine = a.machine || "?";
   var _fqdn = a.orochi_hostname_canonical || "";
   var _redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
   var _fqdnUseful = _fqdn && _fqdn !== _machine;
@@ -96,7 +96,7 @@ export function _renderActivityAgentDetail(a, grid) {
     }
   }
   var _machineDisplay = _fqdnUseful ? _machine + " (" + _fqdn + ")" : _machine;
-  var _rawModel = a.orochi_model || "";
+  var _rawModel = a.model || "";
   var _modelDisplay =
     _rawModel.length > 2 &&
     _rawModel.charAt(0) === "<" &&
@@ -128,15 +128,15 @@ export function _renderActivityAgentDetail(a, grid) {
   var metaFields = [
     ["Role", a.role || "agent"],
     ["Machine", _machineDisplay],
-    ["Hostname", a.orochi_hostname || "-"],
+    ["Hostname", a.hostname || "-"],
     ["Uname", a.uname || "-"],
     ["Instance", _instanceShort],
     ["Launch", _launchDisplay],
     ["Proxy?", _proxyDisplay],
     ["Priority list", _priorityListDisplay],
     ["Model", _modelDisplay],
-    ["Multiplexer", a.orochi_multiplexer || "-"],
-    ["PID", a.orochi_pid || "-"],
+    ["Multiplexer", a.multiplexer || "-"],
+    ["PID", a.pid || "-"],
     ["Liveness", liveness],
     ["Context", ctxPct != null ? ctxPct.toFixed(1) + "%" : "-"],
     [
@@ -189,7 +189,7 @@ export function _renderActivityAgentDetail(a, grid) {
           ")"
         : "-",
     ],
-    ["Workdir", a.orochi_workdir || "-"],
+    ["Workdir", a.workdir || "-"],
     ["Registered", a.registered_at || "-"],
     ["Last heartbeat", a.last_heartbeat || "-"],
   ];
@@ -319,10 +319,10 @@ export function _renderActivityAgentDetail(a, grid) {
     '<button type="button" class="agent-detail-pane-btn" ' +
     'data-act-pane-action="ssh" data-agent="' +
     escapeHtml(a.name) +
-    '" data-orochi_machine="' +
-    escapeHtml(a.orochi_machine || "") +
+    '" data-machine="' +
+    escapeHtml(a.machine || "") +
     '" title="Open SSH terminal to ' +
-    escapeHtml(a.orochi_machine || "this host") +
+    escapeHtml(a.machine || "this host") +
     '">SSH</button>' +
     "</span>" +
     "</div>" +

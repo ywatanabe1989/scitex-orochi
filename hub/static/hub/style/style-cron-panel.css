@@ -50,7 +50,7 @@
   letter-spacing: 0.02em;
 }
 
-/* Stale badge — mirrors the orochi_machine card stale LED styling. */
+/* Stale badge — mirrors the machine card stale LED styling. */
 .cron-stale {
   display: inline-block;
   padding: 0 4px;

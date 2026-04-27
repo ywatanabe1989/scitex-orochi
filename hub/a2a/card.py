@@ -9,7 +9,7 @@ the protobuf back to a JSON-friendly shape served at
 
 The orochi registry doesn't carry the full v3 YAML — it carries the
 metadata the WS bridge ships in heartbeats: ``role``, ``host``,
-``a2a_url``, etc. So we orochi_project from the in-memory registry entry
+``a2a_url``, etc. So we project from the in-memory registry entry
 when present, and fall back to a minimal card naming the agent so
 ``.well-known`` always returns something useful.
 """
@@ -25,7 +25,7 @@ def _registry_entry(name: str) -> dict[str, Any] | None:
     """Look up an agent in the orochi in-memory registry.
 
     Returns ``None`` if the agent is not connected — callers may
-    still want to orochi_project a minimal card so external tooling can
+    still want to project a minimal card so external tooling can
     discover the URL exists.
     """
     from hub.registry import _agents
@@ -61,7 +61,7 @@ def project_card(name: str, base_url: str = "") -> AgentCard:
     card = AgentCard()
     card.name = name
     card.description = description
-    card.orochi_version = "scitex-orochi/1"
+    card.version = "scitex-orochi/1"
     card.capabilities.streaming = True
     card.capabilities.push_notifications = False
     card.default_input_modes.extend(["text/plain", "application/json"])

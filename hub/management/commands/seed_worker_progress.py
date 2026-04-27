@@ -15,8 +15,8 @@ The synthetic ``agent-worker-progress`` user is granted the following
   - every ``#proj-*`` channel that exists in the DB **at seed time** →
     ``can_read=True, can_write=True``  (read-write)
 
-The ``#proj-*`` set is enumerated at orochi_runtime (not hardcoded) so new
-orochi_project channels are picked up without code changes — just re-run the
+The ``#proj-*`` set is enumerated at runtime (not hardcoded) so new
+project channels are picked up without code changes — just re-run the
 seed after creating a new ``#proj-foo``.
 
 ``#agent`` was abolished 2026-04-21 (PR #293 follow-up) and the
@@ -51,7 +51,7 @@ CHANNEL_BITS: dict[str, tuple[bool, bool]] = {
     "#ywatanabe": (False, True),  # (can_read, can_write)
 }
 
-# Prefix for per-orochi_project channels. All existing channels whose name
+# Prefix for per-project channels. All existing channels whose name
 # starts with this prefix are added to the worker's membership set.
 PROJ_CHANNEL_PREFIX = "#proj-"
 
@@ -118,7 +118,7 @@ class Command(BaseCommand):
                 skipped += 1
                 continue
 
-            # Base channels are created if missing; orochi_project channels
+            # Base channels are created if missing; project channels
             # are only enumerated if they already exist, so they will
             # always resolve to an existing row.
             channel, _ = Channel.objects.get_or_create(

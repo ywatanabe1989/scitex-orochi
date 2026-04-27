@@ -1,4 +1,4 @@
-"""Integration test for scripts/client/hungry-signal.sh state-orochi_machine.
+"""Integration test for scripts/client/hungry-signal.sh state-machine.
 
 Drives the real bash probe in --dry-run mode against a stubbed
 ``scitex-agent-container`` binary so we can assert:
@@ -208,7 +208,7 @@ def test_non_zero_clears_prior_fired_flag(tmp_path):
 # end-to-end. The parser + hub-registry round-trips that produce the counts
 # are covered by ``tests/test_orochi_subagent_count_lifecycle.py`` +
 # ``hub/tests/consumers/test_orochi_subagent_count_roundtrip.py``; this section
-# exercises the bash state-orochi_machine's response to the full sequence.
+# exercises the bash state-machine's response to the full sequence.
 # -----------------------------------------------------------------------------
 
 
@@ -262,7 +262,7 @@ def test_full_lifecycle_spawn_drain_idle_dm(tmp_path):
 def test_transient_spawn_resets_counter_mid_stretch(tmp_path):
     """A single non-zero tick mid-idle-stretch must reset the counter.
 
-    Guards against a subtle regression: if the state orochi_machine kept
+    Guards against a subtle regression: if the state machine kept
     incrementing through a brief busy interval (e.g. decremented rather
     than reset), the DM would fire spuriously seconds after the head
     finished a legitimate task.

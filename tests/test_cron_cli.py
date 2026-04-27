@@ -6,7 +6,7 @@ Validates each subcommand's behavior via ``click.testing.CliRunner``:
 * ``cron list`` with no state file emits an empty array (JSON) /
   a friendly text line.
 * ``cron run <name>`` shells out a trivial command + returns its exit.
-* ``cron status`` distinguishes "no orochi_pid file" vs "live orochi_pid" vs "stale orochi_pid".
+* ``cron status`` distinguishes "no pid file" vs "live pid" vs "stale pid".
 * ``cron reload`` errors clearly when the daemon isn't running.
 
 These tests don't actually load or spawn the OS-native unit — they
@@ -121,8 +121,8 @@ def test_status_no_pid(tmp_path):
         cron,
         [
             "status",
-            "--orochi_pid",
-            str(tmp_path / "nope.orochi_pid"),
+            "--pid",
+            str(tmp_path / "nope.pid"),
             "--state",
             str(tmp_path / "nope.json"),
         ],
@@ -135,13 +135,13 @@ def test_status_no_pid(tmp_path):
 
 
 def test_status_alive_pid(tmp_path):
-    # Use our own PID — guaranteed orochi_alive for the duration of the test.
-    pid_path = tmp_path / "daemon.orochi_pid"
+    # Use our own PID — guaranteed alive for the duration of the test.
+    pid_path = tmp_path / "daemon.pid"
     pid_path.write_text(str(os.getpid()))
     runner = CliRunner()
     result = runner.invoke(
         cron,
-        ["status", "--orochi_pid", str(pid_path), "--state", str(tmp_path / "nope.json")],
+        ["status", "--pid", str(pid_path), "--state", str(tmp_path / "nope.json")],
         obj={"json": True},
     )
     assert result.exit_code == 0
@@ -154,13 +154,13 @@ def test_status_stale_pid(tmp_path):
     # Pick a PID far outside the kernel's typical range so os.kill(p, 0)
     # reliably returns ProcessLookupError. If the chosen PID happens to
     # be live on this CI host we fall back to an also-unlikely-live PID.
-    pid_path = tmp_path / "daemon.orochi_pid"
+    pid_path = tmp_path / "daemon.pid"
     # 99999999 is > max_pid on all reasonable kernels (default 2^22).
     pid_path.write_text("99999999")
     runner = CliRunner()
     result = runner.invoke(
         cron,
-        ["status", "--orochi_pid", str(pid_path), "--state", str(tmp_path / "nope.json")],
+        ["status", "--pid", str(pid_path), "--state", str(tmp_path / "nope.json")],
         obj={"json": True},
     )
     assert result.exit_code == 0
@@ -171,6 +171,6 @@ def test_status_stale_pid(tmp_path):
 
 def test_reload_not_running(tmp_path):
     runner = CliRunner()
-    result = runner.invoke(cron, ["reload", "--orochi_pid", str(tmp_path / "nope.orochi_pid")])
+    result = runner.invoke(cron, ["reload", "--pid", str(tmp_path / "nope.pid")])
     assert result.exit_code != 0
     assert "not running" in result.output

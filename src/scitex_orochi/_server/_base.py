@@ -30,13 +30,13 @@ class Agent:
     name: str
     ws: Any  # ServerConnection
     channels: set[str] = field(default_factory=set)
-    orochi_machine: str = ""
+    machine: str = ""
     role: str = ""
-    orochi_model: str = ""
+    model: str = ""
     agent_id: str = ""
-    orochi_project: str = ""
+    project: str = ""
     workspace_id: str = ""
-    orochi_multiplexer: str = ""
+    multiplexer: str = ""
     status: str = "online"
     orochi_current_task: str = ""
     orochi_subagent_count: int = 0

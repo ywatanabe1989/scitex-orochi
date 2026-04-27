@@ -11,7 +11,7 @@ import { escapeHtml, getAgentColor } from "./app/utils";
  *   renderAgentBadgeSvg(a, pos, opts) — agent / human node <g> group
  *
  * Emits a <g class="topo-node topo-agent" data-agent="..."> with the
- * same state orochi_model as the HTML badge: icon + star + 2 LEDs (WS/FN)
+ * same state model as the HTML badge: icon + star + 2 LEDs (WS/FN)
  * + name label. Preserves every CSS hook the canvas uses today:
  *   .topo-agent, .topo-agent-bg, .topo-agent-dead, .topo-label,
  *   .topo-human, .topo-human-bg, .topo-human-glyph, .topo-agent-glyph.
@@ -255,7 +255,7 @@ import { escapeHtml, getAgentColor } from "./app/utils";
     var color = opts.isHuman ? "#fbbf24" : ident.color;
 
     /* Canonical layout, todo#305 Task 7 (lead msg#15548):
-     *   icon + star + eye + 4 LEDs + name@orochi_hostname
+     *   icon + star + eye + 4 LEDs + name@hostname
      * Matches the HTML agent-badge.ts canonical order 1:1 so canvas,
      * sidebar and pool chip all read left-to-right the same way.
      * Human nodes keep their simpler icon+name layout (no LEDs, no

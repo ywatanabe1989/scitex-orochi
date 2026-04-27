@@ -4,9 +4,9 @@ push_process_info.py — per-host process info pusher.
 
 Collects the running tmux sessions, screen sessions, and scitex-agent-container
 systemd / launchd units for this host, and appends an NDJSON line to
-~/.scitex/orochi/orochi_runtime/fleet-watch/process-info/<host>.ndjson.
+~/.scitex/orochi/runtime/fleet-watch/process-info/<host>.ndjson.
 
-Lets the hub correlate "agent registry says X is orochi_alive" against "this host
+Lets the hub correlate "agent registry says X is alive" against "this host
 actually has X as a tmux session / systemd unit", catching registry-drift
 and zombies.
 """
@@ -127,7 +127,7 @@ def _launchd_units_macos() -> list[dict[str, Any]]:
         fields = line.split(None, 2)
         if len(fields) < 3:
             continue
-        orochi_pid, status, label = fields[0], fields[1], fields[2]
+        pid, status, label = fields[0], fields[1], fields[2]
         if (
             "scitex" not in label
             and "orochi" not in label
@@ -136,7 +136,7 @@ def _launchd_units_macos() -> list[dict[str, Any]]:
             continue
         rows.append(
             {
-                "orochi_pid": int(orochi_pid) if orochi_pid.isdigit() else None,
+                "pid": int(pid) if pid.isdigit() else None,
                 "status": status,
                 "label": label,
             }
@@ -147,7 +147,7 @@ def _launchd_units_macos() -> list[dict[str, Any]]:
 def _agent_processes() -> list[dict[str, Any]]:
     try:
         out = subprocess.check_output(
-            ["ps", "-eo", "orochi_pid,etimes,rss,args"],
+            ["ps", "-eo", "pid,etimes,rss,args"],
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=3,
@@ -159,12 +159,12 @@ def _agent_processes() -> list[dict[str, Any]]:
         parts = line.strip().split(None, 3)
         if len(parts) < 4:
             continue
-        orochi_pid, etimes, rss, args = parts
+        pid, etimes, rss, args = parts
         if "claude" not in args and "scitex-agent-container" not in args:
             continue
         rows.append(
             {
-                "orochi_pid": int(orochi_pid) if orochi_pid.isdigit() else None,
+                "pid": int(pid) if pid.isdigit() else None,
                 "etime_s": int(etimes) if etimes.isdigit() else None,
                 "rss_kb": int(rss) if rss.isdigit() else None,
                 "args": args[:300],
@@ -191,7 +191,7 @@ def collect() -> dict[str, Any]:
 
 def _ndjson_path(host: str) -> Path:
     root = (
-        Path.home() / ".scitex" / "orochi" / "orochi_runtime" / "fleet-watch" / "process-info"
+        Path.home() / ".scitex" / "orochi" / "runtime" / "fleet-watch" / "process-info"
     )
     root.mkdir(parents=True, exist_ok=True)
     return root / f"{host}.ndjson"

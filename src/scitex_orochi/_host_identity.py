@@ -1,6 +1,6 @@
 """Host-identity resolver: decide local vs remote execution by name.
 
-Each orochi_machine declares the names that mean "me" in
+Each machine declares the names that mean "me" in
 ``~/.scitex/host-identity.yaml`` (shared format with scitex-agent-container —
 both packages read the same file independently). Code that decides whether
 to run a command locally or via SSH consults :func:`is_local`.
@@ -14,9 +14,9 @@ Example file::
       - localhost
 
 If the file is absent, sensible defaults are derived from ``socket``:
-``orochi_hostname``, short orochi_hostname, FQDN, and the literals ``localhost`` / ``""``.
+``hostname``, short hostname, FQDN, and the literals ``localhost`` / ``""``.
 That keeps fresh installs working; an explicit file is recommended once
-the orochi_machine acquires SSH aliases that differ from its real orochi_hostname.
+the machine acquires SSH aliases that differ from its real hostname.
 """
 
 from __future__ import annotations
@@ -33,12 +33,12 @@ HOST_IDENTITY_PATH = Path.home() / ".scitex" / "host-identity.yaml"
 
 
 def _default_aliases() -> set[str]:
-    orochi_hostname = socket.gethostname()
+    hostname = socket.gethostname()
     return {
         "localhost",
         "",
-        orochi_hostname,
-        orochi_hostname.split(".")[0],
+        hostname,
+        hostname.split(".")[0],
         socket.getfqdn(),
     }
 
@@ -66,7 +66,7 @@ def load_host_identity() -> dict:
 
 
 def is_local(host: str | None) -> bool:
-    """Return True if ``host`` refers to this orochi_machine."""
+    """Return True if ``host`` refers to this machine."""
     if host is None:
         return True
     return host in set(load_host_identity()["aliases"])

@@ -134,9 +134,9 @@ export function escapeHtml(s) {
  * so the duplication just adds noise. This renderer-level fix keeps
  * the registered IDs intact and only affects display. */
 /**
- * Display-layer map from raw `orochi_hostname(1)` → canonical fleet label.
+ * Display-layer map from raw `hostname(1)` → canonical fleet label.
  *
- * msg#17472 — heartbeat payloads now carry the raw `os.orochi_hostname()` on
+ * msg#17472 — heartbeat payloads now carry the raw `os.hostname()` on
  * the identity path (lead msg#15578 fix guarantees identity can't be
  * spoofed via env), which means the display path has to map the raw
  * value to the short canonical host label (`mba` / `nas` / `spartan`
@@ -160,7 +160,7 @@ export var HOSTNAME_ALIASES: Record<string, string> = {
 };
 
 /**
- * Resolve a raw orochi_hostname to the short canonical fleet label.
+ * Resolve a raw hostname to the short canonical fleet label.
  * Falls back to the input unchanged for unknown hosts so the UI degrades
  * gracefully on new machines before HOSTNAME_ALIASES gets updated.
  */
@@ -198,7 +198,7 @@ export function cleanAgentName(name) {
 /**
  * Return the agent name with host suffix. If the registered name already
  * contains @host (e.g. "head@mba"), return as-is. Otherwise append
- * "@<orochi_machine>" from the agent record so the sidebar always shows an
+ * "@<machine>" from the agent record so the sidebar always shows an
  * identity tied to a host (mamba shows as "mamba@ywata-note-win" even if
  * the agent config still registered plain "mamba").
  */
@@ -206,13 +206,13 @@ export function hostedAgentName(a) {
   var name = a && a.name ? a.name : "";
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
-  /* #256 — host label MUST come from the live `orochi_hostname(1)` reported
-   * in the heartbeat (#257), NOT from the YAML config `orochi_machine` field.
-   * Pre-fix, an agent_handlers `orochi_machine: mba` line in YAML caused the
+  /* #256 — host label MUST come from the live `hostname(1)` reported
+   * in the heartbeat (#257), NOT from the YAML config `machine` field.
+   * Pre-fix, an agent_handlers `machine: mba` line in YAML caused the
    * dashboard to show `proj-neurovista@mba` even when no process was
-   * running on mba (the ghost-mba bug). Falls back to `orochi_machine` for
+   * running on mba (the ghost-mba bug). Falls back to `machine` for
    * legacy agents whose heartbeat hasn't been upgraded yet. */
-  var host = a && a.orochi_hostname ? a.orochi_hostname : a && a.orochi_machine ? a.orochi_machine : "";
+  var host = a && a.hostname ? a.hostname : a && a.machine ? a.machine : "";
   /* Always pipe the constructed "<name>@<host>" string through
    * cleanAgentName so the role-host suffix gets collapsed
    * (head-mba@mba → head@mba) AND the alias-map fires

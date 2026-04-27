@@ -161,7 +161,7 @@ async def _try_host(
     agent_name: str,
     orochi: OrochiSpec,
     token: str,
-    orochi_machine: str,
+    machine: str,
     role: str,
     channels: list[str],
 ) -> object | None:
@@ -173,9 +173,9 @@ async def _try_host(
             port=orochi.port,
             channels=channels,
             token=token,
-            orochi_machine=orochi_machine,
+            machine=machine,
             role=role,
-            agent_id=f"{agent_name}@{orochi_machine}",
+            agent_id=f"{agent_name}@{machine}",
             ws_path=orochi.ws_path,
         )
         await asyncio.wait_for(client.connect(), timeout=10)
@@ -201,7 +201,7 @@ async def _connect_loop(
         )
         return
 
-    orochi_machine = agent_labels.get("orochi_machine", platform.node())
+    machine = agent_labels.get("machine", platform.node())
     role = agent_labels.get("role", "")
     channels = orochi.channels or ["#general"]
     attempt = 0
@@ -213,7 +213,7 @@ async def _connect_loop(
         from urllib.parse import urlparse
 
         parsed = urlparse(discovered["http_url"])
-        discovered_host = parsed.orochi_hostname or ""
+        discovered_host = parsed.hostname or ""
         if discovered_host:
             # Prepend discovered host so it's tried first, keep originals as fallback
             hosts = [discovered_host] + [
@@ -249,7 +249,7 @@ async def _connect_loop(
                 agent_name,
                 orochi,
                 token,
-                orochi_machine,
+                machine,
                 role,
                 channels,
             )
@@ -267,7 +267,7 @@ async def _connect_loop(
                 status_line,
                 connected_host,
                 agent_name,
-                orochi_machine,
+                machine,
                 channels,
             )
         else:

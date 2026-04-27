@@ -1,6 +1,6 @@
 """CLI: scitex-orochi host-identity {show, init, check}.
 
-Manages the per-orochi_machine identity file used by the local-vs-remote
+Manages the per-machine identity file used by the local-vs-remote
 resolver in :mod:`scitex_orochi._host_identity`.
 """
 
@@ -23,7 +23,7 @@ from scitex_orochi._host_identity import (
 
 @click.group("host-identity")
 def host_identity() -> None:
-    """Manage this orochi_machine's identity (~/.scitex/orochi/host-identity.yaml)."""
+    """Manage this machine's identity (~/.scitex/orochi/host-identity.yaml)."""
 
 
 @host_identity.command("show")
@@ -35,7 +35,7 @@ def show(ctx: click.Context) -> None:
     payload = {
         "path": str(HOST_IDENTITY_PATH),
         "exists": HOST_IDENTITY_PATH.exists(),
-        "orochi_hostname": socket.gethostname(),
+        "hostname": socket.gethostname(),
         "fqdn": socket.getfqdn(),
         "aliases": data["aliases"],
     }
@@ -44,7 +44,7 @@ def show(ctx: click.Context) -> None:
         return
     click.echo(f"path:     {payload['path']}")
     click.echo(f"exists:   {payload['exists']}")
-    click.echo(f"orochi_hostname: {payload['orochi_hostname']}")
+    click.echo(f"hostname: {payload['hostname']}")
     click.echo(f"fqdn:     {payload['fqdn']}")
     click.echo("aliases:")
     for a in payload["aliases"]:
@@ -68,12 +68,12 @@ def init(extra_aliases: tuple[str, ...], force: bool) -> None:
         )
         sys.exit(1)
 
-    orochi_hostname = socket.gethostname()
+    hostname = socket.gethostname()
     aliases = sorted(
         {
             "localhost",
-            orochi_hostname,
-            orochi_hostname.split(".")[0],
+            hostname,
+            hostname.split(".")[0],
             socket.getfqdn(),
             *extra_aliases,
         }
@@ -81,7 +81,7 @@ def init(extra_aliases: tuple[str, ...], force: bool) -> None:
     HOST_IDENTITY_PATH.parent.mkdir(parents=True, exist_ok=True)
     body = (
         "# scitex-orochi host-identity\n"
-        "# Names that mean *this* orochi_machine. Add SSH aliases declared in\n"
+        "# Names that mean *this* machine. Add SSH aliases declared in\n"
         "# ~/.ssh/config so that `ssh <alias>` from this host short-circuits\n"
         "# to local execution instead of looping through SSH.\n"
         + yaml.safe_dump({"aliases": aliases}, sort_keys=False)
@@ -96,7 +96,7 @@ def init(extra_aliases: tuple[str, ...], force: bool) -> None:
 @click.argument("host")
 @click.pass_context
 def check(ctx: click.Context, host: str) -> None:
-    """Report whether HOST resolves as local or remote on this orochi_machine."""
+    """Report whether HOST resolves as local or remote on this machine."""
     reset_cache()
     local = is_local(host)
     if ctx.obj.get("json"):

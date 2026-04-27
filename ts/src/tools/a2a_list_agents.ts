@@ -11,7 +11,7 @@
  * ``/v1/agents/`` (sac-side AgentCard discovery) is the public
  * equivalent on the cloud side; for the MCP sidecar we prefer the hub
  * registry because it is the authoritative source of liveness +
- * workspace scoping (and the bearer orochi_model already authenticates the
+ * workspace scoping (and the bearer model already authenticates the
  * sidecar to the hub, no second token needed).
  *
  * Override via ``SCITEX_OROCHI_AGENTS_LIST_URL`` if a deployment puts

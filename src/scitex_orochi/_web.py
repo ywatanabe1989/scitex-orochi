@@ -110,7 +110,7 @@ async def handle_agents_registry(request: web.Request) -> web.Response:
 
 
 async def handle_resources(request: web.Request) -> web.Response:
-    """GET /api/resources -- latest system resource orochi_metrics for all agents."""
+    """GET /api/resources -- latest system resource metrics for all agents."""
     server: OrochiServer = request.app["orochi_server"]
     return web.json_response(server.get_resources_info())
 
@@ -184,16 +184,16 @@ async def handle_post_message(request: web.Request) -> web.Response:
 
 async def handle_config(_request: web.Request) -> web.Response:
     """GET /api/config -- dashboard configuration."""
-    from importlib.metadata import orochi_version
+    from importlib.metadata import version
 
     try:
-        ver = orochi_version("scitex-orochi")
+        ver = version("scitex-orochi")
     except Exception:
         ver = "dev"
 
     return web.json_response(
         {
-            "orochi_version": ver,
+            "version": ver,
             "ws_upstream": DASHBOARD_WS_UPSTREAM or "",
         }
     )

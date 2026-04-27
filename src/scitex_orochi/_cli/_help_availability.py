@@ -127,7 +127,7 @@ DEFAULT_PROBE_MAP: Mapping[str, ProbeKind] = {
     "deploy": ProbeKind.PURE_LOCAL,
     "stop": ProbeKind.PURE_LOCAL,
     # ── Other hub-dependent top-level commands (not renamed). ──
-    "orochi_machine": ProbeKind.HUB,
+    "machine": ProbeKind.HUB,
     "host-liveness": ProbeKind.HUB,
     "hungry-signal": ProbeKind.HUB,
     "dispatch": ProbeKind.HUB,

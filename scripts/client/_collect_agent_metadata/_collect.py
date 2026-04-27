@@ -44,7 +44,7 @@ def _build_a2a_section(agent: str) -> dict:
         "sac_a2a_observations": obs,
         "orochi_comm_state": verdict["label"],
         "orochi_comm_state_evidence": verdict["evidence"],
-        "orochi_comm_state_version": verdict["orochi_version"],
+        "orochi_comm_state_version": verdict["version"],
         # Back-compat: existing top-level scalars derived from the
         # observations. Consumers that already read these keep working.
         "sac_a2a_active_task_count": obs.get("sac_a2a_active_task_count", 0),
@@ -69,14 +69,14 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        orochi_pid, orochi_ppid, orochi_started_at, orochi_workdir, orochi_project, orochi_machine, orochi_skills_loaded,
-        orochi_runtime, orochi_version, orochi_subagent_count.
+        pid, ppid, started_at, workdir, project, machine, orochi_skills_loaded,
+        runtime, version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
     """
-    orochi_multiplexer = detect_multiplexer(agent)
-    if not orochi_multiplexer:
-        return {"agent": agent, "orochi_alive": False, "orochi_multiplexer": ""}
+    multiplexer = detect_multiplexer(agent)
+    if not multiplexer:
+        return {"agent": agent, "alive": False, "multiplexer": ""}
 
     # Pane content -- subagent count from status bar AND the last
     # non-empty visible line so the Agents tab can show what the agent
@@ -85,13 +85,13 @@ def collect(agent: str) -> dict:
     # — he wants the live tail of the pane in each card, not just the
     # JSONL-derived tool name. -J joins wrapped lines so a long
     # command isn't reported as several short fragments.
-    pane = capture_pane(agent, orochi_multiplexer)
+    pane = capture_pane(agent, multiplexer)
     orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full = (
         filter_orochi_pane_tail(pane)
     )
     orochi_subagents = parse_orochi_subagent_count(pane)
 
-    # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, orochi_model, email.
+    # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(orochi_pane_tail_block)
     statusline_orochi_context_pct = sl["statusline_orochi_context_pct"]
     orochi_quota_5h_pct = sl["orochi_quota_5h_pct"]
@@ -106,21 +106,21 @@ def collect(agent: str) -> dict:
     workspace = f"{home}/.dotfiles/src/.scitex/orochi/workspaces/{agent}"
     jsonls = find_jsonl_transcripts(workspace)
     tr = parse_transcript(jsonls)
-    orochi_model = tr["orochi_model"]
-    orochi_last_activity = tr["orochi_last_activity"]
+    model = tr["model"]
+    last_activity = tr["last_activity"]
     orochi_context_pct = tr["orochi_context_pct"]
     orochi_current_tool = tr["orochi_current_tool"]
-    orochi_started_at = tr["orochi_started_at"]
-    orochi_recent_actions = tr["orochi_recent_actions"]
+    started_at = tr["started_at"]
+    recent_actions = tr["recent_actions"]
 
-    # Process info: first claude child orochi_pid under the orochi_multiplexer session.
-    orochi_pid, orochi_ppid = find_session_pids(agent, orochi_multiplexer)
+    # Process info: first claude child pid under the multiplexer session.
+    pid, ppid = find_session_pids(agent, multiplexer)
 
     # Skills loaded + MCP servers from workspace files.
     orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
     orochi_mcp_servers = collect_orochi_mcp_servers(workspace)
-    orochi_project = agent
-    orochi_machine = resolve_machine_label()
+    project = agent
+    machine = resolve_machine_label()
 
     # CLAUDE.md head + full, .mcp.json full (todo#460 viewers).
     orochi_claude_md_head, orochi_claude_md_full = collect_orochi_claude_md(workspace)
@@ -132,9 +132,9 @@ def collect(agent: str) -> dict:
     # and mis-fire `stale` after 2 real cycles instead of 3). The
     # `agent` kwarg enables cross-cycle stagnation tracking; omit it
     # and the classifier degrades to its legacy stateless behavior.
-    # Live orochi_hostname(1) — the kernel's answer to "where is this process
+    # Live hostname(1) — the kernel's answer to "where is this process
     # running right now". This is the authoritative host-identity signal
-    # the hub's badge renderer (hostedAgentName) prefers over ``orochi_machine``.
+    # the hub's badge renderer (hostedAgentName) prefers over ``machine``.
     # Collected here so ``_build_payload`` can forward it unconditionally,
     # never letting env vars or server-side inference speak for the
     # process (lead msg#15578 root fix).
@@ -158,8 +158,8 @@ def collect(agent: str) -> dict:
     pane_verdict = derive_orochi_pane_state(orochi_pane_observations)
     orochi_pane_state = pane_verdict["label"]
     orochi_stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
-    # Contradiction check + evidence log. `orochi_alive=True` here means
-    # we successfully captured a pane from the orochi_multiplexer, which is
+    # Contradiction check + evidence log. `alive=True` here means
+    # we successfully captured a pane from the multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
     # (heartbeat fresh). When the classifier also says `stale`, that's
     # the msg#15541 contradiction — log the tmux tail so future
@@ -174,20 +174,20 @@ def collect(agent: str) -> dict:
             tmux_tail=pane,
         )
 
-    # If the most recent assistant turn carried no real orochi_model label
+    # If the most recent assistant turn carried no real model label
     # (empty or a <synthetic>-style placeholder from compacted
-    # summaries), fall back to the env var the orochi_runtime set at spawn.
-    # The env is fetched from the claude process's own /proc/<orochi_pid>/environ
-    # (the push script's own environment does NOT carry per-agent orochi_model
-    # — each agent has its own orochi_model in its own process env).
+    # summaries), fall back to the env var the runtime set at spawn.
+    # The env is fetched from the claude process's own /proc/<pid>/environ
+    # (the push script's own environment does NOT carry per-agent model
+    # — each agent has its own model in its own process env).
     resolved_model = (
-        orochi_model
-        if orochi_model and not orochi_model.startswith("<")
-        # Linux-only: peek at /proc/<orochi_pid>/environ for the real
-        # orochi_model env the orochi_runtime set at spawn.
+        model
+        if model and not model.startswith("<")
+        # Linux-only: peek at /proc/<pid>/environ for the real
+        # model env the runtime set at spawn.
         else (
             _read_process_env(
-                orochi_pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
+                pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
             )
             # Darwin fallback: /proc doesn't exist. Check the pusher's
             # own env — on mba the tmux launcher exports
@@ -197,14 +197,14 @@ def collect(agent: str) -> dict:
             # head-mba detail card, ywatanabe msg 2026-04-18 20:09).
             or os.environ.get("SCITEX_AGENT_CONTAINER_MODEL", "").strip()
             or os.environ.get("SCITEX_OROCHI_MODEL", "").strip()
-            or orochi_model
+            or model
         )
     )
 
     return {
         "agent": agent,
-        "orochi_alive": True,
-        "orochi_multiplexer": orochi_multiplexer,
+        "alive": True,
+        "multiplexer": multiplexer,
         "orochi_subagents": orochi_subagents,
         "orochi_subagent_count": orochi_subagents,
         "orochi_context_pct": (
@@ -236,21 +236,21 @@ def collect(agent: str) -> dict:
         # counter, orochi_pane_state.py classifier) can compute "did the agent
         # actually do anything?" without being fooled by inbound chatter.
         "orochi_pane_tail_block_clean": orochi_pane_tail_block_clean,
-        "orochi_recent_actions": orochi_recent_actions,
-        "orochi_last_activity": orochi_last_activity,
-        "orochi_model": resolved_model,
-        "orochi_pid": orochi_pid,
-        "orochi_ppid": orochi_ppid,
-        "orochi_started_at": orochi_started_at,
-        "orochi_workdir": workspace,
-        "orochi_project": orochi_project,
-        "orochi_machine": orochi_machine,
-        # Live orochi_hostname(1) — see the comment above live_hostname for why
-        # we send this unconditionally. The hub stores this as ``orochi_hostname``
-        # distinct from ``orochi_machine`` (YAML label) and
+        "recent_actions": recent_actions,
+        "last_activity": last_activity,
+        "model": resolved_model,
+        "pid": pid,
+        "ppid": ppid,
+        "started_at": started_at,
+        "workdir": workspace,
+        "project": project,
+        "machine": machine,
+        # Live hostname(1) — see the comment above live_hostname for why
+        # we send this unconditionally. The hub stores this as ``hostname``
+        # distinct from ``machine`` (YAML label) and
         # ``orochi_hostname_canonical`` (FQDN).
-        "orochi_hostname": live_hostname,
-        # todo#55: canonical FQDN for display next to the short orochi_machine
+        "hostname": live_hostname,
+        # todo#55: canonical FQDN for display next to the short machine
         # label in the dashboard.
         "orochi_hostname_canonical": _resolve_canonical_hostname(),
         "orochi_skills_loaded": orochi_skills_loaded,
@@ -272,13 +272,13 @@ def collect(agent: str) -> dict:
         #                                 marker hits, idle chevron, etc.)
         #   `orochi_pane_state`               — Layer B v3 label (back-compat)
         #   `orochi_pane_state_evidence`      — Layer B reasoning string
-        #   `orochi_pane_state_version`       — schema orochi_version for the verdict
+        #   `orochi_pane_state_version`       — schema version for the verdict
         # Consumers can read just `orochi_pane_state` (legacy), or the full
         # observation dict to render their own classifications.
         "orochi_pane_observations": orochi_pane_observations,
         "orochi_pane_state": orochi_pane_state,
         "orochi_pane_state_evidence": pane_verdict["evidence"],
-        "orochi_pane_state_version": pane_verdict["orochi_version"],
+        "orochi_pane_state_version": pane_verdict["version"],
         "orochi_stuck_prompt_text": orochi_stuck_prompt_text,
         "orochi_classifier_note": orochi_classifier_note,
         # A2A state pipeline (Layer A → Layer B):
@@ -287,7 +287,7 @@ def collect(agent: str) -> dict:
         #                           endpoint reachability, etc.)
         #   `orochi_comm_state`          — Layer B v1 verdict label
         #   `orochi_comm_state_evidence` — Layer B reasoning string
-        #   `orochi_comm_state_version`  — schema orochi_version
+        #   `orochi_comm_state_version`  — schema version
         # Plus three back-compat top-level fields derived from the
         # observations so existing consumers don't need to change yet.
         **_build_a2a_section(agent),
@@ -295,10 +295,10 @@ def collect(agent: str) -> dict:
         # from scitex-agent-container. Unpacked as top-level keys so
         # push_all()'s whitelist can forward each one verbatim.
         **_collect_hook_events(agent),
-        "orochi_runtime": "claude-code",
-        "orochi_version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
+        "runtime": "claude-code",
+        "version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
         # Machine resource snapshot (todo#329 — Machines tab populate).
-        "orochi_metrics": collect_machine_metrics(),
+        "metrics": collect_machine_metrics(),
         # SLURM compute snapshot (todo#59). None on non-HPC hosts so the
         # Machines tab can hide the SLURM card cleanly.
         "orochi_slurm": collect_orochi_slurm_status(),

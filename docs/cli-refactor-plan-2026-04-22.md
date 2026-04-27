@@ -77,8 +77,8 @@ Commands dir: `src/scitex_orochi/_cli/commands/*.py`.
 | 46 | `cron run` | noun-verb | `NAME` | yes | yes | `cron_cmd.py` |
 | 47 | `cron status` | noun-verb | `--job` | yes | no | `cron_cmd.py` |
 | 48 | `cron reload` | noun-verb | — | yes | no | `cron_cmd.py` |
-| 49 | `orochi_machine heartbeat send` | noun-verb | — | yes | no | `machine_cmd.py` |
-| 50 | `orochi_machine heartbeat status` | noun-verb | — | yes | no | `machine_cmd.py` |
+| 49 | `machine heartbeat send` | noun-verb | — | yes | no | `machine_cmd.py` |
+| 50 | `machine heartbeat status` | noun-verb | — | yes | no | `machine_cmd.py` |
 | 51 | `host-liveness probe` | noun-verb | `--dry-run --yes` | yes | yes | `host_liveness_cmd.py` |
 | 52 | `hungry-signal check` | noun-verb | `--dry-run --yes` | yes | yes | `hungry_signal_cmd.py` |
 | 53 | `chrome-watchdog check` | noun-verb | `--threshold` | yes | no | `chrome_watchdog_cmd.py` |
@@ -87,7 +87,7 @@ Commands dir: `src/scitex_orochi/_cli/commands/*.py`.
 
 Total: 55 leaf subcommands (44 top-level entries in `_main.py`; 55 counting
 already-grouped leaves under `docs`, `skills`, `cron`, `launch`, `deploy`,
-`report`, `host-identity`, `orochi_machine heartbeat`, `host-liveness`,
+`report`, `host-identity`, `machine heartbeat`, `host-liveness`,
 `hungry-signal`, `chrome-watchdog`, `disk`). The 44 vs 54 spec in msg#16500
 counted top-level registrations; this table counts every leaf.
 
@@ -115,7 +115,7 @@ Dispatcher: `src/scitex_agent_container/cli_pkg/_main.py`.
 | 12 | `list-python-apis` | verb-noun | `-v` | no | `info_cmds.py` |
 | 13 | `check` | verb | `CONFIG_PATH` | no | `build_cmds.py` |
 | 14 | `validate` | verb | `CONFIG_PATH` | no | `build_cmds.py` |
-| 15 | `build` | verb | `--orochi_runtime` | no | `build_cmds.py` |
+| 15 | `build` | verb | `--runtime` | no | `build_cmds.py` |
 | 16 | `snapshot` | verb | `--agent` | yes | `snapshot_cmds.py` |
 | 17 | `hook-event` | verb-noun | `KIND` | no | `hook_cmds.py` |
 | 18 | `render-sbatch` | verb-noun | `NAME_OR_PATH` | no | `render_cmds.py` |
@@ -169,10 +169,10 @@ No other CLI surfaces found in scitex-orochi:
 | *(new)* | `message react add` | — | new 2026-04-22 |
 | *(new)* | `message react remove` | — | new 2026-04-22 |
 | `listen` | `message listen` (or keep top-level?) | yes (3 mo) | **decision ask** |
-| `heartbeat-push` | `orochi_machine heartbeat send` (already exists at #49) | merge: keep `orochi_machine heartbeat send` canonical; alias `heartbeat-push` | deprecated 2026-04-22 |
-| `orochi_machine heartbeat send` | `orochi_machine heartbeat send` | — (already canonical) | unchanged |
-| `orochi_machine heartbeat status` | `orochi_machine heartbeat status` | — | unchanged |
-| *(new)* | `orochi_machine resources show` | — | new 2026-04-22 |
+| `heartbeat-push` | `machine heartbeat send` (already exists at #49) | merge: keep `machine heartbeat send` canonical; alias `heartbeat-push` | deprecated 2026-04-22 |
+| `machine heartbeat send` | `machine heartbeat send` | — (already canonical) | unchanged |
+| `machine heartbeat status` | `machine heartbeat status` | — | unchanged |
+| *(new)* | `machine resources show` | — | new 2026-04-22 |
 | `cron start` | `cron start` | — | unchanged |
 | `cron stop` | `cron stop` | — | unchanged |
 | `cron list` | `cron list` | — | unchanged |
@@ -226,11 +226,11 @@ No other CLI surfaces found in scitex-orochi:
   (`doctor`, `init`, `fleet`, `docs {list,get}`, `skills {list,get,export}`,
   `launch {master,head,all}`, `deploy {stable,dev,status}`,
   `report {activity,stuck,heartbeat}`, `host-identity {show,init,check}`,
-  `cron {start,stop,list,run,status,reload}`, `orochi_machine heartbeat {send,status}`,
+  `cron {start,stop,list,run,status,reload}`, `machine heartbeat {send,status}`,
   `host-liveness probe`, `hungry-signal check`, `chrome-watchdog check`,
   `disk {reaper-dry-run,pressure-probe}`)
 - **New (added in this refactor):** 10
-  (`message react add`, `message react remove`, `orochi_machine resources show`,
+  (`message react add`, `message react remove`, `machine resources show`,
   `dispatch status`, `dispatch history`, `todo list`, `todo next`,
   `todo triage`, `push send`, `server status`)
 - **Pending decision:** 2 (`listen`, `login` — keep top-level vs move)
@@ -364,7 +364,7 @@ confirmed by file-path inspection. No conflict expected.
 hyphenated forms (lines 30, 37, 45, 52, 59). These already match the
 `heartbeat-push`, `host-liveness probe`, `hungry-signal check`,
 `chrome-watchdog check`, `disk pressure-probe` etc. Of these, only
-`heartbeat-push` becomes an alias (→ `orochi_machine heartbeat send`); the rest
+`heartbeat-push` becomes an alias (→ `machine heartbeat send`); the rest
 survive unchanged. Mitigation: update the example in the **same** PR
 that deprecates `heartbeat-push` (PR-D).
 
@@ -517,7 +517,7 @@ next to each subcommand that is currently reachable.
 ```
 scitex-orochi --help:
   agent      Launch / control agents           (Available Now)
-  orochi_machine    Heartbeat, probe, resources       (Available Now)
+  machine    Heartbeat, probe, resources       (Available Now)
   cron       Schedule daemon                   (Available Now)
   dispatch   Auto-dispatch read-only           (Available Now)
   todo       Todo listing and triage
@@ -585,7 +585,7 @@ avoids partial-state regressions.
 Force `<noun> <verb>` for everything **except**:
 - `-h` / `--help`
 - `--help-recursive`
-- `--orochi_version`
+- `--version`
 - `--json` (global flag)
 - `mcp start` (keep flat — external contract with MCP client
   configs that reference this literal path)

@@ -88,24 +88,24 @@ async def test_mention_routing(orochi_server):
     uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a, websockets.connect(uri) as ws_b:
-        # Agent A subscribes to #orochi_project-x only
-        await _register(ws_a, "agent-a", ["#orochi_project-x"])
+        # Agent A subscribes to #project-x only
+        await _register(ws_a, "agent-a", ["#project-x"])
         # Agent B subscribes to #general only
         await _register(ws_b, "agent-b", ["#general"])
 
-        # Agent A sends to #orochi_project-x with @agent-b mention
+        # Agent A sends to #project-x with @agent-b mention
         msg = Message(
             type="message",
             sender="agent-a",
             payload={
-                "channel": "#orochi_project-x",
+                "channel": "#project-x",
                 "content": "@agent-b please review",
                 "mentions": ["agent-b"],
             },
         )
         await ws_a.send(msg.to_json())
 
-        # Agent B should receive it despite not being in #orochi_project-x
+        # Agent B should receive it despite not being in #project-x
         recv_raw = await asyncio.wait_for(ws_b.recv(), timeout=2.0)
         recv = Message.from_json(recv_raw)
         assert recv.type == "message"
@@ -235,7 +235,7 @@ async def test_auth_rejection(tmp_path, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_extended_agent_fields(orochi_server):
-    """Register with orochi_machine and role fields, verify they are stored."""
+    """Register with machine and role fields, verify they are stored."""
     uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
@@ -244,7 +244,7 @@ async def test_extended_agent_fields(orochi_server):
             sender="agent-x",
             payload={
                 "channels": ["#general"],
-                "orochi_machine": "gpu-server-01",
+                "machine": "gpu-server-01",
                 "role": "worker",
             },
         )
@@ -254,7 +254,7 @@ async def test_extended_agent_fields(orochi_server):
         assert ack.type == "ack"
 
         agent = orochi_server.agents["agent-x"]
-        assert agent.orochi_machine == "gpu-server-01"
+        assert agent.machine == "gpu-server-01"
         assert agent.role == "worker"
         assert agent.status == "online"
         assert agent.registered_at != ""
@@ -271,7 +271,7 @@ async def test_get_agents_info(orochi_server):
             sender="info-agent",
             payload={
                 "channels": ["#general"],
-                "orochi_machine": "nas-01",
+                "machine": "nas-01",
                 "role": "builder",
             },
         )
@@ -281,7 +281,7 @@ async def test_get_agents_info(orochi_server):
         info = orochi_server.get_agents_info()
         assert len(info) == 1
         assert info[0]["name"] == "info-agent"
-        assert info[0]["orochi_machine"] == "nas-01"
+        assert info[0]["machine"] == "nas-01"
         assert info[0]["role"] == "builder"
         assert "channels" in info[0]
 

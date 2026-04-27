@@ -16,7 +16,7 @@ function _topoBuildPoolHtml(visible, channels) {
 }
 
 /* Legacy pool builder — kept for reference in case a future change
- * wants the in-canvas pool back. Never invoked from orochi_runtime because
+ * wants the in-canvas pool back. Never invoked from runtime because
  * _topoBuildPoolHtml above short-circuits. */
 function _topoBuildPoolHtmlLegacy(visible, channels) {
   /* Left-side pool — all agents and all channels as chips so the user
@@ -39,7 +39,7 @@ function _topoBuildPoolHtmlLegacy(visible, channels) {
        * agent row and the canvas node. Replaces the ad-hoc "🤖" glyph
        * and the raw a.name tooltip with the unified agentIdentity()
        * cascade (image > emoji > text > snake SVG) and the
-       * "<id> (<orochi_machine>)" hover text. */
+       * "<id> (<machine>)" hover text. */
       var _ident =
         typeof agentIdentity === "function"
           ? agentIdentity(a)

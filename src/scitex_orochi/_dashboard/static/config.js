@@ -3,7 +3,7 @@
  * Sets:
  *   window.__orochiWsUpstream  -- WS URL override (dev -> stable sync)
  *   window.__orochiApiUpstream -- REST URL override (dev -> stable sends)
- *   window.__orochiVersion     -- package orochi_version for display
+ *   window.__orochiVersion     -- package version for display
  *   window.__orochiToken       -- dashboard token for WS + REST auth
  */
 (function () {
@@ -17,10 +17,10 @@
         window.__orochiWsUpstream = cfg.ws_upstream;
         window.__orochiApiUpstream = cfg.ws_upstream.replace(/\/$/, "");
       }
-      if (cfg.orochi_version) {
-        window.__orochiVersion = cfg.orochi_version;
-        var el = document.getElementById("orochi-orochi_version");
-        if (el) el.textContent = "v" + cfg.orochi_version;
+      if (cfg.version) {
+        window.__orochiVersion = cfg.version;
+        var el = document.getElementById("orochi-version");
+        if (el) el.textContent = "v" + cfg.version;
       }
       if (cfg.dashboard_token) {
         window.__orochiToken = cfg.dashboard_token;

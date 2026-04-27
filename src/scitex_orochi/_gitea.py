@@ -59,9 +59,9 @@ class GiteaClient:
     # -- Public API methods --
 
     async def get_version(self) -> str:
-        """Return the Gitea server orochi_version string."""
-        data = await self._request("GET", "/orochi_version")
-        return data.get("orochi_version", "")
+        """Return the Gitea server version string."""
+        data = await self._request("GET", "/version")
+        return data.get("version", "")
 
     async def list_repos(self, org: str = "") -> list[dict]:
         """List repositories.  If *org* is given, list that org's repos."""

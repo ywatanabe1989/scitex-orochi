@@ -9,12 +9,12 @@ metadata:
   labels:
     role: head
     team: orochi
-    orochi_machine: CHANGEME
+    machine: CHANGEME
     capabilities: development,testing,git
 spec:
-  orochi_runtime: claude-code
-  orochi_model: sonnet
-  orochi_workdir: ~/proj
+  runtime: claude-code
+  model: sonnet
+  workdir: ~/proj
 
   claude:
     channels: []
@@ -53,7 +53,7 @@ spec:
     enabled: true
     interval: 60
     timeout: 5
-    method: orochi_multiplexer-orochi_alive
+    method: multiplexer-alive
 
   restart:
     policy: never

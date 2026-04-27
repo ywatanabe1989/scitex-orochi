@@ -203,7 +203,7 @@ function _topoPoolSelectRange(targetChip) {
 function _topoPoolMemorySnapshot() {
   /* Sidebar filter state: raw #filter-input text + parsed activeTags.
    * Raw text captures is:<flag> tokens and free-form search words;
-   * activeTags captures the agent/host/channel/label/orochi_project chips
+   * activeTags captures the agent/host/channel/label/project chips
    * rendered as pill tokens. Both are needed because the two stores
    * diverge by design (todo#72). */
   var input = null;
@@ -462,7 +462,7 @@ function _topoPoolApplyCanvasFilter(root) {
   /* Compute the neighborhood: selected entities + all direct neighbors
    * reachable through a subscribed edge. We derive neighbors from edge
    * endpoints already in the DOM so we don't need the agent/channel
-   * data orochi_model here. */
+   * data model here. */
   var keepA = Object.create(null);
   var keepC = Object.create(null);
   Object.keys(selA).forEach(function (n) {

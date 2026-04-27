@@ -145,18 +145,18 @@ def set_health(
             pass
 
 
-def update_heartbeat(name: str, orochi_metrics: dict | None = None) -> None:
-    """Update heartbeat timestamp and optional orochi_metrics.
+def update_heartbeat(name: str, metrics: dict | None = None) -> None:
+    """Update heartbeat timestamp and optional metrics.
 
     todo#272: after the timestamp/metric write, run the quota-pressure
-    state orochi_machine for this agent. The check reads the quota fields that
+    state machine for this agent. The check reads the quota fields that
     ``register_agent()`` just wrote (``quota_5h_used_pct`` / ``quota_7d_used_pct``
     + reset timestamps + prior state) and posts a threshold-crossing
     message to ``#progress`` / ``#escalation`` / ``#ywatanabe`` when a
     window crosses the warn / escalate bands. Best-effort — the check
     never raises into the heartbeat hot path.
 
-    msg#16388: after quota pressure, run the auto-dispatch state orochi_machine
+    msg#16388: after quota pressure, run the auto-dispatch state machine
     for ``head-*`` agents. ``check_agent_auto_dispatch()`` reads
     ``orochi_subagent_count`` (just written by the heartbeat handler via
     ``set_orochi_subagent_count``) and maintains a per-head idle streak + 15min
@@ -167,8 +167,8 @@ def update_heartbeat(name: str, orochi_metrics: dict | None = None) -> None:
         if name in _agents:
             _agents[name]["last_heartbeat"] = time.time()
             _agents[name]["status"] = "online"
-            if orochi_metrics:
-                _agents[name]["orochi_metrics"] = orochi_metrics
+            if metrics:
+                _agents[name]["metrics"] = metrics
             has_agent = True
         else:
             has_agent = False
@@ -246,7 +246,7 @@ def mark_echo_alive(name: str) -> None:
     driven by the hub→agent nonce round-trip in ``_hub_echo_loop`` /
     ``handle_echo_pong``. If the agent's MCP-client could not reply to
     the nonce (e.g. the sidecar was down) the LED stayed amber / red
-    even though the agent was clearly orochi_alive — we had just received a
+    even though the agent was clearly alive — we had just received a
     chat message from it.
 
     This setter is called from ``handle_agent_message`` when a

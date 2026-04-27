@@ -55,7 +55,7 @@ scitex-orochi heartbeat-push head-mba \
 scitex-orochi heartbeat-push head-mba --loop 30 --verbose
 ```
 
-This wraps `scitex-agent-container status <name> --json` and POSTs the result (pane text, pane state, tool/prompt ring buffers, quota, orochi_metrics) to `/api/agents/register/`. The CLI adds only Orochi-specific fields (workspace token, optional channel override); every other field comes verbatim from `scitex-agent-container`.
+This wraps `scitex-agent-container status <name> --json` and POSTs the result (pane text, pane state, tool/prompt ring buffers, quota, metrics) to `/api/agents/register/`. The CLI adds only Orochi-specific fields (workspace token, optional channel override); every other field comes verbatim from `scitex-agent-container`.
 
 ## Functional Heartbeat
 
@@ -68,7 +68,7 @@ Pane-text scraping alone cannot distinguish "LLM genuinely working" from "TUI fr
 | `sac_hooks_last_action_at` + `sac_hooks_last_action_name` + `sac_hooks_last_action_outcome` + `sac_hooks_last_action_elapsed_s` | Newest PaneAction from the container's `actions.db` (e.g. `nonce-probe`, `compact`). `sac_hooks_last_action_outcome` is one of `success` / `completion_timeout` / `precondition_fail` / `send_error` / `skipped_by_policy`. Renders as "Last action: 12s ago (nonce-probe success, 3.2s)". |
 | `action_counts` + `sac_hooks_p95_elapsed_s_by_action` | Per-action rollups — how many times each PaneAction ran and the p95 elapsed seconds, useful for spotting slow or flapping actions. |
 
-End-to-end pipe: `scitex-agent-container status --json` -> `scitex-orochi heartbeat-push` -> `/api/agents/register/` -> `AgentRegistry` -> `/api/agents/<name>/detail/` -> dashboard detail-pane meta grid. An agent with fresh `sac_hooks_last_tool_at` but stale `sac_hooks_last_mcp_tool_at` is orochi_alive but has a broken MCP route; the inverse suggests the hook emitter is stuck. A stale `sac_hooks_last_action_at` with fresh tool/MCP fields means the container-side action subsystem (nonce probe, compact, etc.) has stopped firing even though the LLM is still working.
+End-to-end pipe: `scitex-agent-container status --json` -> `scitex-orochi heartbeat-push` -> `/api/agents/register/` -> `AgentRegistry` -> `/api/agents/<name>/detail/` -> dashboard detail-pane meta grid. An agent with fresh `sac_hooks_last_tool_at` but stale `sac_hooks_last_mcp_tool_at` is alive but has a broken MCP route; the inverse suggests the hook emitter is stuck. A stale `sac_hooks_last_action_at` with fresh tool/MCP fields means the container-side action subsystem (nonce probe, compact, etc.) has stopped firing even though the LLM is still working.
 
 > Naming note: `sac_hooks_last_action_name` is the **PaneAction label** (nonce-probe / compact / ...) from `actions.db`. It is distinct from the pre-existing `last_action` field, which is a unix-time liveness timestamp written by `mark_activity` on any inbound agent event. The two must not be conflated.
 
@@ -87,7 +87,7 @@ The MCP channel sidecar bridges Claude Code to the Orochi hub. Configure it in y
       "args": ["run", "/path/to/scitex-orochi/ts/mcp_channel.ts"],
       "env": {
         "SCITEX_OROCHI_TOKEN": "wks_eb1f590b...",
-        "SCITEX_OROCHI_AGENT": "head@my-orochi_machine",
+        "SCITEX_OROCHI_AGENT": "head@my-machine",
         "SCITEX_OROCHI_HOST": "127.0.0.1",
         "SCITEX_OROCHI_PORT": "9559"
       }
@@ -96,7 +96,7 @@ The MCP channel sidecar bridges Claude Code to the Orochi hub. Configure it in y
 }
 ```
 
-Agents no longer declare channel membership via env var. At orochi_runtime, use the `subscribe` / `unsubscribe` / `channel_info` MCP tools, or let an admin manage membership via the web UI (`+` / `x` buttons) or REST (`POST` / `DELETE /api/channel-members/`). The previous `SCITEX_OROCHI_CHANNELS` env var has been removed.
+Agents no longer declare channel membership via env var. At runtime, use the `subscribe` / `unsubscribe` / `channel_info` MCP tools, or let an admin manage membership via the web UI (`+` / `x` buttons) or REST (`POST` / `DELETE /api/channel-members/`). The previous `SCITEX_OROCHI_CHANNELS` env var has been removed.
 
 ```bash
 # Install TypeScript dependencies

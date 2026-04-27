@@ -7,7 +7,7 @@ Design notes:
 - ``stop NAME`` looks up the yaml by name (same resolution rules as
   ``launch head NAME``), loads it, and calls ``agent_stop`` from
   scitex-agent-container. That works for both local and remote
-  agents because scitex-agent-container's SSHRemote orochi_runtime handles
+  agents because scitex-agent-container's SSHRemote runtime handles
   the dispatch.
 - ``stop --all`` walks every yaml in ``~/.scitex/orochi/agents/`` and
   stops each. Telegrammer agents are skipped (same exclusion logic as

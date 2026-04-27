@@ -13,7 +13,7 @@ function parseFilterInput(raw) {
   var tags = [];
   var textParts = [];
   parts.forEach(function (p) {
-    var m = p.match(/^(agent|host|channel|label|orochi_project):(.+)$/i);
+    var m = p.match(/^(agent|host|channel|label|project):(.+)$/i);
     if (m) {
       tags.push({ type: m[1].toLowerCase(), value: m[2] });
     } else if (p) {

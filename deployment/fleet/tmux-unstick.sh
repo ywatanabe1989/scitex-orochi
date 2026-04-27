@@ -87,7 +87,7 @@
 #                                  keys (default 0; overridden to 1
 #                                  during the safe-start window)
 #
-# Schema orochi_version: scitex-orochi/tmux-unstick/v2 (bumped from v1 POC).
+# Schema version: scitex-orochi/tmux-unstick/v2 (bumped from v1 POC).
 # -----------------------------------------------------------------------------
 
 set -u
@@ -111,7 +111,7 @@ if [[ "$MODE" == "--dry-run-once" ]]; then
 fi
 
 SELF_PANE_ID="${TMUX_PANE:-}"
-HOST="$(orochi_hostname -s)"
+HOST="$(hostname -s)"
 BOOT_EPOCH="$(date +%s)"
 
 mkdir -p "$(dirname "$LOG")" "$STATE_DIR"
@@ -333,7 +333,7 @@ case "$MODE" in
     ;;
   --loop)
     emit "loop-start" "__sweep__" "" "null" "false" \
-      "{\"orochi_pid\":$$,\"interval_sec\":$INTERVAL,\"stability_sec\":$STABILITY_SEC,\"safe_start_sec\":$SAFE_START_SEC,\"self_pane\":$(printf '%s' "$SELF_PANE_ID" | json_escape)}"
+      "{\"pid\":$$,\"interval_sec\":$INTERVAL,\"stability_sec\":$STABILITY_SEC,\"safe_start_sec\":$SAFE_START_SEC,\"self_pane\":$(printf '%s' "$SELF_PANE_ID" | json_escape)}"
     tick=0
     while true; do
       sweep_once || true
@@ -341,7 +341,7 @@ case "$MODE" in
       if (( HEARTBEAT_EVERY > 0 && tick % HEARTBEAT_EVERY == 0 )); then
         n_panes=$(tmux list-panes -a 2>/dev/null | wc -l)
         emit "heartbeat" "__sweep__" "" "null" "false" \
-          "{\"orochi_pid\":$$,\"tick\":$tick,\"n_panes\":$n_panes}"
+          "{\"pid\":$$,\"tick\":$tick,\"n_panes\":$n_panes}"
       fi
       sleep "$INTERVAL"
     done

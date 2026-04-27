@@ -96,7 +96,7 @@ def test_collect_orochi_slurm_metrics_single_node_cluster():
     assert out["orochi_slurm_running"] == 6
     assert out["orochi_slurm_pending"] == 0
 
-    # Override propagates into the scalar "orochi_machine" keys used by the UI.
+    # Override propagates into the scalar "machine" keys used by the UI.
     assert out["cpu_count"] == 12
     assert out["mem_total_mb"] == 64038
     assert out["mem_free_mb"] == 826
@@ -189,27 +189,27 @@ def test_collect_metrics_merges_orochi_slurm_override():
         "orochi_slurm_pending": 1,
     }
     with patch("scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics", return_value=fake_orochi_slurm):
-        orochi_metrics = _resources.collect_metrics()
+        metrics = _resources.collect_metrics()
 
     # Slurm aggregates overrode the /proc-derived scalars
-    assert orochi_metrics["cpu_count"] == 100
-    assert orochi_metrics["mem_total_mb"] == 500_000
-    assert orochi_metrics["resource_source"] == "orochi_slurm"
-    assert orochi_metrics["orochi_slurm_total_jobs"] == 3
+    assert metrics["cpu_count"] == 100
+    assert metrics["mem_total_mb"] == 500_000
+    assert metrics["resource_source"] == "orochi_slurm"
+    assert metrics["orochi_slurm_total_jobs"] == 3
     # Disk is NOT touched by orochi_slurm — local /proc value still present
     # (skip assertion on exact value; just require key exists when available)
 
 
 def test_collect_metrics_no_orochi_slurm_returns_local_only():
-    """On a non-orochi_slurm host (empty orochi_slurm dict), local orochi_metrics stand alone."""
+    """On a non-orochi_slurm host (empty orochi_slurm dict), local metrics stand alone."""
     with patch("scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics", return_value={}):
-        orochi_metrics = _resources.collect_metrics()
+        metrics = _resources.collect_metrics()
 
-    assert "resource_source" not in orochi_metrics
-    assert "cluster_nodes" not in orochi_metrics
-    assert "orochi_slurm_total_jobs" not in orochi_metrics
-    # Local orochi_metrics still collected (at least cpu_count should be present)
-    assert "cpu_count" in orochi_metrics
+    assert "resource_source" not in metrics
+    assert "cluster_nodes" not in metrics
+    assert "orochi_slurm_total_jobs" not in metrics
+    # Local metrics still collected (at least cpu_count should be present)
+    assert "cpu_count" in metrics
 
 
 def test_collect_metrics_orochi_slurm_exception_swallowed():
@@ -218,6 +218,6 @@ def test_collect_metrics_orochi_slurm_exception_swallowed():
         "scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics",
         side_effect=RuntimeError("boom"),
     ):
-        orochi_metrics = _resources.collect_metrics()
-    assert "cpu_count" in orochi_metrics  # local path still ran
-    assert "resource_source" not in orochi_metrics
+        metrics = _resources.collect_metrics()
+    assert "cpu_count" in metrics  # local path still ran
+    assert "resource_source" not in metrics

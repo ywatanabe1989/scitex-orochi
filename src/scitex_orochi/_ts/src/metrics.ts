@@ -1,5 +1,5 @@
 /**
- * System orochi_metrics collection for heartbeat payloads.
+ * System metrics collection for heartbeat payloads.
  */
 import { cpus, freemem, totalmem, loadavg } from "os";
 import { execSync, execFileSync } from "child_process";
@@ -45,7 +45,7 @@ export function getSystemMetrics() {
 
   return {
     cpu_count: cpuInfo.length,
-    cpu_model: cpuInfo[0]?.orochi_model || "unknown",
+    cpu_model: cpuInfo[0]?.model || "unknown",
     load_avg_1m: load[0],
     load_avg_5m: load[1],
     load_avg_15m: load[2],

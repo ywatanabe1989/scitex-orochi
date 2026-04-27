@@ -58,11 +58,11 @@ if [[ -x /opt/homebrew/bin/brew ]] && ! command -v node >/dev/null 2>&1; then
     eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
 fi
 
-# -- 1. Canonical orochi_hostname ----------------------------------------------------
-# Resolution order (via shared/scripts/resolve-orochi_hostname helper):
+# -- 1. Canonical hostname ----------------------------------------------------
+# Resolution order (via shared/scripts/resolve-hostname helper):
 #   1. $SCITEX_OROCHI_HOSTNAME env var (manual override)
-#   2. hostname_aliases[$(orochi_hostname -s)] from shared/config.yaml
-#   3. $(orochi_hostname -s) itself (identity fallback)
+#   2. hostname_aliases[$(hostname -s)] from shared/config.yaml
+#   3. $(hostname -s) itself (identity fallback)
 
 # -- Script root discovery ---------------------------------------------------
 # Resolve this script's own dir (install/), then walk up to scripts/client.
@@ -75,12 +75,12 @@ SCRIPTS_ROOT="$(cd "${_BOOTSTRAP_DIR}/.." && pwd)"
 DOTFILES_ROOT="${HOME}/.dotfiles/src/.scitex/orochi"
 DEPLOY_ROOT="${HOME}/.scitex/orochi"
 
-HOST="$("${SCRIPTS_ROOT}/resolve-orochi_hostname" 2>/dev/null || true)"
+HOST="$("${SCRIPTS_ROOT}/resolve-hostname" 2>/dev/null || true)"
 if [[ -z "$HOST" ]]; then
-    HOST="${SCITEX_OROCHI_HOSTNAME:-$(orochi_hostname -s)}"
+    HOST="${SCITEX_OROCHI_HOSTNAME:-$(hostname -s)}"
 fi
 if [[ -z "$HOST" ]]; then
-    err "could not resolve orochi_hostname"
+    err "could not resolve hostname"
     exit 1
 fi
 log "canonical host: $HOST"
@@ -91,27 +91,27 @@ if [[ ! -d "$DOTFILES_ROOT" ]]; then
 fi
 mkdir -p "$DEPLOY_ROOT"
 
-# Runtime dirs live under $DEPLOY_ROOT/orochi_runtime/ (per 2026-04-17 layout). Each
+# Runtime dirs live under $DEPLOY_ROOT/runtime/ (per 2026-04-17 layout). Each
 # host regenerates these; contents are never committed. Created empty so
 # first-time bootstrap doesn't fail when an agent tries to write a log
 # before any heartbeat has landed. Agent *definitions* live in shared/agents/
 # or <host>/agents/ (tracked source); they are NOT created here.
 DEPLOY_RUNTIME_SUBDIRS=(
-    orochi_runtime
-    orochi_runtime/workspaces
-    orochi_runtime/logs
-    orochi_runtime/quota-telemetry
-    orochi_runtime/tmux-unstick-state
-    orochi_runtime/fleet-watch
-    orochi_runtime/fleet-watch/orochi_machine-info
-    orochi_runtime/fleet-watch/ping
-    orochi_runtime/fleet-watch/connection
-    orochi_runtime/fleet-watch/process-info
+    runtime
+    runtime/workspaces
+    runtime/logs
+    runtime/quota-telemetry
+    runtime/tmux-unstick-state
+    runtime/fleet-watch
+    runtime/fleet-watch/machine-info
+    runtime/fleet-watch/ping
+    runtime/fleet-watch/connection
+    runtime/fleet-watch/process-info
 )
 
-# -- 2. Deploy-side orochi_runtime dirs ---------------------------------------------
+# -- 2. Deploy-side runtime dirs ---------------------------------------------
 
-log "ensuring deployed orochi_runtime dirs under $DEPLOY_ROOT/orochi_runtime/"
+log "ensuring deployed runtime dirs under $DEPLOY_ROOT/runtime/"
 for s in "${DEPLOY_RUNTIME_SUBDIRS[@]}"; do
     if [[ ! -d "$DEPLOY_ROOT/$s" ]]; then
         mkdir -p "$DEPLOY_ROOT/$s"
@@ -119,8 +119,8 @@ for s in "${DEPLOY_RUNTIME_SUBDIRS[@]}"; do
     fi
 done
 
-# -- 2a. Legacy-path cleanup (pre-orochi_runtime/ layout) ---------------------------
-# Earlier bootstrap versions created flat top-level orochi_runtime dirs
+# -- 2a. Legacy-path cleanup (pre-runtime/ layout) ---------------------------
+# Earlier bootstrap versions created flat top-level runtime dirs
 # (~/.scitex/orochi/{logs,fleet-watch,workspaces,quota-telemetry,tmux-unstick-state}).
 # The canonical source-side symlinks pointing at these have been removed, but
 # empty top-level real dirs may still exist from prior installs. Remove them

@@ -72,7 +72,7 @@ def _make_client(channels: list[str] | None = None) -> "OrochiClient":
 
 
 if _FASTMCP_AVAILABLE:
-    mcp = FastMCP("orochi-mcp", orochi_version="0.1.0")
+    mcp = FastMCP("orochi-mcp", version="0.1.0")
 
     @mcp.tool()
     async def orochi_send(channel: str, message: str) -> str:
@@ -130,7 +130,7 @@ if _FASTMCP_AVAILABLE:
         read: bool = True,
         write: bool = True,
     ) -> str:
-        """Subscribe to an Orochi channel at orochi_runtime (no restart needed).
+        """Subscribe to an Orochi channel at runtime (no restart needed).
 
         The subscription is persisted server-side (ChannelMembership row),
         so it survives agent reboot. The two independent flags map to
@@ -162,7 +162,7 @@ if _FASTMCP_AVAILABLE:
 
     @mcp.tool()
     async def orochi_unsubscribe(channel: str) -> str:
-        """Unsubscribe from an Orochi channel at orochi_runtime.
+        """Unsubscribe from an Orochi channel at runtime.
 
         Removes the persisted ChannelMembership row, so the agent will
         not auto-re-subscribe on reboot.
@@ -186,7 +186,7 @@ if _FASTMCP_AVAILABLE:
 
     @mcp.tool()
     async def orochi_machine_status() -> str:
-        """Report the local orochi_machine's resource, orochi_version, process, and git status.
+        """Report the local machine's resource, version, process, and git status.
 
         Uses scitex_orochi._status.get_machine_status() if available.
         Safe to call from any agent; returns stdlib-collected data only.
@@ -434,7 +434,7 @@ if _FASTMCP_AVAILABLE:
     async def fleet_report_tool(
         entity_type: str, entity_id: str, payload: str, source: str = ""
     ) -> str:
-        """Report fleet entity state (orochi_machine/agent/server/session) to the hub."""
+        """Report fleet entity state (machine/agent/server/session) to the hub."""
         import aiohttp
 
         hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")
@@ -459,7 +459,7 @@ if _FASTMCP_AVAILABLE:
 
     @mcp.tool()
     async def state_query(entity_type: str = "", since: str = "") -> str:
-        """Query latest fleet state. Filter by entity_type (orochi_machine/agent/server/session) and since (ISO timestamp)."""
+        """Query latest fleet state. Filter by entity_type (machine/agent/server/session) and since (ISO timestamp)."""
         import aiohttp
 
         hub = os.getenv("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com")

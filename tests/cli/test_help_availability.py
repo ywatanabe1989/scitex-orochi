@@ -180,7 +180,7 @@ def test_run_probes_parallel_respects_budget() -> None:
 
     subcommands = [
         "agent",
-        "orochi_machine",
+        "machine",
         "cron",
         "dispatch",
         "todo",

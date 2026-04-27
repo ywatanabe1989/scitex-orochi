@@ -28,7 +28,7 @@ class ActiveSessionCounterTests(TestCase):
     Background: a single SCITEX_OROCHI_AGENT identity may have multiple
     WebSocket connections at once (today's incident: head-spartan twice).
     Before #144, the first-to-disconnect of N siblings marked the agent
-    offline, even though other sessions were still orochi_alive. After #144,
+    offline, even though other sessions were still alive. After #144,
     the agent transitions to offline only when the LAST connection drops.
     """
 

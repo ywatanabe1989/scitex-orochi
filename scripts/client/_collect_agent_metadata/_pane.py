@@ -29,12 +29,12 @@ def _is_channel_inbound_line(s: str) -> bool:
     return False
 
 
-def capture_pane(agent: str, orochi_multiplexer: str) -> str:
+def capture_pane(agent: str, multiplexer: str) -> str:
     """Capture the agent's tmux pane scrollback (last 500 lines).
 
     Returns "" for non-tmux sessions or any tmux failure.
     """
-    if orochi_multiplexer != "tmux":
+    if multiplexer != "tmux":
         return ""
     # todo#47 — bump scrollback depth from 30 to 500 lines so the
     # hub detail endpoint can expose a ``orochi_pane_tail_full`` field for
@@ -57,7 +57,7 @@ def filter_orochi_pane_tail(pane: str) -> tuple[str, str, str, str]:
 
     - orochi_pane_tail              — last interesting single line (legacy field)
     - orochi_pane_tail_block        — last ~10 interesting lines, raw (keeps
-      channel inbound for WS-orochi_alive proof)
+      channel inbound for WS-alive proof)
     - orochi_pane_tail_block_clean  — same as block but stripped of channel
       inbound (for stuck-detection / state classifier)
     - orochi_pane_tail_full         — up to 500 filtered lines, trimmed to 32 KB

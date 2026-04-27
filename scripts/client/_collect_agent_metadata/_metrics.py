@@ -1,4 +1,4 @@
-"""Cross-OS host resource orochi_metrics + SLURM snapshot (todo#329 / todo#59)."""
+"""Cross-OS host resource metrics + SLURM snapshot (todo#329 / todo#59)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def collect_machine_metrics() -> dict:
 
     Reads CPU/memory/disk/load via psutil if available; falls back to a
     minimal stdlib best-effort if psutil is missing. Output keys match
-    what ``hub/views/api.py:api_resources`` projects into the per-orochi_machine
+    what ``hub/views/api.py:api_resources`` projects into the per-machine
     Machines tab card. Empty/None on any read error so the receiver
     degrades gracefully.
 

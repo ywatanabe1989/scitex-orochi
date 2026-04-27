@@ -1,5 +1,5 @@
 /* Resource Monitor Panel + Resources Tab — part 2: renderers, card
- * builder, orochi_machine aliases, fetchResources. Split from resources-tab.js
+ * builder, machine aliases, fetchResources. Split from resources-tab.js
  * (697 lines) — depends on resources-tab/panel.js (resourceData,
  * _machineIcons, donutHtml, _wireMachinesControls,
  * _applyMachinesViewVisibility, showMachineTooltip, moveMachineTooltip,
@@ -98,12 +98,12 @@ function renderResources() {
           " jobs</span>";
       }
       /* #284 Machine card order: [icon] [star] [LED] [<host-label>
-       * (<orochi_hostname-canonical>)] [orochi_metrics].
+       * (<hostname-canonical>)] [metrics].
        *
        * The single LED replaces the old leading connection dot; it
        * sits BETWEEN star and the name so the icon/star columns line
        * up with agent + DM sidebar rows. Machines don't have the
-       * 4-LED liveness orochi_model agents do (no WS handshake / ping / pane
+       * 4-LED liveness model agents do (no WS handshake / ping / pane
        * state / nonce-echo signal is meaningful for a bare host), so
        * we keep a single health LED driven by the heartbeat health
        * status. Metrics (CPU / Mem / Disk / GPU / SLURM) stay inline
@@ -111,21 +111,21 @@ function renderResources() {
        * always available on the hover tooltip regardless. */
       var mStarred = !!(d && d._starred);
       return (
-        '<div class="res-card res-card-compact" data-orochi_machine="' +
+        '<div class="res-card res-card-compact" data-machine="' +
         escapeHtml(k) +
         '" title="' +
         escapeHtml(k) +
         (d._status ? " · " + d._status : "") +
         '">' +
-        '<span class="res-orochi_machine-icon" title="right-click to change" aria-hidden="true">' +
+        '<span class="res-machine-icon" title="right-click to change" aria-hidden="true">' +
         (_machineIcons[k] || "\uD83D\uDDA5\uFE0F") +
         "</span>" +
         '<span class="res-star ' +
         (mStarred ? "res-star-on" : "res-star-off") +
-        '" data-orochi_machine="' +
+        '" data-machine="' +
         escapeHtml(k) +
         '" title="' +
-        (mStarred ? "Unstar orochi_machine" : "Star orochi_machine (float to top)") +
+        (mStarred ? "Unstar machine" : "Star machine (float to top)") +
         '">' +
         (mStarred ? "\u2605" : "\u2606") +
         "</span>" +
@@ -134,8 +134,8 @@ function renderResources() {
         '" title="' +
         (healthy ? "Host healthy" : "Host stale / degraded") +
         '"></span>' +
-        /* Spec: orochi_machine: [icon] [star] [LED] [<host-label>
-         * (<orochi_hostname-canonical>)] — show the canonical FQDN in
+        /* Spec: machine: [icon] [star] [LED] [<host-label>
+         * (<hostname-canonical>)] — show the canonical FQDN in
          * parentheses after the short label when it differs
          * meaningfully from the label. Uses the same collapse rules
          * as the agents-tab Machine detail view (.local /
@@ -153,13 +153,13 @@ function renderResources() {
             if (fqdn === k + redundant[_r]) return "";
           }
           return (
-            ' <span class="res-host-fqdn" title="canonical orochi_hostname">(' +
+            ' <span class="res-host-fqdn" title="canonical hostname">(' +
             escapeHtml(fqdn) +
             ")</span>"
           );
         })() +
         "</span>" +
-        '<span class="res-orochi_metrics">' +
+        '<span class="res-metrics">' +
         '<span class="res-chip" title="CPU cores">' +
         escapeHtml(cpuStr) +
         "</span>" +
@@ -177,16 +177,16 @@ function renderResources() {
     })
     .join("");
   /* todo#86: hover tooltip on sidebar rows with CPU/RAM/GPU/VRAM/Disk. */
-  container.querySelectorAll(".res-card[data-orochi_machine]").forEach(function (el) {
-    var host = el.getAttribute("data-orochi_machine");
+  container.querySelectorAll(".res-card[data-machine]").forEach(function (el) {
+    var host = el.getAttribute("data-machine");
     el.addEventListener("mouseenter", function (ev) {
       showMachineTooltip(host, ev);
     });
     el.addEventListener("mousemove", moveMachineTooltip);
     el.addEventListener("mouseleave", hideMachineTooltip);
-    /* Right-click → emoji picker to customize the orochi_machine icon.
+    /* Right-click → emoji picker to customize the machine icon.
      * Stored in localStorage so each user's pick survives reloads
-     * without a new Django orochi_model (TODO.md Entity Consistency). */
+     * without a new Django model (TODO.md Entity Consistency). */
     el.addEventListener("contextmenu", function (ev) {
       ev.preventDefault();
       hideMachineTooltip();
@@ -384,7 +384,7 @@ async function fetchResources() {
     Object.keys(data).forEach(function (agentName) {
       var entry = data[agentName];
       var r = entry.resources || {};
-      /* Don't overwrite richer WS data with empty REST orochi_metrics (#337) */
+      /* Don't overwrite richer WS data with empty REST metrics (#337) */
       var existing = resourceData[agentName];
       if (
         existing &&
@@ -417,7 +417,7 @@ async function fetchResources() {
         ];
       }
       resourceData[agentName] = {
-        orochi_hostname: _friendlyMachine(entry.orochi_machine || agentName),
+        hostname: _friendlyMachine(entry.machine || agentName),
         agent: agentName,
         cpu: {
           percent: Math.round(
@@ -436,7 +436,7 @@ async function fetchResources() {
         },
         _api: true,
         _status: entry.status || "unknown",
-        _machine: entry.orochi_machine || "",
+        _machine: entry.machine || "",
         _lastHeartbeat: entry.last_heartbeat || "",
         _cpuModel: r.cpu_model || "",
         _cpuCount: r.cpu_count || 0,
@@ -448,7 +448,7 @@ async function fetchResources() {
         _diskTotalMb: r.disk_total_mb || 0,
         _diskUsedMb: r.disk_used_mb || 0,
         // Slurm cluster aggregates (todo#87). Populated only when the
-        // host reports `resource_source == "orochi_slurm"` — login-node orochi_metrics
+        // host reports `resource_source == "orochi_slurm"` — login-node metrics
         // are replaced with cluster-wide CPU/RAM at the agent, so the
         // existing cpu/memory bars above now reflect cluster busy%.
         _resourceSource: r.resource_source || "local",

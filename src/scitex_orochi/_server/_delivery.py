@@ -80,12 +80,12 @@ class DeliveryMixin:
             {
                 "name": a.name,
                 "channels": list(a.channels),
-                "orochi_machine": a.orochi_machine,
+                "machine": a.machine,
                 "role": a.role,
-                "orochi_model": a.orochi_model,
+                "model": a.model,
                 "agent_id": a.agent_id,
-                "orochi_project": a.orochi_project,
-                "orochi_multiplexer": a.orochi_multiplexer,
+                "project": a.project,
+                "multiplexer": a.multiplexer,
                 "status": a.status,
                 "orochi_current_task": a.orochi_current_task,
                 "orochi_subagent_count": a.orochi_subagent_count,
@@ -98,12 +98,12 @@ class DeliveryMixin:
         ]
 
     def get_resources_info(self) -> dict[str, dict]:
-        """Return latest resource orochi_metrics for all agents."""
+        """Return latest resource metrics for all agents."""
         return {
             a.name: {
                 "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,
-                "orochi_machine": a.orochi_machine,
+                "machine": a.machine,
                 "status": a.status,
             }
             for a in self.agents.values()

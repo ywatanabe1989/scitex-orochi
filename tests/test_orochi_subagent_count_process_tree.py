@@ -47,11 +47,11 @@ from _collect_agent_metadata._process_tree import (  # noqa: E402
     "cmdline, expected",
     [
         # Canonical claude-code invocation shapes.
-        (["claude", "--orochi_model", "opus[1m]"], True),
+        (["claude", "--model", "opus[1m]"], True),
         (["/usr/local/bin/claude", "--dangerously-skip-permissions"], True),
         (["/opt/homebrew/bin/claude"], True),
         # Single-string cmdline (pgrep fallback shape).
-        (["claude --orochi_model opus --add-dir /workspace"], True),
+        (["claude --model opus --add-dir /workspace"], True),
         # Non-claude auxiliary descendants — all rejected.
         (["caffeinate", "-i", "-t", "300"], False),
         (["bun", "run", "/path/to/mcp_channel.ts"], False),
@@ -95,7 +95,7 @@ def test_looks_like_claude(cmdline, expected):
 
 
 def test_find_head_pid_matches_by_cwd(tmp_path, monkeypatch):
-    """``~/.claude/sessions/<orochi_pid>.json`` whose ``cwd`` matches the
+    """``~/.claude/sessions/<pid>.json`` whose ``cwd`` matches the
     agent's workspace path IS that agent's head PID."""
     sessions = tmp_path / ".claude" / "sessions"
     sessions.mkdir(parents=True)
@@ -106,7 +106,7 @@ def test_find_head_pid_matches_by_cwd(tmp_path, monkeypatch):
     (sessions / "42.json").write_text(
         json.dumps(
             {
-                "orochi_pid": 42,
+                "pid": 42,
                 "sessionId": "abc",
                 "cwd": str(workspace_root / "head-mba"),
                 "startedAt": 1,
@@ -116,7 +116,7 @@ def test_find_head_pid_matches_by_cwd(tmp_path, monkeypatch):
     (sessions / "99.json").write_text(
         json.dumps(
             {
-                "orochi_pid": 99,
+                "pid": 99,
                 "sessionId": "xyz",
                 "cwd": str(workspace_root / "some-other-agent"),
                 "startedAt": 2,
@@ -135,7 +135,7 @@ def test_find_head_pid_none_when_no_session(tmp_path, monkeypatch):
 
 
 def test_find_head_pid_skips_malformed_json(tmp_path, monkeypatch):
-    """A junk ``<orochi_pid>.json`` doesn't crash the scan."""
+    """A junk ``<pid>.json`` doesn't crash the scan."""
     sessions = tmp_path / ".claude" / "sessions"
     sessions.mkdir(parents=True)
     workspace_root = tmp_path / ".scitex" / "agent-container" / "workspaces"
@@ -144,7 +144,7 @@ def test_find_head_pid_skips_malformed_json(tmp_path, monkeypatch):
     (sessions / "43.json").write_text(
         json.dumps(
             {
-                "orochi_pid": 43,
+                "pid": 43,
                 "cwd": str(workspace_root / "head-mba"),
                 "startedAt": 1,
             }
@@ -192,8 +192,8 @@ def _install_fake_psutil(monkeypatch, head_proc_factory):
         AccessDenied = _AccessDenied
 
         @staticmethod
-        def Process(orochi_pid):  # noqa: N802 — mirror psutil API
-            return head_proc_factory(orochi_pid)
+        def Process(pid):  # noqa: N802 — mirror psutil API
+            return head_proc_factory(pid)
 
     monkeypatch.setitem(sys.modules, "psutil", _FakePsutil)
 
@@ -205,9 +205,9 @@ def test_count_zero_children(monkeypatch, tmp_path):
     )
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(children=[]),
+        lambda pid: _FakeProcess(children=[]),
     )
-    # Redirect audit log to tmp so we don't pollute the real orochi_runtime dir.
+    # Redirect audit log to tmp so we don't pollute the real runtime dir.
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert count_orochi_subagents_via_ps("head-mba") == 0
 
@@ -215,7 +215,7 @@ def test_count_zero_children(monkeypatch, tmp_path):
 def test_count_three_claude_children(monkeypatch, tmp_path):
     """Three ``claude`` descendants → count 3."""
     children = [
-        _FakeProcess(cmdline_value=["claude", "--orochi_model", "opus[1m]"]),
+        _FakeProcess(cmdline_value=["claude", "--model", "opus[1m]"]),
         _FakeProcess(cmdline_value=["/usr/local/bin/claude", "--flag"]),
         _FakeProcess(cmdline_value=["claude"]),
     ]
@@ -224,7 +224,7 @@ def test_count_three_claude_children(monkeypatch, tmp_path):
     )
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(children=children),
+        lambda pid: _FakeProcess(children=children),
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert count_orochi_subagents_via_ps("head-mba") == 3
@@ -233,7 +233,7 @@ def test_count_three_claude_children(monkeypatch, tmp_path):
 def test_count_mixed_claude_and_non_claude_children(monkeypatch, tmp_path):
     """Only claude descendants are counted; bun / caffeinate / bash are filtered."""
     children = [
-        _FakeProcess(cmdline_value=["claude", "--orochi_model", "opus[1m]"]),
+        _FakeProcess(cmdline_value=["claude", "--model", "opus[1m]"]),
         _FakeProcess(cmdline_value=["caffeinate", "-i", "-t", "300"]),
         _FakeProcess(cmdline_value=["bun", "run", "/mcp.ts"]),
     ]
@@ -242,14 +242,14 @@ def test_count_mixed_claude_and_non_claude_children(monkeypatch, tmp_path):
     )
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(children=children),
+        lambda pid: _FakeProcess(children=children),
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert count_orochi_subagents_via_ps("head-mba") == 1
 
 
 def test_no_session_file_returns_minus_one(monkeypatch, tmp_path):
-    """No matching ``<orochi_pid>.json`` → return ``-1`` so caller falls back."""
+    """No matching ``<pid>.json`` → return ``-1`` so caller falls back."""
     monkeypatch.setattr(
         _process_tree, "find_head_pid", lambda agent: None
     )
@@ -272,7 +272,7 @@ def test_psutil_noSuchProcess_falls_back_to_pgrep(monkeypatch, tmp_path):
         AccessDenied = _AccessDenied
 
         @staticmethod
-        def Process(orochi_pid):  # noqa: N802
+        def Process(pid):  # noqa: N802
             raise _NoSuchProcess("dead")
 
     monkeypatch.setitem(sys.modules, "psutil", _FakePsutil)
@@ -283,7 +283,7 @@ def test_psutil_noSuchProcess_falls_back_to_pgrep(monkeypatch, tmp_path):
     monkeypatch.setattr(
         _process_tree,
         "_count_claude_descendants_pgrep",
-        lambda orochi_pid: 2,
+        lambda pid: 2,
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert count_orochi_subagents_via_ps("head-mba") == 2
@@ -301,7 +301,7 @@ def test_both_backends_fail_returns_minus_one(monkeypatch, tmp_path):
     monkeypatch.setattr(
         _process_tree,
         "_count_claude_descendants_pgrep",
-        lambda orochi_pid: -1,
+        lambda pid: -1,
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert count_orochi_subagents_via_ps("head-mba") == -1
@@ -425,12 +425,12 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
         _collect,
         "parse_transcript",
         lambda jsonls: {
-            "orochi_model": "",
-            "orochi_last_activity": "",
+            "model": "",
+            "last_activity": "",
             "orochi_context_pct": None,
             "orochi_current_tool": "",
-            "orochi_started_at": "",
-            "orochi_recent_actions": [],
+            "started_at": "",
+            "recent_actions": [],
         },
     )
     monkeypatch.setattr(
@@ -521,7 +521,7 @@ def test_lifecycle_spawn_then_complete(monkeypatch, tmp_path):
     # Tick 1 — one child claude.
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(
+        lambda pid: _FakeProcess(
             children=[_FakeProcess(cmdline_value=["claude", "--flag"])]
         ),
     )
@@ -530,7 +530,7 @@ def test_lifecycle_spawn_then_complete(monkeypatch, tmp_path):
     # Tick 2 — no children.
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(children=[]),
+        lambda pid: _FakeProcess(children=[]),
     )
     assert count_orochi_subagents_via_ps("head-mba") == 0
 
@@ -543,7 +543,7 @@ def test_lifecycle_partial_completion(monkeypatch, tmp_path):
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(
+        lambda pid: _FakeProcess(
             children=[
                 _FakeProcess(cmdline_value=["claude", "--flag"]),
                 _FakeProcess(cmdline_value=["claude", "--flag2"]),
@@ -560,7 +560,7 @@ def test_audit_log_written(monkeypatch, tmp_path):
     )
     _install_fake_psutil(
         monkeypatch,
-        lambda orochi_pid: _FakeProcess(
+        lambda pid: _FakeProcess(
             children=[_FakeProcess(cmdline_value=["claude"])]
         ),
     )
@@ -572,7 +572,7 @@ def test_audit_log_written(monkeypatch, tmp_path):
         tmp_path
         / ".scitex"
         / "orochi"
-        / "orochi_runtime"
+        / "runtime"
         / "subagent-count"
         / "head-mba.ndjson"
     )

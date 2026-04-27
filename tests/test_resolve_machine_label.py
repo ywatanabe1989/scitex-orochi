@@ -7,9 +7,9 @@ actually running on spartan) was client-side env-first prioritisation:
 call, so a stale env var inherited into a spartan process silently
 misreported the host.
 
-The fix flips the priority order: live ``orochi_hostname()`` first
+The fix flips the priority order: live ``hostname()`` first
 (potentially mapped through ``config.yaml`` aliases), env vars only
-when the kernel returns an empty orochi_hostname. These tests guard against
+when the kernel returns an empty hostname. These tests guard against
 regression of that priority flip.
 """
 
@@ -60,7 +60,7 @@ def test_env_var_ignored_when_hostname_populated(monkeypatch):
     """This is the direct regression test for lead msg#15578. A stale
     ``SCITEX_OROCHI_HOSTNAME=mba`` env var — inherited from a shared
     tmux / systemd env that originally ran on mba — must NOT override
-    the live orochi_hostname when the kernel knows who it is."""
+    the live hostname when the kernel knows who it is."""
     monkeypatch.setenv("SCITEX_OROCHI_HOSTNAME", "mba")
     monkeypatch.setattr(socket, "gethostname", lambda: "spartan-login1")
     monkeypatch.setattr(_machine, "Path", _NoConfigPath)

@@ -38,7 +38,7 @@ handler = _load_module()
 def test_parse_hungry_signal_canonical_shape():
     text = (
         "head-mba: hungry — 0 orochi_subagents × 2 cycles, ready for dispatch. "
-        "lane: infrastructure, orochi_alive: head-mba,healer-mba"
+        "lane: infrastructure, alive: head-mba,healer-mba"
     )
     got = handler.parse_hungry_signal(text)
     assert got == {"sender": "head-mba", "lane": "infrastructure"}
@@ -47,7 +47,7 @@ def test_parse_hungry_signal_canonical_shape():
 def test_parse_hungry_signal_handles_multi_word_lane():
     text = (
         "head-ywata-note-win: hungry — 0 orochi_subagents × 2 cycles, ready for "
-        "dispatch. lane: specialized-wsl-access, orochi_alive: head-ywata-note-win"
+        "dispatch. lane: specialized-wsl-access, alive: head-ywata-note-win"
     )
     got = handler.parse_hungry_signal(text)
     assert got is not None
@@ -223,7 +223,7 @@ def test_format_dispatch_reply_none_match_explicit():
 def test_handle_hungry_message_end_to_end():
     dm_text = (
         "head-mba: hungry — 0 orochi_subagents × 2 cycles, ready for dispatch. "
-        "lane: infrastructure, orochi_alive: head-mba"
+        "lane: infrastructure, alive: head-mba"
     )
     issues = [
         _issue(900, "high-priority", "infrastructure", title="feat: ship layer-2"),

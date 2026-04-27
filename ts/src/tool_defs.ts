@@ -297,7 +297,7 @@ export const TOOL_DEFS = [
         dst_host: {
           type: "string",
           description:
-            "Destination SSH orochi_hostname. One of: mba, nas, ywata-note-win, spartan.",
+            "Destination SSH hostname. One of: mba, nas, ywata-note-win, spartan.",
         },
         dst_path: {
           type: "string",
@@ -378,7 +378,7 @@ export const TOOL_DEFS = [
   {
     name: "sidecar_status",
     description:
-      "Return the orochi-side sidecar PID registry as JSON (todo#287 Slice A). Surfaces (a) the running scitex-orochi MCP server (this bun process: orochi_pid, orochi_ppid, orochi_started_at, uptime_seconds, orochi_runtime, agent name) and (b) the rsync_media child-process registry (each rsync job's orochi_pid, status, paths, timestamps). Layer 3 of the 3-layer fleet PID orochi_model — Claude/tmux are owned by scitex-agent-container, container daemons by container snapshot, comms sidecars by orochi (this tool). Read-only; does not spawn or mutate anything.",
+      "Return the orochi-side sidecar PID registry as JSON (todo#287 Slice A). Surfaces (a) the running scitex-orochi MCP server (this bun process: pid, ppid, started_at, uptime_seconds, runtime, agent name) and (b) the rsync_media child-process registry (each rsync job's pid, status, paths, timestamps). Layer 3 of the 3-layer fleet PID model — Claude/tmux are owned by scitex-agent-container, container daemons by container snapshot, comms sidecars by orochi (this tool). Read-only; does not spawn or mutate anything.",
     inputSchema: {
       type: "object" as const,
       properties: {},
@@ -394,7 +394,7 @@ export const TOOL_DEFS = [
         command: {
           type: "string",
           description:
-            "Slash command text to send, starting with '/'. May include args, e.g. '/compact' or '/orochi_model sonnet'. Must match /^\\/[A-Za-z0-9_-]+( .*)?$/ and must not contain single quotes.",
+            "Slash command text to send, starting with '/'. May include args, e.g. '/compact' or '/model sonnet'. Must match /^\\/[A-Za-z0-9_-]+( .*)?$/ and must not contain single quotes.",
         },
         delay_ms: {
           type: "number",
@@ -417,7 +417,7 @@ export const TOOL_DEFS = [
       "Mirrors the ``GET /api/cron/`` endpoint that powers the Machines " +
       "tab cron panel, exposed via MCP so any agent can observe daemon " +
       "state without scraping the dashboard. Returns " +
-      '``{"hosts": {<orochi_machine>: {agent, last_heartbeat_at, stale, ' +
+      '``{"hosts": {<machine>: {agent, last_heartbeat_at, stale, ' +
       "jobs}}}``. Optional ``host`` arg filters to a single host " +
       "server-side. Workspace-scoped via the MCP sidecar's token; " +
       "read-only.",

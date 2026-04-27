@@ -98,7 +98,7 @@
                     <span class="ws-caret">&#9662;</span>
                 </div>
                 <span class="brand-product-inline" title="SciTeX Orochi">Orochi</span>
-                <span class="brand-orochi_version" id="orochi-orochi_version"></span>
+                <span class="brand-version" id="orochi-version"></span>
                 <span id="conn-status" class="status conn-down" title="connecting"></span>
             </div>
             <div id="wall-clock" class="wall-clock"></div>
@@ -137,7 +137,7 @@
                             class="sidebar-agent-select"
                             title="sort order">
                         <option value="name">sort: name</option>
-                        <option value="orochi_machine">sort: orochi_machine</option>
+                        <option value="machine">sort: machine</option>
                     </select>
                     <select id="activity-color-select"
                             class="sidebar-agent-select"
@@ -525,7 +525,7 @@
          are wired via document.body delegation from this file — no
          site-local wiring required. -->
     <!-- Activity tab (canonical Agents UI renderer) — split into focused
-         sub-files. ALL share the same cache-bust orochi_version. Load order:
+         sub-files. ALL share the same cache-bust version. Load order:
          state → utils → data → per-view renderers → topology helpers →
          topology → grid handlers → controls → init. -->
     {# Single Vite ES-module bundle replacing ~100 per-file classic-script tags. #}

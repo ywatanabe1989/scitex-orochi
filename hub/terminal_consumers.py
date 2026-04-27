@@ -173,14 +173,14 @@ class TerminalConsumer(AsyncJsonWebsocketConsumer):
         import termios
 
         shell = shutil.which("bash") or "/bin/sh"
-        orochi_pid, fd = pty.fork()
-        if orochi_pid == 0:
+        pid, fd = pty.fork()
+        if pid == 0:
             # child — exec the shell. No return from exec on success.
             env = os.environ.copy()
             env.setdefault("TERM", "xterm-256color")
             os.execvpe(shell, [shell, "-l"], env)
             os._exit(1)  # defensive
-        self._pid = orochi_pid
+        self._pid = pid
         self._pty_fd = fd
         # Sensible default window size; client sends resize shortly.
         try:

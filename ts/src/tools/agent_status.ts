@@ -177,7 +177,7 @@ export async function handleContext(args: {
     return mcpError(
       MCP_ERROR_CODES.AGENT_OFFLINE,
       `failed to read screen "${screenName}": ${(err as Error).message}`,
-      "ensure the screen/tmux session for this agent is orochi_alive on its host",
+      "ensure the screen/tmux session for this agent is alive on its host",
     );
   }
 }

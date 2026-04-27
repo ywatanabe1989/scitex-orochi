@@ -1,4 +1,4 @@
-"""Canonical orochi_hostname resolution for the agent dashboard (todo#55)."""
+"""Canonical hostname resolution for the agent dashboard (todo#55)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import socket
 
 
 def _resolve_canonical_hostname() -> str:
-    """Best-effort canonical orochi_hostname for dashboard display (todo#55).
+    """Best-effort canonical hostname for dashboard display (todo#55).
 
     On Linux ``socket.getfqdn()`` usually returns a sensible
     ``host.example.com``. On macOS (and some containers) it can return the

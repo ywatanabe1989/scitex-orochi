@@ -6,18 +6,18 @@ from hub.models import Channel, Message, Workspace, WorkspaceMember, WorkspaceTo
 
 
 class WorkspaceTokenInline(admin.TabularInline):
-    orochi_model = WorkspaceToken
+    model = WorkspaceToken
     extra = 1
     readonly_fields = ("token", "created_at")
 
 
 class WorkspaceMemberInline(admin.TabularInline):
-    orochi_model = WorkspaceMember
+    model = WorkspaceMember
     extra = 1
 
 
 class ChannelInline(admin.TabularInline):
-    orochi_model = Channel
+    model = Channel
     extra = 0
 
 

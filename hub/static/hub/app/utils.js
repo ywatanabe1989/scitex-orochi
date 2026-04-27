@@ -153,7 +153,7 @@ function cleanAgentName(name) {
 /**
  * Return the agent name with host suffix. If the registered name already
  * contains @host (e.g. "head@mba"), return as-is. Otherwise append
- * "@<orochi_machine>" from the agent record so the sidebar always shows an
+ * "@<machine>" from the agent record so the sidebar always shows an
  * identity tied to a host (mamba shows as "mamba@ywata-note-win" even if
  * the agent config still registered plain "mamba").
  */
@@ -161,13 +161,13 @@ function hostedAgentName(a) {
   var name = a && a.name ? a.name : "";
   if (!name) return name;
   if (name.indexOf("@") !== -1) return cleanAgentName(name);
-  /* #256 — host label MUST come from the live `orochi_hostname(1)` reported
-   * in the heartbeat, NOT from the YAML config `orochi_machine` field.
-   * Pre-fix, an agent_handlers `orochi_machine: mba` line in YAML caused the
+  /* #256 — host label MUST come from the live `hostname(1)` reported
+   * in the heartbeat, NOT from the YAML config `machine` field.
+   * Pre-fix, an agent_handlers `machine: mba` line in YAML caused the
    * dashboard to show `proj-neurovista@mba` even when no process was
-   * running on mba (the ghost-mba bug). Falls back to `orochi_machine` for
+   * running on mba (the ghost-mba bug). Falls back to `machine` for
    * legacy agents whose heartbeat hasn't been upgraded yet. */
-  var host = a && a.orochi_hostname ? a.orochi_hostname : a && a.orochi_machine ? a.orochi_machine : "";
+  var host = a && a.hostname ? a.hostname : a && a.machine ? a.machine : "";
   /* Always pipe the constructed "<name>@<host>" string through
    * cleanAgentName so the role-host suffix gets collapsed
    * (head-mba@mba → head@mba). The earlier form returned the raw

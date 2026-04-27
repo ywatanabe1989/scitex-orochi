@@ -3,7 +3,7 @@
 Reads `hub/static/hub/dist/.vite/manifest.json` (written by `vite build`)
 and maps an entry key such as `src/index.ts` to the hashed output
 filename. When the bundle hasn't been built yet (e.g. in CI before the
-first build, or on a fresh dev orochi_machine), returns an empty string so the
+first build, or on a fresh dev machine), returns an empty string so the
 caller template can `{% if %}`-guard emission of the `<script>` tag.
 """
 

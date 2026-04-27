@@ -7,7 +7,7 @@ set -u
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-host=$(orochi_hostname -s 2>/dev/null || orochi_hostname)
+host=$(hostname -s 2>/dev/null || hostname)
 os=$(uname -s)
 
 # tmux sessions: list of names, or [] if none / tmux missing
@@ -100,7 +100,7 @@ fi
 
 # Per-agent orochi_context_pct via collect_agent_metadata.py if present.
 # collect_agent_metadata.py reads the live Claude Code session jsonl and emits
-# {agent, orochi_alive, orochi_context_pct, orochi_current_tool, orochi_last_activity, orochi_model, orochi_subagents}.
+# {agent, alive, orochi_context_pct, orochi_current_tool, last_activity, model, orochi_subagents}.
 # We call it for each tmux session name and aggregate into agents_meta JSON.
 agent_meta_script="$HOME/.scitex/orochi/scripts/collect_agent_metadata.py"
 agents_meta="{}"

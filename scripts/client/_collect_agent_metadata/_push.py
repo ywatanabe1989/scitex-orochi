@@ -55,25 +55,25 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "name": meta["agent"],
         "agent_id": meta["agent"],
         "role": "agent",
-        "orochi_machine": meta.get("orochi_machine", ""),
-        # Live orochi_hostname(1) — authoritative per-process identity. Client-
+        "machine": meta.get("machine", ""),
+        # Live hostname(1) — authoritative per-process identity. Client-
         # supplied via ``collect()`` from ``socket.gethostname()``; never
         # derived from env or server-side inference. Root fix for the
         # proj-neurovista/mba misreport (lead msg#15578).
-        "orochi_hostname": meta.get("orochi_hostname", ""),
+        "hostname": meta.get("hostname", ""),
         "orochi_hostname_canonical": meta.get("orochi_hostname_canonical", ""),
-        "orochi_model": meta.get("orochi_model", ""),
-        "orochi_multiplexer": meta.get("orochi_multiplexer", ""),
-        "orochi_project": meta.get("orochi_project", ""),
-        "orochi_workdir": meta.get("orochi_workdir", ""),
-        "orochi_pid": meta.get("orochi_pid") or 0,
-        "orochi_ppid": meta.get("orochi_ppid") or 0,
+        "model": meta.get("model", ""),
+        "multiplexer": meta.get("multiplexer", ""),
+        "project": meta.get("project", ""),
+        "workdir": meta.get("workdir", ""),
+        "pid": meta.get("pid") or 0,
+        "ppid": meta.get("ppid") or 0,
         "orochi_context_pct": meta.get("orochi_context_pct"),
         "orochi_subagent_count": int(meta.get("orochi_subagent_count") or 0),
         "orochi_skills_loaded": list(meta.get("orochi_skills_loaded") or []),
-        "orochi_started_at": meta.get("orochi_started_at", ""),
-        "orochi_version": meta.get("orochi_version", ""),
-        "orochi_runtime": meta.get("orochi_runtime", ""),
+        "started_at": meta.get("started_at", ""),
+        "version": meta.get("version", ""),
+        "runtime": meta.get("runtime", ""),
         "orochi_current_task": meta.get("orochi_current_task", ""),
         # Intentionally no "channels" key. Subscriptions are
         # server-authoritative (ChannelMembership rows); heartbeats
@@ -113,7 +113,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "sac_hooks_agent_calls": meta.get("sac_hooks_agent_calls") or [],
         "sac_hooks_background_tasks": meta.get("sac_hooks_background_tasks") or [],
         "orochi_subagents": meta.get("orochi_subagents") or [],
-        # scitex-orochi todo#369 — host-level orochi_machine orochi_metrics (CPU / mem
+        # scitex-orochi todo#369 — host-level machine metrics (CPU / mem
         # / disk / load) + optional SLURM cluster snapshot. Without
         # these two keys the hub's /api/resources rollup has no data
         # to populate the Machines tab card for agents pushed via this
@@ -123,13 +123,13 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # full collect() output — renders correctly).
         #
         # Hub-side contract: POST /api/agents/register/ reads
-        # body["orochi_metrics"] verbatim (see hub/views/api/_agents_register.py
-        # line `update_heartbeat(name, orochi_metrics=body.get("orochi_metrics") or
+        # body["metrics"] verbatim (see hub/views/api/_agents_register.py
+        # line `update_heartbeat(name, metrics=body.get("metrics") or
         # {})`), and the merged per-agent snapshot is flattened into
-        # each orochi_machine's aggregate card by hub/views/api/_resources.py.
+        # each machine's aggregate card by hub/views/api/_resources.py.
         # `orochi_slurm` is a nested dict used by the Machines tab's SLURM
         # card on HPC hosts and is expected to be None on non-HPC.
-        "orochi_metrics": meta.get("orochi_metrics") or {},
+        "metrics": meta.get("metrics") or {},
         "orochi_slurm": meta.get("orochi_slurm"),
         # Lead msg#16005 pivot: forward the ENTIRE ``sac status --terse
         # --json`` dict as a nested field. Future additions to sac's
@@ -167,7 +167,7 @@ def push_all(url=None, token=None) -> int:
     for agent in _list_local_agents():
         try:
             meta = collect(agent)
-            if not meta.get("orochi_alive"):
+            if not meta.get("alive"):
                 continue
             # Lead msg#16005 pivot: shell out to ``sac status --terse
             # --json`` and attach the dict as ``sac_status``. Fail-soft:
@@ -184,11 +184,11 @@ def push_all(url=None, token=None) -> int:
             if 200 <= status < 300:
                 ok += 1
                 log.info(
-                    "pushed %s ctx=%s%% subs=%s orochi_pid=%s",
+                    "pushed %s ctx=%s%% subs=%s pid=%s",
                     agent,
                     meta.get("orochi_context_pct"),
                     meta.get("orochi_subagent_count"),
-                    meta.get("orochi_pid"),
+                    meta.get("pid"),
                 )
             else:
                 log.warning("push %s -> HTTP %s: %s", agent, status, body)

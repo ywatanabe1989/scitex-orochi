@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # telemetry-rotate.sh — daily rotation + gzip + retention for NDJSON telemetry
 # -----------------------------------------------------------------------------
-# Rotates NDJSON files under ~/.scitex/orochi/orochi_runtime/{quota-telemetry,
-# fleet-watch/{orochi_machine-info,ping,connection,process-info}}/ to prevent
+# Rotates NDJSON files under ~/.scitex/orochi/runtime/{quota-telemetry,
+# fleet-watch/{machine-info,ping,connection,process-info}}/ to prevent
 # unbounded growth from 30-60s probe collectors.
 #
 # Policy:
@@ -25,11 +25,11 @@ RETENTION_DAYS="${RETENTION_DAYS:-7}"
 DRY_RUN="${DRY_RUN:-0}"
 
 TELEMETRY_DIRS=(
-    "${HOME}/.scitex/orochi/orochi_runtime/quota-telemetry"
-    "${HOME}/.scitex/orochi/orochi_runtime/fleet-watch/orochi_machine-info"
-    "${HOME}/.scitex/orochi/orochi_runtime/fleet-watch/ping"
-    "${HOME}/.scitex/orochi/orochi_runtime/fleet-watch/connection"
-    "${HOME}/.scitex/orochi/orochi_runtime/fleet-watch/process-info"
+    "${HOME}/.scitex/orochi/runtime/quota-telemetry"
+    "${HOME}/.scitex/orochi/runtime/fleet-watch/machine-info"
+    "${HOME}/.scitex/orochi/runtime/fleet-watch/ping"
+    "${HOME}/.scitex/orochi/runtime/fleet-watch/connection"
+    "${HOME}/.scitex/orochi/runtime/fleet-watch/process-info"
 )
 
 log() {

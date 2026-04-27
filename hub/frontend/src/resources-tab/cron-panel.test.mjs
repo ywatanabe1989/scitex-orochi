@@ -117,7 +117,7 @@ function loadModule() {
   const { renderCronJobRow } = m;
   const now = 1_000_000;
   const job = {
-    name: "orochi_machine-heartbeat",
+    name: "machine-heartbeat",
     last_run: now - 120,
     last_exit: 0,
     next_run: now + 60,
@@ -126,7 +126,7 @@ function loadModule() {
   };
   const html = renderCronJobRow(job, now);
   assert(html.includes('class="cron-row cron-row-ok'), "row carries ok class");
-  assert(html.includes("orochi_machine-heartbeat"), "row includes job name");
+  assert(html.includes("machine-heartbeat"), "row includes job name");
   assert(html.includes("2m ago"), "row renders last_run relative time");
   assert(html.includes("next in 1m"), "row renders next_run relative time");
   assert(

@@ -81,7 +81,7 @@ async def test_api_agents(orochi_web):
         TEST_WS_PORT,
         "test-agent",
         ["#general"],
-        orochi_machine="laptop",
+        machine="laptop",
         role="developer",
     )
     try:
@@ -90,7 +90,7 @@ async def test_api_agents(orochi_web):
         data = await resp.json()
         assert len(data) == 1
         assert data[0]["name"] == "test-agent"
-        assert data[0]["orochi_machine"] == "laptop"
+        assert data[0]["machine"] == "laptop"
         assert data[0]["role"] == "developer"
     finally:
         await ws.close()

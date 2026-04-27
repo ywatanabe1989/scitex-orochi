@@ -3,8 +3,8 @@
 Periodically polls /api/agents/ and /api/watchdog/alerts/, classifies each
 agent's health, and dispatches recovery actions for stuck/dead agents.
 
-Designed to be run as a long-lived process on a orochi_machine with SSH access
-to all the other agent hosts (typically the deployer orochi_machine —
+Designed to be run as a long-lived process on a machine with SSH access
+to all the other agent hosts (typically the deployer machine —
 ywata-note-win or, in the future, a dedicated bastion).
 
 Recovery action ladder (in order of escalation):
@@ -16,7 +16,7 @@ Recovery action ladder (in order of escalation):
     3. DEAD — agent's WS heartbeat hasn't fired for >5min (offline in registry)
        → SSH to the agent's host, check `screen -ls`, restart its bun
        MCP sidecar via `screen -S <session> -X stuff "<restart_cmd>\n"`
-    4. ZOMBIE — Claude TUI is orochi_alive but MCP sidecar is dead (heartbeat
+    4. ZOMBIE — Claude TUI is alive but MCP sidecar is dead (heartbeat
        silent but `pgrep -f claude.*<agent>` returns a PID)
        → same as DEAD but specifically restart only the bun process
 
@@ -75,7 +75,7 @@ DEAD_THRESHOLD = 300  # 5 min — heartbeat silence ⇒ probably dead
 @dataclass
 class AgentState:
     name: str
-    orochi_machine: str
+    machine: str
     status: str  # "online" | "offline"
     liveness: str  # "online" | "idle" | "stale" | "offline"
     idle_seconds: int | None
@@ -134,7 +134,7 @@ def fetch_agents(hub: str, token: str | None) -> list[AgentState]:
         out.append(
             AgentState(
                 name=a.get("name", "?"),
-                orochi_machine=a.get("orochi_machine", "?"),
+                machine=a.get("machine", "?"),
                 status=a.get("status", "online"),
                 liveness=a.get("liveness", a.get("status", "online")),
                 idle_seconds=a.get("idle_seconds"),
@@ -188,14 +188,14 @@ def heal_dead(hub: str, token: str | None, agent: AgentState) -> None:
     msg = (
         f"💀 @{agent.name} appears dead "
         f"(heartbeat silent {agent.heartbeat_age_seconds}s). caduceus would "
-        f"`ssh {agent.orochi_machine} 'screen -r head-{agent.name.split('@')[0]}'` "
+        f"`ssh {agent.machine} 'screen -r head-{agent.name.split('@')[0]}'` "
         f"and restart bun MCP sidecar."
     )
     _post_chat(hub, token, "#general", msg)
     log.error("DEAD %s — would heal via SSH", agent.name)
 
 
-def register_self(hub: str, token: str | None, name: str, orochi_machine: str) -> bool:
+def register_self(hub: str, token: str | None, name: str, machine: str) -> bool:
     """Announce caduceus to Orochi via REST agent-register endpoint.
 
     This is what makes caduceus visible in the Agents/Activity tab
@@ -212,9 +212,9 @@ def register_self(hub: str, token: str | None, name: str, orochi_machine: str) -
     body = {
         "token": token,
         "name": name,
-        "orochi_machine": orochi_machine,
+        "machine": machine,
         "role": "healer",
-        "orochi_model": "stdlib-daemon",
+        "model": "stdlib-daemon",
         "channels": ["#general"],
         "orochi_current_task": "monitoring agent liveness",
     }

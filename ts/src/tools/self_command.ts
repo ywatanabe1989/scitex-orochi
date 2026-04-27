@@ -6,7 +6,7 @@
  * we schedule the command with setTimeout — by the time it fires, the
  * agent has already received our MCP response and is idle at its prompt.
  *
- * The agent's terminal orochi_multiplexer is determined from SCITEX_OROCHI_MULTIPLEXER
+ * The agent's terminal multiplexer is determined from SCITEX_OROCHI_MULTIPLEXER
  * (screen|tmux); default is "tmux" — set SCITEX_OROCHI_MULTIPLEXER=screen to opt in.
  */
 import { exec } from "child_process";
@@ -27,7 +27,7 @@ function getMultiplexer(): Multiplexer {
 
 /**
  * Build the shell command that sends `text` followed by Enter into the
- * given orochi_multiplexer session. `text` should NOT contain shell metacharacters
+ * given multiplexer session. `text` should NOT contain shell metacharacters
  * beyond the slash-command payload; it is single-quoted below.
  */
 function buildSendKeysCommand(
@@ -111,7 +111,7 @@ function scheduleSelfCommand(
 const DESTRUCTIVE_COMMANDS = new Set(["/clear", "/kill", "/exit", "/quit"]);
 
 // Allowlist of slash commands safe to inject via self_command.
-// Modal-opening commands (/orochi_model, /agents, /permissions, /login, /config, ...)
+// Modal-opening commands (/model, /agents, /permissions, /login, /config, ...)
 // trap the agent in a selector dialog and require external Escape rescue, so
 // they are NOT on this list. Free-text prompts (no leading '/') bypass this
 // gate entirely — they just land as prompt text.

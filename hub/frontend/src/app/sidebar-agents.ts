@@ -72,7 +72,7 @@ export async function fetchAgents() {
     var _computeStateLocal = function (a) {
       var pane = a.orochi_pane_state || "";
       if (pane === "compacting" || pane === "auto_compact") return "compacting";
-      // auth_error and mcp_broken are functional failures — agent is orochi_alive
+      // auth_error and mcp_broken are functional failures — agent is alive
       // at the network/heartbeat layer but cannot do work. Surface as
       // their own state so the dashboard renders red rather than blending
       // into the yellow "selecting" bucket alongside y_n_prompt.
@@ -97,7 +97,7 @@ export async function fetchAgents() {
       // from hub-side hook events (PreToolUse), NOT pane text scraping —
       // no claude-hud / statusline dependency. sac_hooks_last_tool_at is null until
       // the first PreToolUse hook fires, so a connected agent with no
-      // tool history is provably "orochi_alive but never worked".
+      // tool history is provably "alive but never worked".
       if (lastToolSec == null) return "waiting";
       return "idle";
     };
@@ -105,7 +105,7 @@ export async function fetchAgents() {
       return connected(a) || !!a.pinned;
     });
     /* Starred first (like channels), then apply the sort-dropdown
-     * selection (name / orochi_machine) within each group. ywatanabe
+     * selection (name / machine) within each group. ywatanabe
      * 2026-04-21: "starred agents should be placed upper" +
      * "functionally, no; please make it functional" (sort dropdown
      * must actually sort the sidebar list, not just the Agents tab).
@@ -120,8 +120,8 @@ export async function fetchAgents() {
         ? (globalThis as any)._overviewSort
         : "name";
     var sortKey = function (a) {
-      if (sortBy === "orochi_machine") {
-        return (a.orochi_machine || "") + "\u0001" + (a.name || "");
+      if (sortBy === "machine") {
+        return (a.machine || "") + "\u0001" + (a.name || "");
       }
       /* Default "name" — use the same display-name that renders in the
        * badge so visual order matches what the user reads. */
@@ -175,7 +175,7 @@ export async function fetchAgents() {
                 tooltip:
                   (a.agent_id || rawName) +
                   " (" +
-                  (a.orochi_machine || "unknown") +
+                  (a.machine || "unknown") +
                   ")",
                 iconHtml: function () {
                   return "";

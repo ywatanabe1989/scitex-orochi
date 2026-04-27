@@ -9,12 +9,12 @@ metadata:
   labels:
     role: master
     team: orochi
-    orochi_machine: CHANGEME
+    machine: CHANGEME
     capabilities: telegram,delegation,orchestration
 spec:
-  orochi_runtime: claude-code
-  orochi_model: opus[1m]
-  orochi_workdir: ~/proj
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj
 
   claude:
     channels: []
@@ -54,7 +54,7 @@ spec:
     enabled: true
     interval: 30
     timeout: 5
-    method: orochi_multiplexer-orochi_alive
+    method: multiplexer-alive
 
   restart:
     policy: on-failure

@@ -27,8 +27,8 @@ export interface RsyncJob {
   dst_path: string;
   channel: string;
   status: "running" | "done" | "failed";
-  orochi_pid?: number;
-  orochi_started_at: string;
+  pid?: number;
+  started_at: string;
   finished_at?: string;
   exit_code?: number;
   last_line?: string;
@@ -99,7 +99,7 @@ export async function handleRsyncMedia(args: {
     dst_path,
     channel,
     status: "running",
-    orochi_started_at: new Date().toISOString(),
+    started_at: new Date().toISOString(),
   };
   rsyncJobs.set(jobId, job);
 
@@ -117,12 +117,12 @@ export async function handleRsyncMedia(args: {
     },
   );
 
-  job.orochi_pid = child.orochi_pid;
-  logStream.write(`[rsync_media] job=${jobId} orochi_pid=${child.orochi_pid}\n`);
+  job.pid = child.pid;
+  logStream.write(`[rsync_media] job=${jobId} pid=${child.pid}\n`);
   logStream.write(
     `[rsync_media] cmd: rsync -avP --partial -e ssh ${src_path} ${dst_host}:${dst_path}\n`,
   );
-  logStream.write(`[rsync_media] started: ${job.orochi_started_at}\n\n`);
+  logStream.write(`[rsync_media] started: ${job.started_at}\n\n`);
 
   child.stdout?.pipe(logStream, { end: false });
   child.stderr?.pipe(logStream, { end: false });
@@ -171,7 +171,7 @@ export async function handleRsyncMedia(args: {
         text: JSON.stringify({
           job_id: jobId,
           status: "running",
-          orochi_pid: job.orochi_pid,
+          pid: job.pid,
           log: logPath,
           cmd: `rsync -avP --partial -e ssh ${src_path} ${dst_host}:${dst_path}`,
         }),
@@ -203,8 +203,8 @@ export async function handleRsyncStatus(args: {
           src_path: job.src_path,
           dst_host: job.dst_host,
           dst_path: job.dst_path,
-          orochi_pid: job.orochi_pid,
-          orochi_started_at: job.orochi_started_at,
+          pid: job.pid,
+          started_at: job.started_at,
           finished_at: job.finished_at ?? null,
           exit_code: job.exit_code ?? null,
           log_tail: tail,

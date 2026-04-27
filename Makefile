@@ -178,7 +178,7 @@ help-all:
 	@echo -e "  status                          Container + branch state"
 	@echo -e "  validate                        Sanity-check docker availability"
 	@echo -e "  info                            Project paths + versions"
-	@echo -e "  check-host                      Verify expected orochi_hostname"
+	@echo -e "  check-host                      Verify expected hostname"
 	@echo -e ""
 	@echo -e "$(CYAN)Container lifecycle (ENV=dev|stable)$(NC)"
 	@echo -e "  ENV=<env> start                 docker compose up -d"
@@ -500,7 +500,7 @@ dev-logs:  ; $(MAKE) ENV=dev logs
 # Misc
 # ============================================
 check-host:
-	@HOST=$$(orochi_hostname); \
+	@HOST=$$(hostname); \
 		if [ "$$HOST" = "ywata-note-win" ]; then \
 			echo -e "$(GREEN)host: $$HOST (WSL workstation)$(NC)"; \
 		elif [ "$$HOST" = "mba" ] || [ "$$HOST" = "mba.local" ]; then \
@@ -515,6 +515,6 @@ info:
 	@echo -e "$(CYAN)Frontend:$(NC)    $(FRONTEND_DIR)"
 	@echo -e "$(CYAN)Docker dir:$(NC)  $(DOCKER_DIR)"
 	@echo -e "$(CYAN)Branch:$(NC)      $$(git -C $(PROJECT_ROOT) branch --show-current)"
-	@echo -e "$(CYAN)Python:$(NC)      $$(python3 --orochi_version 2>&1)"
-	@echo -e "$(CYAN)Node:$(NC)        $$(node --orochi_version 2>/dev/null || echo not installed)"
-	@echo -e "$(CYAN)Docker:$(NC)      $$(docker --orochi_version 2>/dev/null || echo not installed)"
+	@echo -e "$(CYAN)Python:$(NC)      $$(python3 --version 2>&1)"
+	@echo -e "$(CYAN)Node:$(NC)        $$(node --version 2>/dev/null || echo not installed)"
+	@echo -e "$(CYAN)Docker:$(NC)      $$(docker --version 2>/dev/null || echo not installed)"

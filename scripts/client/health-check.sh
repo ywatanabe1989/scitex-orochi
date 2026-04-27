@@ -44,7 +44,7 @@ section "TELEGRAM"
 # 1a. bun process running
 TELEGRAM_PID=$(pgrep -f 'bun.*telegram' 2>/dev/null | head -1)
 if [[ -n "$TELEGRAM_PID" ]]; then
-    ok "Plugin process running (orochi_pid $TELEGRAM_PID)"
+    ok "Plugin process running (pid $TELEGRAM_PID)"
 else
     fail "Plugin process NOT running"
 fi
@@ -98,7 +98,7 @@ section "SSH CONNECTIVITY"
 declare -A SSH_REACHABLE
 
 for host in nas mba spartan; do
-    if HOST_INFO=$(timeout 5 ssh "${SSH_OPTS[@]}" "$host" 'orochi_hostname; cat /proc/uptime 2>/dev/null || sysctl -n kern.boottime 2>/dev/null' 2>/dev/null) && [[ -n "$HOST_INFO" ]]; then
+    if HOST_INFO=$(timeout 5 ssh "${SSH_OPTS[@]}" "$host" 'hostname; cat /proc/uptime 2>/dev/null || sysctl -n kern.boottime 2>/dev/null' 2>/dev/null) && [[ -n "$HOST_INFO" ]]; then
         HOSTNAME_VAL=$(echo "$HOST_INFO" | head -1)
         UPTIME_RAW=$(echo "$HOST_INFO" | tail -1)
         # Parse uptime from /proc/uptime (Linux: seconds since boot)

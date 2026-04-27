@@ -51,9 +51,9 @@ class AgentDetailApiTest(TestCase):
         orochi_current_task = overrides.pop("orochi_current_task", "todo#420")
         info = {
             "agent_id": "alpha",
-            "orochi_machine": "MBA",
+            "machine": "MBA",
             "role": "head",
-            "orochi_model": "claude-opus-4-7",
+            "model": "claude-opus-4-7",
             "channels": ["#general", "#agent"],
             "orochi_pane_tail_block": "line1\nline2\n",
             "orochi_claude_md": "# CLAUDE.md\n",
@@ -79,8 +79,8 @@ class AgentDetailApiTest(TestCase):
         for key in (
             "name",
             "role",
-            "orochi_machine",
-            "orochi_model",
+            "machine",
+            "model",
             "uptime_seconds",
             "registered_at",
             "last_action_ts",
@@ -93,14 +93,14 @@ class AgentDetailApiTest(TestCase):
             "orochi_mcp_servers",
             "orochi_current_task",
             "orochi_context_pct",
-            "orochi_pid",
+            "pid",
             "orochi_subagents",
             "health",
         ):
             self.assertIn(key, data, f"missing key: {key}")
         self.assertEqual(data["name"], "alpha")
         self.assertEqual(data["role"], "head")
-        self.assertEqual(data["orochi_machine"], "MBA")
+        self.assertEqual(data["machine"], "MBA")
         self.assertEqual(data["orochi_current_task"], "todo#420")
         self.assertEqual(data["pane_text_source"], "cached")
         self.assertIn("line1", data["pane_text"])

@@ -48,7 +48,7 @@ var _overviewExpanded = null;
 var _topoSizeBy = "subscribers";
 try {
   var _savedSort = localStorage.getItem("orochi.overviewSort");
-  if (_savedSort === "name" || _savedSort === "orochi_machine")
+  if (_savedSort === "name" || _savedSort === "machine")
     _overviewSort = _savedSort;
   /* Overview is Viz-only now — ignore any legacy saved value and keep
    * the constant "topology". The _overviewView localStorage key is
@@ -81,12 +81,12 @@ try {
 
 /* Pick the color key from the agent record based on the user-selected
  * "color by" option. Hash returns a deterministic pastel color for any
- * non-empty string (reuses getAgentColor), so the same orochi_machine, name,
+ * non-empty string (reuses getAgentColor), so the same machine, name,
  * or account always maps to the same color across rows. Empty key
  * falls back to name so rows never render colorless. */
 export function _colorKeyFor(a) {
   var key = "";
-  if (_overviewColor === "host") key = a.orochi_machine || "";
+  if (_overviewColor === "host") key = a.machine || "";
   else if (_overviewColor === "account") key = a.orochi_account_email || "";
   if (!key) key = a.name || "";
   return key;

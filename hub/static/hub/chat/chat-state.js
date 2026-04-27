@@ -172,7 +172,7 @@ function _fetchCrossRepoTitle(repo, num, cb) {
   issueTitleInflight[key] = true;
   /* Build the path with query params first, then let apiUrl() add
    * '&token=' (it detects the existing '?' and chooses '&'). The previous
-   * orochi_version concatenated '?repo=' AFTER apiUrl had already appended
+   * version concatenated '?repo=' AFTER apiUrl had already appended
    * '?token=', producing a malformed '?token=...?repo=...' URL → 400. */
   var url = apiUrl(
     "/api/github/issue-title?repo=" +

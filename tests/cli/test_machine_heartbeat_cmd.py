@@ -1,4 +1,4 @@
-"""Tests for ``scitex-orochi orochi_machine heartbeat {send,status}``."""
+"""Tests for ``scitex-orochi machine heartbeat {send,status}``."""
 
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from scitex_orochi._cli._main import orochi
 
 
 def test_machine_group_registered() -> None:
-    assert "orochi_machine" in orochi.commands
-    machine_cmd = orochi.commands["orochi_machine"]
+    assert "machine" in orochi.commands
+    machine_cmd = orochi.commands["machine"]
     assert "heartbeat" in machine_cmd.commands  # type: ignore[attr-defined]
     hb = machine_cmd.commands["heartbeat"]  # type: ignore[attr-defined]
     assert set(hb.commands.keys()) == {"send", "status"}
@@ -38,7 +38,7 @@ def test_heartbeat_send_invokes_push_all(monkeypatch: pytest.MonkeyPatch) -> Non
     runner = CliRunner()
     result = runner.invoke(
         orochi,
-        ["orochi_machine", "heartbeat", "send", "--token", "tk"],
+        ["machine", "heartbeat", "send", "--token", "tk"],
         obj={},
     )
     assert result.exit_code == 0, result.output
@@ -58,7 +58,7 @@ def test_heartbeat_status_missing_token_fails(
     runner = CliRunner()
     result = runner.invoke(
         orochi,
-        ["orochi_machine", "heartbeat", "status"],
+        ["machine", "heartbeat", "status"],
         obj={},
     )
     assert result.exit_code != 0
@@ -89,7 +89,7 @@ def test_heartbeat_status_not_found_exits_1(
     runner = CliRunner()
     result = runner.invoke(
         orochi,
-        ["orochi_machine", "heartbeat", "status", "--agent", "head-nope"],
+        ["machine", "heartbeat", "status", "--agent", "head-nope"],
         obj={},
     )
     assert result.exit_code == 1

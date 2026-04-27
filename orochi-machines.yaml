@@ -8,7 +8,7 @@
 #     Machines tab) read this to render labels and to flag drift.
 #
 # This file is intentionally human-curated, not auto-generated. The drifted
-# values come from orochi_runtime probes (probe_remote.sh, scitex-agent-container
+# values come from runtime probes (probe_remote.sh, scitex-agent-container
 # snapshot --json) and are compared against the declared values here.
 #
 # Naming conventions
@@ -17,7 +17,7 @@
 #   (`mba`, `nas`, `spartan`, `ywata-note-win`). This MUST match the
 #   `SCITEX_AGENT_LOCAL_HOSTS` entry seeded by host_identity.py (#294).
 # - aliases: every other string this host legitimately answers to. Must
-#   include the OS orochi_hostname so is_local_host() auto-detects via seed match.
+#   include the OS hostname so is_local_host() auto-detects via seed match.
 # - bastion_hostname: the Cloudflare tunnel public name agreed in msg#8226
 #   (`bastion-<canonical>.scitex-orochi.com`).
 # - autostart: which init system spawns the head agent at boot.
@@ -33,7 +33,7 @@ metadata:
 machines:
   # ---------------------------------------------------------------------------
   - canonical_name: mba
-    orochi_hostname: Yusukes-MacBook-Air.local
+    hostname: Yusukes-MacBook-Air.local
     aliases:
       - mba
       - head-mba
@@ -41,15 +41,15 @@ machines:
       - Yusukes-MacBook-Air.local
     os:
       family: Darwin
-      orochi_version: macOS
+      version: macOS
     hardware:
       arch: arm64
       cpu_cores: 8           # Apple Silicon — confirm exact via `sysctl -n hw.ncpu` on next probe
       ram_gb: 16
       storage_gb_total: ~
       gpu: integrated_apple_silicon
-    orochi_runtime:
-      orochi_multiplexer: tmux
+    runtime:
+      multiplexer: tmux
       autostart: launchd
       autostart_path: ~/Library/LaunchAgents/com.scitex.orochi.*.plist
     fleet_role:
@@ -62,7 +62,7 @@ machines:
       reverse_tunnel_terminus: ~
     bastion:
       tunnel_name: scitex-orochi
-      orochi_hostname: bastion-mba.scitex-orochi.com
+      hostname: bastion-mba.scitex-orochi.com
       cloudflared_running: true
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all)
@@ -99,7 +99,7 @@ machines:
 
   # ---------------------------------------------------------------------------
   - canonical_name: nas
-    orochi_hostname: DXP480TPLUS-994
+    hostname: DXP480TPLUS-994
     aliases:
       - nas
       - ugreen
@@ -107,7 +107,7 @@ machines:
       - nas.local
     os:
       family: Linux
-      orochi_version: Debian 12
+      version: Debian 12
     hardware:
       arch: x86_64
       cpu_cores: 12
@@ -115,8 +115,8 @@ machines:
       storage_gb_total: 11000   # 11 TB RAID
       storage_gb_free: 3600     # 3.6 TB free at session start
       gpu: ~
-    orochi_runtime:
-      orochi_multiplexer: tmux
+    runtime:
+      multiplexer: tmux
       autostart: systemd_user    # ~/.config/systemd/user/, loginctl enable-linger
       autostart_path: ~/.dotfiles/src/systemd/user/orochi-*.service
     fleet_role:
@@ -136,7 +136,7 @@ machines:
     bastion:
       tunnel_name: bastion-nas
       tunnel_id: c0c1f31d-8a0c-4dda-a3fc-0770a665ace9
-      orochi_hostname: bastion-nas.scitex-orochi.com
+      hostname: bastion-nas.scitex-orochi.com
       cloudflared_running: true
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all)
@@ -159,22 +159,22 @@ machines:
 
   # ---------------------------------------------------------------------------
   - canonical_name: spartan
-    orochi_hostname: spartan-login1
+    hostname: spartan-login1
     aliases:
       - spartan
       - spartan-login1
       - spartan-login1.hpc.unimelb.edu.au
     os:
       family: Linux
-      orochi_version: RHEL/CentOS HPC
+      version: RHEL/CentOS HPC
     hardware:
       arch: x86_64
       cpu_cores: 64           # head-spartan analysis msg#8054
       ram_gb: 250
       storage_gb_total: ~     # quota-based, not a fixed disk
       gpu: shared_via_orochi_slurm
-    orochi_runtime:
-      orochi_multiplexer: tmux
+    runtime:
+      multiplexer: tmux
       autostart: bash_profile_or_salloc_wrapper   # systemd --user not allowed on login1
       autostart_path: ~
     fleet_role:
@@ -191,7 +191,7 @@ machines:
       reverse_tunnel_terminus: ~
     bastion:
       tunnel_name: bastion-spartan
-      orochi_hostname: bastion-spartan.scitex-orochi.com
+      hostname: bastion-spartan.scitex-orochi.com
       cloudflared_running: false   # tier-2, requires HPC admin policy verification
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all). Minimal roster on spartan
@@ -209,22 +209,22 @@ machines:
 
   # ---------------------------------------------------------------------------
   - canonical_name: ywata-note-win
-    orochi_hostname: ywata-note-win    # WSL orochi_hostname inside the distribution
+    hostname: ywata-note-win    # WSL hostname inside the distribution
     aliases:
       - ywata-note-win
       - ywata-note-win.local
       - wsl-ywata
     os:
       family: Linux
-      orochi_version: Ubuntu 22.04 (WSL2 on Windows)
+      version: Ubuntu 22.04 (WSL2 on Windows)
     hardware:
       arch: x86_64
       cpu_cores: 8            # to be confirmed, depends on Windows host
       ram_gb: 24              # WSL allocation
       storage_gb_total: ~
       gpu: ~
-    orochi_runtime:
-      orochi_multiplexer: tmux
+    runtime:
+      multiplexer: tmux
       autostart: systemd_user_via_default_target_wants
       autostart_path: ~/.config/systemd/user/scitex-agent-*.service
     fleet_role:
@@ -244,7 +244,7 @@ machines:
           terminus: 1229
     bastion:
       tunnel_name: bastion-ywata-note-win
-      orochi_hostname: bastion-ywata-note-win.scitex-orochi.com
+      hostname: bastion-ywata-note-win.scitex-orochi.com
       cloudflared_running: false   # tier-3, future
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all). Other fleet-wide agents may

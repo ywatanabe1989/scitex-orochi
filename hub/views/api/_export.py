@@ -177,7 +177,7 @@ def api_media(request):
     offset = max(int(request.GET.get("offset", "0")), 0)
 
     # Narrow the SQL to messages that actually carry attachments. Prior
-    # orochi_version used ``.exclude(metadata={})`` which also matched messages
+    # version used ``.exclude(metadata={})`` which also matched messages
     # whose metadata only held reactions/replies/mentions — on a busy
     # workspace those crowd out the newest ``limit`` window and the
     # Files tab ends up showing ~1 attachment even when hundreds exist

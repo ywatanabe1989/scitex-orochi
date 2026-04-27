@@ -4,8 +4,8 @@
  * The sidecar shells out to
  *     ~/.scitex/orochi/scripts/collect_agent_metadata.py <agent>
  * which reads the live Claude Code session jsonl transcript and emits
- * claude-hud-style metadata (orochi_alive, orochi_subagents, orochi_context_pct, orochi_current_tool,
- * orochi_last_activity, orochi_model, ...) as a single JSON line. The resulting dict is
+ * claude-hud-style metadata (alive, orochi_subagents, orochi_context_pct, orochi_current_tool,
+ * last_activity, model, ...) as a single JSON line. The resulting dict is
  * spread into the hub heartbeat payload.
  *
  * Historical note: this used to call `scitex-agent-container status
@@ -20,7 +20,7 @@
  * collect_agent_metadata.py path bypasses the broken registry lookup entirely (todo#155).
  */
 import { spawnSync } from "child_process";
-import { orochi_hostname, homedir } from "os";
+import { hostname, homedir } from "os";
 import { existsSync } from "fs";
 import { join } from "path";
 import {
@@ -70,8 +70,8 @@ export async function pushRegistryHeartbeat(): Promise<void> {
 
   // collect_agent_metadata.py field names → hub /api/agents/register field names.
   // The hub renderer (activity-tab.js) reads `orochi_current_task`,
-  // `orochi_subagent_count`, `orochi_context_pct`, `orochi_model`. collect_agent_metadata.py emits
-  // `orochi_current_tool`, `orochi_subagents`, `orochi_context_pct`, `orochi_model`. Translate.
+  // `orochi_subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
+  // `orochi_current_tool`, `orochi_subagents`, `orochi_context_pct`, `model`. Translate.
   const currentTool = (meta["orochi_current_tool"] as string | undefined) || "";
   const subagentCount =
     typeof meta["orochi_subagents"] === "number"
@@ -90,22 +90,22 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    // Host identity: trust live ``orochi_hostname()`` first, fall back to env
+    // Host identity: trust live ``hostname()`` first, fall back to env
     // only when the kernel returns empty (stripped container). Env-
     // first was the root cause of lead msg#15578 (proj-neurovista
     // misreporting as mba) — a stale SCITEX_OROCHI_HOSTNAME env var
     // inherited into a spartan process would override the real host.
-    orochi_machine:
-      orochi_hostname() ||
+    machine:
+      hostname() ||
       process.env.SCITEX_OROCHI_MACHINE ||
       process.env.SCITEX_OROCHI_HOSTNAME ||
       process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
       "",
-    // Live orochi_hostname(1) — surfaced distinctly from ``orochi_machine`` so the
+    // Live hostname(1) — surfaced distinctly from ``machine`` so the
     // hub / frontend can prefer this authoritative signal when deriving
     // the ``<name>@<host>`` badge. Never sourced from env.
-    orochi_hostname: orochi_hostname() || "",
-    orochi_multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
+    hostname: hostname() || "",
+    multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 
   const url = `${buildHttpBase().replace(/\/$/, "")}/api/agents/register/`;

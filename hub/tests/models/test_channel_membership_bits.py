@@ -1,6 +1,6 @@
 """Tests for the ``ChannelMembership.can_read`` / ``can_write`` bit-split.
 
-Lead directive msg#16884. Covers the orochi_model-level bridge between the
+Lead directive msg#16884. Covers the model-level bridge between the
 legacy ``permission`` enum and the new boolean bits, and the data-
 migration forward + reverse paths. Read-side / write-side / seed
 behaviour live in sibling tests:

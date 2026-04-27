@@ -4,7 +4,7 @@
 var resourceData = {};
 
 function updateResourcePanel(data) {
-  var key = data.orochi_hostname || data.agent || "unknown";
+  var key = data.hostname || data.agent || "unknown";
   resourceData[key] = data;
   renderResources();
 }
@@ -219,7 +219,7 @@ async function fetchResources() {
       var entry = data[agentName];
       var r = entry.resources || {};
       resourceData[agentName] = {
-        orochi_hostname: entry.orochi_machine || agentName,
+        hostname: entry.machine || agentName,
         agent: agentName,
         cpu: {
           percent: Math.round(
@@ -238,7 +238,7 @@ async function fetchResources() {
         },
         _api: true,
         _status: entry.status || "unknown",
-        _machine: entry.orochi_machine || "",
+        _machine: entry.machine || "",
         _lastHeartbeat: entry.last_heartbeat || "",
         _cpuModel: r.cpu_model || "",
         _cpuCount: r.cpu_count || 0,

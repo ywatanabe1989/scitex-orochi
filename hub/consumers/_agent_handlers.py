@@ -43,25 +43,25 @@ async def handle_register(consumer, content):
 
     consumer.agent_meta = {
         "agent_id": payload.get("agent_id", consumer.agent_name),
-        "orochi_project": payload.get("orochi_project", ""),
-        "orochi_machine": payload.get("orochi_machine", ""),
-        # #257 / lead msg#15578 — live orochi_hostname(1) reported by the
+        "project": payload.get("project", ""),
+        "machine": payload.get("machine", ""),
+        # #257 / lead msg#15578 — live hostname(1) reported by the
         # client. Never derived from auth / source IP on the hub side;
         # always what the agent process's own ``socket.gethostname()``
-        # / ``os.orochi_hostname()`` returned. Surfaced in the dashboard
+        # / ``os.hostname()`` returned. Surfaced in the dashboard
         # payload as the authoritative "where is this agent running"
-        # field (distinct from the YAML ``orochi_machine`` config label).
-        "orochi_hostname": payload.get("orochi_hostname", ""),
+        # field (distinct from the YAML ``machine`` config label).
+        "hostname": payload.get("hostname", ""),
         # todo#55: canonical FQDN from the heartbeat (display-only).
         "orochi_hostname_canonical": payload.get("orochi_hostname_canonical", ""),
         "role": payload.get("role", ""),
-        "orochi_model": payload.get("orochi_model", ""),
-        "orochi_workdir": payload.get("orochi_workdir", ""),
+        "model": payload.get("model", ""),
+        "workdir": payload.get("workdir", ""),
         "icon": payload.get("icon", ""),
         "icon_emoji": payload.get("icon_emoji", ""),
         "icon_text": payload.get("icon_text", ""),
         "color": payload.get("color", ""),
-        "orochi_multiplexer": payload.get("orochi_multiplexer", ""),
+        "multiplexer": payload.get("multiplexer", ""),
         "channels": channels,
         "orochi_claude_md": payload.get("orochi_claude_md", ""),
         # A2A protocol surface URL for this agent (Tier 3 same-host
@@ -230,7 +230,7 @@ async def handle_echo_pong(consumer, content):
 
 
 async def handle_heartbeat(consumer, content):
-    """Persist resource orochi_metrics + optional narrative fields, then broadcast."""
+    """Persist resource metrics + optional narrative fields, then broadcast."""
     payload = content.get("payload", {})
     consumer.agent_metrics = {
         "cpu_count": payload.get("cpu_count"),
@@ -296,7 +296,7 @@ async def handle_heartbeat(consumer, content):
             "type": "agent.info",
             "agent": consumer.agent_name,
             "info": getattr(consumer, "agent_meta", {}),
-            "orochi_metrics": consumer.agent_metrics,
+            "metrics": consumer.agent_metrics,
         },
     )
 
@@ -315,7 +315,7 @@ async def handle_task_update(consumer, content):
             "type": "agent.info",
             "agent": consumer.agent_name,
             "info": getattr(consumer, "agent_meta", {}),
-            "orochi_metrics": getattr(consumer, "agent_metrics", {}),
+            "metrics": getattr(consumer, "agent_metrics", {}),
         },
     )
 
@@ -334,6 +334,6 @@ async def handle_orochi_subagents_update(consumer, content):
             "type": "agent.info",
             "agent": consumer.agent_name,
             "info": getattr(consumer, "agent_meta", {}),
-            "orochi_metrics": getattr(consumer, "agent_metrics", {}),
+            "metrics": getattr(consumer, "agent_metrics", {}),
         },
     )

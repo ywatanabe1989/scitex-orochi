@@ -65,7 +65,7 @@ async def respond(channel: str, sender: str, content: str) -> None:
 
     try:
         result = subprocess.run(
-            ["claude", "-p", prompt, "--orochi_model", MODEL, "--max-turns", "1"],
+            ["claude", "-p", prompt, "--model", MODEL, "--max-turns", "1"],
             capture_output=True,
             text=True,
             timeout=60,

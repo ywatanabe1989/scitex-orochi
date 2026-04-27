@@ -49,7 +49,7 @@ def _sanitize_group(name: str) -> str:
     """Sanitize a channel/group name for Django Channels.
 
     Channels requires names matching ^[a-zA-Z0-9._-]{1,99}$. The previous
-    orochi_version only handled #, @, and space, which broke registration when
+    version only handled #, @, and space, which broke registration when
     channels included other characters (slashes, colons, unicode, etc.).
     """
     sanitized = re.sub(r"[^a-zA-Z0-9._-]", "-", name)
@@ -60,7 +60,7 @@ def _sanitize_group(name: str) -> str:
 # todo#405: auto-status-reply (`[agent] status: online`) belongs in fleet
 # channels only. User-facing channels are the ywatanabe ↔ fleet interface
 # (fleet-communication-discipline.md rule #8). Any channel not in this
-# allowlist — including #general, #ywatanabe, orochi_project channels like
+# allowlist — including #general, #ywatanabe, project channels like
 # #neurovista / #paper-*, and DMs — must stay free of fleet heartbeat noise.
 _FLEET_CHANNELS = frozenset(
     {

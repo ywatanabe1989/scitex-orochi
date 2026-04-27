@@ -64,7 +64,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         action_ts = a.get("last_action")
         # Liveness classification distinct from WS connection state.
         # Prefer the orochi_pane_state classifier (agent_meta_pkg/_classifier.py)
-        # which already separates "idle at prompt" (orochi_alive, waiting) from
+        # which already separates "idle at prompt" (alive, waiting) from
         # "stale" (3+ cycles unchanged, no busy markers — actually stuck).
         # Falls back to the last_action timer when orochi_pane_state is missing.
         liveness = a.get("status", "online")
@@ -113,27 +113,27 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
             {
                 "name": a["name"],
                 "agent_id": a.get("agent_id", a["name"]),
-                "orochi_machine": a.get("orochi_machine", ""),
-                # #257 — live ``orochi_hostname(1)`` reported by the heartbeat.
+                "machine": a.get("machine", ""),
+                # #257 — live ``hostname(1)`` reported by the heartbeat.
                 # This is the authoritative "where is this process
                 # running right now" field. The frontend badge
-                # (hostedAgentName) prefers ``orochi_hostname`` over
-                # ``orochi_machine`` because the latter can drift (stale
+                # (hostedAgentName) prefers ``hostname`` over
+                # ``machine`` because the latter can drift (stale
                 # YAML label / env override) while the former is the
                 # kernel's answer from the live process. Exposed here
                 # so the sidebar card shows ``proj-neurovista@spartan``
                 # correctly even when an env var says otherwise (lead
                 # msg#15578 fix).
-                "orochi_hostname": a.get("orochi_hostname", ""),
-                # todo#55: FQDN / canonical orochi_hostname for display next to
-                # the short orochi_machine label. Empty string = older client
+                "hostname": a.get("hostname", ""),
+                # todo#55: FQDN / canonical hostname for display next to
+                # the short machine label. Empty string = older client
                 # that didn't push this field.
                 "orochi_hostname_canonical": a.get("orochi_hostname_canonical", ""),
                 "role": a.get("role", ""),
-                "orochi_model": a.get("orochi_model", ""),
-                "orochi_multiplexer": a.get("orochi_multiplexer", ""),
-                "orochi_project": a.get("orochi_project", ""),
-                "orochi_workdir": a.get("orochi_workdir", ""),
+                "model": a.get("model", ""),
+                "multiplexer": a.get("multiplexer", ""),
+                "project": a.get("project", ""),
+                "workdir": a.get("workdir", ""),
                 "icon": icon_image,
                 "icon_emoji": icon_emoji,
                 "icon_text": icon_text,
@@ -186,7 +186,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     if action_ts
                     else None
                 ),
-                "orochi_metrics": a.get("orochi_metrics", {}),
+                "metrics": a.get("metrics", {}),
                 # scitex-orochi#144 fix path 4: number of WebSocket
                 # sessions currently authenticated under this name.
                 # >1 indicates a concurrent-instance race situation.
@@ -200,16 +200,16 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "health": a.get("health") or {},
                 "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)
-                "orochi_pid": a.get("orochi_pid") or 0,
-                "orochi_ppid": a.get("orochi_ppid") or 0,
+                "pid": a.get("pid") or 0,
+                "ppid": a.get("ppid") or 0,
                 "orochi_context_pct": a.get("orochi_context_pct"),
                 "context_management": a.get("context_management"),
                 "orochi_skills_loaded": list(a.get("orochi_skills_loaded") or []),
-                "orochi_started_at": a.get("orochi_started_at", ""),
-                "orochi_version": a.get("orochi_version", ""),
-                "orochi_runtime": a.get("orochi_runtime", ""),
+                "started_at": a.get("started_at", ""),
+                "version": a.get("version", ""),
+                "runtime": a.get("runtime", ""),
                 # v0.11.0 Agents-tab visibility fields.
-                "orochi_recent_actions": list(a.get("orochi_recent_actions") or []),
+                "recent_actions": list(a.get("recent_actions") or []),
                 "orochi_pane_tail": a.get("orochi_pane_tail", ""),
                 "orochi_pane_tail_block": a.get("orochi_pane_tail_block", ""),
                 # todo#47 — full scrollback; empty string if the agent

@@ -34,7 +34,7 @@ Env vars:
                              HTTP-direct dispatch for same-host calls
                              (Tier 3 same-host optimization)
     CLAUDE_BIN               claude CLI path, default `claude` (claude_cli only)
-    CLAUDE_MODEL             optional --orochi_model override (claude_cli only)
+    CLAUDE_MODEL             optional --model override (claude_cli only)
     CLAUDE_TIMEOUT_S         per-call timeout, default 25 (claude_cli only)
     BRIDGE_EXEC_COMMAND      command for `exec` handler — receives user text on stdin
 """
@@ -90,7 +90,7 @@ def _h_echo(agent: str, user_text: str) -> str:
 def _h_claude_cli(agent: str, user_text: str) -> str:
     cmd = [CLAUDE_BIN, "--print", "--append-system-prompt", CLAUDE_SYSTEM]
     if CLAUDE_MODEL:
-        cmd.extend(["--orochi_model", CLAUDE_MODEL])
+        cmd.extend(["--model", CLAUDE_MODEL])
     try:
         res = subprocess.run(
             cmd,
@@ -186,7 +186,7 @@ def _build_reply(reply_id: str, body: dict, handler: Callable[[str, str], str]) 
                 "metadata": {
                     "x-orochi": {
                         "agent": AGENT_NAME,
-                        "orochi_runtime": _runtime_label(),
+                        "runtime": _runtime_label(),
                         "served_by": "orochi-hub",
                         "generated_at": _now_iso(),
                     }
@@ -241,8 +241,8 @@ async def main() -> int:
             "payload": {
                 "agent_id": AGENT_NAME,
                 "role": _runtime_label().replace("tier3-", ""),
-                "orochi_model": "tier3-bridge",
-                "orochi_machine": os.environ.get("SCITEX_OROCHI_MACHINE", ""),
+                "model": "tier3-bridge",
+                "machine": os.environ.get("SCITEX_OROCHI_MACHINE", ""),
                 "channels": [],
                 "a2a_url": A2A_URL,
             },

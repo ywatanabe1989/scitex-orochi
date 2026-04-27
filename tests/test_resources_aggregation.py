@@ -2,7 +2,7 @@
 display (ywatanabe msg#16215).
 
 The hub aggregator in ``hub/views/api/_resources.py`` projects each
-registered agent's ``orochi_metrics`` dict into a per-orochi_machine ``resources``
+registered agent's ``metrics`` dict into a per-machine ``resources``
 dict. The sidebar MACHINES list + Machines-tab tooltip read this
 projection; if a key is missing the frontend renders an empty field
 (the mba + nas regression fixed in this change).
@@ -54,7 +54,7 @@ def fresh_registry():
 
 
 def _mba_metrics_payload() -> dict:
-    """Representative mba heartbeat orochi_metrics (post msg#16215)."""
+    """Representative mba heartbeat metrics (post msg#16215)."""
     return {
         "cpu_count": 8,
         "cpu_model": "arm",
@@ -98,7 +98,7 @@ def test_resources_aggregation_includes_new_fields(fresh_registry):
     from hub.views.api._resources import api_resources  # noqa: F401
 
     register_agent(
-        "worker-mba", workspace_id=1, info={"orochi_machine": "mba", "agent_id": "worker-mba"}
+        "worker-mba", workspace_id=1, info={"machine": "mba", "agent_id": "worker-mba"}
     )
     update_heartbeat("worker-mba", _mba_metrics_payload())
 
@@ -113,7 +113,7 @@ def test_resources_aggregation_includes_new_fields(fresh_registry):
     # requires a Django request; the projection itself is plain
     # dict manipulation.)
     a = agents[0]
-    orochi_metrics = a.get("orochi_metrics") or {}
+    metrics = a.get("metrics") or {}
     for key in (
         "cpu_count",
         "mem_total_mb",
@@ -124,11 +124,11 @@ def test_resources_aggregation_includes_new_fields(fresh_registry):
         "disk_used_percent",
         "gpus",
     ):
-        assert key in orochi_metrics, f"missing {key} in registry orochi_metrics"
-    assert orochi_metrics["cpu_count"] == 8
-    assert orochi_metrics["mem_used_mb"] == 13650
-    assert orochi_metrics["disk_total_mb"] == 233752
-    assert orochi_metrics["gpus"] == []
+        assert key in metrics, f"missing {key} in registry metrics"
+    assert metrics["cpu_count"] == 8
+    assert metrics["mem_used_mb"] == 13650
+    assert metrics["disk_total_mb"] == 233752
+    assert metrics["gpus"] == []
 
 
 def test_resources_aggregation_derives_mem_used_from_total_minus_free(
@@ -144,7 +144,7 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     register_agent(
         "legacy-worker",
         workspace_id=1,
-        info={"orochi_machine": "legacy-host", "agent_id": "legacy-worker"},
+        info={"machine": "legacy-host", "agent_id": "legacy-worker"},
     )
     update_heartbeat("legacy-worker", _legacy_metrics_payload())
 
@@ -158,16 +158,16 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     a["status"] = "online"
 
     from hub.views.api._resources import api_resources  # noqa: F401
-    # Manually replay the orochi_machine projection to avoid Django's login_required:
-    orochi_metrics = a.get("orochi_metrics") or {}
+    # Manually replay the machine projection to avoid Django's login_required:
+    metrics = a.get("metrics") or {}
 
-    # Reproduce the aggregator's initial-orochi_machine branch.
-    mem_used_mb_init = orochi_metrics.get(
+    # Reproduce the aggregator's initial-machine branch.
+    mem_used_mb_init = metrics.get(
         "mem_used_mb",
         max(
             0,
-            int(orochi_metrics.get("mem_total_mb", 0) or 0)
-            - int(orochi_metrics.get("mem_free_mb", 0) or 0),
+            int(metrics.get("mem_total_mb", 0) or 0)
+            - int(metrics.get("mem_free_mb", 0) or 0),
         ),
     )
     assert mem_used_mb_init == 8192 - 2048  # 6144

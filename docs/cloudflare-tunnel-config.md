@@ -26,15 +26,15 @@ Configure these in the Cloudflare Zero Trust dashboard or `config.yml` on NAS.
 
 ingress:
   # Stable Orochi
-  - orochi_hostname: orochi.scitex.ai
+  - hostname: orochi.scitex.ai
     service: http://localhost:8559
-  - orochi_hostname: ws.orochi.scitex.ai
+  - hostname: ws.orochi.scitex.ai
     service: http://localhost:9559
 
   # Dev Orochi
-  - orochi_hostname: orochi-dev.scitex.ai
+  - hostname: orochi-dev.scitex.ai
     service: http://localhost:8560
-  - orochi_hostname: ws-dev.orochi.scitex.ai
+  - hostname: ws-dev.orochi.scitex.ai
     service: http://localhost:9560
 
   # ... existing rules ...

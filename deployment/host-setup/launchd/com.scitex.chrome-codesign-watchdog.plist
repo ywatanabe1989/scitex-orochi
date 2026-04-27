@@ -1,4 +1,4 @@
-<?xml orochi_version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
   LaunchAgent: Chrome code_sign_clone watchdog (scitex-orochi#286 item 2).
 
@@ -21,7 +21,7 @@
   automatically.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist orochi_version="1.0">
+<plist version="1.0">
   <dict>
     <key>Label</key>
     <string>com.scitex.chrome-codesign-watchdog</string>

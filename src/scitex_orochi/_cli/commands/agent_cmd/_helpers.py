@@ -63,10 +63,10 @@ def _extract_config_from_ac_yaml(yaml_path: Path) -> dict:
 
     raw_host = (
         remote.get("host")
-        or labels.get("orochi_machine")
+        or labels.get("machine")
         or _derive_host(meta.get("name", yaml_path.stem))
     )
-    # Normalize: if the raw host matches the local orochi_machine, use localhost
+    # Normalize: if the raw host matches the local machine, use localhost
     host = (
         "localhost" if _is_local(raw_host) or _is_local_machine(raw_host) else raw_host
     )
@@ -75,8 +75,8 @@ def _extract_config_from_ac_yaml(yaml_path: Path) -> dict:
         "user": remote.get("user", ""),
         "role": labels.get("role", "head"),
         "screen_name": screen_cfg.get("name", meta.get("name", yaml_path.stem)),
-        "orochi_model": spec.get("orochi_model", "opus[1m]"),
-        "orochi_workdir": spec.get("orochi_workdir", f"~/.scitex/orochi/workspaces/{yaml_path.stem}"),
+        "model": spec.get("model", "opus[1m]"),
+        "workdir": spec.get("workdir", f"~/.scitex/orochi/workspaces/{yaml_path.stem}"),
     }
 
 
@@ -99,15 +99,15 @@ def _derive_host(name: str) -> str:
     if len(parts) < 2:
         return "localhost"
 
-    orochi_machine = parts[1]
+    machine = parts[1]
 
-    # Check if this orochi_machine name matches the local orochi_hostname
+    # Check if this machine name matches the local hostname
     local_hostname = platform.node()
     # ywata-note-win running on ywata-note-win -> localhost
-    if orochi_machine == local_hostname or orochi_machine in local_hostname:
+    if machine == local_hostname or machine in local_hostname:
         return "localhost"
 
-    return orochi_machine
+    return machine
 
 
 def _derive_config(name: str) -> dict:
@@ -119,18 +119,18 @@ def _derive_config(name: str) -> dict:
         "host": host,
         "role": role,
         "screen_name": name,
-        "orochi_model": "opus[1m]",
-        "orochi_workdir": f"~/.scitex/orochi/workspaces/{name}",
+        "model": "opus[1m]",
+        "workdir": f"~/.scitex/orochi/workspaces/{name}",
     }
 
 
 def _is_local(host: str) -> bool:
-    """Check if host refers to the local orochi_machine."""
+    """Check if host refers to the local machine."""
     return host in ("localhost", "127.0.0.1", "::1", "")
 
 
 def _is_local_machine(host: str) -> bool:
-    """Check if host matches the local orochi_machine's orochi_hostname."""
+    """Check if host matches the local machine's hostname."""
     import platform
 
     local_hostname = platform.node()

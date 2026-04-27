@@ -1,7 +1,7 @@
 """``scitex-orochi host-liveness probe`` subcommand.
 
 Python port of ``scripts/client/fleet-watch/host-liveness-probe.sh``.
-Enumerates every orochi_machine in ``orochi-machines.yaml``, SSH-probes it
+Enumerates every machine in ``orochi-machines.yaml``, SSH-probes it
 (or short-circuits to local ``bash``), and emits one NDJSON line per
 host on stdout. With ``--yes`` it revives missing expected tmux
 sessions via the local healer's inbox or a direct ``ssh
@@ -14,7 +14,7 @@ Flag            Meaning
 ==============  ============================================================
 --dry-run       default — log "would revive" actions without side effects.
 --yes / -y      actually revive missing agents.
---host NAME     constrain to one orochi_machine.
+--host NAME     constrain to one machine.
 ==============  ============================================================
 """
 
@@ -166,16 +166,16 @@ def _classify(
     expected: tuple[str, ...],
 ) -> tuple[str, int, bool, str, list[str], list[str], list[str]]:
     """Return
-    (severity, severity_code, reachable, tmux_state, orochi_alive, missing, unexpected).
+    (severity, severity_code, reachable, tmux_state, alive, missing, unexpected).
     """
     if rc != 0 or not stdout.strip():
         return "critical", 3, False, "ssh_unreachable", [], list(expected), []
     lines = stdout.splitlines()
     first = lines[0].strip() if lines else ""
-    orochi_alive: list[str] = []
+    alive: list[str] = []
     if first == "TMUX_OK":
         tmux_state = "running"
-        orochi_alive = [ln.strip() for ln in lines[1:] if ln.strip()]
+        alive = [ln.strip() for ln in lines[1:] if ln.strip()]
     elif first == "TMUX_DEAD":
         return "critical", 3, True, "dead", [], list(expected), []
     elif first == "TMUX_MISSING":
@@ -183,17 +183,17 @@ def _classify(
     else:
         return "critical", 3, False, "unparseable", [], list(expected), []
 
-    alive_set = set(orochi_alive)
+    alive_set = set(alive)
     expected_set = set(expected)
     missing = [e for e in expected if e not in alive_set]
-    unexpected = [a for a in orochi_alive if a not in expected_set] if expected else []
+    unexpected = [a for a in alive if a not in expected_set] if expected else []
 
     severity, code = "ok", 0
     if missing:
         severity, code = "warn", 2
     elif unexpected:
         severity, code = "advisory", 1
-    return severity, code, True, tmux_state, orochi_alive, missing, unexpected
+    return severity, code, True, tmux_state, alive, missing, unexpected
 
 
 # ---------------------------------------------------------------------------
@@ -295,7 +295,7 @@ def _probe_machine(
         connect_timeout=connect_timeout,
         probe_timeout=probe_timeout,
     )
-    severity, _code, reachable, tmux_state, orochi_alive, missing, unexpected = _classify(
+    severity, _code, reachable, tmux_state, alive, missing, unexpected = _classify(
         stdout, rc, m.expected_tmux_sessions
     )
 
@@ -304,7 +304,7 @@ def _probe_machine(
     if tmux_state == "running" and missing:
         healer = f"healer-{m.canonical_name}"
         mamba_healer = f"mamba-healer-{m.canonical_name}"
-        healer_alive = healer in orochi_alive or mamba_healer in orochi_alive
+        healer_alive = healer in alive or mamba_healer in alive
         revive_path = "healer_delegate" if healer_alive else "ssh_direct"
         for miss in missing:
             if dry_run:
@@ -324,7 +324,7 @@ def _probe_machine(
         reachable=reachable,
         tmux_state=tmux_state,
         expected_agents=list(m.expected_tmux_sessions),
-        alive_agents=orochi_alive,
+        alive_agents=alive,
         missing=missing,
         unexpected=unexpected,
         revive_path=revive_path,

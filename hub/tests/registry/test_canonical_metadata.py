@@ -1,6 +1,6 @@
-"""Tests for #257 — canonical heartbeat orochi_runtime metadata.
+"""Tests for #257 — canonical heartbeat runtime metadata.
 
-Verifies that ``register_agent`` accepts the new fields (`orochi_hostname`,
+Verifies that ``register_agent`` accepts the new fields (`hostname`,
 `uname`, `instance_id`, `start_ts_unix`, `is_proxy`, `priority_rank`,
 `priority_list`, `launch_method`, `heartbeat_seq`), preserves them
 across re-registers when a heartbeat omits a field, and that they
@@ -36,24 +36,24 @@ class CanonicalMetadataAcceptedTest(TestCase):
         _agents.clear()
 
     def test_hostname_stored_separately_from_machine(self):
-        """`orochi_machine` (YAML label) and `orochi_hostname` (live orochi_hostname(1)) are
+        """`machine` (YAML label) and `hostname` (live hostname(1)) are
         distinct — the dashboard must render the latter, not the former."""
         register_agent(
             "agent-x",
             workspace_id=1,
             info={
-                "orochi_machine": "ywata-note-win",
-                "orochi_hostname": "ywata-note-win",
+                "machine": "ywata-note-win",
+                "hostname": "ywata-note-win",
             },
         )
         a = get_agent("agent-x")
-        self.assertEqual(a["orochi_machine"], "ywata-note-win")
-        self.assertEqual(a["orochi_hostname"], "ywata-note-win")
+        self.assertEqual(a["machine"], "ywata-note-win")
+        self.assertEqual(a["hostname"], "ywata-note-win")
 
     def test_all_257_fields_round_trip(self):
         info = {
-            "orochi_machine": "spartan",
-            "orochi_hostname": "spartan",
+            "machine": "spartan",
+            "hostname": "spartan",
             "uname": "Linux spartan 5.15.0 #1 SMP x86_64 GNU/Linux",
             "instance_id": "11111111-2222-3333-4444-555555555555",
             "start_ts_unix": 1734400000.0,
@@ -78,8 +78,8 @@ class CanonicalMetadataAcceptedTest(TestCase):
             "proj-neurovista",
             workspace_id=1,
             info={
-                "orochi_machine": "spartan",
-                "orochi_hostname": "spartan",
+                "machine": "spartan",
+                "hostname": "spartan",
                 "instance_id": "abc",
                 "start_ts_unix": 1234.5,
                 "is_proxy": False,
@@ -94,10 +94,10 @@ class CanonicalMetadataAcceptedTest(TestCase):
         register_agent(
             "proj-neurovista",
             workspace_id=1,
-            info={"orochi_machine": "spartan"},
+            info={"machine": "spartan"},
         )
         a = get_agent("proj-neurovista")
-        self.assertEqual(a["orochi_hostname"], "spartan")
+        self.assertEqual(a["hostname"], "spartan")
         self.assertEqual(a["instance_id"], "abc")
         self.assertEqual(a["start_ts_unix"], 1234.5)
         self.assertFalse(a["is_proxy"])
@@ -114,10 +114,10 @@ class CanonicalMetadataAcceptedTest(TestCase):
         register_agent(
             "legacy-agent",
             workspace_id=1,
-            info={"orochi_machine": "ywata-note-win"},
+            info={"machine": "ywata-note-win"},
         )
         a = get_agent("legacy-agent")
-        self.assertEqual(a["orochi_hostname"], "")
+        self.assertEqual(a["hostname"], "")
         self.assertEqual(a["uname"], "")
         self.assertEqual(a["instance_id"], "")
         self.assertIsNone(a["start_ts_unix"])

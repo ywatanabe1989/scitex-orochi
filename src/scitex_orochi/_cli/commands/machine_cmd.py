@@ -1,4 +1,4 @@
-"""``scitex-orochi orochi_machine {heartbeat,resources} ...`` subcommands.
+"""``scitex-orochi machine {heartbeat,resources} ...`` subcommands.
 
 ``heartbeat send``    — drop-in for ``scripts/client/agent_meta.py --push --once``.
                        Enumerate local tmux/screen agent sessions, collect their
@@ -7,7 +7,7 @@
                        Orochi hub's ``/api/agents/register/`` endpoint.
 
 ``heartbeat status``  — GET the hub agents registry and print this host's canonical
-                       payload (``head-<orochi_hostname>``) as JSON. Used as a lightweight
+                       payload (``head-<hostname>``) as JSON. Used as a lightweight
                        smoke test in lieu of the dashboard.
 
 ``resources show``    — Snapshot local CPU / RAM / Storage / GPU in the
@@ -65,18 +65,18 @@ def _import_agent_meta_pkg():
 # Groups
 # ---------------------------------------------------------------------------
 
-@click.group("orochi_machine")
-def orochi_machine() -> None:
+@click.group("machine")
+def machine() -> None:
     """Host-level operations (heartbeat push, registry inspection, ...)."""
 
 
-@orochi_machine.group("heartbeat")
+@machine.group("heartbeat")
 def heartbeat() -> None:
     """Heartbeat publishing + inspection."""
 
 
 # ---------------------------------------------------------------------------
-# orochi_machine heartbeat send
+# machine heartbeat send
 # ---------------------------------------------------------------------------
 
 @heartbeat.command("send")
@@ -115,14 +115,14 @@ def heartbeat_send(
         raise click.ClickException(f"push_all failed: {exc}") from exc
     if verbose:
         click.echo(
-            f"[orochi_machine heartbeat send] pushed={n} url={url or 'default'}",
+            f"[machine heartbeat send] pushed={n} url={url or 'default'}",
             err=True,
         )
     click.echo(json.dumps({"pushed": n}, separators=(",", ":")))
 
 
 # ---------------------------------------------------------------------------
-# orochi_machine heartbeat status
+# machine heartbeat status
 # ---------------------------------------------------------------------------
 
 @heartbeat.command("status")
@@ -155,7 +155,7 @@ def heartbeat_status(
     agent: str | None,
     pretty: bool,
 ) -> None:
-    """Print the hub registry entry for an agent (default head-<orochi_hostname>)."""
+    """Print the hub registry entry for an agent (default head-<hostname>)."""
     resolved_token = token or load_workspace_token()
     if not resolved_token:
         raise click.ClickException(
@@ -198,7 +198,7 @@ def heartbeat_status(
         envelope = {
             "agent": name,
             "found": False,
-            "orochi_hostname": socket.gethostname(),
+            "hostname": socket.gethostname(),
         }
         click.echo(json.dumps(envelope, separators=(",", ":")))
         sys.exit(1)
@@ -209,10 +209,10 @@ def heartbeat_status(
 
 
 # ---------------------------------------------------------------------------
-# orochi_machine resources show
+# machine resources show
 # ---------------------------------------------------------------------------
 
-@orochi_machine.group("resources")
+@machine.group("resources")
 def resources() -> None:
     """Local host resource snapshot (CPU / RAM / Storage / GPU)."""
 
@@ -304,7 +304,7 @@ def resources_show(ctx: click.Context, pretty: bool) -> None:
             "storage": "N/M TB",
             "gpu":  "N x — VRAM N/M GB"   # or "n/a"
           },
-          "raw": { ...full orochi_metrics dict... }
+          "raw": { ...full metrics dict... }
         }
 
     ``--json`` (top-level) or ``--pretty`` honoured. Human output prints
@@ -313,22 +313,22 @@ def resources_show(ctx: click.Context, pretty: bool) -> None:
     """
     collect = _import_metrics()
     try:
-        orochi_metrics = collect()
+        metrics = collect()
     except Exception as exc:  # noqa: BLE001 - must degrade
         raise click.ClickException(f"collect_machine_metrics failed: {exc}") from exc
 
     display = {
-        "cpu": _fmt_cores(orochi_metrics.get("cpu_count")),
-        "ram": _fmt_gb_ratio(orochi_metrics.get("mem_used_mb"), orochi_metrics.get("mem_total_mb")),
+        "cpu": _fmt_cores(metrics.get("cpu_count")),
+        "ram": _fmt_gb_ratio(metrics.get("mem_used_mb"), metrics.get("mem_total_mb")),
         "storage": _fmt_tb_ratio(
-            orochi_metrics.get("disk_used_mb"), orochi_metrics.get("disk_total_mb")
+            metrics.get("disk_used_mb"), metrics.get("disk_total_mb")
         ),
-        "gpu": _fmt_gpu(orochi_metrics.get("gpus") or []),
+        "gpu": _fmt_gpu(metrics.get("gpus") or []),
     }
     payload = {
         "host": resolve_self_host(),
         "display": display,
-        "raw": orochi_metrics,
+        "raw": metrics,
     }
     as_json = bool(ctx.obj and ctx.obj.get("json"))
     if as_json or pretty:
@@ -346,4 +346,4 @@ def resources_show(ctx: click.Context, pretty: bool) -> None:
     click.echo(f"GPU:     {display['gpu']}")
 
 
-__all__ = ["orochi_machine"]
+__all__ = ["machine"]

@@ -107,23 +107,23 @@
   font-size: 12px;
   margin-right: 12px;
 }
-.orochi_machine-badge {
+.machine-badge {
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
   margin-right: 6px;
 }
-.orochi_machine-ok {
+.machine-ok {
   background: rgba(78, 205, 196, 0.13);
   color: #4ecdc4;
   border: 1px solid rgba(78, 205, 196, 0.27);
 }
-.orochi_machine-warn {
+.machine-warn {
   background: rgba(255, 217, 61, 0.13);
   color: #ffd93d;
   border: 1px solid rgba(255, 217, 61, 0.27);
 }
-.orochi_machine-off {
+.machine-off {
   background: rgba(239, 68, 68, 0.13);
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.27);

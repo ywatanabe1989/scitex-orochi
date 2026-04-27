@@ -18,9 +18,9 @@ def api_agents_register(request):
         {
           "token": "wks_...",
           "name": "caduceus@host",
-          "orochi_machine": "host",
+          "machine": "host",
           "role": "healer",
-          "orochi_model": "stdlib",
+          "model": "stdlib",
           "channels": ["#general"],
           "orochi_current_task": "monitoring"
         }
@@ -96,43 +96,43 @@ def api_agents_register(request):
         workspace_id=wt.workspace_id,
         info={
             "agent_id": body.get("agent_id") or name,
-            "orochi_machine": body.get("orochi_machine", ""),
-            # #257 — live ``orochi_hostname(1)`` of the running agent process.
+            "machine": body.get("machine", ""),
+            # #257 — live ``hostname(1)`` of the running agent process.
             # Authoritative "where am I" signal that the frontend badge
-            # (hostedAgentName) prefers over ``orochi_machine``. Client-supplied
+            # (hostedAgentName) prefers over ``machine``. Client-supplied
             # from the agent's own ``socket.gethostname()`` / Node
-            # ``os.orochi_hostname()`` — NEVER derived from the auth token or
+            # ``os.hostname()`` — NEVER derived from the auth token or
             # source IP on the hub side (lead msg#15578: server-side
             # inference was the bug we're fixing).
-            "orochi_hostname": body.get("orochi_hostname", ""),
+            "hostname": body.get("hostname", ""),
             # todo#55: canonical FQDN (socket.getfqdn()) from the heartbeat.
             "orochi_hostname_canonical": body.get("orochi_hostname_canonical", ""),
             "role": body.get("role", "agent"),
-            "orochi_model": body.get("orochi_model", ""),
-            "orochi_workdir": body.get("orochi_workdir", ""),
+            "model": body.get("model", ""),
+            "workdir": body.get("workdir", ""),
             "channels": _effective_channels,
-            # todo#213: claude-hud-style process/orochi_runtime metadata pushed by
+            # todo#213: claude-hud-style process/runtime metadata pushed by
             # mamba-healer-mba's agent_meta.py --push loop.
-            "orochi_multiplexer": body.get("orochi_multiplexer", ""),
-            "orochi_project": body.get("orochi_project", ""),
-            "orochi_pid": body.get("orochi_pid") or 0,
-            "orochi_ppid": body.get("orochi_ppid") or 0,
+            "multiplexer": body.get("multiplexer", ""),
+            "project": body.get("project", ""),
+            "pid": body.get("pid") or 0,
+            "ppid": body.get("ppid") or 0,
             "orochi_context_pct": body.get("orochi_context_pct"),
             # YAML-declared compact policy (strategy / trigger_at_percent /
             # live percent reading from the sac sensor). None when the agent
             # has context_management.strategy=noop or unconfigured.
             "context_management": body.get("context_management"),
             "orochi_skills_loaded": body.get("orochi_skills_loaded") or [],
-            "orochi_started_at": body.get("orochi_started_at", ""),
-            "orochi_version": body.get("orochi_version", ""),
-            "orochi_runtime": body.get("orochi_runtime", ""),
+            "started_at": body.get("started_at", ""),
+            "version": body.get("version", ""),
+            "runtime": body.get("runtime", ""),
             "orochi_subagent_count": body.get("orochi_subagent_count") or 0,
             # v0.11.0 Agents-tab visibility fields (todo#155). The
             # heartbeat now carries the recent action log, the live
             # tmux pane tail, the workspace CLAUDE.md head, and the
             # MCP server list so the dashboard can render meaningful
             # cards instead of "no task reported".
-            "orochi_recent_actions": body.get("orochi_recent_actions") or [],
+            "recent_actions": body.get("recent_actions") or [],
             "orochi_pane_tail": body.get("orochi_pane_tail", ""),
             "orochi_pane_tail_block": body.get("orochi_pane_tail_block", ""),
             # todo#47 — ~500 filtered lines of tmux scrollback for the
@@ -228,7 +228,7 @@ def api_agents_register(request):
         from hub.registry import set_orochi_subagents
 
         set_orochi_subagents(name, body.get("orochi_subagents") or [])
-    update_heartbeat(name, orochi_metrics=body.get("orochi_metrics") or {})
+    update_heartbeat(name, metrics=body.get("metrics") or {})
     task = body.get("orochi_current_task") or ""
     if task:
         set_orochi_current_task(name, task)

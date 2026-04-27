@@ -284,8 +284,8 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
     var displayName = a.name || "";
     if (typeof hostedAgentName === "function") {
       displayName = hostedAgentName(a);
-    } else if (!hideHost && a.orochi_machine && displayName.indexOf("@") === -1) {
-      displayName = displayName + "@" + a.orochi_machine;
+    } else if (!hideHost && a.machine && displayName.indexOf("@") === -1) {
+      displayName = displayName + "@" + a.machine;
     }
     if (typeof cleanAgentName === "function") {
       displayName = cleanAgentName(displayName);
@@ -305,7 +305,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   function renderAgentBadge(a, opts) {
     opts = opts || {};
     /* Canonical order, todo#305 Task 7 (lead msg#15548):
-     *   icon + star + eye + 4 LEDs + name@orochi_hostname
+     *   icon + star + eye + 4 LEDs + name@hostname
      * Matches the channel badge column order (icon + star + eye +
      * mute + name) so a user who learned the glyph map on channels
      * finds the same on agents. The eye was inserted between ★ and

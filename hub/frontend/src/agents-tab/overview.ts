@@ -16,7 +16,7 @@ import { activeTab } from "../tabs";
 export function _buildOverviewHtml(agents) {
   var machineMap = {};
   agents.forEach(function (a) {
-    var m = a.orochi_machine || "unknown";
+    var m = a.machine || "unknown";
     if (!machineMap[m]) machineMap[m] = [];
     machineMap[m].push(a);
   });
@@ -38,7 +38,7 @@ export function _buildOverviewHtml(agents) {
     offlineCount +
     " offline across " +
     Object.keys(machineMap).length +
-    " orochi_machine(s)" +
+    " machine(s)" +
     "</span>" +
     purgeBtn +
     Object.keys(machineMap)
@@ -49,12 +49,12 @@ export function _buildOverviewHtml(agents) {
         var total = machineMap[m].length;
         var cls =
           online === total
-            ? "orochi_machine-ok"
+            ? "machine-ok"
             : online > 0
-              ? "orochi_machine-warn"
-              : "orochi_machine-off";
+              ? "machine-warn"
+              : "machine-off";
         return (
-          '<span class="orochi_machine-badge ' +
+          '<span class="machine-badge ' +
           cls +
           '">' +
           escapeHtml(m) +
@@ -228,13 +228,13 @@ export function buildAgentRow(a) {
     escapeHtml(a.role || "agent") +
     "</td>" +
     '<td class="monospace-cell">' +
-    escapeHtml(a.orochi_machine || "unknown") +
+    escapeHtml(a.machine || "unknown") +
     "</td>" +
     '<td class="muted-cell">' +
-    escapeHtml(a.orochi_model || "-") +
+    escapeHtml(a.model || "-") +
     "</td>" +
     '<td class="muted-cell">' +
-    escapeHtml(a.orochi_multiplexer || "-") +
+    escapeHtml(a.multiplexer || "-") +
     "</td>" +
     '<td class="ctx-cell">' +
     renderContextBadge(a.orochi_context_pct, a.context_management) +
@@ -242,19 +242,19 @@ export function buildAgentRow(a) {
     '<td class="skills-cell">' +
     renderSkillsBadge(a.orochi_skills_loaded) +
     "</td>" +
-    '<td class="orochi_pid-cell muted-cell">' +
-    (a.orochi_pid ? String(a.orochi_pid) : "-") +
+    '<td class="pid-cell muted-cell">' +
+    (a.pid ? String(a.pid) : "-") +
     "</td>" +
     '<td class="small-cell">' +
     channelsHtml +
     "</td>" +
     '<td class="muted-cell">' +
-    escapeHtml(a.orochi_project || "-") +
+    escapeHtml(a.project || "-") +
     "</td>" +
     '<td class="monospace-cell small-cell" title="' +
-    escapeHtml(a.orochi_workdir || "") +
+    escapeHtml(a.workdir || "") +
     '">' +
-    escapeHtml(a.orochi_workdir ? a.orochi_workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
+    escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
     "</td>" +
     '<td class="pane-state-cell">' +
     renderPaneStateBadge(a.orochi_pane_state, a.orochi_stuck_prompt_text) +

@@ -11,13 +11,13 @@ single source of truth for:
 
 - The `scitex-orochi <noun> <verb>` canonical command shape
 - The complete registry of noun groups (`agent`, `channel`, `workspace`,
-  `invite`, `message`, `orochi_machine`, `cron`, `disk`, `host-liveness`,
+  `invite`, `message`, `machine`, `cron`, `disk`, `host-liveness`,
   `hungry-signal`, `chrome-watchdog`, `dispatch`, `todo`, `push`,
   `server`, `config`, `system`, `auth`, `hook`, `host-identity`)
 - The deprecation policy (hard-error on rename, soft one-time-per-shell
   notes, `SCITEX_OROCHI_NO_DEPRECATION=1` opt-out)
 - The list of flat keepers (only `-h/--help`, `--help-recursive`,
-  `--orochi_version`, `--json`, `mcp start`)
+  `--version`, `--json`, `mcp start`)
 - The `(Available Now)` help-suffix rendering rule
 - Standard flags, exit codes, stdout/stderr discipline
 

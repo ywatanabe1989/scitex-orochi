@@ -399,7 +399,7 @@ def _post_dispatch_message(agent_name: str, workspace_id: int, text: str, metada
 
 
 # ---------------------------------------------------------------------------
-# Streak / cooldown state orochi_machine (pure-ish; reads + writes registry)
+# Streak / cooldown state machine (pure-ish; reads + writes registry)
 # ---------------------------------------------------------------------------
 
 
@@ -643,7 +643,7 @@ def _dispatch_in_thread(
 
 
 def check_agent_auto_dispatch(agent_name: str) -> Optional[dict]:
-    """Run the auto-dispatch state orochi_machine for one agent, based on registry state.
+    """Run the auto-dispatch state machine for one agent, based on registry state.
 
     Called from ``hub/registry/_heartbeat.py::update_heartbeat`` on the
     heartbeat hot path. Returns a dict summarizing what happened (for
@@ -688,7 +688,7 @@ def check_agent_auto_dispatch(agent_name: str) -> Optional[dict]:
                 # msg#17078 lane A: do NOT reset the streak here. Any
                 # subsequent zero-reading tick within the cooldown
                 # window must continue to return ``cooldown_skip``
-                # rather than silently re-arming the state orochi_machine.
+                # rather than silently re-arming the state machine.
                 return {"decision": "cooldown_skip", "streak": streak}
             # Arm cooldown + reset streak optimistically so a reentrant
             # call (unlikely but possible under asgiref) doesn't fire twice.

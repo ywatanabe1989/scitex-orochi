@@ -31,9 +31,9 @@ metadata:
     team: orochi
     specialty: telegram
 spec:
-  orochi_runtime: claude-code
-  orochi_model: opus[1m]
-  orochi_workdir: ~/proj
+  runtime: claude-code
+  model: opus[1m]
+  workdir: ~/proj
 
   skills:
     required:
@@ -84,7 +84,7 @@ spec:
     enabled: true
     interval: 30
     timeout: 5
-    method: orochi_multiplexer-orochi_alive
+    method: multiplexer-alive
 
   restart:
     policy: on-failure

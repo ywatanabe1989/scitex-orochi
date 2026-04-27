@@ -47,7 +47,7 @@ NEW_PATHS: list[list[str]] = [
     ["config", "init"],
     ["system", "doctor"],
     ["auth", "login"],
-    ["orochi_machine", "heartbeat", "send"],
+    ["machine", "heartbeat", "send"],
     ["hook", "report"],
 ]
 

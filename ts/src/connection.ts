@@ -2,9 +2,9 @@
  * WebSocket connection manager with reconnect, ping/pong, and state tracking.
  */
 import WebSocket from "ws";
-import { orochi_hostname } from "os";
+import { hostname } from "os";
 import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
-import { getSystemMetrics } from "./orochi_metrics.js";
+import { getSystemMetrics } from "./metrics.js";
 import { getAgentMeta, startAgentMetaRefresh } from "./collect_agent_metadata.js";
 
 // ---------------------------------------------------------------------------
@@ -164,14 +164,14 @@ export class OrochiConnection {
         type: "register",
         sender: OROCHI_AGENT,
         payload: {
-          orochi_machine: orochi_hostname(),
+          machine: hostname(),
           role: "claude-code",
-          orochi_model: OROCHI_MODEL,
-          agent_id: `${OROCHI_AGENT}@${orochi_hostname()}`,
+          model: OROCHI_MODEL,
+          agent_id: `${OROCHI_AGENT}@${hostname()}`,
           icon: process.env.SCITEX_OROCHI_ICON || "",
           icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
           icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
-          orochi_project: "",
+          project: "",
         },
       }),
     );
@@ -253,7 +253,7 @@ export class OrochiConnection {
   // the agent silently disconnected for the rest of the session:
   //
   // 1. state == "connected" but lastPongAt is older than WATCHDOG_STALE_MS
-  //    — the socket thinks it's orochi_alive but the peer is unreachable
+  //    — the socket thinks it's alive but the peer is unreachable
   //    (half-open TCP, NAT idle drop, host suspend/resume).
   // 2. state == "disconnected" with no scheduled reconnect timer — the
   //    reconnect loop got into a dead state because triggerReconnect()

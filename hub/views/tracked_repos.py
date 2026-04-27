@@ -56,7 +56,7 @@ def _serialize(tr):
         "added_by": tr.added_by.username if tr.added_by_id else None,
         "created_at": tr.created_at.isoformat() if tr.created_at else None,
     }
-    # Expose ``order`` only when the column actually exists on the orochi_model —
+    # Expose ``order`` only when the column actually exists on the model —
     # migration 0023 adds it for todo#91 drag-and-drop reorder support but
     # this serializer still has to work before that migration lands.
     if hasattr(tr, "order"):
@@ -99,7 +99,7 @@ def api_tracked_repos(request, slug=None):
 
     # New rows land at the bottom of the list. If the ``order`` column
     # isn't present yet (pre-0023 deployments) just omit it so the
-    # INSERT uses the orochi_model default.
+    # INSERT uses the model default.
     defaults = {
         "label": label,
         "added_by": request.user if request.user.is_authenticated else None,

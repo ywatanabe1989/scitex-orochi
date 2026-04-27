@@ -37,7 +37,7 @@ def _mk_daemon(tmp_path: Path, cfg: Path) -> CronDaemon:
     return CronDaemon(
         config_path=cfg,
         state_path=tmp_path / "state.json",
-        pid_path=tmp_path / "daemon.orochi_pid",
+        pid_path=tmp_path / "daemon.pid",
         log_dir=tmp_path / "logs",
     )
 
@@ -153,7 +153,7 @@ def test_concurrent_run_guard_skips_overlap(tmp_path):
 
     We trigger this by calling ``_dispatch`` twice back-to-back on a
     slow job; the worker-thread slot for the second call should detect
-    the first is still orochi_alive and return without spawning.
+    the first is still alive and return without spawning.
     """
     cfg = _mk_config(
         tmp_path,

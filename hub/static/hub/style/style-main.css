@@ -195,8 +195,8 @@
   display: none;
 }
 
-/* Agent orochi_workdir display (emacs mode-line style) */
-.agent-card .agent-orochi_workdir {
+/* Agent workdir display (emacs mode-line style) */
+.agent-card .agent-workdir {
   font-family: monospace;
   font-size: 11px;
   color: #888;

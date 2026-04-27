@@ -97,7 +97,7 @@ body.landing {
 }
 
 /* Invite-request form — replaces the Option A mailto CTA so incoming
- * requests land in the InviteRequest orochi_model instead of an inbox. The
+ * requests land in the InviteRequest model instead of an inbox. The
  * form sits below the hero; the Request-invite button scrolls to it. */
 .invite-request-form {
   margin: 28px auto 0;

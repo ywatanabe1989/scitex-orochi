@@ -1,4 +1,4 @@
-<?xml orochi_version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <!--
   LaunchAgent: Orochi unified cron daemon (msg#16406 / msg#16410).
 
@@ -20,7 +20,7 @@
     ~/Library/Logs/scitex/orochi-cron.log (daemon lifecycle)
     ~/.local/state/scitex/orochi-cron/logs/<job>.ndjson (per-job runs)
 
-  KeepAlive keeps the daemon orochi_alive even if it crashes (unlike
+  KeepAlive keeps the daemon alive even if it crashes (unlike
   StartInterval, which just fires periodically). The daemon handles its
   own scheduling loop internally.
 
@@ -30,7 +30,7 @@
   user env to pause without uninstalling.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist orochi_version="1.0">
+<plist version="1.0">
   <dict>
     <key>Label</key>
     <string>com.scitex.orochi-cron</string>
@@ -43,7 +43,7 @@
       <string>__STABLE_BIN__/orochi-cron.py</string>
     </array>
 
-    <!-- Daemon-style: keep orochi_alive across crashes. StartInterval is
+    <!-- Daemon-style: keep alive across crashes. StartInterval is
          intentionally absent because the daemon owns its own loop. -->
     <key>KeepAlive</key>
     <dict>

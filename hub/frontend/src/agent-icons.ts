@@ -382,10 +382,10 @@ export function agentIdentity(a) {
   var name = (a && a.name) || "";
   var color = _identityColor(_identityAgentColorKey(a));
   var displayName = _identityAgentDisplay(a);
-  var orochi_machine = (a && a.orochi_machine) || "";
+  var machine = (a && a.machine) || "";
   var tooltip =
     (a && a.agent_id) || name
-      ? ((a && a.agent_id) || name) + (orochi_machine ? " (" + orochi_machine + ")" : "")
+      ? ((a && a.agent_id) || name) + (machine ? " (" + machine + ")" : "")
       : name;
   return {
     name: name,

@@ -40,22 +40,22 @@ class OrochiClient:
         port: int = PORT,
         channels: list[str] | None = None,
         token: str | None = None,
-        orochi_machine: str = "",
+        machine: str = "",
         role: str = "",
         agent_id: str = "",
-        orochi_project: str = "",
+        project: str = "",
         ws_path: str = "",
     ) -> None:
         import platform as _platform
 
         self.name = name
         self.channels = channels or ["#general"]
-        self.orochi_machine = orochi_machine
+        self.machine = machine
         self.role = role
-        self.orochi_project = orochi_project
+        self.project = project
         self.agent_id = agent_id
         if not self.agent_id:
-            machine_name = orochi_machine or _platform.node()
+            machine_name = machine or _platform.node()
             self.agent_id = f"{name}@{machine_name}"
         self._token = token or OROCHI_TOKEN
         self._ws_path = ws_path
@@ -87,12 +87,12 @@ class OrochiClient:
                         "type": "register",
                         "payload": {
                             "channels": self.channels,
-                            "orochi_machine": self.orochi_machine or _plat.node(),
+                            "machine": self.machine or _plat.node(),
                             "role": self.role,
-                            "orochi_model": "",
+                            "model": "",
                             "agent_id": self.agent_id,
-                            "orochi_project": self.orochi_project,
-                            "orochi_workdir": self.orochi_project,
+                            "project": self.project,
+                            "workdir": self.project,
                         },
                     }
                 )
@@ -102,16 +102,16 @@ class OrochiClient:
             if ack.get("type") == "error":
                 raise ConnectionError(f"Registration failed: {ack}")
         else:
-            # Standalone server: use Message orochi_model
+            # Standalone server: use Message model
             reg = Message(
                 type="register",
                 sender=self.name,
                 payload={
                     "channels": self.channels,
-                    "orochi_machine": self.orochi_machine,
+                    "machine": self.machine,
                     "role": self.role,
                     "agent_id": self.agent_id,
-                    "orochi_project": self.orochi_project,
+                    "project": self.project,
                 },
             )
             await self._ws.send(reg.to_json())
@@ -169,8 +169,8 @@ class OrochiClient:
         """Send a heartbeat to the server.
 
         Args:
-            resources: Optional system orochi_metrics dict. If None and
-                       auto_resources is not disabled, collects orochi_metrics
+            resources: Optional system metrics dict. If None and
+                       auto_resources is not disabled, collects metrics
                        automatically via _resources.collect_metrics().
         """
         if not self._ws:
@@ -186,7 +186,7 @@ class OrochiClient:
         await self._ws.send(msg.to_json())
 
     async def start_heartbeat(self, interval: int = 30) -> asyncio.Task:
-        """Start a background task that sends heartbeats with resource orochi_metrics.
+        """Start a background task that sends heartbeats with resource metrics.
 
         Args:
             interval: Seconds between heartbeats (default: 30).

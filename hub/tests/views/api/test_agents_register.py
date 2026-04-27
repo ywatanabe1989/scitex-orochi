@@ -57,7 +57,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
         payload = {
             "token": self.token.token,
             "name": "oauth-agent-1",
-            "orochi_machine": "MBA",
+            "machine": "MBA",
             "oauth_email": "alice@example.org",
             "oauth_org_name": "Acme Research",
             "oauth_account_uuid": "uuid-111",

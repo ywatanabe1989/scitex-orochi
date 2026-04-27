@@ -26,7 +26,7 @@ try:
 except ImportError:
     HAS_AGENT_CONTAINER = False
 
-# Default agents directory (relative to orochi_project root / cwd)
+# Default agents directory (relative to project root / cwd)
 # The repo ships example definitions under examples/agents/; real configs
 # live in ~/.scitex/orochi/agents/ (USER_AGENTS_DIR) and are checked first.
 DEFAULT_AGENTS_DIR = Path("examples/agents")
@@ -44,7 +44,7 @@ def find_agent_yaml(name: str, agents_dir: Path | None = None) -> Path | None:
       2. ``~/.scitex/orochi/agents/<name>/<name>.yaml`` (dir-per-agent)
       3. ``~/.scitex/orochi/agents/head-<name>/head-<name>.yaml``
          (dir-per-agent with "head-" prefix, e.g. ``head-mba``)
-      4. ``~/.scitex/orochi/agents/<name>-*/` — orochi_machine-suffix convention,
+      4. ``~/.scitex/orochi/agents/<name>-*/` — machine-suffix convention,
          e.g. ``master`` resolves to ``master-ywata-note-win`` if that is
          the only matching directory. If multiple matches exist, returns
          None (ambiguous — caller should use --agent-config explicitly).
@@ -284,7 +284,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
     """Launch master via legacy orochi-config.yaml."""
     master = cfg["master"]
     screen_name = master["name"]
-    orochi_model = master.get("orochi_model", "opus[1m]")
+    model = master.get("model", "opus[1m]")
     channels = master.get("channels", ["#general"])
     server = cfg["server"]
 
@@ -300,7 +300,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
         f"export SCITEX_OROCHI_HOST={server['host']}; "
         f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
         f"export SCITEX_OROCHI_AGENT={screen_name}; "
-        f"claude --orochi_model {orochi_model} "
+        f"claude --model {model} "
         f'--system-prompt "$(cat {orochi_claude_md})" '
         f"{channel_args}; "
         f"exec bash'"
@@ -310,7 +310,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
         result = {
             "action": "launch-master",
             "screen": screen_name,
-            "orochi_model": orochi_model,
+            "model": model,
             "channels": channels,
             "command": launch_cmd,
         }
@@ -335,7 +335,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
 
     if as_json:
         click.echo(
-            json.dumps({"status": "launched", "screen": screen_name, "orochi_model": orochi_model})
+            json.dumps({"status": "launched", "screen": screen_name, "model": model})
         )
     else:
         click.echo(f"Started screen session: {screen_name}")
@@ -352,9 +352,9 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
 
     screen_name = head["name"]
     ssh_cmd = head["ssh"]
-    orochi_model = head.get("orochi_model", "sonnet")
+    model = head.get("model", "sonnet")
     channels = head.get("channels", ["#general"])
-    orochi_workdir = head.get("orochi_workdir", "~/proj")
+    workdir = head.get("workdir", "~/proj")
     server = cfg["server"]
 
     tvars = build_template_vars(cfg, role="head", head_name=name)
@@ -366,11 +366,11 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
         f"{rendered}\n"
         f"CLAUDE_EOF\n"
         f"screen -dmS {screen_name} bash -c '"
-        f"cd {orochi_workdir}; "
+        f"cd {workdir}; "
         f"export SCITEX_OROCHI_HOST={server['host']}; "
         f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
         f"export SCITEX_OROCHI_AGENT={screen_name}; "
-        f"claude --orochi_model {orochi_model} "
+        f"claude --model {model} "
         f'--system-prompt "$(cat /tmp/{screen_name}-CLAUDE.md)" '
         f"{channel_args}; "
         f"exec bash'"
@@ -383,7 +383,7 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
             "name": name,
             "screen": screen_name,
             "ssh": ssh_cmd,
-            "orochi_model": orochi_model,
+            "model": model,
             "channels": channels,
             "command": full_cmd,
         }

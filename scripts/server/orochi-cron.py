@@ -56,9 +56,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=f"Path to state.json (default: {default_state_path()})",
     )
     parser.add_argument(
-        "--orochi_pid",
+        "--pid",
         default=None,
-        help=f"Path to orochi_pid file (default: {default_pid_path()})",
+        help=f"Path to pid file (default: {default_pid_path()})",
     )
     parser.add_argument(
         "--log-dir",
@@ -87,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     daemon = CronDaemon(
         config_path=Path(args.config) if args.config else None,
         state_path=Path(args.state) if args.state else None,
-        pid_path=Path(args.orochi_pid) if args.orochi_pid else None,
+        pid_path=Path(args.pid) if args.pid else None,
         log_dir=Path(args.log_dir) if args.log_dir else None,
         dry_run=args.dry_run,
     )

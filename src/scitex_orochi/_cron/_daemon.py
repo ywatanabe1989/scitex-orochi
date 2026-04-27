@@ -81,7 +81,7 @@ class CronDaemon:
         )
         # Track in-flight worker threads so we can drain on shutdown
         # and so concurrent-run-guard knows a previous tick's child is
-        # still orochi_alive.
+        # still alive.
         self._workers: dict[str, threading.Thread] = {}
         self._workers_lock = threading.Lock()
 
@@ -159,7 +159,7 @@ class CronDaemon:
         self.load()
         self._write_pid()
         self._install_signal_handlers()
-        logger.info("cron: daemon started (orochi_pid=%d)", os.getpid())
+        logger.info("cron: daemon started (pid=%d)", os.getpid())
         try:
             while not self._stop_event.is_set():
                 if self._reload_event.is_set():
@@ -188,10 +188,10 @@ class CronDaemon:
             self._dispatch(js, now)
 
     def _dispatch(self, js: JobState, now: float) -> None:
-        """Start a worker thread for ``js`` unless a previous run is still orochi_alive.
+        """Start a worker thread for ``js`` unless a previous run is still alive.
 
         Concurrent-run-guard: if a worker for this job is still in
-        ``_workers`` and orochi_alive, record a skip and move the next-run
+        ``_workers`` and alive, record a skip and move the next-run
         time forward by one interval. This is the cron semantic —
         never stack duplicate runs of the same job.
         """
@@ -200,7 +200,7 @@ class CronDaemon:
             if prev is not None and prev.is_alive():
                 with self._state_lock:
                     js.last_run = JobRun(
-                        orochi_started_at=now,
+                        started_at=now,
                         ended_at=now,
                         duration_seconds=0.0,
                         exit_code=None,
@@ -246,7 +246,7 @@ class CronDaemon:
             js.running = True
         self._persist_state()
 
-        run = JobRun(orochi_started_at=start)
+        run = JobRun(started_at=start)
         try:
             if self.dry_run:
                 logger.info("cron[dry-run]: would run %s -> %s", name, job.command)
@@ -318,7 +318,7 @@ class CronDaemon:
             skipped = ""
         end = time.time()
         return JobRun(
-            orochi_started_at=start,
+            started_at=start,
             ended_at=end,
             duration_seconds=end - start,
             exit_code=exit_code,
@@ -357,7 +357,7 @@ class CronDaemon:
         start = time.time()
         if self.dry_run:
             return JobRun(
-                orochi_started_at=start,
+                started_at=start,
                 ended_at=start,
                 duration_seconds=0.0,
                 exit_code=0,

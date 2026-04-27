@@ -136,7 +136,7 @@ class A2AAuthTests(TransactionTestCase):
                         "/v1/agents/unauth-agent/",
                         headers=[
                             (b"content-type", b"application/json"),
-                            (b"a2a-orochi_version", b"1.0"),
+                            (b"a2a-version", b"1.0"),
                         ],
                     ),
                     body=body,
@@ -194,7 +194,7 @@ class A2AAgentNotFoundTests(TransactionTestCase):
                         headers=[
                             (b"content-type", b"application/json"),
                             (b"authorization", f"Bearer {tok.token}".encode()),
-                            (b"a2a-orochi_version", b"1.0"),
+                            (b"a2a-version", b"1.0"),
                         ],
                     ),
                     body=body,
@@ -277,7 +277,7 @@ class A2AMessageSendRoundtripTests(TransactionTestCase):
                         headers=[
                             (b"content-type", b"application/json"),
                             (b"authorization", f"Bearer {tok.token}".encode()),
-                            (b"a2a-orochi_version", b"1.0"),
+                            (b"a2a-version", b"1.0"),
                         ],
                     ),
                     body=body,

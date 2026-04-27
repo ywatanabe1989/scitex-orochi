@@ -42,7 +42,7 @@ def default_state_path() -> Path:
 
     Follows the same convention as other Orochi client-side state
     (``~/.local/state/scitex/...``). Kept outside ``~/.scitex/orochi/``
-    because it's orochi_runtime telemetry, not config.
+    because it's runtime telemetry, not config.
     """
     return Path.home() / ".local" / "state" / "scitex" / "orochi-cron" / "state.json"
 
@@ -55,7 +55,7 @@ def default_log_dir() -> Path:
 def default_pid_path() -> Path:
     """PID file for the daemon — used by ``cron status`` to answer
     "is the daemon loaded, and what PID?" without speaking launchctl."""
-    return Path.home() / ".local" / "state" / "scitex" / "orochi-cron" / "daemon.orochi_pid"
+    return Path.home() / ".local" / "state" / "scitex" / "orochi-cron" / "daemon.pid"
 
 
 # ----------------------------------------------------------------------

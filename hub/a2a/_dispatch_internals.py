@@ -74,7 +74,7 @@ def _agent_group(workspace_id: int, agent: str) -> str:
 def _resolve_workspace_id(slug_or_id: str) -> int | None:
     """Resolve a workspace name or numeric id to its DB id.
 
-    The Workspace orochi_model has no ``slug`` field — historic URLs used
+    The Workspace model has no ``slug`` field — historic URLs used
     ``slug`` for parity with other ``api/workspace/<slug:slug>/...``
     routes, but the DB lookup is by ``name``.
     """

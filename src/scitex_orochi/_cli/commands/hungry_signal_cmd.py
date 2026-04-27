@@ -92,21 +92,21 @@ def _read_from_sac(agent: str) -> tuple[int | None, list[str]]:
                     merged = {**v, "name": v.get("name") or k}
                     agents.append(merged)
     count: int | None = None
-    orochi_alive: list[str] = []
+    alive: list[str] = []
     for a in agents:
         name = str(a.get("name") or a.get("agent_id") or "")
         if not name:
             continue
         status = str(a.get("status") or "")
         if status in ("online", "running", "up", "active"):
-            orochi_alive.append(name)
+            alive.append(name)
         if name == agent:
             c = a.get("orochi_subagent_count")
             try:
                 count = int(c) if c is not None else None
             except (TypeError, ValueError):
                 count = None
-    return count, orochi_alive
+    return count, alive
 
 
 def _read_from_hub(agent: str, hub: str, token: str | None) -> tuple[int | None, list[str]]:
@@ -135,7 +135,7 @@ def _read_from_hub(agent: str, hub: str, token: str | None) -> tuple[int | None,
     if not isinstance(data, list):
         return None, []
     count: int | None = None
-    orochi_alive: list[str] = []
+    alive: list[str] = []
     for a in data:
         if not isinstance(a, dict):
             continue
@@ -143,14 +143,14 @@ def _read_from_hub(agent: str, hub: str, token: str | None) -> tuple[int | None,
         if not name:
             continue
         if str(a.get("status") or "") == "online":
-            orochi_alive.append(name)
+            alive.append(name)
         if name == agent:
             c = a.get("orochi_subagent_count")
             try:
                 count = int(c) if c is not None else None
             except (TypeError, ValueError):
                 count = None
-    return count, orochi_alive
+    return count, alive
 
 
 # ---------------------------------------------------------------------------
@@ -323,10 +323,10 @@ def check(
     resolved_token = token or load_workspace_token()
 
     # Try sac first, then hub.
-    count, orochi_alive = _read_from_sac(agent)
+    count, alive = _read_from_sac(agent)
     if count is None:
         count, alive2 = _read_from_hub(agent, hub, resolved_token)
-        orochi_alive = orochi_alive or alive2
+        alive = alive or alive2
 
     def _emit(decision: str, reason: str, *, cc: int, cy: int, fr: int) -> None:
         obj = {
@@ -379,7 +379,7 @@ def check(
 
     text = (
         f"{agent}: hungry — 0 orochi_subagents × {new_cycles} cycles, ready for "
-        f"dispatch. lane: {lane or 'none'}, orochi_alive: {','.join(orochi_alive) or 'none'}"
+        f"dispatch. lane: {lane or 'none'}, alive: {','.join(alive) or 'none'}"
     )
 
     if dry_run:

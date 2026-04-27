@@ -24,22 +24,22 @@ from hub.views.api._common import (
 def api_config(request):
     """GET /api/config — dashboard configuration."""
     workspace = get_workspace(request)
-    orochi_version = getattr(settings, "OROCHI_VERSION", "0.0.0")
+    version = getattr(settings, "OROCHI_VERSION", "0.0.0")
     # Server metadata
     uptime_secs = int(time.time() - _server_start_time)
-    orochi_hostname = os.environ.get("SCITEX_OROCHI_HOSTNAME", platform.node())
+    hostname = os.environ.get("SCITEX_OROCHI_HOSTNAME", platform.node())
     external_ip = os.environ.get("SCITEX_OROCHI_EXTERNAL_IP", "")
 
     data = {
         "workspace": workspace.name,
-        "orochi_version": orochi_version,
+        "version": version,
         "deployed_at": getattr(settings, "OROCHI_DEPLOYED_AT", ""),
         "build_id": getattr(settings, "OROCHI_BUILD_ID", ""),
         "server": {
-            "orochi_hostname": orochi_hostname,
+            "hostname": hostname,
             "external_ip": external_ip,
             "uptime": uptime_secs,
-            "orochi_version": orochi_version,
+            "version": version,
         },
     }
     # Expose dashboard token if set on workspace
@@ -54,7 +54,7 @@ def api_config(request):
 def api_event_tool_use(request):
     """POST /api/events/tool-use/ — receive a tool-use event from a Claude Code hook.
 
-    Hooks (PreToolUse/PostToolUse) on each agent's orochi_machine POST here to
+    Hooks (PreToolUse/PostToolUse) on each agent's machine POST here to
     record meaningful activity. Updates the in-memory registry's
     last_action timestamp and orochi_current_task. Authenticates via workspace
     token query param so hooks don't need Django sessions.
@@ -125,7 +125,7 @@ def api_watchdog_alerts(request):
                     "liveness": liveness,
                     "idle_seconds": idle,
                     "orochi_current_task": task,
-                    "orochi_machine": a.get("orochi_machine", ""),
+                    "machine": a.get("machine", ""),
                     "last_action": a.get("last_action"),
                     "suggested_action": (
                         "escalate" if liveness == "stale" else "nudge"
@@ -165,11 +165,11 @@ def api_connectivity(request):
             "id": "ywata-note-win",
             "label": "ywata-note-win",
             "role": "deployer/coordinator",
-            "type": "orochi_machine",
+            "type": "machine",
         },
-        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "orochi_machine"},
-        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "orochi_machine"},
-        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "orochi_machine"},
+        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "machine"},
+        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "machine"},
+        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "machine"},
         # Cloudflare bastion nodes (outer ring)
         {
             "id": "bastion-win",
@@ -202,7 +202,7 @@ def api_connectivity(request):
     # 2026-04-27: spartan bastion entry removed; spartan reaches the rest via
     # plain ssh / proxyjump, never via cloudflared.
     raw = [
-        # Bastion → host anchors (CF tunnel terminates at orochi_machine)
+        # Bastion → host anchors (CF tunnel terminates at machine)
         ("bastion-mba", "mba", "ok", "cf-tunnel"),
         ("bastion-nas", "nas", "ok", "cf-tunnel"),
         ("bastion-win", "ywata-note-win", "ok", "cf-tunnel"),
@@ -276,7 +276,7 @@ def api_push_subscribe(request, slug=None):
     """POST /api/push/subscribe — register a Web Push subscription.
 
     Body: ``{endpoint, keys: {p256dh, auth}, channels?: [...]}``.
-    Idempotent on ``endpoint`` (the unique key on the orochi_model).
+    Idempotent on ``endpoint`` (the unique key on the model).
     """
     from hub.models import PushSubscription
 

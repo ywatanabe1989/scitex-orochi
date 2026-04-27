@@ -37,10 +37,10 @@ apiVersion: scitex-agent-container/v2
 kind: Agent
 metadata:
   name: head
-  labels: { role: head, orochi_machine: ${HOSTNAME} }
+  labels: { role: head, machine: ${HOSTNAME} }
 spec:
-  orochi_runtime: orochi_slurm
-  orochi_model: opus[1m]
+  runtime: orochi_slurm
+  model: opus[1m]
   orochi_slurm:
     partition: sapphire
     time_limit: 7-00:00:00

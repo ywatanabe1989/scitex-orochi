@@ -43,7 +43,7 @@ def test_cron_jobs_populated(monkeypatch, tmp_path):
     d = CronDaemon(
         config_path=cfg,
         state_path=state_path,
-        pid_path=tmp_path / "orochi_pid",
+        pid_path=tmp_path / "pid",
         log_dir=tmp_path / "logs",
     )
     d.load()

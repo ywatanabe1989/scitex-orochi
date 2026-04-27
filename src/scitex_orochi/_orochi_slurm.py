@@ -3,14 +3,14 @@
 When a heartbeat-emitting agent runs on a Slurm login node, reporting local
 ``top``/``free`` numbers is misleading — the login node's CPU and RAM are
 not what a user of the cluster actually has available. This module shells
-out to ``sinfo`` / ``squeue`` and returns *cluster-aggregate* orochi_metrics so
+out to ``sinfo`` / ``squeue`` and returns *cluster-aggregate* metrics so
 that the Machines tab can display "what Slurm says is free/busy".
 
 Design principle: best-effort and side-effect-free.
 
 - All subprocess calls are bounded by ``SLURM_TIMEOUT_S`` (default 3s). On
   timeout, missing binary, or any parse error, the helpers return an
-  empty dict and the caller falls back to local ``/proc`` orochi_metrics.
+  empty dict and the caller falls back to local ``/proc`` metrics.
 - Output is normalised to the same keys as ``_resources.collect_metrics``
   so the server's ``_RESOURCE_KEYS`` filter and the Machines tab UI need
   no further changes to render orochi_slurm-hosted aggregates.
@@ -243,7 +243,7 @@ def _collect_squeue_jobs() -> dict[str, Any]:
 
 
 def collect_orochi_slurm_metrics() -> dict[str, Any]:
-    """Return normalised cluster orochi_metrics, or an empty dict on any failure.
+    """Return normalised cluster metrics, or an empty dict on any failure.
 
     Keys overlap with ``_resources.collect_metrics``:
 
@@ -276,7 +276,7 @@ def collect_orochi_slurm_metrics() -> dict[str, Any]:
     out: dict[str, Any] = dict(agg)
     out["resource_source"] = "orochi_slurm"
 
-    # Override scalar "orochi_machine" orochi_metrics with cluster-wide values
+    # Override scalar "machine" metrics with cluster-wide values
     if cpus_total > 0:
         out["cpu_count"] = cpus_total
         # Synthesise a load_avg that matches cluster allocation so the

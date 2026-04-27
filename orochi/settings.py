@@ -7,23 +7,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _dynamic_version():
-    """Compute orochi_version, preferring pyproject.toml so docker cp + restart
-    reflects the latest orochi_version without needing rebuild or env injection.
+    """Compute version, preferring pyproject.toml so docker cp + restart
+    reflects the latest version without needing rebuild or env injection.
 
     Resolution order:
     1. SCITEX_OROCHI_VERSION env var (deploy-script override).
-    2. pyproject.toml ``[orochi_project] orochi_version`` parsed directly — works inside
+    2. pyproject.toml ``[project] version`` parsed directly — works inside
        a docker container where git is absent and the editable-install
        dist-info may be stale (docker cp updated the source but not the
        installed metadata).
-    3. importlib.metadata (installed package orochi_version).
+    3. importlib.metadata (installed package version).
     4. Hard-coded fallback.
 
     The earlier git-based ``0.12.<commit-count>`` form was misleading
     because the ``0.12.`` prefix was hardcoded — minor/major bumps in
     pyproject.toml never reached the dashboard label. Replaced with
     direct pyproject.toml parsing so a docker cp of pyproject.toml +
-    container restart is enough to refresh the orochi_version display.
+    container restart is enough to refresh the version display.
     """
     env_ver = os.environ.get("SCITEX_OROCHI_VERSION", "").strip()
     if env_ver:
@@ -32,8 +32,8 @@ def _dynamic_version():
         pyproject = BASE_DIR / "pyproject.toml"
         for line in pyproject.read_text().splitlines():
             line = line.strip()
-            if line.startswith("orochi_version"):
-                # orochi_version = "0.14.0"  →  0.14.0
+            if line.startswith("version"):
+                # version = "0.14.0"  →  0.14.0
                 v = line.split("=", 1)[1].strip().strip('"').strip("'")
                 if v:
                     return v
@@ -41,7 +41,7 @@ def _dynamic_version():
     except Exception:
         pass
     try:
-        from importlib.metadata import orochi_version as _pkg_version
+        from importlib.metadata import version as _pkg_version
 
         return _pkg_version("scitex-orochi")
     except Exception:
@@ -62,8 +62,8 @@ if not OROCHI_DEPLOYED_AT:
     OROCHI_DEPLOYED_AT = _dt.now(_tz.utc).isoformat()
 
 # If no explicit build ID, derive one from the deploy timestamp so it
-# changes every restart. This guarantees the dashboard orochi_version string
-# visibly updates even when the package orochi_version is unchanged.
+# changes every restart. This guarantees the dashboard version string
+# visibly updates even when the package version is unchanged.
 if not OROCHI_BUILD_ID:
     try:
         from datetime import datetime as _dt2

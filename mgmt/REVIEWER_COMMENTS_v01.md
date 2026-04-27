@@ -2,7 +2,7 @@
 
 **Reviewer:** Code Review Agent
 **Date:** 2026-04-07
-**Scope:** Full source review of `src/scitex_orochi/`, `tests/`, orochi_project configuration
+**Scope:** Full source review of `src/scitex_orochi/`, `tests/`, project configuration
 **Codebase:** ~6,183 lines of Python across 39 source files + 4 test files
 
 ---
@@ -45,7 +45,7 @@ async def handle_config(request: web.Request) -> web.Response:
     """GET /api/config -- dashboard configuration."""
     ...
     return web.json_response({
-        "orochi_version": ver,
+        "version": ver,
         "ws_upstream": DASHBOARD_WS_UPSTREAM or "",
         "dashboard_token": ADMIN_TOKEN,  # <-- LEAKED
     })
@@ -71,7 +71,7 @@ These endpoints require **no token at all**:
 
 Also unauthenticated:
 - `GET /api/agents` -- lists all connected agents, their machines, roles, IPs
-- `GET /api/resources` -- lists CPU/memory orochi_metrics of all agents
+- `GET /api/resources` -- lists CPU/memory metrics of all agents
 - `GET /api/channels`, `GET /api/messages`, `GET /api/history/*`
 - `GET /api/stats`, `GET /api/workspaces`
 
@@ -104,12 +104,12 @@ This is a developer's personal TODO repo hardcoded into the proxy. It should be 
 ### I4. Version mismatch between `__init__.py` and `pyproject.toml`
 
 - `src/scitex_orochi/__init__.py:3` declares `__version__ = "0.2.0"`
-- `pyproject.toml:7` declares `orochi_version = "0.4.0"`
+- `pyproject.toml:7` declares `version = "0.4.0"`
 
-The orochi_runtime orochi_version and the build orochi_version are out of sync. Anyone calling `scitex_orochi.__version__` gets stale information.
+The runtime version and the build version are out of sync. Anyone calling `scitex_orochi.__version__` gets stale information.
 
 **Severity:** Important
-**Fix:** Use `importlib.metadata.orochi_version("scitex-orochi")` as the single source of truth, or keep them in sync via hatchling's orochi_version hook.
+**Fix:** Use `importlib.metadata.version("scitex-orochi")` as the single source of truth, or keep them in sync via hatchling's version hook.
 
 ### I5. Module reload pattern for configuration is fragile
 
@@ -118,14 +118,14 @@ The orochi_runtime orochi_version and the build orochi_version are out of sync. 
 The codebase uses `importlib.reload()` on `_config` and `_auth` modules to pick up environment variable changes. This is a pattern that:
 - Breaks if any other module has already imported constants by value (e.g., `from _config import ADMIN_TOKEN`)
 - Is used in production code (`_main.py`), not just tests
-- Creates hidden coupling between import order and orochi_runtime behavior
+- Creates hidden coupling between import order and runtime behavior
 
 **Severity:** Important
 **Fix:** Use a function-based config accessor (e.g., `get_admin_token()`) rather than module-level constants, or use a config singleton that can be updated.
 
 ### I6. Django residue: `hub/`, `orochi/`, `db.sqlite3`
 
-The `hub/` directory contains Django management commands, migrations, providers, and template tags -- all as `.pyc` files only (no `.py` sources). The `orochi/` directory has Django settings `.pyc` files. There is a `db.sqlite3` at orochi_project root (320KB).
+The `hub/` directory contains Django management commands, migrations, providers, and template tags -- all as `.pyc` files only (no `.py` sources). The `orochi/` directory has Django settings `.pyc` files. There is a `db.sqlite3` at project root (320KB).
 
 These appear to be remnants of an earlier Django-based architecture. The current codebase is pure aiohttp/websockets. Having compiled-only Django artifacts in the repo is confusing and potentially ships stale code.
 
@@ -233,9 +233,9 @@ if not as_json:
 
 The server check is printed twice in non-JSON mode because `_check()` has a side effect (printing) and is also called explicitly afterward.
 
-### N10. `node_modules/` in orochi_project root
+### N10. `node_modules/` in project root
 
-The orochi_project root contains `node_modules/`, suggesting a Node.js dependency (possibly for the dashboard). This should be in `.gitignore` and not shipped with the Python package.
+The project root contains `node_modules/`, suggesting a Node.js dependency (possibly for the dashboard). This should be in `.gitignore` and not shipped with the Python package.
 
 ---
 
@@ -253,7 +253,7 @@ The orochi_project root contains `node_modules/`, suggesting a Node.js dependenc
 - `_media.py` (file uploads)
 - `_gitea.py` / `_gitea_handler.py` (Gitea API client, dispatch)
 - `_web_gitea.py`, `_web_push.py`, `_web_workspaces.py` (REST route handlers)
-- `_resources.py` (system orochi_metrics collection)
+- `_resources.py` (system metrics collection)
 - `mcp_server.py` (MCP tool interface)
 - All CLI commands (`launch_cmd.py`, `doctor_cmd.py`, `messaging_cmd.py`, etc.)
 - `_client.py` (OrochiClient -- only tested indirectly via server tests)
@@ -264,7 +264,7 @@ The orochi_project root contains `node_modules/`, suggesting a Node.js dependenc
 
 ## Architectural Observations
 
-1. **The orochi_project has outgrown its single-process architecture.** The WebSocket server, HTTP server, Telegram bridge, and push notification system all run in one process. There is no horizontal scaling path.
+1. **The project has outgrown its single-process architecture.** The WebSocket server, HTTP server, Telegram bridge, and push notification system all run in one process. There is no horizontal scaling path.
 
 2. **SQLite is used for everything** (messages, workspaces, push subscriptions) with a single DB file. The workspace store shares the message store's DB connection (`server.store._db`). This tight coupling means workspace operations can block message persistence.
 
@@ -279,7 +279,7 @@ The orochi_project root contains `node_modules/`, suggesting a Node.js dependenc
 | Severity | Count | Key Items |
 |----------|-------|-----------|
 | CRITICAL | 2 | Auth bypass (missing `await`), Admin token leaked via `/api/config` |
-| IMPORTANT | 8 | Unauthenticated endpoints, hardcoded repo, dead code, orochi_version mismatch, Django residue, fragile config reload, duplicate server setup |
+| IMPORTANT | 8 | Unauthenticated endpoints, hardcoded repo, dead code, version mismatch, Django residue, fragile config reload, duplicate server setup |
 | NICE-TO-HAVE | 10 | No rate limiting, disk I/O per message, query-string tokens, double-print bug, etc. |
 
 ---

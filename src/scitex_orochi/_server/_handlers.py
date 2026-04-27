@@ -27,15 +27,15 @@ class HandlersMixin:
     ) -> str:
         name = msg.sender
         # Channels are server-authoritative: agents register with no channels
-        # and subscribe at orochi_runtime via MCP tools / REST API / web UI.
+        # and subscribe at runtime via MCP tools / REST API / web UI.
         # Legacy clients that still send a channels payload are respected
         # here for backward compatibility but new installs should send none.
         channels = set(msg.payload.get("channels", []))
-        orochi_machine = msg.payload.get("orochi_machine", "")
+        machine = msg.payload.get("machine", "")
         role = msg.payload.get("role", "")
-        orochi_model = msg.payload.get("orochi_model", "")
-        orochi_project = msg.payload.get("orochi_project", "")
-        orochi_multiplexer = msg.payload.get("orochi_multiplexer", "")
+        model = msg.payload.get("model", "")
+        project = msg.payload.get("project", "")
+        multiplexer = msg.payload.get("multiplexer", "")
         orochi_current_task = msg.payload.get("orochi_current_task", "") or ""
         try:
             orochi_subagent_count = int(msg.payload.get("orochi_subagent_count", 0) or 0)
@@ -43,7 +43,7 @@ class HandlersMixin:
             orochi_subagent_count = 0
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
-            machine_name = orochi_machine or platform.node()
+            machine_name = machine or platform.node()
             agent_id = f"{name}@{machine_name}"
         # Evict stale entry for the same agent name (reconnection)
         old = self.agents.pop(name, None)
@@ -56,15 +56,15 @@ class HandlersMixin:
                 await old.ws.close(4000, "Replaced by new connection")
             except Exception:
                 pass
-        # Evict stale agents from the same orochi_machine (handles agent renames).
+        # Evict stale agents from the same machine (handles agent renames).
         # Only remove agents that haven't heartbeated recently.
-        if orochi_machine:
+        if machine:
             now = datetime.now(timezone.utc)
             stale_from_machine: list[str] = []
             for other_name, other in self.agents.items():
                 if other_name == name:
                     continue
-                if other.orochi_machine == orochi_machine:
+                if other.machine == machine:
                     try:
                         hb_dt = datetime.fromisoformat(other.last_heartbeat)
                         delta = (now - hb_dt).total_seconds()
@@ -74,9 +74,9 @@ class HandlersMixin:
                         stale_from_machine.append(other_name)
             for stale_name in stale_from_machine:
                 log.info(
-                    "Evicting stale agent %s from orochi_machine %s (replaced by %s)",
+                    "Evicting stale agent %s from machine %s (replaced by %s)",
                     stale_name,
-                    orochi_machine,
+                    machine,
                     name,
                 )
                 self._remove_agent(stale_name)  # type: ignore[attr-defined]
@@ -85,12 +85,12 @@ class HandlersMixin:
             name=name,
             ws=ws,
             channels=channels,
-            orochi_machine=orochi_machine,
+            machine=machine,
             role=role,
-            orochi_model=orochi_model,
+            model=model,
             agent_id=agent_id,
-            orochi_project=orochi_project,
-            orochi_multiplexer=orochi_multiplexer,
+            project=project,
+            multiplexer=multiplexer,
             workspace_id=workspace_id,
             status="online",
             orochi_current_task=orochi_current_task,
@@ -112,7 +112,7 @@ class HandlersMixin:
                     "event": "connected",
                     "channels": list(channels),
                     "agent_id": agent_id,
-                    "orochi_project": orochi_project,
+                    "project": project,
                 },
             )
         )
@@ -265,9 +265,9 @@ class HandlersMixin:
             "status",
             "orochi_current_task",
             "orochi_subagent_count",
-            "orochi_machine",
+            "machine",
             "role",
-            "orochi_project",
+            "project",
             "agent_id",
         ):
             if key in msg.payload:
@@ -291,10 +291,10 @@ class HandlersMixin:
                     "status": agent.status,
                     "orochi_current_task": agent.orochi_current_task,
                     "orochi_subagent_count": agent.orochi_subagent_count,
-                    "orochi_machine": agent.orochi_machine,
+                    "machine": agent.machine,
                     "role": agent.role,
                     "agent_id": agent.agent_id,
-                    "orochi_project": agent.orochi_project,
+                    "project": agent.project,
                 },
             )
         )

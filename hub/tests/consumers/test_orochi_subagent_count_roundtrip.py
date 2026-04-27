@@ -72,14 +72,14 @@ class SubagentCountRoundtripTest(TestCase):
         register_agent(
             "head-test",
             self.ws.id,
-            {"agent_id": "head-test", "orochi_machine": "TEST", "role": "head"},
+            {"agent_id": "head-test", "machine": "TEST", "role": "head"},
         )
 
     def _send_heartbeat(self, orochi_subagent_count):
         """Drive one heartbeat frame through ``handle_heartbeat``.
 
         The helper builds a payload whose only meaningful field is
-        ``orochi_subagent_count`` (the orochi_metrics block is fine as ``None``s —
+        ``orochi_subagent_count`` (the metrics block is fine as ``None``s —
         ``handle_heartbeat`` just passes them through verbatim).
         """
         from hub.consumers._agent_handlers import handle_heartbeat
@@ -343,7 +343,7 @@ class SetSubagentCountDirectTest(TestCase):
         register_agent(
             "head-x",
             self.ws.id,
-            {"agent_id": "head-x", "orochi_machine": "TEST", "role": "head"},
+            {"agent_id": "head-x", "machine": "TEST", "role": "head"},
         )
 
     def test_set_monotonic_sequence(self):

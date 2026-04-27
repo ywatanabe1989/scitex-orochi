@@ -16,7 +16,7 @@ MACHINES_YAML_FIXTURE = textwrap.dedent(
     kind: FleetMachineInventory
     machines:
       - canonical_name: mba
-        orochi_hostname: Yusukes-MacBook-Air.local
+        hostname: Yusukes-MacBook-Air.local
         aliases:
           - head-mba
           - Yusukes-MacBook-Air
@@ -26,7 +26,7 @@ MACHINES_YAML_FIXTURE = textwrap.dedent(
           - head-mba
           - healer-mba
       - canonical_name: nas
-        orochi_hostname: nas-box
+        hostname: nas-box
         aliases:
           - head-nas
         fleet_role:
@@ -48,9 +48,9 @@ def test_parse_all_machines_shape(tmp_path: Path) -> None:
     assert names == ["mba", "nas", "offline-role"]
     mba = ms[0]
     assert mba.role == "head"
-    assert mba.orochi_hostname == "Yusukes-MacBook-Air.local"
+    assert mba.hostname == "Yusukes-MacBook-Air.local"
     assert "head-mba" in mba.aliases
-    assert "Yusukes-MacBook-Air.local" in mba.aliases  # orochi_hostname merged into aliases
+    assert "Yusukes-MacBook-Air.local" in mba.aliases  # hostname merged into aliases
     assert mba.expected_tmux_sessions == ("head-mba", "healer-mba")
 
 
@@ -74,7 +74,7 @@ def test_resolve_self_host_fallback_to_socket(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.delenv("SCITEX_OROCHI_HOSTNAME", raising=False)
-    # Point the repo-root candidate at a directory with no resolve-orochi_hostname
+    # Point the repo-root candidate at a directory with no resolve-hostname
     # helper so the function falls through to socket.gethostname().
     monkeypatch.setenv("SCITEX_OROCHI_REPO_ROOT", str(tmp_path))
     name = hops.resolve_self_host()

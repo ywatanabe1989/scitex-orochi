@@ -1,5 +1,5 @@
 /**
- * System orochi_metrics collection for heartbeat payloads.
+ * System metrics collection for heartbeat payloads.
  *
  * Tries, in order:
  *   1. `python3 -c "import scitex.resource as r; import json; ..."` — the
@@ -81,7 +81,7 @@ function _tryScitexResource(): Partial<Metrics> | null {
     const cpuPct = parseFloat(
       String(cpu["Percentage"] ?? cpu.percent ?? "").replace(/[^\d.]/g, ""),
     );
-    // We return cpu as load_avg; cpuPct is separate and lives in orochi_metrics too.
+    // We return cpu as load_avg; cpuPct is separate and lives in metrics too.
     // Disk usage: try to parse the first "X%" we find anywhere under disk
     const diskStr = JSON.stringify(disk);
     const diskMatch = diskStr.match(/(\d+(?:\.\d+)?)\s*%/);
@@ -208,7 +208,7 @@ export function getSystemMetrics(): Metrics {
 
   return {
     cpu_count: cpuInfo.length,
-    cpu_model: cpuInfo[0]?.orochi_model || "unknown",
+    cpu_model: cpuInfo[0]?.model || "unknown",
     load_avg_1m: load[0],
     load_avg_5m: load[1],
     load_avg_15m: load[2],

@@ -11,7 +11,7 @@ import {
 } from "../config.js";
 
 // Lightweight interface — avoids importing connection.ts which pulls in
-// orochi_metrics.ts + execSync, interfering with MCP stdio notifications.
+// metrics.ts + execSync, interfering with MCP stdio notifications.
 export interface ConnLike {
   send(data: string): void;
   isConnected: boolean;
@@ -68,7 +68,7 @@ export const MCP_SERVER_STARTED_AT = new Date().toISOString();
 // Every MCP tool returns either a content text payload OR a structured
 // error envelope ``{ "error": { code, reason, hint } }`` packed as the
 // ``text`` of a single content block. Centralizing the codes + helper
-// here means callers (LLM-side or programmatic) can orochi_machine-parse the
+// here means callers (LLM-side or programmatic) can machine-parse the
 // failure mode without scraping ``Error: HTTP 404 — <html>`` strings.
 
 /** Closed enum of error codes a tool may surface. */
@@ -96,7 +96,7 @@ export interface McpErrorPayload {
 /**
  * Build a structured error response for an MCP tool. Pack the JSON as the
  * ``text`` of a single content block so existing MCP clients render it
- * verbatim while orochi_machine consumers can ``JSON.parse(result.content[0].text)``
+ * verbatim while machine consumers can ``JSON.parse(result.content[0].text)``
  * and key off ``result.error.code``.
  */
 export function mcpError(

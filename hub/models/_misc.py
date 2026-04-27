@@ -51,7 +51,7 @@ class PushSubscription(models.Model):
 
 class FleetReport(models.Model):
     ENTITY_TYPES = [
-        ("orochi_machine", "Machine"),
+        ("machine", "Machine"),
         ("agent", "Agent"),
         ("server", "Orochi Server"),
         ("session", "Claude Session"),

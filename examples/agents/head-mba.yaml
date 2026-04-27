@@ -9,12 +9,12 @@ metadata:
   labels:
     role: head
     team: orochi
-    orochi_machine: CHANGEME
+    machine: CHANGEME
     capabilities: ios-simulator,xcode,swift,mobile-testing
 spec:
-  orochi_runtime: claude-code
-  orochi_model: sonnet
-  orochi_workdir: ~/proj
+  runtime: claude-code
+  model: sonnet
+  workdir: ~/proj
 
   remote:
     host: CHANGEME_HOST
@@ -57,7 +57,7 @@ spec:
   health:
     enabled: true
     interval: 30
-    method: orochi_multiplexer-orochi_alive
+    method: multiplexer-alive
 
   restart:
     policy: on-failure

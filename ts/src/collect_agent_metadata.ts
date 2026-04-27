@@ -5,12 +5,12 @@
  * which introspects the local Claude Code session and returns JSON like:
  *   {
  *     "agent": "head-mba",
- *     "orochi_alive": true,
+ *     "alive": true,
  *     "orochi_subagents": 1,
  *     "orochi_context_pct": 59.0,
  *     "orochi_current_tool": "Agent",
- *     "orochi_last_activity": "2026-04-12T05:38:04.540Z",
- *     "orochi_model": "claude-opus-4-7"
+ *     "last_activity": "2026-04-12T05:38:04.540Z",
+ *     "model": "claude-opus-4-7"
  *   }
  *
  * Design:
@@ -107,7 +107,7 @@ export function startAgentMetaRefresh(intervalMs: number): void {
   refreshTimer = setInterval(() => {
     void refreshOnce();
   }, intervalMs);
-  // Don't keep the event loop orochi_alive just for this.
+  // Don't keep the event loop alive just for this.
   if (typeof (refreshTimer as any)?.unref === "function") {
     (refreshTimer as any).unref();
   }

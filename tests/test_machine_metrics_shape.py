@@ -1,4 +1,4 @@
-"""Pin the orochi_machine-orochi_metrics wire shape for the Machines-tab display
+"""Pin the machine-metrics wire shape for the Machines-tab display
 (ywatanabe msg#16215).
 
 Sidebar MACHINES + Machines-tab tooltip expect the producer to emit
@@ -32,7 +32,7 @@ if str(_AGENT_META_DIR) not in sys.path:
 from _collect_agent_metadata._metrics import collect_machine_metrics  # noqa: E402
 
 REQUIRED_KEYS = {
-    # CPU shape: count + orochi_model string
+    # CPU shape: count + model string
     "cpu_count",
     "cpu_model",
     "load_avg_1m",
@@ -56,14 +56,14 @@ def test_collect_machine_metrics_has_all_required_keys():
     """Pin the wire contract the hub aggregator reads."""
     m = collect_machine_metrics()
     missing = REQUIRED_KEYS - set(m.keys())
-    assert not missing, f"missing keys in heartbeat orochi_metrics: {missing}"
+    assert not missing, f"missing keys in heartbeat metrics: {missing}"
 
 
 def test_gpus_is_a_list():
     """``gpus`` must always be a list (possibly empty) — not None.
 
     The hub aggregator in ``hub/views/api/_resources.py`` iterates on
-    ``gpus`` to orochi_project them into the per-orochi_machine resources dict; if
+    ``gpus`` to project them into the per-machine resources dict; if
     this became ``None``, the aggregator would need a branch.
     """
     m = collect_machine_metrics()

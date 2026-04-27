@@ -100,8 +100,8 @@ def test_busy_animation_suppresses_stale(_isolate_state):
 
 def test_pane_change_resets_stagnation_counter(_isolate_state):
     agent = "t-agent-reset"
-    pane_a = "> orochi_version A\n"
-    pane_b = "> orochi_version B\n"
+    pane_a = "> version A\n"
+    pane_b = "> version B\n"
     # 4 identical cycles — would flip to stale on the 4th.
     for _ in range(3):
         _classifier._classify_orochi_pane_state(pane_a, pane_a, agent=agent)
@@ -292,7 +292,7 @@ def test_present_tense_spinner_gerund_suppresses_stale(
 def test_past_tense_spinner_suppresses_stale(_isolate_state, marker_line):
     """Past-tense '✻ Baked for 40s' etc. — the agent just finished a
     streaming burst and is composing its reply. Pane looks static but
-    the session is orochi_alive. This was the #1 false-positive class in the
+    the session is alive. This was the #1 false-positive class in the
     contradiction log on head-ywata-note-win."""
     agent = f"t-agent-past-{abs(hash(marker_line)) % 1000}"
     pane = f"some tool output here\n{marker_line}\n"
@@ -304,7 +304,7 @@ def test_past_tense_spinner_suppresses_stale(_isolate_state, marker_line):
 
 def test_local_agent_still_running_suppresses_stale(_isolate_state):
     """'1 local agent still running' footer means the main session
-    dispatched a subagent and is awaiting results — very much orochi_alive."""
+    dispatched a subagent and is awaiting results — very much alive."""
     agent = "t-agent-subagent"
     pane = (
         "  Called scitex-orochi (ctrl+o to expand)\n"

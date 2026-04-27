@@ -1,7 +1,7 @@
 # `shared/scripts/systemd/` — canonical on-host orchestration
 
 **Purpose:** one source of truth for how Orochi fleet agents are launched and
-kept orochi_alive on every host. Templates here are host-agnostic; `bootstrap-host.sh`
+kept alive on every host. Templates here are host-agnostic; `bootstrap-host.sh`
 substitutes per-host details and installs them under `~/.config/systemd/user/`.
 
 ## Templates
@@ -19,7 +19,7 @@ bootstrap-host.sh renders these into the deployed unit files:
 |---|---|---|
 | `@SAC@` | Absolute path to the `sac` CLI | `/home/ywatanabe/.venv-3.11/bin/sac` |
 | `@AGENT_META@` | Absolute path to `collect_agent_metadata.py` | `/home/ywatanabe/.scitex/orochi/shared/scripts/collect_agent_metadata.py` |
-| `@CANONICAL_HOST@` | Fleet label from `resolve-orochi_hostname` | `mba` / `nas` / `spartan` / `ywata-note-win` |
+| `@CANONICAL_HOST@` | Fleet label from `resolve-hostname` | `mba` / `nas` / `spartan` / `ywata-note-win` |
 
 ## Environment file
 

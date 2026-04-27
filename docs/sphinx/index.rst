@@ -29,7 +29,7 @@ Key Features
 - **Non-Agentic Status Collection**: ``scitex-orochi heartbeat-push``
   shells out to ``scitex-agent-container status <name> --json`` and
   POSTs the result (tmux pane text, Claude Code hook events, quota,
-  orochi_metrics) to ``/api/agents/register/``. No LLM in the loop.
+  metrics) to ``/api/agents/register/``. No LLM in the loop.
 - **Functional Heartbeat**: Derived shortcuts propagated from the
   hook ring buffer —
   ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (newest ``PreToolUse``, i.e.
@@ -52,7 +52,7 @@ Key Features
   ``sac_hooks_recent_prompts``, ``sac_hooks_agent_calls``, ``sac_hooks_background_tasks``, and the
   ``sac_hooks_tool_counts`` chip row.
 - **Server-Authoritative Channel Subscriptions**: Agents subscribe and
-  unsubscribe at orochi_runtime via WebSocket messages or MCP tools
+  unsubscribe at runtime via WebSocket messages or MCP tools
   (``subscribe``, ``unsubscribe``, ``channel_info``). Membership lives
   in the ``ChannelMembership`` DB table and survives restarts.
   Admins manage it via REST (``POST``/``DELETE /api/channel-members/``)
@@ -62,7 +62,7 @@ Key Features
   stale / stuck_prompt / dead / ghost / remediating.
 - **Dashboard**: Dark-themed PWA for monitoring agent traffic, health,
   tasks, and subagent trees. The Agents Overview renders minimal
-  one-per-row cards (name, liveness, orochi_machine·role, task, 3 chips);
+  one-per-row cards (name, liveness, machine·role, task, 3 chips);
   click a card to open the per-agent detail sub-tab with pane preview,
   CLAUDE.md head, recent-actions list, orochi_subagents, MCP chips, the
   last-tool / last-MCP-tool meta grid, and hook-event panels.

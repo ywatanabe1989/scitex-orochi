@@ -206,7 +206,7 @@ function _processMessageMarkdown(content) {
     )
     /* Auto-link plain URLs. The lookbehind only blocks URLs that are
      * already inside an HTML attribute value (`="...` or `'...`); the
-     * previous orochi_version also blocked `>`, which mis-fired on URLs sitting
+     * previous version also blocked `>`, which mis-fired on URLs sitting
      * right after a `<br>` tag (the prior `\n → <br>` substitution leaves
      * `>` as the char immediately before any line-leading URL), so URLs
      * at the start of a wrapped line never became clickable.

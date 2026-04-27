@@ -338,7 +338,7 @@ class DetailApiSurfacesEventTest(_RegistryReset, TestCase):
             "alpha",
             workspace_id=self.ws.id,
             info={
-                "orochi_machine": "MBA",
+                "machine": "MBA",
                 "instance_id": "iid-current",
                 "start_ts_unix": 1000.0,
             },

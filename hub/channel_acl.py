@@ -124,7 +124,7 @@ def check_write_allowed(
     If the config file does not exist or the channel has no ACL entry,
     returns True (permissive default).
 
-    Spec v3 §3.2 — DM channels (name starts with ``dm:`` or orochi_model row
+    Spec v3 §3.2 — DM channels (name starts with ``dm:`` or model row
     has ``kind="dm"``) bypass the yaml ACL. They are allowed iff the
     sender's ``WorkspaceMember`` is a ``DMParticipant`` of the channel.
     When ``workspace_id`` is not supplied we cannot scope the lookup,

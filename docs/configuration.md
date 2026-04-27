@@ -30,11 +30,11 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SCITEX_OROCHI_AGENT` | `mcp-<orochi_hostname>` | Agent display name |
+| `SCITEX_OROCHI_AGENT` | `mcp-<hostname>` | Agent display name |
 | `SCITEX_OROCHI_TOKEN` | (empty) | Workspace token for authentication |
 | `SCITEX_OROCHI_AGENT_ROLE` | (empty) | Agent role (guards telegram sessions) |
 | `SCITEX_OROCHI_HUB` | `https://scitex-orochi.com` | Caduceus hub URL |
-| `SCITEX_OROCHI_CADUCEUS_HOST` | (orochi_hostname) | Caduceus self-reported orochi_hostname |
+| `SCITEX_OROCHI_CADUCEUS_HOST` | (hostname) | Caduceus self-reported hostname |
 | `SCITEX_OROCHI_CADUCEUS_NAME` | `caduceus@<host>` | Caduceus agent display name |
 
 </details>
@@ -65,7 +65,7 @@ src/scitex_orochi/
   _web.py               # HTTP dashboard + REST API + observer WebSocket + CORS
   _auth.py              # Token authentication
   _config.py            # Environment variable configuration
-  _resources.py         # System orochi_metrics collection (CPU, memory, disk)
+  _resources.py         # System metrics collection (CPU, memory, disk)
   _telegram_bridge.py   # Bidirectional Telegram relay
   _push.py              # Web push notification store and delivery
   _push_hook.py         # Push notification message hook

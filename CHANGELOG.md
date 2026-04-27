@@ -1,16 +1,16 @@
 # Changelog
 
-All notable changes to this orochi_project will be documented in this file.
+All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this orochi_project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.11.0] - 2026-04-13
 
 ### 🚀 Features
 - feat(hub/agents-tab): each agent card now shows its **last 10 tool
   calls with timestamps** as a mini activity log, sourced from
-  `agent_meta.orochi_recent_actions` (transcript JSONL parse, skips
+  `agent_meta.recent_actions` (transcript JSONL parse, skips
   housekeeping `mcp__scitex-orochi__*` tools, includes the first input
   arg as preview). msg#6608 / msg#6615.
 - feat(hub/agents-tab): card pulls in workspace `CLAUDE.md` first line
@@ -26,7 +26,7 @@ and this orochi_project adheres to [Semantic Versioning](https://semver.org/spec
 - feat(hub/agents-tab): wider card grid (`minmax(360px, 1fr)`) and
   `.activity-name { white-space: normal }` so long names like
   `mamba-quality-checker-mba` never truncate. msg#6611.
-- feat(hub/agents-tab): short orochi_machine label (`MBA` / `NAS` / `spartan`
+- feat(hub/agents-tab): short machine label (`MBA` / `NAS` / `spartan`
   / `win`) instead of `Yusukes-MacBook-Air.local`, computed in
   `agent_meta.collect()`. msg#6549.
 

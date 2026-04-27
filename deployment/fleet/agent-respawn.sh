@@ -19,7 +19,7 @@ DELAY_BETWEEN=10  # seconds between agent starts to avoid reconnect storm
 ts() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 
 # Detect current host
-HOSTNAME=$(orochi_hostname -s 2>/dev/null || orochi_hostname)
+HOSTNAME=$(hostname -s 2>/dev/null || hostname)
 case "$HOSTNAME" in
   *mba*|*MacBook*) HOST="mba" ;;
   *nas*|*UGREEN*)  HOST="nas" ;;
@@ -78,7 +78,7 @@ for dir in "${AGENT_DIR}"/*/; do
   [[ -f "$yaml" ]] || continue
 
   # Check if this agent belongs to this host
-  agent_host=$(grep -oP 'orochi_machine:\s*\K\S+' "$yaml" 2>/dev/null || echo "")
+  agent_host=$(grep -oP 'machine:\s*\K\S+' "$yaml" 2>/dev/null || echo "")
   if [[ -n "$agent_host" && "$agent_host" != "$HOST" ]]; then
     continue  # skip agents for other hosts
   fi

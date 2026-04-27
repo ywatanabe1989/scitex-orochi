@@ -138,7 +138,7 @@ class ChannelMembership(models.Model):
     bit False to restrict a specific member (e.g. write-only digest
     targets: ``can_read=False, can_write=True``).
 
-    This orochi_model serves humans and agent-synthetic-users equally (spec §2.1).
+    This model serves humans and agent-synthetic-users equally (spec §2.1).
     """
 
     PERM_READ_WRITE = "read-write"

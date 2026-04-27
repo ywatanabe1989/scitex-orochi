@@ -1,6 +1,6 @@
 """Pane state scheme v3 (Layer B).
 
-Pure function: pane observations → ``{"label", "evidence", "orochi_version"}``.
+Pure function: pane observations → ``{"label", "evidence", "version"}``.
 
 Version history:
     v1 — original digest-based stagnation only
@@ -62,7 +62,7 @@ def derive_orochi_pane_state(obs: dict[str, Any]) -> dict[str, str]:
             return _verdict(
                 "idle",
                 f"empty `❯ ` chevron present, unchanged {cycles} cycles "
-                "(self-reporting orochi_alive idle)",
+                "(self-reporting alive idle)",
             )
         return _verdict(
             "stale",
@@ -80,4 +80,4 @@ def derive_orochi_pane_state(obs: dict[str, Any]) -> dict[str, str]:
 
 
 def _verdict(label: str, evidence: str) -> dict[str, str]:
-    return {"label": label, "evidence": evidence, "orochi_version": VERSION}
+    return {"label": label, "evidence": evidence, "version": VERSION}

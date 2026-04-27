@@ -50,11 +50,11 @@ def api_agents(request):
                 {
                     "name": p.name,
                     "agent_id": p.name,
-                    "orochi_machine": p.orochi_machine,
+                    "machine": p.machine,
                     "role": p.role,
-                    "orochi_model": "",
-                    "orochi_multiplexer": "",
-                    "orochi_workdir": "",
+                    "model": "",
+                    "multiplexer": "",
+                    "workdir": "",
                     "icon": "",
                     "icon_emoji": p.icon_emoji,
                     "icon_text": "",
@@ -66,7 +66,7 @@ def api_agents(request):
                     "registered_at": None,
                     "last_heartbeat": None,
                     "last_action": None,
-                    "orochi_metrics": {},
+                    "metrics": {},
                     "orochi_current_task": "",
                     "last_message_preview": "",
                     "orochi_subagents": [],
@@ -370,7 +370,7 @@ def api_agents_pin(request):
     """POST /api/agents/pin/ — pin an agent so it always appears in dashboard.
     DELETE /api/agents/pin/ — unpin an agent.
 
-    POST body: {"name": "agent-name", "role": "...", "orochi_machine": "...", "icon_emoji": "..."}
+    POST body: {"name": "agent-name", "role": "...", "machine": "...", "icon_emoji": "..."}
     DELETE body: {"name": "agent-name"}
 
     Auth: Django session OR workspace token.
@@ -406,7 +406,7 @@ def api_agents_pin(request):
             name=name,
             defaults={
                 "role": body.get("role", ""),
-                "orochi_machine": body.get("orochi_machine", ""),
+                "machine": body.get("machine", ""),
                 "icon_emoji": body.get("icon_emoji", ""),
             },
         )
@@ -437,7 +437,7 @@ def api_agents_pinned(request):
         {
             "name": p.name,
             "role": p.role,
-            "orochi_machine": p.orochi_machine,
+            "machine": p.machine,
             "icon_emoji": p.icon_emoji,
             "added_at": p.added_at.isoformat() if p.added_at else None,
         }

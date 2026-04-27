@@ -12,13 +12,13 @@
 # Side effects: none. Read-only queries only. No sudo. No Claude quota.
 #
 # Output: one NDJSON line per probe per invocation, appended to
-#   ${OUT_DIR:-$HOME/.scitex/orochi/host-telemetry}/host-telemetry-$(orochi_hostname -s).ndjson
+#   ${OUT_DIR:-$HOME/.scitex/orochi/host-telemetry}/host-telemetry-$(hostname -s).ndjson
 # -----------------------------------------------------------------------------
 
 set -u
 set -o pipefail
 
-HOST="$(orochi_hostname -s 2>/dev/null || orochi_hostname)"
+HOST="$(hostname -s 2>/dev/null || hostname)"
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 OUT_DIR="${HOST_TELEMETRY_OUT_DIR:-$HOME/.scitex/orochi/host-telemetry}"
 OUT_FILE="$OUT_DIR/host-telemetry-${HOST}.ndjson"

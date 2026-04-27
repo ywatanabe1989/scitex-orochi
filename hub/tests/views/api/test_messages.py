@@ -106,7 +106,7 @@ class RestApiTest(TestCase):
         # non-empty metadata that do NOT carry attachments. Need more
         # than the old code's 400-row overshoot (limit=200 × 2) so the
         # attachment falls outside the scan window in the broken
-        # orochi_version.
+        # version.
         Message.objects.bulk_create(
             [
                 Message(

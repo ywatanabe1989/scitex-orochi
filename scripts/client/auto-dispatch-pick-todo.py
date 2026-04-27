@@ -21,7 +21,7 @@ and injects the dispatch prompt into the head's tmux pane.
 Why Python and not jq-in-bash:
   * The pick heuristic combines three JSON arrays (issues, PRs, state file)
     and the already-claimed filter is non-trivial.
-  * A pure-bash orochi_version exploded in size and was hard to unit-test.
+  * A pure-bash version exploded in size and was hard to unit-test.
 
 Unit-testable seam: ``pick_todo(issues, open_prs, lane, extra_exclude)``
 is a pure function. The CLI layer invokes it after calling out to ``gh``.

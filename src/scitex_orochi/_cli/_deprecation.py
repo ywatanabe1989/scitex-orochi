@@ -68,7 +68,7 @@ def _session_key() -> str:
     key = os.environ.get("SCITEX_OROCHI_SHELL_SESSION")
     if key:
         return key
-    return f"orochi_ppid-{os.getppid()}"
+    return f"ppid-{os.getppid()}"
 
 
 def _marker_path(command: str) -> Path:

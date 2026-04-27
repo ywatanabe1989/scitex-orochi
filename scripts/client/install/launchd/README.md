@@ -25,7 +25,7 @@ substitutes per-host details and installs the result under
 
 launchd does not source `~/.bashrc` or `~/.bash_profile`, so all env the
 agents need must be set explicitly — either in the plist's
-`EnvironmentVariables` block or in `sac`'s own orochi_runtime (agent YAML + the
+`EnvironmentVariables` block or in `sac`'s own runtime (agent YAML + the
 pre_agent SLURM hook on spartan). The agent-meta pusher reads
 `SCITEX_OROCHI_TOKEN` from the running shell that loaded it; re-running
 bootstrap after token rotation is the safe refresh path.

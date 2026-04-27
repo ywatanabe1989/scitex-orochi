@@ -9,7 +9,7 @@
  *
  * sidecar_status — Orochi-side sidecar PID visibility (todo#287 Slice A).
  *   Returns mcp_server PID + outstanding rsync_media jobs. The orochi half
- *   of the 3-layer PID orochi_model agreed in msg#8120.
+ *   of the 3-layer PID model agreed in msg#8120.
  *
  * cron_status — fleet-wide cron daemon status (lead msg#16684 follow-up
  *   to PR #346). Thin pass-through to ``GET /api/cron/`` on the hub,
@@ -163,13 +163,13 @@ export async function handleSidecarStatus(): Promise<{
   // callers can post-filter on `status` if they only care about live procs.
   const rsyncJobsList = Array.from(rsyncJobs.values()).map((j) => ({
     id: j.id,
-    orochi_pid: j.orochi_pid ?? null,
+    pid: j.pid ?? null,
     status: j.status,
     src_path: j.src_path,
     dst_host: j.dst_host,
     dst_path: j.dst_path,
     channel: j.channel,
-    orochi_started_at: j.orochi_started_at,
+    started_at: j.started_at,
     finished_at: j.finished_at ?? null,
     exit_code: j.exit_code ?? null,
   }));
@@ -178,11 +178,11 @@ export async function handleSidecarStatus(): Promise<{
     ts: new Date().toISOString(),
     mcp_server: {
       agent: OROCHI_AGENT || null,
-      orochi_pid: process.orochi_pid,
-      orochi_ppid: typeof process.orochi_ppid === "number" ? process.orochi_ppid : null,
-      orochi_started_at: MCP_SERVER_STARTED_AT,
+      pid: process.pid,
+      ppid: typeof process.ppid === "number" ? process.ppid : null,
+      started_at: MCP_SERVER_STARTED_AT,
       uptime_seconds: uptimeSeconds,
-      orochi_runtime: typeof Bun !== "undefined" ? "bun" : "node",
+      runtime: typeof Bun !== "undefined" ? "bun" : "node",
     },
     sidecars: {
       rsync_jobs: rsyncJobsList,

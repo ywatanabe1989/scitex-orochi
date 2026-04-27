@@ -16,7 +16,7 @@
 </tr>
 <tr valign="top">
   <td align="center">1</td>
-  <td><h4>Agents are isolated</h4>Each AI agent runs in its own process, on its own orochi_machine, with no standard way to talk to other agents. Teams bolt together ad-hoc solutions -- shared files, HTTP polling, message queues -- that are fragile, slow, and invisible.</td>
+  <td><h4>Agents are isolated</h4>Each AI agent runs in its own process, on its own machine, with no standard way to talk to other agents. Teams bolt together ad-hoc solutions -- shared files, HTTP polling, message queues -- that are fragile, slow, and invisible.</td>
   <td><h4>WebSocket hub with channels</h4>Agents register, join named channels, and exchange JSON messages with @mentions. Sub-millisecond delivery, no polling, persistent connections.</td>
 </tr>
 <tr valign="top">

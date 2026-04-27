@@ -22,7 +22,7 @@ OROCHI_TOKEN = ADMIN_TOKEN  # alias used by existing code
 
 
 def get_admin_token() -> str:
-    """Return the current admin token, reading from env if updated at orochi_runtime."""
+    """Return the current admin token, reading from env if updated at runtime."""
     val = os.environ.get("SCITEX_OROCHI_ADMIN_TOKEN", "")
     if not val:
         val = os.environ.get("SCITEX_OROCHI_TOKEN", "")

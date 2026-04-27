@@ -19,25 +19,25 @@ orochi:
     # Name format: orochi-agent:<role>:<user>@<host>
     host: ywata-note-win
     user: ywatanabe  # defaults to current unix user if omitted
-    orochi_model: opus[1m]
+    model: opus[1m]
     channels: ["#general", "#orchestrator"]
 
   heads:
-    # Each head runs on a specific orochi_machine, executing tasks delegated by master
+    # Each head runs on a specific machine, executing tasks delegated by master
     # Name format: orochi-agent:head:<user>@<host>
     - ssh: "ssh server1"
       host: server1
       user: ywatanabe
-      orochi_model: opus[1m]
+      model: opus[1m]
       channels: ["#general", "#deploy"]
-      orochi_workdir: ~/proj
+      workdir: ~/proj
 
     - ssh: "ssh gpu-box"
       host: gpu-box
       user: ywatanabe
-      orochi_model: sonnet
+      model: sonnet
       channels: ["#general", "#research"]
-      orochi_workdir: ~/proj
+      workdir: ~/proj
 
   # Telegram bridge (optional, for migration period)
   telegram:

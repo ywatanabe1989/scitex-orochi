@@ -4,7 +4,7 @@ Covers three layers:
 
 1. :func:`_classify` — threshold → state mapping for the 5h / 7d
    windows (warn at 0.80 / 0.85, escalate at 0.95).
-2. :func:`evaluate` — the per-heartbeat state-orochi_machine transitions:
+2. :func:`evaluate` — the per-heartbeat state-machine transitions:
    ok→warn posts to ``#progress``, warn→escalate posts to
    ``#escalation`` + ``#ywatanabe``, escalate→ok posts recovery,
    other transitions are silent (no spam on partial recovery /
@@ -90,7 +90,7 @@ class CoerceUtilizationTest(TestCase):
 
 
 class EvaluateStateMachineTest(TestCase):
-    """Transition rules for the per-(agent, window) state orochi_machine."""
+    """Transition rules for the per-(agent, window) state machine."""
 
     def setUp(self):
         self.posts: list[tuple[str, str]] = []
@@ -258,7 +258,7 @@ class CheckAgentQuotaPressureWiringTest(TestCase):
 
     def _register(self, name: str, **extra) -> None:
         info = {
-            "orochi_machine": "test-host",
+            "machine": "test-host",
             "role": "head",
         }
         info.update(extra)
@@ -328,7 +328,7 @@ class CheckAgentQuotaPressureWiringTest(TestCase):
 
     def test_update_heartbeat_triggers_check(self):
         """The heartbeat hot path (update_heartbeat) fires the state
-        orochi_machine without the caller having to invoke quota_watch
+        machine without the caller having to invoke quota_watch
         explicitly. This is the production wiring — REST handler +
         WS handler both go through update_heartbeat."""
         import hub.quota_watch as quota_watch

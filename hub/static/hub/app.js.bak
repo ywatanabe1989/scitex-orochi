@@ -99,7 +99,7 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-/* Strip orochi_hostname suffix: "head@mba@Host" → "head@mba" */
+/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
 function cleanAgentName(name) {
   if (!name) return name;
   var parts = name.split("@");
@@ -377,10 +377,10 @@ async function fetchAgents() {
           ? getSenderIcon(a.name, true)
           : getSnakeIcon(16, color);
         var workdirHtml = "";
-        if (a.orochi_workdir) {
-          var displayDir = a.orochi_workdir.replace(/^\/home\/[^/]+/, "~");
+        if (a.workdir) {
+          var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
           workdirHtml =
-            '<div class="agent-orochi_workdir">' +
+            '<div class="agent-workdir">' +
             escapeHtml(cleanAgentName(a.name)) +
             ":" +
             escapeHtml(displayDir) +
@@ -400,13 +400,13 @@ async function fetchAgents() {
           '"></span>' +
           '<span class="name">' +
           escapeHtml(cleanAgentName(a.name)) +
-          (a.orochi_model
-            ? ' <span class="meta">(' + escapeHtml(a.orochi_model) + ")</span>"
+          (a.model
+            ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
             : "") +
           "</span>" +
           workdirHtml +
           '<div class="meta">' +
-          escapeHtml(a.orochi_machine || "unknown") +
+          escapeHtml(a.machine || "unknown") +
           " / " +
           escapeHtml(a.role || "agent") +
           "</div>" +

@@ -77,14 +77,14 @@ def _wrap_with_orochi_fields(
         "token": token,
         "name": status.get("name") or "",
         "agent_id": status.get("name") or "",
-        "orochi_machine": status.get("orochi_machine") or "",
+        "machine": status.get("machine") or "",
         "role": status.get("role") or "agent",
-        "orochi_model": status.get("orochi_model") or "",
-        "orochi_workdir": status.get("orochi_workdir") or "",
-        "orochi_multiplexer": status.get("orochi_multiplexer") or "",
-        "orochi_project": status.get("orochi_project") or status.get("name") or "",
-        "orochi_pid": int(status.get("orochi_pid") or 0),
-        "orochi_ppid": int(status.get("orochi_ppid") or 0),
+        "model": status.get("model") or "",
+        "workdir": status.get("workdir") or "",
+        "multiplexer": status.get("multiplexer") or "",
+        "project": status.get("project") or status.get("name") or "",
+        "pid": int(status.get("pid") or 0),
+        "ppid": int(status.get("ppid") or 0),
         "orochi_context_pct": status.get("orochi_context_pct"),
         # YAML-declared compact policy from sac status (None when noop /
         # unconfigured). Surfaced in the Agents tab next to the live
@@ -99,8 +99,8 @@ def _wrap_with_orochi_fields(
         "quota_7d_used_pct": status.get("quota_7d_used_pct"),
         "quota_5h_reset_at": status.get("quota_5h_reset_at") or "",
         "quota_7d_reset_at": status.get("quota_7d_reset_at") or "",
-        # Machine-level orochi_metrics (host-level, dedupe concern on the server).
-        "orochi_metrics": status.get("orochi_metrics") or {},
+        # Machine-level metrics (host-level, dedupe concern on the server).
+        "metrics": status.get("metrics") or {},
         # Terminal pane + classified state.
         "pane_text": status.get("pane_text") or "",
         "orochi_pane_tail_block": status.get("pane_text") or "",
@@ -134,7 +134,7 @@ def _wrap_with_orochi_fields(
         "sac_hooks_p95_elapsed_s_by_action": status.get("sac_hooks_p95_elapsed_s_by_action") or {},
         # Accounting.
         "orochi_account_email": status.get("orochi_account_email") or "",
-        "orochi_version": status.get("orochi_version") or "",
+        "version": status.get("version") or "",
     }
     # Orochi unified cron state (msg#16406 / msg#16410). Surfaced in
     # every heartbeat so Phase 2 can wire the Machines tab directly off

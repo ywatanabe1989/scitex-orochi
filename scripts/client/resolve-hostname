@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""resolve-orochi_hostname — print the canonical fleet label for this host.
+"""resolve-hostname — print the canonical fleet label for this host.
 
 Resolution order (first non-empty wins):
   1. $SCITEX_OROCHI_HOSTNAME env var (manual override)
-  2. hostname_aliases[$(orochi_hostname -s)] from shared/config.yaml
-  3. $(orochi_hostname -s) itself (identity fallback)
+  2. hostname_aliases[$(hostname -s)] from shared/config.yaml
+  3. $(hostname -s) itself (identity fallback)
 
 Used by bash scripts (bootstrap-host.sh, daemons, cron units) that need the
 fleet label without parsing YAML themselves. One invocation, one line of
@@ -59,7 +59,7 @@ def resolve() -> str:
     if short:
         return short
     raise RuntimeError(
-        "Cannot resolve orochi_hostname: SCITEX_OROCHI_HOSTNAME unset, "
+        "Cannot resolve hostname: SCITEX_OROCHI_HOSTNAME unset, "
         "socket.gethostname() empty, no config.yaml alias applicable."
     )
 
@@ -68,5 +68,5 @@ if __name__ == "__main__":
     try:
         print(resolve())
     except RuntimeError as e:
-        print(f"resolve-orochi_hostname: {e}", file=sys.stderr)
+        print(f"resolve-hostname: {e}", file=sys.stderr)
         sys.exit(1)

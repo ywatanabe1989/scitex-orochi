@@ -20,7 +20,7 @@ This module counts orochi_subagents **programmatically** by walking the
 process tree:
 
 - Each head/worker agent is a top-level ``claude`` process spawned by
-  a tmux launcher. Its PID is discoverable via ``~/.claude/sessions/<orochi_pid>.json``
+  a tmux launcher. Its PID is discoverable via ``~/.claude/sessions/<pid>.json``
   whose ``cwd`` matches ``~/.scitex/agent-container/workspaces/<agent>``.
 - When the head invokes the ``Agent()`` tool, Claude Code spawns a
   **separate ``claude`` subprocess** as a descendant of the head's PID.
@@ -44,7 +44,7 @@ process-tree first, pane parser on failure, ``0`` if both fail.
 Audit log
 ---------
 Each invocation appends a structured NDJSON record to
-``~/.scitex/orochi/orochi_runtime/subagent-count/<agent>.ndjson`` with the
+``~/.scitex/orochi/runtime/subagent-count/<agent>.ndjson`` with the
 source (``process_tree``, ``pane_parser``, ``none``) and the count. The
 hub can diff sources over time to flag regressions ("pane says 3,
 process-tree says 0 — which is real?") without operators having to
@@ -68,10 +68,10 @@ from typing import Optional
 def _sessions_dir() -> Path:
     """Return ``~/.claude/sessions``.
 
-    Claude Code writes one ``<orochi_pid>.json`` per live session here, each
-    carrying ``{orochi_pid, sessionId, cwd, startedAt, ...}``. Walking this
+    Claude Code writes one ``<pid>.json`` per live session here, each
+    carrying ``{pid, sessionId, cwd, startedAt, ...}``. Walking this
     directory is how we associate an agent name to its claude PID
-    without parsing tmux (the orochi_multiplexer is orthogonal to the session
+    without parsing tmux (the multiplexer is orthogonal to the session
     registry).
     """
     return Path.home() / ".claude" / "sessions"
@@ -81,7 +81,7 @@ def _workspace_for(agent: str) -> str:
     """Return the canonical workspace path for ``agent``.
 
     Matches the ``cwd`` field inside the Claude session registry so we
-    can resolve ``agent -> orochi_pid`` by path equality without pulling the
+    can resolve ``agent -> pid`` by path equality without pulling the
     rest of the fleet config.
     """
     return str(
@@ -99,7 +99,7 @@ def find_head_pid(agent: str) -> Optional[int]:
     Matching is by ``cwd`` equality against ``workspaces/<agent>``; a
     single agent can legitimately have only one live session, so the
     first match wins. In the rare stale-file case (crashed claude that
-    left a ``<orochi_pid>.json`` behind) the PID will fail to resolve later
+    left a ``<pid>.json`` behind) the PID will fail to resolve later
     in the walk and the function's caller naturally falls back.
     """
     sess_dir = _sessions_dir()
@@ -114,9 +114,9 @@ def find_head_pid(agent: str) -> Optional[int]:
         except (OSError, json.JSONDecodeError):
             continue
         if str(data.get("cwd", "")).rstrip("/") == workspace.rstrip("/"):
-            orochi_pid = data.get("orochi_pid")
-            if isinstance(orochi_pid, int) and orochi_pid > 0:
-                return orochi_pid
+            pid = data.get("pid")
+            if isinstance(pid, int) and pid > 0:
+                return pid
     return None
 
 
@@ -163,7 +163,7 @@ def _count_claude_descendants_psutil(head_pid: int) -> int:
 def _count_claude_descendants_pgrep(head_pid: int) -> int:
     """Return the number of descendant claude processes via ``pgrep``.
 
-    Walks the tree level-by-level with ``pgrep -P <orochi_pid>`` because
+    Walks the tree level-by-level with ``pgrep -P <pid>`` because
     neither POSIX nor GNU pgrep has a recursive flag. Each candidate
     PID is re-inspected with ``ps`` so we can match on the command
     line (filtering out bun, bash, caffeinate — they're children of
@@ -226,7 +226,7 @@ def _count_claude_descendants_pgrep(head_pid: int) -> int:
     # Single ps invocation to fetch cmdlines for all descendants.
     try:
         ps_out = subprocess.run(
-            ["ps", "-o", "orochi_pid=,command="] + ["-p"] + [str(p) for p in descendants],
+            ["ps", "-o", "pid=,command="] + ["-p"] + [str(p) for p in descendants],
             capture_output=True,
             text=True,
             timeout=5,
@@ -241,7 +241,7 @@ def _count_claude_descendants_pgrep(head_pid: int) -> int:
         line = line.strip()
         if not line:
             continue
-        # ``orochi_pid command with args`` — split on first whitespace.
+        # ``pid command with args`` — split on first whitespace.
         parts = line.split(None, 1)
         if len(parts) < 2:
             continue
@@ -269,7 +269,7 @@ def _looks_like_claude(cmdline: list[str]) -> bool:
     by construction any ``claude``-binary descendant of the head's PID
     is a subagent (the head has no other reason to fork ``claude``).
 
-    The single-string cmdline case (``"claude --orochi_model opus ..."``) is
+    The single-string cmdline case (``"claude --model opus ..."``) is
     handled by splitting on whitespace before the basename check.
     """
     if not cmdline:
@@ -336,7 +336,7 @@ def count_orochi_subagents_via_ps(agent: str) -> int:
 def _audit_log_path(agent: str) -> Path:
     """Return the NDJSON audit-log path for ``agent``.
 
-    Stored under the standard orochi_runtime root so telemetry-rotate.sh
+    Stored under the standard runtime root so telemetry-rotate.sh
     picks it up (daily gzip + 7d retention, same lifecycle as the
     connection and quota telemetry files).
     """
@@ -344,7 +344,7 @@ def _audit_log_path(agent: str) -> Path:
         Path.home()
         / ".scitex"
         / "orochi"
-        / "orochi_runtime"
+        / "runtime"
         / "subagent-count"
     )
     root.mkdir(parents=True, exist_ok=True)

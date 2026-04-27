@@ -33,7 +33,7 @@ export LOG_FILE="${LOG_FILE:-$HOME/.scitex/orochi/logs/tmux-unstick.ndjson}"
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # PID file so an external killer (agent-autostart rerun, etc) can cleanly stop us
-PID_FILE="$HOME/.scitex/orochi/logs/tmux-unstick-loop.orochi_pid"
+PID_FILE="$HOME/.scitex/orochi/logs/tmux-unstick-loop.pid"
 echo "$$" > "$PID_FILE"
 
 trap 'rm -f "$PID_FILE"; exit 0' EXIT INT TERM
