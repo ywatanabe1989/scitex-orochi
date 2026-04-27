@@ -215,7 +215,7 @@ def test_non_zero_clears_prior_fired_flag(tmp_path):
 def test_full_lifecycle_spawn_drain_idle_dm(tmp_path):
     """End-to-end sequence: idle → spawn batch → drain → idle → DM.
 
-    The head starts idle (0), spawns 3 subagents (1 → 3), one finishes
+    The head starts idle (0), spawns 3 orochi_subagents (1 → 3), one finishes
     (→ 2), all finish (→ 0), then two further idle ticks trigger the DM.
     Pins the correctness contract: transient non-zero readings during a
     real batch must reset the counter each time, so the DM only fires

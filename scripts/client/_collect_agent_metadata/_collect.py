@@ -89,7 +89,7 @@ def collect(agent: str) -> dict:
     orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full = (
         filter_orochi_pane_tail(pane)
     )
-    subagents = parse_orochi_subagent_count(pane)
+    orochi_subagents = parse_orochi_subagent_count(pane)
 
     # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(orochi_pane_tail_block)
@@ -205,8 +205,8 @@ def collect(agent: str) -> dict:
         "agent": agent,
         "alive": True,
         "multiplexer": multiplexer,
-        "subagents": subagents,
-        "orochi_subagent_count": subagents,
+        "orochi_subagents": orochi_subagents,
+        "orochi_subagent_count": orochi_subagents,
         "orochi_context_pct": (
             statusline_orochi_context_pct
             if statusline_orochi_context_pct is not None

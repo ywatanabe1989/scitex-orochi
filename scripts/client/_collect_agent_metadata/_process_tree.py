@@ -12,11 +12,11 @@ has two known failure modes:
    — pinned as ``xfail`` in PR #333).
 2. **Status-line invisibility** — if Claude Code suppresses or rewords
    the marker in a future release, the parser silently floors to zero
-   while subagents are actually live. The auto-dispatch pipeline
+   while orochi_subagents are actually live. The auto-dispatch pipeline
    (PR #334) then misfires because ``orochi_subagent_count == 0`` is its
    "head is idle" trigger.
 
-This module counts subagents **programmatically** by walking the
+This module counts orochi_subagents **programmatically** by walking the
 process tree:
 
 - Each head/worker agent is a top-level ``claude`` process spawned by
@@ -167,7 +167,7 @@ def _count_claude_descendants_pgrep(head_pid: int) -> int:
     neither POSIX nor GNU pgrep has a recursive flag. Each candidate
     PID is re-inspected with ``ps`` so we can match on the command
     line (filtering out bun, bash, caffeinate — they're children of
-    claude too but aren't subagents).
+    claude too but aren't orochi_subagents).
 
     Returns ``-1`` on pgrep invocation failure (binary missing, PID
     doesn't exist at all). An empty walk returns ``0``.
@@ -282,7 +282,7 @@ def _looks_like_claude(cmdline: list[str]) -> bool:
     base = os.path.basename(head).lower()
     # Skip shell wrappers — they show up as children of claude (the
     # head's Bash-tool invocations, our own ``pgrep`` shell-out) but
-    # are not subagents.
+    # are not orochi_subagents.
     if base in _SHELL_BASENAMES:
         return False
     return base == "claude"
@@ -293,7 +293,7 @@ def _looks_like_claude(cmdline: list[str]) -> bool:
 # ---------------------------------------------------------------------------
 
 
-def count_subagents_via_ps(agent: str) -> int:
+def count_orochi_subagents_via_ps(agent: str) -> int:
     """Return the subagent count for ``agent`` via process-tree inspection.
 
     Returns ``-1`` on total failure (agent PID unknown, both psutil

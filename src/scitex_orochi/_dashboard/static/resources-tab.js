@@ -189,8 +189,8 @@ function buildResourceCard(k) {
     });
   }
   html += loadHtml + cpuInfo + memDetail;
-  if (d.subagents !== undefined) {
-    html += '<div class="res-meta">Subagents: ' + d.subagents + "</div>";
+  if (d.orochi_subagents !== undefined) {
+    html += '<div class="res-meta">Subagents: ' + d.orochi_subagents + "</div>";
   }
   if (d.docker && d.docker.containers !== undefined) {
     html +=

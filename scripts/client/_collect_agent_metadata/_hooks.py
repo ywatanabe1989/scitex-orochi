@@ -19,12 +19,12 @@ _HOOK_EVENT_KEYS = (
     "sac_hooks_last_action_elapsed_s",
     "sac_hooks_p95_elapsed_s_by_action",
     # scitex-orochi #132 — subagent activity. sac_hooks_agent_calls is the
-    # projected Agent/Task tool-invocation ring buffer; subagents is
+    # projected Agent/Task tool-invocation ring buffer; orochi_subagents is
     # the in-flight list with descriptions; sac_hooks_background_tasks is
     # run_in_background Bash calls.
     "sac_hooks_agent_calls",
     "sac_hooks_background_tasks",
-    "subagents",
+    "orochi_subagents",
 )
 
 

@@ -112,7 +112,7 @@ _BUSY_SPINNER_PAST_TENSE = (
 
 # Group C: "N local agent(s) still running" — strong liveness signal.
 # Rationale: the CC TUI footer shows this when the user has dispatched
-# `Agent(...)` subagents that are still working. Static text but the
+# `Agent(...)` orochi_subagents that are still working. Static text but the
 # main session is very much alive, just waiting on children.
 _BUSY_SUBAGENT_MARKERS = (
     "local agent still running",

@@ -50,7 +50,7 @@ export function registerMcpHandlers(mcp: Server): void {
     if (name === "reply") return handleReply(conn as any, args as any);
     if (name === "history") return handleHistory(args as any);
     if (name === "react") return handleReact(args as any);
-    if (name === "subagents") return handleSubagents(conn as any, args as any);
+    if (name === "orochi_subagents") return handleSubagents(conn as any, args as any);
     if (name === "task") return handleTask(conn as any, args as any);
     if (name === "health") return handleHealth(args as any);
     if (name === "context") return handleContext(args as any);

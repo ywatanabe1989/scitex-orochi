@@ -59,7 +59,7 @@ export function _renderActivityAgentDetail(a, grid) {
   }
   if (q5 != null) chips.push("5h " + q5.toFixed(0) + "%");
   if (q7 != null) chips.push("7d " + q7.toFixed(0) + "%");
-  if (subCnt != null) chips.push("subagents " + subCnt);
+  if (subCnt != null) chips.push("orochi_subagents " + subCnt);
   if (a.model) chips.push(a.model);
   if (a.multiplexer) chips.push(a.multiplexer);
   if (a.pid) chips.push("pid " + a.pid);

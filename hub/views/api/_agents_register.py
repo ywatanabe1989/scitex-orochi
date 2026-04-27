@@ -224,10 +224,10 @@ def api_agents_register(request):
 
         set_orochi_subagent_count(name, int(body.get("orochi_subagent_count") or 0))
     # Full subagent list push (Lane B #132/#155)
-    if body.get("subagents") is not None:
-        from hub.registry import set_subagents
+    if body.get("orochi_subagents") is not None:
+        from hub.registry import set_orochi_subagents
 
-        set_subagents(name, body.get("subagents") or [])
+        set_orochi_subagents(name, body.get("orochi_subagents") or [])
     update_heartbeat(name, metrics=body.get("metrics") or {})
     task = body.get("orochi_current_task") or ""
     if task:

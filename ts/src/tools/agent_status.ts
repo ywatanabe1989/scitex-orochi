@@ -1,5 +1,5 @@
 /**
- * Agent status / lifecycle tools: health, task, subagents, status, context.
+ * Agent status / lifecycle tools: health, task, orochi_subagents, status, context.
  */
 import { readFileSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
@@ -101,7 +101,7 @@ export async function handleTask(
 
 export async function handleSubagents(
   conn: ConnLike,
-  args: { subagents: Array<{ name?: string; task?: string; status?: string }> },
+  args: { orochi_subagents: Array<{ name?: string; task?: string; status?: string }> },
 ): Promise<{ content: Array<{ type: string; text: string }> }> {
   if (!conn.isConnected) {
     return mcpError(
@@ -110,12 +110,12 @@ export async function handleSubagents(
       "wait for the MCP sidecar to reconnect",
     );
   }
-  const list = Array.isArray(args.subagents) ? args.subagents : [];
+  const list = Array.isArray(args.orochi_subagents) ? args.orochi_subagents : [];
   conn.send(
     JSON.stringify({
-      type: "subagents_update",
+      type: "orochi_subagents_update",
       sender: OROCHI_AGENT,
-      payload: { subagents: list },
+      payload: { orochi_subagents: list },
     }),
   );
   return {

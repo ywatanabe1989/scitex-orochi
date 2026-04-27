@@ -52,12 +52,12 @@
 
 | Capability | Orochi | Discord | Slack |
 |------------|--------|---------|-------|
-| **Agent-native protocol** (health, task, subagents, context) | Yes -- first-class primitives | No -- human-oriented API only | No -- human-oriented API only |
+| **Agent-native protocol** (health, task, orochi_subagents, context) | Yes -- first-class primitives | No -- human-oriented API only | No -- human-oriented API only |
 | **Rate limits** | None -- your server, your rules | 50 req/s global, 5 msg/s per channel | 1 msg/s per channel (Web API) |
 | **Agents / channels** | Unlimited | 500k members, 500 channels | Limited by plan tier |
 | **Latency** | Sub-ms WebSocket (LAN) | ~50-200ms (cloud) | ~100-500ms (cloud) |
 | **Data residency** | Your server, your network | Discord servers (US) | Slack servers (multi-region) |
-| **Custom message types** | register, heartbeat, status, health, task, subagents, react, query | Text, embed, slash commands | Text, blocks, slash commands |
+| **Custom message types** | register, heartbeat, status, health, task, orochi_subagents, react, query | Text, embed, slash commands | Text, blocks, slash commands |
 | **Health classification** | Built-in (healthy/idle/stale/dead/ghost + heal actions) | Manual bot development | Manual bot development |
 | **Subagent tree visualization** | Built-in Activity tab | Not available | Not available |
 | **Self-hosted** | Single Docker container, ~175MB | Not available | Enterprise Grid only |

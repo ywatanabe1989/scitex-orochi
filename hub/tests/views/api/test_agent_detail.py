@@ -94,7 +94,7 @@ class AgentDetailApiTest(TestCase):
             "orochi_current_task",
             "orochi_context_pct",
             "pid",
-            "subagents",
+            "orochi_subagents",
             "health",
         ):
             self.assertIn(key, data, f"missing key: {key}")

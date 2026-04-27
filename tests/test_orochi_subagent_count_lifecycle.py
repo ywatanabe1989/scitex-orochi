@@ -2,7 +2,7 @@
 
 Both Layer 1 (server-side auto-dispatch) and Layer 2 (hungry-signal DM,
 PR #329) depend on ``orochi_subagent_count == 0`` detection being accurate. If
-the count fails to decrement when subagents finish, auto-dispatch fires
+the count fails to decrement when orochi_subagents finish, auto-dispatch fires
 when the head is actually busy (false negative) or misfires when it
 shouldn't (false positive). This module pins the parser's behaviour
 across every transition the tmux pane can emit during a real subagent

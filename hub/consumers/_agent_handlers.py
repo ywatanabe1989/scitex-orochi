@@ -273,7 +273,7 @@ async def handle_heartbeat(consumer, content):
 
     # Allow lightweight clients to piggyback narrative fields on
     # the heartbeat rather than sending separate task_update /
-    # subagents_update frames.
+    # orochi_subagents_update frames.
     if "orochi_current_task" in payload:
         set_orochi_current_task(consumer.agent_name, str(payload.get("orochi_current_task") or ""))
     if "orochi_subagent_count" in payload:
@@ -320,13 +320,13 @@ async def handle_task_update(consumer, content):
     )
 
 
-async def handle_subagents_update(consumer, content):
+async def handle_orochi_subagents_update(consumer, content):
     """Agent reports its current subagent tree."""
-    # payload = { "subagents": [ {name, task, status}, ... ] }
+    # payload = { "orochi_subagents": [ {name, task, status}, ... ] }
     payload = content.get("payload", {})
-    from hub.registry import mark_activity, set_subagents
+    from hub.registry import mark_activity, set_orochi_subagents
 
-    set_subagents(consumer.agent_name, payload.get("subagents") or [])
+    set_orochi_subagents(consumer.agent_name, payload.get("orochi_subagents") or [])
     mark_activity(consumer.agent_name)
     await consumer.channel_layer.group_send(
         consumer.workspace_group,

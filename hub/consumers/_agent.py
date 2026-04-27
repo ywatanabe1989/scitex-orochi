@@ -9,7 +9,7 @@ Per-frame logic lives in sibling modules to keep this file under the
 512-line cap:
 
   - ``_agent_handlers`` -- register / subscribe / pong / heartbeat /
-    task_update / subagents_update dispatch
+    task_update / orochi_subagents_update dispatch
   - ``_agent_message``  -- the ``message`` frame handler (ACL,
     persistence, fan-out)
 """
@@ -27,7 +27,7 @@ from ._agent_handlers import (
     handle_heartbeat,
     handle_pong,
     handle_register,
-    handle_subagents_update,
+    handle_orochi_subagents_update,
     handle_subscription,
     handle_task_update,
 )
@@ -330,8 +330,8 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             await handle_heartbeat(self, content)
         elif msg_type == "task_update":
             await handle_task_update(self, content)
-        elif msg_type == "subagents_update":
-            await handle_subagents_update(self, content)
+        elif msg_type == "orochi_subagents_update":
+            await handle_orochi_subagents_update(self, content)
         elif msg_type == "message":
             # scitex-orochi#451 — deny message frames from un-registered
             # connections. This makes the "orphan on reconnect" failure

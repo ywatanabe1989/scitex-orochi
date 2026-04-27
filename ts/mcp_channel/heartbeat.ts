@@ -4,7 +4,7 @@
  * The sidecar shells out to
  *     ~/.scitex/orochi/scripts/collect_agent_metadata.py <agent>
  * which reads the live Claude Code session jsonl transcript and emits
- * claude-hud-style metadata (alive, subagents, orochi_context_pct, orochi_current_tool,
+ * claude-hud-style metadata (alive, orochi_subagents, orochi_context_pct, orochi_current_tool,
  * last_activity, model, ...) as a single JSON line. The resulting dict is
  * spread into the hub heartbeat payload.
  *
@@ -14,7 +14,7 @@
  * invisible to scitex-agent-container's own registry. The status command
  * returned `{"error": "Agent X not found in registry"}` with rc=1 for every
  * such agent, the spawn was treated as a hard failure, and pushRegistryHeartbeat
- * returned without ever populating the hub's orochi_current_task / subagents /
+ * returned without ever populating the hub's orochi_current_task / orochi_subagents /
  * orochi_context_pct fields. The Activity tab then rendered "no task / 0 subs / no
  * ctx" for everyone — exactly the symptom ywatanabe flagged at msg#6382. The
  * collect_agent_metadata.py path bypasses the broken registry lookup entirely (todo#155).
@@ -71,13 +71,13 @@ export async function pushRegistryHeartbeat(): Promise<void> {
   // collect_agent_metadata.py field names → hub /api/agents/register field names.
   // The hub renderer (activity-tab.js) reads `orochi_current_task`,
   // `orochi_subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
-  // `orochi_current_tool`, `subagents`, `orochi_context_pct`, `model`. Translate.
+  // `orochi_current_tool`, `orochi_subagents`, `orochi_context_pct`, `model`. Translate.
   const currentTool = (meta["orochi_current_tool"] as string | undefined) || "";
   const subagentCount =
-    typeof meta["subagents"] === "number"
-      ? (meta["subagents"] as number)
-      : Array.isArray(meta["subagents"])
-        ? (meta["subagents"] as unknown[]).length
+    typeof meta["orochi_subagents"] === "number"
+      ? (meta["orochi_subagents"] as number)
+      : Array.isArray(meta["orochi_subagents"])
+        ? (meta["orochi_subagents"] as unknown[]).length
         : 0;
   const payload = {
     // Pass the raw meta through too in case downstream consumers want

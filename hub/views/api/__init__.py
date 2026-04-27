@@ -21,7 +21,7 @@ from hub.views.api._agents import (
     api_agents_pinned,
     api_agents_purge,
     api_agents_registry,
-    api_subagents_update,
+    api_orochi_subagents_update,
 )
 from hub.views.api._agents_lifecycle import api_agents_kill, api_agents_restart
 from hub.views.api._agents_register import api_agents_register
@@ -101,7 +101,7 @@ __all__ = [
     "api_resources",
     "api_scheduled",
     "api_stats",
-    "api_subagents_update",
+    "api_orochi_subagents_update",
     "api_threads",
     "api_watchdog_alerts",
     "api_workspaces",

@@ -129,7 +129,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   }
 
   // ── 2c. Subagent count (msg#16116 Item 4 / lead msg#16116).
-  //        Tiny chip showing the number of active Agent-tool subagents
+  //        Tiny chip showing the number of active Agent-tool orochi_subagents
   //        spawned by this agent. Source: ``a.orochi_subagent_count`` from the
   //        /api/agents/ payload (already present per PR #318 — fleet-wide
   //        terse whitelist). Hidden entirely when the value is undefined
@@ -141,7 +141,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
     var n = a && a.orochi_subagent_count != null ? Number(a.orochi_subagent_count) : 0;
     if (!n || !isFinite(n) || n < 1) return "";
     /* Class name ``agent-badge-subcount`` intentionally distinct from
-     * the pre-existing ``.agent-badge-subagents`` pill in
+     * the pre-existing ``.agent-badge-orochi_subagents`` pill in
      * components-agent-cards.css — that rule is a full-width meta pill
      * rendered on the Agents-tab card; this one is an inline count
      * chip appended to the badge strip. */

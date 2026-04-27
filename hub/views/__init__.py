@@ -41,7 +41,7 @@ from hub.views.api import (  # noqa: F401
     api_resources,
     api_scheduled,
     api_stats,
-    api_subagents_update,
+    api_orochi_subagents_update,
     api_threads,
     api_watchdog_alerts,
     api_workspaces,

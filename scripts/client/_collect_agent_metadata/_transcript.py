@@ -24,7 +24,7 @@ SKIP_TOOLS = {
     "mcp__scitex-orochi__rsync_media",
     "mcp__scitex-orochi__rsync_status",
     "mcp__scitex-orochi__self_command",
-    "mcp__scitex-orochi__subagents",
+    "mcp__scitex-orochi__orochi_subagents",
     "mcp__scitex-orochi__task",
     "TodoWrite",
 }

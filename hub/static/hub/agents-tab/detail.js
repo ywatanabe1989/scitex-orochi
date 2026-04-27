@@ -161,7 +161,7 @@ function _renderAgentDetail(a) {
     [
       "Subagents (" + (subagentCount != null ? subagentCount : 0) + ")",
       subagentCount != null ? String(subagentCount) : "-",
-      "active Agent-tool subagents spawned by this agent",
+      "active Agent-tool orochi_subagents spawned by this agent",
     ],
     [
       "Uptime",

@@ -338,8 +338,8 @@ function buildResourceCard(k) {
     html += gpuRow;
   }
   html += loadHtml + cpuInfo + memDetail + diskDetail;
-  if (d.subagents !== undefined) {
-    html += '<div class="res-meta">Subagents: ' + d.subagents + "</div>";
+  if (d.orochi_subagents !== undefined) {
+    html += '<div class="res-meta">Subagents: ' + d.orochi_subagents + "</div>";
   }
   if (d.docker && d.docker.containers !== undefined) {
     html +=
