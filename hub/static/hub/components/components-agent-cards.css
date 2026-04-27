@@ -292,6 +292,21 @@
   overflow-y: auto;
   vertical-align: middle;
 }
+
+/* Belt-and-suspenders middle alignment for the avatar / status / star
+ * cells. The earlier `.agent-row > td { vertical-align: middle }` rule
+ * doesn't take effect when a child uses `display: inline-block` with
+ * its own line-height, so spell it out at the element level too. The
+ * !important is intentional: legacy per-cell rules in older CSS files
+ * still ship and may otherwise win the cascade. ywatanabe 2026-04-27. */
+.agent-icon-cell,
+.agent-row td.agent-icon-cell,
+.agent-row td.star-cell,
+.agent-row td:first-child,
+.agent-row td:nth-child(2),
+.agent-row td:nth-child(3) {
+  vertical-align: middle !important;
+}
 .agent-channels-cell .ch-badge {
   display: inline-block;
   margin: 1px 2px;

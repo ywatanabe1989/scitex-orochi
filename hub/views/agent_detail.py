@@ -167,6 +167,7 @@ def api_agent_detail(request, name: str):
           "liveness": str,
           "orochi_claude_md": str,
           "orochi_mcp_json": str,
+          "orochi_env_file": str,
           "orochi_pane_state": str,
           "orochi_stuck_prompt_text": str,
           "pane_text": str,
@@ -264,6 +265,11 @@ def api_agent_detail(request, name: str):
         # and similar secrets before pushing, but we redact again defense-in-depth
         # so any future push path that forgets still stays safe.
         "orochi_mcp_json": redact_secrets(agent.get("orochi_mcp_json") or ""),
+        # .env viewer (todo: 2026-04-27). collect_agent_metadata.py --push
+        # is expected to ship a redacted dump of <workdir>/.env. We redact
+        # again here defense-in-depth so secret-shaped tokens never leave
+        # the server even if the heartbeat path changes.
+        "orochi_env_file": redact_secrets(agent.get("orochi_env_file") or ""),
         # todo#418: agent decision-transparency for the Agents tab.
         # `orochi_pane_state` is the classifier label agent_meta.py --push
         # computes (`running` / `compose_pending_unsent` /

@@ -161,3 +161,74 @@ def collect_orochi_mcp_json(workspace: str) -> str:
         except Exception:
             continue
     return orochi_mcp_json_full
+
+
+def _orochi_env_file_candidates(ws: str) -> list[Path]:
+    """Same fallback logic as CLAUDE.md / .mcp.json — workspace, then sibling
+    mamba-* dir, then enclosing git root, then ~/.env."""
+    p = Path(ws) if ws else None
+    home = Path.home()
+    cands: list[Path] = []
+    if p is not None:
+        cands += [p / ".env"]
+        if p.parent.name == "workspaces":
+            cands.append(p.parent / f"mamba-{p.name}" / ".env")
+        try:
+            git_root = p
+            while git_root != git_root.parent and not (git_root / ".git").exists():
+                git_root = git_root.parent
+            if (git_root / ".git").exists():
+                cands.append(git_root / ".env")
+        except Exception:
+            pass
+    cands += [home / ".env"]
+    seen: set[str] = set()
+    uniq: list[Path] = []
+    for c in cands:
+        key = str(c)
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(c)
+    return uniq
+
+
+def _redact_env_line(line: str) -> str:
+    """Redact secret-shaped values in a single KEY=VALUE line. Keep the
+    key visible (operators need to know which env vars are set) and
+    blank the value when the key looks sensitive."""
+    if "=" not in line:
+        return line
+    key, _, value = line.partition("=")
+    key_upper = key.strip().upper()
+    if any(
+        tag in key_upper
+        for tag in ("TOKEN", "SECRET", "KEY", "PASSWORD", "PASS", "CREDENTIAL")
+    ):
+        return f"{key}=***REDACTED***"
+    # Values that look like a JWT / long opaque token regardless of key.
+    v = value.strip()
+    if len(v) >= 24 and v.replace("-", "").replace("_", "").replace(".", "").isalnum():
+        return f"{key}=***REDACTED***"
+    return line
+
+
+def collect_orochi_env_file(workspace: str) -> str:
+    """Return the workspace .env content (per-line redacted, truncated to
+    10000 chars). Empty string when no .env is discoverable.
+
+    Producer-side redaction is the first defense; the hub redacts again on
+    render so a future heartbeat path that forgets still stays safe.
+    """
+    text = ""
+    for env_path in _orochi_env_file_candidates(workspace):
+        try:
+            if not env_path.is_file():
+                continue
+            raw = env_path.read_text(errors="replace")
+            redacted_lines = [_redact_env_line(ln) for ln in raw.splitlines()]
+            text = "\n".join(redacted_lines)[:10000]
+            break
+        except Exception:
+            continue
+    return text

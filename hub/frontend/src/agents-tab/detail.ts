@@ -444,6 +444,13 @@ export function _renderAgentDetail(a) {
   var mcpJsonPaneHtml = mcpJson
     ? mcpJsonBodyHtml
     : '<div class="agent-detail-files-empty muted-cell">No .mcp.json (agent has not heartbeated with collect_agent_metadata.py yet)</div>';
+  /* .env viewer — sourced from collect_agent_metadata heartbeat. Backend
+   * is responsible for redacting secret-shaped values before this
+   * reaches the wire; frontend just renders. */
+  var envText = d.orochi_env_file || a.orochi_env_file || "";
+  var envPaneHtml = envText
+    ? '<pre class="agent-detail-mcp-json">' + escapeHtml(envText) + "</pre>"
+    : '<div class="agent-detail-files-empty muted-cell">No .env (agent has not heartbeated with collect_agent_metadata.py yet, or no .env in workdir)</div>';
   var fileTabsHtml =
     '<div class="agent-detail-files-tabs" data-agent="' +
     escapeHtml(a.name) +
@@ -455,6 +462,8 @@ export function _renderAgentDetail(a) {
     ' data-action="files-tab" data-pane-id="claude-md">CLAUDE.md</button>' +
     '<button type="button" class="agent-detail-files-tab"' +
     ' data-action="files-tab" data-pane-id="mcp-json">.mcp.json</button>' +
+    '<button type="button" class="agent-detail-files-tab"' +
+    ' data-action="files-tab" data-pane-id="env-file">.env</button>' +
     "</div>" +
     '<div class="agent-detail-files-panes">' +
     '<div class="agent-detail-files-pane agent-detail-files-pane-active" data-pane-id="terminal">' +
@@ -465,6 +474,9 @@ export function _renderAgentDetail(a) {
     "</div>" +
     '<div class="agent-detail-files-pane" data-pane-id="mcp-json" hidden>' +
     mcpJsonPaneHtml +
+    "</div>" +
+    '<div class="agent-detail-files-pane" data-pane-id="env-file" hidden>' +
+    envPaneHtml +
     "</div>" +
     "</div>" +
     "</div>";

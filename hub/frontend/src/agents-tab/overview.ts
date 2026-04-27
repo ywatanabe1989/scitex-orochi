@@ -375,10 +375,9 @@ export function renderContextBadge(pct, cm) {
   var badge =
     '<span class="ctx-badge" title="' +
     title +
-    '" style="background:' +
+    '" style="color:' +
     color +
-    ";color:#111;padding:1px 6px;" +
-    'border-radius:10px;font-size:11px;font-weight:600">ctx ' +
+    ';font-size:11px;font-weight:600">' +
     n.toFixed(1) +
     "%</span>";
   return renderCompactPolicySuffix(badge, cm);

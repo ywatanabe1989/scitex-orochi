@@ -13,6 +13,7 @@ from ._classifier import (
 )
 from ._files import (
     collect_orochi_claude_md,
+    collect_orochi_env_file,
     collect_orochi_mcp_json,
     collect_orochi_mcp_servers,
     collect_orochi_skills_loaded,
@@ -86,9 +87,12 @@ def collect(agent: str) -> dict:
     # JSONL-derived tool name. -J joins wrapped lines so a long
     # command isn't reported as several short fragments.
     pane = capture_pane(agent, multiplexer)
-    orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full = (
-        filter_orochi_pane_tail(pane)
-    )
+    (
+        orochi_pane_tail,
+        orochi_pane_tail_block,
+        orochi_pane_tail_block_clean,
+        orochi_pane_tail_full,
+    ) = filter_orochi_pane_tail(pane)
     subagents = parse_orochi_subagent_count(pane)
 
     # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
@@ -125,6 +129,7 @@ def collect(agent: str) -> dict:
     # CLAUDE.md head + full, .mcp.json full (todo#460 viewers).
     orochi_claude_md_head, orochi_claude_md_full = collect_orochi_claude_md(workspace)
     orochi_mcp_json_full = collect_orochi_mcp_json(workspace)
+    orochi_env_file_full = collect_orochi_env_file(workspace)
 
     # Classifier (computed ONCE per collect — the stagnation counter
     # inside _classify_orochi_pane_state is per-cycle, so calling it twice
@@ -157,7 +162,9 @@ def collect(agent: str) -> dict:
     )
     pane_verdict = derive_orochi_pane_state(orochi_pane_observations)
     orochi_pane_state = pane_verdict["label"]
-    orochi_stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
+    orochi_stuck_prompt_text = _extract_stuck_prompt(
+        orochi_pane_tail_block_clean, pane, agent=agent
+    )
     # Contradiction check + evidence log. `alive=True` here means
     # we successfully captured a pane from the multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
@@ -259,6 +266,7 @@ def collect(agent: str) -> dict:
         # todo#460 full-content fields for the Agents tab viewer.
         "orochi_claude_md": orochi_claude_md_full,
         "orochi_mcp_json": orochi_mcp_json_full,
+        "orochi_env_file": orochi_env_file_full,
         # todo#418: agent decision-transparency — classifier label + verbatim
         # stuck-prompt text. Computed from orochi_pane_tail_block_clean.
         # 2026-04-21 (lead msg#15541): the classifier now also emits

@@ -108,10 +108,16 @@ def _wrap_with_orochi_fields(
         "orochi_stuck_prompt_text": status.get("orochi_stuck_prompt_text") or "",
         # Workspace files.
         "orochi_claude_md": status.get("orochi_claude_md") or "",
-        "orochi_claude_md_head": (status.get("orochi_claude_md") or "").splitlines()[0][:120]
+        "orochi_claude_md_head": (status.get("orochi_claude_md") or "").splitlines()[0][
+            :120
+        ]
         if status.get("orochi_claude_md")
         else "",
         "orochi_mcp_json": status.get("orochi_mcp_json") or "",
+        # Workspace .env file. Producer is responsible for redacting any
+        # secret-shaped values before this hits the wire; the hub redacts
+        # again on render defense-in-depth.
+        "orochi_env_file": status.get("orochi_env_file") or "",
         # Claude Code hook-captured events (new — forwarded as-is).
         "sac_hooks_recent_tools": status.get("sac_hooks_recent_tools") or [],
         "sac_hooks_recent_prompts": status.get("sac_hooks_recent_prompts") or [],
@@ -122,16 +128,23 @@ def _wrap_with_orochi_fields(
         "sac_hooks_last_tool_at": status.get("sac_hooks_last_tool_at") or "",
         "sac_hooks_last_tool_name": status.get("sac_hooks_last_tool_name") or "",
         "sac_hooks_last_mcp_tool_at": status.get("sac_hooks_last_mcp_tool_at") or "",
-        "sac_hooks_last_mcp_tool_name": status.get("sac_hooks_last_mcp_tool_name") or "",
+        "sac_hooks_last_mcp_tool_name": status.get("sac_hooks_last_mcp_tool_name")
+        or "",
         # PaneAction summary (from scitex-agent-container action_store).
         # Empty when actions subsystem is unused; dashboard chips it
         # as "last probe / compact / ... outcome N ago".
         "sac_hooks_last_action_at": status.get("sac_hooks_last_action_at") or "",
         "sac_hooks_last_action_name": status.get("sac_hooks_last_action_name") or "",
-        "sac_hooks_last_action_outcome": status.get("sac_hooks_last_action_outcome") or "",
-        "sac_hooks_last_action_elapsed_s": status.get("sac_hooks_last_action_elapsed_s"),
+        "sac_hooks_last_action_outcome": status.get("sac_hooks_last_action_outcome")
+        or "",
+        "sac_hooks_last_action_elapsed_s": status.get(
+            "sac_hooks_last_action_elapsed_s"
+        ),
         "action_counts": status.get("action_counts") or {},
-        "sac_hooks_p95_elapsed_s_by_action": status.get("sac_hooks_p95_elapsed_s_by_action") or {},
+        "sac_hooks_p95_elapsed_s_by_action": status.get(
+            "sac_hooks_p95_elapsed_s_by_action"
+        )
+        or {},
         # Accounting.
         "orochi_account_email": status.get("orochi_account_email") or "",
         "version": status.get("version") or "",

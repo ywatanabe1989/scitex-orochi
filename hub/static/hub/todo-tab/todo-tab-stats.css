@@ -1,6 +1,11 @@
 /* ==================================================================== */
 /* TODO stats dashboard (#171) — cards / chart / label bars / tables    */
 /* ==================================================================== */
+/* Hide the per-section breakdowns (velocity, labels, by repo, starvation
+ * etc.). The four-card totals row stays visible. ywatanabe 2026-04-27. */
+.todo-stats-section {
+  display: none !important;
+}
 .todo-stats {
   display: flex;
   flex-direction: column;
