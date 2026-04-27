@@ -67,7 +67,7 @@ def api_resources(request):
                     # Empty ``[]`` on GPU-less hosts (mba, nas) → frontend
                     # renders ``n/a`` per spec.
                     "gpus": list(metrics.get("gpus") or []),
-                    # Slurm cluster aggregates (todo#87) — absent on non-slurm hosts
+                    # Slurm cluster aggregates (todo#87) — absent on non-orochi_slurm hosts
                     "resource_source": metrics.get("resource_source", "local"),
                     "cluster_nodes": metrics.get("cluster_nodes", 0),
                     "cluster_cpus_allocated": metrics.get("cluster_cpus_allocated", 0),
@@ -76,9 +76,9 @@ def api_resources(request):
                     "cluster_mem_total_mb": metrics.get("cluster_mem_total_mb", 0),
                     "cluster_gpus_total": metrics.get("cluster_gpus_total", 0),
                     "cluster_gpus_allocated": metrics.get("cluster_gpus_allocated", 0),
-                    "slurm_total_jobs": metrics.get("slurm_total_jobs", 0),
-                    "slurm_running": metrics.get("slurm_running", 0),
-                    "slurm_pending": metrics.get("slurm_pending", 0),
+                    "orochi_slurm_total_jobs": metrics.get("orochi_slurm_total_jobs", 0),
+                    "orochi_slurm_running": metrics.get("orochi_slurm_running", 0),
+                    "orochi_slurm_pending": metrics.get("orochi_slurm_pending", 0),
                 },
             }
 
@@ -108,9 +108,9 @@ def api_resources(request):
                 "cluster_mem_total_mb",
                 "cluster_gpus_total",
                 "cluster_gpus_allocated",
-                "slurm_total_jobs",
-                "slurm_running",
-                "slurm_pending",
+                "orochi_slurm_total_jobs",
+                "orochi_slurm_running",
+                "orochi_slurm_pending",
             ):
                 val = metrics.get(key)
                 if val:

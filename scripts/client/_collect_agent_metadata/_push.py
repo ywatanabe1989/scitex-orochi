@@ -127,10 +127,10 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # line `update_heartbeat(name, metrics=body.get("metrics") or
         # {})`), and the merged per-agent snapshot is flattened into
         # each machine's aggregate card by hub/views/api/_resources.py.
-        # `slurm` is a nested dict used by the Machines tab's SLURM
+        # `orochi_slurm` is a nested dict used by the Machines tab's SLURM
         # card on HPC hosts and is expected to be None on non-HPC.
         "metrics": meta.get("metrics") or {},
-        "slurm": meta.get("slurm"),
+        "orochi_slurm": meta.get("orochi_slurm"),
         # Lead msg#16005 pivot: forward the ENTIRE ``sac status --terse
         # --json`` dict as a nested field. Future additions to sac's
         # status projection (orochi_context_pct, orochi_pane_state, orochi_current_tool,

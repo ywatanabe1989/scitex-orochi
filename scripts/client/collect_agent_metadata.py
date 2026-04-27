@@ -42,7 +42,7 @@ if str(_HERE) not in sys.path:
 from _collect_agent_metadata import (  # noqa: E402  (sys.path adjusted above)
     collect,
     collect_machine_metrics,
-    collect_slurm_status,
+    collect_orochi_slurm_status,
     detect_multiplexer,
     main,
     push_all,
@@ -53,7 +53,7 @@ from _collect_agent_metadata._cli import cli_main  # noqa: E402
 __all__ = [
     "collect",
     "collect_machine_metrics",
-    "collect_slurm_status",
+    "collect_orochi_slurm_status",
     "detect_multiplexer",
     "main",
     "push_all",

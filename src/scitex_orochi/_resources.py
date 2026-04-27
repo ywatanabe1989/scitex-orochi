@@ -7,7 +7,7 @@ Slurm override (todo#87): when the host has ``sinfo`` on PATH, the local
 login-node CPU / RAM / GPU figures are replaced with cluster-aggregate
 values from ``sinfo``/``squeue`` so the Machines tab shows actual
 available compute rather than the login node's snapshot. See
-``_slurm.collect_slurm_metrics``. The slurm call is best-effort and
+``_orochi_slurm.collect_orochi_slurm_metrics``. The orochi_slurm call is best-effort and
 bounded at ~3s per heartbeat; any failure falls back silently to the
 ``/proc`` metrics collected above.
 """
@@ -29,8 +29,8 @@ def collect_metrics() -> dict[str, str | int | float]:
         mem_free_mb, mem_total_mb, mem_used_percent, disk_used_percent
 
     On Slurm hosts (``sinfo`` on PATH), CPU / RAM / GPU fields are
-    overridden with cluster aggregates and supplemental slurm keys
-    (``slurm_total_jobs``, ``cluster_cpus_total`` …) are appended.
+    overridden with cluster aggregates and supplemental orochi_slurm keys
+    (``orochi_slurm_total_jobs``, ``cluster_cpus_total`` …) are appended.
     """
     metrics: dict[str, str | int | float] = {}
 
@@ -98,13 +98,13 @@ def collect_metrics() -> dict[str, str | int | float]:
     # parsing failure leaves the /proc-based metrics intact. Disk is left
     # untouched because Slurm doesn't track shared-fs usage.
     try:
-        from scitex_orochi._slurm import collect_slurm_metrics
+        from scitex_orochi._orochi_slurm import collect_orochi_slurm_metrics
 
-        slurm_metrics = collect_slurm_metrics()
+        orochi_slurm_metrics = collect_orochi_slurm_metrics()
     except Exception:  # pragma: no cover - defensive: never break heartbeat
         log.debug("Slurm metric collection raised", exc_info=True)
-        slurm_metrics = {}
-    if slurm_metrics:
-        metrics.update(slurm_metrics)
+        orochi_slurm_metrics = {}
+    if orochi_slurm_metrics:
+        metrics.update(orochi_slurm_metrics)
 
     return metrics

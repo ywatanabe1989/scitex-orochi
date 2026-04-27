@@ -500,7 +500,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     )
     monkeypatch.setattr(
         _collect,
-        "collect_slurm_status",
+        "collect_orochi_slurm_status",
         lambda: None,
     )
 

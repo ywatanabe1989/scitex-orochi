@@ -114,11 +114,11 @@ export function renderResources() {
           totalGpus +
           " gpu</span>";
       }
-      var slurmStr = "";
-      if (d.slurm && d.slurm.total_jobs > 0) {
-        slurmStr =
+      var orochi_slurmStr = "";
+      if (d.orochi_slurm && d.orochi_slurm.total_jobs > 0) {
+        orochi_slurmStr =
           ' <span class="res-chip" title="SLURM jobs">' +
-          d.slurm.total_jobs +
+          d.orochi_slurm.total_jobs +
           " jobs</span>";
       }
       /* #284 Machine card order: [icon] [star] [LED] [<host-label>
@@ -194,7 +194,7 @@ export function renderResources() {
         escapeHtml(diskStr) +
         "</span>" +
         gpuStr +
-        slurmStr +
+        orochi_slurmStr +
         "</span>" +
         "</div>"
       );
@@ -427,7 +427,7 @@ export async function fetchResources() {
        *
        * Local-GPU hosts (heartbeat carries ``r.gpus = [...]``):
        *   pass through verbatim so tooltip can render VRAM used/total.
-       * Slurm login nodes (``resource_source == "slurm"``):
+       * Slurm login nodes (``resource_source == "orochi_slurm"``):
        *   project cluster totals into a single synthetic entry so the
        *   sidebar renders ``allocated/total GPU`` for the cluster.
        * GPU-less (mba, nas): ``[]`` → sidebar emits no GPU chip,
@@ -490,16 +490,16 @@ export async function fetchResources() {
         _diskTotalMb: r.disk_total_mb || 0,
         _diskUsedMb: r.disk_used_mb || 0,
         // Slurm cluster aggregates (todo#87). Populated only when the
-        // host reports `resource_source == "slurm"` — login-node metrics
+        // host reports `resource_source == "orochi_slurm"` — login-node metrics
         // are replaced with cluster-wide CPU/RAM at the agent, so the
         // existing cpu/memory bars above now reflect cluster busy%.
         _resourceSource: r.resource_source || "local",
-        slurm:
-          r.resource_source === "slurm"
+        orochi_slurm:
+          r.resource_source === "orochi_slurm"
             ? {
-                total_jobs: r.slurm_total_jobs || 0,
-                running: r.slurm_running || 0,
-                pending: r.slurm_pending || 0,
+                total_jobs: r.orochi_slurm_total_jobs || 0,
+                running: r.orochi_slurm_running || 0,
+                pending: r.orochi_slurm_pending || 0,
                 cluster_nodes: r.cluster_nodes || 0,
                 cluster_cpus_total: r.cluster_cpus_total || 0,
                 cluster_cpus_allocated: r.cluster_cpus_allocated || 0,

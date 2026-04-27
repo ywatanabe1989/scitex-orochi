@@ -234,7 +234,7 @@ def _collect_gpus() -> list[dict]:
     return gpus
 
 
-def collect_slurm_status():
+def collect_orochi_slurm_status():
     """Snapshot of SLURM compute resources for HPC hosts (todo#59).
 
     Returns ``None`` on hosts where SLURM is not installed (most fleet

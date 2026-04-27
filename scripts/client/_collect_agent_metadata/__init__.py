@@ -25,7 +25,7 @@ from ._cli import cli_main
 from ._collect import collect, main
 from ._hooks import _HOOK_EVENT_KEYS, _collect_hook_events
 from ._hostname import _resolve_canonical_hostname
-from ._metrics import collect_machine_metrics, collect_slurm_status
+from ._metrics import collect_machine_metrics, collect_orochi_slurm_status
 from ._multiplexer import _list_local_agents, detect_multiplexer
 from ._oauth import read_oauth_metadata
 from ._proc import _read_process_env
@@ -35,7 +35,7 @@ __all__ = [
     "cli_main",
     "collect",
     "collect_machine_metrics",
-    "collect_slurm_status",
+    "collect_orochi_slurm_status",
     "detect_multiplexer",
     "main",
     "push_all",

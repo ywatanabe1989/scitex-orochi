@@ -13,15 +13,15 @@ Design principle: best-effort and side-effect-free.
   empty dict and the caller falls back to local ``/proc`` metrics.
 - Output is normalised to the same keys as ``_resources.collect_metrics``
   so the server's ``_RESOURCE_KEYS`` filter and the Machines tab UI need
-  no further changes to render slurm-hosted aggregates.
-- Additional slurm-only fields (``slurm_total_jobs``, ``slurm_running``,
-  ``slurm_pending``, ``cluster_cpus_total`` …) are reported alongside the
+  no further changes to render orochi_slurm-hosted aggregates.
+- Additional orochi_slurm-only fields (``orochi_slurm_total_jobs``, ``orochi_slurm_running``,
+  ``orochi_slurm_pending``, ``cluster_cpus_total`` …) are reported alongside the
   overridden standard fields and are persisted by the hub once their keys
   are added to ``_server._RESOURCE_KEYS``.
 
 This lives deliberately close to ``_resources.py`` rather than inside the
-richer ``host-telemetry-probe.sh`` / ``slurm-resource-scraper`` contract
-daemon (see ``_skills/scitex-orochi/slurm-resource-scraper-contract.md``)
+richer ``host-telemetry-probe.sh`` / ``orochi_slurm-resource-scraper`` contract
+daemon (see ``_skills/scitex-orochi/orochi_slurm-resource-scraper-contract.md``)
 because the Machines tab only needs a small aggregate — not verbatim
 stdout — and a lightweight override on the heartbeat path avoids a new
 daemon, a new hub consumer, and a new channel subscription.
@@ -34,13 +34,13 @@ import shutil
 import subprocess
 from typing import Any
 
-log = logging.getLogger("orochi.slurm")
+log = logging.getLogger("orochi.orochi_slurm")
 
 SLURM_TIMEOUT_S = 3.0
 
 
 def _run(cmd: list[str]) -> str | None:
-    """Run a slurm CLI command with a hard timeout.
+    """Run a orochi_slurm CLI command with a hard timeout.
 
     Returns stdout text on success, ``None`` on missing binary, timeout,
     non-zero exit, or any subprocess error.
@@ -71,7 +71,7 @@ def _run(cmd: list[str]) -> str | None:
     return proc.stdout
 
 
-def has_slurm() -> bool:
+def has_orochi_slurm() -> bool:
     """True iff ``sinfo`` is on PATH. Cheap, non-executing probe."""
     return shutil.which("sinfo") is not None
 
@@ -235,33 +235,33 @@ def _collect_squeue_jobs() -> dict[str, Any]:
             pending += 1
 
     return {
-        "slurm_total_jobs": total,
-        "slurm_running": running,
-        "slurm_pending": pending,
+        "orochi_slurm_total_jobs": total,
+        "orochi_slurm_running": running,
+        "orochi_slurm_pending": pending,
         "cluster_gpus_allocated": gpus_allocated,
     }
 
 
-def collect_slurm_metrics() -> dict[str, Any]:
+def collect_orochi_slurm_metrics() -> dict[str, Any]:
     """Return normalised cluster metrics, or an empty dict on any failure.
 
     Keys overlap with ``_resources.collect_metrics``:
 
     - ``cpu_count``, ``mem_total_mb``, ``mem_free_mb``, ``mem_used_percent``
 
-    and add slurm-specific keys:
+    and add orochi_slurm-specific keys:
 
     - ``cluster_nodes``, ``cluster_cpus_allocated``, ``cluster_cpus_total``
     - ``cluster_mem_total_mb``, ``cluster_mem_free_mb``
     - ``cluster_gpus_total``, ``cluster_gpus_allocated``
-    - ``slurm_total_jobs``, ``slurm_running``, ``slurm_pending``
-    - ``resource_source = "slurm"``
+    - ``orochi_slurm_total_jobs``, ``orochi_slurm_running``, ``orochi_slurm_pending``
+    - ``resource_source = "orochi_slurm"``
 
     A ``load_avg_*`` value is synthesised as ``cpus_allocated`` so the
     existing Machines tab CPU% bar (computed from load / cpu_count) tracks
     cluster utilisation instead of login-node load.
     """
-    if not has_slurm():
+    if not has_orochi_slurm():
         return {}
 
     agg = _collect_sinfo_aggregate()
@@ -274,7 +274,7 @@ def collect_slurm_metrics() -> dict[str, Any]:
     mem_total = agg["cluster_mem_total_mb"]
 
     out: dict[str, Any] = dict(agg)
-    out["resource_source"] = "slurm"
+    out["resource_source"] = "orochi_slurm"
 
     # Override scalar "machine" metrics with cluster-wide values
     if cpus_total > 0:

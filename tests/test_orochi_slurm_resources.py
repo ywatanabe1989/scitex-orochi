@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from unittest.mock import patch
 
-from scitex_orochi import _resources, _slurm
+from scitex_orochi import _resources, _orochi_slurm
 
 # ---------------------------------------------------------------------------
 # Low-level parser tests
@@ -13,25 +13,25 @@ from scitex_orochi import _resources, _slurm
 
 
 def test_parse_cpus_aiot_normal():
-    assert _slurm._parse_cpus_aiot("12/0/0/12") == (12, 12)
-    assert _slurm._parse_cpus_aiot("4/60/0/64") == (4, 64)
+    assert _orochi_slurm._parse_cpus_aiot("12/0/0/12") == (12, 12)
+    assert _orochi_slurm._parse_cpus_aiot("4/60/0/64") == (4, 64)
 
 
 def test_parse_cpus_aiot_malformed():
-    assert _slurm._parse_cpus_aiot("") is None
-    assert _slurm._parse_cpus_aiot("12/0/0") is None
-    assert _slurm._parse_cpus_aiot("a/b/c/d") is None
-    assert _slurm._parse_cpus_aiot("0/0/0/0") is None  # zero total
+    assert _orochi_slurm._parse_cpus_aiot("") is None
+    assert _orochi_slurm._parse_cpus_aiot("12/0/0") is None
+    assert _orochi_slurm._parse_cpus_aiot("a/b/c/d") is None
+    assert _orochi_slurm._parse_cpus_aiot("0/0/0/0") is None  # zero total
 
 
 def test_parse_gres_gpu_count():
-    assert _slurm._parse_gres_gpu_count("(null)") == 0
-    assert _slurm._parse_gres_gpu_count("") == 0
-    assert _slurm._parse_gres_gpu_count("N/A") == 0
-    assert _slurm._parse_gres_gpu_count("gpu:a100:8") == 8
-    assert _slurm._parse_gres_gpu_count("gpu:8") == 8
-    assert _slurm._parse_gres_gpu_count("gpu:a100:4,gpu:h100:2") == 6
-    assert _slurm._parse_gres_gpu_count("gpu:a100:4(S:0-1)") == 4
+    assert _orochi_slurm._parse_gres_gpu_count("(null)") == 0
+    assert _orochi_slurm._parse_gres_gpu_count("") == 0
+    assert _orochi_slurm._parse_gres_gpu_count("N/A") == 0
+    assert _orochi_slurm._parse_gres_gpu_count("gpu:a100:8") == 8
+    assert _orochi_slurm._parse_gres_gpu_count("gpu:8") == 8
+    assert _orochi_slurm._parse_gres_gpu_count("gpu:a100:4,gpu:h100:2") == 6
+    assert _orochi_slurm._parse_gres_gpu_count("gpu:a100:4(S:0-1)") == 4
 
 
 # ---------------------------------------------------------------------------
@@ -61,13 +61,13 @@ def _mk_run(responses):
     return _fake
 
 
-def test_collect_slurm_metrics_no_sinfo():
+def test_collect_orochi_slurm_metrics_no_sinfo():
     """When sinfo is missing, returns empty dict."""
-    with patch.object(_slurm.shutil, "which", return_value=None):
-        assert _slurm.collect_slurm_metrics() == {}
+    with patch.object(_orochi_slurm.shutil, "which", return_value=None):
+        assert _orochi_slurm.collect_orochi_slurm_metrics() == {}
 
 
-def test_collect_slurm_metrics_single_node_cluster():
+def test_collect_orochi_slurm_metrics_single_node_cluster():
     """NAS-shape: one node, 12/12 CPUs, 6 running visitor jobs."""
     sinfo_out = "DXP480TPLUS-994|12/0/0/12|826|64038|(null)\n"
     squeue_out = (
@@ -80,21 +80,21 @@ def test_collect_slurm_metrics_single_node_cluster():
     )
     fake = _mk_run({"sinfo": sinfo_out, "squeue": squeue_out})
     with (
-        patch.object(_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
-        patch.object(_slurm.subprocess, "run", side_effect=fake),
+        patch.object(_orochi_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
+        patch.object(_orochi_slurm.subprocess, "run", side_effect=fake),
     ):
-        out = _slurm.collect_slurm_metrics()
+        out = _orochi_slurm.collect_orochi_slurm_metrics()
 
-    assert out["resource_source"] == "slurm"
+    assert out["resource_source"] == "orochi_slurm"
     assert out["cluster_nodes"] == 1
     assert out["cluster_cpus_total"] == 12
     assert out["cluster_cpus_allocated"] == 12
     assert out["cluster_mem_total_mb"] == 64038
     assert out["cluster_mem_free_mb"] == 826
     assert out["cluster_gpus_total"] == 0
-    assert out["slurm_total_jobs"] == 6
-    assert out["slurm_running"] == 6
-    assert out["slurm_pending"] == 0
+    assert out["orochi_slurm_total_jobs"] == 6
+    assert out["orochi_slurm_running"] == 6
+    assert out["orochi_slurm_pending"] == 0
 
     # Override propagates into the scalar "machine" keys used by the UI.
     assert out["cpu_count"] == 12
@@ -106,7 +106,7 @@ def test_collect_slurm_metrics_single_node_cluster():
     assert out["load_avg_1m"] == 12.0
 
 
-def test_collect_slurm_metrics_multi_node_with_gpus():
+def test_collect_orochi_slurm_metrics_multi_node_with_gpus():
     """Spartan-shape: partial allocation, heterogeneous GPU nodes."""
     sinfo_out = (
         "gpu01|4/60/0/64|128000|256000|gpu:a100:8\n"
@@ -118,10 +118,10 @@ def test_collect_slurm_metrics_multi_node_with_gpus():
     squeue_out = "RUNNING|4|gres:gpu:2\nPENDING|32|gres:gpu:4\nRUNNING|32|N/A\n"
     fake = _mk_run({"sinfo": sinfo_out, "squeue": squeue_out})
     with (
-        patch.object(_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
-        patch.object(_slurm.subprocess, "run", side_effect=fake),
+        patch.object(_orochi_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
+        patch.object(_orochi_slurm.subprocess, "run", side_effect=fake),
     ):
-        out = _slurm.collect_slurm_metrics()
+        out = _orochi_slurm.collect_orochi_slurm_metrics()
 
     assert out["cluster_nodes"] == 3  # deduped
     assert out["cluster_cpus_total"] == 192  # 64*3
@@ -131,46 +131,46 @@ def test_collect_slurm_metrics_multi_node_with_gpus():
     assert out["cluster_gpus_total"] == 16  # 8+8
     # Only RUNNING jobs contribute to gpus_allocated; PENDING does not.
     assert out["cluster_gpus_allocated"] == 2
-    assert out["slurm_total_jobs"] == 3
-    assert out["slurm_running"] == 2
-    assert out["slurm_pending"] == 1
+    assert out["orochi_slurm_total_jobs"] == 3
+    assert out["orochi_slurm_running"] == 2
+    assert out["orochi_slurm_pending"] == 1
 
 
-def test_collect_slurm_metrics_sinfo_timeout_returns_empty():
+def test_collect_orochi_slurm_metrics_sinfo_timeout_returns_empty():
     """A sinfo timeout must not crash the heartbeat path."""
 
     def _timeout(*_a, **_kw):
         raise subprocess.TimeoutExpired(cmd="sinfo", timeout=3.0)
 
     with (
-        patch.object(_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
-        patch.object(_slurm.subprocess, "run", side_effect=_timeout),
+        patch.object(_orochi_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
+        patch.object(_orochi_slurm.subprocess, "run", side_effect=_timeout),
     ):
-        assert _slurm.collect_slurm_metrics() == {}
+        assert _orochi_slurm.collect_orochi_slurm_metrics() == {}
 
 
-def test_collect_slurm_metrics_sinfo_nonzero_exit_returns_empty():
+def test_collect_orochi_slurm_metrics_sinfo_nonzero_exit_returns_empty():
     """sinfo exiting non-zero is treated like no data (fallback to local)."""
 
     def _fail(*_a, **_kw):
-        return _FakeProc(stdout="", returncode=1, stderr="slurmctld down")
+        return _FakeProc(stdout="", returncode=1, stderr="orochi_slurmctld down")
 
     with (
-        patch.object(_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
-        patch.object(_slurm.subprocess, "run", side_effect=_fail),
+        patch.object(_orochi_slurm.shutil, "which", return_value="/usr/bin/sinfo"),
+        patch.object(_orochi_slurm.subprocess, "run", side_effect=_fail),
     ):
-        assert _slurm.collect_slurm_metrics() == {}
+        assert _orochi_slurm.collect_orochi_slurm_metrics() == {}
 
 
 # ---------------------------------------------------------------------------
-# Integration: _resources.collect_metrics composes slurm override correctly
+# Integration: _resources.collect_metrics composes orochi_slurm override correctly
 # ---------------------------------------------------------------------------
 
 
-def test_collect_metrics_merges_slurm_override():
-    """On a slurm host, collect_metrics returns slurm aggregates overlaid."""
-    fake_slurm = {
-        "resource_source": "slurm",
+def test_collect_metrics_merges_orochi_slurm_override():
+    """On a orochi_slurm host, collect_metrics returns orochi_slurm aggregates overlaid."""
+    fake_orochi_slurm = {
+        "resource_source": "orochi_slurm",
         "cluster_nodes": 2,
         "cluster_cpus_allocated": 10,
         "cluster_cpus_total": 100,
@@ -184,38 +184,38 @@ def test_collect_metrics_merges_slurm_override():
         "load_avg_1m": 10.0,
         "load_avg_5m": 10.0,
         "load_avg_15m": 10.0,
-        "slurm_total_jobs": 3,
-        "slurm_running": 2,
-        "slurm_pending": 1,
+        "orochi_slurm_total_jobs": 3,
+        "orochi_slurm_running": 2,
+        "orochi_slurm_pending": 1,
     }
-    with patch("scitex_orochi._slurm.collect_slurm_metrics", return_value=fake_slurm):
+    with patch("scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics", return_value=fake_orochi_slurm):
         metrics = _resources.collect_metrics()
 
     # Slurm aggregates overrode the /proc-derived scalars
     assert metrics["cpu_count"] == 100
     assert metrics["mem_total_mb"] == 500_000
-    assert metrics["resource_source"] == "slurm"
-    assert metrics["slurm_total_jobs"] == 3
-    # Disk is NOT touched by slurm — local /proc value still present
+    assert metrics["resource_source"] == "orochi_slurm"
+    assert metrics["orochi_slurm_total_jobs"] == 3
+    # Disk is NOT touched by orochi_slurm — local /proc value still present
     # (skip assertion on exact value; just require key exists when available)
 
 
-def test_collect_metrics_no_slurm_returns_local_only():
-    """On a non-slurm host (empty slurm dict), local metrics stand alone."""
-    with patch("scitex_orochi._slurm.collect_slurm_metrics", return_value={}):
+def test_collect_metrics_no_orochi_slurm_returns_local_only():
+    """On a non-orochi_slurm host (empty orochi_slurm dict), local metrics stand alone."""
+    with patch("scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics", return_value={}):
         metrics = _resources.collect_metrics()
 
     assert "resource_source" not in metrics
     assert "cluster_nodes" not in metrics
-    assert "slurm_total_jobs" not in metrics
+    assert "orochi_slurm_total_jobs" not in metrics
     # Local metrics still collected (at least cpu_count should be present)
     assert "cpu_count" in metrics
 
 
-def test_collect_metrics_slurm_exception_swallowed():
-    """Any unexpected exception from slurm code must not break heartbeat."""
+def test_collect_metrics_orochi_slurm_exception_swallowed():
+    """Any unexpected exception from orochi_slurm code must not break heartbeat."""
     with patch(
-        "scitex_orochi._slurm.collect_slurm_metrics",
+        "scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics",
         side_effect=RuntimeError("boom"),
     ):
         metrics = _resources.collect_metrics()

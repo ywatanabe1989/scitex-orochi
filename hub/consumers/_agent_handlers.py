@@ -248,7 +248,7 @@ async def handle_heartbeat(consumer, content):
         "disk_total_mb": payload.get("disk_total_mb"),
         "disk_used_mb": payload.get("disk_used_mb"),
         "gpus": payload.get("gpus") or [],
-        # Slurm cluster aggregates (todo#87). None on non-slurm hosts.
+        # Slurm cluster aggregates (todo#87). None on non-orochi_slurm hosts.
         "resource_source": payload.get("resource_source"),
         "cluster_nodes": payload.get("cluster_nodes"),
         "cluster_cpus_allocated": payload.get("cluster_cpus_allocated"),
@@ -257,9 +257,9 @@ async def handle_heartbeat(consumer, content):
         "cluster_mem_total_mb": payload.get("cluster_mem_total_mb"),
         "cluster_gpus_total": payload.get("cluster_gpus_total"),
         "cluster_gpus_allocated": payload.get("cluster_gpus_allocated"),
-        "slurm_total_jobs": payload.get("slurm_total_jobs"),
-        "slurm_running": payload.get("slurm_running"),
-        "slurm_pending": payload.get("slurm_pending"),
+        "orochi_slurm_total_jobs": payload.get("orochi_slurm_total_jobs"),
+        "orochi_slurm_running": payload.get("orochi_slurm_running"),
+        "orochi_slurm_pending": payload.get("orochi_slurm_pending"),
     }
 
     from hub.registry import (

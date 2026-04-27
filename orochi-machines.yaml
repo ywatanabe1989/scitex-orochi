@@ -172,7 +172,7 @@ machines:
       cpu_cores: 64           # head-spartan analysis msg#8054
       ram_gb: 250
       storage_gb_total: ~     # quota-based, not a fixed disk
-      gpu: shared_via_slurm
+      gpu: shared_via_orochi_slurm
     runtime:
       multiplexer: tmux
       autostart: bash_profile_or_salloc_wrapper   # systemd --user not allowed on login1
@@ -183,7 +183,7 @@ machines:
       tier: 2                 # secondary, HPC policy may restrict bastion role
       capabilities:
         - hpc_login
-        - slurm_dispatch
+        - orochi_slurm_dispatch
         - gpu_via_salloc
     network:
       lan_ip: ~                # remote, reached via SSH config alias

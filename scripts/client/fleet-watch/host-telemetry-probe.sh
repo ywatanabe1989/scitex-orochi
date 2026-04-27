@@ -5,7 +5,7 @@
 # investigation into NAS instability. Originally targeted at NAS but
 # host-agnostic by design so head-mba and other heads can mirror it.
 #
-# Principle (same as slurm-resource-scraper-contract.md): emit verbatim stock
+# Principle (same as orochi_slurm-resource-scraper-contract.md): emit verbatim stock
 # CLI output as the canonical wire format, wrapped in a minimal NDJSON
 # envelope. No bespoke schema. No tool transforms the data.
 #

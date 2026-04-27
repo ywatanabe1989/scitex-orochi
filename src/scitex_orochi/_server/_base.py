@@ -70,7 +70,7 @@ RESOURCE_KEYS: set[str] = {
     "cluster_mem_total_mb",
     "cluster_gpus_total",
     "cluster_gpus_allocated",
-    "slurm_total_jobs",
-    "slurm_running",
-    "slurm_pending",
+    "orochi_slurm_total_jobs",
+    "orochi_slurm_running",
+    "orochi_slurm_pending",
 }

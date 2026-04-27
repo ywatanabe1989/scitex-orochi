@@ -20,7 +20,7 @@ from ._files import (
 from ._hooks import _collect_hook_events
 from ._hostname import _resolve_canonical_hostname
 from ._machine import find_session_pids, resolve_machine_label
-from ._metrics import collect_machine_metrics, collect_slurm_status
+from ._metrics import collect_machine_metrics, collect_orochi_slurm_status
 from ._multiplexer import detect_multiplexer
 from ._pane import capture_pane, filter_orochi_pane_tail, parse_orochi_subagent_count
 from ._proc import _read_process_env
@@ -301,5 +301,5 @@ def collect(agent: str) -> dict:
         "metrics": collect_machine_metrics(),
         # SLURM compute snapshot (todo#59). None on non-HPC hosts so the
         # Machines tab can hide the SLURM card cleanly.
-        "slurm": collect_slurm_status(),
+        "orochi_slurm": collect_orochi_slurm_status(),
     }

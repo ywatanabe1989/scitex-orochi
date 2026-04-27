@@ -1,8 +1,8 @@
-# `shared/scripts/slurm/` — SLURM plugin hooks for sac's SlurmRuntime
+# `shared/scripts/orochi_slurm/` — SLURM plugin hooks for sac's SlurmRuntime
 
 **Purpose:** orochi-specific shell fragments that plug into sac's generic
 SlurmRuntime via the hook ports declared in each agent's
-`spec.slurm.hooks`. sac knows nothing about orochi or Spartan; these
+`spec.orochi_slurm.hooks`. sac knows nothing about orochi or Spartan; these
 scripts inject the HPC environment and fleet identity.
 
 ## Hook contract (from sac's side)
@@ -39,19 +39,19 @@ metadata:
   name: head
   labels: { role: head, machine: ${HOSTNAME} }
 spec:
-  runtime: slurm
+  runtime: orochi_slurm
   model: opus[1m]
-  slurm:
+  orochi_slurm:
     partition: sapphire
     time_limit: 7-00:00:00
     cpus_per_task: 2
     mem: 4G
     signal: B:USR1@3600
     auto_resubmit: true
-    logs_dir: ~/slurm_logs
+    logs_dir: ~/orochi_slurm_logs
     hooks:
-      pre_agent: ~/.scitex/orochi/shared/scripts/slurm/spartan-pre-agent.sh
-      walltime_signal: ~/.scitex/orochi/shared/scripts/slurm/walltime-notify.sh
+      pre_agent: ~/.scitex/orochi/shared/scripts/orochi_slurm/spartan-pre-agent.sh
+      walltime_signal: ~/.scitex/orochi/shared/scripts/orochi_slurm/walltime-notify.sh
   claude:
     flags:
       - --dangerously-skip-permissions
@@ -67,7 +67,7 @@ grep -A 10 'Hook: pre_agent' /tmp/head.sbatch
 
 # Dry-source the pre_agent hook with fake SAC_* env:
 SAC_AGENT_ID=head-spartan SAC_JOB_ID=dry SAC_WORKDIR=~ SAC_LOG_FILE=/tmp/dry.log \
-SAC_PHASE=pre_agent source ~/.scitex/orochi/shared/scripts/slurm/spartan-pre-agent.sh
+SAC_PHASE=pre_agent source ~/.scitex/orochi/shared/scripts/orochi_slurm/spartan-pre-agent.sh
 ```
 
 ## Failure mode
