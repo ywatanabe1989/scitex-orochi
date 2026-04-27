@@ -135,7 +135,7 @@ def test_status_no_pid(tmp_path):
 
 
 def test_status_alive_pid(tmp_path):
-    # Use our own PID — guaranteed alive for the duration of the test.
+    # Use our own PID — guaranteed orochi_alive for the duration of the test.
     pid_path = tmp_path / "daemon.orochi_pid"
     pid_path.write_text(str(os.getpid()))
     runner = CliRunner()

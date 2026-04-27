@@ -246,7 +246,7 @@ def mark_echo_alive(name: str) -> None:
     driven by the hub→agent nonce round-trip in ``_hub_echo_loop`` /
     ``handle_echo_pong``. If the agent's MCP-client could not reply to
     the nonce (e.g. the sidecar was down) the LED stayed amber / red
-    even though the agent was clearly alive — we had just received a
+    even though the agent was clearly orochi_alive — we had just received a
     chat message from it.
 
     This setter is called from ``handle_agent_message`` when a

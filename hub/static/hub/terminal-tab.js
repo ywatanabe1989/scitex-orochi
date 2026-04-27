@@ -235,7 +235,7 @@ function renderTerminalTab() {
 }
 
 function stopTerminalTab() {
-  /* keep session alive across tab switches; only cleanup on explicit close */
+  /* keep session orochi_alive across tab switches; only cleanup on explicit close */
 }
 
 document.addEventListener("DOMContentLoaded", function () {

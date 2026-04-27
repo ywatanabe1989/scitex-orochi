@@ -61,7 +61,7 @@ async function fetchAgents() {
     var _computeStateLocal = function (a) {
       var pane = a.orochi_pane_state || "";
       if (pane === "compacting" || pane === "auto_compact") return "compacting";
-      // auth_error and mcp_broken are functional failures — agent is alive
+      // auth_error and mcp_broken are functional failures — agent is orochi_alive
       // at the network/heartbeat layer but cannot do work. Surface as
       // their own state so the dashboard renders red rather than blending
       // into the yellow "selecting" bucket alongside y_n_prompt.
@@ -86,7 +86,7 @@ async function fetchAgents() {
       // from hub-side hook events (PreToolUse), NOT pane text scraping —
       // no claude-hud / statusline dependency. sac_hooks_last_tool_at is null until
       // the first PreToolUse hook fires, so a connected agent with no
-      // tool history is provably "alive but never worked".
+      // tool history is provably "orochi_alive but never worked".
       if (lastToolSec == null) return "waiting";
       return "idle";
     };

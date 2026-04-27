@@ -54,7 +54,7 @@ from _collect_agent_metadata._pane import parse_orochi_subagent_count  # noqa: E
         # Plural, larger count (stress the \d+ group)
         ("5 local agents running", 5),
         # "still running" variant — emitted once the batch has been
-        # alive long enough to tick the status-line refresh.
+        # orochi_alive long enough to tick the status-line refresh.
         ("1 local agent still running", 1),
         ("2 local agents still running", 2),
         # Full status-line shape — leading glyph, trailing elapsed time

@@ -62,7 +62,7 @@ def derive_orochi_pane_state(obs: dict[str, Any]) -> dict[str, str]:
             return _verdict(
                 "idle",
                 f"empty `❯ ` chevron present, unchanged {cycles} cycles "
-                "(self-reporting alive idle)",
+                "(self-reporting orochi_alive idle)",
             )
         return _verdict(
             "stale",

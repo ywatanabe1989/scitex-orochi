@@ -6,7 +6,7 @@ Collects the running tmux sessions, screen sessions, and scitex-agent-container
 systemd / launchd units for this host, and appends an NDJSON line to
 ~/.scitex/orochi/orochi_runtime/fleet-watch/process-info/<host>.ndjson.
 
-Lets the hub correlate "agent registry says X is alive" against "this host
+Lets the hub correlate "agent registry says X is orochi_alive" against "this host
 actually has X as a tmux session / systemd unit", catching registry-drift
 and zombies.
 """

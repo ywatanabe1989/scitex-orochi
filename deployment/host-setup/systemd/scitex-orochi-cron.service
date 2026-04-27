@@ -17,7 +17,7 @@
 #
 # Unlike the per-job units this replaces, there's no companion .timer.
 # The daemon owns its own scheduling loop; systemd's role here is just
-# to keep the daemon alive on failure.
+# to keep the daemon orochi_alive on failure.
 Description=SciTeX Orochi — unified cron daemon
 Documentation=https://github.com/ywatanabe1989/scitex-orochi
 After=network-online.target

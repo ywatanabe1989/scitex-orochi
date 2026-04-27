@@ -81,7 +81,7 @@ class CronDaemon:
         )
         # Track in-flight worker threads so we can drain on shutdown
         # and so concurrent-run-guard knows a previous tick's child is
-        # still alive.
+        # still orochi_alive.
         self._workers: dict[str, threading.Thread] = {}
         self._workers_lock = threading.Lock()
 
@@ -188,10 +188,10 @@ class CronDaemon:
             self._dispatch(js, now)
 
     def _dispatch(self, js: JobState, now: float) -> None:
-        """Start a worker thread for ``js`` unless a previous run is still alive.
+        """Start a worker thread for ``js`` unless a previous run is still orochi_alive.
 
         Concurrent-run-guard: if a worker for this job is still in
-        ``_workers`` and alive, record a skip and move the next-run
+        ``_workers`` and orochi_alive, record a skip and move the next-run
         time forward by one interval. This is the cron semantic —
         never stack duplicate runs of the same job.
         """

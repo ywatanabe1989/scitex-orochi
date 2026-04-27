@@ -5,7 +5,7 @@ liveness LED renders against) was only advanced when the hub→agent
 nonce round-trip probe in ``_hub_echo_loop`` completed successfully.
 If an agent's MCP-client could not reply to the nonce (e.g. the
 sidecar was down, or the agent never implemented the handler) the LED
-stayed amber / red even though the agent was clearly alive — it was
+stayed amber / red even though the agent was clearly orochi_alive — it was
 sending chat messages every few seconds.
 
 The fix: every authenticated inbound ``message`` frame now also

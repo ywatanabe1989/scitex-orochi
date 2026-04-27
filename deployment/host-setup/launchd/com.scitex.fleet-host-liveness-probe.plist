@@ -4,7 +4,7 @@
 
   Runs scripts/client/fleet-watch/host-liveness-probe.sh every 5 minutes
   on this user's login session. Detects tmux-server death and missing
-  expected agents, then delegates revive to the local healer (if alive)
+  expected agents, then delegates revive to the local healer (if orochi_alive)
   or runs `scitex-agent-container start <agent>` directly via SSH.
 
   Install:

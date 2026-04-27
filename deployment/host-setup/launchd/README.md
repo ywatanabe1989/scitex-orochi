@@ -42,7 +42,7 @@ tail -n 200 ~/Library/Logs/scitex/fleet-host-liveness-probe.log
 Output:
 - `stdout` — one NDJSON line per fleet host (schema
   `scitex-orochi/host-liveness-probe/v1`) with severity, expected vs.
-  alive agents, missing, unexpected, and actions taken.
+  orochi_alive agents, missing, unexpected, and actions taken.
 - `stderr` — human-readable advisories for non-OK hosts.
 - Exit code follows the disk-pressure-probe convention: 0 ok,
   1 advisory, 2 warn, 3 critical. LaunchAgent ignores exit code; the

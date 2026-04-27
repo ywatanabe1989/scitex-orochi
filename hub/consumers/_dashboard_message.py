@@ -138,7 +138,7 @@ async def handle_dashboard_message(consumer, content):
 
     # @mention auto-reply (issue #98): when a message contains @agentname,
     # hub immediately posts a brief system status for the mentioned agent
-    # so the sender knows whether it's alive and what it's doing.
+    # so the sender knows whether it's orochi_alive and what it's doing.
     #
     # todo#405: never auto-post `[agent] status: online / (no recent activity)`
     # into user-facing channels. User channels are the ywatanabe ↔ fleet

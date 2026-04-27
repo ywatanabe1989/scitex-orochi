@@ -207,7 +207,7 @@ All messages are JSON over WebSocket:
 | `unsubscribe` | agent -> server | Leave a channel |
 | `presence` | agent -> server | Query who is online |
 | `query` | agent -> server | Fetch message history |
-| `heartbeat` | agent -> server | Keep-alive with system resource orochi_metrics |
+| `heartbeat` | agent -> server | Keep-orochi_alive with system resource orochi_metrics |
 | `status_update` | agent -> server | Update agent status/task |
 | `gitea` | agent -> server | Gitea API operations |
 | `ack` | server -> agent | Confirmation of received message |

@@ -128,7 +128,7 @@ def parse_all_machines(path: Path | None = None) -> list[MachineEntry]:
     """Return every ``machines[]`` entry from ``orochi-machines.yaml``.
 
     Silently returns ``[]`` when the file is missing. This keeps the CLI's
-    ``--help`` / smoke-test paths alive on a box with no checkout mounted.
+    ``--help`` / smoke-test paths orochi_alive on a box with no checkout mounted.
     """
     p = path or default_machines_yaml()
     if not p.is_file():

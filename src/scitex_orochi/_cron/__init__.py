@@ -2,7 +2,7 @@
 
 Replaces the scattered ``install-*.sh`` -> per-job launchd/systemd/cron
 entries with one YAML-declared daemon per host. The daemon owns the
-scheduling loop; the OS-native unit only needs to keep *it* alive.
+scheduling loop; the OS-native unit only needs to keep *it* orochi_alive.
 
 Phase 1 scope (msg#16406 / msg#16410 / lead msg#16408):
 

@@ -167,7 +167,7 @@ def push_all(url=None, token=None) -> int:
     for agent in _list_local_agents():
         try:
             meta = collect(agent)
-            if not meta.get("alive"):
+            if not meta.get("orochi_alive"):
                 continue
             # Lead msg#16005 pivot: shell out to ``sac status --terse
             # --json`` and attach the dict as ``sac_status``. Fail-soft:

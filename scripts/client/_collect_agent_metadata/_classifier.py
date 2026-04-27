@@ -34,7 +34,7 @@ _YN_MARKERS = ("y/n", "[y/N]", "[Y/n]")
 # contradiction-log evidence from `~/.local/state/scitex/fleet-pane-
 # contradictions.log` (81 KB on head-mba, 480 KB on head-ywata-note-win)
 # showed several false-positive stale classifications where the pane
-# tail was byte-identical across cycles *but the agent was alive and
+# tail was byte-identical across cycles *but the agent was orochi_alive and
 # deliberating*. The fix is to split the marker set into documented
 # groups — each rationale-commented — so future additions have a clear
 # home and tests can target one group at a time.
@@ -113,7 +113,7 @@ _BUSY_SPINNER_PAST_TENSE = (
 # Group C: "N local agent(s) still running" — strong liveness signal.
 # Rationale: the CC TUI footer shows this when the user has dispatched
 # `Agent(...)` orochi_subagents that are still working. Static text but the
-# main session is very much alive, just waiting on children.
+# main session is very much orochi_alive, just waiting on children.
 _BUSY_SUBAGENT_MARKERS = (
     "local agent still running",
     "local agents still running",
@@ -133,7 +133,7 @@ _BUSY_SUBAGENT_MARKERS = (
 _BUSY_TASK_LIST_MARKERS = (
     # "◼" checkbox bullet is the distinctive TodoWrite in-progress glyph.
     # Its presence anywhere in the scan window means the agent is
-    # tracking work — treat as alive.
+    # tracking work — treat as orochi_alive.
     "◼ ",
 )
 
@@ -228,7 +228,7 @@ def _has_idle_compose_prompt(tail: str) -> bool:
     An empty compose chevron means the agent is sitting at the prompt
     with no draft text — it is *self-reporting* "idle, ready for input"
     each cycle. The pane bytes are static (nothing animates) but the
-    agent is alive and waiting. Without this signal, the digest-based
+    agent is orochi_alive and waiting. Without this signal, the digest-based
     stagnation check escalates these legitimate idle agents to `stale`.
     """
     for line in tail.splitlines()[-12:]:
@@ -241,7 +241,7 @@ def _has_idle_compose_prompt(tail: str) -> bool:
 
 
 def _has_busy_animation(hay: str) -> bool:
-    """True when the pane shows a busy-animation / known-alive marker.
+    """True when the pane shows a busy-animation / known-orochi_alive marker.
 
     Checks in this order (cheapest first):
       1. Literal substrings from `_BUSY_ANIMATION_MARKERS` — the union

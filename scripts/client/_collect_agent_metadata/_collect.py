@@ -76,7 +76,7 @@ def collect(agent: str) -> dict:
     """
     multiplexer = detect_multiplexer(agent)
     if not multiplexer:
-        return {"agent": agent, "alive": False, "multiplexer": ""}
+        return {"agent": agent, "orochi_alive": False, "multiplexer": ""}
 
     # Pane content -- subagent count from status bar AND the last
     # non-empty visible line so the Agents tab can show what the agent
@@ -158,7 +158,7 @@ def collect(agent: str) -> dict:
     pane_verdict = derive_orochi_pane_state(orochi_pane_observations)
     orochi_pane_state = pane_verdict["label"]
     orochi_stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
-    # Contradiction check + evidence log. `alive=True` here means
+    # Contradiction check + evidence log. `orochi_alive=True` here means
     # we successfully captured a pane from the multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
     # (heartbeat fresh). When the classifier also says `stale`, that's
@@ -203,7 +203,7 @@ def collect(agent: str) -> dict:
 
     return {
         "agent": agent,
-        "alive": True,
+        "orochi_alive": True,
         "multiplexer": multiplexer,
         "orochi_subagents": orochi_subagents,
         "orochi_subagent_count": orochi_subagents,

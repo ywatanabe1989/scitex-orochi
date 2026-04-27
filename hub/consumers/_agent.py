@@ -115,7 +115,7 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         #
         # Before recording this connection in the registry, decide
         # whether to enforce singleton cardinality: only one WS per
-        # agent name should remain alive. The decision rests on
+        # agent name should remain orochi_alive. The decision rests on
         # (instance_id, start_ts_unix) captured per-connection — the
         # older start_ts_unix wins (the original process keeps its
         # claim). Legacy clients without identity fall through to the

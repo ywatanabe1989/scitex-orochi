@@ -57,7 +57,7 @@ spec:
   health:
     enabled: true
     interval: 30
-    method: multiplexer-alive
+    method: multiplexer-orochi_alive
 
   restart:
     policy: on-failure

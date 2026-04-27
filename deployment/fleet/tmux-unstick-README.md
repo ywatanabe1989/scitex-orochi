@@ -25,7 +25,7 @@ forever without coordinating across iterations.
 > 仕組みを作って欲しいです
 
 Today the fleet has hit five independent wedge incidents (healer-nas 2.5h
-ghost-alive, synchronizer permission prompt, healer-mba 1M-context wedge,
+ghost-orochi_alive, synchronizer permission prompt, healer-mba 1M-context wedge,
 auth-manager permission prompt, head-nas permission prompt). Each needed
 a human tmux `send-keys` pass. The fleet-health-daemon design
 (scitex-orochi#147) codifies the full 3-layer nonce-handshake orochi_model, but
@@ -201,7 +201,7 @@ t60   <tail hash changed because user kept typing>  -> no stable-match
   still requires a session restart, which is destructive and out of
   scope for Phase 1. See `permission-prompt-patterns.md` for the
   pattern catalog.
-- **No nonce handshake** — if a Claude session is alive but not
+- **No nonce handshake** — if a Claude session is orochi_alive but not
   responsive to new hub messages (e.g. crashed WS loop), Phase 1 does
   not catch it. Phase 2 nonce handshake does.
 - **No central aggregation in Phase 1** — each host writes its own

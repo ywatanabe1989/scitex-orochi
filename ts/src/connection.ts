@@ -253,7 +253,7 @@ export class OrochiConnection {
   // the agent silently disconnected for the rest of the session:
   //
   // 1. state == "connected" but lastPongAt is older than WATCHDOG_STALE_MS
-  //    — the socket thinks it's alive but the peer is unreachable
+  //    — the socket thinks it's orochi_alive but the peer is unreachable
   //    (half-open TCP, NAT idle drop, host suspend/resume).
   // 2. state == "disconnected" with no scheduled reconnect timer — the
   //    reconnect loop got into a dead state because triggerReconnect()

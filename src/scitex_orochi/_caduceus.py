@@ -16,7 +16,7 @@ Recovery action ladder (in order of escalation):
     3. DEAD — agent's WS heartbeat hasn't fired for >5min (offline in registry)
        → SSH to the agent's host, check `screen -ls`, restart its bun
        MCP sidecar via `screen -S <session> -X stuff "<restart_cmd>\n"`
-    4. ZOMBIE — Claude TUI is alive but MCP sidecar is dead (heartbeat
+    4. ZOMBIE — Claude TUI is orochi_alive but MCP sidecar is dead (heartbeat
        silent but `pgrep -f claude.*<agent>` returns a PID)
        → same as DEAD but specifically restart only the bun process
 

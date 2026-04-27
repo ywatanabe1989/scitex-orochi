@@ -20,7 +20,7 @@
     ~/Library/Logs/scitex/orochi-cron.log (daemon lifecycle)
     ~/.local/state/scitex/orochi-cron/logs/<job>.ndjson (per-job runs)
 
-  KeepAlive keeps the daemon alive even if it crashes (unlike
+  KeepAlive keeps the daemon orochi_alive even if it crashes (unlike
   StartInterval, which just fires periodically). The daemon handles its
   own scheduling loop internally.
 
@@ -43,7 +43,7 @@
       <string>__STABLE_BIN__/orochi-cron.py</string>
     </array>
 
-    <!-- Daemon-style: keep alive across crashes. StartInterval is
+    <!-- Daemon-style: keep orochi_alive across crashes. StartInterval is
          intentionally absent because the daemon owns its own loop. -->
     <key>KeepAlive</key>
     <dict>

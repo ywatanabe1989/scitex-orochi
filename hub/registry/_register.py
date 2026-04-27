@@ -473,11 +473,11 @@ def unregister_connection(name: str, conn_id: str) -> int:
     Returns the resulting active-session count after removal. When the
     count reaches zero, the agent is marked offline (caller need not
     invoke ``unregister_agent`` separately). When the count is still
-    >0 (a sibling session is still alive), the agent remains online.
+    >0 (a sibling session is still orochi_alive), the agent remains online.
 
     This is the fix for the symmetric half of scitex-orochi#144: before
     this change, the first-to-disconnect of N sibling sessions would
-    mark the agent offline even though other sessions were still alive.
+    mark the agent offline even though other sessions were still orochi_alive.
     """
     if not name or not conn_id:
         return _active_session_count(name)
@@ -635,7 +635,7 @@ def decide_singleton_winner(
     * ``"no_enforcement"`` — either side is missing the
       ``(instance_id, start_ts_unix)`` pair, so we fall back to the
       permissive multi-connection behaviour. Caller logs a WARNING and
-      keeps both sockets alive.
+      keeps both sockets orochi_alive.
 
     Algorithm — the older ``start_ts_unix`` wins (the original process
     keeps its claim). Ties and missing data fall through to

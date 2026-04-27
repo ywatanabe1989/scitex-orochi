@@ -57,7 +57,7 @@ def filter_orochi_pane_tail(pane: str) -> tuple[str, str, str, str]:
 
     - orochi_pane_tail              — last interesting single line (legacy field)
     - orochi_pane_tail_block        — last ~10 interesting lines, raw (keeps
-      channel inbound for WS-alive proof)
+      channel inbound for WS-orochi_alive proof)
     - orochi_pane_tail_block_clean  — same as block but stripped of channel
       inbound (for stuck-detection / state classifier)
     - orochi_pane_tail_full         — up to 500 filtered lines, trimmed to 32 KB

@@ -305,11 +305,11 @@ def cron_status(
     """Report whether the daemon is running + its PID + config location."""
     pid_path = Path(pid_path_str) if pid_path_str else default_pid_path()
     state_path = Path(state_path_str) if state_path_str else default_state_path()
-    orochi_pid, alive = _daemon_liveness(pid_path)
+    orochi_pid, orochi_alive = _daemon_liveness(pid_path)
     state = state_read(state_path)
     payload = {
         "daemon_pid": orochi_pid,
-        "daemon_running": alive,
+        "daemon_running": orochi_alive,
         "daemon_started_at": (state.daemon_started_at if state else None),
         "state_updated_at": (state.updated_at if state else None),
         "config_path": str(default_config_path()),
@@ -323,7 +323,7 @@ def cron_status(
         click.echo(json.dumps(payload, indent=2, default=str))
         return
     click.echo(f"orochi_pid:      {orochi_pid if orochi_pid else '-'}")
-    click.echo(f"running:  {alive}")
+    click.echo(f"running:  {orochi_alive}")
     click.echo(f"jobs:     {payload['job_count']}")
     click.echo(f"config:   {payload['config_path']}")
     click.echo(f"state:    {payload['state_path']}")
@@ -347,7 +347,7 @@ def _daemon_liveness(pid_path: Path) -> tuple[int, bool]:
     except ProcessLookupError:
         return (orochi_pid, False)
     except PermissionError:
-        # Process exists, owned by another user — treat as alive.
+        # Process exists, owned by another user — treat as orochi_alive.
         return (orochi_pid, True)
 
 
@@ -366,8 +366,8 @@ def _daemon_liveness(pid_path: Path) -> tuple[int, bool]:
 def cron_reload(pid_path_str: str | None) -> None:
     """Signal the daemon to re-read cron.yaml (SIGHUP)."""
     pid_path = Path(pid_path_str) if pid_path_str else default_pid_path()
-    orochi_pid, alive = _daemon_liveness(pid_path)
-    if not alive:
+    orochi_pid, orochi_alive = _daemon_liveness(pid_path)
+    if not orochi_alive:
         raise click.ClickException(
             f"daemon not running (orochi_pid file: {pid_path}) — start with `scitex-orochi cron start`"
         )

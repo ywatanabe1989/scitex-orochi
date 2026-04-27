@@ -1,6 +1,6 @@
 """Liveness classification from pane_capture hash diffs (todo#270).
 
-Detects whether an agent is alive by comparing SHA1 hashes of the tail
+Detects whether an agent is orochi_alive by comparing SHA1 hashes of the tail
 (last 10 lines) of its tmux/screen pane across consecutive heartbeats.
 
 States (mutually exclusive):

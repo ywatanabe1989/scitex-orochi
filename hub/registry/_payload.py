@@ -64,7 +64,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         action_ts = a.get("last_action")
         # Liveness classification distinct from WS connection state.
         # Prefer the orochi_pane_state classifier (agent_meta_pkg/_classifier.py)
-        # which already separates "idle at prompt" (alive, waiting) from
+        # which already separates "idle at prompt" (orochi_alive, waiting) from
         # "stale" (3+ cycles unchanged, no busy markers — actually stuck).
         # Falls back to the last_action timer when orochi_pane_state is missing.
         liveness = a.get("status", "online")

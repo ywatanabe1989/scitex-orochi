@@ -59,7 +59,7 @@ spec:
     enabled: true
     interval: 60
     timeout: 5
-    method: multiplexer-alive
+    method: multiplexer-orochi_alive
 
   restart:
     policy: on-failure

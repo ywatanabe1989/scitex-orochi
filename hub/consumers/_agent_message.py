@@ -117,7 +117,7 @@ async def handle_agent_message(consumer, content):
     # message. Previously the LED only turned green after the hub→agent
     # nonce round-trip in ``_hub_echo_loop`` succeeded; if the agent's
     # MCP-client couldn't reply to the nonce the LED stayed amber / red
-    # even though the agent was obviously alive — it had just sent a
+    # even though the agent was obviously orochi_alive — it had just sent a
     # chat message. ``mark_echo_alive`` advances the same
     # ``last_nonce_echo_at`` timestamp the nonce-probe setter writes,
     # so the existing LED renderer (no frontend change needed) sees the
