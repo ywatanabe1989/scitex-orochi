@@ -224,7 +224,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # populated by the PreToolUse/PostToolUse hooks.
                 "recent_tools": list(a.get("recent_tools") or []),
                 "recent_prompts": list(a.get("recent_prompts") or []),
-                "agent_calls": list(a.get("agent_calls") or []),
+                "sac_hooks_agent_calls": list(a.get("sac_hooks_agent_calls") or []),
                 "background_tasks": list(a.get("background_tasks") or []),
                 "tool_counts": dict(a.get("tool_counts") or {}),
                 # Functional-heartbeat shortcuts (derived by

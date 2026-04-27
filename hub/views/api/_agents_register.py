@@ -182,7 +182,7 @@ def api_agents_register(request):
             # Claude Code hook-captured events.
             "recent_tools": body.get("recent_tools") or [],
             "recent_prompts": body.get("recent_prompts") or [],
-            "agent_calls": body.get("agent_calls") or [],
+            "sac_hooks_agent_calls": body.get("sac_hooks_agent_calls") or [],
             "background_tasks": body.get("background_tasks") or [],
             "tool_counts": body.get("tool_counts") or {},
             # Functional-heartbeat shortcuts — last tool use (LLM-level

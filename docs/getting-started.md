@@ -72,7 +72,7 @@ End-to-end pipe: `scitex-agent-container status --json` -> `scitex-orochi heartb
 
 > Naming note: `last_action_name` is the **PaneAction label** (nonce-probe / compact / ...) from `actions.db`. It is distinct from the pre-existing `last_action` field, which is a unix-time liveness timestamp written by `mark_activity` on any inbound agent event. The two must not be conflated.
 
-The same hook ring buffer also populates the per-agent detail view's `recent_tools`, `recent_prompts`, `agent_calls`, `background_tasks`, and `tool_counts` panels.
+The same hook ring buffer also populates the per-agent detail view's `recent_tools`, `recent_prompts`, `sac_hooks_agent_calls`, `background_tasks`, and `tool_counts` panels.
 
 ## MCP Channel Setup
 

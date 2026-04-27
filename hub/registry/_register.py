@@ -252,10 +252,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("recent_prompts"), (list, tuple))
                 else prev.get("recent_prompts") or []
             ),
-            "agent_calls": (
-                list(info.get("agent_calls"))
-                if isinstance(info.get("agent_calls"), (list, tuple))
-                else prev.get("agent_calls") or []
+            "sac_hooks_agent_calls": (
+                list(info.get("sac_hooks_agent_calls"))
+                if isinstance(info.get("sac_hooks_agent_calls"), (list, tuple))
+                else prev.get("sac_hooks_agent_calls") or []
             ),
             "background_tasks": (
                 list(info.get("background_tasks"))

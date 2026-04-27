@@ -420,7 +420,7 @@ export function _renderActivityAgentDetail(a, grid) {
   var hooksHtml = _renderHookPanels(
     d.recent_tools || [],
     d.recent_prompts || [],
-    d.agent_calls || [],
+    d.sac_hooks_agent_calls || [],
     d.background_tasks || [],
     d.tool_counts || {},
   );

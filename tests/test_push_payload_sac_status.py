@@ -32,7 +32,7 @@ _MIN_META = {
     "recent_actions": [],
     "recent_tools": [],
     "recent_prompts": [],
-    "agent_calls": [],
+    "sac_hooks_agent_calls": [],
     "background_tasks": [],
     "subagents": [],
     "tool_counts": {},

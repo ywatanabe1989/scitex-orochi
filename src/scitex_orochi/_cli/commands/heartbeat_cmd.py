@@ -115,7 +115,7 @@ def _wrap_with_orochi_fields(
         # Claude Code hook-captured events (new — forwarded as-is).
         "recent_tools": status.get("recent_tools") or [],
         "recent_prompts": status.get("recent_prompts") or [],
-        "agent_calls": status.get("agent_calls") or [],
+        "sac_hooks_agent_calls": status.get("sac_hooks_agent_calls") or [],
         "background_tasks": status.get("background_tasks") or [],
         "tool_counts": status.get("tool_counts") or {},
         # Functional-heartbeat shortcuts (derived in agent-container).
