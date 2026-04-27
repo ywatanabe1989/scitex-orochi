@@ -56,7 +56,7 @@ def api_event_tool_use(request):
 
     Hooks (PreToolUse/PostToolUse) on each agent's machine POST here to
     record meaningful activity. Updates the in-memory registry's
-    last_action timestamp and current_task. Authenticates via workspace
+    last_action timestamp and orochi_current_task. Authenticates via workspace
     token query param so hooks don't need Django sessions.
 
     Body schema:
@@ -64,7 +64,7 @@ def api_event_tool_use(request):
           "agent": "head@mba",
           "tool": "Edit",
           "phase": "post",          # "pre" or "post"
-          "task": "implement #143", # optional, becomes current_task
+          "task": "implement #143", # optional, becomes orochi_current_task
           "summary": "edited X.py", # optional, short description
           "ts": "2026-04-09T08:00Z" # optional
         }
@@ -88,12 +88,12 @@ def api_event_tool_use(request):
     if not agent:
         return JsonResponse({"error": "agent required"}, status=400)
 
-    from hub.registry import mark_activity, set_current_task
+    from hub.registry import mark_activity, set_orochi_current_task
 
     summary = (body.get("summary") or body.get("tool") or "").strip()[:120]
     mark_activity(agent, action=summary)
     if body.get("task"):
-        set_current_task(agent, body.get("task")[:120])
+        set_orochi_current_task(agent, body.get("task")[:120])
     return JsonResponse({"status": "ok"})
 
 
@@ -104,7 +104,7 @@ def api_watchdog_alerts(request):
 
     Returns agents that need attention: those classified as "stale"
     (>10min silent) or "idle" (>2min silent) AND have an active
-    current_task. Designed to be polled by mamba (or any monitoring
+    orochi_current_task. Designed to be polled by mamba (or any monitoring
     client) to drive automated nudges and escalation.
     """
     workspace = get_workspace(request)
@@ -115,7 +115,7 @@ def api_watchdog_alerts(request):
     for a in agents:
         liveness = a.get("liveness") or a.get("status") or "online"
         idle = a.get("idle_seconds")
-        task = (a.get("current_task") or "").strip()
+        task = (a.get("orochi_current_task") or "").strip()
         if liveness in ("idle", "stale") and task:
             severity = "stale" if liveness == "stale" else "idle"
             alerts.append(
@@ -124,7 +124,7 @@ def api_watchdog_alerts(request):
                     "severity": severity,
                     "liveness": liveness,
                     "idle_seconds": idle,
-                    "current_task": task,
+                    "orochi_current_task": task,
                     "machine": a.get("machine", ""),
                     "last_action": a.get("last_action"),
                     "suggested_action": (

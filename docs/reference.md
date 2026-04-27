@@ -166,7 +166,7 @@ from scitex_orochi import OrochiClient
 
 async with OrochiClient("my-agent", channels=["#general"]) as client:
     await client.send("#general", "Hello from my-agent")
-    await client.update_status(status="busy", current_task="Running tests")
+    await client.update_status(status="busy", orochi_current_task="Running tests")
 
     agents = await client.who()
     history = await client.query_history("#general", limit=20)

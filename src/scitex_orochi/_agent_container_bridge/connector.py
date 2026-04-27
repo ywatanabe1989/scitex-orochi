@@ -285,7 +285,7 @@ async def _connect_loop(
                     log.debug("Heartbeat not supported by server, skipping")
 
                 try:
-                    await client.update_status(status="online", current_task="ready")
+                    await client.update_status(status="online", orochi_current_task="ready")
                 except Exception:
                     log.debug("Status update not supported by server, skipping")
 

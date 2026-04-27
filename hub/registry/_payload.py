@@ -191,7 +191,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # sessions currently authenticated under this name.
                 # >1 indicates a concurrent-instance race situation.
                 "active_sessions": int(a.get("active_sessions", 0) or 0),
-                "current_task": a.get("current_task", ""),
+                "orochi_current_task": a.get("orochi_current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
                 "orochi_subagent_count": int(

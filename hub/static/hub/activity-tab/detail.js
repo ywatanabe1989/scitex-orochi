@@ -222,8 +222,8 @@ function _renderActivityAgentDetail(a, grid) {
       typeof cleanAgentName === "function" ? cleanAgentName(a.name) : a.name,
     ) +
     "</span>" +
-    (a.current_task
-      ? '<em class="agent-detail-task">' + escapeHtml(a.current_task) + "</em>"
+    (a.orochi_current_task
+      ? '<em class="agent-detail-task">' + escapeHtml(a.orochi_current_task) + "</em>"
       : "") +
     "</div>" +
     '<div class="agent-detail-meta-grid">' +
@@ -232,9 +232,9 @@ function _renderActivityAgentDetail(a, grid) {
     "</div>";
   /* Task */
   var taskHtml =
-    a.current_task || a.last_message_preview
+    a.orochi_current_task || a.last_message_preview
       ? '<div class="agent-detail-section"><span class="agent-detail-pane-label">Task: </span>' +
-        escapeHtml(a.current_task || a.last_message_preview) +
+        escapeHtml(a.orochi_current_task || a.last_message_preview) +
         "</div>"
       : "";
   /* Terminal pane — Refresh / Tail / Copy / Expand. Expand only renders

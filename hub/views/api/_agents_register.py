@@ -22,7 +22,7 @@ def api_agents_register(request):
           "role": "healer",
           "model": "stdlib",
           "channels": ["#general"],
-          "current_task": "monitoring"
+          "orochi_current_task": "monitoring"
         }
     Auth: workspace token in body or query string.
     """
@@ -66,7 +66,7 @@ def api_agents_register(request):
     from hub.registry import (
         mark_activity,
         register_agent,
-        set_current_task,
+        set_orochi_current_task,
         update_heartbeat,
     )
 
@@ -229,9 +229,9 @@ def api_agents_register(request):
 
         set_subagents(name, body.get("subagents") or [])
     update_heartbeat(name, metrics=body.get("metrics") or {})
-    task = body.get("current_task") or ""
+    task = body.get("orochi_current_task") or ""
     if task:
-        set_current_task(name, task)
+        set_orochi_current_task(name, task)
     preview = body.get("last_message_preview") or ""
     if preview:
         mark_activity(name, action=preview)

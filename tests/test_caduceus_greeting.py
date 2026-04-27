@@ -180,7 +180,7 @@ class TestShouldPing:
     def test_first_ping_always_due(self):
         assert should_ping(
             "head-nas",
-            current_task="",
+            orochi_current_task="",
             idle_seconds=None,
             now=1000.0,
             last_ping_ts={},
@@ -201,7 +201,7 @@ class TestShouldPing:
         # don't interrupt with a greeting.
         assert not should_ping(
             "head-nas",
-            current_task="todo#168 impl",
+            orochi_current_task="todo#168 impl",
             idle_seconds=5,
             now=2000.0,
             last_ping_ts={},
@@ -212,7 +212,7 @@ class TestShouldPing:
         # Agent has a task but has been idle ≥30s — could be wedged, ping them.
         assert should_ping(
             "head-nas",
-            current_task="todo#168 impl",
+            orochi_current_task="todo#168 impl",
             idle_seconds=90,
             now=2000.0,
             last_ping_ts={},

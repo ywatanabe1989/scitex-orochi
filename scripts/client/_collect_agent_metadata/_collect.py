@@ -213,7 +213,7 @@ def collect(agent: str) -> dict:
             else orochi_context_pct
         ),
         "orochi_current_tool": orochi_current_tool,
-        "current_task": orochi_current_tool,
+        "orochi_current_task": orochi_current_tool,
         "quota_5h_pct": quota_5h_pct,
         "quota_5h_remaining": quota_5h_remaining,
         "quota_weekly_pct": quota_weekly_pct,

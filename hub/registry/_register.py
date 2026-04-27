@@ -26,7 +26,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
     """Register or update an agent.
 
     Re-registration (e.g. WS reconnect) preserves narrative state that
-    the agent populated via later calls — current_task, last_message,
+    the agent populated via later calls — orochi_current_task, last_message,
     subagents. Without this, every WS reconnect wiped the Activity tab
     fields back to empty strings so cards always read "no task reported".
     """
@@ -146,7 +146,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_heartbeat": time.time(),
             "last_action": prev.get("last_action") or time.time(),
             "last_message_preview": prev.get("last_message_preview", ""),
-            "current_task": prev.get("current_task", ""),
+            "orochi_current_task": prev.get("orochi_current_task", ""),
             "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},

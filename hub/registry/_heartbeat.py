@@ -40,8 +40,8 @@ def mark_activity(name: str, action: str = "") -> None:
 
     The `action` argument is stored as `last_message_preview` (a truncated
     chat preview shown in the Activity tab). It does NOT overwrite
-    `current_task` — that field is reserved for STRUCTURED task IDs set
-    explicitly via `set_current_task()` (e.g. from a `task_update` WS
+    `orochi_current_task` — that field is reserved for STRUCTURED task IDs set
+    explicitly via `set_orochi_current_task()` (e.g. from a `task_update` WS
     message or `orochi report activity --task ...`). Conflating the two
     leaked chat-preview text into the structured task column.
     """
@@ -52,11 +52,11 @@ def mark_activity(name: str, action: str = "") -> None:
                 _agents[name]["last_message_preview"] = action[:120]
 
 
-def set_current_task(name: str, task: str) -> None:
+def set_orochi_current_task(name: str, task: str) -> None:
     """Explicitly set the agent's current task description."""
     with _lock:
         if name in _agents:
-            _agents[name]["current_task"] = task[:120] if task else ""
+            _agents[name]["orochi_current_task"] = task[:120] if task else ""
 
 
 def set_orochi_subagent_count(name: str, count: int) -> None:

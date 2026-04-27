@@ -74,7 +74,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "started_at": meta.get("started_at", ""),
         "version": meta.get("version", ""),
         "runtime": meta.get("runtime", ""),
-        "current_task": meta.get("current_task", ""),
+        "orochi_current_task": meta.get("orochi_current_task", ""),
         # Intentionally no "channels" key. Subscriptions are
         # server-authoritative (ChannelMembership rows); heartbeats
         # must not clobber them.

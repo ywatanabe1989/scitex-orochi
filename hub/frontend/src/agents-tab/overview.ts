@@ -260,7 +260,7 @@ export function buildAgentRow(a) {
     renderPaneStateBadge(a.orochi_pane_state, a.orochi_stuck_prompt_text) +
     "</td>" +
     '<td class="task-cell">' +
-    escapeHtml(a.current_task || "-") +
+    escapeHtml(a.orochi_current_task || "-") +
     "</td>" +
     '<td class="small-cell">' +
     (a.subagents && a.subagents.length > 0

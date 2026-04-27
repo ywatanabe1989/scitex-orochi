@@ -39,7 +39,7 @@ export function _formatUptime(seconds) {
   return "up " + seconds + "s";
 }
 
-/* Split a current_task string like "Bash: docker compose build" into
+/* Split a orochi_current_task string like "Bash: docker compose build" into
  * a tool name + argument preview. Returns {tool, arg, isProse}. If no
  * colon separator is found we treat the whole string as prose (e.g. a
  * last_user_msg snippet, not a tool call). */
@@ -119,7 +119,7 @@ export function _linkifyIssues(safeHtml) {
 }
 
 /* Prominent task renderer — this is the card's hero row. `task` is the
- * rich current_task string (e.g. "Bash: docker compose build"). `age`
+ * rich orochi_current_task string (e.g. "Bash: docker compose build"). `age`
  * is a pre-formatted age label or empty. `fallback` is last_message_preview
  * used when there is no task at all. */
 export function _renderTaskField(task, fallback, age) {

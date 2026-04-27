@@ -275,8 +275,8 @@ async function fetchAgents() {
         var inactive = isAgentInactive(a);
         var statusClass =
           (a.status || "online") + (inactive ? " inactive" : "");
-        var taskHtml = a.current_task
-          ? '<div class="task">' + escapeHtml(a.current_task) + "</div>"
+        var taskHtml = a.orochi_current_task
+          ? '<div class="task">' + escapeHtml(a.orochi_current_task) + "</div>"
           : "";
         return (
           '<div class="agent-card' +

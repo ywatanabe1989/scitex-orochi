@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fix(hub/agents-tab): refresh interval relaxed from 10 s → 30 s
   and `.activity-card` got a `transition: border-color 0.4s` so
   heartbeat updates fade instead of flicker. msg#6575.
-- fix(hub/agents-tab): `current_task` is no longer the noisy
+- fix(hub/agents-tab): `orochi_current_task` is no longer the noisy
   `mcp__scitex-orochi__reply` from the last housekeeping call —
   `agent_meta._preview_for()` skips the entire mcp_orochi tool family
   AND `TodoWrite`, then returns `Bash: docker compose build` style

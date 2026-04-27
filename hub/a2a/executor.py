@@ -92,7 +92,7 @@ class OrochiAgentExecutor(AgentExecutor):
         # TaskStatusUpdateEvent. The legacy view didn't have to do this
         # because it was not SDK-aware. We seed a SUBMITTED task so the
         # framework's task store has something to update.
-        if context.current_task is None:
+        if context.orochi_current_task is None:
             seed = Task()
             seed.id = context.task_id
             seed.context_id = context.context_id

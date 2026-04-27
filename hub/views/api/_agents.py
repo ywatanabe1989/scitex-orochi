@@ -67,7 +67,7 @@ def api_agents(request):
                     "last_heartbeat": None,
                     "last_action": None,
                     "metrics": {},
-                    "current_task": "",
+                    "orochi_current_task": "",
                     "last_message_preview": "",
                     "subagents": [],
                     "orochi_subagent_count": 0,

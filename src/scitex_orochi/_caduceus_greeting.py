@@ -233,7 +233,7 @@ class GreetingState:
 
 
 def should_ping(
-    agent_name: str, current_task: str, idle_seconds: int | None, now: float,
+    agent_name: str, orochi_current_task: str, idle_seconds: int | None, now: float,
     last_ping_ts: dict[str, float], interval_s: int = 180,
 ) -> bool:
     """Return True if caduceus should send a greeting to this agent now.
@@ -252,7 +252,7 @@ def should_ping(
     # Skip if agent is visibly working — idle < 30s with a current task
     # means they're typing/running. Don't interrupt. The real inbound-deaf
     # cases show idle=None OR idle much larger, which we still ping.
-    if current_task and idle_seconds is not None and idle_seconds < 30:
+    if orochi_current_task and idle_seconds is not None and idle_seconds < 30:
         return False
     last = last_ping_ts.get(agent_name, 0.0)
     return (now - last) >= interval_s

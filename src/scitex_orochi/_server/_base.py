@@ -38,7 +38,7 @@ class Agent:
     workspace_id: str = ""
     multiplexer: str = ""
     status: str = "online"
-    current_task: str = ""
+    orochi_current_task: str = ""
     orochi_subagent_count: int = 0
     resources: dict[str, Any] = field(default_factory=dict)
     last_heartbeat: str = field(

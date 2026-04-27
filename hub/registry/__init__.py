@@ -28,7 +28,7 @@ The full pre-split public surface is re-exported here so
 from ._heartbeat import (
     mark_activity,
     mark_echo_alive,
-    set_current_task,
+    set_orochi_current_task,
     set_health,
     set_sac_status,
     set_orochi_subagent_count,
@@ -103,7 +103,7 @@ __all__ = [
     "update_echo_pong",
     "mark_activity",
     "mark_echo_alive",
-    "set_current_task",
+    "set_orochi_current_task",
     "set_subagents",
     "set_orochi_subagent_count",
     "set_sac_status",

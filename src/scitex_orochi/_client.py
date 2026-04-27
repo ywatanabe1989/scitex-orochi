@@ -216,7 +216,7 @@ class OrochiClient:
     async def update_status(
         self,
         status: str | None = None,
-        current_task: str | None = None,
+        orochi_current_task: str | None = None,
     ) -> None:
         """Send a status update to the server."""
         if not self._ws:
@@ -224,8 +224,8 @@ class OrochiClient:
         payload: dict[str, str] = {}
         if status is not None:
             payload["status"] = status
-        if current_task is not None:
-            payload["current_task"] = current_task
+        if orochi_current_task is not None:
+            payload["orochi_current_task"] = orochi_current_task
         msg = Message(type="status_update", sender=self.name, payload=payload)
         await self._ws.send(msg.to_json())
 

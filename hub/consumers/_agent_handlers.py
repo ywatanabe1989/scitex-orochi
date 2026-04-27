@@ -263,7 +263,7 @@ async def handle_heartbeat(consumer, content):
     }
 
     from hub.registry import (
-        set_current_task,
+        set_orochi_current_task,
         set_sac_status,
         set_orochi_subagent_count,
         update_heartbeat,
@@ -274,8 +274,8 @@ async def handle_heartbeat(consumer, content):
     # Allow lightweight clients to piggyback narrative fields on
     # the heartbeat rather than sending separate task_update /
     # subagents_update frames.
-    if "current_task" in payload:
-        set_current_task(consumer.agent_name, str(payload.get("current_task") or ""))
+    if "orochi_current_task" in payload:
+        set_orochi_current_task(consumer.agent_name, str(payload.get("orochi_current_task") or ""))
     if "orochi_subagent_count" in payload:
         try:
             set_orochi_subagent_count(
@@ -305,9 +305,9 @@ async def handle_task_update(consumer, content):
     """Agent reports its current task — visible in the Activity tab."""
     payload = content.get("payload", {})
     task = payload.get("task", "")
-    from hub.registry import mark_activity, set_current_task
+    from hub.registry import mark_activity, set_orochi_current_task
 
-    set_current_task(consumer.agent_name, task)
+    set_orochi_current_task(consumer.agent_name, task)
     mark_activity(consumer.agent_name, action=task)
     await consumer.channel_layer.group_send(
         consumer.workspace_group,

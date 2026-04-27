@@ -30,14 +30,14 @@ const EXEC_TIMEOUT_MS = 5_000;
 export type AgentMeta = {
   orochi_subagent_count: number;
   context_usage_percent: number;
-  current_task: string;
+  orochi_current_task: string;
   orochi_current_tool: string;
 };
 
 const EMPTY_META: AgentMeta = {
   orochi_subagent_count: 0,
   context_usage_percent: 0,
-  current_task: "",
+  orochi_current_task: "",
   orochi_current_tool: "",
 };
 
@@ -71,7 +71,7 @@ function runAgentMetaScript(agent: string): Promise<AgentMeta> {
           resolve({
             orochi_subagent_count: Number(obj.subagents ?? 0) || 0,
             context_usage_percent: Number(obj.orochi_context_pct ?? 0) || 0,
-            current_task: String(obj.current_task ?? ""),
+            orochi_current_task: String(obj.orochi_current_task ?? ""),
             orochi_current_tool: String(obj.orochi_current_tool ?? ""),
           });
         } catch (parseErr) {

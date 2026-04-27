@@ -46,9 +46,9 @@ class AgentDetailApiTest(TestCase):
         _reg_agents.clear()
 
     def _register(self, **overrides):
-        from hub.registry import register_agent, set_current_task
+        from hub.registry import register_agent, set_orochi_current_task
 
-        current_task = overrides.pop("current_task", "todo#420")
+        orochi_current_task = overrides.pop("orochi_current_task", "todo#420")
         info = {
             "agent_id": "alpha",
             "machine": "MBA",
@@ -61,8 +61,8 @@ class AgentDetailApiTest(TestCase):
         }
         info.update(overrides)
         register_agent(name="alpha", workspace_id=self.ws.id, info=info)
-        if current_task:
-            set_current_task("alpha", current_task)
+        if orochi_current_task:
+            set_orochi_current_task("alpha", orochi_current_task)
 
     def _get(self, name="alpha"):
         return self.client.get(
@@ -91,7 +91,7 @@ class AgentDetailApiTest(TestCase):
             "pane_text_source",
             "channel_subs",
             "mcp_servers",
-            "current_task",
+            "orochi_current_task",
             "orochi_context_pct",
             "pid",
             "subagents",
@@ -101,7 +101,7 @@ class AgentDetailApiTest(TestCase):
         self.assertEqual(data["name"], "alpha")
         self.assertEqual(data["role"], "head")
         self.assertEqual(data["machine"], "MBA")
-        self.assertEqual(data["current_task"], "todo#420")
+        self.assertEqual(data["orochi_current_task"], "todo#420")
         self.assertEqual(data["pane_text_source"], "cached")
         self.assertIn("line1", data["pane_text"])
         self.assertEqual(sorted(data["channel_subs"]), ["#agent", "#general"])

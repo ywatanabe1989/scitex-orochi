@@ -87,7 +87,7 @@ class DeliveryMixin:
                 "project": a.project,
                 "multiplexer": a.multiplexer,
                 "status": a.status,
-                "current_task": a.current_task,
+                "orochi_current_task": a.orochi_current_task,
                 "orochi_subagent_count": a.orochi_subagent_count,
                 "resources": a.resources,
                 "last_heartbeat": a.last_heartbeat,

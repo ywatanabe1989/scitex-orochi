@@ -14,7 +14,7 @@
  * invisible to scitex-agent-container's own registry. The status command
  * returned `{"error": "Agent X not found in registry"}` with rc=1 for every
  * such agent, the spawn was treated as a hard failure, and pushRegistryHeartbeat
- * returned without ever populating the hub's current_task / subagents /
+ * returned without ever populating the hub's orochi_current_task / subagents /
  * orochi_context_pct fields. The Activity tab then rendered "no task / 0 subs / no
  * ctx" for everyone — exactly the symptom ywatanabe flagged at msg#6382. The
  * collect_agent_metadata.py path bypasses the broken registry lookup entirely (todo#155).
@@ -69,7 +69,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
   }
 
   // collect_agent_metadata.py field names → hub /api/agents/register field names.
-  // The hub renderer (activity-tab.js) reads `current_task`,
+  // The hub renderer (activity-tab.js) reads `orochi_current_task`,
   // `orochi_subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
   // `orochi_current_tool`, `subagents`, `orochi_context_pct`, `model`. Translate.
   const currentTool = (meta["orochi_current_tool"] as string | undefined) || "";
@@ -84,7 +84,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     // the original field names — but the hub-canonical fields below
     // take precedence in the spread merge.
     ...meta,
-    current_task: currentTool,
+    orochi_current_task: currentTool,
     orochi_subagent_count: subagentCount,
     token: OROCHI_TOKEN,
     name: OROCHI_AGENT,

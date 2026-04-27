@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Tools to skip in orochi_current_tool / recent_actions selection. These are
 # how the agent talks to the chat hub, NOT what the agent is actually
-# working on. Showing them as current_task makes every idle agent look
+# working on. Showing them as orochi_current_task makes every idle agent look
 # frozen on "reply" forever, which is the exact UX failure ywatanabe
 # flagged at msg#6546 / msg#6551.
 SKIP_TOOLS = {
