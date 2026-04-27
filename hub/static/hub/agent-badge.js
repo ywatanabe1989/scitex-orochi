@@ -120,7 +120,7 @@
   // ── 2c. Subagent count (msg#16116 Item 4). Tiny chip showing the
   //        number of active subagents. Hidden when 0/undefined.
   function renderAgentSubagentCount(a) {
-    var n = a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+    var n = a && a.orochi_subagent_count != null ? Number(a.orochi_subagent_count) : 0;
     if (!n || !isFinite(n) || n < 1) return "";
     return (
       '<span class="agent-badge-subcount" title="' +

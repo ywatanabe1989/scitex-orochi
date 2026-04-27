@@ -4,7 +4,7 @@
 
   Runs scripts/client/hungry-signal.sh every 10 minutes. On each tick the
   probe reads local `scitex-agent-container status --terse --json` for
-  this head's subagent_count and, if zero for HUNGRY_THRESHOLD consecutive
+  this head's orochi_subagent_count and, if zero for HUNGRY_THRESHOLD consecutive
   cycles, DMs `lead` asking for a coordinated dispatch pick.
 
   Install:

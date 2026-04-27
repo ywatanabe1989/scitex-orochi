@@ -271,11 +271,11 @@ function buildAgentRow(a) {
             );
           })
           .join(" ")
-      : a.subagent_count && a.subagent_count > 0
+      : a.orochi_subagent_count && a.orochi_subagent_count > 0
         ? '<span class="subagent-badge subagent-running" title="' +
-          a.subagent_count +
+          a.orochi_subagent_count +
           ' subagent(s)">\uD83D\uDD27 ' +
-          a.subagent_count +
+          a.orochi_subagent_count +
           "</span>"
         : '<span class="muted-cell">-</span>') +
     "</td>" +

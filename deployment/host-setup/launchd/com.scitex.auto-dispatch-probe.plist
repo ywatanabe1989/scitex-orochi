@@ -4,7 +4,7 @@
 
   Runs scripts/client/auto-dispatch-probe.sh every 5 minutes on this user's
   login session. On each tick the probe queries the hub for this host's
-  head-<hostname> registry payload and, if subagent_count == 0 AND online
+  head-<hostname> registry payload and, if orochi_subagent_count == 0 AND online
   AND not in cooldown, picks the next high-priority TODO matching this
   head's lane and injects a dispatch prompt into the tmux pane.
 

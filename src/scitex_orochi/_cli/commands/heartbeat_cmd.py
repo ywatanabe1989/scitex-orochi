@@ -92,7 +92,7 @@ def _wrap_with_orochi_fields(
         "context_management": status.get("context_management"),
         "current_task": status.get("current_task") or "",
         "current_tool": status.get("current_tool") or "",
-        "subagent_count": int(status.get("subagent_count") or 0),
+        "orochi_subagent_count": int(status.get("orochi_subagent_count") or 0),
         "subagents": status.get("subagents") or [],
         # Claude usage quota — surfaced under the UI-expected keys.
         "quota_5h_used_pct": status.get("quota_5h_used_pct"),

@@ -265,7 +265,7 @@ async def handle_heartbeat(consumer, content):
     from hub.registry import (
         set_current_task,
         set_sac_status,
-        set_subagent_count,
+        set_orochi_subagent_count,
         update_heartbeat,
     )
 
@@ -276,10 +276,10 @@ async def handle_heartbeat(consumer, content):
     # subagents_update frames.
     if "current_task" in payload:
         set_current_task(consumer.agent_name, str(payload.get("current_task") or ""))
-    if "subagent_count" in payload:
+    if "orochi_subagent_count" in payload:
         try:
-            set_subagent_count(
-                consumer.agent_name, int(payload.get("subagent_count") or 0)
+            set_orochi_subagent_count(
+                consumer.agent_name, int(payload.get("orochi_subagent_count") or 0)
             )
         except (TypeError, ValueError):
             pass

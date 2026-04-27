@@ -147,7 +147,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_action": prev.get("last_action") or time.time(),
             "last_message_preview": prev.get("last_message_preview", ""),
             "current_task": prev.get("current_task", ""),
-            "subagent_count": prev.get("subagent_count", 0),
+            "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},

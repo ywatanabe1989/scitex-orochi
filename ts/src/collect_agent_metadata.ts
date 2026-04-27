@@ -28,14 +28,14 @@ const SCRIPT_PATH = join(homedir(), ".scitex/orochi/scripts/collect_agent_metada
 const EXEC_TIMEOUT_MS = 5_000;
 
 export type AgentMeta = {
-  subagent_count: number;
+  orochi_subagent_count: number;
   context_usage_percent: number;
   current_task: string;
   current_tool: string;
 };
 
 const EMPTY_META: AgentMeta = {
-  subagent_count: 0,
+  orochi_subagent_count: 0,
   context_usage_percent: 0,
   current_task: "",
   current_tool: "",
@@ -69,7 +69,7 @@ function runAgentMetaScript(agent: string): Promise<AgentMeta> {
         try {
           const obj = JSON.parse(stdout);
           resolve({
-            subagent_count: Number(obj.subagents ?? 0) || 0,
+            orochi_subagent_count: Number(obj.subagents ?? 0) || 0,
             context_usage_percent: Number(obj.orochi_context_pct ?? 0) || 0,
             current_task: String(obj.current_task ?? ""),
             current_tool: String(obj.current_tool ?? ""),

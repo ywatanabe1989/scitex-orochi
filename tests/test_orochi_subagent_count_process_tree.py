@@ -3,7 +3,7 @@
 The programmatic walk in
 ``scripts/client/_collect_agent_metadata/_process_tree.py::count_subagents_via_ps``
 replaces the tmux-pane regex parse as the primary
-``subagent_count`` signal (msg#16727). These tests pin:
+``orochi_subagent_count`` signal (msg#16727). These tests pin:
 
 1. psutil happy paths — 0/3 children, mixed claude+non-claude children.
 2. psutil failure → fall through to pgrep.
@@ -328,7 +328,7 @@ def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
     )
     monkeypatch.setattr(
         _collect,
-        "parse_subagent_count",
+        "parse_orochi_subagent_count",
         lambda p: 5,
     )
     monkeypatch.setattr(
@@ -340,7 +340,7 @@ def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
     _neutralise_heavy_collectors(monkeypatch, _collect)
 
     result = _collect.collect("head-mba")
-    assert result["subagent_count"] == 1
+    assert result["orochi_subagent_count"] == 1
     assert result["subagents"] == 1
 
 
@@ -358,7 +358,7 @@ def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
     )
     monkeypatch.setattr(
         _collect,
-        "parse_subagent_count",
+        "parse_orochi_subagent_count",
         lambda p: 4,
     )
     monkeypatch.setattr(
@@ -369,11 +369,11 @@ def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
     _neutralise_heavy_collectors(monkeypatch, _collect)
 
     result = _collect.collect("head-mba")
-    assert result["subagent_count"] == 4
+    assert result["orochi_subagent_count"] == 4
 
 
 def test_collect_reports_zero_when_both_backends_fail(monkeypatch):
-    """Process-tree returns ``-1`` AND pane parser returns 0 → ``subagent_count == 0``."""
+    """Process-tree returns ``-1`` AND pane parser returns 0 → ``orochi_subagent_count == 0``."""
     from _collect_agent_metadata import _collect
 
     monkeypatch.setattr(_collect, "detect_multiplexer", lambda a: "tmux")
@@ -385,7 +385,7 @@ def test_collect_reports_zero_when_both_backends_fail(monkeypatch):
     )
     monkeypatch.setattr(
         _collect,
-        "parse_subagent_count",
+        "parse_orochi_subagent_count",
         lambda p: 0,
     )
     monkeypatch.setattr(
@@ -396,7 +396,7 @@ def test_collect_reports_zero_when_both_backends_fail(monkeypatch):
     _neutralise_heavy_collectors(monkeypatch, _collect)
 
     result = _collect.collect("head-mba")
-    assert result["subagent_count"] == 0
+    assert result["orochi_subagent_count"] == 0
 
 
 def _neutralise_heavy_collectors(monkeypatch, _collect):

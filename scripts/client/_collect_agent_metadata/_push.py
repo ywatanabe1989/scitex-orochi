@@ -46,7 +46,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
     ``sac_status`` is the nested ``scitex-agent-container status --terse
     --json`` dict (lead msg#16005 pivot). Attached verbatim under the
     top-level ``sac_status`` key so the hub forwards every future field
-    without per-field plumbing. ``subagent_count`` is still emitted at
+    without per-field plumbing. ``orochi_subagent_count`` is still emitted at
     the top level as a backwards-compat shortcut (multiple consumers
     already key off it).
     """
@@ -69,7 +69,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "pid": meta.get("pid") or 0,
         "ppid": meta.get("ppid") or 0,
         "orochi_context_pct": meta.get("orochi_context_pct"),
-        "subagent_count": int(meta.get("subagent_count") or 0),
+        "orochi_subagent_count": int(meta.get("orochi_subagent_count") or 0),
         "skills_loaded": list(meta.get("skills_loaded") or []),
         "started_at": meta.get("started_at", ""),
         "version": meta.get("version", ""),
@@ -187,7 +187,7 @@ def push_all(url=None, token=None) -> int:
                     "pushed %s ctx=%s%% subs=%s pid=%s",
                     agent,
                     meta.get("orochi_context_pct"),
-                    meta.get("subagent_count"),
+                    meta.get("orochi_subagent_count"),
                     meta.get("pid"),
                 )
             else:

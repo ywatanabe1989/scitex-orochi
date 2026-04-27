@@ -87,7 +87,7 @@ function _renderAgentDetail(a) {
   var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
   var registeredAt = d.registered_at || a.registered_at || "";
   var subagentCount =
-    d.subagent_count != null ? d.subagent_count : a.subagent_count;
+    d.orochi_subagent_count != null ? d.orochi_subagent_count : a.orochi_subagent_count;
   var q5 =
     d.quota_5h_used_pct != null ? d.quota_5h_used_pct : a.quota_5h_used_pct;
   var q7 =
@@ -206,7 +206,7 @@ function _renderAgentDetail(a) {
   /* msg#16116 Item 4: inline subagent-count chip in the detail header. */
   var headerSubagents =
     typeof window.renderAgentSubagentCount === "function"
-      ? window.renderAgentSubagentCount({ subagent_count: subagentCount })
+      ? window.renderAgentSubagentCount({ orochi_subagent_count: subagentCount })
       : "";
   var headerHtml =
     '<div class="agent-detail-header">' +

@@ -391,7 +391,7 @@
       /* msg#16116 Item 4: subagent count chip — SVG mirror of the
        * .agent-badge-subcount HTML chip. Hidden when 0/undefined. */
       var subCount =
-        a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+        a && a.orochi_subagent_count != null ? Number(a.orochi_subagent_count) : 0;
       var subSvg = "";
       if (subCount && isFinite(subCount) && subCount >= 1) {
         var subX = nameX + textW + 4;

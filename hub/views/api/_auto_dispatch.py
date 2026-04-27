@@ -214,7 +214,7 @@ def api_auto_dispatch_status(request):
             "host":  "mba",
             "lane":  "infrastructure",
             "idle_streak": 0,
-            "subagent_count": 2,
+            "orochi_subagent_count": 2,
             "last_fire_ts": null,                   # unix seconds or null
             "last_fire_at": null,                   # ISO-8601 or null
             "cooldown_active": false,
@@ -267,7 +267,7 @@ def api_auto_dispatch_status(request):
                     "host": host,
                     "lane": lane,
                     "idle_streak": int(a.get("idle_streak") or 0),
-                    "subagent_count": int(a.get("subagent_count") or 0),
+                    "orochi_subagent_count": int(a.get("orochi_subagent_count") or 0),
                     "last_fire_ts": last_fire_ts,
                     "last_fire_at": last_fire_at,
                     "cooldown_active": cooldown_active,

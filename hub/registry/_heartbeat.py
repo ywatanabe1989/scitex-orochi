@@ -30,9 +30,9 @@ def set_subagents(name: str, subagents: list) -> None:
             ]
             _agents[name]["subagents"] = normalized
             # Keep the count in sync so callers that only read
-            # `subagent_count` (sidebar card badge) stay accurate even
+            # `orochi_subagent_count` (sidebar card badge) stay accurate even
             # when the full list is what was pushed.
-            _agents[name]["subagent_count"] = len(normalized)
+            _agents[name]["orochi_subagent_count"] = len(normalized)
 
 
 def mark_activity(name: str, action: str = "") -> None:
@@ -59,7 +59,7 @@ def set_current_task(name: str, task: str) -> None:
             _agents[name]["current_task"] = task[:120] if task else ""
 
 
-def set_subagent_count(name: str, count: int) -> None:
+def set_orochi_subagent_count(name: str, count: int) -> None:
     """Explicitly set the agent's subagent count.
 
     Agents that track subagents out-of-band (without sending the full
@@ -68,7 +68,7 @@ def set_subagent_count(name: str, count: int) -> None:
     """
     with _lock:
         if name in _agents:
-            _agents[name]["subagent_count"] = max(0, int(count or 0))
+            _agents[name]["orochi_subagent_count"] = max(0, int(count or 0))
 
 
 def set_sac_status(name: str, sac_status: dict) -> None:
@@ -158,8 +158,8 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
 
     msg#16388: after quota pressure, run the auto-dispatch state machine
     for ``head-*`` agents. ``check_agent_auto_dispatch()`` reads
-    ``subagent_count`` (just written by the heartbeat handler via
-    ``set_subagent_count``) and maintains a per-head idle streak + 15min
+    ``orochi_subagent_count`` (just written by the heartbeat handler via
+    ``set_orochi_subagent_count``) and maintains a per-head idle streak + 15min
     cooldown, firing a DM when a head stalls for N consecutive zero
     readings. Also best-effort.
     """

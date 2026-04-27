@@ -22,7 +22,7 @@ from ._hostname import _resolve_canonical_hostname
 from ._machine import find_session_pids, resolve_machine_label
 from ._metrics import collect_machine_metrics, collect_slurm_status
 from ._multiplexer import detect_multiplexer
-from ._pane import capture_pane, filter_orochi_pane_tail, parse_subagent_count
+from ._pane import capture_pane, filter_orochi_pane_tail, parse_orochi_subagent_count
 from ._proc import _read_process_env
 from ._statusline import parse_statusline
 from ._transcript import find_jsonl_transcripts, parse_transcript
@@ -70,7 +70,7 @@ def collect(agent: str) -> dict:
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
         pid, ppid, started_at, workdir, project, machine, skills_loaded,
-        runtime, version, subagent_count.
+        runtime, version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
     """
@@ -89,7 +89,7 @@ def collect(agent: str) -> dict:
     orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full = (
         filter_orochi_pane_tail(pane)
     )
-    subagents = parse_subagent_count(pane)
+    subagents = parse_orochi_subagent_count(pane)
 
     # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(orochi_pane_tail_block)
@@ -206,7 +206,7 @@ def collect(agent: str) -> dict:
         "alive": True,
         "multiplexer": multiplexer,
         "subagents": subagents,
-        "subagent_count": subagents,
+        "orochi_subagent_count": subagents,
         "orochi_context_pct": (
             statusline_orochi_context_pct
             if statusline_orochi_context_pct is not None

@@ -92,7 +92,7 @@ export function _renderAgentDetail(a) {
   var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
   var registeredAt = d.registered_at || a.registered_at || "";
   var subagentCount =
-    d.subagent_count != null ? d.subagent_count : a.subagent_count;
+    d.orochi_subagent_count != null ? d.orochi_subagent_count : a.orochi_subagent_count;
   var q5 =
     d.quota_5h_used_pct != null ? d.quota_5h_used_pct : a.quota_5h_used_pct;
   var q7 =
@@ -211,14 +211,14 @@ export function _renderAgentDetail(a) {
   /* msg#16116 Item 4: inline subagent-count chip in the detail header.
    * Visible only when the agent has >=1 active subagent; hidden by the
    * `return ""` branch inside renderAgentSubagentCount when 0. Source:
-   * d.subagent_count (detail endpoint) falling back to a.subagent_count
+   * d.orochi_subagent_count (detail endpoint) falling back to a.orochi_subagent_count
    * (registry). Separate from the Subagents meta-field row below — the
    * header chip is an at-a-glance cue so users don't need to scan the
    * meta grid. */
   var headerSubagents =
     typeof (window as any).renderAgentSubagentCount === "function"
       ? (window as any).renderAgentSubagentCount({
-          subagent_count: subagentCount,
+          orochi_subagent_count: subagentCount,
         })
       : "";
   var headerHtml =

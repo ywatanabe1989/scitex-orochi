@@ -39,7 +39,7 @@ class Agent:
     multiplexer: str = ""
     status: str = "online"
     current_task: str = ""
-    subagent_count: int = 0
+    orochi_subagent_count: int = 0
     resources: dict[str, Any] = field(default_factory=dict)
     last_heartbeat: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()

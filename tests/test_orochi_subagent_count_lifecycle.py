@@ -1,7 +1,7 @@
-"""End-to-end lifecycle tests for ``parse_subagent_count``.
+"""End-to-end lifecycle tests for ``parse_orochi_subagent_count``.
 
 Both Layer 1 (server-side auto-dispatch) and Layer 2 (hungry-signal DM,
-PR #329) depend on ``subagent_count == 0`` detection being accurate. If
+PR #329) depend on ``orochi_subagent_count == 0`` detection being accurate. If
 the count fails to decrement when subagents finish, auto-dispatch fires
 when the head is actually busy (false negative) or misfires when it
 shouldn't (false positive). This module pins the parser's behaviour
@@ -11,14 +11,14 @@ batch — spawn, ramp-up, partial completion, full completion, and the
 false-positive chat text and multi-marker panes.
 
 The parser under test lives at
-``scripts/client/_collect_agent_metadata/_pane.py::parse_subagent_count``.
+``scripts/client/_collect_agent_metadata/_pane.py::parse_orochi_subagent_count``.
 A mirror implementation lives in ``scitex-agent-container`` (separate
 repo); that one needs its own test suite there — see PR body for
 follow-up.
 
 Scope: lifecycle parser behaviour only. The hub-side round-trip (how
-``subagent_count`` travels through the heartbeat frame to the registry)
-is covered by ``hub/tests/consumers/test_subagent_count_roundtrip.py``.
+``orochi_subagent_count`` travels through the heartbeat frame to the registry)
+is covered by ``hub/tests/consumers/test_orochi_subagent_count_roundtrip.py``.
 The hungry-signal counter / auto-dispatch streak logic is covered by
 ``tests/test_hungry_signal_counter.py``.
 """
@@ -35,7 +35,7 @@ _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from _collect_agent_metadata._pane import parse_subagent_count  # noqa: E402
+from _collect_agent_metadata._pane import parse_orochi_subagent_count  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Happy-path parametric coverage — every count / grammar variant the
@@ -80,7 +80,7 @@ from _collect_agent_metadata._pane import parse_subagent_count  # noqa: E402
 )
 def test_count_parsed_from_marker(pane_text: str, expected: int) -> None:
     """The regex extracts the advertised integer across every known variant."""
-    assert parse_subagent_count(pane_text) == expected
+    assert parse_orochi_subagent_count(pane_text) == expected
 
 
 # ---------------------------------------------------------------------------
@@ -110,14 +110,14 @@ def test_count_parsed_from_marker(pane_text: str, expected: int) -> None:
 )
 def test_zero_state_parses_to_zero(pane_text: str) -> None:
     """Empty / marker-less / explicit-zero panes all report 0."""
-    assert parse_subagent_count(pane_text) == 0
+    assert parse_orochi_subagent_count(pane_text) == 0
 
 
 def test_none_pane_returns_zero() -> None:
     """A None pane (tmux capture failed) must not raise — treat as 0."""
     # The production signature takes str, but defensive call-sites pass
     # through whatever ``capture_pane`` returned. Pin the None-safe path.
-    assert parse_subagent_count(None) == 0  # type: ignore[arg-type]
+    assert parse_orochi_subagent_count(None) == 0  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -133,12 +133,12 @@ def test_spawn_then_completion_transition() -> None:
     Tick 1 captures the pane while an Agent call is in flight → parser
     returns 1. Tick 2 captures after the Agent returned and the status
     line cleared → parser returns 0. Both parses must be independent
-    and correct so the hub's ``subagent_count`` field tracks reality.
+    and correct so the hub's ``orochi_subagent_count`` field tracks reality.
     """
     pane_tick_1 = "  ✶ 1 local agent running · 2s\n❯ "
     pane_tick_2 = "  ⎿ Agent finished\n❯ "  # marker fully gone
-    assert parse_subagent_count(pane_tick_1) == 1
-    assert parse_subagent_count(pane_tick_2) == 0
+    assert parse_orochi_subagent_count(pane_tick_1) == 1
+    assert parse_orochi_subagent_count(pane_tick_2) == 0
 
 
 def test_partial_completion_transition() -> None:
@@ -146,25 +146,25 @@ def test_partial_completion_transition() -> None:
     pane_tick_1 = "  ✶ 3 local agents running · 5s\n❯ "
     pane_tick_2 = "  ✢ 2 local agents still running · 12s\n❯ "
     pane_tick_3 = "  ⎿ Agent finished\n❯ "
-    assert parse_subagent_count(pane_tick_1) == 3
-    assert parse_subagent_count(pane_tick_2) == 2
-    assert parse_subagent_count(pane_tick_3) == 0
+    assert parse_orochi_subagent_count(pane_tick_1) == 3
+    assert parse_orochi_subagent_count(pane_tick_2) == 2
+    assert parse_orochi_subagent_count(pane_tick_3) == 0
 
 
 def test_ramp_up_transition() -> None:
     """Parser tracks monotonic spawn-up: 1 → 2 → 5."""
     # Head spawns Agents one at a time across three ticks.
-    assert parse_subagent_count("  ✶ 1 local agent running · 1s\n❯ ") == 1
-    assert parse_subagent_count("  ✶ 2 local agents running · 2s\n❯ ") == 2
-    assert parse_subagent_count("  ✶ 5 local agents running · 3s\n❯ ") == 5
+    assert parse_orochi_subagent_count("  ✶ 1 local agent running · 1s\n❯ ") == 1
+    assert parse_orochi_subagent_count("  ✶ 2 local agents running · 2s\n❯ ") == 2
+    assert parse_orochi_subagent_count("  ✶ 5 local agents running · 3s\n❯ ") == 5
 
 
 def test_zero_to_one_to_zero_roundtrip() -> None:
     """Cold-start → one Agent spawn → completion back to idle."""
-    assert parse_subagent_count("") == 0  # cold start
-    assert parse_subagent_count("1 local agent running") == 1  # spawn
-    assert parse_subagent_count("0 local agents") == 0  # wind-down
-    assert parse_subagent_count("❯ ") == 0  # marker fully gone
+    assert parse_orochi_subagent_count("") == 0  # cold start
+    assert parse_orochi_subagent_count("1 local agent running") == 1  # spawn
+    assert parse_orochi_subagent_count("0 local agents") == 0  # wind-down
+    assert parse_orochi_subagent_count("❯ ") == 0  # marker fully gone
 
 
 # ---------------------------------------------------------------------------
@@ -199,10 +199,10 @@ def test_false_positive_regression_guards(pane_text: str) -> None:
     ``running`` trailer must NOT match.
 
     The old substring regex (``(\\d+) local agent``) fired on all of
-    these and inflated ``subagent_count``. The current regex requires
+    these and inflated ``orochi_subagent_count``. The current regex requires
     the ``running`` trailer; pin that so the guard doesn't regress.
     """
-    assert parse_subagent_count(pane_text) == 0
+    assert parse_orochi_subagent_count(pane_text) == 0
 
 
 @pytest.mark.xfail(
@@ -230,7 +230,7 @@ def test_quoted_marker_phrase_false_positive() -> None:
     """
     # Expected (correct) behaviour: quoted citation should not count.
     pane = "see docs: '3 local agents running' appears when a batch is active"
-    assert parse_subagent_count(pane) == 0
+    assert parse_orochi_subagent_count(pane) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -242,15 +242,15 @@ def test_quoted_marker_phrase_false_positive() -> None:
 
 def test_leading_whitespace_tolerated() -> None:
     """Leading spaces + glyphs don't block the match."""
-    assert parse_subagent_count("     1 local agent running") == 1
-    assert parse_subagent_count("\t\t3 local agents running") == 3
+    assert parse_orochi_subagent_count("     1 local agent running") == 1
+    assert parse_orochi_subagent_count("\t\t3 local agents running") == 3
 
 
 def test_trailing_whitespace_tolerated() -> None:
     """Trailing padding / elapsed-time suffix doesn't block the match."""
-    assert parse_subagent_count("1 local agent running · 2s") == 1
-    assert parse_subagent_count("1 local agent running   \n") == 1
-    assert parse_subagent_count("1 local agent running\r\n") == 1
+    assert parse_orochi_subagent_count("1 local agent running · 2s") == 1
+    assert parse_orochi_subagent_count("1 local agent running   \n") == 1
+    assert parse_orochi_subagent_count("1 local agent running\r\n") == 1
 
 
 def test_newlines_and_multiline_pane() -> None:
@@ -261,7 +261,7 @@ def test_newlines_and_multiline_pane() -> None:
         "  ✶ 4 local agents running · 7s",
         "❯ ",
     ])
-    assert parse_subagent_count(pane) == 4
+    assert parse_orochi_subagent_count(pane) == 4
 
 
 def test_color_escape_codes_do_not_break_match() -> None:
@@ -275,7 +275,7 @@ def test_color_escape_codes_do_not_break_match() -> None:
     # "local agents running" is the matched run, so ESC sequences on
     # either side are ignored.
     pane = "\x1b[32m  ✶ 2 local agents running · 3s\x1b[0m\n"
-    assert parse_subagent_count(pane) == 2
+    assert parse_orochi_subagent_count(pane) == 2
 
 
 def test_case_insensitive_markers() -> None:
@@ -284,9 +284,9 @@ def test_case_insensitive_markers() -> None:
     silently — there's no cost to keeping the match forgiving and the
     hungry-signal / auto-dispatch path wants the broadest match possible.
     """
-    assert parse_subagent_count("1 Local Agent Running") == 1
-    assert parse_subagent_count("2 LOCAL AGENTS RUNNING") == 2
-    assert parse_subagent_count("3 LOCAL AGENTS STILL RUNNING") == 3
+    assert parse_orochi_subagent_count("1 Local Agent Running") == 1
+    assert parse_orochi_subagent_count("2 LOCAL AGENTS RUNNING") == 2
+    assert parse_orochi_subagent_count("3 LOCAL AGENTS STILL RUNNING") == 3
 
 
 # ---------------------------------------------------------------------------
@@ -308,7 +308,7 @@ def test_multi_marker_returns_first_match() -> None:
         "... later ticks ...\n"
         "  ✢ 4 local agents still running\n"
     )
-    assert parse_subagent_count(pane) == 2
+    assert parse_orochi_subagent_count(pane) == 2
 
 
 def test_multi_marker_stale_above_current() -> None:
@@ -331,7 +331,7 @@ def test_multi_marker_stale_above_current() -> None:
         "...\n"
         "  ✶ 3 local agents running · 2s\n"
     )
-    assert parse_subagent_count(pane_stale_with_running) == 0
+    assert parse_orochi_subagent_count(pane_stale_with_running) == 0
 
     # Shape B: stale line dropped the ``running`` trailer → the stale
     # line fails to match and the live count wins.
@@ -340,7 +340,7 @@ def test_multi_marker_stale_above_current() -> None:
         "...\n"
         "  ✶ 3 local agents running · 2s\n"
     )
-    assert parse_subagent_count(pane_stale_without_running) == 3
+    assert parse_orochi_subagent_count(pane_stale_without_running) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -360,24 +360,24 @@ def test_heartbeat_during_stale_frame_records_stale_count() -> None:
     # A realistic stale frame: the status-line redraw hasn't happened
     # yet even though the Agent calls returned.
     stale_pane = "  ✢ 2 local agents running · 8s\n  ⎿ Done\n❯ "
-    assert parse_subagent_count(stale_pane) == 2
+    assert parse_orochi_subagent_count(stale_pane) == 2
 
     # Next heartbeat samples the post-redraw pane → hub updates.
     post_redraw = "  ⎿ Done\n❯ "
-    assert parse_subagent_count(post_redraw) == 0
+    assert parse_orochi_subagent_count(post_redraw) == 0
 
 
 def test_count_never_goes_negative() -> None:
     """Defensive: even if a pathological pane somehow contained a
     negative sign before the digit, the regex's ``\\d+`` group can't
     capture the sign — so the count stays non-negative. The hub's
-    ``set_subagent_count`` floors at zero as a second line of defence,
+    ``set_orochi_subagent_count`` floors at zero as a second line of defence,
     but we want the parser to do the right thing on its own too.
     """
     # ``-3 local agents running`` — the regex matches "3 local agents
     # running" (the minus sign is not consumed by ``\\d+``), so the
     # count is 3 not -3.
-    assert parse_subagent_count("-3 local agents running") == 3
-    assert parse_subagent_count("-1 local agent running") == 1
+    assert parse_orochi_subagent_count("-3 local agents running") == 3
+    assert parse_orochi_subagent_count("-1 local agent running") == 1
     # The produced value is always a non-negative int.
-    assert parse_subagent_count("-99 local agents running") >= 0
+    assert parse_orochi_subagent_count("-99 local agents running") >= 0

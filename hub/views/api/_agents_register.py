@@ -126,7 +126,7 @@ def api_agents_register(request):
             "started_at": body.get("started_at", ""),
             "version": body.get("version", ""),
             "runtime": body.get("runtime", ""),
-            "subagent_count": body.get("subagent_count") or 0,
+            "orochi_subagent_count": body.get("orochi_subagent_count") or 0,
             # v0.11.0 Agents-tab visibility fields (todo#155). The
             # heartbeat now carries the recent action log, the live
             # tmux pane tail, the workspace CLAUDE.md head, and the
@@ -216,13 +216,13 @@ def api_agents_register(request):
             "cron_jobs": body.get("cron_jobs") or [],
         },
     )
-    # Persist subagent_count separately — register_agent() preserves prev
+    # Persist orochi_subagent_count separately — register_agent() preserves prev
     # value if it exists, so we must set it explicitly on every push to
     # reflect current reality.
-    if body.get("subagent_count") is not None:
-        from hub.registry import set_subagent_count
+    if body.get("orochi_subagent_count") is not None:
+        from hub.registry import set_orochi_subagent_count
 
-        set_subagent_count(name, int(body.get("subagent_count") or 0))
+        set_orochi_subagent_count(name, int(body.get("orochi_subagent_count") or 0))
     # Full subagent list push (Lane B #132/#155)
     if body.get("subagents") is not None:
         from hub.registry import set_subagents

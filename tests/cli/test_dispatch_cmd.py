@@ -125,7 +125,7 @@ def test_status_human(monkeypatch: pytest.MonkeyPatch) -> None:
             "host": "mba",
             "lane": "infrastructure",
             "idle_streak": 1,
-            "subagent_count": 0,
+            "orochi_subagent_count": 0,
             "last_fire_ts": None,
             "last_fire_at": None,
             "cooldown_active": False,
@@ -138,7 +138,7 @@ def test_status_human(monkeypatch: pytest.MonkeyPatch) -> None:
             "host": "nas",
             "lane": "hub-admin",
             "idle_streak": 0,
-            "subagent_count": 3,
+            "orochi_subagent_count": 3,
             "last_fire_ts": 1_700_000_000.0,
             "last_fire_at": "2023-11-14T22:13:20+00:00",
             "cooldown_active": True,
@@ -161,7 +161,7 @@ def test_status_human(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_status_json(monkeypatch: pytest.MonkeyPatch) -> None:
     """`--json` emits the array verbatim."""
-    rows = [{"agent": "head-mba", "idle_streak": 0, "subagent_count": 1}]
+    rows = [{"agent": "head-mba", "idle_streak": 0, "orochi_subagent_count": 1}]
     monkeypatch.setattr(dc, "_http_json", lambda *a, **kw: (200, rows))
     monkeypatch.setenv("SCITEX_OROCHI_TOKEN", "tk")
     runner = CliRunner()

@@ -3,7 +3,7 @@
 The pusher must attach the FULL ``scitex-agent-container status
 --terse --json`` dict as a nested ``sac_status`` key on the payload
 so future additions to sac's terse projection flow through the
-hub unchanged. A backwards-compat ``subagent_count`` top-level
+hub unchanged. A backwards-compat ``orochi_subagent_count`` top-level
 field is still emitted alongside — see the in-file comment in
 ``_push._build_payload``.
 """
@@ -24,7 +24,7 @@ from _collect_agent_metadata._push import _build_payload  # noqa: E402
 _MIN_META = {
     "agent": "worker-mba",
     "machine": "mba",
-    "subagent_count": 2,
+    "orochi_subagent_count": 2,
     # Typical collect() keys — fill enough that _build_payload
     # doesn't KeyError.
     "skills_loaded": [],
@@ -73,9 +73,9 @@ def test_sac_status_defaults_to_empty_when_unset():
     assert payload["sac_status"] == {}
 
 
-def test_backcompat_subagent_count_still_top_level():
-    # The pivot spec explicitly keeps subagent_count at the top
+def test_backcompat_orochi_subagent_count_still_top_level():
+    # The pivot spec explicitly keeps orochi_subagent_count at the top
     # level for backwards compat (multiple consumers key off it).
     sac = {"agent": "worker-mba"}
     payload = _build_payload(_MIN_META, "wks_token", sac_status=sac)
-    assert payload["subagent_count"] == 2
+    assert payload["orochi_subagent_count"] == 2

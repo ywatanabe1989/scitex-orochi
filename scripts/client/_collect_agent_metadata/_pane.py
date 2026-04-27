@@ -118,14 +118,14 @@ _SUBAGENT_MARKER_RE = re.compile(
 )
 
 
-def parse_subagent_count(pane: str) -> int:
+def parse_orochi_subagent_count(pane: str) -> int:
     """Return the subagent count advertised by Claude Code's status marker.
 
     Claude Code emits a line of the form ``N local agent(s) running`` (or
     ``... still running``) in the tmux pane while subagent ``Agent`` calls
     are in flight. Parse that as the authoritative count; anything else
     (no marker, empty pane) is reported as ``0`` so the hub's
-    ``subagent_count`` field stays a monotonic "how many sub-Agents does
+    ``orochi_subagent_count`` field stays a monotonic "how many sub-Agents does
     this pane think it has right now" indicator. Anchoring to the literal
     ``running`` trailer avoids false positives from chat text that merely
     mentions "local agent".

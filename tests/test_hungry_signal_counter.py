@@ -37,7 +37,7 @@ MACHINES_YAML_FIXTURE = textwrap.dedent(
 )
 
 
-def _write_stub_sac(tmpdir: Path, subagent_count: int) -> Path:
+def _write_stub_sac(tmpdir: Path, orochi_subagent_count: int) -> Path:
     """Write a stub scitex-agent-container that returns the desired count."""
     bin_dir = tmpdir / "bin"
     bin_dir.mkdir(exist_ok=True)
@@ -46,7 +46,7 @@ def _write_stub_sac(tmpdir: Path, subagent_count: int) -> Path:
         {
             "name": "head-mba",
             "status": "online",
-            "subagent_count": subagent_count,
+            "orochi_subagent_count": orochi_subagent_count,
         }
     ]
     # The stub must be robust to flag ordering — sac is called as
@@ -62,7 +62,7 @@ def _write_stub_sac(tmpdir: Path, subagent_count: int) -> Path:
 
 def _invoke(
     tmpdir: Path,
-    subagent_count: int,
+    orochi_subagent_count: int,
     *,
     dry_run: bool = True,
     threshold: int = 2,
@@ -75,7 +75,7 @@ def _invoke(
     machines_yaml = tmpdir / "orochi-machines.yaml"
     machines_yaml.write_text(MACHINES_YAML_FIXTURE)
 
-    stub_bindir = _write_stub_sac(tmpdir, subagent_count)
+    stub_bindir = _write_stub_sac(tmpdir, orochi_subagent_count)
     env = {
         **os.environ,
         "PATH": f"{stub_bindir}:{os.environ.get('PATH', '')}",
@@ -127,17 +127,17 @@ def _read_state(state_dir: Path) -> dict | None:
 def test_dry_run_never_writes_state_file(tmp_path):
     """dry-run must not touch the state file — real runs would be masked."""
     state_dir = tmp_path / "state"
-    result = _invoke(tmp_path, subagent_count=0, dry_run=True, threshold=2, state_dir=state_dir)
+    result = _invoke(tmp_path, orochi_subagent_count=0, dry_run=True, threshold=2, state_dir=state_dir)
     assert result["decision"] in {"counting", "would_dm"}
     assert _read_state(state_dir) is None
 
 
 def test_counter_increments_on_repeated_zero(tmp_path):
-    """Two --yes ticks at subagent_count=0 → counter reaches threshold."""
+    """Two --yes ticks at orochi_subagent_count=0 → counter reaches threshold."""
     state_dir = tmp_path / "state"
 
     # Tick 1: first zero. cycles=1, below threshold=2 → "counting".
-    r1 = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
+    r1 = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
     assert r1["decision"] == "counting"
     assert r1["consecutive_zero_cycles"] == 1
     assert r1["fired"] is False
@@ -149,7 +149,7 @@ def test_counter_increments_on_repeated_zero(tmp_path):
     # Tick 2: second zero. cycles=2, hits threshold. Would DM lead, but the
     # hub call will fail (no token) so decision=dm_failed. Either way, the
     # state file must record cycles=2 (fired depends on outcome).
-    r2 = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
+    r2 = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
     assert r2["decision"] in {"dm_sent", "dm_failed"}
     assert r2["consecutive_zero_cycles"] == 2
     s2 = _read_state(state_dir)
@@ -162,11 +162,11 @@ def test_non_zero_reading_resets_counter(tmp_path):
     state_dir = tmp_path / "state"
 
     # Start with a zero to plant cycles=1.
-    _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
+    _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
     assert _read_state(state_dir)["cycles"] == 1
 
     # Non-zero reading resets to 0/0.
-    r = _invoke(tmp_path, subagent_count=2, dry_run=False, threshold=2, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=2, dry_run=False, threshold=2, state_dir=state_dir)
     assert r["decision"] == "noop"
     assert r["consecutive_zero_cycles"] == 0
     s = _read_state(state_dir)
@@ -181,7 +181,7 @@ def test_already_fired_flag_suppresses_duplicate_dm(tmp_path):
     # Seed state: cycles=5, fired=1 (as if we DM'd 3 cycles ago and heard nothing).
     (state_dir / "hungry-signal.state").write_text("mba\t5\t1\t0\n")
 
-    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=2, state_dir=state_dir)
     assert r["decision"] == "skip"
     assert r["reason"] == "already_fired_awaiting_reset"
     assert r["fired"] is True
@@ -196,7 +196,7 @@ def test_non_zero_clears_prior_fired_flag(tmp_path):
     state_dir.mkdir()
     (state_dir / "hungry-signal.state").write_text("mba\t5\t1\t0\n")
 
-    _invoke(tmp_path, subagent_count=1, dry_run=False, threshold=2, state_dir=state_dir)
+    _invoke(tmp_path, orochi_subagent_count=1, dry_run=False, threshold=2, state_dir=state_dir)
     s = _read_state(state_dir)
     assert s["cycles"] == 0
     assert s["fired"] == 0
@@ -206,8 +206,8 @@ def test_non_zero_clears_prior_fired_flag(tmp_path):
 # Lifecycle coverage (msg#16389 / msg#16390) — the hungry-signal counter must
 # track a realistic spawn → partial-completion → completion → reset sequence
 # end-to-end. The parser + hub-registry round-trips that produce the counts
-# are covered by ``tests/test_subagent_count_lifecycle.py`` +
-# ``hub/tests/consumers/test_subagent_count_roundtrip.py``; this section
+# are covered by ``tests/test_orochi_subagent_count_lifecycle.py`` +
+# ``hub/tests/consumers/test_orochi_subagent_count_roundtrip.py``; this section
 # exercises the bash state-machine's response to the full sequence.
 # -----------------------------------------------------------------------------
 
@@ -224,37 +224,37 @@ def test_full_lifecycle_spawn_drain_idle_dm(tmp_path):
     state_dir = tmp_path / "state"
 
     # Tick A — idle cold start. cycles=1.
-    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "counting"
     assert _read_state(state_dir)["cycles"] == 1
 
     # Tick B — subagent spawned (1 local agent running). Counter resets.
-    r = _invoke(tmp_path, subagent_count=1, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=1, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "noop"
     assert _read_state(state_dir)["cycles"] == 0
 
     # Tick C — batch ramped to 3. Still busy, counter stays at 0.
-    r = _invoke(tmp_path, subagent_count=3, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=3, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "noop"
     assert _read_state(state_dir)["cycles"] == 0
 
     # Tick D — partial completion (2 still running). Still non-zero.
-    r = _invoke(tmp_path, subagent_count=2, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=2, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "noop"
     assert _read_state(state_dir)["cycles"] == 0
 
     # Tick E — full completion. First idle tick after batch. cycles=1.
-    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "counting"
     assert _read_state(state_dir)["cycles"] == 1
 
     # Tick F — still idle. cycles=2, below threshold=3.
-    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "counting"
     assert _read_state(state_dir)["cycles"] == 2
 
     # Tick G — still idle. cycles=3 hits threshold → DM attempt.
-    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] in {"dm_sent", "dm_failed"}
     assert _read_state(state_dir)["cycles"] == 3
 
@@ -270,17 +270,17 @@ def test_transient_spawn_resets_counter_mid_stretch(tmp_path):
     state_dir = tmp_path / "state"
 
     # Two idle ticks — we're one tick shy of firing at threshold=3.
-    _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
-    _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
     assert _read_state(state_dir)["cycles"] == 2
 
     # Brief busy tick — one Agent spawned + finished between ticks.
     # Counter must reset to 0, NOT decrement by 1.
-    r = _invoke(tmp_path, subagent_count=1, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=1, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "noop"
     assert _read_state(state_dir)["cycles"] == 0
 
     # Back to idle. Must start over at 1 — NOT pick up where we left off.
-    r = _invoke(tmp_path, subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
+    r = _invoke(tmp_path, orochi_subagent_count=0, dry_run=False, threshold=3, state_dir=state_dir)
     assert r["decision"] == "counting"
     assert _read_state(state_dir)["cycles"] == 1

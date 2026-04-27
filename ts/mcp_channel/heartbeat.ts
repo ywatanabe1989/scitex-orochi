@@ -70,7 +70,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
 
   // collect_agent_metadata.py field names → hub /api/agents/register field names.
   // The hub renderer (activity-tab.js) reads `current_task`,
-  // `subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
+  // `orochi_subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
   // `current_tool`, `subagents`, `orochi_context_pct`, `model`. Translate.
   const currentTool = (meta["current_tool"] as string | undefined) || "";
   const subagentCount =
@@ -85,7 +85,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     // take precedence in the spread merge.
     ...meta,
     current_task: currentTool,
-    subagent_count: subagentCount,
+    orochi_subagent_count: subagentCount,
     token: OROCHI_TOKEN,
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,

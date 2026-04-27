@@ -2,18 +2,18 @@
 
 Rationale
 ---------
-The legacy ``_pane.parse_subagent_count`` regex-scans the tmux pane for
+The legacy ``_pane.parse_orochi_subagent_count`` regex-scans the tmux pane for
 Claude Code's status-line marker ``N local agent(s) running``. That path
 has two known failure modes:
 
 1. **Chat-embedded quotes** — prose quoting the literal marker phrase
    (help text, channel citations) false-positively matches and inflates
-   the count (``test_subagent_count_lifecycle.test_quoted_marker_phrase_false_positive``
+   the count (``test_orochi_subagent_count_lifecycle.test_quoted_marker_phrase_false_positive``
    — pinned as ``xfail`` in PR #333).
 2. **Status-line invisibility** — if Claude Code suppresses or rewords
    the marker in a future release, the parser silently floors to zero
    while subagents are actually live. The auto-dispatch pipeline
-   (PR #334) then misfires because ``subagent_count == 0`` is its
+   (PR #334) then misfires because ``orochi_subagent_count == 0`` is its
    "head is idle" trigger.
 
 This module counts subagents **programmatically** by walking the
@@ -35,7 +35,7 @@ Fallback chain
 1. ``psutil`` children walk (preferred — cross-platform, rich metadata).
 2. ``pgrep -P`` recursive walk (Linux/macOS stdlib).
 3. Returns ``-1`` on total failure so the caller can fall back to
-   ``_pane.parse_subagent_count``. A zero here means "we walked and
+   ``_pane.parse_orochi_subagent_count``. A zero here means "we walked and
    found zero descendants" — an authoritative zero, not a failure.
 
 The wire-in in ``_collect.py`` composes this with the pane parser:

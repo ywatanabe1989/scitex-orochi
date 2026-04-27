@@ -1,6 +1,6 @@
 """Shell out to ``scitex-agent-container status --terse --json`` for heartbeat forwarding.
 
-Lead msg#16005 spec: instead of per-field plumbing (``subagent_count``
+Lead msg#16005 spec: instead of per-field plumbing (``orochi_subagent_count``
 only in the previous cut of this PR), forward the FULL ``sac status``
 terse-JSON payload as a nested ``sac_status`` field on the heartbeat.
 This way new fields added to ``sac status`` (``orochi_context_pct``,

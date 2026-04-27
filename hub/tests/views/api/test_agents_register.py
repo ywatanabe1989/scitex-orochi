@@ -126,8 +126,8 @@ class AgentMetaOAuthRegisterTest(TestCase):
         self.assertEqual(a["oauth_org_name"], "")
         self.assertIsNone(a["has_available_subscription"])
 
-    def test_register_persists_subagent_count(self):
-        """Heartbeat's ``subagent_count`` field reaches hub.registry and
+    def test_register_persists_orochi_subagent_count(self):
+        """Heartbeat's ``orochi_subagent_count`` field reaches hub.registry and
         is exposed via get_agents() unchanged.
 
         Pinned here because the sidecar parses the tmux pane for
@@ -144,7 +144,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
                 {
                     "token": self.token.token,
                     "name": f"sub-count-{count}",
-                    "subagent_count": count,
+                    "orochi_subagent_count": count,
                 }
             )
             self.assertEqual(resp.status_code, 200)
@@ -153,7 +153,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
                 for x in get_agents(workspace_id=self.ws.id)
                 if x["name"] == f"sub-count-{count}"
             ][0]
-            self.assertEqual(a["subagent_count"], count)
+            self.assertEqual(a["orochi_subagent_count"], count)
 
     def test_register_persists_sac_status(self):
         """lead msg#16005: the full ``scitex-agent-container status

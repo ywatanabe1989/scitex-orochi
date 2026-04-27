@@ -237,7 +237,7 @@ def dispatch_status(
             f"{str(r.get('agent', '')):<28}  "
             f"{str(r.get('lane', '')):<24}  "
             f"{int(r.get('idle_streak') or 0):>6}  "
-            f"{int(r.get('subagent_count') or 0):>9}  "
+            f"{int(r.get('orochi_subagent_count') or 0):>9}  "
             f"{cd:>8}  "
             f"{r.get('last_fire_at') or '-'}"
         )
