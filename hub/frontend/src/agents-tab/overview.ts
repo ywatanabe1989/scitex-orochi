@@ -261,7 +261,7 @@ export function buildAgentRow(a) {
     '<td class="pid-cell muted-cell">' +
     (a.pid ? String(a.pid) : "-") +
     "</td>" +
-    '<td class="small-cell">' +
+    '<td class="small-cell agent-channels-cell">' +
     channelsHtml +
     "</td>" +
     '<td class="muted-cell">' +
