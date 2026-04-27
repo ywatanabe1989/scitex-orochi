@@ -288,9 +288,11 @@
  * scrolls vertically inside its bounded box; rows stay uniform height
  * and all agents fit on one screen. ywatanabe 2026-04-27. */
 .agent-channels-cell {
+  vertical-align: middle;
+}
+.agent-channels-cell-inner {
   max-height: 3em;
   overflow-y: auto;
-  vertical-align: middle;
 }
 
 /* Force middle vertical alignment for EVERY cell in an agent row.
@@ -313,14 +315,17 @@
 .agent-row > td {
   vertical-align: middle !important;
 }
+/* The icon cell has class `avatar-clickable`, which in style-agents.css
+ * sets `display: inline-flex` (intended for sidebar avatar buttons).
+ * In a table that override breaks the cell's `display: table-cell`,
+ * which in turn nullifies `vertical-align: middle` (vertical-align
+ * only applies to table-cell / inline content). Force the table-cell
+ * display back so the alignment rule actually centers the icon.
+ * ywatanabe 2026-04-27. */
+.agent-row > td.avatar-clickable,
 .agent-row > td.agent-icon-cell {
+  display: table-cell !important;
   text-align: center;
-}
-.agent-row > td.agent-icon-cell > * {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  vertical-align: middle;
 }
 .agent-channels-cell .ch-badge {
   display: inline-block;

@@ -261,8 +261,15 @@ export function buildAgentRow(a) {
     '<td class="pid-cell muted-cell">' +
     (a.pid ? String(a.pid) : "-") +
     "</td>" +
+    /* Wrap channels in an inner div so the max-height/overflow-y rule
+     * actually clamps the row height. CSS max-height on a <td> element
+     * is unreliable (table cells size to content unless table-layout
+     * is fixed); putting the constraint on a regular block-level div
+     * inside works in every browser. ywatanabe 2026-04-27. */
     '<td class="small-cell agent-channels-cell">' +
+    '<div class="agent-channels-cell-inner">' +
     channelsHtml +
+    "</div>" +
     "</td>" +
     '<td class="muted-cell">' +
     escapeHtml(a.project || "-") +
