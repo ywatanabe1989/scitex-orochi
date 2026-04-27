@@ -164,9 +164,9 @@ def collect(agent: str) -> dict:
     # (heartbeat fresh). When the classifier also says `stale`, that's
     # the msg#15541 contradiction — log the tmux tail so future
     # pattern additions have ground-truth data, and surface a
-    # `classifier_note` on the payload so the Agents tab can flag it.
-    classifier_note = _detect_contradiction(pane_state, liveness="online")
-    if classifier_note:
+    # `orochi_classifier_note` on the payload so the Agents tab can flag it.
+    orochi_classifier_note = _detect_contradiction(pane_state, liveness="online")
+    if orochi_classifier_note:
         _log_contradiction_evidence(
             agent=agent,
             pane_state=pane_state,
@@ -264,7 +264,7 @@ def collect(agent: str) -> dict:
         # 2026-04-21 (lead msg#15541): the classifier now also emits
         # `stale` when the pane tail has been byte-identical for
         # N consecutive push cycles with no busy-animation marker. The
-        # `classifier_note` field surfaces the 3rd-LED-stale-vs-4th-LED-green
+        # `orochi_classifier_note` field surfaces the 3rd-LED-stale-vs-4th-LED-green
         # contradiction with evidence appended to a dedicated log so
         # future pattern additions have ground-truth data.
         # Pane state pipeline:
@@ -280,7 +280,7 @@ def collect(agent: str) -> dict:
         "pane_state_evidence": pane_verdict["evidence"],
         "pane_state_version": pane_verdict["version"],
         "orochi_stuck_prompt_text": orochi_stuck_prompt_text,
-        "classifier_note": classifier_note,
+        "orochi_classifier_note": orochi_classifier_note,
         # A2A state pipeline (Layer A → Layer B):
         #   `a2a_observations`    — Layer A primitive facts (full task
         #                           list, tasks_by_state histogram,

@@ -3,7 +3,7 @@
 Exercises the 2026-04-21 extension (lead msg#15541): the classifier now
 emits `stale` when the pane tail has been byte-identical for
 N consecutive push cycles with no busy-animation marker, and the
-companion helpers surface a `classifier_note` + append tmux-tail
+companion helpers surface a `orochi_classifier_note` + append tmux-tail
 evidence to a dedicated log when `pane_state == "stale"` coincides
 with `liveness == "online"` (the "3rd LED stale vs 4th LED green"
 contradiction on the dashboard).
