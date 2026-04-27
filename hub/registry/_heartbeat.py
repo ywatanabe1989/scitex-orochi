@@ -10,7 +10,7 @@ import time
 from ._store import _agents, _lock
 
 
-def set_orochi_subagents(name: str, orochi_subagents: list) -> None:
+def set_subagents(name: str, subagents: list) -> None:
     """Replace the agent's subagent list.
 
     Each subagent entry is a dict with at least {name, task} and optionally
@@ -25,10 +25,10 @@ def set_orochi_subagents(name: str, orochi_subagents: list) -> None:
                     "task": str(s.get("task", ""))[:200],
                     "status": str(s.get("status", "running")),
                 }
-                for s in (orochi_subagents or [])
+                for s in (subagents or [])
                 if isinstance(s, dict)
             ]
-            _agents[name]["orochi_subagents"] = normalized
+            _agents[name]["subagents"] = normalized
             # Keep the count in sync so callers that only read
             # `orochi_subagent_count` (sidebar card badge) stay accurate even
             # when the full list is what was pushed.
@@ -62,9 +62,9 @@ def set_orochi_current_task(name: str, task: str) -> None:
 def set_orochi_subagent_count(name: str, count: int) -> None:
     """Explicitly set the agent's subagent count.
 
-    Agents that track orochi_subagents out-of-band (without sending the full
-    orochi_subagents list) can report just the count via this setter so the
-    dashboard can still show a `N orochi_subagents` badge.
+    Agents that track subagents out-of-band (without sending the full
+    subagents list) can report just the count via this setter so the
+    dashboard can still show a `N subagents` badge.
     """
     with _lock:
         if name in _agents:

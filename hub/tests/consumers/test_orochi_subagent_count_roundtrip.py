@@ -121,14 +121,14 @@ class SubagentCountRoundtripTest(TestCase):
         self._send_heartbeat(1)
         self.assertEqual(_agents["head-test"]["orochi_subagent_count"], 1)
 
-    def test_heartbeat_with_three_orochi_subagents_records_three(self):
+    def test_heartbeat_with_three_subagents_records_three(self):
         """Three Agents in flight → registry ``orochi_subagent_count == 3``."""
         from hub.registry import _agents
 
         self._send_heartbeat(3)
         self.assertEqual(_agents["head-test"]["orochi_subagent_count"], 3)
 
-    def test_heartbeat_with_five_orochi_subagents_records_five(self):
+    def test_heartbeat_with_five_subagents_records_five(self):
         """Large batches carry through unchanged."""
         from hub.registry import _agents
 

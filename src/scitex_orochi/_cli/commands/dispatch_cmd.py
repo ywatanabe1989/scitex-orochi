@@ -226,7 +226,7 @@ def dispatch_status(
         click.echo("no head-* agents currently registered in this workspace.")
         return
     click.echo(
-        f"{'agent':<28}  {'lane':<24}  {'streak':>6}  {'orochi_subagents':>9}  "
+        f"{'agent':<28}  {'lane':<24}  {'streak':>6}  {'subagents':>9}  "
         f"{'cooldown':>8}  last_fire_at"
     )
     for r in rows:

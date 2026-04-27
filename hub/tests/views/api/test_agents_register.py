@@ -133,7 +133,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
         Pinned here because the sidecar parses the tmux pane for
         ``N local agent(s) running`` and relies on the hub treating the
         field as authoritative (not silently overwriting it with the
-        length of the ``orochi_subagents`` list, which is empty on the Python
+        length of the ``subagents`` list, which is empty on the Python
         --push path)."""
         from hub.registry import _agents as _reg_agents
         from hub.registry import get_agents

@@ -52,7 +52,7 @@ AUDIT_REVIEW_LABEL = os.environ.get(
 )
 
 # Hungry-signal DM format, emitted by scripts/client/hungry-signal.sh:
-#   "head-<host>: hungry — 0 orochi_subagents × N cycles, ready for dispatch.
+#   "head-<host>: hungry — 0 subagents × N cycles, ready for dispatch.
 #    lane: <label>, alive: <list>"
 # We only need sender + lane for the handler; "alive" is cosmetic.
 _HUNGRY_RE = re.compile(

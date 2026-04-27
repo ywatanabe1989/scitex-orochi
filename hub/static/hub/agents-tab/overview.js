@@ -255,8 +255,8 @@ function buildAgentRow(a) {
     escapeHtml(a.orochi_current_task || "-") +
     "</td>" +
     '<td class="small-cell">' +
-    (a.orochi_subagents && a.orochi_subagents.length > 0
-      ? a.orochi_subagents
+    (a.subagents && a.subagents.length > 0
+      ? a.subagents
           .map(function (s) {
             var sClass =
               s.status === "done" ? "subagent-done" : "subagent-running";

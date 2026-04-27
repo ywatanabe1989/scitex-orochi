@@ -37,7 +37,7 @@ handler = _load_module()
 
 def test_parse_hungry_signal_canonical_shape():
     text = (
-        "head-mba: hungry — 0 orochi_subagents × 2 cycles, ready for dispatch. "
+        "head-mba: hungry — 0 subagents × 2 cycles, ready for dispatch. "
         "lane: infrastructure, alive: head-mba,healer-mba"
     )
     got = handler.parse_hungry_signal(text)
@@ -46,7 +46,7 @@ def test_parse_hungry_signal_canonical_shape():
 
 def test_parse_hungry_signal_handles_multi_word_lane():
     text = (
-        "head-ywata-note-win: hungry — 0 orochi_subagents × 2 cycles, ready for "
+        "head-ywata-note-win: hungry — 0 subagents × 2 cycles, ready for "
         "dispatch. lane: specialized-wsl-access, alive: head-ywata-note-win"
     )
     got = handler.parse_hungry_signal(text)
@@ -63,7 +63,7 @@ def test_parse_hungry_signal_rejects_unrelated_dm():
 
 def test_parse_hungry_signal_rejects_malformed_no_lane():
     # Missing "lane: ..." segment — refuse rather than guess.
-    text = "head-mba: hungry — 0 orochi_subagents × 2 cycles, ready for dispatch."
+    text = "head-mba: hungry — 0 subagents × 2 cycles, ready for dispatch."
     assert handler.parse_hungry_signal(text) is None
 
 
@@ -222,7 +222,7 @@ def test_format_dispatch_reply_none_match_explicit():
 
 def test_handle_hungry_message_end_to_end():
     dm_text = (
-        "head-mba: hungry — 0 orochi_subagents × 2 cycles, ready for dispatch. "
+        "head-mba: hungry — 0 subagents × 2 cycles, ready for dispatch. "
         "lane: infrastructure, alive: head-mba"
     )
     issues = [

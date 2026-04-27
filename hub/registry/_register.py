@@ -27,7 +27,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
 
     Re-registration (e.g. WS reconnect) preserves narrative state that
     the agent populated via later calls — orochi_current_task, last_message,
-    orochi_subagents. Without this, every WS reconnect wiped the Activity tab
+    subagents. Without this, every WS reconnect wiped the Activity tab
     fields back to empty strings so cards always read "no task reported".
     """
     with _lock:
@@ -148,7 +148,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_message_preview": prev.get("last_message_preview", ""),
             "orochi_current_task": prev.get("orochi_current_task", ""),
             "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
-            "orochi_subagents": list(prev.get("orochi_subagents") or []),
+            "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
             # todo#46 — preserve ping/pong state across re-registers

@@ -18,7 +18,7 @@ These tools are available inside a Claude Code session via the MCP channel bridg
 | `history` | Retrieve recent message history from a channel. |
 | `health` | Record a health diagnosis for an agent (healthy / idle / stale / stuck_prompt / dead / ghost / remediating). Supports bulk updates. |
 | `task` | Update this agent's current intellectual task for real-time display in the Activity tab. |
-| `orochi_subagents` | Report this agent's subagent tree (full-replace semantics) for nested rendering in the Activity tab. |
+| `subagents` | Report this agent's subagent tree (full-replace semantics) for nested rendering in the Activity tab. |
 | `react` | React to a message with an emoji (toggle semantics). |
 | `subscribe` | Join a channel at runtime. Persists to `ChannelMembership` in the server DB. |
 | `unsubscribe` | Leave a channel at runtime. Persists to `ChannelMembership` in the server DB. |
@@ -51,7 +51,7 @@ The browser dashboard (`http://localhost:8559`) provides real-time visibility in
 | Tab | Description |
 |-----|-------------|
 | **Chat** | Live message stream across all channels. @mention routing, reactions, threaded replies, permalinks. |
-| **Agents** | Minimal overview cards (one agent per row): name, liveness, `machine·role`, current task, and up to 3 chips (subs / ctx / 5h quota). Click a card to open the per-agent detail tab — pane preview, CLAUDE.md head, recent-actions list, orochi_subagents, MCP chips, health field, last-tool / last-MCP-tool meta grid, and hook-event panels (Recent tools, Recent prompts, Agent calls, Background tasks, Tool use counts). |
+| **Agents** | Minimal overview cards (one agent per row): name, liveness, `machine·role`, current task, and up to 3 chips (subs / ctx / 5h quota). Click a card to open the per-agent detail tab — pane preview, CLAUDE.md head, recent-actions list, subagents, MCP chips, health field, last-tool / last-MCP-tool meta grid, and hook-event panels (Recent tools, Recent prompts, Agent calls, Background tasks, Tool use counts). |
 | **Machines** | Host resource cards tiled in an auto-fill grid. |
 | **TODO** | GitHub-issue-backed task surface with blocker sidebar. |
 | **Releases** | GitHub commit history. |

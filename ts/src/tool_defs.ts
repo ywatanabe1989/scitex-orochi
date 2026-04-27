@@ -95,13 +95,13 @@ export const TOOL_DEFS = [
     },
   },
   {
-    name: "orochi_subagents",
+    name: "subagents",
     description:
       "Report subagent tree to Orochi Activity tab. Full-replace semantics.",
     inputSchema: {
       type: "object" as const,
       properties: {
-        orochi_subagents: {
+        subagents: {
           type: "array",
           description:
             "Each item: {name, task, status?}. status: running|done|failed.",
@@ -116,7 +116,7 @@ export const TOOL_DEFS = [
           },
         },
       },
-      required: ["orochi_subagents"],
+      required: ["subagents"],
     },
   },
   {

@@ -6,7 +6,7 @@
  *   {
  *     "agent": "head-mba",
  *     "alive": true,
- *     "orochi_subagents": 1,
+ *     "subagents": 1,
  *     "orochi_context_pct": 59.0,
  *     "orochi_current_tool": "Agent",
  *     "last_activity": "2026-04-12T05:38:04.540Z",
@@ -69,7 +69,7 @@ function runAgentMetaScript(agent: string): Promise<AgentMeta> {
         try {
           const obj = JSON.parse(stdout);
           resolve({
-            orochi_subagent_count: Number(obj.orochi_subagents ?? 0) || 0,
+            orochi_subagent_count: Number(obj.subagents ?? 0) || 0,
             context_usage_percent: Number(obj.orochi_context_pct ?? 0) || 0,
             orochi_current_task: String(obj.orochi_current_task ?? ""),
             orochi_current_tool: String(obj.orochi_current_tool ?? ""),

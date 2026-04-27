@@ -378,7 +378,7 @@ def check(
         sys.exit(1)
 
     text = (
-        f"{agent}: hungry — 0 orochi_subagents × {new_cycles} cycles, ready for "
+        f"{agent}: hungry — 0 subagents × {new_cycles} cycles, ready for "
         f"dispatch. lane: {lane or 'none'}, alive: {','.join(alive) or 'none'}"
     )
 

@@ -193,9 +193,9 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "active_sessions": int(a.get("active_sessions", 0) or 0),
                 "orochi_current_task": a.get("orochi_current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
-                "orochi_subagents": list(a.get("orochi_subagents", [])),
+                "subagents": list(a.get("subagents", [])),
                 "orochi_subagent_count": int(
-                    a.get("orochi_subagent_count") or len(a.get("orochi_subagents") or [])
+                    a.get("orochi_subagent_count") or len(a.get("subagents") or [])
                 ),
                 "health": a.get("health") or {},
                 "orochi_claude_md": a.get("orochi_claude_md", ""),

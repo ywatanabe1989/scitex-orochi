@@ -64,11 +64,11 @@ Key Features
   tasks, and subagent trees. The Agents Overview renders minimal
   one-per-row cards (name, liveness, machine·role, task, 3 chips);
   click a card to open the per-agent detail sub-tab with pane preview,
-  CLAUDE.md head, recent-actions list, orochi_subagents, MCP chips, the
+  CLAUDE.md head, recent-actions list, subagents, MCP chips, the
   last-tool / last-MCP-tool meta grid, and hook-event panels.
   The Machines tab tiles host resource cards in an auto-fill grid.
 - **MCP Server**: MCP integration for Claude Code agents (send, react,
-  subscribe, health, task, orochi_subagents, and more).
+  subscribe, health, task, subagents, and more).
 - **SQLite Persistence**: Single-file DB, no external services.
 - **Docker Ready**: Single container deployment.
 

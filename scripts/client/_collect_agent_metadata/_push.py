@@ -112,7 +112,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # active-subagent badge.
         "sac_hooks_agent_calls": meta.get("sac_hooks_agent_calls") or [],
         "sac_hooks_background_tasks": meta.get("sac_hooks_background_tasks") or [],
-        "orochi_subagents": meta.get("orochi_subagents") or [],
+        "subagents": meta.get("subagents") or [],
         # scitex-orochi todo#369 — host-level machine metrics (CPU / mem
         # / disk / load) + optional SLURM cluster snapshot. Without
         # these two keys the hub's /api/resources rollup has no data

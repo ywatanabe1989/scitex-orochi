@@ -314,7 +314,7 @@ def test_local_agent_still_running_suppresses_stale(_isolate_state):
 
 
 def test_local_agents_plural_suppresses_stale(_isolate_state):
-    agent = "t-agent-orochi_subagents-plural"
+    agent = "t-agent-subagents-plural"
     pane = "✻ Cooked for 1m 28s · 3 local agents still running\n"
     _assert_never_stale(pane, agent)
 

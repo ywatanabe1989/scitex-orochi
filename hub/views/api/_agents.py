@@ -1,4 +1,4 @@
-"""Agent registry read + profile/health/orochi_subagents/purge/pin views."""
+"""Agent registry read + profile/health/subagents/purge/pin views."""
 
 from hub.views.api._common import (
     JsonResponse,
@@ -69,7 +69,7 @@ def api_agents(request):
                     "metrics": {},
                     "orochi_current_task": "",
                     "last_message_preview": "",
-                    "orochi_subagents": [],
+                    "subagents": [],
                     "orochi_subagent_count": 0,
                     "health": {},
                     "orochi_claude_md": "",
@@ -270,8 +270,8 @@ def api_agent_health(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def api_orochi_subagents_update(request):
-    """POST /api/orochi_subagents/update — bulk set orochi_subagents for one or more agents.
+def api_subagents_update(request):
+    """POST /api/subagents/update — bulk set subagents for one or more agents.
 
     Intended for caduceus (and any future process-inspector) that can
     enumerate parent→child claude process trees across the fleet and
@@ -280,12 +280,12 @@ def api_orochi_subagents_update(request):
 
     JSON body (either shape):
         {"token": "wks_...", "agent": "head@mba",
-         "orochi_subagents": [{"name": "...", "task": "...", "status": "running"}]}
+         "subagents": [{"name": "...", "task": "...", "status": "running"}]}
 
     or bulk:
         {"token": "wks_...", "updates": [
-            {"agent": "head@mba", "orochi_subagents": [...]},
-            {"agent": "head@nas", "orochi_subagents": [...]}
+            {"agent": "head@mba", "subagents": [...]},
+            {"agent": "head@nas", "subagents": [...]}
         ]}
     """
     try:
@@ -302,21 +302,21 @@ def api_orochi_subagents_update(request):
     except WorkspaceToken.DoesNotExist:
         return JsonResponse({"error": "invalid token"}, status=401)
 
-    from hub.registry import set_orochi_subagents
+    from hub.registry import set_subagents
 
     updates = body.get("updates")
     if not updates:
         single_agent = body.get("agent")
         if not single_agent:
             return JsonResponse({"error": "agent or updates required"}, status=400)
-        updates = [{"agent": single_agent, "orochi_subagents": body.get("orochi_subagents") or []}]
+        updates = [{"agent": single_agent, "subagents": body.get("subagents") or []}]
 
     applied = 0
     for u in updates:
         name = (u.get("agent") or "").strip()
         if not name:
             continue
-        set_orochi_subagents(name, u.get("orochi_subagents") or [])
+        set_subagents(name, u.get("subagents") or [])
         applied += 1
     return JsonResponse({"status": "ok", "applied": applied})
 

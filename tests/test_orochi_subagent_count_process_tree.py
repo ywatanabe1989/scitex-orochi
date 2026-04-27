@@ -1,7 +1,7 @@
 """Tests for process-tree based subagent counting.
 
 The programmatic walk in
-``scripts/client/_collect_agent_metadata/_process_tree.py::count_orochi_subagents_via_ps``
+``scripts/client/_collect_agent_metadata/_process_tree.py::count_subagents_via_ps``
 replaces the tmux-pane regex parse as the primary
 ``orochi_subagent_count`` signal (msg#16727). These tests pin:
 
@@ -34,7 +34,7 @@ if str(_AGENT_META_DIR) not in sys.path:
 from _collect_agent_metadata import _process_tree  # noqa: E402
 from _collect_agent_metadata._process_tree import (  # noqa: E402
     _looks_like_claude,
-    count_orochi_subagents_via_ps,
+    count_subagents_via_ps,
     find_head_pid,
 )
 
@@ -155,7 +155,7 @@ def test_find_head_pid_skips_malformed_json(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# count_orochi_subagents_via_ps — orchestrated walk with fallback chain
+# count_subagents_via_ps — orchestrated walk with fallback chain
 # ---------------------------------------------------------------------------
 
 
@@ -209,7 +209,7 @@ def test_count_zero_children(monkeypatch, tmp_path):
     )
     # Redirect audit log to tmp so we don't pollute the real runtime dir.
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert count_orochi_subagents_via_ps("head-mba") == 0
+    assert count_subagents_via_ps("head-mba") == 0
 
 
 def test_count_three_claude_children(monkeypatch, tmp_path):
@@ -227,7 +227,7 @@ def test_count_three_claude_children(monkeypatch, tmp_path):
         lambda pid: _FakeProcess(children=children),
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert count_orochi_subagents_via_ps("head-mba") == 3
+    assert count_subagents_via_ps("head-mba") == 3
 
 
 def test_count_mixed_claude_and_non_claude_children(monkeypatch, tmp_path):
@@ -245,7 +245,7 @@ def test_count_mixed_claude_and_non_claude_children(monkeypatch, tmp_path):
         lambda pid: _FakeProcess(children=children),
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert count_orochi_subagents_via_ps("head-mba") == 1
+    assert count_subagents_via_ps("head-mba") == 1
 
 
 def test_no_session_file_returns_minus_one(monkeypatch, tmp_path):
@@ -254,7 +254,7 @@ def test_no_session_file_returns_minus_one(monkeypatch, tmp_path):
         _process_tree, "find_head_pid", lambda agent: None
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert count_orochi_subagents_via_ps("head-mba") == -1
+    assert count_subagents_via_ps("head-mba") == -1
 
 
 def test_psutil_noSuchProcess_falls_back_to_pgrep(monkeypatch, tmp_path):
@@ -286,7 +286,7 @@ def test_psutil_noSuchProcess_falls_back_to_pgrep(monkeypatch, tmp_path):
         lambda pid: 2,
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert count_orochi_subagents_via_ps("head-mba") == 2
+    assert count_subagents_via_ps("head-mba") == 2
 
 
 def test_both_backends_fail_returns_minus_one(monkeypatch, tmp_path):
@@ -304,7 +304,7 @@ def test_both_backends_fail_returns_minus_one(monkeypatch, tmp_path):
         lambda pid: -1,
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
-    assert count_orochi_subagents_via_ps("head-mba") == -1
+    assert count_subagents_via_ps("head-mba") == -1
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +333,7 @@ def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
     )
     monkeypatch.setattr(
         _collect,
-        "count_orochi_subagents_via_ps",
+        "count_subagents_via_ps",
         lambda a: 1,
     )
     # Neutralise the heavier collectors so the test stays focused.
@@ -341,7 +341,7 @@ def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
 
     result = _collect.collect("head-mba")
     assert result["orochi_subagent_count"] == 1
-    assert result["orochi_subagents"] == 1
+    assert result["subagents"] == 1
 
 
 def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
@@ -363,7 +363,7 @@ def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
     )
     monkeypatch.setattr(
         _collect,
-        "count_orochi_subagents_via_ps",
+        "count_subagents_via_ps",
         lambda a: -1,
     )
     _neutralise_heavy_collectors(monkeypatch, _collect)
@@ -390,7 +390,7 @@ def test_collect_reports_zero_when_both_backends_fail(monkeypatch):
     )
     monkeypatch.setattr(
         _collect,
-        "count_orochi_subagents_via_ps",
+        "count_subagents_via_ps",
         lambda a: -1,
     )
     _neutralise_heavy_collectors(monkeypatch, _collect)
@@ -525,14 +525,14 @@ def test_lifecycle_spawn_then_complete(monkeypatch, tmp_path):
             children=[_FakeProcess(cmdline_value=["claude", "--flag"])]
         ),
     )
-    assert count_orochi_subagents_via_ps("head-mba") == 1
+    assert count_subagents_via_ps("head-mba") == 1
 
     # Tick 2 — no children.
     _install_fake_psutil(
         monkeypatch,
         lambda pid: _FakeProcess(children=[]),
     )
-    assert count_orochi_subagents_via_ps("head-mba") == 0
+    assert count_subagents_via_ps("head-mba") == 0
 
 
 def test_lifecycle_partial_completion(monkeypatch, tmp_path):
@@ -550,7 +550,7 @@ def test_lifecycle_partial_completion(monkeypatch, tmp_path):
             ]
         ),
     )
-    assert count_orochi_subagents_via_ps("head-mba") == 2
+    assert count_subagents_via_ps("head-mba") == 2
 
 
 def test_audit_log_written(monkeypatch, tmp_path):
@@ -566,7 +566,7 @@ def test_audit_log_written(monkeypatch, tmp_path):
     )
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
 
-    assert count_orochi_subagents_via_ps("head-mba") == 1
+    assert count_subagents_via_ps("head-mba") == 1
 
     log_file = (
         tmp_path
