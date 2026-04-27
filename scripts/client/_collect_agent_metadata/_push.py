@@ -88,7 +88,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # todo#47 — full scrollback for the "Expand" toggle in the
         # agent detail pane viewer.
         "orochi_pane_tail_full": meta.get("orochi_pane_tail_full", ""),
-        "pane_state": meta.get("pane_state", ""),
+        "orochi_pane_state": meta.get("orochi_pane_state", ""),
         "orochi_stuck_prompt_text": meta.get("orochi_stuck_prompt_text", ""),
         # scitex-orochi #187 / #59 — forward the hook-event ring buffer
         # summary so the Agents tab's Last tool / Last MCP / Last
@@ -133,7 +133,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "slurm": meta.get("slurm"),
         # Lead msg#16005 pivot: forward the ENTIRE ``sac status --terse
         # --json`` dict as a nested field. Future additions to sac's
-        # status projection (orochi_context_pct, pane_state, current_tool,
+        # status projection (orochi_context_pct, orochi_pane_state, current_tool,
         # quota, etc.) reach the hub registry + /api/agents/ payload
         # automatically — no per-field plumbing. ``--terse`` keeps the
         # per-agent bytes bounded (see TERSE_STATUS_FIELDS in

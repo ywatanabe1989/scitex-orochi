@@ -190,7 +190,7 @@ function _renderTaskField(task, fallback, age) {
  *   offline    — WS is disconnected
  */
 function _computeAgentState(a) {
-  var pane = a.pane_state || "";
+  var pane = a.orochi_pane_state || "";
   if (pane === "compacting" || pane === "auto_compact") {
     return "compacting";
   }

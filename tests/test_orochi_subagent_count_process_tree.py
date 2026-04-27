@@ -465,7 +465,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     )
     monkeypatch.setattr(
         _collect,
-        "_classify_pane_state",
+        "_classify_orochi_pane_state",
         lambda *a, **kw: "online",
     )
     monkeypatch.setattr(

@@ -7,7 +7,7 @@ agent_meta stays dependency-free. The classifier runs on every push
 stuck-prompt text so the hub Agents tab can render a badge + expand
 the prompt ywatanabe needs to see.
 
-2026-04-21 extension (lead msg#15541): added `stale` pane_state and a
+2026-04-21 extension (lead msg#15541): added `stale` orochi_pane_state and a
 contradiction detector for the "3rd LED = stale while 4th LED = green"
 case observed on the dashboard. Contradiction evidence gets written to
 a dedicated log so future pattern additions have ground-truth data.
@@ -330,7 +330,7 @@ def _update_stagnation_count(agent: str, digest: str) -> int:
     return count
 
 
-def _classify_pane_state(
+def _classify_orochi_pane_state(
     tail_clean: str,
     full_pane: str,
     agent: str = "",
@@ -402,7 +402,7 @@ def _extract_stuck_prompt(
     hand back the tail excerpt so ywatanabe can read what the agent was
     staring at when it stopped making progress.
     """
-    state = _classify_pane_state(tail_clean, full_pane, agent)
+    state = _classify_orochi_pane_state(tail_clean, full_pane, agent)
     if state in ("running", "idle", ""):
         return ""
     if state == "compose_pending_unsent":
@@ -425,23 +425,23 @@ def _is_liveness_green(liveness: str | None) -> bool:
     return (liveness or "").strip().lower() == "online"
 
 
-def _detect_contradiction(pane_state: str, liveness: str | None) -> str:
-    """Return a classifier-note string when pane_state disagrees with the
+def _detect_contradiction(orochi_pane_state: str, liveness: str | None) -> str:
+    """Return a classifier-note string when orochi_pane_state disagrees with the
     heartbeat-derived liveness in a way that ywatanabe flagged on the
     dashboard (msg#15541). Empty string otherwise.
 
-    Current rule: pane_state == `stale` while heartbeat liveness is
+    Current rule: orochi_pane_state == `stale` while heartbeat liveness is
     `online` (green) is a hard contradiction — the pane says nothing
     is happening but the hub is still receiving fresh heartbeats.
     """
-    if (pane_state or "").strip().lower() == "stale" and _is_liveness_green(liveness):
+    if (orochi_pane_state or "").strip().lower() == "stale" and _is_liveness_green(liveness):
         return _CONTRADICTION_STALE_VS_GREEN
     return ""
 
 
 def _log_contradiction_evidence(
     agent: str,
-    pane_state: str,
+    orochi_pane_state: str,
     liveness: str | None,
     tmux_tail: str,
     *,
@@ -456,7 +456,7 @@ def _log_contradiction_evidence(
         ts=<iso8601 utc>
         agent=<name>
         note=<classifier note>
-        pane_state=<state>
+        orochi_pane_state=<state>
         liveness=<liveness>
         tail:
         <last N lines of tmux pane, verbatim>
@@ -476,7 +476,7 @@ def _log_contradiction_evidence(
         f"ts={datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}\n"
         f"agent={agent}\n"
         f"note={note}\n"
-        f"pane_state={pane_state}\n"
+        f"orochi_pane_state={orochi_pane_state}\n"
         f"liveness={liveness or ''}\n"
         "tail:\n"
         f"{tail_excerpt}\n"

@@ -182,7 +182,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   function renderAgentLeds(a, opts) {
     var extra = opts && opts.extraClass ? " " + opts.extraClass : "";
     var liveness = a.liveness || a.status || "online";
-    var paneState = a.pane_state || "unknown";
+    var paneState = a.orochi_pane_state || "unknown";
     // 1. WS
     var wsOn = _connected(a);
     var ledWs =

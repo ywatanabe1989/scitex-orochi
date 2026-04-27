@@ -163,7 +163,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
         This pins the hub-side half of the pivot — every field the
         pusher forwards reaches the dashboard payload without a
         per-field allowlist. New fields in sac's terse projection
-        (``context_management.percent``, ``pane_state``,
+        (``context_management.percent``, ``orochi_pane_state``,
         ``current_tool``, ...) should therefore appear on
         ``get_agents()[i]["sac_status"][<field>]`` the moment the
         pusher sends them.

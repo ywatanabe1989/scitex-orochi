@@ -79,7 +79,7 @@ probe_one() {
         mv "$tmp_file" "$out_file"
         log "ok $host bytes=$(wc -c <"$out_file" | tr -d ' ')"
         diff_one "$host" "$prev_file" "$out_file"
-        classify_pane_state "$host" "$out_file" "$prev_file"
+        classify_orochi_pane_state "$host" "$out_file" "$prev_file"
         check_drift "$host"
     else
         rm -f "$tmp_file"
@@ -116,7 +116,7 @@ check_drift() {
 # This function is informational — it does not by itself escalate. It logs
 # `STATE host=<h> agent=<a> class=<c> stuck_cycles=N` so mamba-healer-* can
 # read the trail and decide whether to act.
-classify_pane_state() {
+classify_orochi_pane_state() {
     local host="$1"
     local curr="$2"
     local prev="$3"
@@ -274,7 +274,7 @@ probe_self() {
     if bash "$PROBE_SCRIPT" >"${out_file}.tmp" 2>>"$LOG_FILE" && [ -s "${out_file}.tmp" ]; then
         mv "${out_file}.tmp" "$out_file"
         diff_one "nas" "$prev_file" "$out_file"
-        classify_pane_state "nas" "$out_file" "$prev_file"
+        classify_orochi_pane_state "nas" "$out_file" "$prev_file"
         check_drift "nas"
     else
         rm -f "${out_file}.tmp"

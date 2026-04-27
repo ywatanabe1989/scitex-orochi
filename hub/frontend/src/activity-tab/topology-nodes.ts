@@ -92,12 +92,12 @@ export function _topoBuildAgentsSvg(visible, agentPos) {
       var p = agentPos[a.name];
       var connected = (a.status || "online") !== "offline";
       /* Dead-state detection — defers to the agent_meta classifier's
-       * `pane_state` field (`stale` = 3+ cycles unchanged with no busy
+       * `orochi_pane_state` field (`stale` = 3+ cycles unchanged with no busy
        * markers AND not at an empty `❯ ` idle prompt). Falls back to
-       * the legacy 180s tool/action timer when pane_state is missing
+       * the legacy 180s tool/action timer when orochi_pane_state is missing
        * (e.g. agent_meta.py not deployed on a host). Single source of
        * truth: same logic as `_isDeadAgent` in ./utils.ts. */
-      var pane = (a.pane_state || "").toLowerCase();
+      var pane = (a.orochi_pane_state || "").toLowerCase();
       var isDead;
       if (pane === "stale") {
         isDead = connected;

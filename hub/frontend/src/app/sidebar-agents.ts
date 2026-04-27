@@ -70,7 +70,7 @@ export async function fetchAgents() {
       return (x.status || "online") !== "offline";
     };
     var _computeStateLocal = function (a) {
-      var pane = a.pane_state || "";
+      var pane = a.orochi_pane_state || "";
       if (pane === "compacting" || pane === "auto_compact") return "compacting";
       // auth_error and mcp_broken are functional failures — agent is alive
       // at the network/heartbeat layer but cannot do work. Surface as

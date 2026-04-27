@@ -257,7 +257,7 @@ export function buildAgentRow(a) {
     escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
     "</td>" +
     '<td class="pane-state-cell">' +
-    renderPaneStateBadge(a.pane_state, a.orochi_stuck_prompt_text) +
+    renderPaneStateBadge(a.orochi_pane_state, a.orochi_stuck_prompt_text) +
     "</td>" +
     '<td class="task-cell">' +
     escapeHtml(a.current_task || "-") +

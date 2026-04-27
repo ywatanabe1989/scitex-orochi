@@ -127,7 +127,7 @@ def collect(agent: str) -> dict:
     mcp_json_full = collect_mcp_json(workspace)
 
     # Classifier (computed ONCE per collect — the stagnation counter
-    # inside _classify_pane_state is per-cycle, so calling it twice
+    # inside _classify_orochi_pane_state is per-cycle, so calling it twice
     # would double-increment the "pane unchanged for N cycles" count
     # and mis-fire `stale` after 2 real cycles instead of 3). The
     # `agent` kwarg enables cross-cycle stagnation tracking; omit it
@@ -150,13 +150,13 @@ def collect(agent: str) -> dict:
     # the legacy entry points (_extract_stuck_prompt, _detect_contradiction)
     # used by other call sites.
     from ._orochi_pane_observations import collect_orochi_pane_observations
-    from .states._pane_state_v3 import derive_pane_state
+    from .states._orochi_pane_state_v3 import derive_orochi_pane_state
 
     orochi_pane_observations = collect_orochi_pane_observations(
         orochi_pane_tail_block_clean, pane, agent=agent
     )
-    pane_verdict = derive_pane_state(orochi_pane_observations)
-    pane_state = pane_verdict["label"]
+    pane_verdict = derive_orochi_pane_state(orochi_pane_observations)
+    orochi_pane_state = pane_verdict["label"]
     orochi_stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
     # Contradiction check + evidence log. `alive=True` here means
     # we successfully captured a pane from the multiplexer, which is
@@ -165,11 +165,11 @@ def collect(agent: str) -> dict:
     # the msg#15541 contradiction — log the tmux tail so future
     # pattern additions have ground-truth data, and surface a
     # `orochi_classifier_note` on the payload so the Agents tab can flag it.
-    orochi_classifier_note = _detect_contradiction(pane_state, liveness="online")
+    orochi_classifier_note = _detect_contradiction(orochi_pane_state, liveness="online")
     if orochi_classifier_note:
         _log_contradiction_evidence(
             agent=agent,
-            pane_state=pane_state,
+            orochi_pane_state=orochi_pane_state,
             liveness="online",
             tmux_tail=pane,
         )
@@ -233,7 +233,7 @@ def collect(agent: str) -> dict:
         # ywatanabe msg#10657/10677: same as orochi_pane_tail_block but with
         # `← scitex-orochi · ...` channel inbound + `⎿` continuation
         # lines stripped, so consumers (fleet_watch.sh stuck-cycle
-        # counter, pane_state.py classifier) can compute "did the agent
+        # counter, orochi_pane_state.py classifier) can compute "did the agent
         # actually do anything?" without being fooled by inbound chatter.
         "orochi_pane_tail_block_clean": orochi_pane_tail_block_clean,
         "recent_actions": recent_actions,
@@ -270,15 +270,15 @@ def collect(agent: str) -> dict:
         # Pane state pipeline:
         #   `orochi_pane_observations`        — Layer A primitive facts (digest,
         #                                 marker hits, idle chevron, etc.)
-        #   `pane_state`               — Layer B v3 label (back-compat)
-        #   `pane_state_evidence`      — Layer B reasoning string
-        #   `pane_state_version`       — schema version for the verdict
-        # Consumers can read just `pane_state` (legacy), or the full
+        #   `orochi_pane_state`               — Layer B v3 label (back-compat)
+        #   `orochi_pane_state_evidence`      — Layer B reasoning string
+        #   `orochi_pane_state_version`       — schema version for the verdict
+        # Consumers can read just `orochi_pane_state` (legacy), or the full
         # observation dict to render their own classifications.
         "orochi_pane_observations": orochi_pane_observations,
-        "pane_state": pane_state,
-        "pane_state_evidence": pane_verdict["evidence"],
-        "pane_state_version": pane_verdict["version"],
+        "orochi_pane_state": orochi_pane_state,
+        "orochi_pane_state_evidence": pane_verdict["evidence"],
+        "orochi_pane_state_version": pane_verdict["version"],
         "orochi_stuck_prompt_text": orochi_stuck_prompt_text,
         "orochi_classifier_note": orochi_classifier_note,
         # A2A state pipeline (Layer A → Layer B):

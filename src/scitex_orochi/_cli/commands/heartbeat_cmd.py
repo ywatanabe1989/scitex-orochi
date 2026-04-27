@@ -104,7 +104,7 @@ def _wrap_with_orochi_fields(
         # Terminal pane + classified state.
         "pane_text": status.get("pane_text") or "",
         "orochi_pane_tail_block": status.get("pane_text") or "",
-        "pane_state": status.get("pane_state") or "",
+        "orochi_pane_state": status.get("orochi_pane_state") or "",
         "orochi_stuck_prompt_text": status.get("orochi_stuck_prompt_text") or "",
         # Workspace files.
         "claude_md": status.get("claude_md") or "",
@@ -309,7 +309,7 @@ def heartbeat_push(
         if verbose:
             click.echo(
                 f"[heartbeat-push] {agent_name} -> {hub} HTTP {code} "
-                f"pane_state={body.get('pane_state')} "
+                f"orochi_pane_state={body.get('orochi_pane_state')} "
                 f"context={body.get('orochi_context_pct')} "
                 f"quota_5h={body.get('quota_5h_used_pct')} "
                 f"tools={sum((body.get('tool_counts') or {}).values())}",

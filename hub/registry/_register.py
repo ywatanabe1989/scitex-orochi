@@ -225,7 +225,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # legacy WS-only agents; falls through to the empty string.
             "mcp_json": info.get("mcp_json") or prev.get("mcp_json") or "",
             # todo#418: agent decision-transparency fields for the Agents tab.
-            # `pane_state` is the classifier label (`running` / `waiting` /
+            # `orochi_pane_state` is the classifier label (`running` / `waiting` /
             # `y_n_prompt` / `compose_pending_unsent` / `auth_error` / etc.)
             # computed by agent_meta.py --push using the same classifiers
             # fleet-prompt-actuator uses (scitex_agent_container.runtimes.
@@ -233,7 +233,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # the verbatim prompt so ywatanabe / dashboard viewers can see
             # what the agent is blocked on. Both empty when agent_meta can't
             # classify or the agent is a legacy WS-only pusher.
-            "pane_state": info.get("pane_state") or prev.get("pane_state") or "",
+            "orochi_pane_state": info.get("orochi_pane_state") or prev.get("orochi_pane_state") or "",
             "orochi_stuck_prompt_text": info.get("orochi_stuck_prompt_text")
             or prev.get("orochi_stuck_prompt_text")
             or "",
@@ -411,7 +411,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # --json`` dict attached to the heartbeat by the pusher
             # (``scripts/client/agent_meta_pkg/_sac_status.py``). Stored
             # verbatim so future fields added to sac's terse projection
-            # (orochi_context_pct, pane_state, current_tool, quota, ...) reach
+            # (orochi_context_pct, orochi_pane_state, current_tool, quota, ...) reach
             # the dashboard via ``/api/agents/`` without per-field
             # plumbing here.
             #

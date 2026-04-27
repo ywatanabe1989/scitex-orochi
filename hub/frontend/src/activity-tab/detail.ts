@@ -157,7 +157,7 @@ export function _renderActivityAgentDetail(a, grid) {
       "Subagents (" + (subCnt != null ? subCnt : 0) + ")",
       subCnt != null ? String(subCnt) : "-",
     ],
-    ["Pane state", a.pane_state || "-"],
+    ["Pane state", a.orochi_pane_state || "-"],
     ["Idle", _fmtSec(a.idle_seconds)],
     [
       "Last tool",

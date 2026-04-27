@@ -4,7 +4,7 @@ Exercises the 2026-04-21 extension (lead msg#15541): the classifier now
 emits `stale` when the pane tail has been byte-identical for
 N consecutive push cycles with no busy-animation marker, and the
 companion helpers surface a `orochi_classifier_note` + append tmux-tail
-evidence to a dedicated log when `pane_state == "stale"` coincides
+evidence to a dedicated log when `orochi_pane_state == "stale"` coincides
 with `liveness == "online"` (the "3rd LED stale vs 4th LED green"
 contradiction on the dashboard).
 """
@@ -44,7 +44,7 @@ def _isolate_state(tmp_path, monkeypatch):
 def test_running_marker_beats_everything():
     pane = "some output\nesc to interrupt\n❯ "
     assert (
-        _classifier._classify_pane_state(pane, pane, agent="t-agent-run")
+        _classifier._classify_orochi_pane_state(pane, pane, agent="t-agent-run")
         == "running"
     )
 
@@ -52,13 +52,13 @@ def test_running_marker_beats_everything():
 def test_yn_prompt_classified():
     pane = "Continue? [y/N]"
     assert (
-        _classifier._classify_pane_state(pane, pane, agent="t-agent-yn")
+        _classifier._classify_orochi_pane_state(pane, pane, agent="t-agent-yn")
         == "y_n_prompt"
     )
 
 
 def test_empty_pane_returns_empty_string():
-    assert _classifier._classify_pane_state("", "", agent="t-agent-empty") == ""
+    assert _classifier._classify_orochi_pane_state("", "", agent="t-agent-empty") == ""
 
 
 # ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ def test_empty_pane_returns_empty_string():
 def test_single_call_does_not_flip_to_stale():
     pane = "just idle stuff\n$ "
     assert (
-        _classifier._classify_pane_state(pane, pane, agent="t-agent-single")
+        _classifier._classify_orochi_pane_state(pane, pane, agent="t-agent-single")
         == "idle"
     )
 
@@ -78,13 +78,13 @@ def test_stagnation_across_cycles_emits_stale(_isolate_state):
     agent = "t-agent-stale"
     pane = "> some boring prompt with no markers\n"
     # First call seeds the digest (count=0, treated as "changed").
-    assert _classifier._classify_pane_state(pane, pane, agent=agent) == "idle"
+    assert _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "idle"
     # 2nd call: same digest → count=1.
-    assert _classifier._classify_pane_state(pane, pane, agent=agent) == "idle"
+    assert _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "idle"
     # 3rd call: count=2.
-    assert _classifier._classify_pane_state(pane, pane, agent=agent) == "idle"
+    assert _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "idle"
     # 4th call: count=3 → threshold met, flips to stale.
-    assert _classifier._classify_pane_state(pane, pane, agent=agent) == "stale"
+    assert _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "stale"
 
 
 def test_busy_animation_suppresses_stale(_isolate_state):
@@ -94,7 +94,7 @@ def test_busy_animation_suppresses_stale(_isolate_state):
     pane = "* Mulling… (12s)\n"
     for _ in range(6):
         assert (
-            _classifier._classify_pane_state(pane, pane, agent=agent) == "idle"
+            _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "idle"
         )
 
 
@@ -104,17 +104,17 @@ def test_pane_change_resets_stagnation_counter(_isolate_state):
     pane_b = "> version B\n"
     # 4 identical cycles — would flip to stale on the 4th.
     for _ in range(3):
-        _classifier._classify_pane_state(pane_a, pane_a, agent=agent)
+        _classifier._classify_orochi_pane_state(pane_a, pane_a, agent=agent)
     assert (
-        _classifier._classify_pane_state(pane_a, pane_a, agent=agent) == "stale"
+        _classifier._classify_orochi_pane_state(pane_a, pane_a, agent=agent) == "stale"
     )
     # Pane changes — counter must reset, back to idle.
     assert (
-        _classifier._classify_pane_state(pane_b, pane_b, agent=agent) == "idle"
+        _classifier._classify_orochi_pane_state(pane_b, pane_b, agent=agent) == "idle"
     )
     # And needs the full threshold again before re-flipping.
     assert (
-        _classifier._classify_pane_state(pane_b, pane_b, agent=agent) == "idle"
+        _classifier._classify_orochi_pane_state(pane_b, pane_b, agent=agent) == "idle"
     )
 
 
@@ -124,7 +124,7 @@ def test_stale_respects_empty_agent_kwarg():
     emit `stale`."""
     pane = "> boring\n"
     for _ in range(10):
-        assert _classifier._classify_pane_state(pane, pane) == "idle"
+        assert _classifier._classify_orochi_pane_state(pane, pane) == "idle"
 
 
 # ---------------------------------------------------------------------------
@@ -134,24 +134,24 @@ def test_stale_respects_empty_agent_kwarg():
 
 def test_detect_contradiction_flags_stale_vs_online():
     note = _classifier._detect_contradiction(
-        pane_state="stale", liveness="online"
+        orochi_pane_state="stale", liveness="online"
     )
     assert note == "contradiction:3rd-stale-vs-4th-green"
 
 
 def test_detect_contradiction_silent_when_liveness_not_green():
     assert (
-        _classifier._detect_contradiction(pane_state="stale", liveness="stale")
+        _classifier._detect_contradiction(orochi_pane_state="stale", liveness="stale")
         == ""
     )
     assert (
         _classifier._detect_contradiction(
-            pane_state="stale", liveness="offline"
+            orochi_pane_state="stale", liveness="offline"
         )
         == ""
     )
     assert (
-        _classifier._detect_contradiction(pane_state="stale", liveness=None)
+        _classifier._detect_contradiction(orochi_pane_state="stale", liveness=None)
         == ""
     )
 
@@ -159,13 +159,13 @@ def test_detect_contradiction_silent_when_liveness_not_green():
 def test_detect_contradiction_silent_for_non_stale_state():
     assert (
         _classifier._detect_contradiction(
-            pane_state="running", liveness="online"
+            orochi_pane_state="running", liveness="online"
         )
         == ""
     )
     assert (
         _classifier._detect_contradiction(
-            pane_state="idle", liveness="online"
+            orochi_pane_state="idle", liveness="online"
         )
         == ""
     )
@@ -181,7 +181,7 @@ def test_log_contradiction_evidence_writes_record(_isolate_state):
     orochi_pane_tail = "line1\nline2\nline3\n"
     written = _classifier._log_contradiction_evidence(
         agent="head-test",
-        pane_state="stale",
+        orochi_pane_state="stale",
         liveness="online",
         tmux_tail=orochi_pane_tail,
     )
@@ -189,7 +189,7 @@ def test_log_contradiction_evidence_writes_record(_isolate_state):
     content = log_path.read_text(encoding="utf-8")
     assert "agent=head-test" in content
     assert "note=contradiction:3rd-stale-vs-4th-green" in content
-    assert "pane_state=stale" in content
+    assert "orochi_pane_state=stale" in content
     assert "liveness=online" in content
     # tail verbatim (last 40 lines — here we only have 3)
     assert "line1" in content and "line2" in content and "line3" in content
@@ -200,7 +200,7 @@ def test_log_contradiction_evidence_truncates_tail_to_40_lines(tmp_path):
     tail = "\n".join(f"L{i}" for i in range(100))
     _classifier._log_contradiction_evidence(
         agent="head-long",
-        pane_state="stale",
+        orochi_pane_state="stale",
         liveness="online",
         tmux_tail=tail,
         log_path=log_path,
@@ -218,7 +218,7 @@ def test_log_contradiction_evidence_appends(tmp_path):
     for i in range(3):
         _classifier._log_contradiction_evidence(
             agent=f"agent-{i}",
-            pane_state="stale",
+            orochi_pane_state="stale",
             liveness="online",
             tmux_tail=f"tail-{i}\n",
             log_path=log_path,
@@ -242,7 +242,7 @@ def test_log_contradiction_evidence_appends(tmp_path):
 def _assert_never_stale(pane: str, agent: str, cycles: int = 6) -> None:
     """Helper: `pane` held constant for many cycles must not go `stale`."""
     for _ in range(cycles):
-        state = _classifier._classify_pane_state(pane, pane, agent=agent)
+        state = _classifier._classify_orochi_pane_state(pane, pane, agent=agent)
         assert state != "stale", (
             f"classifier flipped to stale on pane containing marker; "
             f"pane={pane!r}, agent={agent}"
@@ -410,8 +410,8 @@ def test_stale_still_fires_without_busy_markers(_isolate_state):
     pane = "just a shell prompt\n$ \n"
     for _ in range(3):
         assert (
-            _classifier._classify_pane_state(pane, pane, agent=agent) == "idle"
+            _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "idle"
         )
     assert (
-        _classifier._classify_pane_state(pane, pane, agent=agent) == "stale"
+        _classifier._classify_orochi_pane_state(pane, pane, agent=agent) == "stale"
     )

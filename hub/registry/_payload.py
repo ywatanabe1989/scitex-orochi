@@ -63,12 +63,12 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         hb_ts = a.get("last_heartbeat")
         action_ts = a.get("last_action")
         # Liveness classification distinct from WS connection state.
-        # Prefer the pane_state classifier (agent_meta_pkg/_classifier.py)
+        # Prefer the orochi_pane_state classifier (agent_meta_pkg/_classifier.py)
         # which already separates "idle at prompt" (alive, waiting) from
         # "stale" (3+ cycles unchanged, no busy markers — actually stuck).
-        # Falls back to the last_action timer when pane_state is missing.
+        # Falls back to the last_action timer when orochi_pane_state is missing.
         liveness = a.get("status", "online")
-        pane = (a.get("pane_state") or "").lower()
+        pane = (a.get("orochi_pane_state") or "").lower()
         idle_seconds = None
         if action_ts:
             idle_seconds = int(now - action_ts)
@@ -217,7 +217,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_pane_tail_full": a.get("orochi_pane_tail_full", ""),
                 "claude_md_head": a.get("claude_md_head", ""),
                 "mcp_json": a.get("mcp_json", ""),
-                "pane_state": a.get("pane_state", ""),
+                "orochi_pane_state": a.get("orochi_pane_state", ""),
                 "orochi_stuck_prompt_text": a.get("orochi_stuck_prompt_text", ""),
                 "pane_text": a.get("pane_text", ""),
                 # scitex-agent-container hook-captured events — lists

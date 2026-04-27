@@ -77,7 +77,7 @@ function _buildIndicatorLamps(a, d) {
     title: rtTitle,
   });
 
-  var paneState = d.pane_state || a.pane_state || "";
+  var paneState = d.orochi_pane_state || a.orochi_pane_state || "";
   var paneOk = ["", "running", "idle", "unknown"];
   var paneStuck = [
     "y_n_prompt",

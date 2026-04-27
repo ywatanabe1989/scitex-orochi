@@ -191,7 +191,7 @@ export function _renderTaskField(task, fallback, age) {
  *   offline    — WS is disconnected
  */
 export function _computeAgentState(a) {
-  var pane = a.pane_state || "";
+  var pane = a.orochi_pane_state || "";
   if (pane === "compacting" || pane === "auto_compact") {
     return "compacting";
   }
@@ -226,7 +226,7 @@ export function _computeAgentState(a) {
  * survives heartbeat-driven re-renders). */
 /* Classify an agent's "dead" state.
  *
- * Trusts the classifier's `pane_state` (agent_meta_pkg/_classifier.py)
+ * Trusts the classifier's `orochi_pane_state` (agent_meta_pkg/_classifier.py)
  * as the authoritative signal. Only `stale` (3+ cycles of unchanged
  * pane content with no busy-animation markers) means "stuck and needs
  * help". `idle` means at-prompt-waiting — a legitimate live state, not
@@ -234,13 +234,13 @@ export function _computeAgentState(a) {
  * also not dead.
  *
  * Falls back to the legacy 180s tool/action heuristic only when
- * `pane_state` is missing (e.g. the agent's heartbeat path predates
+ * `orochi_pane_state` is missing (e.g. the agent's heartbeat path predates
  * agent_meta classifier output). */
 export function _isDeadAgent(a) {
   if (!a) return false;
   var connected = (a.status || "online") !== "offline";
   if (!connected) return false;
-  var pane = (a.pane_state || "").toLowerCase();
+  var pane = (a.orochi_pane_state || "").toLowerCase();
   if (pane === "stale") return true;
   if (pane) return false;
   var toolSec =

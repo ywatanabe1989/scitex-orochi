@@ -116,7 +116,7 @@ def collect_orochi_pane_observations(
 ) -> dict[str, Any]:
     """Layer A entry point: pane content → flat dict of primitive facts.
 
-    Pass the result to a state-definition module (``states/_pane_state_v3.py``)
+    Pass the result to a state-definition module (``states/_orochi_pane_state_v3.py``)
     to get an interpreted label. The two layers are independently testable;
     new state schemes can be added by writing a new module that consumes
     the same observation shape.

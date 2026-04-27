@@ -17,7 +17,7 @@ VERSION = "v3"
 STALE_CYCLES_THRESHOLD = 3
 
 
-def derive_pane_state(obs: dict[str, Any]) -> dict[str, str]:
+def derive_orochi_pane_state(obs: dict[str, Any]) -> dict[str, str]:
     """Apply the v3 decision tree to a pane observations dict.
 
     Order matters — checks proceed cheapest-and-most-specific first so an

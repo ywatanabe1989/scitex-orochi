@@ -119,7 +119,7 @@ when a wedge is caught and cleared.
   from directive msg#11943 to ship-and-running on 4/4 hosts.
 - **Phase 2 (follow-up)**: the full `fleet-health-daemon` from
   scitex-orochi#147 — cross-host nonce handshake, Layer 2 ledger with
-  `last_ndjson_ts AND last_pane_state_ok_ts`, worker-layer agentic
+  `last_ndjson_ts AND last_orochi_pane_state_ok_ts`, worker-layer agentic
   recovery. Supersedes Phase 1 once it lands; Phase 1 stays as the
   fallback unstick runbook.
 - **Phase 3 (long-term)**: Claude Code hook-based automation per

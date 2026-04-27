@@ -17,7 +17,7 @@ been verified yet.
 from __future__ import annotations
 
 from ._classifier import (
-    _classify_pane_state,
+    _classify_orochi_pane_state,
     _extract_compose_text,
     _extract_stuck_prompt,
 )
