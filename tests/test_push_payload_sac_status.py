@@ -28,7 +28,7 @@ _MIN_META = {
     # Typical collect() keys — fill enough that _build_payload
     # doesn't KeyError.
     "orochi_skills_loaded": [],
-    "mcp_servers": [],
+    "orochi_mcp_servers": [],
     "recent_actions": [],
     "recent_tools": [],
     "recent_prompts": [],

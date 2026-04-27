@@ -14,7 +14,7 @@ from ._classifier import (
 from ._files import (
     collect_orochi_claude_md,
     collect_orochi_mcp_json,
-    collect_mcp_servers,
+    collect_orochi_mcp_servers,
     collect_orochi_skills_loaded,
 )
 from ._hooks import _collect_hook_events
@@ -118,7 +118,7 @@ def collect(agent: str) -> dict:
 
     # Skills loaded + MCP servers from workspace files.
     orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
-    mcp_servers = collect_mcp_servers(workspace)
+    orochi_mcp_servers = collect_orochi_mcp_servers(workspace)
     project = agent
     machine = resolve_machine_label()
 
@@ -254,7 +254,7 @@ def collect(agent: str) -> dict:
         # label in the dashboard.
         "orochi_hostname_canonical": _resolve_canonical_hostname(),
         "orochi_skills_loaded": orochi_skills_loaded,
-        "mcp_servers": mcp_servers,
+        "orochi_mcp_servers": orochi_mcp_servers,
         "orochi_claude_md_head": orochi_claude_md_head,
         # todo#460 full-content fields for the Agents tab viewer.
         "orochi_claude_md": orochi_claude_md_full,

@@ -82,7 +82,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # (/api/agents/<name>/detail/).
         "orochi_claude_md": meta.get("orochi_claude_md", ""),
         "orochi_mcp_json": meta.get("orochi_mcp_json", ""),
-        "mcp_servers": list(meta.get("mcp_servers") or []),
+        "orochi_mcp_servers": list(meta.get("orochi_mcp_servers") or []),
         "orochi_pane_tail": meta.get("orochi_pane_tail", ""),
         "orochi_pane_tail_block": meta.get("orochi_pane_tail_block", ""),
         # todo#47 — full scrollback for the "Expand" toggle in the

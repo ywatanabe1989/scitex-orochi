@@ -139,7 +139,7 @@ def api_agents_register(request):
             # agent-detail "Full pane" toggle. Capped at 32 KB client-side.
             "orochi_pane_tail_full": body.get("orochi_pane_tail_full", ""),
             "orochi_claude_md_head": body.get("orochi_claude_md_head", ""),
-            "mcp_servers": body.get("mcp_servers") or [],
+            "orochi_mcp_servers": body.get("orochi_mcp_servers") or [],
             # todo#265: Claude Code OAuth account public metadata
             # (email, org, subscription state). Strict whitelist —
             # never accept access/refresh tokens or credentials.

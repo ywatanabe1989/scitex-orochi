@@ -57,7 +57,7 @@ class AgentDetailApiTest(TestCase):
             "channels": ["#general", "#agent"],
             "orochi_pane_tail_block": "line1\nline2\n",
             "orochi_claude_md": "# CLAUDE.md\n",
-            "mcp_servers": ["scitex-orochi"],
+            "orochi_mcp_servers": ["scitex-orochi"],
         }
         info.update(overrides)
         register_agent(name="alpha", workspace_id=self.ws.id, info=info)
@@ -90,7 +90,7 @@ class AgentDetailApiTest(TestCase):
             "pane_text",
             "pane_text_source",
             "channel_subs",
-            "mcp_servers",
+            "orochi_mcp_servers",
             "orochi_current_task",
             "orochi_context_pct",
             "pid",
@@ -105,7 +105,7 @@ class AgentDetailApiTest(TestCase):
         self.assertEqual(data["pane_text_source"], "cached")
         self.assertIn("line1", data["pane_text"])
         self.assertEqual(sorted(data["channel_subs"]), ["#agent", "#general"])
-        self.assertIn("scitex-orochi", data["mcp_servers"])
+        self.assertIn("scitex-orochi", data["orochi_mcp_servers"])
 
     def test_unavailable_pane_source_when_no_capture(self):
         self._register(orochi_pane_tail_block="", orochi_pane_tail="")

@@ -341,10 +341,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # condition (N consecutive zero readings) could never be met.
             "idle_streak": prev.get("idle_streak") or 0,
             "auto_dispatch_last_fire_ts": prev.get("auto_dispatch_last_fire_ts"),
-            "mcp_servers": (
-                list(info.get("mcp_servers"))
-                if isinstance(info.get("mcp_servers"), (list, tuple))
-                else prev.get("mcp_servers") or []
+            "orochi_mcp_servers": (
+                list(info.get("orochi_mcp_servers"))
+                if isinstance(info.get("orochi_mcp_servers"), (list, tuple))
+                else prev.get("orochi_mcp_servers") or []
             ),
             # todo#265: Claude Code OAuth account public metadata pushed
             # by agent_meta.py --push so the Agents/Activity tab can show

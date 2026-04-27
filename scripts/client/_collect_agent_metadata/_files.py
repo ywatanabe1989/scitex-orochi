@@ -24,19 +24,19 @@ def collect_orochi_skills_loaded(workspace: str) -> list[str]:
     return orochi_skills_loaded
 
 
-def collect_mcp_servers(workspace: str) -> list[str]:
+def collect_orochi_mcp_servers(workspace: str) -> list[str]:
     """Read the workspace .mcp.json for the loaded MCP server names."""
-    mcp_servers: list[str] = []
+    orochi_mcp_servers: list[str] = []
     try:
         mcp_path = Path(workspace) / ".mcp.json"
         if mcp_path.is_file():
             doc = json.loads(mcp_path.read_text())
             servers = doc.get("mcpServers") or {}
             if isinstance(servers, dict):
-                mcp_servers = sorted(servers.keys())
+                orochi_mcp_servers = sorted(servers.keys())
     except Exception:
         pass
-    return mcp_servers
+    return orochi_mcp_servers
 
 
 def _orochi_claude_md_candidates(ws: str) -> list[Path]:

@@ -251,7 +251,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "quota_7d_used_pct": a.get("quota_7d_used_pct"),
                 "quota_5h_reset_at": a.get("quota_5h_reset_at", ""),
                 "quota_7d_reset_at": a.get("quota_7d_reset_at", ""),
-                "mcp_servers": list(a.get("mcp_servers") or []),
+                "orochi_mcp_servers": list(a.get("orochi_mcp_servers") or []),
                 # todo#265: OAuth account public metadata. Whitelist
                 # only — no tokens, credentials, or secrets are ever
                 # stored or surfaced.

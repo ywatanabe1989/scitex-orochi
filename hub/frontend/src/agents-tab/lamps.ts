@@ -103,7 +103,7 @@ export function _buildIndicatorLamps(a, d) {
       (paneState || "(no classification)") +
       " — red=stuck / amber=unusual / teal=ok / gray=no signal",
   });
-  var mcpServers = d.mcp_servers || a.mcp_servers || [];
+  var mcpServers = d.orochi_mcp_servers || a.orochi_mcp_servers || [];
   var mcpColor = mcpServers.length > 0 ? "#4ecdc4" : "#888";
   lamps.push({
     key: "mcp",

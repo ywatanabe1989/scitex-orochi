@@ -445,7 +445,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     )
     monkeypatch.setattr(
         _collect,
-        "collect_mcp_servers",
+        "collect_orochi_mcp_servers",
         lambda ws: [],
     )
     monkeypatch.setattr(

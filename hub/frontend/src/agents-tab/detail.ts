@@ -65,7 +65,7 @@ export function _renderAgentDetail(a) {
    * with dotfiles PR#71 agent_meta.py --push; we render an explicit
    * empty-state so the absence is discoverable rather than invisible. */
   var mcpJson = d.orochi_mcp_json || "";
-  var mcpServers = d.mcp_servers || a.mcp_servers || [];
+  var mcpServers = d.orochi_mcp_servers || a.orochi_mcp_servers || [];
   /* pane_text from the detail endpoint is already redacted; the
    * registry fallback (orochi_pane_tail_block / orochi_pane_tail) is NOT, so prefer
    * detail whenever we have it. */
