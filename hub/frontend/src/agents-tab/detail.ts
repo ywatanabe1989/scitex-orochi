@@ -434,9 +434,16 @@ export function _renderAgentDetail(a) {
   /* File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) instead of
    * a side-by-side split — each pane gets the full width when active so
    * the agent detail panel respects the viewport instead of stacking
-   * two half-width columns into the page (ywatanabe 2026-04-27). */
-  var hasMcpJson = !!mcpJson;
-  var hasClaudeMd = !!claudeMd;
+   * two half-width columns (ywatanabe 2026-04-27).
+   * All three tabs are ALWAYS rendered, even when the underlying file
+   * is empty — the empty state is itself information ("agent hasn't
+   * pushed CLAUDE.md yet"). */
+  var claudeMdPaneHtml = claudeMd
+    ? claudeMdHtml
+    : '<div class="agent-detail-files-empty muted-cell">No CLAUDE.md (agent has not heartbeated with collect_agent_metadata.py yet)</div>';
+  var mcpJsonPaneHtml = mcpJson
+    ? mcpJsonBodyHtml
+    : '<div class="agent-detail-files-empty muted-cell">No .mcp.json (agent has not heartbeated with collect_agent_metadata.py yet)</div>';
   var fileTabsHtml =
     '<div class="agent-detail-files-tabs" data-agent="' +
     escapeHtml(a.name) +
@@ -444,29 +451,21 @@ export function _renderAgentDetail(a) {
     '<div class="agent-detail-files-tabbar" role="tablist">' +
     '<button type="button" class="agent-detail-files-tab agent-detail-files-tab-active"' +
     ' data-action="files-tab" data-pane-id="terminal">Terminal</button>' +
-    (hasClaudeMd
-      ? '<button type="button" class="agent-detail-files-tab"' +
-        ' data-action="files-tab" data-pane-id="claude-md">CLAUDE.md</button>'
-      : "") +
-    (hasMcpJson
-      ? '<button type="button" class="agent-detail-files-tab"' +
-        ' data-action="files-tab" data-pane-id="mcp-json">.mcp.json</button>'
-      : "") +
+    '<button type="button" class="agent-detail-files-tab"' +
+    ' data-action="files-tab" data-pane-id="claude-md">CLAUDE.md</button>' +
+    '<button type="button" class="agent-detail-files-tab"' +
+    ' data-action="files-tab" data-pane-id="mcp-json">.mcp.json</button>' +
     "</div>" +
     '<div class="agent-detail-files-panes">' +
     '<div class="agent-detail-files-pane agent-detail-files-pane-active" data-pane-id="terminal">' +
     paneHtml +
     "</div>" +
-    (hasClaudeMd
-      ? '<div class="agent-detail-files-pane" data-pane-id="claude-md" hidden>' +
-        claudeMdHtml +
-        "</div>"
-      : "") +
-    (hasMcpJson
-      ? '<div class="agent-detail-files-pane" data-pane-id="mcp-json" hidden>' +
-        mcpJsonBodyHtml +
-        "</div>"
-      : "") +
+    '<div class="agent-detail-files-pane" data-pane-id="claude-md" hidden>' +
+    claudeMdPaneHtml +
+    "</div>" +
+    '<div class="agent-detail-files-pane" data-pane-id="mcp-json" hidden>' +
+    mcpJsonPaneHtml +
+    "</div>" +
     "</div>" +
     "</div>";
 

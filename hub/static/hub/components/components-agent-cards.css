@@ -131,6 +131,13 @@
 .agent-row {
   cursor: pointer;
 }
+/* Vertically center every cell in the agents-overview row so the icon,
+ * status, name and other short cells sit in the middle when adjacent
+ * cells (e.g. CHANNELS column with many badges) make the row tall.
+ * ywatanabe 2026-04-27. */
+.agent-row > td {
+  vertical-align: middle;
+}
 .agent-inactive {
   opacity: 0.5;
 }

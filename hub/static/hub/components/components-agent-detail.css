@@ -418,12 +418,12 @@
   border-radius: 3px;
 }
 
-/* ── File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) ──── */
+/* ── File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) ────
+ * Sized by content — the inner panes have their own max-height: 55vh
+ * caps so the whole tabs container naturally fits within the viewport
+ * without needing a flex parent to bound it. */
 .agent-detail-files-tabs {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
+  display: block;
 }
 .agent-detail-files-tabbar {
   display: flex;
@@ -453,19 +453,22 @@
   border-bottom-color: #4ecdc4;
 }
 .agent-detail-files-panes {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
+  display: block;
 }
 .agent-detail-files-pane {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
+  display: block;
 }
 .agent-detail-files-pane[hidden] {
   display: none;
+}
+.agent-detail-files-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  font-size: 0.85rem;
+  background: #1a1a1a;
+  border-radius: 3px;
 }
 
 /* ── Viewport-respecting layout for the agent detail subtab ──────
