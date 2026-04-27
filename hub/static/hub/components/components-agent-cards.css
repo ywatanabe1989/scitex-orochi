@@ -293,19 +293,34 @@
   vertical-align: middle;
 }
 
-/* Belt-and-suspenders middle alignment for the avatar / status / star
- * cells. The earlier `.agent-row > td { vertical-align: middle }` rule
- * doesn't take effect when a child uses `display: inline-block` with
- * its own line-height, so spell it out at the element level too. The
- * !important is intentional: legacy per-cell rules in older CSS files
- * still ship and may otherwise win the cascade. ywatanabe 2026-04-27. */
-.agent-icon-cell,
-.agent-row td.agent-icon-cell,
-.agent-row td.star-cell,
-.agent-row td:first-child,
-.agent-row td:nth-child(2),
-.agent-row td:nth-child(3) {
+/* Force middle vertical alignment for EVERY cell in an agent row.
+ *
+ * The earlier `.agent-row > td { vertical-align: middle }` rule
+ * doesn't take effect in tall rows (e.g. when the CHANNELS cell wraps
+ * many badges) because legacy per-cell rules in other CSS files
+ * (table-defaults, .agents-registry-table td) win the cascade. The
+ * !important on the universal `.agent-row > td` rule is the only
+ * thing that consistently centers ALL cells — star, kill/restart
+ * buttons, S-icon, status dot, agent-id, etc. — regardless of how
+ * tall the row gets. ywatanabe 2026-04-27.
+ *
+ * The second rule centers the inline content INSIDE the icon cell
+ * (the <span class="agent-custom-icon"> / <img class="agent-avatar">
+ * / inline SVG) using a flex micro-layout. vertical-align centers the
+ * cell box, but the icon itself is an inline-block whose baseline can
+ * still be top-anchored when the cell's line-box is tall — flex
+ * removes that ambiguity and centers the icon graphically.  */
+.agent-row > td {
   vertical-align: middle !important;
+}
+.agent-row > td.agent-icon-cell {
+  text-align: center;
+}
+.agent-row > td.agent-icon-cell > * {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
 }
 .agent-channels-cell .ch-badge {
   display: inline-block;
