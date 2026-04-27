@@ -75,7 +75,7 @@ def _empty(reason: str, *, configured: bool, reachable: bool) -> dict[str, Any]:
         "endpoint_url": None,
         "reachability_error": reason,
         "tasks": [],
-        "active_task_count": 0,
+        "sac_a2a_active_task_count": 0,
         "tasks_by_state": {},
         "most_recent_event_at": None,
         "seconds_since_most_recent_event": None,
@@ -176,7 +176,7 @@ def collect_sac_a2a_observations(agent_name: str) -> dict[str, Any]:
         "endpoint_url": url,
         "reachability_error": "",
         "tasks": tasks,
-        "active_task_count": len(tasks),
+        "sac_a2a_active_task_count": len(tasks),
         "tasks_by_state": by_state,
         "most_recent_event_at": (most_recent or {}).get("last_event_at"),
         "seconds_since_most_recent_event": (most_recent or {}).get(
