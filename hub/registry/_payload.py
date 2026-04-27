@@ -218,7 +218,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "claude_md_head": a.get("claude_md_head", ""),
                 "mcp_json": a.get("mcp_json", ""),
                 "pane_state": a.get("pane_state", ""),
-                "stuck_prompt_text": a.get("stuck_prompt_text", ""),
+                "orochi_stuck_prompt_text": a.get("orochi_stuck_prompt_text", ""),
                 "pane_text": a.get("pane_text", ""),
                 # scitex-agent-container hook-captured events — lists
                 # populated by the PreToolUse/PostToolUse hooks.

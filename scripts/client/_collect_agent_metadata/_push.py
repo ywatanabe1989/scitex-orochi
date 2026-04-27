@@ -89,7 +89,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # agent detail pane viewer.
         "orochi_pane_tail_full": meta.get("orochi_pane_tail_full", ""),
         "pane_state": meta.get("pane_state", ""),
-        "stuck_prompt_text": meta.get("stuck_prompt_text", ""),
+        "orochi_stuck_prompt_text": meta.get("orochi_stuck_prompt_text", ""),
         # scitex-orochi #187 / #59 — forward the hook-event ring buffer
         # summary so the Agents tab's Last tool / Last MCP / Last
         # action rows populate. Without this, collect() gathers them

@@ -168,7 +168,7 @@ def api_agent_detail(request, name: str):
           "claude_md": str,
           "mcp_json": str,
           "pane_state": str,
-          "stuck_prompt_text": str,
+          "orochi_stuck_prompt_text": str,
           "pane_text": str,
           "pane_text_source": "cached" | "unavailable",
           "channel_subs": [str, ...],
@@ -265,12 +265,12 @@ def api_agent_detail(request, name: str):
         # todo#418: agent decision-transparency for the Agents tab.
         # `pane_state` is the classifier label agent_meta.py --push
         # computes (`running` / `compose_pending_unsent` /
-        # `y_n_prompt` / `auth_error` / etc.); `stuck_prompt_text`
+        # `y_n_prompt` / `auth_error` / etc.); `orochi_stuck_prompt_text`
         # is the verbatim prompt the agent is blocked on (empty
         # when `pane_state == running`). Both are redacted defense-
         # in-depth.
         "pane_state": agent.get("pane_state") or "",
-        "stuck_prompt_text": redact_secrets(agent.get("stuck_prompt_text") or ""),
+        "orochi_stuck_prompt_text": redact_secrets(agent.get("orochi_stuck_prompt_text") or ""),
         "pane_text": pane_text,
         # todo#47 — longer scrollback; empty string when the agent
         # hasn't pushed it yet.

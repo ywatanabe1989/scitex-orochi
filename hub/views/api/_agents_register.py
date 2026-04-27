@@ -174,7 +174,7 @@ def api_agents_register(request):
             or body.get("quota_weekly_remaining", ""),
             # Terminal pane + classified state from agent-container.
             "pane_state": body.get("pane_state", ""),
-            "stuck_prompt_text": body.get("stuck_prompt_text", ""),
+            "orochi_stuck_prompt_text": body.get("orochi_stuck_prompt_text", ""),
             "pane_text": body.get("pane_text", ""),
             # Workspace files (full CLAUDE.md, redacted .mcp.json).
             "claude_md": body.get("claude_md", ""),

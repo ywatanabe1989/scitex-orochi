@@ -157,7 +157,7 @@ def collect(agent: str) -> dict:
     )
     pane_verdict = derive_pane_state(orochi_pane_observations)
     pane_state = pane_verdict["label"]
-    stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
+    orochi_stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
     # Contradiction check + evidence log. `alive=True` here means
     # we successfully captured a pane from the multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
@@ -279,7 +279,7 @@ def collect(agent: str) -> dict:
         "pane_state": pane_state,
         "pane_state_evidence": pane_verdict["evidence"],
         "pane_state_version": pane_verdict["version"],
-        "stuck_prompt_text": stuck_prompt_text,
+        "orochi_stuck_prompt_text": orochi_stuck_prompt_text,
         "classifier_note": classifier_note,
         # A2A state pipeline (Layer A → Layer B):
         #   `a2a_observations`    — Layer A primitive facts (full task

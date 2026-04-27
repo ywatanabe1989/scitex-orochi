@@ -105,7 +105,7 @@ def _wrap_with_orochi_fields(
         "pane_text": status.get("pane_text") or "",
         "orochi_pane_tail_block": status.get("pane_text") or "",
         "pane_state": status.get("pane_state") or "",
-        "stuck_prompt_text": status.get("stuck_prompt_text") or "",
+        "orochi_stuck_prompt_text": status.get("orochi_stuck_prompt_text") or "",
         # Workspace files.
         "claude_md": status.get("claude_md") or "",
         "claude_md_head": (status.get("claude_md") or "").splitlines()[0][:120]

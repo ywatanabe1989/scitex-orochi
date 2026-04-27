@@ -229,13 +229,13 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # `y_n_prompt` / `compose_pending_unsent` / `auth_error` / etc.)
             # computed by agent_meta.py --push using the same classifiers
             # fleet-prompt-actuator uses (scitex_agent_container.runtimes.
-            # prompts + detect_compose_pending). `stuck_prompt_text` carries
+            # prompts + detect_compose_pending). `orochi_stuck_prompt_text` carries
             # the verbatim prompt so ywatanabe / dashboard viewers can see
             # what the agent is blocked on. Both empty when agent_meta can't
             # classify or the agent is a legacy WS-only pusher.
             "pane_state": info.get("pane_state") or prev.get("pane_state") or "",
-            "stuck_prompt_text": info.get("stuck_prompt_text")
-            or prev.get("stuck_prompt_text")
+            "orochi_stuck_prompt_text": info.get("orochi_stuck_prompt_text")
+            or prev.get("orochi_stuck_prompt_text")
             or "",
             "pane_text": info.get("pane_text") or prev.get("pane_text") or "",
             # scitex-agent-container hook-captured tool/prompt events.
