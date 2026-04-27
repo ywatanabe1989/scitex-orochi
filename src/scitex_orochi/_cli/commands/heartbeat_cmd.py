@@ -117,7 +117,7 @@ def _wrap_with_orochi_fields(
         "recent_prompts": status.get("recent_prompts") or [],
         "sac_hooks_agent_calls": status.get("sac_hooks_agent_calls") or [],
         "background_tasks": status.get("background_tasks") or [],
-        "tool_counts": status.get("tool_counts") or {},
+        "sac_hooks_tool_counts": status.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts (derived in agent-container).
         "last_tool_at": status.get("last_tool_at") or "",
         "last_tool_name": status.get("last_tool_name") or "",
@@ -312,7 +312,7 @@ def heartbeat_push(
                 f"orochi_pane_state={body.get('orochi_pane_state')} "
                 f"context={body.get('orochi_context_pct')} "
                 f"quota_5h={body.get('quota_5h_used_pct')} "
-                f"tools={sum((body.get('tool_counts') or {}).values())}",
+                f"tools={sum((body.get('sac_hooks_tool_counts') or {}).values())}",
                 err=True,
             )
         if code >= 400:

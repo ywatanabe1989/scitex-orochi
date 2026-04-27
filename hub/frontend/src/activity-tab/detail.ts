@@ -422,7 +422,7 @@ export function _renderActivityAgentDetail(a, grid) {
     d.recent_prompts || [],
     d.sac_hooks_agent_calls || [],
     d.background_tasks || [],
-    d.tool_counts || {},
+    d.sac_hooks_tool_counts || {},
   );
   /* Preserve scrollTop of long, user-scrolled panes across heartbeat-driven
    * re-renders. Without this the CLAUDE.md viewer (and .mcp.json viewer)

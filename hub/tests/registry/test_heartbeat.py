@@ -36,7 +36,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
       - ``last_tool_at`` / ``last_tool_name``  — LLM liveness signal
       - ``last_mcp_tool_at`` / ``last_mcp_tool_name`` — MCP sidecar route
       - ``recent_tools`` / ``recent_prompts`` / ``sac_hooks_agent_calls`` /
-        ``background_tasks`` / ``tool_counts`` — hook ring-buffer
+        ``background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
         views rendered in the per-agent detail panels.
     """
 
@@ -104,7 +104,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
 
     def test_register_persists_hook_event_lists(self):
         """recent_tools / prompts / sac_hooks_agent_calls / background_tasks /
-        tool_counts round-trip into the registry unmodified."""
+        sac_hooks_tool_counts round-trip into the registry unmodified."""
         from hub.registry import get_agents
 
         recent_tools = [
@@ -120,14 +120,14 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         background_tasks = [
             {"ts": "2026-04-17T00:00:03Z", "input_preview": "tail -f log"},
         ]
-        tool_counts = {"Edit": 1, "Bash": 1, "Agent": 1}
+        sac_hooks_tool_counts = {"Edit": 1, "Bash": 1, "Agent": 1}
         resp = self._post(
             self._base_payload(
                 recent_tools=recent_tools,
                 recent_prompts=recent_prompts,
                 sac_hooks_agent_calls=sac_hooks_agent_calls,
                 background_tasks=background_tasks,
-                tool_counts=tool_counts,
+                sac_hooks_tool_counts=sac_hooks_tool_counts,
             )
         )
         self.assertEqual(resp.status_code, 200)
@@ -137,7 +137,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(a["recent_prompts"], recent_prompts)
         self.assertEqual(a["sac_hooks_agent_calls"], sac_hooks_agent_calls)
         self.assertEqual(a["background_tasks"], background_tasks)
-        self.assertEqual(a["tool_counts"], tool_counts)
+        self.assertEqual(a["sac_hooks_tool_counts"], sac_hooks_tool_counts)
 
     def test_detail_api_surfaces_last_tool_fields(self):
         """The four shortcuts must appear in /api/agents/<name>/detail/."""
@@ -164,7 +164,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
                 recent_prompts=[{"ts": "2026-04-17T00:00:01Z", "prompt_preview": "?"}],
                 sac_hooks_agent_calls=[{"ts": "2026-04-17T00:00:02Z", "input_preview": "x"}],
                 background_tasks=[{"ts": "2026-04-17T00:00:03Z", "input_preview": "y"}],
-                tool_counts={"Grep": 1},
+                sac_hooks_tool_counts={"Grep": 1},
             )
         )
         resp = self._get_detail("hb-agent")
@@ -175,7 +175,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(len(data["recent_prompts"]), 1)
         self.assertEqual(len(data["sac_hooks_agent_calls"]), 1)
         self.assertEqual(len(data["background_tasks"]), 1)
-        self.assertEqual(data["tool_counts"], {"Grep": 1})
+        self.assertEqual(data["sac_hooks_tool_counts"], {"Grep": 1})
 
     def test_missing_hook_fields_default_to_empty(self):
         """Registering without any hook fields leaves empty defaults —
@@ -188,7 +188,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["recent_prompts"], [])
         self.assertEqual(data["sac_hooks_agent_calls"], [])
         self.assertEqual(data["background_tasks"], [])
-        self.assertEqual(data["tool_counts"], {})
+        self.assertEqual(data["sac_hooks_tool_counts"], {})
         self.assertEqual(data["last_tool_at"], "")
         self.assertEqual(data["last_tool_name"], "")
         self.assertEqual(data["last_mcp_tool_at"], "")
@@ -203,19 +203,19 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self._post(
             self._base_payload(
                 recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Edit"}],
-                tool_counts={"Edit": 1},
+                sac_hooks_tool_counts={"Edit": 1},
             )
         )
         self._post(
             self._base_payload(
                 recent_tools=[],
-                tool_counts={},
+                sac_hooks_tool_counts={},
             )
         )
         agents = get_agents(workspace_id=self.ws.id)
         a = next(a for a in agents if a["name"] == "hb-agent")
         self.assertEqual(a["recent_tools"], [])
-        self.assertEqual(a["tool_counts"], {})
+        self.assertEqual(a["sac_hooks_tool_counts"], {})
 
 
 class PaneActionSummaryRegistryTest(TestCase):

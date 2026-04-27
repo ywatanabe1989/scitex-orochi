@@ -262,10 +262,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("background_tasks"), (list, tuple))
                 else prev.get("background_tasks") or []
             ),
-            "tool_counts": (
-                dict(info.get("tool_counts"))
-                if isinstance(info.get("tool_counts"), dict)
-                else prev.get("tool_counts") or {}
+            "sac_hooks_tool_counts": (
+                dict(info.get("sac_hooks_tool_counts"))
+                if isinstance(info.get("sac_hooks_tool_counts"), dict)
+                else prev.get("sac_hooks_tool_counts") or {}
             ),
             # Functional-heartbeat shortcuts derived in agent-container's
             # event_log.summarize(). last_tool_at is the newest pretool

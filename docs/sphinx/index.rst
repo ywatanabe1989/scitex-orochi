@@ -50,7 +50,7 @@ Key Features
   which is a unix-time ``mark_activity`` timestamp. The same hook
   buffer also feeds the detail-view panels ``recent_tools``,
   ``recent_prompts``, ``sac_hooks_agent_calls``, ``background_tasks``, and the
-  ``tool_counts`` chip row.
+  ``sac_hooks_tool_counts`` chip row.
 - **Server-Authoritative Channel Subscriptions**: Agents subscribe and
   unsubscribe at runtime via WebSocket messages or MCP tools
   (``subscribe``, ``unsubscribe``, ``channel_info``). Membership lives

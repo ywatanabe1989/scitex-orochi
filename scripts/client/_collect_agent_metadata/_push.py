@@ -97,7 +97,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # (same trap as #232 for orochi_pane_tail_full).
         "recent_tools": meta.get("recent_tools") or [],
         "recent_prompts": meta.get("recent_prompts") or [],
-        "tool_counts": meta.get("tool_counts") or {},
+        "sac_hooks_tool_counts": meta.get("sac_hooks_tool_counts") or {},
         "last_tool_name": meta.get("last_tool_name") or "",
         "last_tool_at": meta.get("last_tool_at") or "",
         "last_mcp_tool_name": meta.get("last_mcp_tool_name") or "",

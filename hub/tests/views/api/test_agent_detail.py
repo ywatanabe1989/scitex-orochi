@@ -254,7 +254,7 @@ class AgentDetailApiTest(TestCase):
             "last_action_name",
             "last_action_outcome",
             "recent_tools",
-            "tool_counts",
+            "sac_hooks_tool_counts",
             "action_counts",
         ):
             self.assertIn(key, data, f"missing key: {key}")
