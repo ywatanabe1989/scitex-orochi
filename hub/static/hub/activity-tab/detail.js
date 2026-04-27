@@ -179,7 +179,7 @@ function _renderActivityAgentDetail(a, grid) {
       d.last_action_at
         ? _fmtSec(_secondsSinceIso(d.last_action_at)) +
           " ago (" +
-          (d.last_action_name || "?") +
+          (d.sac_hooks_last_action_name || "?") +
           " " +
           (d.last_action_outcome || "?") +
           (d.last_action_elapsed_s != null

@@ -127,7 +127,7 @@ def _wrap_with_orochi_fields(
         # Empty when actions subsystem is unused; dashboard chips it
         # as "last probe / compact / ... outcome N ago".
         "last_action_at": status.get("last_action_at") or "",
-        "last_action_name": status.get("last_action_name") or "",
+        "sac_hooks_last_action_name": status.get("sac_hooks_last_action_name") or "",
         "last_action_outcome": status.get("last_action_outcome") or "",
         "last_action_elapsed_s": status.get("last_action_elapsed_s"),
         "action_counts": status.get("action_counts") or {},

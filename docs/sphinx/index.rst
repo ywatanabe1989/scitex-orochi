@@ -37,7 +37,7 @@ Key Features
   ``sac_hooks_last_mcp_tool_at`` / ``sac_hooks_last_mcp_tool_name`` (newest ``mcp__*``
   pretool, proves the MCP sidecar route works) — plus a PaneAction
   summary from the container's per-host ``actions.db``:
-  ``last_action_at`` / ``last_action_name`` (e.g. ``nonce-probe``,
+  ``last_action_at`` / ``sac_hooks_last_action_name`` (e.g. ``nonce-probe``,
   ``compact``) / ``last_action_outcome`` (``success`` /
   ``completion_timeout`` / ``precondition_fail`` / ``send_error`` /
   ``skipped_by_policy``) / ``last_action_elapsed_s``, with
@@ -45,7 +45,7 @@ Key Features
   surface in the per-agent detail meta grid (e.g. "Last action: 12s
   ago (nonce-probe success, 3.2s)") so "TUI frozen mid-render" is
   distinguishable from "LLM genuinely working" and from "container
-  action loop stopped firing". Note: ``last_action_name`` (PaneAction
+  action loop stopped firing". Note: ``sac_hooks_last_action_name`` (PaneAction
   label) is distinct from the pre-existing ``last_action`` field,
   which is a unix-time ``mark_activity`` timestamp. The same hook
   buffer also feeds the detail-view panels ``sac_hooks_recent_tools``,

@@ -234,12 +234,12 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_last_mcp_tool_at": a.get("sac_hooks_last_mcp_tool_at", ""),
                 "sac_hooks_last_mcp_tool_name": a.get("sac_hooks_last_mcp_tool_name", ""),
                 # PaneAction summary (scitex-agent-container action_store).
-                # NB: ``last_action_name`` (not ``last_action``) to avoid
+                # NB: ``sac_hooks_last_action_name`` (not ``last_action``) to avoid
                 # collision with the pre-existing ``last_action`` field
                 # which is the unix-time liveness timestamp set by
                 # ``mark_activity``.
                 "last_action_at": a.get("last_action_at", ""),
-                "last_action_name": a.get("last_action_name", ""),
+                "sac_hooks_last_action_name": a.get("sac_hooks_last_action_name", ""),
                 "last_action_outcome": a.get("last_action_outcome", ""),
                 "last_action_elapsed_s": a.get("last_action_elapsed_s"),
                 "action_counts": dict(a.get("action_counts") or {}),

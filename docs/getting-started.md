@@ -65,12 +65,12 @@ Pane-text scraping alone cannot distinguish "LLM genuinely working" from "TUI fr
 |-------|---------|
 | `sac_hooks_last_tool_at` + `sac_hooks_last_tool_name` | Newest `PreToolUse` event — LLM-level liveness (e.g. "Last tool: 12s ago (Edit)"). |
 | `sac_hooks_last_mcp_tool_at` + `sac_hooks_last_mcp_tool_name` | Newest `mcp__*` pretool — proves the MCP sidecar route itself is delivering tool calls (e.g. "Last MCP: 45s ago (mcp__orochi__send_message)"). |
-| `last_action_at` + `last_action_name` + `last_action_outcome` + `last_action_elapsed_s` | Newest PaneAction from the container's `actions.db` (e.g. `nonce-probe`, `compact`). `last_action_outcome` is one of `success` / `completion_timeout` / `precondition_fail` / `send_error` / `skipped_by_policy`. Renders as "Last action: 12s ago (nonce-probe success, 3.2s)". |
+| `last_action_at` + `sac_hooks_last_action_name` + `last_action_outcome` + `last_action_elapsed_s` | Newest PaneAction from the container's `actions.db` (e.g. `nonce-probe`, `compact`). `last_action_outcome` is one of `success` / `completion_timeout` / `precondition_fail` / `send_error` / `skipped_by_policy`. Renders as "Last action: 12s ago (nonce-probe success, 3.2s)". |
 | `action_counts` + `sac_hooks_p95_elapsed_s_by_action` | Per-action rollups — how many times each PaneAction ran and the p95 elapsed seconds, useful for spotting slow or flapping actions. |
 
 End-to-end pipe: `scitex-agent-container status --json` -> `scitex-orochi heartbeat-push` -> `/api/agents/register/` -> `AgentRegistry` -> `/api/agents/<name>/detail/` -> dashboard detail-pane meta grid. An agent with fresh `sac_hooks_last_tool_at` but stale `sac_hooks_last_mcp_tool_at` is alive but has a broken MCP route; the inverse suggests the hook emitter is stuck. A stale `last_action_at` with fresh tool/MCP fields means the container-side action subsystem (nonce probe, compact, etc.) has stopped firing even though the LLM is still working.
 
-> Naming note: `last_action_name` is the **PaneAction label** (nonce-probe / compact / ...) from `actions.db`. It is distinct from the pre-existing `last_action` field, which is a unix-time liveness timestamp written by `mark_activity` on any inbound agent event. The two must not be conflated.
+> Naming note: `sac_hooks_last_action_name` is the **PaneAction label** (nonce-probe / compact / ...) from `actions.db`. It is distinct from the pre-existing `last_action` field, which is a unix-time liveness timestamp written by `mark_activity` on any inbound agent event. The two must not be conflated.
 
 The same hook ring buffer also populates the per-agent detail view's `sac_hooks_recent_tools`, `sac_hooks_recent_prompts`, `sac_hooks_agent_calls`, `background_tasks`, and `sac_hooks_tool_counts` panels.
 
