@@ -5,7 +5,7 @@ Pure function: A2A observations → ``{"label", "evidence", "version"}``.
 Conservative — only emits coarse labels; deliberately avoids picking
 "stuck" thresholds at this layer. Consumers that want to alert on
 "working but silent for >N min" can read
-``a2a_observations.seconds_since_most_recent_event`` directly.
+``sac_a2a_observations.seconds_since_most_recent_event`` directly.
 
 Labels:
     not-applicable    — agent has no A2A endpoint configured

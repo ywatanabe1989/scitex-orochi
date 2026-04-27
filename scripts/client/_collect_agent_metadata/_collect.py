@@ -35,13 +35,13 @@ def _build_a2a_section(agent: str) -> dict:
     Keeps `active_task_count` / `active_task_state` / `last_task_event_at`
     as derived top-level fields for back-compat with existing consumers.
     """
-    from ._a2a_observations import collect_a2a_observations
+    from ._sac_a2a_observations import collect_sac_a2a_observations
     from .states._orochi_comm_state_v1 import derive_orochi_comm_state
 
-    obs = collect_a2a_observations(agent)
+    obs = collect_sac_a2a_observations(agent)
     verdict = derive_orochi_comm_state(obs)
     return {
-        "a2a_observations": obs,
+        "sac_a2a_observations": obs,
         "orochi_comm_state": verdict["label"],
         "orochi_comm_state_evidence": verdict["evidence"],
         "orochi_comm_state_version": verdict["version"],
@@ -282,7 +282,7 @@ def collect(agent: str) -> dict:
         "orochi_stuck_prompt_text": orochi_stuck_prompt_text,
         "orochi_classifier_note": orochi_classifier_note,
         # A2A state pipeline (Layer A → Layer B):
-        #   `a2a_observations`    — Layer A primitive facts (full task
+        #   `sac_a2a_observations`    — Layer A primitive facts (full task
         #                           list, tasks_by_state histogram,
         #                           endpoint reachability, etc.)
         #   `orochi_comm_state`          — Layer B v1 verdict label

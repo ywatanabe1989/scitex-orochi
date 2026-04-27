@@ -83,7 +83,7 @@ def _empty(reason: str, *, configured: bool, reachable: bool) -> dict[str, Any]:
     }
 
 
-def collect_a2a_observations(agent_name: str) -> dict[str, Any]:
+def collect_sac_a2a_observations(agent_name: str) -> dict[str, Any]:
     """Layer A entry point: A2A sidecar → flat dict of primitive facts.
 
     Always returns a dict. Always includes ``endpoint_configured`` /
@@ -103,14 +103,14 @@ def collect_a2a_observations(agent_name: str) -> dict[str, Any]:
             body = resp.read()
     except (urllib.error.URLError, socket.timeout, ConnectionError) as exc:
         log.debug(
-            "collect_a2a_observations %s: %s unreachable: %s", agent_name, url, exc
+            "collect_sac_a2a_observations %s: %s unreachable: %s", agent_name, url, exc
         )
         out = _empty(f"unreachable: {exc}", configured=True, reachable=False)
         out["endpoint_url"] = url
         return out
     except Exception as exc:  # pragma: no cover — defense in depth
         log.warning(
-            "collect_a2a_observations %s: unexpected fetch error: %s",
+            "collect_sac_a2a_observations %s: unexpected fetch error: %s",
             agent_name,
             exc,
         )
@@ -122,7 +122,7 @@ def collect_a2a_observations(agent_name: str) -> dict[str, Any]:
         payload = json.loads(body)
     except (json.JSONDecodeError, ValueError) as exc:
         log.warning(
-            "collect_a2a_observations %s: bad JSON from %s: %s",
+            "collect_sac_a2a_observations %s: bad JSON from %s: %s",
             agent_name,
             url,
             exc,
@@ -133,7 +133,7 @@ def collect_a2a_observations(agent_name: str) -> dict[str, Any]:
 
     raw_tasks = payload.get("tasks") if isinstance(payload, dict) else None
     if not isinstance(raw_tasks, list):
-        log.warning("collect_a2a_observations %s: 'tasks' is not a list", agent_name)
+        log.warning("collect_sac_a2a_observations %s: 'tasks' is not a list", agent_name)
         out = _empty("malformed: tasks not a list", configured=True, reachable=True)
         out["endpoint_url"] = url
         return out
