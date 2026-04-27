@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 
+from ._a2a_status import collect_a2a_status
 from ._classifier import (
     _classify_pane_state,
     _detect_contradiction,
@@ -115,15 +116,14 @@ def collect(agent: str) -> dict:
     # never letting env vars or server-side inference speak for the
     # process (lead msg#15578 root fix).
     import socket as _socket
+
     try:
         live_hostname = (_socket.gethostname() or "").split(".")[0].strip()
     except Exception:
         live_hostname = ""
 
     pane_state = _classify_pane_state(pane_tail_block_clean, pane, agent=agent)
-    stuck_prompt_text = _extract_stuck_prompt(
-        pane_tail_block_clean, pane, agent=agent
-    )
+    stuck_prompt_text = _extract_stuck_prompt(pane_tail_block_clean, pane, agent=agent)
     # Contradiction check + evidence log. `alive=True` here means
     # we successfully captured a pane from the multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
@@ -236,6 +236,13 @@ def collect(agent: str) -> dict:
         "pane_state": pane_state,
         "stuck_prompt_text": stuck_prompt_text,
         "classifier_note": classifier_note,
+        # A2A protocol-derived task state — primitive fields the hub uses
+        # to derive richer classifications without sac knowing about
+        # orochi. Empty dict when no A2A sidecar is configured (legacy
+        # / non-A2A agents). See ``_a2a_status.py`` for the field
+        # contract and the ``GET /v1/agents/<name>/_active`` endpoint
+        # in scitex-agent-container.
+        **collect_a2a_status(agent),
         # scitex-orochi #187 / #59 — hook-event ring buffer summary
         # from scitex-agent-container. Unpacked as top-level keys so
         # push_all()'s whitelist can forward each one verbatim.
