@@ -181,7 +181,7 @@ def api_agents_register(request):
             "orochi_mcp_json": body.get("orochi_mcp_json", ""),
             # Claude Code hook-captured events.
             "sac_hooks_recent_tools": body.get("sac_hooks_recent_tools") or [],
-            "recent_prompts": body.get("recent_prompts") or [],
+            "sac_hooks_recent_prompts": body.get("sac_hooks_recent_prompts") or [],
             "sac_hooks_agent_calls": body.get("sac_hooks_agent_calls") or [],
             "background_tasks": body.get("background_tasks") or [],
             "sac_hooks_tool_counts": body.get("sac_hooks_tool_counts") or {},

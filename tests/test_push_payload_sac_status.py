@@ -31,7 +31,7 @@ _MIN_META = {
     "orochi_mcp_servers": [],
     "recent_actions": [],
     "sac_hooks_recent_tools": [],
-    "recent_prompts": [],
+    "sac_hooks_recent_prompts": [],
     "sac_hooks_agent_calls": [],
     "background_tasks": [],
     "subagents": [],

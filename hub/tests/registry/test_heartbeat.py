@@ -35,7 +35,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
 
       - ``last_tool_at`` / ``last_tool_name``  — LLM liveness signal
       - ``last_mcp_tool_at`` / ``last_mcp_tool_name`` — MCP sidecar route
-      - ``sac_hooks_recent_tools`` / ``recent_prompts`` / ``sac_hooks_agent_calls`` /
+      - ``sac_hooks_recent_tools`` / ``sac_hooks_recent_prompts`` / ``sac_hooks_agent_calls`` /
         ``background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
         views rendered in the per-agent detail panels.
     """
@@ -111,7 +111,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
             {"ts": "2026-04-17T00:00:00Z", "tool": "Edit", "input_preview": "/f.py"},
             {"ts": "2026-04-17T00:00:05Z", "tool": "Bash", "input_preview": "pytest"},
         ]
-        recent_prompts = [
+        sac_hooks_recent_prompts = [
             {"ts": "2026-04-17T00:00:00Z", "prompt_preview": "fix the bug"},
         ]
         sac_hooks_agent_calls = [
@@ -124,7 +124,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_recent_tools=sac_hooks_recent_tools,
-                recent_prompts=recent_prompts,
+                sac_hooks_recent_prompts=sac_hooks_recent_prompts,
                 sac_hooks_agent_calls=sac_hooks_agent_calls,
                 background_tasks=background_tasks,
                 sac_hooks_tool_counts=sac_hooks_tool_counts,
@@ -134,7 +134,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         agents = get_agents(workspace_id=self.ws.id)
         a = next(a for a in agents if a["name"] == "hb-agent")
         self.assertEqual(a["sac_hooks_recent_tools"], sac_hooks_recent_tools)
-        self.assertEqual(a["recent_prompts"], recent_prompts)
+        self.assertEqual(a["sac_hooks_recent_prompts"], sac_hooks_recent_prompts)
         self.assertEqual(a["sac_hooks_agent_calls"], sac_hooks_agent_calls)
         self.assertEqual(a["background_tasks"], background_tasks)
         self.assertEqual(a["sac_hooks_tool_counts"], sac_hooks_tool_counts)
@@ -161,7 +161,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self._post(
             self._base_payload(
                 sac_hooks_recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Grep"}],
-                recent_prompts=[{"ts": "2026-04-17T00:00:01Z", "prompt_preview": "?"}],
+                sac_hooks_recent_prompts=[{"ts": "2026-04-17T00:00:01Z", "prompt_preview": "?"}],
                 sac_hooks_agent_calls=[{"ts": "2026-04-17T00:00:02Z", "input_preview": "x"}],
                 background_tasks=[{"ts": "2026-04-17T00:00:03Z", "input_preview": "y"}],
                 sac_hooks_tool_counts={"Grep": 1},
@@ -172,7 +172,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         data = resp.json()
         self.assertEqual(len(data["sac_hooks_recent_tools"]), 1)
         self.assertEqual(data["sac_hooks_recent_tools"][0]["tool"], "Grep")
-        self.assertEqual(len(data["recent_prompts"]), 1)
+        self.assertEqual(len(data["sac_hooks_recent_prompts"]), 1)
         self.assertEqual(len(data["sac_hooks_agent_calls"]), 1)
         self.assertEqual(len(data["background_tasks"]), 1)
         self.assertEqual(data["sac_hooks_tool_counts"], {"Grep": 1})
@@ -185,7 +185,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertEqual(data["sac_hooks_recent_tools"], [])
-        self.assertEqual(data["recent_prompts"], [])
+        self.assertEqual(data["sac_hooks_recent_prompts"], [])
         self.assertEqual(data["sac_hooks_agent_calls"], [])
         self.assertEqual(data["background_tasks"], [])
         self.assertEqual(data["sac_hooks_tool_counts"], {})

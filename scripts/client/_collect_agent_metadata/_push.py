@@ -96,7 +96,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # but the whitelist drops them before they reach the hub
         # (same trap as #232 for orochi_pane_tail_full).
         "sac_hooks_recent_tools": meta.get("sac_hooks_recent_tools") or [],
-        "recent_prompts": meta.get("recent_prompts") or [],
+        "sac_hooks_recent_prompts": meta.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_tool_counts": meta.get("sac_hooks_tool_counts") or {},
         "last_tool_name": meta.get("last_tool_name") or "",
         "last_tool_at": meta.get("last_tool_at") or "",

@@ -306,7 +306,7 @@ def api_agent_detail(request, name: str):
         # PostToolUse / UserPromptSubmit). Empty lists when the hook
         # wiring hasn't been configured for this agent yet.
         "sac_hooks_recent_tools": agent.get("sac_hooks_recent_tools") or [],
-        "recent_prompts": agent.get("recent_prompts") or [],
+        "sac_hooks_recent_prompts": agent.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_agent_calls": agent.get("sac_hooks_agent_calls") or [],
         "background_tasks": agent.get("background_tasks") or [],
         "sac_hooks_tool_counts": agent.get("sac_hooks_tool_counts") or {},

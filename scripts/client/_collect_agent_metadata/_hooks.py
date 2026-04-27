@@ -7,7 +7,7 @@ import subprocess
 
 _HOOK_EVENT_KEYS = (
     "sac_hooks_recent_tools",
-    "recent_prompts",
+    "sac_hooks_recent_prompts",
     "sac_hooks_tool_counts",
     "last_tool_name",
     "last_tool_at",

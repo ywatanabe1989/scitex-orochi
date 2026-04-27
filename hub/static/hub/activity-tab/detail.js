@@ -418,7 +418,7 @@ function _renderActivityAgentDetail(a, grid) {
    * hooks are wired up for this agent; otherwise the lists are empty. */
   var hooksHtml = _renderHookPanels(
     d.sac_hooks_recent_tools || [],
-    d.recent_prompts || [],
+    d.sac_hooks_recent_prompts || [],
     d.sac_hooks_agent_calls || [],
     d.background_tasks || [],
     d.sac_hooks_tool_counts || {},

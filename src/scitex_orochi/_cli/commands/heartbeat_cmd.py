@@ -114,7 +114,7 @@ def _wrap_with_orochi_fields(
         "orochi_mcp_json": status.get("orochi_mcp_json") or "",
         # Claude Code hook-captured events (new — forwarded as-is).
         "sac_hooks_recent_tools": status.get("sac_hooks_recent_tools") or [],
-        "recent_prompts": status.get("recent_prompts") or [],
+        "sac_hooks_recent_prompts": status.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_agent_calls": status.get("sac_hooks_agent_calls") or [],
         "background_tasks": status.get("background_tasks") or [],
         "sac_hooks_tool_counts": status.get("sac_hooks_tool_counts") or {},
