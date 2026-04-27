@@ -207,7 +207,7 @@ export function _topoPoolSelectRange(targetChip) {
 export function _topoPoolMemorySnapshot() {
   /* Sidebar filter state: raw #filter-input text + parsed activeTags.
    * Raw text captures is:<flag> tokens and free-form search words;
-   * activeTags captures the agent/host/channel/label/project chips
+   * activeTags captures the agent/host/channel/label/orochi_project chips
    * rendered as pill tokens. Both are needed because the two stores
    * diverge by design (todo#72). */
   var input = null;

@@ -60,7 +60,7 @@ def _sanitize_group(name: str) -> str:
 # todo#405: auto-status-reply (`[agent] status: online`) belongs in fleet
 # channels only. User-facing channels are the ywatanabe ↔ fleet interface
 # (fleet-communication-discipline.md rule #8). Any channel not in this
-# allowlist — including #general, #ywatanabe, project channels like
+# allowlist — including #general, #ywatanabe, orochi_project channels like
 # #neurovista / #paper-*, and DMs — must stay free of fleet heartbeat noise.
 _FLEET_CHANNELS = frozenset(
     {

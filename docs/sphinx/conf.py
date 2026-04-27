@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath("../../src"))
 
 # -- Project information -----------------------------------------------------
 
-project = "scitex-orochi"
+orochi_project = "scitex-orochi"
 copyright = "2026, Yusuke Watanabe"
 author = "Yusuke Watanabe"
 
@@ -109,8 +109,8 @@ html_theme_options = {
 html_static_path = ["_static"]
 
 # RTD-specific configurations
-html_title = f"{project} v{release}"
-html_short_title = project
+html_title = f"{orochi_project} v{release}"
+html_short_title = orochi_project
 html_logo = None  # Add path to logo if available
 html_favicon = None  # Add path to favicon if available
 

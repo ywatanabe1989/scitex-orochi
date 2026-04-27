@@ -43,7 +43,7 @@ class OrochiClient:
         orochi_machine: str = "",
         role: str = "",
         agent_id: str = "",
-        project: str = "",
+        orochi_project: str = "",
         ws_path: str = "",
     ) -> None:
         import platform as _platform
@@ -52,7 +52,7 @@ class OrochiClient:
         self.channels = channels or ["#general"]
         self.orochi_machine = orochi_machine
         self.role = role
-        self.project = project
+        self.orochi_project = orochi_project
         self.agent_id = agent_id
         if not self.agent_id:
             machine_name = orochi_machine or _platform.node()
@@ -91,8 +91,8 @@ class OrochiClient:
                             "role": self.role,
                             "orochi_model": "",
                             "agent_id": self.agent_id,
-                            "project": self.project,
-                            "workdir": self.project,
+                            "orochi_project": self.orochi_project,
+                            "workdir": self.orochi_project,
                         },
                     }
                 )
@@ -111,7 +111,7 @@ class OrochiClient:
                     "orochi_machine": self.orochi_machine,
                     "role": self.role,
                     "agent_id": self.agent_id,
-                    "project": self.project,
+                    "orochi_project": self.orochi_project,
                 },
             )
             await self._ws.send(reg.to_json())

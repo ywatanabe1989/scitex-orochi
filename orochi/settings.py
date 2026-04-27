@@ -12,7 +12,7 @@ def _dynamic_version():
 
     Resolution order:
     1. SCITEX_OROCHI_VERSION env var (deploy-script override).
-    2. pyproject.toml ``[project] version`` parsed directly — works inside
+    2. pyproject.toml ``[orochi_project] version`` parsed directly — works inside
        a docker container where git is absent and the editable-install
        dist-info may be stale (docker cp updated the source but not the
        installed metadata).

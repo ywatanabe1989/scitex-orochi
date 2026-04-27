@@ -2,7 +2,7 @@
 
 Index-coverage and dead-link checks now live in ``tests/test_skills_quality.py``
 (driven by ``scitex_dev._skills_quality``). This file retains only the
-project-specific invariants that the generic quality checker does not know
+orochi_project-specific invariants that the generic quality checker does not know
 about:
 
 * ``docs/cli.md`` must point to the canonical convention file.

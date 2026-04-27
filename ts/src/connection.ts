@@ -171,7 +171,7 @@ export class OrochiConnection {
           icon: process.env.SCITEX_OROCHI_ICON || "",
           icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
           icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
-          project: "",
+          orochi_project: "",
         },
       }),
     );

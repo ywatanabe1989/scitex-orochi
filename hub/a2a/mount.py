@@ -103,7 +103,7 @@ def _build_inner_app() -> Starlette:
     # Custom well-known route — the SDK's ``create_agent_card_routes``
     # ``card_modifier`` callback doesn't receive the request, so it
     # can't look up the per-Mount ``{name}`` path-param. We serve the
-    # well-known path ourselves and project the registry entry on the
+    # well-known path ourselves and orochi_project the registry entry on the
     # fly.
     routes.append(
         Route(

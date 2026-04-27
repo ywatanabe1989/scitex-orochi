@@ -428,7 +428,7 @@ export async function fetchResources() {
        * Local-GPU hosts (heartbeat carries ``r.gpus = [...]``):
        *   pass through verbatim so tooltip can render VRAM used/total.
        * Slurm login nodes (``resource_source == "orochi_slurm"``):
-       *   project cluster totals into a single synthetic entry so the
+       *   orochi_project cluster totals into a single synthetic entry so the
        *   sidebar renders ``allocated/total GPU`` for the cluster.
        * GPU-less (mba, nas): ``[]`` → sidebar emits no GPU chip,
        *   tooltip reads ``n/a`` per spec. */

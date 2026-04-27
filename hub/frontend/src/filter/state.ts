@@ -36,7 +36,7 @@ export function parseFilterInput(raw) {
   var tags = [];
   var textParts = [];
   parts.forEach(function (p) {
-    var m = p.match(/^(agent|host|channel|label|project|is):(.+)$/i);
+    var m = p.match(/^(agent|host|channel|label|orochi_project|is):(.+)$/i);
     if (m) {
       tags.push({ type: m[1].toLowerCase(), value: m[2].toLowerCase() });
     } else if (p) {

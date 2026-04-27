@@ -69,7 +69,7 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        pid, ppid, started_at, workdir, project, orochi_machine, orochi_skills_loaded,
+        pid, ppid, started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
         runtime, version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
@@ -119,7 +119,7 @@ def collect(agent: str) -> dict:
     # Skills loaded + MCP servers from workspace files.
     orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
     orochi_mcp_servers = collect_orochi_mcp_servers(workspace)
-    project = agent
+    orochi_project = agent
     orochi_machine = resolve_machine_label()
 
     # CLAUDE.md head + full, .mcp.json full (todo#460 viewers).
@@ -243,7 +243,7 @@ def collect(agent: str) -> dict:
         "ppid": ppid,
         "started_at": started_at,
         "workdir": workspace,
-        "project": project,
+        "orochi_project": orochi_project,
         "orochi_machine": orochi_machine,
         # Live orochi_hostname(1) — see the comment above live_hostname for why
         # we send this unconditionally. The hub stores this as ``orochi_hostname``

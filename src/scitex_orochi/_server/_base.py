@@ -34,7 +34,7 @@ class Agent:
     role: str = ""
     orochi_model: str = ""
     agent_id: str = ""
-    project: str = ""
+    orochi_project: str = ""
     workspace_id: str = ""
     multiplexer: str = ""
     status: str = "online"

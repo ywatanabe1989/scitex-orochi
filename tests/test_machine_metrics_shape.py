@@ -63,7 +63,7 @@ def test_gpus_is_a_list():
     """``gpus`` must always be a list (possibly empty) — not None.
 
     The hub aggregator in ``hub/views/api/_resources.py`` iterates on
-    ``gpus`` to project them into the per-orochi_machine resources dict; if
+    ``gpus`` to orochi_project them into the per-orochi_machine resources dict; if
     this became ``None``, the aggregator would need a branch.
     """
     m = collect_machine_metrics()

@@ -78,7 +78,7 @@ def _preview_for(tool_name: str, tool_input: dict) -> str:
 def find_jsonl_transcripts(workspace: str) -> list[Path]:
     """Locate the Claude Code JSONL transcripts for an agent's workspace.
 
-    Returns transcripts sorted newest-first. Empty list if the project
+    Returns transcripts sorted newest-first. Empty list if the orochi_project
     directory doesn't exist.
     """
     encoded = workspace.replace("/", "-").replace(".", "-")
@@ -115,7 +115,7 @@ def parse_transcript(jsonls: list[Path]) -> dict:
         lines = []
     tail = lines[-50:]
 
-    # started_at = mtime of earliest jsonl for this project (ISO UTC)
+    # started_at = mtime of earliest jsonl for this orochi_project (ISO UTC)
     try:
         earliest = min(jsonls, key=lambda p: p.stat().st_mtime)
         out["started_at"] = datetime.fromtimestamp(

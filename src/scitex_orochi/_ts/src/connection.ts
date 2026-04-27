@@ -183,7 +183,7 @@ export class OrochiConnection {
           role: "claude-code",
           orochi_model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${orochi_hostname()}`,
-          project: "",
+          orochi_project: "",
           workdir: process.cwd(),
         },
       }),

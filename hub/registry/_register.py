@@ -128,7 +128,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "role": info.get("role", ""),
             "orochi_model": info.get("orochi_model", ""),
             "multiplexer": info.get("multiplexer", ""),
-            "project": info.get("project", ""),
+            "orochi_project": info.get("orochi_project", ""),
             "workdir": info.get("workdir", ""),
             # Subscriptions are server-authoritative (ChannelMembership).
             # Preserve prev.channels when a heartbeat omits the field so

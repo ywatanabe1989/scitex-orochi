@@ -140,7 +140,7 @@ function onOpen(ws: WebSocket): void {
         icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
         icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",
         color: process.env.SCITEX_OROCHI_COLOR || "",
-        project: process.env.SCITEX_OROCHI_PROJECT || "",
+        orochi_project: process.env.SCITEX_OROCHI_PROJECT || "",
         workdir: process.cwd(),
         orochi_claude_md: claudeMd,
       },

@@ -82,7 +82,7 @@ def _wrap_with_orochi_fields(
         "orochi_model": status.get("orochi_model") or "",
         "workdir": status.get("workdir") or "",
         "multiplexer": status.get("multiplexer") or "",
-        "project": status.get("project") or status.get("name") or "",
+        "orochi_project": status.get("orochi_project") or status.get("name") or "",
         "pid": int(status.get("pid") or 0),
         "ppid": int(status.get("ppid") or 0),
         "orochi_context_pct": status.get("orochi_context_pct"),

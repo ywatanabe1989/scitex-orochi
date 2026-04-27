@@ -34,7 +34,7 @@ class HandlersMixin:
         orochi_machine = msg.payload.get("orochi_machine", "")
         role = msg.payload.get("role", "")
         orochi_model = msg.payload.get("orochi_model", "")
-        project = msg.payload.get("project", "")
+        orochi_project = msg.payload.get("orochi_project", "")
         multiplexer = msg.payload.get("multiplexer", "")
         orochi_current_task = msg.payload.get("orochi_current_task", "") or ""
         try:
@@ -89,7 +89,7 @@ class HandlersMixin:
             role=role,
             orochi_model=orochi_model,
             agent_id=agent_id,
-            project=project,
+            orochi_project=orochi_project,
             multiplexer=multiplexer,
             workspace_id=workspace_id,
             status="online",
@@ -112,7 +112,7 @@ class HandlersMixin:
                     "event": "connected",
                     "channels": list(channels),
                     "agent_id": agent_id,
-                    "project": project,
+                    "orochi_project": orochi_project,
                 },
             )
         )
@@ -267,7 +267,7 @@ class HandlersMixin:
             "orochi_subagent_count",
             "orochi_machine",
             "role",
-            "project",
+            "orochi_project",
             "agent_id",
         ):
             if key in msg.payload:
@@ -294,7 +294,7 @@ class HandlersMixin:
                     "orochi_machine": agent.orochi_machine,
                     "role": agent.role,
                     "agent_id": agent.agent_id,
-                    "project": agent.project,
+                    "orochi_project": agent.orochi_project,
                 },
             )
         )

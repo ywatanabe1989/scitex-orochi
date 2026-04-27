@@ -2,7 +2,7 @@
 
 **Reviewer:** Code Review Agent
 **Date:** 2026-04-07
-**Scope:** Full source review of `src/scitex_orochi/`, `tests/`, project configuration
+**Scope:** Full source review of `src/scitex_orochi/`, `tests/`, orochi_project configuration
 **Codebase:** ~6,183 lines of Python across 39 source files + 4 test files
 
 ---
@@ -125,7 +125,7 @@ The codebase uses `importlib.reload()` on `_config` and `_auth` modules to pick 
 
 ### I6. Django residue: `hub/`, `orochi/`, `db.sqlite3`
 
-The `hub/` directory contains Django management commands, migrations, providers, and template tags -- all as `.pyc` files only (no `.py` sources). The `orochi/` directory has Django settings `.pyc` files. There is a `db.sqlite3` at project root (320KB).
+The `hub/` directory contains Django management commands, migrations, providers, and template tags -- all as `.pyc` files only (no `.py` sources). The `orochi/` directory has Django settings `.pyc` files. There is a `db.sqlite3` at orochi_project root (320KB).
 
 These appear to be remnants of an earlier Django-based architecture. The current codebase is pure aiohttp/websockets. Having compiled-only Django artifacts in the repo is confusing and potentially ships stale code.
 
@@ -233,9 +233,9 @@ if not as_json:
 
 The server check is printed twice in non-JSON mode because `_check()` has a side effect (printing) and is also called explicitly afterward.
 
-### N10. `node_modules/` in project root
+### N10. `node_modules/` in orochi_project root
 
-The project root contains `node_modules/`, suggesting a Node.js dependency (possibly for the dashboard). This should be in `.gitignore` and not shipped with the Python package.
+The orochi_project root contains `node_modules/`, suggesting a Node.js dependency (possibly for the dashboard). This should be in `.gitignore` and not shipped with the Python package.
 
 ---
 
@@ -264,7 +264,7 @@ The project root contains `node_modules/`, suggesting a Node.js dependency (poss
 
 ## Architectural Observations
 
-1. **The project has outgrown its single-process architecture.** The WebSocket server, HTTP server, Telegram bridge, and push notification system all run in one process. There is no horizontal scaling path.
+1. **The orochi_project has outgrown its single-process architecture.** The WebSocket server, HTTP server, Telegram bridge, and push notification system all run in one process. There is no horizontal scaling path.
 
 2. **SQLite is used for everything** (messages, workspaces, push subscriptions) with a single DB file. The workspace store shares the message store's DB connection (`server.store._db`). This tight coupling means workspace operations can block message persistence.
 

@@ -114,7 +114,7 @@ def api_agents_register(request):
             # todo#213: claude-hud-style process/runtime metadata pushed by
             # mamba-healer-mba's agent_meta.py --push loop.
             "multiplexer": body.get("multiplexer", ""),
-            "project": body.get("project", ""),
+            "orochi_project": body.get("orochi_project", ""),
             "pid": body.get("pid") or 0,
             "ppid": body.get("ppid") or 0,
             "orochi_context_pct": body.get("orochi_context_pct"),

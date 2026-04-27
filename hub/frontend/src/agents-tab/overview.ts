@@ -249,7 +249,7 @@ export function buildAgentRow(a) {
     channelsHtml +
     "</td>" +
     '<td class="muted-cell">' +
-    escapeHtml(a.project || "-") +
+    escapeHtml(a.orochi_project || "-") +
     "</td>" +
     '<td class="monospace-cell small-cell" title="' +
     escapeHtml(a.workdir || "") +

@@ -156,7 +156,7 @@ Visitor users get read-only access (can view messages, cannot send).
 
 **Phase 3 (native WS):** Django Channels consumer relays WebSocket. Full real-time experience with Django auth.
 
-**Phase 4 (deep integration):** Orochi agents can interact with workspace context (current project, open files, active manuscript). Agent actions reflected in workspace UI.
+**Phase 4 (deep integration):** Orochi agents can interact with workspace context (current orochi_project, open files, active manuscript). Agent actions reflected in workspace UI.
 
 ### 7. Data Flow
 
@@ -180,7 +180,7 @@ Resource data arrives via agent heartbeats through Orochi. The workspace module 
 ### 9. Open Questions
 
 1. **Notification integration:** Should Orochi messages trigger scitex.ai browser notifications?
-2. **Project context:** Should agents see which project the user has open?
+2. **Project context:** Should agents see which orochi_project the user has open?
 3. **Action buttons:** Should the workspace expose "Deploy", "Run Tests" buttons that dispatch to agents?
 4. **Multi-user:** When multiple users are logged in, do they share the same Orochi view or per-user channels?
 

@@ -43,7 +43,7 @@ async def handle_register(consumer, content):
 
     consumer.agent_meta = {
         "agent_id": payload.get("agent_id", consumer.agent_name),
-        "project": payload.get("project", ""),
+        "orochi_project": payload.get("orochi_project", ""),
         "orochi_machine": payload.get("orochi_machine", ""),
         # #257 / lead msg#15578 — live orochi_hostname(1) reported by the
         # client. Never derived from auth / source IP on the hub side;

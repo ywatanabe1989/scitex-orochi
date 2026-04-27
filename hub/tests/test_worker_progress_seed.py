@@ -68,7 +68,7 @@ class SeedWorkerProgressTest(TestCase):
     # --- dynamic #proj-* enumeration -------------------------------------
 
     def test_enumerates_existing_proj_channels(self):
-        # Pre-existing project channels in the DB at seed time.
+        # Pre-existing orochi_project channels in the DB at seed time.
         Channel.objects.create(workspace=self.ws, name="#proj-alpha")
         Channel.objects.create(workspace=self.ws, name="#proj-beta")
         # A lookalike that MUST NOT match the #proj- prefix.
@@ -101,7 +101,7 @@ class SeedWorkerProgressTest(TestCase):
         )
 
     def test_picks_up_new_proj_channel_on_rerun(self):
-        # First run, nothing project-related.
+        # First run, nothing orochi_project-related.
         self._run("--workspace", "default")
         user = self._agent_user()
         self.assertFalse(
@@ -110,7 +110,7 @@ class SeedWorkerProgressTest(TestCase):
             ).exists()
         )
 
-        # Someone creates a new project channel after first seed.
+        # Someone creates a new orochi_project channel after first seed.
         new_ch = Channel.objects.create(workspace=self.ws, name="#proj-gamma")
 
         # Second run should pick it up.

@@ -26,7 +26,7 @@ try:
 except ImportError:
     HAS_AGENT_CONTAINER = False
 
-# Default agents directory (relative to project root / cwd)
+# Default agents directory (relative to orochi_project root / cwd)
 # The repo ships example definitions under examples/agents/; real configs
 # live in ~/.scitex/orochi/agents/ (USER_AGENTS_DIR) and are checked first.
 DEFAULT_AGENTS_DIR = Path("examples/agents")

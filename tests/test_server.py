@@ -88,24 +88,24 @@ async def test_mention_routing(orochi_server):
     uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a, websockets.connect(uri) as ws_b:
-        # Agent A subscribes to #project-x only
-        await _register(ws_a, "agent-a", ["#project-x"])
+        # Agent A subscribes to #orochi_project-x only
+        await _register(ws_a, "agent-a", ["#orochi_project-x"])
         # Agent B subscribes to #general only
         await _register(ws_b, "agent-b", ["#general"])
 
-        # Agent A sends to #project-x with @agent-b mention
+        # Agent A sends to #orochi_project-x with @agent-b mention
         msg = Message(
             type="message",
             sender="agent-a",
             payload={
-                "channel": "#project-x",
+                "channel": "#orochi_project-x",
                 "content": "@agent-b please review",
                 "mentions": ["agent-b"],
             },
         )
         await ws_a.send(msg.to_json())
 
-        # Agent B should receive it despite not being in #project-x
+        # Agent B should receive it despite not being in #orochi_project-x
         recv_raw = await asyncio.wait_for(ws_b.recv(), timeout=2.0)
         recv = Message.from_json(recv_raw)
         assert recv.type == "message"

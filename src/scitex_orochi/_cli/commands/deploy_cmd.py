@@ -26,7 +26,7 @@ COMPOSE_FILES = {
 
 
 def _find_project_root() -> Path:
-    """Find the scitex-orochi project root."""
+    """Find the scitex-orochi orochi_project root."""
     candidates = [
         Path(__file__).resolve().parent.parent.parent.parent.parent,
         Path.home() / "proj" / "scitex-orochi",
@@ -36,7 +36,7 @@ def _find_project_root() -> Path:
         if (candidate / COMPOSE_FILES["stable"]).exists():
             return candidate
     raise click.ClickException(
-        "Cannot find project root with deployment/docker/docker-compose.stable.yml.\n"
+        "Cannot find orochi_project root with deployment/docker/docker-compose.stable.yml.\n"
         "  Run from the scitex-orochi directory or install the package."
     )
 
