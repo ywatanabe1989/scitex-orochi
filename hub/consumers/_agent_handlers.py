@@ -61,7 +61,7 @@ async def handle_register(consumer, content):
         "icon_emoji": payload.get("icon_emoji", ""),
         "icon_text": payload.get("icon_text", ""),
         "color": payload.get("color", ""),
-        "multiplexer": payload.get("multiplexer", ""),
+        "orochi_multiplexer": payload.get("orochi_multiplexer", ""),
         "channels": channels,
         "orochi_claude_md": payload.get("orochi_claude_md", ""),
         # A2A protocol surface URL for this agent (Tier 3 same-host

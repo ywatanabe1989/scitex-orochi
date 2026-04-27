@@ -49,7 +49,7 @@ machines:
       storage_gb_total: ~
       gpu: integrated_apple_silicon
     orochi_runtime:
-      multiplexer: tmux
+      orochi_multiplexer: tmux
       autostart: launchd
       autostart_path: ~/Library/LaunchAgents/com.scitex.orochi.*.plist
     fleet_role:
@@ -116,7 +116,7 @@ machines:
       storage_gb_free: 3600     # 3.6 TB free at session start
       gpu: ~
     orochi_runtime:
-      multiplexer: tmux
+      orochi_multiplexer: tmux
       autostart: systemd_user    # ~/.config/systemd/user/, loginctl enable-linger
       autostart_path: ~/.dotfiles/src/systemd/user/orochi-*.service
     fleet_role:
@@ -174,7 +174,7 @@ machines:
       storage_gb_total: ~     # quota-based, not a fixed disk
       gpu: shared_via_orochi_slurm
     orochi_runtime:
-      multiplexer: tmux
+      orochi_multiplexer: tmux
       autostart: bash_profile_or_salloc_wrapper   # systemd --user not allowed on login1
       autostart_path: ~
     fleet_role:
@@ -224,7 +224,7 @@ machines:
       storage_gb_total: ~
       gpu: ~
     orochi_runtime:
-      multiplexer: tmux
+      orochi_multiplexer: tmux
       autostart: systemd_user_via_default_target_wants
       autostart_path: ~/.config/systemd/user/scitex-agent-*.service
     fleet_role:

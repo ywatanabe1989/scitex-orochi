@@ -53,7 +53,7 @@ spec:
     enabled: true
     interval: 60
     timeout: 5
-    method: multiplexer-orochi_alive
+    method: orochi_multiplexer-orochi_alive
 
   restart:
     policy: never

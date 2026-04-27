@@ -71,7 +71,7 @@ def _sessions_dir() -> Path:
     Claude Code writes one ``<orochi_pid>.json`` per live session here, each
     carrying ``{orochi_pid, sessionId, cwd, startedAt, ...}``. Walking this
     directory is how we associate an agent name to its claude PID
-    without parsing tmux (the multiplexer is orthogonal to the session
+    without parsing tmux (the orochi_multiplexer is orthogonal to the session
     registry).
     """
     return Path.home() / ".claude" / "sessions"

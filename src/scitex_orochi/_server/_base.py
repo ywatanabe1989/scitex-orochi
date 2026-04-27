@@ -36,7 +36,7 @@ class Agent:
     agent_id: str = ""
     orochi_project: str = ""
     workspace_id: str = ""
-    multiplexer: str = ""
+    orochi_multiplexer: str = ""
     status: str = "online"
     orochi_current_task: str = ""
     orochi_subagent_count: int = 0

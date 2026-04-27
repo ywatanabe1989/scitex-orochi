@@ -63,14 +63,14 @@ def resolve_machine_label() -> str:
     return os.environ.get("SCITEX_OROCHI_HOSTNAME", "").strip()
 
 
-def find_session_pids(agent: str, multiplexer: str) -> tuple[int, int]:
+def find_session_pids(agent: str, orochi_multiplexer: str) -> tuple[int, int]:
     """Return (orochi_pid, orochi_ppid) for the agent's tmux pane and its claude descendant."""
     import subprocess
 
     orochi_pid = 0
     orochi_ppid = 0
     try:
-        if multiplexer == "tmux":
+        if orochi_multiplexer == "tmux":
             out = (
                 subprocess.run(
                     ["tmux", "list-panes", "-t", agent, "-F", "#{pane_pid}"],

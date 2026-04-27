@@ -113,7 +113,7 @@ def api_agents_register(request):
             "channels": _effective_channels,
             # todo#213: claude-hud-style process/orochi_runtime metadata pushed by
             # mamba-healer-mba's agent_meta.py --push loop.
-            "multiplexer": body.get("multiplexer", ""),
+            "orochi_multiplexer": body.get("orochi_multiplexer", ""),
             "orochi_project": body.get("orochi_project", ""),
             "orochi_pid": body.get("orochi_pid") or 0,
             "orochi_ppid": body.get("orochi_ppid") or 0,

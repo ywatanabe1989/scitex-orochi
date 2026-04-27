@@ -105,7 +105,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     // hub / frontend can prefer this authoritative signal when deriving
     // the ``<name>@<host>`` badge. Never sourced from env.
     orochi_hostname: orochi_hostname() || "",
-    multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
+    orochi_multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 
   const url = `${buildHttpBase().replace(/\/$/, "")}/api/agents/register/`;

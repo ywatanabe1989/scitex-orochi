@@ -87,7 +87,7 @@ export function _renderAgentDetail(a) {
 
   var workdir = d.workdir || a.workdir || "";
   var orochi_pid = d.orochi_pid || a.orochi_pid || "";
-  var multiplexer = d.multiplexer || a.multiplexer || "";
+  var orochi_multiplexer = d.orochi_multiplexer || a.orochi_multiplexer || "";
   var idleSec = d.idle_seconds != null ? d.idle_seconds : a.idle_seconds;
   var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
   var registeredAt = d.registered_at || a.registered_at || "";
@@ -139,7 +139,7 @@ export function _renderAgentDetail(a) {
     ],
     [
       "Multiplexer",
-      multiplexer || "-",
+      orochi_multiplexer || "-",
       "tmux / screen session hosting the agent process",
     ],
     ["PID", orochi_pid || "-", "host-side process id of the claude-code binary"],

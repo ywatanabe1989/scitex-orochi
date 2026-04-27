@@ -234,7 +234,7 @@ export function buildAgentRow(a) {
     escapeHtml(a.orochi_model || "-") +
     "</td>" +
     '<td class="muted-cell">' +
-    escapeHtml(a.multiplexer || "-") +
+    escapeHtml(a.orochi_multiplexer || "-") +
     "</td>" +
     '<td class="ctx-cell">' +
     renderContextBadge(a.orochi_context_pct, a.context_management) +

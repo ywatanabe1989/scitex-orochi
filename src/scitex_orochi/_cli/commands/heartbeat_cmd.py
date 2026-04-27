@@ -81,7 +81,7 @@ def _wrap_with_orochi_fields(
         "role": status.get("role") or "agent",
         "orochi_model": status.get("orochi_model") or "",
         "workdir": status.get("workdir") or "",
-        "multiplexer": status.get("multiplexer") or "",
+        "orochi_multiplexer": status.get("orochi_multiplexer") or "",
         "orochi_project": status.get("orochi_project") or status.get("name") or "",
         "orochi_pid": int(status.get("orochi_pid") or 0),
         "orochi_ppid": int(status.get("orochi_ppid") or 0),

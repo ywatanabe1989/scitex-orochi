@@ -35,7 +35,7 @@ class HandlersMixin:
         role = msg.payload.get("role", "")
         orochi_model = msg.payload.get("orochi_model", "")
         orochi_project = msg.payload.get("orochi_project", "")
-        multiplexer = msg.payload.get("multiplexer", "")
+        orochi_multiplexer = msg.payload.get("orochi_multiplexer", "")
         orochi_current_task = msg.payload.get("orochi_current_task", "") or ""
         try:
             orochi_subagent_count = int(msg.payload.get("orochi_subagent_count", 0) or 0)
@@ -90,7 +90,7 @@ class HandlersMixin:
             orochi_model=orochi_model,
             agent_id=agent_id,
             orochi_project=orochi_project,
-            multiplexer=multiplexer,
+            orochi_multiplexer=orochi_multiplexer,
             workspace_id=workspace_id,
             status="online",
             orochi_current_task=orochi_current_task,

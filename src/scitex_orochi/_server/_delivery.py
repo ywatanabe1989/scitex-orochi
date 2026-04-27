@@ -85,7 +85,7 @@ class DeliveryMixin:
                 "orochi_model": a.orochi_model,
                 "agent_id": a.agent_id,
                 "orochi_project": a.orochi_project,
-                "multiplexer": a.multiplexer,
+                "orochi_multiplexer": a.orochi_multiplexer,
                 "status": a.status,
                 "orochi_current_task": a.orochi_current_task,
                 "orochi_subagent_count": a.orochi_subagent_count,

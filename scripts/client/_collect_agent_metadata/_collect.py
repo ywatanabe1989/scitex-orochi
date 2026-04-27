@@ -74,9 +74,9 @@ def collect(agent: str) -> dict:
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
     """
-    multiplexer = detect_multiplexer(agent)
-    if not multiplexer:
-        return {"agent": agent, "orochi_alive": False, "multiplexer": ""}
+    orochi_multiplexer = detect_multiplexer(agent)
+    if not orochi_multiplexer:
+        return {"agent": agent, "orochi_alive": False, "orochi_multiplexer": ""}
 
     # Pane content -- subagent count from status bar AND the last
     # non-empty visible line so the Agents tab can show what the agent
@@ -85,7 +85,7 @@ def collect(agent: str) -> dict:
     # — he wants the live tail of the pane in each card, not just the
     # JSONL-derived tool name. -J joins wrapped lines so a long
     # command isn't reported as several short fragments.
-    pane = capture_pane(agent, multiplexer)
+    pane = capture_pane(agent, orochi_multiplexer)
     orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full = (
         filter_orochi_pane_tail(pane)
     )
@@ -113,8 +113,8 @@ def collect(agent: str) -> dict:
     orochi_started_at = tr["orochi_started_at"]
     recent_actions = tr["recent_actions"]
 
-    # Process info: first claude child orochi_pid under the multiplexer session.
-    orochi_pid, orochi_ppid = find_session_pids(agent, multiplexer)
+    # Process info: first claude child orochi_pid under the orochi_multiplexer session.
+    orochi_pid, orochi_ppid = find_session_pids(agent, orochi_multiplexer)
 
     # Skills loaded + MCP servers from workspace files.
     orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
@@ -159,7 +159,7 @@ def collect(agent: str) -> dict:
     orochi_pane_state = pane_verdict["label"]
     orochi_stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
     # Contradiction check + evidence log. `orochi_alive=True` here means
-    # we successfully captured a pane from the multiplexer, which is
+    # we successfully captured a pane from the orochi_multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
     # (heartbeat fresh). When the classifier also says `stale`, that's
     # the msg#15541 contradiction — log the tmux tail so future
@@ -204,7 +204,7 @@ def collect(agent: str) -> dict:
     return {
         "agent": agent,
         "orochi_alive": True,
-        "multiplexer": multiplexer,
+        "orochi_multiplexer": orochi_multiplexer,
         "orochi_subagents": orochi_subagents,
         "orochi_subagent_count": orochi_subagents,
         "orochi_context_pct": (

@@ -53,7 +53,7 @@ def api_agents(request):
                     "orochi_machine": p.orochi_machine,
                     "role": p.role,
                     "orochi_model": "",
-                    "multiplexer": "",
+                    "orochi_multiplexer": "",
                     "workdir": "",
                     "icon": "",
                     "icon_emoji": p.icon_emoji,

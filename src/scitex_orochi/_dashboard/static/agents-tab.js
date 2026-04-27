@@ -158,7 +158,7 @@ function buildAgentRow(a) {
     escapeHtml(a.orochi_model || "-") +
     "</td>" +
     '<td style="color:#888;font-size:12px">' +
-    escapeHtml(a.multiplexer || "-") +
+    escapeHtml(a.orochi_multiplexer || "-") +
     "</td>" +
     '<td style="font-size:12px">' +
     channelsHtml +

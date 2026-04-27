@@ -290,7 +290,7 @@
 }
 
 /* Rich-field chip row added 2026-04-12 (todo#?) — surfaces ctx %, orochi_model,
- * multiplexer, subagent count, skills count, orochi_pid as small inline pills on
+ * orochi_multiplexer, subagent count, skills count, orochi_pid as small inline pills on
  * each agent activity card. Each chip is rendered only when its underlying
  * field is non-null in the registry payload. */
 .activity-chips {

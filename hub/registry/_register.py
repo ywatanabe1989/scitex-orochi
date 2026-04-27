@@ -127,7 +127,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # ── /#257 ─────────────────────────────────────────────────
             "role": info.get("role", ""),
             "orochi_model": info.get("orochi_model", ""),
-            "multiplexer": info.get("multiplexer", ""),
+            "orochi_multiplexer": info.get("orochi_multiplexer", ""),
             "orochi_project": info.get("orochi_project", ""),
             "workdir": info.get("workdir", ""),
             # Subscriptions are server-authoritative (ChannelMembership).

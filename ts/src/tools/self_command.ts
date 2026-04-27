@@ -6,7 +6,7 @@
  * we schedule the command with setTimeout — by the time it fires, the
  * agent has already received our MCP response and is idle at its prompt.
  *
- * The agent's terminal multiplexer is determined from SCITEX_OROCHI_MULTIPLEXER
+ * The agent's terminal orochi_multiplexer is determined from SCITEX_OROCHI_MULTIPLEXER
  * (screen|tmux); default is "tmux" — set SCITEX_OROCHI_MULTIPLEXER=screen to opt in.
  */
 import { exec } from "child_process";
@@ -27,7 +27,7 @@ function getMultiplexer(): Multiplexer {
 
 /**
  * Build the shell command that sends `text` followed by Enter into the
- * given multiplexer session. `text` should NOT contain shell metacharacters
+ * given orochi_multiplexer session. `text` should NOT contain shell metacharacters
  * beyond the slash-command payload; it is single-quoted below.
  */
 function buildSendKeysCommand(

@@ -61,7 +61,7 @@ export function _renderActivityAgentDetail(a, grid) {
   if (q7 != null) chips.push("7d " + q7.toFixed(0) + "%");
   if (subCnt != null) chips.push("orochi_subagents " + subCnt);
   if (a.orochi_model) chips.push(a.orochi_model);
-  if (a.multiplexer) chips.push(a.multiplexer);
+  if (a.orochi_multiplexer) chips.push(a.orochi_multiplexer);
   if (a.orochi_pid) chips.push("orochi_pid " + a.orochi_pid);
   var uniqueCh = [...new Set(a.channels || [])];
   if (uniqueCh.length) chips.push("ch: " + uniqueCh.join(", "));
@@ -135,7 +135,7 @@ export function _renderActivityAgentDetail(a, grid) {
     ["Proxy?", _proxyDisplay],
     ["Priority list", _priorityListDisplay],
     ["Model", _modelDisplay],
-    ["Multiplexer", a.multiplexer || "-"],
+    ["Multiplexer", a.orochi_multiplexer || "-"],
     ["PID", a.orochi_pid || "-"],
     ["Liveness", liveness],
     ["Context", ctxPct != null ? ctxPct.toFixed(1) + "%" : "-"],
