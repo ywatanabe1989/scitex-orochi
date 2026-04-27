@@ -305,13 +305,17 @@ class AgentDetailApiTest(TestCase):
     def test_event_log_shortcuts_forwarded_when_registered(self):
         """When the heartbeat includes sac_hooks_last_tool_at / sac_hooks_last_tool_name,
         the detail endpoint forwards them verbatim."""
+        # Kwargs match the actual registered field names (renamed from
+        # `last_*` to `sac_hooks_last_*` during the prefix migration).
+        # `_register(**overrides)` passes them straight into the info
+        # dict, so a stale kwarg name silently drops the field.
         self._register(
             sac_hooks_last_tool_at="2026-04-18T11:00:00+00:00",
-            last_tool_name="Bash",
+            sac_hooks_last_tool_name="Bash",
             sac_hooks_last_mcp_tool_at="2026-04-18T11:00:05+00:00",
-            last_mcp_tool_name="mcp__scitex-orochi__send_message",
+            sac_hooks_last_mcp_tool_name="mcp__scitex-orochi__send_message",
             sac_hooks_last_action_at="2026-04-18T11:00:10+00:00",
-            last_action_name="nonce_probe",
+            sac_hooks_last_action_name="nonce_probe",
             sac_hooks_last_action_outcome="SUCCESS",
         )
         data = self._get().json()
