@@ -1,7 +1,12 @@
 // @ts-nocheck
 import { _renderAgentDetail } from "./detail";
 import { _buildOverviewHtml } from "./overview";
-import { FOLLOW_INTERVAL_MS, _fetchAgentDetail, _invalidateAgentDetail, _paneExpanded } from "./state";
+import {
+  FOLLOW_INTERVAL_MS,
+  _fetchAgentDetail,
+  _invalidateAgentDetail,
+  _paneExpanded,
+} from "./state";
 import { apiUrl, escapeHtml, isAgentInactive } from "../app/utils";
 import { runFilter } from "../filter/runner";
 import { addTag } from "../filter/state";
@@ -23,7 +28,10 @@ export function _renderSubTabBar(agents) {
   });
   var html = '<div class="agent-subtab-bar" id="agent-subtab-bar">';
   tabs.forEach(function (t) {
-    var active = t.id === (globalThis as any)._selectedAgentTab ? " agent-subtab-active" : "";
+    var active =
+      t.id === (globalThis as any)._selectedAgentTab
+        ? " agent-subtab-active"
+        : "";
     var inactive =
       t.id !== "overview" &&
       isAgentInactive(
@@ -57,7 +65,10 @@ export function _bindSubTabBar(grid) {
     var nextTab = btn.getAttribute("data-subtab");
     /* todo#47 — any agent switch (including → overview) cancels Follow
      * so we're not polling an agent the user can no longer see. */
-    if ((globalThis as any)._followAgent && (globalThis as any)._followAgent !== nextTab) {
+    if (
+      (globalThis as any)._followAgent &&
+      (globalThis as any)._followAgent !== nextTab
+    ) {
       _stopFollow();
     }
     (globalThis as any)._selectedAgentTab = nextTab;
@@ -183,6 +194,32 @@ export function _renderAgentContent(grid) {
  * button itself so there's no ambiguity when multiple agents are
  * stacked in the DOM. */
 export function _bindPaneControls(content) {
+  /* File tabs (Terminal / CLAUDE.md / .mcp.json) — switch the active
+   * pane within the agent-detail-files-tabs container. Each tabbed
+   * group is scoped to one agent via the parent's data-agent. */
+  content.querySelectorAll('[data-action="files-tab"]').forEach(function (btn) {
+    btn.addEventListener("click", function (ev) {
+      ev.preventDefault();
+      var paneId = btn.getAttribute("data-pane-id") || "";
+      var group = btn.closest(".agent-detail-files-tabs");
+      if (!group || !paneId) return;
+      group.querySelectorAll(".agent-detail-files-tab").forEach(function (b) {
+        b.classList.toggle(
+          "agent-detail-files-tab-active",
+          b.getAttribute("data-pane-id") === paneId,
+        );
+      });
+      group.querySelectorAll(".agent-detail-files-pane").forEach(function (p) {
+        var match = p.getAttribute("data-pane-id") === paneId;
+        p.classList.toggle("agent-detail-files-pane-active", match);
+        if (match) {
+          p.removeAttribute("hidden");
+        } else {
+          p.setAttribute("hidden", "");
+        }
+      });
+    });
+  });
   content
     .querySelectorAll('[data-action="refresh-pane"]')
     .forEach(function (btn) {
@@ -308,7 +345,9 @@ export function _startFollow(name) {
   (globalThis as any)._followTimer = setInterval(function () {
     if (!(globalThis as any)._followAgent) return;
     if (typeof document !== "undefined" && document.hidden) return;
-    if ((globalThis as any)._selectedAgentTab !== (globalThis as any)._followAgent) {
+    if (
+      (globalThis as any)._selectedAgentTab !== (globalThis as any)._followAgent
+    ) {
       _stopFollow();
       return;
     }

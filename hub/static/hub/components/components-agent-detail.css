@@ -351,17 +351,41 @@
   background: #2a2a2a;
   color: #d0d0d0;
 }
-.agent-detail-state-label-running { background: #1f4f3f; color: #4ecdc4; }
-.agent-detail-state-label-idle    { background: #2a3a4a; color: #88c0d0; }
-.agent-detail-state-label-stale   { background: #4a3a1f; color: #ffaa44; }
-.agent-detail-state-label-working { background: #1f4f3f; color: #4ecdc4; }
+.agent-detail-state-label-running {
+  background: #1f4f3f;
+  color: #4ecdc4;
+}
+.agent-detail-state-label-idle {
+  background: #2a3a4a;
+  color: #88c0d0;
+}
+.agent-detail-state-label-stale {
+  background: #4a3a1f;
+  color: #ffaa44;
+}
+.agent-detail-state-label-working {
+  background: #1f4f3f;
+  color: #4ecdc4;
+}
 .agent-detail-state-label-awaiting-input,
-.agent-detail-state-label-awaiting-auth { background: #4a3a1f; color: #ffaa44; }
-.agent-detail-state-label-not-applicable { background: #333; color: #888; }
-.agent-detail-state-label-unreachable { background: #4a1f1f; color: #ff7777; }
+.agent-detail-state-label-awaiting-auth {
+  background: #4a3a1f;
+  color: #ffaa44;
+}
+.agent-detail-state-label-not-applicable {
+  background: #333;
+  color: #888;
+}
+.agent-detail-state-label-unreachable {
+  background: #4a1f1f;
+  color: #ff7777;
+}
 .agent-detail-state-label-auth_error,
 .agent-detail-state-label-y_n_prompt,
-.agent-detail-state-label-bypass_permissions_prompt { background: #4a3a1f; color: #ffaa44; }
+.agent-detail-state-label-bypass_permissions_prompt {
+  background: #4a3a1f;
+  color: #ffaa44;
+}
 .agent-detail-state-evidence {
   font-size: 0.85rem;
   color: #999;
@@ -392,4 +416,70 @@
   max-height: 240px;
   overflow: auto;
   border-radius: 3px;
+}
+
+/* ── File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) ──── */
+.agent-detail-files-tabs {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.agent-detail-files-tabbar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid #2a2a2a;
+  margin-bottom: 0.5rem;
+  flex-shrink: 0;
+}
+.agent-detail-files-tab {
+  background: transparent;
+  color: #888;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+.agent-detail-files-tab:hover {
+  color: #ccc;
+}
+.agent-detail-files-tab-active {
+  color: #4ecdc4;
+  border-bottom-color: #4ecdc4;
+}
+.agent-detail-files-panes {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.agent-detail-files-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.agent-detail-files-pane[hidden] {
+  display: none;
+}
+
+/* ── Viewport-respecting layout for the agent detail subtab ──────
+ * Cap inner scrollable panels so the agent detail panel never grows
+ * past the visible viewport — long terminal output / CLAUDE.md /
+ * .mcp.json scroll within their own bounds instead of stretching the
+ * whole panel past 100vh. */
+.agent-detail-pane,
+.agent-detail-claude-md,
+.agent-detail-mcp-json {
+  max-height: 55vh;
+  overflow: auto;
+}
+.agent-detail-raw-obs {
+  max-height: 30vh;
+  overflow: auto;
 }

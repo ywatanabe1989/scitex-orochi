@@ -431,13 +431,42 @@ export function _renderAgentDetail(a) {
       "</div>";
   }
 
-  var splitHtml =
-    '<div class="agent-detail-split">' +
-    '<div class="agent-detail-split-col">' +
+  /* File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) instead of
+   * a side-by-side split — each pane gets the full width when active so
+   * the agent detail panel respects the viewport instead of stacking
+   * two half-width columns into the page (ywatanabe 2026-04-27). */
+  var hasMcpJson = !!mcpJson;
+  var hasClaudeMd = !!claudeMd;
+  var fileTabsHtml =
+    '<div class="agent-detail-files-tabs" data-agent="' +
+    escapeHtml(a.name) +
+    '">' +
+    '<div class="agent-detail-files-tabbar" role="tablist">' +
+    '<button type="button" class="agent-detail-files-tab agent-detail-files-tab-active"' +
+    ' data-action="files-tab" data-pane-id="terminal">Terminal</button>' +
+    (hasClaudeMd
+      ? '<button type="button" class="agent-detail-files-tab"' +
+        ' data-action="files-tab" data-pane-id="claude-md">CLAUDE.md</button>'
+      : "") +
+    (hasMcpJson
+      ? '<button type="button" class="agent-detail-files-tab"' +
+        ' data-action="files-tab" data-pane-id="mcp-json">.mcp.json</button>'
+      : "") +
+    "</div>" +
+    '<div class="agent-detail-files-panes">' +
+    '<div class="agent-detail-files-pane agent-detail-files-pane-active" data-pane-id="terminal">' +
     paneHtml +
     "</div>" +
-    '<div class="agent-detail-split-col">' +
-    claudeMdHtml +
+    (hasClaudeMd
+      ? '<div class="agent-detail-files-pane" data-pane-id="claude-md" hidden>' +
+        claudeMdHtml +
+        "</div>"
+      : "") +
+    (hasMcpJson
+      ? '<div class="agent-detail-files-pane" data-pane-id="mcp-json" hidden>' +
+        mcpJsonBodyHtml +
+        "</div>"
+      : "") +
     "</div>" +
     "</div>";
 
@@ -454,9 +483,8 @@ export function _renderAgentDetail(a) {
     headerHtml +
     channelsHtml +
     stateHtml +
-    splitHtml +
+    fileTabsHtml +
     mcpHtml +
-    mcpJsonHtml +
     "</div>"
   );
 }

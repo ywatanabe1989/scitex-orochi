@@ -332,20 +332,10 @@ export function buildAgentRow(a) {
       : timeAgo(a.last_heartbeat)) +
     "</td>" +
     "</tr>" +
-    (function () {
-      var raw = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
-      if (!raw) return "";
-      var lines = String(raw).split(/\r?\n/);
-      var tail = lines.slice(-10).join("\n");
-      return (
-        '<tr class="agent-pane-row"><td colspan="22">' +
-        '<pre class="agent-pane-preview" title="Last 10 lines of ' +
-        escapeHtml(a.name) +
-        ' tmux pane">' +
-        escapeHtml(tail) +
-        "</pre></td></tr>"
-      );
-    })() +
+    /* Pane preview row removed 2026-04-27 — terminal output now lives
+     * exclusively in the per-agent detail subtab (click the agent name
+     * to open it). The overview is for at-a-glance comparison; the
+     * inline 10-line pane preview made each row tall and noisy. */
     (a.orochi_claude_md
       ? '<tr class="claude-md-detail" style="display:none"><td colspan="22"><pre class="claude-md-content">' +
         escapeHtml(a.orochi_claude_md) +
