@@ -22,7 +22,7 @@ from ._hostname import _resolve_canonical_hostname
 from ._machine import find_session_pids, resolve_machine_label
 from ._metrics import collect_machine_metrics, collect_slurm_status
 from ._multiplexer import detect_multiplexer
-from ._pane import capture_pane, filter_pane_tail, parse_subagent_count
+from ._pane import capture_pane, filter_orochi_pane_tail, parse_subagent_count
 from ._proc import _read_process_env
 from ._statusline import parse_statusline
 from ._transcript import find_jsonl_transcripts, parse_transcript
@@ -86,13 +86,13 @@ def collect(agent: str) -> dict:
     # JSONL-derived tool name. -J joins wrapped lines so a long
     # command isn't reported as several short fragments.
     pane = capture_pane(agent, multiplexer)
-    pane_tail, pane_tail_block, pane_tail_block_clean, pane_tail_full = (
-        filter_pane_tail(pane)
+    orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full = (
+        filter_orochi_pane_tail(pane)
     )
     subagents = parse_subagent_count(pane)
 
     # Statusline (claude-hud) — context_pct, quota_5h, quota_weekly, model, email.
-    sl = parse_statusline(pane_tail_block)
+    sl = parse_statusline(orochi_pane_tail_block)
     statusline_context_pct = sl["statusline_context_pct"]
     quota_5h_pct = sl["quota_5h_pct"]
     quota_5h_remaining = sl["quota_5h_remaining"]
@@ -153,11 +153,11 @@ def collect(agent: str) -> dict:
     from .states._pane_state_v3 import derive_pane_state
 
     orochi_pane_observations = collect_orochi_pane_observations(
-        pane_tail_block_clean, pane, agent=agent
+        orochi_pane_tail_block_clean, pane, agent=agent
     )
     pane_verdict = derive_pane_state(orochi_pane_observations)
     pane_state = pane_verdict["label"]
-    stuck_prompt_text = _extract_stuck_prompt(pane_tail_block_clean, pane, agent=agent)
+    stuck_prompt_text = _extract_stuck_prompt(orochi_pane_tail_block_clean, pane, agent=agent)
     # Contradiction check + evidence log. `alive=True` here means
     # we successfully captured a pane from the multiplexer, which is
     # the client-side equivalent of the hub's 4th-LED == green
@@ -224,18 +224,18 @@ def collect(agent: str) -> dict:
         # if they attached right now. Bypasses the JSONL transcript so
         # mid-tool-call activity (e.g. a streaming Bash command) shows
         # up. msg#6575 / msg#6582 / msg#6587.
-        "pane_tail": pane_tail,
-        "pane_tail_block": pane_tail_block,
+        "orochi_pane_tail": orochi_pane_tail,
+        "orochi_pane_tail_block": orochi_pane_tail_block,
         # todo#47 — ~500 filtered lines of tmux scrollback for the
         # agent-detail "Full pane" toggle in the Agents tab. 32 KB
-        # cap applied in filter_pane_tail.
-        "pane_tail_full": pane_tail_full,
-        # ywatanabe msg#10657/10677: same as pane_tail_block but with
+        # cap applied in filter_orochi_pane_tail.
+        "orochi_pane_tail_full": orochi_pane_tail_full,
+        # ywatanabe msg#10657/10677: same as orochi_pane_tail_block but with
         # `← scitex-orochi · ...` channel inbound + `⎿` continuation
         # lines stripped, so consumers (fleet_watch.sh stuck-cycle
         # counter, pane_state.py classifier) can compute "did the agent
         # actually do anything?" without being fooled by inbound chatter.
-        "pane_tail_block_clean": pane_tail_block_clean,
+        "orochi_pane_tail_block_clean": orochi_pane_tail_block_clean,
         "recent_actions": recent_actions,
         "last_activity": last_activity,
         "model": resolved_model,
@@ -260,7 +260,7 @@ def collect(agent: str) -> dict:
         "claude_md": claude_md_full,
         "mcp_json": mcp_json_full,
         # todo#418: agent decision-transparency — classifier label + verbatim
-        # stuck-prompt text. Computed from pane_tail_block_clean.
+        # stuck-prompt text. Computed from orochi_pane_tail_block_clean.
         # 2026-04-21 (lead msg#15541): the classifier now also emits
         # `stale` when the pane tail has been byte-identical for
         # N consecutive push cycles with no busy-animation marker. The

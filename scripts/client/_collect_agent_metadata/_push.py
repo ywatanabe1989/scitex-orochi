@@ -83,18 +83,18 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "claude_md": meta.get("claude_md", ""),
         "mcp_json": meta.get("mcp_json", ""),
         "mcp_servers": list(meta.get("mcp_servers") or []),
-        "pane_tail": meta.get("pane_tail", ""),
-        "pane_tail_block": meta.get("pane_tail_block", ""),
+        "orochi_pane_tail": meta.get("orochi_pane_tail", ""),
+        "orochi_pane_tail_block": meta.get("orochi_pane_tail_block", ""),
         # todo#47 — full scrollback for the "Expand" toggle in the
         # agent detail pane viewer.
-        "pane_tail_full": meta.get("pane_tail_full", ""),
+        "orochi_pane_tail_full": meta.get("orochi_pane_tail_full", ""),
         "pane_state": meta.get("pane_state", ""),
         "stuck_prompt_text": meta.get("stuck_prompt_text", ""),
         # scitex-orochi #187 / #59 — forward the hook-event ring buffer
         # summary so the Agents tab's Last tool / Last MCP / Last
         # action rows populate. Without this, collect() gathers them
         # but the whitelist drops them before they reach the hub
-        # (same trap as #232 for pane_tail_full).
+        # (same trap as #232 for orochi_pane_tail_full).
         "recent_tools": meta.get("recent_tools") or [],
         "recent_prompts": meta.get("recent_prompts") or [],
         "tool_counts": meta.get("tool_counts") or {},

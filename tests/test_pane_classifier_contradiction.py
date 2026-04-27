@@ -178,12 +178,12 @@ def test_detect_contradiction_silent_for_non_stale_state():
 
 def test_log_contradiction_evidence_writes_record(_isolate_state):
     _state_dir, log_path = _isolate_state
-    pane_tail = "line1\nline2\nline3\n"
+    orochi_pane_tail = "line1\nline2\nline3\n"
     written = _classifier._log_contradiction_evidence(
         agent="head-test",
         pane_state="stale",
         liveness="online",
-        tmux_tail=pane_tail,
+        tmux_tail=orochi_pane_tail,
     )
     assert written == log_path
     content = log_path.read_text(encoding="utf-8")

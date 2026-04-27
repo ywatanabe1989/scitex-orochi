@@ -105,7 +105,7 @@ check_drift() {
     fi
 }
 
-# Classify an agent's pane state from agent_meta.pane_tail_block.
+# Classify an agent's pane state from agent_meta.orochi_pane_tail_block.
 # Returns "busy" / "idle" / "stuck" / "unknown" per the canonical decision
 # table in scitex-orochi/_skills/.../agent-health-check.md (#270 / #311).
 #
@@ -123,9 +123,9 @@ classify_pane_state() {
     command -v jq >/dev/null 2>&1 || return 0
     [ -s "$curr" ] || return 0
 
-    # Pull every (agent, pane_tail_block) pair we can find. Both schemas:
-    #   snapshot --json: .agent + .agent_meta.pane_tail_block          (single)
-    #   probe_remote.sh fallback: .agents_meta.<name>.pane_tail_block  (map)
+    # Pull every (agent, orochi_pane_tail_block) pair we can find. Both schemas:
+    #   snapshot --json: .agent + .agent_meta.orochi_pane_tail_block          (single)
+    #   probe_remote.sh fallback: .agents_meta.<name>.orochi_pane_tail_block  (map)
     local pairs
     pairs=$(jq -r '
         def pair($name; $block):
@@ -133,12 +133,12 @@ classify_pane_state() {
             else "\($name)\t\($block | tostring | @base64)" end;
         (
             (if .agent != null and (.agent_meta? // null) != null
-              then pair(.agent; .agent_meta.pane_tail_block)
+              then pair(.agent; .agent_meta.orochi_pane_tail_block)
               else empty end),
             (
                 (.agents_meta // {})
                 | to_entries[]
-                | pair(.key; .value.pane_tail_block)
+                | pair(.key; .value.orochi_pane_tail_block)
             )
         )
     ' "$curr" 2>/dev/null)
@@ -152,12 +152,12 @@ classify_pane_state() {
                 else "\($name)\t\($block | tostring | @base64)" end;
             (
                 (if .agent != null and (.agent_meta? // null) != null
-                  then pair(.agent; .agent_meta.pane_tail_block)
+                  then pair(.agent; .agent_meta.orochi_pane_tail_block)
                   else empty end),
                 (
                     (.agents_meta // {})
                     | to_entries[]
-                    | pair(.key; .value.pane_tail_block)
+                    | pair(.key; .value.orochi_pane_tail_block)
                 )
             )
         ' "$prev" 2>/dev/null)
@@ -185,7 +185,7 @@ classify_pane_state() {
         # Empty prompt at end with no animation = ambiguous; leave "unknown"
         # for the cross-check against orochi presence (mamba-healer's role).
 
-        # Stuck-cycle counter: if pane_tail_block matches the prev cycle,
+        # Stuck-cycle counter: if orochi_pane_tail_block matches the prev cycle,
         # increment a per-(host, agent) counter; otherwise reset.
         local stuck_file="$stuck_state_dir/${host}__${agent}.stuck"
         local stuck_n=0

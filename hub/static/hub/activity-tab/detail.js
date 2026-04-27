@@ -19,7 +19,7 @@ function _renderActivityAgentDetail(a, grid) {
   var d = _activityDetailCache[a.name] || {};
   a = Object.assign({}, a, {
     claude_md: d.claude_md || a.claude_md || a.claude_md_head || "",
-    pane_tail_block: d.pane_text || a.pane_tail_block || a.pane_tail || "",
+    orochi_pane_tail_block: d.pane_text || a.orochi_pane_tail_block || a.orochi_pane_tail || "",
     pane_text_full: d.pane_text_full || "",
   });
   var liveness = a.liveness || a.status || "online";
@@ -30,7 +30,7 @@ function _renderActivityAgentDetail(a, grid) {
     offline: "#ef4444",
   };
   var statusColor = livenessColors[liveness] || "#888";
-  var pane = a.pane_tail_block || a.pane_tail || "";
+  var pane = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
   var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
   var q5 = a.quota_5h_used_pct != null ? Number(a.quota_5h_used_pct) : null;
   var q7 = a.quota_7d_used_pct != null ? Number(a.quota_7d_used_pct) : null;

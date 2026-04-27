@@ -18,7 +18,7 @@ from __future__ import annotations
 import re
 
 
-def parse_statusline(pane_tail_block: str) -> dict:
+def parse_statusline(orochi_pane_tail_block: str) -> dict:
     """Extract context_pct, quota_5h, quota_weekly, model, email from statusline.
 
     Returns a dict with keys:
@@ -39,7 +39,7 @@ def parse_statusline(pane_tail_block: str) -> dict:
         "statusline_model": "",
         "account_email": "",
     }
-    src = pane_tail_block or ""
+    src = orochi_pane_tail_block or ""
 
     # Extract model from statusline: [Model Name (context) | Mode]
     m_model = re.search(r"\[([^\]]+)\]", src)

@@ -323,7 +323,7 @@ def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
     monkeypatch.setattr(_collect, "capture_pane", lambda a, m: "fake pane")
     monkeypatch.setattr(
         _collect,
-        "filter_pane_tail",
+        "filter_orochi_pane_tail",
         lambda p: ("", "", "", ""),
     )
     monkeypatch.setattr(
@@ -353,7 +353,7 @@ def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
     monkeypatch.setattr(_collect, "capture_pane", lambda a, m: "pane text")
     monkeypatch.setattr(
         _collect,
-        "filter_pane_tail",
+        "filter_orochi_pane_tail",
         lambda p: ("", "", "", ""),
     )
     monkeypatch.setattr(
@@ -380,7 +380,7 @@ def test_collect_reports_zero_when_both_backends_fail(monkeypatch):
     monkeypatch.setattr(_collect, "capture_pane", lambda a, m: "")
     monkeypatch.setattr(
         _collect,
-        "filter_pane_tail",
+        "filter_orochi_pane_tail",
         lambda p: ("", "", "", ""),
     )
     monkeypatch.setattr(
@@ -406,7 +406,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     monkeypatch.setattr(
         _collect,
         "parse_statusline",
-        lambda pane_tail_block: {
+        lambda orochi_pane_tail_block: {
             "statusline_context_pct": None,
             "quota_5h_pct": None,
             "quota_5h_remaining": None,

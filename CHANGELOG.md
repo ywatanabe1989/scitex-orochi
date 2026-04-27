@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (role hint) and `.mcp.json` server keys (chips) so the card has
   identity context, not just a name + status pill. msg#6579.
 - feat(hub/agents-tab): live tail of the agent's tmux pane is shown as
-  a fallback (`pane_tail_block`) when the JSONL transcript is
+  a fallback (`orochi_pane_tail_block`) when the JSONL transcript is
   unavailable, so remote hosts still show *something* about what
   they're doing. msg#6575.
 - feat(hub/agents-tab): status pills double as a legend with hover

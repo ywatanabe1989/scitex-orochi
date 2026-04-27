@@ -9,7 +9,7 @@ Scope explicitly excludes:
 
 - Pane-state classification (todo#419) — UI infers from ``liveness``.
 - Cross-host SSH capture of the live tmux pane — kept best-effort
-  against the already-cached ``pane_tail_block`` field pushed by
+  against the already-cached ``orochi_pane_tail_block`` field pushed by
   ``agent_meta.py --push``; the response advertises the source via
   ``pane_text_source`` so the frontend can show "cached" vs
   "unavailable" without inventing a new transport.
@@ -189,18 +189,18 @@ def api_agent_detail(request, name: str):
     if agent is None:
         return JsonResponse({"error": "agent not found", "name": name}, status=404)
 
-    # Prefer the richer pane_tail_block pushed by agent_meta.py --push;
-    # fall back to pane_tail, then advertise unavailable. We deliberately
+    # Prefer the richer orochi_pane_tail_block pushed by agent_meta.py --push;
+    # fall back to orochi_pane_tail, then advertise unavailable. We deliberately
     # do NOT reach out to a cross-host tmux capture-pane over SSH here —
     # that expansion is tracked in todo#420 follow-up.
-    raw_pane = agent.get("pane_tail_block") or agent.get("pane_tail") or ""
+    raw_pane = agent.get("orochi_pane_tail_block") or agent.get("orochi_pane_tail") or ""
     pane_text = redact_secrets(raw_pane) if raw_pane else ""
     pane_text_source = "cached" if raw_pane else "unavailable"
     # todo#47 — ~500-line scrollback for the "Full pane" toggle. Same
     # redaction pipeline as pane_text; empty string if the agent's
     # agent_meta.py hasn't been updated yet (graceful degrade — the UI
     # falls back to the short pane_text).
-    raw_pane_full = agent.get("pane_tail_full") or ""
+    raw_pane_full = agent.get("orochi_pane_tail_full") or ""
     pane_text_full = redact_secrets(raw_pane_full) if raw_pane_full else ""
 
     # Compute uptime from registered_at ISO string when available.

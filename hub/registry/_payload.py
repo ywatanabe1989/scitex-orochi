@@ -210,11 +210,11 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "runtime": a.get("runtime", ""),
                 # v0.11.0 Agents-tab visibility fields.
                 "recent_actions": list(a.get("recent_actions") or []),
-                "pane_tail": a.get("pane_tail", ""),
-                "pane_tail_block": a.get("pane_tail_block", ""),
+                "orochi_pane_tail": a.get("orochi_pane_tail", ""),
+                "orochi_pane_tail_block": a.get("orochi_pane_tail_block", ""),
                 # todo#47 — full scrollback; empty string if the agent
                 # hasn't pushed the new field yet.
-                "pane_tail_full": a.get("pane_tail_full", ""),
+                "orochi_pane_tail_full": a.get("orochi_pane_tail_full", ""),
                 "claude_md_head": a.get("claude_md_head", ""),
                 "mcp_json": a.get("mcp_json", ""),
                 "pane_state": a.get("pane_state", ""),

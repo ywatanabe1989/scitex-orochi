@@ -205,16 +205,16 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("recent_actions"), (list, tuple))
                 else prev.get("recent_actions") or []
             ),
-            "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
-            "pane_tail_block": info.get("pane_tail_block")
-            or prev.get("pane_tail_block")
+            "orochi_pane_tail": info.get("orochi_pane_tail") or prev.get("orochi_pane_tail") or "",
+            "orochi_pane_tail_block": info.get("orochi_pane_tail_block")
+            or prev.get("orochi_pane_tail_block")
             or "",
             # todo#47 — full-scrollback pane for the web-terminal viewer.
             # Pushed by agent_meta.py --push when the client is new
             # enough; older clients never populate it and the UI
-            # gracefully falls back to the short pane_tail_block.
-            "pane_tail_full": info.get("pane_tail_full")
-            or prev.get("pane_tail_full")
+            # gracefully falls back to the short orochi_pane_tail_block.
+            "orochi_pane_tail_full": info.get("orochi_pane_tail_full")
+            or prev.get("orochi_pane_tail_full")
             or "",
             "claude_md_head": info.get("claude_md_head")
             or prev.get("claude_md_head")

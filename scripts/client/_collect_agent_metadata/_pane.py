@@ -37,8 +37,8 @@ def capture_pane(agent: str, multiplexer: str) -> str:
     if multiplexer != "tmux":
         return ""
     # todo#47 — bump scrollback depth from 30 to 500 lines so the
-    # hub detail endpoint can expose a ``pane_tail_full`` field for
-    # the web-terminal viewer. The ~10-line ``pane_tail_block``
+    # hub detail endpoint can expose a ``orochi_pane_tail_full`` field for
+    # the web-terminal viewer. The ~10-line ``orochi_pane_tail_block``
     # keeps its original semantics below (stuck-detection + compact
     # UI), so classifiers aren't perturbed. The full view is the
     # new user-facing surface.
@@ -49,26 +49,26 @@ def capture_pane(agent: str, multiplexer: str) -> str:
     ).stdout
 
 
-def filter_pane_tail(pane: str) -> tuple[str, str, str, str]:
+def filter_orochi_pane_tail(pane: str) -> tuple[str, str, str, str]:
     """Filter raw pane scrollback into the four tail variants used downstream.
 
-    Returns ``(pane_tail, pane_tail_block, pane_tail_block_clean,
-    pane_tail_full)``.
+    Returns ``(orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean,
+    orochi_pane_tail_full)``.
 
-    - pane_tail              — last interesting single line (legacy field)
-    - pane_tail_block        — last ~10 interesting lines, raw (keeps
+    - orochi_pane_tail              — last interesting single line (legacy field)
+    - orochi_pane_tail_block        — last ~10 interesting lines, raw (keeps
       channel inbound for WS-alive proof)
-    - pane_tail_block_clean  — same as block but stripped of channel
+    - orochi_pane_tail_block_clean  — same as block but stripped of channel
       inbound (for stuck-detection / state classifier)
-    - pane_tail_full         — up to 500 filtered lines, trimmed to 32 KB
+    - orochi_pane_tail_full         — up to 500 filtered lines, trimmed to 32 KB
       (todo#47 web-terminal tier)
     """
-    pane_tail = ""
-    pane_tail_block = ""
-    pane_tail_block_clean = ""
-    pane_tail_full = ""
+    orochi_pane_tail = ""
+    orochi_pane_tail_block = ""
+    orochi_pane_tail_block_clean = ""
+    orochi_pane_tail_full = ""
     if not pane:
-        return pane_tail, pane_tail_block, pane_tail_block_clean, pane_tail_full
+        return orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full
 
     kept: list[str] = []
     kept_clean: list[str] = []
@@ -98,18 +98,18 @@ def filter_pane_tail(pane: str) -> tuple[str, str, str, str]:
         if len(kept_full) >= 500:
             break
     if kept:
-        pane_tail = kept[0]
-        pane_tail_block = "\n".join(reversed(kept))
-        # Trim clean to its own 10-line cap to match pane_tail_block size.
-        pane_tail_block_clean = "\n".join(reversed(kept_clean[:10]))
+        orochi_pane_tail = kept[0]
+        orochi_pane_tail_block = "\n".join(reversed(kept))
+        # Trim clean to its own 10-line cap to match orochi_pane_tail_block size.
+        orochi_pane_tail_block_clean = "\n".join(reversed(kept_clean[:10]))
     if kept_full:
-        pane_tail_full = "\n".join(reversed(kept_full))
+        orochi_pane_tail_full = "\n".join(reversed(kept_full))
         # Hard-cap the payload so a pathological pane can't bloat the
         # heartbeat. Trim from the head (oldest) so the tail (latest
         # activity) is preserved.
-        if len(pane_tail_full) > 32 * 1024:
-            pane_tail_full = pane_tail_full[-32 * 1024 :]
-    return pane_tail, pane_tail_block, pane_tail_block_clean, pane_tail_full
+        if len(orochi_pane_tail_full) > 32 * 1024:
+            orochi_pane_tail_full = orochi_pane_tail_full[-32 * 1024 :]
+    return orochi_pane_tail, orochi_pane_tail_block, orochi_pane_tail_block_clean, orochi_pane_tail_full
 
 
 _SUBAGENT_MARKER_RE = re.compile(

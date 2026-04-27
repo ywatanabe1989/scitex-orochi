@@ -62,7 +62,7 @@ function _renderAgentDetail(a) {
   var mcpJson = d.mcp_json || "";
   var mcpServers = d.mcp_servers || a.mcp_servers || [];
   /* pane_text from the detail endpoint is already redacted; the
-   * registry fallback (pane_tail_block / pane_tail) is NOT, so prefer
+   * registry fallback (orochi_pane_tail_block / orochi_pane_tail) is NOT, so prefer
    * detail whenever we have it. */
   var pane = "";
   var paneSource = "unavailable";
@@ -70,7 +70,7 @@ function _renderAgentDetail(a) {
     pane = d.pane_text;
     paneSource = d.pane_text_source || (pane ? "cached" : "unavailable");
   } else {
-    pane = a.pane_tail_block || a.pane_tail || "";
+    pane = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
     paneSource = pane ? "cached" : "unavailable";
   }
   // todo#47 — longer scrollback (up to ~500 filtered lines) pushed

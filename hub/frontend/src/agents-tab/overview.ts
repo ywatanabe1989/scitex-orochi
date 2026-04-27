@@ -317,7 +317,7 @@ export function buildAgentRow(a) {
     "</td>" +
     "</tr>" +
     (function () {
-      var raw = a.pane_tail_block || a.pane_tail || "";
+      var raw = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
       if (!raw) return "";
       var lines = String(raw).split(/\r?\n/);
       var tail = lines.slice(-10).join("\n");

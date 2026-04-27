@@ -103,7 +103,7 @@ def _wrap_with_orochi_fields(
         "metrics": status.get("metrics") or {},
         # Terminal pane + classified state.
         "pane_text": status.get("pane_text") or "",
-        "pane_tail_block": status.get("pane_text") or "",
+        "orochi_pane_tail_block": status.get("pane_text") or "",
         "pane_state": status.get("pane_state") or "",
         "stuck_prompt_text": status.get("stuck_prompt_text") or "",
         # Workspace files.

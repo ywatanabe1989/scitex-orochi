@@ -55,7 +55,7 @@ class AgentDetailApiTest(TestCase):
             "role": "head",
             "model": "claude-opus-4-7",
             "channels": ["#general", "#agent"],
-            "pane_tail_block": "line1\nline2\n",
+            "orochi_pane_tail_block": "line1\nline2\n",
             "claude_md": "# CLAUDE.md\n",
             "mcp_servers": ["scitex-orochi"],
         }
@@ -108,7 +108,7 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("scitex-orochi", data["mcp_servers"])
 
     def test_unavailable_pane_source_when_no_capture(self):
-        self._register(pane_tail_block="", pane_tail="")
+        self._register(orochi_pane_tail_block="", orochi_pane_tail="")
         resp = self._get()
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -147,7 +147,7 @@ class AgentDetailApiTest(TestCase):
                 "normal line 2",
             ]
         )
-        self._register(pane_tail_block=leak)
+        self._register(orochi_pane_tail_block=leak)
         resp = self._get()
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -197,17 +197,17 @@ class AgentDetailApiTest(TestCase):
 
     def test_pane_text_full_exposed(self):
         """todo#47: detail endpoint must forward the ~500-line
-        pane_tail_full scrollback when the agent pushes it; empty
+        orochi_pane_tail_full scrollback when the agent pushes it; empty
         string when the agent hasn't updated its agent_meta.py."""
-        # New agent with pane_tail_full populated.
+        # New agent with orochi_pane_tail_full populated.
         big_pane = "\n".join(f"line-{i}" for i in range(200))
-        self._register(pane_tail_full=big_pane)
+        self._register(orochi_pane_tail_full=big_pane)
         data = self._get().json()
         self.assertIn("pane_text_full", data)
         # Content flows through redact_secrets (no secrets in this fixture).
         self.assertIn("line-199", data["pane_text_full"])
 
-        # Old agent without pane_tail_full: field present, empty.
+        # Old agent without orochi_pane_tail_full: field present, empty.
         from hub.registry import _agents as _reg_agents
 
         _reg_agents.clear()

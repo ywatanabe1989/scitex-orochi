@@ -133,11 +133,11 @@ def api_agents_register(request):
             # MCP server list so the dashboard can render meaningful
             # cards instead of "no task reported".
             "recent_actions": body.get("recent_actions") or [],
-            "pane_tail": body.get("pane_tail", ""),
-            "pane_tail_block": body.get("pane_tail_block", ""),
+            "orochi_pane_tail": body.get("orochi_pane_tail", ""),
+            "orochi_pane_tail_block": body.get("orochi_pane_tail_block", ""),
             # todo#47 — ~500 filtered lines of tmux scrollback for the
             # agent-detail "Full pane" toggle. Capped at 32 KB client-side.
-            "pane_tail_full": body.get("pane_tail_full", ""),
+            "orochi_pane_tail_full": body.get("orochi_pane_tail_full", ""),
             "claude_md_head": body.get("claude_md_head", ""),
             "mcp_servers": body.get("mcp_servers") or [],
             # todo#265: Claude Code OAuth account public metadata
