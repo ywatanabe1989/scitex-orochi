@@ -266,7 +266,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "subscription_created_at": a.get("subscription_created_at", ""),
                 # Quota telemetry from statusline parsing (agent_meta.py)
                 "orochi_quota_5h_pct": a.get("orochi_quota_5h_pct"),
-                "quota_5h_remaining": a.get("quota_5h_remaining", ""),
+                "orochi_quota_5h_remaining": a.get("orochi_quota_5h_remaining", ""),
                 "quota_weekly_pct": a.get("quota_weekly_pct"),
                 "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
                 "orochi_statusline_model": a.get("orochi_statusline_model", ""),

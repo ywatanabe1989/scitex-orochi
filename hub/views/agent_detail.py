@@ -284,7 +284,7 @@ def api_agent_detail(request, name: str):
         "subagents": list(agent.get("subagents") or []),
         "orochi_subagent_count": int(agent.get("orochi_subagent_count") or 0),
         # Quota surfaced from agent_meta.py --push heartbeat. The heartbeat
-        # stores `orochi_quota_5h_pct` / `quota_5h_remaining`; the UI reads
+        # stores `orochi_quota_5h_pct` / `orochi_quota_5h_remaining`; the UI reads
         # `quota_5h_used_pct` / `quota_5h_reset_at`. Map both shapes so
         # legacy payloads and newer fields coexist. Kept here so the
         # Agents tab meta-grid and Activity header chips can display
@@ -296,7 +296,7 @@ def api_agent_detail(request, name: str):
         if agent.get("quota_7d_used_pct") is not None
         else agent.get("quota_7d_pct"),
         "quota_5h_reset_at": agent.get("quota_5h_reset_at")
-        or agent.get("quota_5h_remaining")
+        or agent.get("orochi_quota_5h_remaining")
         or "",
         "quota_7d_reset_at": agent.get("quota_7d_reset_at")
         or agent.get("quota_7d_remaining")

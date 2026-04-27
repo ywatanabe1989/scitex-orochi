@@ -409,7 +409,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
         lambda orochi_pane_tail_block: {
             "statusline_orochi_context_pct": None,
             "orochi_quota_5h_pct": None,
-            "quota_5h_remaining": None,
+            "orochi_quota_5h_remaining": None,
             "quota_weekly_pct": None,
             "quota_weekly_remaining": None,
             "orochi_statusline_model": "",

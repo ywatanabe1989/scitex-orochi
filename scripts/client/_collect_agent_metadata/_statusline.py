@@ -24,7 +24,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
     Returns a dict with keys:
       - statusline_orochi_context_pct: Optional[float]
       - orochi_quota_5h_pct: Optional[float]
-      - quota_5h_remaining: str
+      - orochi_quota_5h_remaining: str
       - quota_weekly_pct: Optional[float]
       - quota_weekly_remaining: str
       - orochi_statusline_model: str
@@ -33,7 +33,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
     out: dict = {
         "statusline_orochi_context_pct": None,
         "orochi_quota_5h_pct": None,
-        "quota_5h_remaining": "",
+        "orochi_quota_5h_remaining": "",
         "quota_weekly_pct": None,
         "quota_weekly_remaining": "",
         "orochi_statusline_model": "",
@@ -58,7 +58,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
         out["statusline_orochi_context_pct"] = float(pct_matches[0][0])
     if len(pct_matches) >= 2:
         out["orochi_quota_5h_pct"] = float(pct_matches[1][0])
-        out["quota_5h_remaining"] = pct_matches[1][1] if pct_matches[1][1] else ""
+        out["orochi_quota_5h_remaining"] = pct_matches[1][1] if pct_matches[1][1] else ""
     if len(pct_matches) >= 3:
         out["quota_weekly_pct"] = float(pct_matches[2][0])
         out["quota_weekly_remaining"] = pct_matches[2][1] if pct_matches[2][1] else ""
