@@ -156,7 +156,7 @@ def api_agents_register(request):
             "orochi_quota_5h_pct": body.get("orochi_quota_5h_pct"),
             "orochi_quota_5h_remaining": body.get("orochi_quota_5h_remaining", ""),
             "orochi_quota_weekly_pct": body.get("orochi_quota_weekly_pct"),
-            "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
+            "orochi_quota_weekly_remaining": body.get("orochi_quota_weekly_remaining", ""),
             "orochi_statusline_model": body.get("orochi_statusline_model", ""),
             "orochi_account_email": body.get("orochi_account_email", ""),
             # scitex-agent-container heartbeat-push payload. Long names are
@@ -171,7 +171,7 @@ def api_agents_register(request):
             "quota_5h_reset_at": body.get("quota_5h_reset_at")
             or body.get("orochi_quota_5h_remaining", ""),
             "quota_7d_reset_at": body.get("quota_7d_reset_at")
-            or body.get("quota_weekly_remaining", ""),
+            or body.get("orochi_quota_weekly_remaining", ""),
             # Terminal pane + classified state from agent-container.
             "orochi_pane_state": body.get("orochi_pane_state", ""),
             "orochi_stuck_prompt_text": body.get("orochi_stuck_prompt_text", ""),

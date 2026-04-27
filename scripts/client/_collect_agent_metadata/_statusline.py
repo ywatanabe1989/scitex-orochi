@@ -26,7 +26,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
       - orochi_quota_5h_pct: Optional[float]
       - orochi_quota_5h_remaining: str
       - orochi_quota_weekly_pct: Optional[float]
-      - quota_weekly_remaining: str
+      - orochi_quota_weekly_remaining: str
       - orochi_statusline_model: str
       - orochi_account_email: str
     """
@@ -35,7 +35,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
         "orochi_quota_5h_pct": None,
         "orochi_quota_5h_remaining": "",
         "orochi_quota_weekly_pct": None,
-        "quota_weekly_remaining": "",
+        "orochi_quota_weekly_remaining": "",
         "orochi_statusline_model": "",
         "orochi_account_email": "",
     }
@@ -61,5 +61,5 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
         out["orochi_quota_5h_remaining"] = pct_matches[1][1] if pct_matches[1][1] else ""
     if len(pct_matches) >= 3:
         out["orochi_quota_weekly_pct"] = float(pct_matches[2][0])
-        out["quota_weekly_remaining"] = pct_matches[2][1] if pct_matches[2][1] else ""
+        out["orochi_quota_weekly_remaining"] = pct_matches[2][1] if pct_matches[2][1] else ""
     return out

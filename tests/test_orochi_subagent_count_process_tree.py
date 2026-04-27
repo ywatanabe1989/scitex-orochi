@@ -411,7 +411,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
             "orochi_quota_5h_pct": None,
             "orochi_quota_5h_remaining": None,
             "orochi_quota_weekly_pct": None,
-            "quota_weekly_remaining": None,
+            "orochi_quota_weekly_remaining": None,
             "orochi_statusline_model": "",
             "orochi_account_email": "",
         },
