@@ -201,7 +201,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)
                 "orochi_pid": a.get("orochi_pid") or 0,
-                "ppid": a.get("ppid") or 0,
+                "orochi_ppid": a.get("orochi_ppid") or 0,
                 "orochi_context_pct": a.get("orochi_context_pct"),
                 "context_management": a.get("context_management"),
                 "orochi_skills_loaded": list(a.get("orochi_skills_loaded") or []),

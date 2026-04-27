@@ -116,7 +116,7 @@ def api_agents_register(request):
             "multiplexer": body.get("multiplexer", ""),
             "orochi_project": body.get("orochi_project", ""),
             "orochi_pid": body.get("orochi_pid") or 0,
-            "ppid": body.get("ppid") or 0,
+            "orochi_ppid": body.get("orochi_ppid") or 0,
             "orochi_context_pct": body.get("orochi_context_pct"),
             # YAML-declared compact policy (strategy / trigger_at_percent /
             # live percent reading from the sac sensor). None when the agent

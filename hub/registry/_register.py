@@ -172,7 +172,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # Extended process/orochi_runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
             "orochi_pid": info.get("orochi_pid") or prev.get("orochi_pid") or 0,
-            "ppid": info.get("ppid") or prev.get("ppid") or 0,
+            "orochi_ppid": info.get("orochi_ppid") or prev.get("orochi_ppid") or 0,
             "orochi_context_pct": (
                 info.get("orochi_context_pct")
                 if info.get("orochi_context_pct") is not None

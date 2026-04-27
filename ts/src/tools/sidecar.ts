@@ -179,7 +179,7 @@ export async function handleSidecarStatus(): Promise<{
     mcp_server: {
       agent: OROCHI_AGENT || null,
       orochi_pid: process.orochi_pid,
-      ppid: typeof process.ppid === "number" ? process.ppid : null,
+      orochi_ppid: typeof process.orochi_ppid === "number" ? process.orochi_ppid : null,
       orochi_started_at: MCP_SERVER_STARTED_AT,
       uptime_seconds: uptimeSeconds,
       orochi_runtime: typeof Bun !== "undefined" ? "bun" : "node",

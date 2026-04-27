@@ -64,11 +64,11 @@ def resolve_machine_label() -> str:
 
 
 def find_session_pids(agent: str, multiplexer: str) -> tuple[int, int]:
-    """Return (orochi_pid, ppid) for the agent's tmux pane and its claude descendant."""
+    """Return (orochi_pid, orochi_ppid) for the agent's tmux pane and its claude descendant."""
     import subprocess
 
     orochi_pid = 0
-    ppid = 0
+    orochi_ppid = 0
     try:
         if multiplexer == "tmux":
             out = (
@@ -81,10 +81,10 @@ def find_session_pids(agent: str, multiplexer: str) -> tuple[int, int]:
                 .splitlines()
             )
             if out:
-                ppid = int(out[0])
+                orochi_ppid = int(out[0])
                 ps = (
                     subprocess.run(
-                        ["pgrep", "-P", str(ppid), "-f", "claude"],
+                        ["pgrep", "-P", str(orochi_ppid), "-f", "claude"],
                         capture_output=True,
                         text=True,
                     )
@@ -94,7 +94,7 @@ def find_session_pids(agent: str, multiplexer: str) -> tuple[int, int]:
                 if ps:
                     orochi_pid = int(ps[0])
                 else:
-                    orochi_pid = ppid
+                    orochi_pid = orochi_ppid
     except Exception:
         pass
-    return orochi_pid, ppid
+    return orochi_pid, orochi_ppid
