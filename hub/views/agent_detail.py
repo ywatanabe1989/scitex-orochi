@@ -175,7 +175,7 @@ def api_agent_detail(request, name: str):
           "orochi_mcp_servers": [str | dict, ...],
           "orochi_current_task": str,
           "orochi_context_pct": float | None,
-          "pid": int,
+          "orochi_pid": int,
           "orochi_subagents": [ ... ],
           "health": { ... }
         }
@@ -280,7 +280,7 @@ def api_agent_detail(request, name: str):
         "orochi_mcp_servers": list(agent.get("orochi_mcp_servers") or []),
         "orochi_current_task": agent.get("orochi_current_task", ""),
         "orochi_context_pct": agent.get("orochi_context_pct"),
-        "pid": int(agent.get("pid") or 0),
+        "orochi_pid": int(agent.get("orochi_pid") or 0),
         "orochi_subagents": list(agent.get("orochi_subagents") or []),
         "orochi_subagent_count": int(agent.get("orochi_subagent_count") or 0),
         # Quota surfaced from agent_meta.py --push heartbeat. The heartbeat

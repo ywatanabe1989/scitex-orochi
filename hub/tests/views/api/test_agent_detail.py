@@ -93,7 +93,7 @@ class AgentDetailApiTest(TestCase):
             "orochi_mcp_servers",
             "orochi_current_task",
             "orochi_context_pct",
-            "pid",
+            "orochi_pid",
             "orochi_subagents",
             "health",
         ):

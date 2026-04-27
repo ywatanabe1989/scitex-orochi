@@ -44,7 +44,7 @@ section "TELEGRAM"
 # 1a. bun process running
 TELEGRAM_PID=$(pgrep -f 'bun.*telegram' 2>/dev/null | head -1)
 if [[ -n "$TELEGRAM_PID" ]]; then
-    ok "Plugin process running (pid $TELEGRAM_PID)"
+    ok "Plugin process running (orochi_pid $TELEGRAM_PID)"
 else
     fail "Plugin process NOT running"
 fi

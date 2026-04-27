@@ -55,7 +55,7 @@ def default_log_dir() -> Path:
 def default_pid_path() -> Path:
     """PID file for the daemon — used by ``cron status`` to answer
     "is the daemon loaded, and what PID?" without speaking launchctl."""
-    return Path.home() / ".local" / "state" / "scitex" / "orochi-cron" / "daemon.pid"
+    return Path.home() / ".local" / "state" / "scitex" / "orochi-cron" / "daemon.orochi_pid"
 
 
 # ----------------------------------------------------------------------

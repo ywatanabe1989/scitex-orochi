@@ -93,7 +93,7 @@ if ! pgrep -u "$USER" -f 'tmux-unstick-spartan-loop.sh' >/dev/null; then
 fi
 ```
 
-The loop writes its PID to `~/.scitex/orochi/logs/tmux-unstick-loop.pid`
+The loop writes its PID to `~/.scitex/orochi/logs/tmux-unstick-loop.orochi_pid`
 so an external supervisor (agent-autostart rerun, etc) can cleanly stop
 it before restart.
 

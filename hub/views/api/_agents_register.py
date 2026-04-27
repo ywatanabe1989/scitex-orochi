@@ -115,7 +115,7 @@ def api_agents_register(request):
             # mamba-healer-mba's agent_meta.py --push loop.
             "multiplexer": body.get("multiplexer", ""),
             "orochi_project": body.get("orochi_project", ""),
-            "pid": body.get("pid") or 0,
+            "orochi_pid": body.get("orochi_pid") or 0,
             "ppid": body.get("ppid") or 0,
             "orochi_context_pct": body.get("orochi_context_pct"),
             # YAML-declared compact policy (strategy / trigger_at_percent /

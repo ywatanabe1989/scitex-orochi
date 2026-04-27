@@ -69,7 +69,7 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        pid, ppid, orochi_started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
+        orochi_pid, ppid, orochi_started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
         orochi_runtime, orochi_version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
@@ -113,8 +113,8 @@ def collect(agent: str) -> dict:
     orochi_started_at = tr["orochi_started_at"]
     recent_actions = tr["recent_actions"]
 
-    # Process info: first claude child pid under the multiplexer session.
-    pid, ppid = find_session_pids(agent, multiplexer)
+    # Process info: first claude child orochi_pid under the multiplexer session.
+    orochi_pid, ppid = find_session_pids(agent, multiplexer)
 
     # Skills loaded + MCP servers from workspace files.
     orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
@@ -177,17 +177,17 @@ def collect(agent: str) -> dict:
     # If the most recent assistant turn carried no real orochi_model label
     # (empty or a <synthetic>-style placeholder from compacted
     # summaries), fall back to the env var the orochi_runtime set at spawn.
-    # The env is fetched from the claude process's own /proc/<pid>/environ
+    # The env is fetched from the claude process's own /proc/<orochi_pid>/environ
     # (the push script's own environment does NOT carry per-agent orochi_model
     # — each agent has its own orochi_model in its own process env).
     resolved_model = (
         orochi_model
         if orochi_model and not orochi_model.startswith("<")
-        # Linux-only: peek at /proc/<pid>/environ for the real
+        # Linux-only: peek at /proc/<orochi_pid>/environ for the real
         # orochi_model env the orochi_runtime set at spawn.
         else (
             _read_process_env(
-                pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
+                orochi_pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
             )
             # Darwin fallback: /proc doesn't exist. Check the pusher's
             # own env — on mba the tmux launcher exports
@@ -239,7 +239,7 @@ def collect(agent: str) -> dict:
         "recent_actions": recent_actions,
         "last_activity": last_activity,
         "orochi_model": resolved_model,
-        "pid": pid,
+        "orochi_pid": orochi_pid,
         "ppid": ppid,
         "orochi_started_at": orochi_started_at,
         "workdir": workspace,

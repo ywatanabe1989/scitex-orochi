@@ -83,7 +83,7 @@ def _wrap_with_orochi_fields(
         "workdir": status.get("workdir") or "",
         "multiplexer": status.get("multiplexer") or "",
         "orochi_project": status.get("orochi_project") or status.get("name") or "",
-        "pid": int(status.get("pid") or 0),
+        "orochi_pid": int(status.get("orochi_pid") or 0),
         "ppid": int(status.get("ppid") or 0),
         "orochi_context_pct": status.get("orochi_context_pct"),
         # YAML-declared compact policy from sac status (None when noop /

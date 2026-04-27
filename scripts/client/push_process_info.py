@@ -127,7 +127,7 @@ def _launchd_units_macos() -> list[dict[str, Any]]:
         fields = line.split(None, 2)
         if len(fields) < 3:
             continue
-        pid, status, label = fields[0], fields[1], fields[2]
+        orochi_pid, status, label = fields[0], fields[1], fields[2]
         if (
             "scitex" not in label
             and "orochi" not in label
@@ -136,7 +136,7 @@ def _launchd_units_macos() -> list[dict[str, Any]]:
             continue
         rows.append(
             {
-                "pid": int(pid) if pid.isdigit() else None,
+                "orochi_pid": int(orochi_pid) if orochi_pid.isdigit() else None,
                 "status": status,
                 "label": label,
             }
@@ -147,7 +147,7 @@ def _launchd_units_macos() -> list[dict[str, Any]]:
 def _agent_processes() -> list[dict[str, Any]]:
     try:
         out = subprocess.check_output(
-            ["ps", "-eo", "pid,etimes,rss,args"],
+            ["ps", "-eo", "orochi_pid,etimes,rss,args"],
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=3,
@@ -159,12 +159,12 @@ def _agent_processes() -> list[dict[str, Any]]:
         parts = line.strip().split(None, 3)
         if len(parts) < 4:
             continue
-        pid, etimes, rss, args = parts
+        orochi_pid, etimes, rss, args = parts
         if "claude" not in args and "scitex-agent-container" not in args:
             continue
         rows.append(
             {
-                "pid": int(pid) if pid.isdigit() else None,
+                "orochi_pid": int(orochi_pid) if orochi_pid.isdigit() else None,
                 "etime_s": int(etimes) if etimes.isdigit() else None,
                 "rss_kb": int(rss) if rss.isdigit() else None,
                 "args": args[:300],

@@ -81,7 +81,7 @@ function _renderAgentDetail(a) {
   var paneFullAvailable = !!paneFull;
 
   var workdir = d.workdir || a.workdir || "";
-  var pid = d.pid || a.pid || "";
+  var orochi_pid = d.orochi_pid || a.orochi_pid || "";
   var multiplexer = d.multiplexer || a.multiplexer || "";
   var idleSec = d.idle_seconds != null ? d.idle_seconds : a.idle_seconds;
   var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
@@ -137,7 +137,7 @@ function _renderAgentDetail(a) {
       multiplexer || "-",
       "tmux / screen session hosting the agent process",
     ],
-    ["PID", pid || "-", "host-side process id of the claude-code binary"],
+    ["PID", orochi_pid || "-", "host-side process id of the claude-code binary"],
     [
       "Liveness",
       liveness,

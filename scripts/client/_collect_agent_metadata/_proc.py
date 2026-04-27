@@ -3,24 +3,24 @@
 from __future__ import annotations
 
 
-def _read_process_env(pid: int, keys: tuple[str, ...]) -> str:
-    """Return the first non-empty env value found in /proc/<pid>/environ.
+def _read_process_env(orochi_pid: int, keys: tuple[str, ...]) -> str:
+    """Return the first non-empty env value found in /proc/<orochi_pid>/environ.
 
     Each agent process (claude-code) carries its own env with the orochi_model
     label the orochi_runtime set at spawn — but the pusher itself runs under a
     systemd/launchd timer that has a different env. To give the dashboard
     an accurate per-agent orochi_model (not the pusher's env), peek at the
-    claude process's own environ. Returns "" on any failure (no pid,
+    claude process's own environ. Returns "" on any failure (no orochi_pid,
     permission denied, file gone). Never raises.
 
     Only works on Linux (/proc). On macOS this silently returns "" — the
     MCP sidecar's own register-path env-var chain handles the dashboard
     label there.
     """
-    if not pid:
+    if not orochi_pid:
         return ""
     try:
-        with open(f"/proc/{pid}/environ", "rb") as f:
+        with open(f"/proc/{orochi_pid}/environ", "rb") as f:
             raw = f.read()
     except (FileNotFoundError, PermissionError, OSError):
         return ""

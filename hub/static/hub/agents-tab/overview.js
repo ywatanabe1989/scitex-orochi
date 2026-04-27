@@ -234,8 +234,8 @@ function buildAgentRow(a) {
     '<td class="skills-cell">' +
     renderSkillsBadge(a.orochi_skills_loaded) +
     "</td>" +
-    '<td class="pid-cell muted-cell">' +
-    (a.pid ? String(a.pid) : "-") +
+    '<td class="orochi_pid-cell muted-cell">' +
+    (a.orochi_pid ? String(a.orochi_pid) : "-") +
     "</td>" +
     '<td class="small-cell">' +
     channelsHtml +

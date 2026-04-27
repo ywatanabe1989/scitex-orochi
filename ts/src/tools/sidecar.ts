@@ -163,7 +163,7 @@ export async function handleSidecarStatus(): Promise<{
   // callers can post-filter on `status` if they only care about live procs.
   const rsyncJobsList = Array.from(rsyncJobs.values()).map((j) => ({
     id: j.id,
-    pid: j.pid ?? null,
+    orochi_pid: j.orochi_pid ?? null,
     status: j.status,
     src_path: j.src_path,
     dst_host: j.dst_host,
@@ -178,7 +178,7 @@ export async function handleSidecarStatus(): Promise<{
     ts: new Date().toISOString(),
     mcp_server: {
       agent: OROCHI_AGENT || null,
-      pid: process.pid,
+      orochi_pid: process.orochi_pid,
       ppid: typeof process.ppid === "number" ? process.ppid : null,
       orochi_started_at: MCP_SERVER_STARTED_AT,
       uptime_seconds: uptimeSeconds,

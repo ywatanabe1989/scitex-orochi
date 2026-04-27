@@ -18,7 +18,7 @@ Subcommand matrix
                 its result. Doesn't go through the daemon loop, so
                 it works before the daemon is installed.
 * ``status``  — "is the daemon loaded + PID?" Combines the PID file
-                (the daemon's own view) with ``os.kill(pid, 0)`` so
+                (the daemon's own view) with ``os.kill(orochi_pid, 0)`` so
                 stale PID files don't give false positives.
 * ``reload``  — ``kill -HUP`` the daemon so it re-reads cron.yaml
                 without a full restart.
@@ -285,7 +285,7 @@ def cron_run(
 
 @cron.command("status")
 @click.option(
-    "--pid",
+    "--orochi_pid",
     "pid_path_str",
     default=None,
     help=f"Override PID file (default: {default_pid_path()}).",
@@ -305,10 +305,10 @@ def cron_status(
     """Report whether the daemon is running + its PID + config location."""
     pid_path = Path(pid_path_str) if pid_path_str else default_pid_path()
     state_path = Path(state_path_str) if state_path_str else default_state_path()
-    pid, alive = _daemon_liveness(pid_path)
+    orochi_pid, alive = _daemon_liveness(pid_path)
     state = state_read(state_path)
     payload = {
-        "daemon_pid": pid,
+        "daemon_pid": orochi_pid,
         "daemon_running": alive,
         "daemon_started_at": (state.daemon_started_at if state else None),
         "state_updated_at": (state.updated_at if state else None),
@@ -322,7 +322,7 @@ def cron_status(
     if as_json:
         click.echo(json.dumps(payload, indent=2, default=str))
         return
-    click.echo(f"pid:      {pid if pid else '-'}")
+    click.echo(f"orochi_pid:      {orochi_pid if orochi_pid else '-'}")
     click.echo(f"running:  {alive}")
     click.echo(f"jobs:     {payload['job_count']}")
     click.echo(f"config:   {payload['config_path']}")
@@ -331,24 +331,24 @@ def cron_status(
 
 
 def _daemon_liveness(pid_path: Path) -> tuple[int, bool]:
-    """Return (pid, is_alive). 0 + False if no pid file."""
+    """Return (orochi_pid, is_alive). 0 + False if no orochi_pid file."""
     if not pid_path.is_file():
         return (0, False)
     try:
         raw = pid_path.read_text(encoding="utf-8").strip()
-        pid = int(raw)
+        orochi_pid = int(raw)
     except (OSError, ValueError):
         return (0, False)
-    if pid <= 0:
+    if orochi_pid <= 0:
         return (0, False)
     try:
-        os.kill(pid, 0)
-        return (pid, True)
+        os.kill(orochi_pid, 0)
+        return (orochi_pid, True)
     except ProcessLookupError:
-        return (pid, False)
+        return (orochi_pid, False)
     except PermissionError:
         # Process exists, owned by another user — treat as alive.
-        return (pid, True)
+        return (orochi_pid, True)
 
 
 # ----------------------------------------------------------------------
@@ -358,7 +358,7 @@ def _daemon_liveness(pid_path: Path) -> tuple[int, bool]:
 
 @cron.command("reload")
 @click.option(
-    "--pid",
+    "--orochi_pid",
     "pid_path_str",
     default=None,
     help=f"Override PID file (default: {default_pid_path()}).",
@@ -366,13 +366,13 @@ def _daemon_liveness(pid_path: Path) -> tuple[int, bool]:
 def cron_reload(pid_path_str: str | None) -> None:
     """Signal the daemon to re-read cron.yaml (SIGHUP)."""
     pid_path = Path(pid_path_str) if pid_path_str else default_pid_path()
-    pid, alive = _daemon_liveness(pid_path)
+    orochi_pid, alive = _daemon_liveness(pid_path)
     if not alive:
         raise click.ClickException(
-            f"daemon not running (pid file: {pid_path}) — start with `scitex-orochi cron start`"
+            f"daemon not running (orochi_pid file: {pid_path}) — start with `scitex-orochi cron start`"
         )
     try:
-        os.kill(pid, signal.SIGHUP)
+        os.kill(orochi_pid, signal.SIGHUP)
     except OSError as exc:
-        raise click.ClickException(f"failed to signal pid {pid}: {exc}") from None
-    click.echo(f"sent SIGHUP to pid {pid}")
+        raise click.ClickException(f"failed to signal orochi_pid {orochi_pid}: {exc}") from None
+    click.echo(f"sent SIGHUP to orochi_pid {orochi_pid}")

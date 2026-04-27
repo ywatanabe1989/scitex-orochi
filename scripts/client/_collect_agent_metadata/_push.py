@@ -66,7 +66,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "multiplexer": meta.get("multiplexer", ""),
         "orochi_project": meta.get("orochi_project", ""),
         "workdir": meta.get("workdir", ""),
-        "pid": meta.get("pid") or 0,
+        "orochi_pid": meta.get("orochi_pid") or 0,
         "ppid": meta.get("ppid") or 0,
         "orochi_context_pct": meta.get("orochi_context_pct"),
         "orochi_subagent_count": int(meta.get("orochi_subagent_count") or 0),
@@ -184,11 +184,11 @@ def push_all(url=None, token=None) -> int:
             if 200 <= status < 300:
                 ok += 1
                 log.info(
-                    "pushed %s ctx=%s%% subs=%s pid=%s",
+                    "pushed %s ctx=%s%% subs=%s orochi_pid=%s",
                     agent,
                     meta.get("orochi_context_pct"),
                     meta.get("orochi_subagent_count"),
-                    meta.get("pid"),
+                    meta.get("orochi_pid"),
                 )
             else:
                 log.warning("push %s -> HTTP %s: %s", agent, status, body)

@@ -62,7 +62,7 @@ export function _renderActivityAgentDetail(a, grid) {
   if (subCnt != null) chips.push("orochi_subagents " + subCnt);
   if (a.orochi_model) chips.push(a.orochi_model);
   if (a.multiplexer) chips.push(a.multiplexer);
-  if (a.pid) chips.push("pid " + a.pid);
+  if (a.orochi_pid) chips.push("orochi_pid " + a.orochi_pid);
   var uniqueCh = [...new Set(a.channels || [])];
   if (uniqueCh.length) chips.push("ch: " + uniqueCh.join(", "));
   function _fmtPct(v) {
@@ -136,7 +136,7 @@ export function _renderActivityAgentDetail(a, grid) {
     ["Priority list", _priorityListDisplay],
     ["Model", _modelDisplay],
     ["Multiplexer", a.multiplexer || "-"],
-    ["PID", a.pid || "-"],
+    ["PID", a.orochi_pid || "-"],
     ["Liveness", liveness],
     ["Context", ctxPct != null ? ctxPct.toFixed(1) + "%" : "-"],
     [

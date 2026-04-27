@@ -333,7 +333,7 @@ case "$MODE" in
     ;;
   --loop)
     emit "loop-start" "__sweep__" "" "null" "false" \
-      "{\"pid\":$$,\"interval_sec\":$INTERVAL,\"stability_sec\":$STABILITY_SEC,\"safe_start_sec\":$SAFE_START_SEC,\"self_pane\":$(printf '%s' "$SELF_PANE_ID" | json_escape)}"
+      "{\"orochi_pid\":$$,\"interval_sec\":$INTERVAL,\"stability_sec\":$STABILITY_SEC,\"safe_start_sec\":$SAFE_START_SEC,\"self_pane\":$(printf '%s' "$SELF_PANE_ID" | json_escape)}"
     tick=0
     while true; do
       sweep_once || true
@@ -341,7 +341,7 @@ case "$MODE" in
       if (( HEARTBEAT_EVERY > 0 && tick % HEARTBEAT_EVERY == 0 )); then
         n_panes=$(tmux list-panes -a 2>/dev/null | wc -l)
         emit "heartbeat" "__sweep__" "" "null" "false" \
-          "{\"pid\":$$,\"tick\":$tick,\"n_panes\":$n_panes}"
+          "{\"orochi_pid\":$$,\"tick\":$tick,\"n_panes\":$n_panes}"
       fi
       sleep "$INTERVAL"
     done

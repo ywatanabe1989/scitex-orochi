@@ -37,7 +37,7 @@ def _mk_daemon(tmp_path: Path, cfg: Path) -> CronDaemon:
     return CronDaemon(
         config_path=cfg,
         state_path=tmp_path / "state.json",
-        pid_path=tmp_path / "daemon.pid",
+        pid_path=tmp_path / "daemon.orochi_pid",
         log_dir=tmp_path / "logs",
     )
 

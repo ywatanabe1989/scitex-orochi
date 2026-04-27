@@ -159,7 +159,7 @@ class CronDaemon:
         self.load()
         self._write_pid()
         self._install_signal_handlers()
-        logger.info("cron: daemon started (pid=%d)", os.getpid())
+        logger.info("cron: daemon started (orochi_pid=%d)", os.getpid())
         try:
             while not self._stop_event.is_set():
                 if self._reload_event.is_set():

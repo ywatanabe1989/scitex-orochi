@@ -71,7 +71,7 @@ class CronState:
     """Snapshot of the whole daemon.
 
     ``daemon_pid`` is informational — if the daemon crashed, the PID
-    may be stale. ``cron status`` pairs it with ``os.kill(pid, 0)`` to
+    may be stale. ``cron status`` pairs it with ``os.kill(orochi_pid, 0)`` to
     distinguish "running" from "leftover PID file".
     """
 
