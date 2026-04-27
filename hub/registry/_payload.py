@@ -225,7 +225,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_recent_tools": list(a.get("sac_hooks_recent_tools") or []),
                 "sac_hooks_recent_prompts": list(a.get("sac_hooks_recent_prompts") or []),
                 "sac_hooks_agent_calls": list(a.get("sac_hooks_agent_calls") or []),
-                "background_tasks": list(a.get("background_tasks") or []),
+                "sac_hooks_background_tasks": list(a.get("sac_hooks_background_tasks") or []),
                 "sac_hooks_tool_counts": dict(a.get("sac_hooks_tool_counts") or {}),
                 # Functional-heartbeat shortcuts (derived by
                 # event_log.summarize() in agent-container).

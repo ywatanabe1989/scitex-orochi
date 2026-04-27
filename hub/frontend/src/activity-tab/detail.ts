@@ -421,7 +421,7 @@ export function _renderActivityAgentDetail(a, grid) {
     d.sac_hooks_recent_tools || [],
     d.sac_hooks_recent_prompts || [],
     d.sac_hooks_agent_calls || [],
-    d.background_tasks || [],
+    d.sac_hooks_background_tasks || [],
     d.sac_hooks_tool_counts || {},
   );
   /* Preserve scrollTop of long, user-scrolled panes across heartbeat-driven

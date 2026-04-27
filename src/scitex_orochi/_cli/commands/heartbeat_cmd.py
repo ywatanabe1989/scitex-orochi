@@ -116,7 +116,7 @@ def _wrap_with_orochi_fields(
         "sac_hooks_recent_tools": status.get("sac_hooks_recent_tools") or [],
         "sac_hooks_recent_prompts": status.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_agent_calls": status.get("sac_hooks_agent_calls") or [],
-        "background_tasks": status.get("background_tasks") or [],
+        "sac_hooks_background_tasks": status.get("sac_hooks_background_tasks") or [],
         "sac_hooks_tool_counts": status.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts (derived in agent-container).
         "sac_hooks_last_tool_at": status.get("sac_hooks_last_tool_at") or "",

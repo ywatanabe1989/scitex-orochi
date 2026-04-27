@@ -36,7 +36,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
       - ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name``  — LLM liveness signal
       - ``sac_hooks_last_mcp_tool_at`` / ``sac_hooks_last_mcp_tool_name`` — MCP sidecar route
       - ``sac_hooks_recent_tools`` / ``sac_hooks_recent_prompts`` / ``sac_hooks_agent_calls`` /
-        ``background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
+        ``sac_hooks_background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
         views rendered in the per-agent detail panels.
     """
 
@@ -103,7 +103,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(a["sac_hooks_last_mcp_tool_name"], "mcp__orochi__send_message")
 
     def test_register_persists_hook_event_lists(self):
-        """sac_hooks_recent_tools / prompts / sac_hooks_agent_calls / background_tasks /
+        """sac_hooks_recent_tools / prompts / sac_hooks_agent_calls / sac_hooks_background_tasks /
         sac_hooks_tool_counts round-trip into the registry unmodified."""
         from hub.registry import get_agents
 
@@ -117,7 +117,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         sac_hooks_agent_calls = [
             {"ts": "2026-04-17T00:00:02Z", "input_preview": "deep-research"},
         ]
-        background_tasks = [
+        sac_hooks_background_tasks = [
             {"ts": "2026-04-17T00:00:03Z", "input_preview": "tail -f log"},
         ]
         sac_hooks_tool_counts = {"Edit": 1, "Bash": 1, "Agent": 1}
@@ -126,7 +126,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
                 sac_hooks_recent_tools=sac_hooks_recent_tools,
                 sac_hooks_recent_prompts=sac_hooks_recent_prompts,
                 sac_hooks_agent_calls=sac_hooks_agent_calls,
-                background_tasks=background_tasks,
+                sac_hooks_background_tasks=sac_hooks_background_tasks,
                 sac_hooks_tool_counts=sac_hooks_tool_counts,
             )
         )
@@ -136,7 +136,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(a["sac_hooks_recent_tools"], sac_hooks_recent_tools)
         self.assertEqual(a["sac_hooks_recent_prompts"], sac_hooks_recent_prompts)
         self.assertEqual(a["sac_hooks_agent_calls"], sac_hooks_agent_calls)
-        self.assertEqual(a["background_tasks"], background_tasks)
+        self.assertEqual(a["sac_hooks_background_tasks"], sac_hooks_background_tasks)
         self.assertEqual(a["sac_hooks_tool_counts"], sac_hooks_tool_counts)
 
     def test_detail_api_surfaces_last_tool_fields(self):
@@ -163,7 +163,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
                 sac_hooks_recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Grep"}],
                 sac_hooks_recent_prompts=[{"ts": "2026-04-17T00:00:01Z", "prompt_preview": "?"}],
                 sac_hooks_agent_calls=[{"ts": "2026-04-17T00:00:02Z", "input_preview": "x"}],
-                background_tasks=[{"ts": "2026-04-17T00:00:03Z", "input_preview": "y"}],
+                sac_hooks_background_tasks=[{"ts": "2026-04-17T00:00:03Z", "input_preview": "y"}],
                 sac_hooks_tool_counts={"Grep": 1},
             )
         )
@@ -174,7 +174,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["sac_hooks_recent_tools"][0]["tool"], "Grep")
         self.assertEqual(len(data["sac_hooks_recent_prompts"]), 1)
         self.assertEqual(len(data["sac_hooks_agent_calls"]), 1)
-        self.assertEqual(len(data["background_tasks"]), 1)
+        self.assertEqual(len(data["sac_hooks_background_tasks"]), 1)
         self.assertEqual(data["sac_hooks_tool_counts"], {"Grep": 1})
 
     def test_missing_hook_fields_default_to_empty(self):
@@ -187,7 +187,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["sac_hooks_recent_tools"], [])
         self.assertEqual(data["sac_hooks_recent_prompts"], [])
         self.assertEqual(data["sac_hooks_agent_calls"], [])
-        self.assertEqual(data["background_tasks"], [])
+        self.assertEqual(data["sac_hooks_background_tasks"], [])
         self.assertEqual(data["sac_hooks_tool_counts"], {})
         self.assertEqual(data["sac_hooks_last_tool_at"], "")
         self.assertEqual(data["sac_hooks_last_tool_name"], "")

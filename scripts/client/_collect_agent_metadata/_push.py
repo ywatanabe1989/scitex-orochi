@@ -111,7 +111,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # AGENT CALLS / BACKGROUND TASKS panels and the
         # active-subagent badge.
         "sac_hooks_agent_calls": meta.get("sac_hooks_agent_calls") or [],
-        "background_tasks": meta.get("background_tasks") or [],
+        "sac_hooks_background_tasks": meta.get("sac_hooks_background_tasks") or [],
         "subagents": meta.get("subagents") or [],
         # scitex-orochi todo#369 — host-level machine metrics (CPU / mem
         # / disk / load) + optional SLURM cluster snapshot. Without

@@ -183,7 +183,7 @@ def api_agents_register(request):
             "sac_hooks_recent_tools": body.get("sac_hooks_recent_tools") or [],
             "sac_hooks_recent_prompts": body.get("sac_hooks_recent_prompts") or [],
             "sac_hooks_agent_calls": body.get("sac_hooks_agent_calls") or [],
-            "background_tasks": body.get("background_tasks") or [],
+            "sac_hooks_background_tasks": body.get("sac_hooks_background_tasks") or [],
             "sac_hooks_tool_counts": body.get("sac_hooks_tool_counts") or {},
             # Functional-heartbeat shortcuts — last tool use (LLM-level
             # liveness) + last mcp__* tool (proves MCP sidecar route).

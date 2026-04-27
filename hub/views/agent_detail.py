@@ -308,7 +308,7 @@ def api_agent_detail(request, name: str):
         "sac_hooks_recent_tools": agent.get("sac_hooks_recent_tools") or [],
         "sac_hooks_recent_prompts": agent.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_agent_calls": agent.get("sac_hooks_agent_calls") or [],
-        "background_tasks": agent.get("background_tasks") or [],
+        "sac_hooks_background_tasks": agent.get("sac_hooks_background_tasks") or [],
         "sac_hooks_tool_counts": agent.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts.
         "sac_hooks_last_tool_at": agent.get("sac_hooks_last_tool_at") or "",
