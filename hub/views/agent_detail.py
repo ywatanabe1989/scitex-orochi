@@ -193,7 +193,9 @@ def api_agent_detail(request, name: str):
     # fall back to orochi_pane_tail, then advertise unavailable. We deliberately
     # do NOT reach out to a cross-host tmux capture-pane over SSH here —
     # that expansion is tracked in todo#420 follow-up.
-    raw_pane = agent.get("orochi_pane_tail_block") or agent.get("orochi_pane_tail") or ""
+    raw_pane = (
+        agent.get("orochi_pane_tail_block") or agent.get("orochi_pane_tail") or ""
+    )
     pane_text = redact_secrets(raw_pane) if raw_pane else ""
     pane_text_source = "cached" if raw_pane else "unavailable"
     # todo#47 — ~500-line scrollback for the "Full pane" toggle. Same
@@ -270,7 +272,25 @@ def api_agent_detail(request, name: str):
         # when `orochi_pane_state == running`). Both are redacted defense-
         # in-depth.
         "orochi_pane_state": agent.get("orochi_pane_state") or "",
-        "orochi_stuck_prompt_text": redact_secrets(agent.get("orochi_stuck_prompt_text") or ""),
+        # 2026-04-27 layered state pipeline (see AGENT_STATES.md):
+        #   pane (Layer A observations + Layer B v3 verdict)
+        #   comm (Layer A sac_a2a observations + Layer B v1 verdict)
+        # Surfaced so the Agents-tab detail can show the verdict, the
+        # evidence, the schema version, AND the raw primitive
+        # observations the verdict was derived from.
+        "orochi_pane_state_evidence": agent.get("orochi_pane_state_evidence") or "",
+        "orochi_pane_state_version": agent.get("orochi_pane_state_version") or "",
+        "orochi_pane_observations": agent.get("orochi_pane_observations") or {},
+        "orochi_comm_state": agent.get("orochi_comm_state") or "",
+        "orochi_comm_state_evidence": agent.get("orochi_comm_state_evidence") or "",
+        "orochi_comm_state_version": agent.get("orochi_comm_state_version") or "",
+        "sac_a2a_observations": agent.get("sac_a2a_observations") or {},
+        "sac_a2a_active_task_count": int(agent.get("sac_a2a_active_task_count") or 0),
+        "sac_a2a_active_task_state": agent.get("sac_a2a_active_task_state") or "",
+        "sac_a2a_last_task_event_at": agent.get("sac_a2a_last_task_event_at") or "",
+        "orochi_stuck_prompt_text": redact_secrets(
+            agent.get("orochi_stuck_prompt_text") or ""
+        ),
         "pane_text": pane_text,
         # todo#47 — longer scrollback; empty string when the agent
         # hasn't pushed it yet.
@@ -318,10 +338,14 @@ def api_agent_detail(request, name: str):
         # PaneAction summary (scitex-agent-container action_store).
         "sac_hooks_last_action_at": agent.get("sac_hooks_last_action_at") or "",
         "sac_hooks_last_action_name": agent.get("sac_hooks_last_action_name") or "",
-        "sac_hooks_last_action_outcome": agent.get("sac_hooks_last_action_outcome") or "",
+        "sac_hooks_last_action_outcome": agent.get("sac_hooks_last_action_outcome")
+        or "",
         "sac_hooks_last_action_elapsed_s": agent.get("sac_hooks_last_action_elapsed_s"),
         "action_counts": agent.get("action_counts") or {},
-        "sac_hooks_p95_elapsed_s_by_action": agent.get("sac_hooks_p95_elapsed_s_by_action") or {},
+        "sac_hooks_p95_elapsed_s_by_action": agent.get(
+            "sac_hooks_p95_elapsed_s_by_action"
+        )
+        or {},
         # scitex-orochi#255: most recent singleton-cardinality conflict
         # for this agent within ``SINGLETON_EVENT_WINDOW_S``. ``None``
         # when no conflict has been recorded recently. Each event has

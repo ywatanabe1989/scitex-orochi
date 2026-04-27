@@ -1,6 +1,12 @@
 // @ts-nocheck
 import { _renderIndicatorLamps } from "./lamps";
-import { FOLLOW_INTERVAL_MS, _agentDetailCache, _fmtDuration, _paneExpanded, livenessColor } from "./state";
+import {
+  FOLLOW_INTERVAL_MS,
+  _agentDetailCache,
+  _fmtDuration,
+  _paneExpanded,
+  livenessColor,
+} from "./state";
 import { escapeHtml, isAgentInactive } from "../app/utils";
 
 /* Agents Tab — per-agent detail view + indicator lamps + pane-state badge.
@@ -42,7 +48,8 @@ export function _renderAgentDetail(a) {
    * their mDNS names — those contribute nothing (ywatanabe msg 2026-04-18
    * "2" flagged the duplication for the 7 ywata-note-win agents whose
    * FQDN was just the short label + ".localdomain"). */
-  var machineCanonical = d.orochi_hostname_canonical || a.orochi_hostname_canonical || "";
+  var machineCanonical =
+    d.orochi_hostname_canonical || a.orochi_hostname_canonical || "";
   function _fqdnAddsInfo(short, fqdn) {
     if (!fqdn) return false;
     if (fqdn === short) return false;
@@ -56,7 +63,8 @@ export function _renderAgentDetail(a) {
     ? machine + " (" + machineCanonical + ")"
     : machine;
   var modelClean = _cleanModel(d.model || a.model || "");
-  var ctxPct = d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
+  var ctxPct =
+    d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
   var currentTask = d.orochi_current_task || a.orochi_current_task || "";
   var channels = d.channel_subs || a.channels || [];
   var claudeMd = d.orochi_claude_md || a.orochi_claude_md || "";
@@ -92,7 +100,9 @@ export function _renderAgentDetail(a) {
   var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
   var registeredAt = d.registered_at || a.registered_at || "";
   var subagentCount =
-    d.orochi_subagent_count != null ? d.orochi_subagent_count : a.orochi_subagent_count;
+    d.orochi_subagent_count != null
+      ? d.orochi_subagent_count
+      : a.orochi_subagent_count;
   var q5 =
     d.quota_5h_used_pct != null ? d.quota_5h_used_pct : a.quota_5h_used_pct;
   var q7 =
@@ -367,8 +377,15 @@ export function _renderAgentDetail(a) {
 
   /* todo#channel-refactor — per-agent channel subscription controls.
    * Admin-only server-side gating (API returns 403 for non-admins); the
-   * UI shows the controls universally and surfaces errors inline. */
-  var uniqueSubs = channels ? [...new Set(channels)] : [];
+   * UI shows the controls universally and surfaces errors inline.
+   * `dm:` channels are filtered out — DM is always implicitly available
+   * between any two agents/users, so listing DM subscriptions per agent
+   * just clutters the channels row. (ywatanabe 2026-04-27.) */
+  var uniqueSubs = channels
+    ? [...new Set(channels)].filter(function (c) {
+        return typeof c === "string" && c.indexOf("dm:") !== 0;
+      })
+    : [];
   var badgesHtml = uniqueSubs
     .map(function (c) {
       return (
@@ -424,13 +441,153 @@ export function _renderAgentDetail(a) {
     "</div>" +
     "</div>";
 
+  /* Layered state sections (see AGENT_STATES.md):
+   *   1. orochi_pane_state v3 — verdict + evidence string + version
+   *   2. orochi_comm_state v1 — verdict + evidence + tasks_by_state
+   *   3. raw observations    — collapsed JSON viewer for power users
+   * Hidden when no data is available so legacy / non-A2A agents stay
+   * tidy. */
+  var stateHtml = _renderStateSections(a, d);
+
   return (
     '<div class="agent-detail-view">' +
     headerHtml +
     channelsHtml +
+    stateHtml +
     splitHtml +
     mcpHtml +
     mcpJsonHtml +
     "</div>"
   );
+}
+
+/* ── Pane / Comm state sections ─────────────────────────────────────── */
+function _renderStateSections(a, d) {
+  var paneState = d.orochi_pane_state || a.orochi_pane_state || "";
+  var paneEvidence = d.orochi_pane_state_evidence || "";
+  var paneVersion = d.orochi_pane_state_version || "";
+  var paneObs = d.orochi_pane_observations || a.orochi_pane_observations || {};
+
+  var commState = d.orochi_comm_state || "";
+  var commEvidence = d.orochi_comm_state_evidence || "";
+  var commVersion = d.orochi_comm_state_version || "";
+  var a2aObs = d.sac_a2a_observations || {};
+
+  var paneSection = "";
+  if (paneState || paneEvidence || (paneObs && Object.keys(paneObs).length)) {
+    var paneMarkers = (paneObs && paneObs.busy_marker_hits) || [];
+    var paneCycles = (paneObs && paneObs.unchanged_cycles) || 0;
+    paneSection =
+      '<div class="agent-detail-section agent-detail-state">' +
+      '<div class="agent-detail-pane-label">Pane state ' +
+      (paneVersion
+        ? '<span class="agent-detail-state-ver">' +
+          escapeHtml(paneVersion) +
+          "</span>"
+        : "") +
+      "</div>" +
+      '<div class="agent-detail-state-row">' +
+      '<span class="agent-detail-state-label agent-detail-state-label-' +
+      escapeHtml(paneState || "unknown") +
+      '">' +
+      escapeHtml(paneState || "(no verdict)") +
+      "</span>" +
+      (paneEvidence
+        ? '<span class="agent-detail-state-evidence">' +
+          escapeHtml(paneEvidence) +
+          "</span>"
+        : "") +
+      "</div>" +
+      (paneObs && Object.keys(paneObs).length
+        ? '<div class="agent-detail-state-meta">' +
+          (paneCycles
+            ? '<span title="cycles since digest changed">unchanged ' +
+              paneCycles +
+              " cycles</span>"
+            : "") +
+          (paneMarkers.length
+            ? '<span title="busy-animation markers seen">busy: ' +
+              escapeHtml(paneMarkers.slice(0, 3).join(", ")) +
+              (paneMarkers.length > 3
+                ? " (+" + (paneMarkers.length - 3) + ")"
+                : "") +
+              "</span>"
+            : "") +
+          "</div>"
+        : "") +
+      "</div>";
+  }
+
+  var commSection = "";
+  if (commState || commEvidence || (a2aObs && a2aObs.endpoint_configured)) {
+    var byState = (a2aObs && a2aObs.tasks_by_state) || {};
+    var byStateKeys = Object.keys(byState);
+    var secsSince = a2aObs && a2aObs.seconds_since_most_recent_event;
+    commSection =
+      '<div class="agent-detail-section agent-detail-state">' +
+      '<div class="agent-detail-pane-label">Comm state ' +
+      (commVersion
+        ? '<span class="agent-detail-state-ver">' +
+          escapeHtml(commVersion) +
+          "</span>"
+        : "") +
+      "</div>" +
+      '<div class="agent-detail-state-row">' +
+      '<span class="agent-detail-state-label agent-detail-state-label-' +
+      escapeHtml(commState || "unknown") +
+      '">' +
+      escapeHtml(commState || "(no verdict)") +
+      "</span>" +
+      (commEvidence
+        ? '<span class="agent-detail-state-evidence">' +
+          escapeHtml(commEvidence) +
+          "</span>"
+        : "") +
+      "</div>" +
+      '<div class="agent-detail-state-meta">' +
+      (byStateKeys.length
+        ? '<span title="A2A task histogram">tasks: ' +
+          escapeHtml(
+            byStateKeys
+              .map(function (k) {
+                return k.replace(/^TASK_STATE_/, "") + "=" + byState[k];
+              })
+              .join(", "),
+          ) +
+          "</span>"
+        : "") +
+      (typeof secsSince === "number"
+        ? '<span title="seconds since most recent A2A event">last event ' +
+          Math.round(secsSince) +
+          "s ago</span>"
+        : "") +
+      "</div>" +
+      "</div>";
+  }
+
+  var rawSection = "";
+  if (
+    (paneObs && Object.keys(paneObs).length) ||
+    (a2aObs && Object.keys(a2aObs).length)
+  ) {
+    var rawJson = JSON.stringify(
+      {
+        orochi_pane_observations: paneObs,
+        sac_a2a_observations: a2aObs,
+      },
+      null,
+      2,
+    );
+    rawSection =
+      '<div class="agent-detail-section">' +
+      '<details class="agent-detail-raw-obs-wrap">' +
+      '<summary class="agent-detail-pane-label">Raw observations</summary>' +
+      '<pre class="agent-detail-raw-obs">' +
+      escapeHtml(rawJson) +
+      "</pre>" +
+      "</details>" +
+      "</div>";
+  }
+
+  return paneSection + commSection + rawSection;
 }
