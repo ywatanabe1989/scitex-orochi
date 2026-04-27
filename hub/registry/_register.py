@@ -385,10 +385,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # ``_connections`` and counted on read.
             "active_sessions": _active_session_count(name),
             # Quota telemetry from statusline parsing
-            "quota_5h_pct": (
-                info.get("quota_5h_pct")
-                if info.get("quota_5h_pct") is not None
-                else prev.get("quota_5h_pct")
+            "orochi_quota_5h_pct": (
+                info.get("orochi_quota_5h_pct")
+                if info.get("orochi_quota_5h_pct") is not None
+                else prev.get("orochi_quota_5h_pct")
             ),
             "quota_5h_remaining": info.get("quota_5h_remaining")
             or prev.get("quota_5h_remaining")

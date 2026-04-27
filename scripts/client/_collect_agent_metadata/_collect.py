@@ -94,7 +94,7 @@ def collect(agent: str) -> dict:
     # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(orochi_pane_tail_block)
     statusline_orochi_context_pct = sl["statusline_orochi_context_pct"]
-    quota_5h_pct = sl["quota_5h_pct"]
+    orochi_quota_5h_pct = sl["orochi_quota_5h_pct"]
     quota_5h_remaining = sl["quota_5h_remaining"]
     quota_weekly_pct = sl["quota_weekly_pct"]
     quota_weekly_remaining = sl["quota_weekly_remaining"]
@@ -214,7 +214,7 @@ def collect(agent: str) -> dict:
         ),
         "orochi_current_tool": orochi_current_tool,
         "orochi_current_task": orochi_current_tool,
-        "quota_5h_pct": quota_5h_pct,
+        "orochi_quota_5h_pct": orochi_quota_5h_pct,
         "quota_5h_remaining": quota_5h_remaining,
         "quota_weekly_pct": quota_weekly_pct,
         "quota_weekly_remaining": quota_weekly_remaining,

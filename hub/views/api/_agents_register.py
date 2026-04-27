@@ -153,7 +153,7 @@ def api_agents_register(request):
             "has_extra_usage_enabled": body.get("has_extra_usage_enabled"),
             "subscription_created_at": body.get("subscription_created_at", ""),
             # Quota telemetry from statusline parsing
-            "quota_5h_pct": body.get("quota_5h_pct"),
+            "orochi_quota_5h_pct": body.get("orochi_quota_5h_pct"),
             "quota_5h_remaining": body.get("quota_5h_remaining", ""),
             "quota_weekly_pct": body.get("quota_weekly_pct"),
             "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
@@ -164,7 +164,7 @@ def api_agents_register(request):
             # for backward compat with older pushers.
             "quota_5h_used_pct": body.get("quota_5h_used_pct")
             if body.get("quota_5h_used_pct") is not None
-            else body.get("quota_5h_pct"),
+            else body.get("orochi_quota_5h_pct"),
             "quota_7d_used_pct": body.get("quota_7d_used_pct")
             if body.get("quota_7d_used_pct") is not None
             else body.get("quota_weekly_pct"),
