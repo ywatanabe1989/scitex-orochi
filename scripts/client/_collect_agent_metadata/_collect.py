@@ -29,22 +29,22 @@ from ._transcript import find_jsonl_transcripts, parse_transcript
 
 
 def _build_a2a_section(agent: str) -> dict:
-    """Run Layer A (a2a observations) + Layer B (comm_state v1).
+    """Run Layer A (a2a observations) + Layer B (orochi_comm_state v1).
 
     Returns a flat dict the caller spreads into the heartbeat payload.
     Keeps `active_task_count` / `active_task_state` / `last_task_event_at`
     as derived top-level fields for back-compat with existing consumers.
     """
     from ._a2a_observations import collect_a2a_observations
-    from .states._comm_state_v1 import derive_comm_state
+    from .states._orochi_comm_state_v1 import derive_orochi_comm_state
 
     obs = collect_a2a_observations(agent)
-    verdict = derive_comm_state(obs)
+    verdict = derive_orochi_comm_state(obs)
     return {
         "a2a_observations": obs,
-        "comm_state": verdict["label"],
-        "comm_state_evidence": verdict["evidence"],
-        "comm_state_version": verdict["version"],
+        "orochi_comm_state": verdict["label"],
+        "orochi_comm_state_evidence": verdict["evidence"],
+        "orochi_comm_state_version": verdict["version"],
         # Back-compat: existing top-level scalars derived from the
         # observations. Consumers that already read these keep working.
         "active_task_count": obs.get("active_task_count", 0),
@@ -285,9 +285,9 @@ def collect(agent: str) -> dict:
         #   `a2a_observations`    — Layer A primitive facts (full task
         #                           list, tasks_by_state histogram,
         #                           endpoint reachability, etc.)
-        #   `comm_state`          — Layer B v1 verdict label
-        #   `comm_state_evidence` — Layer B reasoning string
-        #   `comm_state_version`  — schema version
+        #   `orochi_comm_state`          — Layer B v1 verdict label
+        #   `orochi_comm_state_evidence` — Layer B reasoning string
+        #   `orochi_comm_state_version`  — schema version
         # Plus three back-compat top-level fields derived from the
         # observations so existing consumers don't need to change yet.
         **_build_a2a_section(agent),

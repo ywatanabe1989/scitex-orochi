@@ -7,7 +7,7 @@ Queries the local sac sidecar's observability endpoint:
 
 Returns a flat dict of primitive facts about the agent's task state. NO
 opinions about "stuck" / "communicating" / "idle" — those live in
-``states/_comm_state_v1.py`` (Layer B), which consumes this output.
+``states/_orochi_comm_state_v1.py`` (Layer B), which consumes this output.
 
 Fail-soft on every error mode (missing port, connection refused,
 timeout, malformed JSON) — returns a dict with ``endpoint_reachable:

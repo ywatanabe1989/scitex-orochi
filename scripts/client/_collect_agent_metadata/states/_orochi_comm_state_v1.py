@@ -32,7 +32,7 @@ _TERMINAL_STATES = {
 }
 
 
-def derive_comm_state(obs: dict[str, Any]) -> dict[str, str]:
+def derive_orochi_comm_state(obs: dict[str, Any]) -> dict[str, str]:
     """Apply the v1 decision tree to an A2A observations dict."""
     if not obs:
         return _verdict("not-applicable", "no observations")
