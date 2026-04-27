@@ -1,0 +1,27 @@
+name: PR Stale Sweep
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 14
+          days-before-close: 7
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          stale-pr-label: stale
+          exempt-pr-labels: keep-open
+          stale-pr-message: "auto-stale: closing in 7 days unless you push to the branch or label `keep-open`. (Reason: stale-PR sweep \u2014 see `mgmt/ENHANCEMENT_IDEAS_2026-04-28.md` \u00a74)"
+          close-pr-message: "auto-stale-close: 21+ days since last activity, no `keep-open` label. Reopen anytime."
+          remove-stale-when-updated: true
+          operations-per-run: 30
