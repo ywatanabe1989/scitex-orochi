@@ -52,7 +52,7 @@ function _renderActivityAgentDetail(a, grid) {
   if (q5 != null) chips.push("5h " + q5.toFixed(0) + "%");
   if (q7 != null) chips.push("7d " + q7.toFixed(0) + "%");
   if (subCnt != null) chips.push("orochi_subagents " + subCnt);
-  if (a.model) chips.push(a.model);
+  if (a.orochi_model) chips.push(a.orochi_model);
   if (a.multiplexer) chips.push(a.multiplexer);
   if (a.pid) chips.push("pid " + a.pid);
   var uniqueCh = [...new Set(a.channels || [])];
@@ -73,7 +73,7 @@ function _renderActivityAgentDetail(a, grid) {
     return d + "d " + Math.round((v % 86400) / 3600) + "h";
   }
   /* todo#55/#56/#58: collapse redundant FQDN suffixes and hide
-   * <synthetic>-style model placeholders, mirroring the same polish on
+   * <synthetic>-style orochi_model placeholders, mirroring the same polish on
    * the Agents tab detail card. */
   var _machine = a.orochi_machine || "?";
   var _fqdn = a.orochi_hostname_canonical || "";
@@ -88,7 +88,7 @@ function _renderActivityAgentDetail(a, grid) {
     }
   }
   var _machineDisplay = _fqdnUseful ? _machine + " (" + _fqdn + ")" : _machine;
-  var _rawModel = a.model || "";
+  var _rawModel = a.orochi_model || "";
   var _modelDisplay =
     _rawModel.length > 2 &&
     _rawModel.charAt(0) === "<" &&

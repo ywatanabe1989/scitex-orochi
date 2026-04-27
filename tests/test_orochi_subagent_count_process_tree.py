@@ -47,11 +47,11 @@ from _collect_agent_metadata._process_tree import (  # noqa: E402
     "cmdline, expected",
     [
         # Canonical claude-code invocation shapes.
-        (["claude", "--model", "opus[1m]"], True),
+        (["claude", "--orochi_model", "opus[1m]"], True),
         (["/usr/local/bin/claude", "--dangerously-skip-permissions"], True),
         (["/opt/homebrew/bin/claude"], True),
         # Single-string cmdline (pgrep fallback shape).
-        (["claude --model opus --add-dir /workspace"], True),
+        (["claude --orochi_model opus --add-dir /workspace"], True),
         # Non-claude auxiliary descendants — all rejected.
         (["caffeinate", "-i", "-t", "300"], False),
         (["bun", "run", "/path/to/mcp_channel.ts"], False),
@@ -215,7 +215,7 @@ def test_count_zero_children(monkeypatch, tmp_path):
 def test_count_three_claude_children(monkeypatch, tmp_path):
     """Three ``claude`` descendants → count 3."""
     children = [
-        _FakeProcess(cmdline_value=["claude", "--model", "opus[1m]"]),
+        _FakeProcess(cmdline_value=["claude", "--orochi_model", "opus[1m]"]),
         _FakeProcess(cmdline_value=["/usr/local/bin/claude", "--flag"]),
         _FakeProcess(cmdline_value=["claude"]),
     ]
@@ -233,7 +233,7 @@ def test_count_three_claude_children(monkeypatch, tmp_path):
 def test_count_mixed_claude_and_non_claude_children(monkeypatch, tmp_path):
     """Only claude descendants are counted; bun / caffeinate / bash are filtered."""
     children = [
-        _FakeProcess(cmdline_value=["claude", "--model", "opus[1m]"]),
+        _FakeProcess(cmdline_value=["claude", "--orochi_model", "opus[1m]"]),
         _FakeProcess(cmdline_value=["caffeinate", "-i", "-t", "300"]),
         _FakeProcess(cmdline_value=["bun", "run", "/mcp.ts"]),
     ]
@@ -425,7 +425,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
         _collect,
         "parse_transcript",
         lambda jsonls: {
-            "model": "",
+            "orochi_model": "",
             "last_activity": "",
             "orochi_context_pct": None,
             "orochi_current_tool": "",

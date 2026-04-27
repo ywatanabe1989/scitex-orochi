@@ -15,7 +15,7 @@ function _renderAgentDetail(a) {
   var role = d.role || a.role || "agent";
   var orochi_machine = d.orochi_machine || a.orochi_machine || "?";
   /* todo#56: some transcripts surface <synthetic> / <none> / <compact>
-   * placeholder tokens for model when the assistant turn was synthesised
+   * placeholder tokens for orochi_model when the assistant turn was synthesised
    * (e.g. after /compact). Show a dash with the raw token in the tooltip
    * instead of exposing the placeholder verbatim in the detail card. */
   function _cleanModel(m) {
@@ -50,7 +50,7 @@ function _renderAgentDetail(a) {
   var machineDisplay = _fqdnAddsInfo(orochi_machine, machineCanonical)
     ? orochi_machine + " (" + machineCanonical + ")"
     : orochi_machine;
-  var modelClean = _cleanModel(d.model || a.model || "");
+  var modelClean = _cleanModel(d.orochi_model || a.orochi_model || "");
   var ctxPct = d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
   var currentTask = d.orochi_current_task || a.orochi_current_task || "";
   var channels = d.channel_subs || a.channels || [];
@@ -130,7 +130,7 @@ function _renderAgentDetail(a) {
     [
       "Model",
       modelClean.display,
-      modelClean.tooltip || "Claude model id the agent is running against",
+      modelClean.tooltip || "Claude orochi_model id the agent is running against",
     ],
     [
       "Multiplexer",

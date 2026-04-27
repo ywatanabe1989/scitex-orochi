@@ -220,7 +220,7 @@ def build_template_vars(
         base_vars.update(
             {
                 "agent_name": master["name"],
-                "agent_model": master.get("model", "opus[1m]"),
+                "agent_model": master.get("orochi_model", "opus[1m]"),
                 "agent_channels": ", ".join(master.get("channels", ["#general"])),
                 "agent_role": "master",
                 "heads_list": _format_heads_list(cfg),
@@ -233,7 +233,7 @@ def build_template_vars(
         base_vars.update(
             {
                 "agent_name": head["name"],
-                "agent_model": head.get("model", "sonnet"),
+                "agent_model": head.get("orochi_model", "sonnet"),
                 "agent_channels": ", ".join(head.get("channels", ["#general"])),
                 "agent_role": "head",
                 "agent_workdir": head.get("workdir", "~/proj"),
@@ -281,6 +281,6 @@ def _format_heads_list(cfg: dict[str, Any]) -> str:
     for h in heads:
         channels = ", ".join(h.get("channels", []))
         lines.append(
-            f"- {h['name']} (model: {h.get('model', 'sonnet')}, channels: {channels})"
+            f"- {h['name']} (orochi_model: {h.get('orochi_model', 'sonnet')}, channels: {channels})"
         )
     return "\n".join(lines)

@@ -62,7 +62,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # proj-neurovista/mba misreport (lead msg#15578).
         "hostname": meta.get("hostname", ""),
         "orochi_hostname_canonical": meta.get("orochi_hostname_canonical", ""),
-        "model": meta.get("model", ""),
+        "orochi_model": meta.get("orochi_model", ""),
         "multiplexer": meta.get("multiplexer", ""),
         "project": meta.get("project", ""),
         "workdir": meta.get("workdir", ""),

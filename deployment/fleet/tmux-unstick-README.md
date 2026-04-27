@@ -28,7 +28,7 @@ Today the fleet has hit five independent wedge incidents (healer-nas 2.5h
 ghost-alive, synchronizer permission prompt, healer-mba 1M-context wedge,
 auth-manager permission prompt, head-nas permission prompt). Each needed
 a human tmux `send-keys` pass. The fleet-health-daemon design
-(scitex-orochi#147) codifies the full 3-layer nonce-handshake model, but
+(scitex-orochi#147) codifies the full 3-layer nonce-handshake orochi_model, but
 the *minimum viable* piece that unblocks 24 h operation is just this:
 scheduled tmux pane capture + regex match + idempotent recovery. That is
 this deployment.

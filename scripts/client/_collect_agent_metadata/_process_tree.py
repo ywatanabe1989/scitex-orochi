@@ -269,7 +269,7 @@ def _looks_like_claude(cmdline: list[str]) -> bool:
     by construction any ``claude``-binary descendant of the head's PID
     is a subagent (the head has no other reason to fork ``claude``).
 
-    The single-string cmdline case (``"claude --model opus ..."``) is
+    The single-string cmdline case (``"claude --orochi_model opus ..."``) is
     handled by splitting on whitespace before the basename check.
     """
     if not cmdline:

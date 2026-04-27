@@ -20,7 +20,7 @@ def api_agents_register(request):
           "name": "caduceus@host",
           "orochi_machine": "host",
           "role": "healer",
-          "model": "stdlib",
+          "orochi_model": "stdlib",
           "channels": ["#general"],
           "orochi_current_task": "monitoring"
         }
@@ -108,7 +108,7 @@ def api_agents_register(request):
             # todo#55: canonical FQDN (socket.getfqdn()) from the heartbeat.
             "orochi_hostname_canonical": body.get("orochi_hostname_canonical", ""),
             "role": body.get("role", "agent"),
-            "model": body.get("model", ""),
+            "orochi_model": body.get("orochi_model", ""),
             "workdir": body.get("workdir", ""),
             "channels": _effective_channels,
             # todo#213: claude-hud-style process/runtime metadata pushed by

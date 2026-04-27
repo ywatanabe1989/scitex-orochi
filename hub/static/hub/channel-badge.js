@@ -12,7 +12,7 @@
  *   [drag?] [icon] [star ★/☆] [eye 👁/🚫] [mute 🔔/🔕] [#name] [unread?]
  *
  * Exports (window-scoped — classic script):
- *   channelBadgeModel(name)               — state/model record
+ *   channelBadgeModel(name)               — state/orochi_model record
  *   renderChannelBadgeHtml(name, opts)    — HTML renderer (sidebar + pool)
  *   renderChannelBadgeSvg(name, pos, opts)— SVG renderer (topology canvas)
  *   attachChannelBadgeHandlers()          — document.body delegation
@@ -47,7 +47,7 @@
     return ch.charAt(0) === "#" ? ch : "#" + ch;
   }
 
-  // ── State model — single source of truth for badge data ────────────
+  // ── State orochi_model — single source of truth for badge data ────────────
   function channelBadgeModel(name) {
     var raw = name || "";
     var norm = _norm(raw);

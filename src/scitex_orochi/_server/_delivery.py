@@ -82,7 +82,7 @@ class DeliveryMixin:
                 "channels": list(a.channels),
                 "orochi_machine": a.orochi_machine,
                 "role": a.role,
-                "model": a.model,
+                "orochi_model": a.orochi_model,
                 "agent_id": a.agent_id,
                 "project": a.project,
                 "multiplexer": a.multiplexer,

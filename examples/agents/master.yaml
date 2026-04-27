@@ -13,7 +13,7 @@ metadata:
     capabilities: telegram,delegation,orchestration
 spec:
   runtime: claude-code
-  model: opus[1m]
+  orochi_model: opus[1m]
   workdir: ~/proj
 
   claude:

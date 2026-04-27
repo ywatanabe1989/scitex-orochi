@@ -155,7 +155,7 @@ function buildAgentRow(a) {
     escapeHtml(a.orochi_machine || "unknown") +
     "</td>" +
     '<td style="color:#888;font-size:12px">' +
-    escapeHtml(a.model || "-") +
+    escapeHtml(a.orochi_model || "-") +
     "</td>" +
     '<td style="color:#888;font-size:12px">' +
     escapeHtml(a.multiplexer || "-") +

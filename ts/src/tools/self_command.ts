@@ -111,7 +111,7 @@ function scheduleSelfCommand(
 const DESTRUCTIVE_COMMANDS = new Set(["/clear", "/kill", "/exit", "/quit"]);
 
 // Allowlist of slash commands safe to inject via self_command.
-// Modal-opening commands (/model, /agents, /permissions, /login, /config, ...)
+// Modal-opening commands (/orochi_model, /agents, /permissions, /login, /config, ...)
 // trap the agent in a selector dialog and require external Escape rescue, so
 // they are NOT on this list. Free-text prompts (no leading '/') bypass this
 // gate entirely — they just land as prompt text.

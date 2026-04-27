@@ -1,4 +1,4 @@
-"""Claude Code statusline (claude-hud) parsing for context/quota/model.
+"""Claude Code statusline (claude-hud) parsing for context/quota/orochi_model.
 
 Statusline format (claude-hud):
   [Opus 4.6 (1M context) | Max] ████░░░░░░ 39% | ███████░░░ 73% (1h 8m / 5h)
@@ -19,7 +19,7 @@ import re
 
 
 def parse_statusline(orochi_pane_tail_block: str) -> dict:
-    """Extract orochi_context_pct, quota_5h, quota_weekly, model, email from statusline.
+    """Extract orochi_context_pct, quota_5h, quota_weekly, orochi_model, email from statusline.
 
     Returns a dict with keys:
       - statusline_orochi_context_pct: Optional[float]
@@ -41,7 +41,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
     }
     src = orochi_pane_tail_block or ""
 
-    # Extract model from statusline: [Model Name (context) | Mode]
+    # Extract orochi_model from statusline: [Model Name (context) | Mode]
     m_model = re.search(r"\[([^\]]+)\]", src)
     if m_model:
         out["orochi_statusline_model"] = m_model.group(1).strip()

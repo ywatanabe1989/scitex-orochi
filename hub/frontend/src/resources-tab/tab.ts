@@ -127,7 +127,7 @@ export function renderResources() {
        * The single LED replaces the old leading connection dot; it
        * sits BETWEEN star and the name so the icon/star columns line
        * up with agent + DM sidebar rows. Machines don't have the
-       * 4-LED liveness model agents do (no WS handshake / ping / pane
+       * 4-LED liveness orochi_model agents do (no WS handshake / ping / pane
        * state / nonce-echo signal is meaningful for a bare host), so
        * we keep a single health LED driven by the heartbeat health
        * status. Metrics (CPU / Mem / Disk / GPU / SLURM) stay inline
@@ -210,7 +210,7 @@ export function renderResources() {
     el.addEventListener("mouseleave", hideMachineTooltip);
     /* Right-click → emoji picker to customize the orochi_machine icon.
      * Stored in localStorage so each user's pick survives reloads
-     * without a new Django model (TODO.md Entity Consistency). */
+     * without a new Django orochi_model (TODO.md Entity Consistency). */
     el.addEventListener("contextmenu", function (ev) {
       ev.preventDefault();
       hideMachineTooltip();

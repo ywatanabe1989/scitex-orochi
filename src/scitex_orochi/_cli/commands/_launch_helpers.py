@@ -284,7 +284,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
     """Launch master via legacy orochi-config.yaml."""
     master = cfg["master"]
     screen_name = master["name"]
-    model = master.get("model", "opus[1m]")
+    orochi_model = master.get("orochi_model", "opus[1m]")
     channels = master.get("channels", ["#general"])
     server = cfg["server"]
 
@@ -300,7 +300,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
         f"export SCITEX_OROCHI_HOST={server['host']}; "
         f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
         f"export SCITEX_OROCHI_AGENT={screen_name}; "
-        f"claude --model {model} "
+        f"claude --orochi_model {orochi_model} "
         f'--system-prompt "$(cat {orochi_claude_md})" '
         f"{channel_args}; "
         f"exec bash'"
@@ -310,7 +310,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
         result = {
             "action": "launch-master",
             "screen": screen_name,
-            "model": model,
+            "orochi_model": orochi_model,
             "channels": channels,
             "command": launch_cmd,
         }
@@ -335,7 +335,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
 
     if as_json:
         click.echo(
-            json.dumps({"status": "launched", "screen": screen_name, "model": model})
+            json.dumps({"status": "launched", "screen": screen_name, "orochi_model": orochi_model})
         )
     else:
         click.echo(f"Started screen session: {screen_name}")
@@ -352,7 +352,7 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
 
     screen_name = head["name"]
     ssh_cmd = head["ssh"]
-    model = head.get("model", "sonnet")
+    orochi_model = head.get("orochi_model", "sonnet")
     channels = head.get("channels", ["#general"])
     workdir = head.get("workdir", "~/proj")
     server = cfg["server"]
@@ -370,7 +370,7 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
         f"export SCITEX_OROCHI_HOST={server['host']}; "
         f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
         f"export SCITEX_OROCHI_AGENT={screen_name}; "
-        f"claude --model {model} "
+        f"claude --orochi_model {orochi_model} "
         f'--system-prompt "$(cat /tmp/{screen_name}-CLAUDE.md)" '
         f"{channel_args}; "
         f"exec bash'"
@@ -383,7 +383,7 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
             "name": name,
             "screen": screen_name,
             "ssh": ssh_cmd,
-            "model": model,
+            "orochi_model": orochi_model,
             "channels": channels,
             "command": full_cmd,
         }

@@ -13,7 +13,7 @@ metadata:
     capabilities: development,testing,git
 spec:
   runtime: claude-code
-  model: sonnet
+  orochi_model: sonnet
   workdir: ~/proj
 
   claude:

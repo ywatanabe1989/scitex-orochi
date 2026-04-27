@@ -214,7 +214,7 @@ def register_self(hub: str, token: str | None, name: str, orochi_machine: str) -
         "name": name,
         "orochi_machine": orochi_machine,
         "role": "healer",
-        "model": "stdlib-daemon",
+        "orochi_model": "stdlib-daemon",
         "channels": ["#general"],
         "orochi_current_task": "monitoring agent liveness",
     }

@@ -1,4 +1,4 @@
-"""Module-level helpers shared by the model package.
+"""Module-level helpers shared by the orochi_model package.
 
 Split out of the original 699-line ``hub/models.py`` so each domain
 sub-module (``_identity``, ``_messaging``, etc.) can import the

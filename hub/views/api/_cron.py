@@ -7,7 +7,7 @@ state on that host.
 
 This view aggregates those arrays across the in-memory registry and
 returns a host-keyed dict that the Machines tab (and any external tool)
-can render without talking to each host directly. No new DB model — we
+can render without talking to each host directly. No new DB orochi_model — we
 reuse the registry that ``/api/agents/`` already reads from.
 
 Shape::

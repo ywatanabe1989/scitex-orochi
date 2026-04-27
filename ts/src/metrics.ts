@@ -208,7 +208,7 @@ export function getSystemMetrics(): Metrics {
 
   return {
     cpu_count: cpuInfo.length,
-    cpu_model: cpuInfo[0]?.model || "unknown",
+    cpu_model: cpuInfo[0]?.orochi_model || "unknown",
     load_avg_1m: load[0],
     load_avg_5m: load[1],
     load_avg_15m: load[2],

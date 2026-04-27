@@ -400,8 +400,8 @@ async function fetchAgents() {
           '"></span>' +
           '<span class="name">' +
           escapeHtml(cleanAgentName(a.name)) +
-          (a.model
-            ? ' <span class="meta">(' + escapeHtml(a.model) + ")</span>"
+          (a.orochi_model
+            ? ' <span class="meta">(' + escapeHtml(a.orochi_model) + ")</span>"
             : "") +
           "</span>" +
           workdirHtml +

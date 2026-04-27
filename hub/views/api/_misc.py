@@ -276,7 +276,7 @@ def api_push_subscribe(request, slug=None):
     """POST /api/push/subscribe — register a Web Push subscription.
 
     Body: ``{endpoint, keys: {p256dh, auth}, channels?: [...]}``.
-    Idempotent on ``endpoint`` (the unique key on the model).
+    Idempotent on ``endpoint`` (the unique key on the orochi_model).
     """
     from hub.models import PushSubscription
 

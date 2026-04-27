@@ -137,7 +137,7 @@ def resolve_mention_targets(
     first-occurrence order so downstream DM threading is deterministic.
     """
     # Imports are local so this module can be imported at startup
-    # without dragging in Django model loading (unit tests that just
+    # without dragging in Django orochi_model loading (unit tests that just
     # hit the parser shouldn't need the ORM).
     from django.contrib.auth.models import User
 

@@ -14,7 +14,7 @@ Copy an example to your user config directory and customize:
 ```bash
 mkdir -p ~/.scitex/orochi/agents
 cp examples/agents/head-general.yaml ~/.scitex/orochi/agents/head-myhost.yaml
-# Edit host, model, channels, etc.
+# Edit host, orochi_model, channels, etc.
 scitex-orochi launch head myhost
 ```
 

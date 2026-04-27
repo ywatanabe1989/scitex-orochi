@@ -223,7 +223,7 @@ function buildAgentRow(a) {
     escapeHtml(a.orochi_machine || "unknown") +
     "</td>" +
     '<td class="muted-cell">' +
-    escapeHtml(a.model || "-") +
+    escapeHtml(a.orochi_model || "-") +
     "</td>" +
     '<td class="muted-cell">' +
     escapeHtml(a.multiplexer || "-") +

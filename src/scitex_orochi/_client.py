@@ -89,7 +89,7 @@ class OrochiClient:
                             "channels": self.channels,
                             "orochi_machine": self.orochi_machine or _plat.node(),
                             "role": self.role,
-                            "model": "",
+                            "orochi_model": "",
                             "agent_id": self.agent_id,
                             "project": self.project,
                             "workdir": self.project,
@@ -102,7 +102,7 @@ class OrochiClient:
             if ack.get("type") == "error":
                 raise ConnectionError(f"Registration failed: {ack}")
         else:
-            # Standalone server: use Message model
+            # Standalone server: use Message orochi_model
             reg = Message(
                 type="register",
                 sender=self.name,

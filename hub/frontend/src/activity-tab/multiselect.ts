@@ -466,7 +466,7 @@ export function _topoPoolApplyCanvasFilter(root) {
   /* Compute the neighborhood: selected entities + all direct neighbors
    * reachable through a subscribed edge. We derive neighbors from edge
    * endpoints already in the DOM so we don't need the agent/channel
-   * data model here. */
+   * data orochi_model here. */
   var keepA = Object.create(null);
   var keepC = Object.create(null);
   Object.keys(selA).forEach(function (n) {

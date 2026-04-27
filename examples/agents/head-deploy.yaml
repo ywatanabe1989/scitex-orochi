@@ -14,7 +14,7 @@ metadata:
     capabilities: docker,deployment,ci-cd,persistent-services
 spec:
   runtime: claude-code
-  model: sonnet
+  orochi_model: sonnet
   workdir: ~/proj
 
   remote:

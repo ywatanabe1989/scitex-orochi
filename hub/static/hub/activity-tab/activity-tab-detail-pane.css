@@ -289,7 +289,7 @@
   animation: activity-pulse 1.4s ease-in-out infinite;
 }
 
-/* Rich-field chip row added 2026-04-12 (todo#?) — surfaces ctx %, model,
+/* Rich-field chip row added 2026-04-12 (todo#?) — surfaces ctx %, orochi_model,
  * multiplexer, subagent count, skills count, pid as small inline pills on
  * each agent activity card. Each chip is rendered only when its underlying
  * field is non-null in the registry payload. */
@@ -311,7 +311,7 @@
   letter-spacing: 0.2px;
   white-space: nowrap;
 }
-.activity-chip-model {
+.activity-chip-orochi_model {
   color: #d8b4fe;
   border-color: rgba(216, 180, 254, 0.3);
 }

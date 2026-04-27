@@ -37,7 +37,7 @@ orochi:
     # Name format: orochi-agent:<role>:<user>@<host>
     host: ywata-note-win
     user: ywatanabe  # defaults to current unix user if omitted
-    model: opus[1m]
+    orochi_model: opus[1m]
     channels: ["#general", "#orchestrator"]
 
   heads:
@@ -46,14 +46,14 @@ orochi:
     - ssh: "ssh server1"
       host: server1
       user: ywatanabe
-      model: opus[1m]
+      orochi_model: opus[1m]
       channels: ["#general", "#deploy"]
       workdir: ~/proj
 
     - ssh: "ssh gpu-box"
       host: gpu-box
       user: ywatanabe
-      model: sonnet
+      orochi_model: sonnet
       channels: ["#general", "#research"]
       workdir: ~/proj
 

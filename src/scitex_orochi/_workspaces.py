@@ -1,4 +1,4 @@
-"""Workspace model -- organizes channels into named groups."""
+"""Workspace orochi_model -- organizes channels into named groups."""
 
 from __future__ import annotations
 

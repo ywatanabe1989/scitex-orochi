@@ -1,4 +1,4 @@
-"""Claude Code JSONL transcript parsing — model, orochi_context_pct, current tool, recent actions."""
+"""Claude Code JSONL transcript parsing — orochi_model, orochi_context_pct, current tool, recent actions."""
 
 from __future__ import annotations
 
@@ -92,13 +92,13 @@ def find_jsonl_transcripts(workspace: str) -> list[Path]:
 
 
 def parse_transcript(jsonls: list[Path]) -> dict:
-    """Parse the newest JSONL for model, orochi_context_pct, orochi_current_tool, recent_actions.
+    """Parse the newest JSONL for orochi_model, orochi_context_pct, orochi_current_tool, recent_actions.
 
-    Returns dict with keys: model, last_activity, orochi_context_pct,
+    Returns dict with keys: orochi_model, last_activity, orochi_context_pct,
     orochi_current_tool, started_at, recent_actions.
     """
     out = {
-        "model": "",
+        "orochi_model": "",
         "last_activity": "",
         "orochi_context_pct": 0.0,
         "orochi_current_tool": "",
@@ -124,7 +124,7 @@ def parse_transcript(jsonls: list[Path]) -> dict:
     except Exception:
         pass
 
-    # Most recent assistant turn -> model + orochi_context_pct
+    # Most recent assistant turn -> orochi_model + orochi_context_pct
     for line in reversed(tail):
         try:
             obj = json.loads(line)
@@ -132,8 +132,8 @@ def parse_transcript(jsonls: list[Path]) -> dict:
             continue
         if obj.get("type") == "assistant" and "message" in obj:
             msg = obj["message"]
-            if not out["model"]:
-                out["model"] = msg.get("model", "")
+            if not out["orochi_model"]:
+                out["orochi_model"] = msg.get("orochi_model", "")
             if not out["last_activity"]:
                 out["last_activity"] = obj.get("timestamp", "")
             u = msg.get("usage", {})

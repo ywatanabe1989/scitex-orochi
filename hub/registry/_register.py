@@ -126,7 +126,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             ),
             # ── /#257 ─────────────────────────────────────────────────
             "role": info.get("role", ""),
-            "model": info.get("model", ""),
+            "orochi_model": info.get("orochi_model", ""),
             "multiplexer": info.get("multiplexer", ""),
             "project": info.get("project", ""),
             "workdir": info.get("workdir", ""),

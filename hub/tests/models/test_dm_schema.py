@@ -26,7 +26,7 @@ class DMSchemaTest(TestCase):
     """Schema-only tests for DM support (scitex-orochi#60 PR 1).
 
     Covers the Channel.kind field, the dm: prefix guard on group
-    channels (spec v3 §9 Q5), and the DMParticipant model's
+    channels (spec v3 §9 Q5), and the DMParticipant orochi_model's
     unique_together + cascade-delete semantics (spec v3 §2.2).
     """
 

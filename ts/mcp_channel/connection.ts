@@ -133,7 +133,7 @@ function onOpen(ws: WebSocket): void {
         // env-var-driven ``orochi_machine`` override.
         hostname: _liveHostname,
         role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
-        model: OROCHI_MODEL,
+        orochi_model: OROCHI_MODEL,
         multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
         agent_id: `${OROCHI_AGENT}@${_machine}`,
         icon: process.env.SCITEX_OROCHI_ICON || "",

@@ -17,7 +17,7 @@ metadata:
     capabilities: gpu,orochi_slurm,large-compute,ml-training
 spec:
   runtime: claude-code
-  model: opus[1m]
+  orochi_model: opus[1m]
   workdir: ~/proj
 
   remote:

@@ -32,7 +32,7 @@ class Agent:
     channels: set[str] = field(default_factory=set)
     orochi_machine: str = ""
     role: str = ""
-    model: str = ""
+    orochi_model: str = ""
     agent_id: str = ""
     project: str = ""
     workspace_id: str = ""

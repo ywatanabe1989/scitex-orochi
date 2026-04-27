@@ -1,7 +1,7 @@
 """Central container-agent registry REST endpoints.
 
 This is a workspace-token-authenticated CRUD surface over the
-``ContainerAgent`` model. It replaces the local-only
+``ContainerAgent`` orochi_model. It replaces the local-only
 ``~/.scitex/agent-container/registry/`` directory that scitex-agent-container
 writes on each orochi_machine with a hub-hosted, fleet-wide registry.
 

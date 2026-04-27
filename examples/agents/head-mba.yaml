@@ -13,7 +13,7 @@ metadata:
     capabilities: ios-simulator,xcode,swift,mobile-testing
 spec:
   runtime: claude-code
-  model: sonnet
+  orochi_model: sonnet
   workdir: ~/proj
 
   remote:

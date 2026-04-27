@@ -11,7 +11,7 @@ import { escapeHtml, getAgentColor } from "./app/utils";
  *   renderAgentBadgeSvg(a, pos, opts) — agent / human node <g> group
  *
  * Emits a <g class="topo-node topo-agent" data-agent="..."> with the
- * same state model as the HTML badge: icon + star + 2 LEDs (WS/FN)
+ * same state orochi_model as the HTML badge: icon + star + 2 LEDs (WS/FN)
  * + name label. Preserves every CSS hook the canvas uses today:
  *   .topo-agent, .topo-agent-bg, .topo-agent-dead, .topo-label,
  *   .topo-human, .topo-human-bg, .topo-human-glyph, .topo-agent-glyph.

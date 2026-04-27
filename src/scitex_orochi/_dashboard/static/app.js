@@ -295,9 +295,9 @@ async function fetchAgents() {
           (inactive ? "#666" : color) +
           '">' +
           escapeHtml(a.name) +
-          (a.model
+          (a.orochi_model
             ? ' <span style="color:#666;font-size:0.8em">(' +
-              escapeHtml(a.model) +
+              escapeHtml(a.orochi_model) +
               ")</span>"
             : "") +
           "</span>" +

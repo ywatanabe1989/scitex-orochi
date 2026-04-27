@@ -8,7 +8,7 @@ reports, tracked repos). The pre-split public surface is re-exported
 here so ``from hub.models import X`` keeps working unchanged, and
 Django's app-loader picks every Model class up via this ``__init__``.
 
-Each model carries an explicit ``Meta.app_label = "hub"`` so the
+Each orochi_model carries an explicit ``Meta.app_label = "hub"`` so the
 existing ``hub/migrations/`` history continues to resolve to the same
 ``hub.<ModelName>`` references with zero migration delta.
 """

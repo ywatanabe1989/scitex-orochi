@@ -9,7 +9,7 @@
  *
  * sidecar_status — Orochi-side sidecar PID visibility (todo#287 Slice A).
  *   Returns mcp_server PID + outstanding rsync_media jobs. The orochi half
- *   of the 3-layer PID model agreed in msg#8120.
+ *   of the 3-layer PID orochi_model agreed in msg#8120.
  *
  * cron_status — fleet-wide cron daemon status (lead msg#16684 follow-up
  *   to PR #346). Thin pass-through to ``GET /api/cron/`` on the hub,

@@ -32,7 +32,7 @@ if str(_AGENT_META_DIR) not in sys.path:
 from _collect_agent_metadata._metrics import collect_machine_metrics  # noqa: E402
 
 REQUIRED_KEYS = {
-    # CPU shape: count + model string
+    # CPU shape: count + orochi_model string
     "cpu_count",
     "cpu_model",
     "load_avg_1m",

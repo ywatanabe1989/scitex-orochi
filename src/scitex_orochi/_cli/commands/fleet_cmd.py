@@ -45,7 +45,7 @@ def _load_agent_meta(path) -> dict:
         "name": meta.get("name", path.stem),
         "role": labels.get("role", "unknown"),
         "orochi_machine": labels.get("orochi_machine", "unknown"),
-        "model": spec.get("model", ""),
+        "orochi_model": spec.get("orochi_model", ""),
         "screen": (spec.get("screen", {}) or {}).get("name", ""),
         "file": str(path),
     }
@@ -99,7 +99,7 @@ def fleet(as_json: bool, agents_dir: str | None) -> None:
         status_color = "green" if a["status"] == "running" else "red"
         click.echo(
             f"{a['name']:<30} {a['role']:<10} {a['orochi_machine']:<20} "
-            f"{click.style(a['status'], fg=status_color):<19} {a.get('model', '')}"
+            f"{click.style(a['status'], fg=status_color):<19} {a.get('orochi_model', '')}"
         )
     click.echo(
         f"\n{len(agents)} agent(s) configured, "

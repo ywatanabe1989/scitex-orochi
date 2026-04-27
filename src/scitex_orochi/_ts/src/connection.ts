@@ -181,7 +181,7 @@ export class OrochiConnection {
           // todo#55: canonical FQDN for display next to the short label.
           orochi_hostname_canonical: canonicalHostname(),
           role: "claude-code",
-          model: OROCHI_MODEL,
+          orochi_model: OROCHI_MODEL,
           agent_id: `${OROCHI_AGENT}@${hostname()}`,
           project: "",
           workdir: process.cwd(),

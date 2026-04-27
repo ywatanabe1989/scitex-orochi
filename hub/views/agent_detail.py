@@ -159,7 +159,7 @@ def api_agent_detail(request, name: str):
           "priority_list": [str, ...],   # Full host: list from YAML
           "launch_method": str,          # sac | sac-ssh | sbatch | manual-* | unknown
           "heartbeat_seq": int | None,   # Monotonic per process
-          "model": str,
+          "orochi_model": str,
           "uptime_seconds": int | None,
           "registered_at": iso8601 | None,
           "last_action_ts": iso8601 | None,
@@ -237,7 +237,7 @@ def api_agent_detail(request, name: str):
         "launch_method": agent.get("launch_method", ""),
         "heartbeat_seq": agent.get("heartbeat_seq"),
         # ── /#257 ─────────────────────────────────────────────────────
-        "model": agent.get("model", ""),
+        "orochi_model": agent.get("orochi_model", ""),
         "uptime_seconds": uptime_seconds,
         "registered_at": agent.get("registered_at"),
         "last_action_ts": agent.get("last_action"),

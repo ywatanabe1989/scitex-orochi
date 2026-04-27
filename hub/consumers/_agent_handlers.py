@@ -55,7 +55,7 @@ async def handle_register(consumer, content):
         # todo#55: canonical FQDN from the heartbeat (display-only).
         "orochi_hostname_canonical": payload.get("orochi_hostname_canonical", ""),
         "role": payload.get("role", ""),
-        "model": payload.get("model", ""),
+        "orochi_model": payload.get("orochi_model", ""),
         "workdir": payload.get("workdir", ""),
         "icon": payload.get("icon", ""),
         "icon_emoji": payload.get("icon_emoji", ""),

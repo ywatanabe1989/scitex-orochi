@@ -91,7 +91,7 @@ def collect(agent: str) -> dict:
     )
     orochi_subagents = parse_orochi_subagent_count(pane)
 
-    # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
+    # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, orochi_model, email.
     sl = parse_statusline(orochi_pane_tail_block)
     statusline_orochi_context_pct = sl["statusline_orochi_context_pct"]
     orochi_quota_5h_pct = sl["orochi_quota_5h_pct"]
@@ -106,7 +106,7 @@ def collect(agent: str) -> dict:
     workspace = f"{home}/.dotfiles/src/.scitex/orochi/workspaces/{agent}"
     jsonls = find_jsonl_transcripts(workspace)
     tr = parse_transcript(jsonls)
-    model = tr["model"]
+    orochi_model = tr["orochi_model"]
     last_activity = tr["last_activity"]
     orochi_context_pct = tr["orochi_context_pct"]
     orochi_current_tool = tr["orochi_current_tool"]
@@ -174,17 +174,17 @@ def collect(agent: str) -> dict:
             tmux_tail=pane,
         )
 
-    # If the most recent assistant turn carried no real model label
+    # If the most recent assistant turn carried no real orochi_model label
     # (empty or a <synthetic>-style placeholder from compacted
     # summaries), fall back to the env var the runtime set at spawn.
     # The env is fetched from the claude process's own /proc/<pid>/environ
-    # (the push script's own environment does NOT carry per-agent model
-    # — each agent has its own model in its own process env).
+    # (the push script's own environment does NOT carry per-agent orochi_model
+    # — each agent has its own orochi_model in its own process env).
     resolved_model = (
-        model
-        if model and not model.startswith("<")
+        orochi_model
+        if orochi_model and not orochi_model.startswith("<")
         # Linux-only: peek at /proc/<pid>/environ for the real
-        # model env the runtime set at spawn.
+        # orochi_model env the runtime set at spawn.
         else (
             _read_process_env(
                 pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
@@ -197,7 +197,7 @@ def collect(agent: str) -> dict:
             # head-mba detail card, ywatanabe msg 2026-04-18 20:09).
             or os.environ.get("SCITEX_AGENT_CONTAINER_MODEL", "").strip()
             or os.environ.get("SCITEX_OROCHI_MODEL", "").strip()
-            or model
+            or orochi_model
         )
     )
 
@@ -238,7 +238,7 @@ def collect(agent: str) -> dict:
         "orochi_pane_tail_block_clean": orochi_pane_tail_block_clean,
         "recent_actions": recent_actions,
         "last_activity": last_activity,
-        "model": resolved_model,
+        "orochi_model": resolved_model,
         "pid": pid,
         "ppid": ppid,
         "started_at": started_at,

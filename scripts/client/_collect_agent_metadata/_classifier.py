@@ -44,7 +44,7 @@ _YN_MARKERS = ("y/n", "[y/N]", "[Y/n]")
 
 # Group A: Claude Code spinner present-tense gerunds.
 # Rationale: the CC TUI rotates through a fixed set of "‑ing" verbs
-# while the model is streaming tokens. Observed variants include
+# while the orochi_model is streaming tokens. Observed variants include
 # Mulling / Pondering / Churning / Roosting / Thinking / Cogitating /
 # Musing / Reflecting / Working / Contemplating / Deliberating /
 # Considering / Analysing / Brewing / Baking / Cooking / Crunching.

@@ -33,7 +33,7 @@ class HandlersMixin:
         channels = set(msg.payload.get("channels", []))
         orochi_machine = msg.payload.get("orochi_machine", "")
         role = msg.payload.get("role", "")
-        model = msg.payload.get("model", "")
+        orochi_model = msg.payload.get("orochi_model", "")
         project = msg.payload.get("project", "")
         multiplexer = msg.payload.get("multiplexer", "")
         orochi_current_task = msg.payload.get("orochi_current_task", "") or ""
@@ -87,7 +87,7 @@ class HandlersMixin:
             channels=channels,
             orochi_machine=orochi_machine,
             role=role,
-            model=model,
+            orochi_model=orochi_model,
             agent_id=agent_id,
             project=project,
             multiplexer=multiplexer,

@@ -39,11 +39,11 @@ def collect_metrics() -> dict[str, str | int | float]:
     if cpu_count is not None:
         metrics["cpu_count"] = cpu_count
 
-    # CPU model from /proc/cpuinfo
+    # CPU orochi_model from /proc/cpuinfo
     try:
         cpuinfo = Path("/proc/cpuinfo").read_text()
         for line in cpuinfo.splitlines():
-            if line.startswith("model name"):
+            if line.startswith("orochi_model name"):
                 metrics["cpu_model"] = line.split(":", 1)[1].strip()
                 break
     except OSError:
