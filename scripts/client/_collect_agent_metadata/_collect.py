@@ -6,7 +6,6 @@ import json
 import os
 from pathlib import Path
 
-from ._a2a_status import collect_a2a_status
 from ._classifier import (
     _detect_contradiction,
     _extract_stuck_prompt,
@@ -27,6 +26,31 @@ from ._pane import capture_pane, filter_pane_tail, parse_subagent_count
 from ._proc import _read_process_env
 from ._statusline import parse_statusline
 from ._transcript import find_jsonl_transcripts, parse_transcript
+
+
+def _build_a2a_section(agent: str) -> dict:
+    """Run Layer A (a2a observations) + Layer B (comm_state v1).
+
+    Returns a flat dict the caller spreads into the heartbeat payload.
+    Keeps `active_task_count` / `active_task_state` / `last_task_event_at`
+    as derived top-level fields for back-compat with existing consumers.
+    """
+    from ._a2a_observations import collect_a2a_observations
+    from .states._comm_state_v1 import derive_comm_state
+
+    obs = collect_a2a_observations(agent)
+    verdict = derive_comm_state(obs)
+    return {
+        "a2a_observations": obs,
+        "comm_state": verdict["label"],
+        "comm_state_evidence": verdict["evidence"],
+        "comm_state_version": verdict["version"],
+        # Back-compat: existing top-level scalars derived from the
+        # observations. Consumers that already read these keep working.
+        "active_task_count": obs.get("active_task_count", 0),
+        "active_task_state": obs.get("most_recent_task_state", ""),
+        "last_task_event_at": obs.get("most_recent_event_at"),
+    }
 
 
 def main(agent: str) -> None:
@@ -257,13 +281,16 @@ def collect(agent: str) -> dict:
         "pane_state_version": pane_verdict["version"],
         "stuck_prompt_text": stuck_prompt_text,
         "classifier_note": classifier_note,
-        # A2A protocol-derived task state — primitive fields the hub uses
-        # to derive richer classifications without sac knowing about
-        # orochi. Empty dict when no A2A sidecar is configured (legacy
-        # / non-A2A agents). See ``_a2a_status.py`` for the field
-        # contract and the ``GET /v1/agents/<name>/_active`` endpoint
-        # in scitex-agent-container.
-        **collect_a2a_status(agent),
+        # A2A state pipeline (Layer A → Layer B):
+        #   `a2a_observations`    — Layer A primitive facts (full task
+        #                           list, tasks_by_state histogram,
+        #                           endpoint reachability, etc.)
+        #   `comm_state`          — Layer B v1 verdict label
+        #   `comm_state_evidence` — Layer B reasoning string
+        #   `comm_state_version`  — schema version
+        # Plus three back-compat top-level fields derived from the
+        # observations so existing consumers don't need to change yet.
+        **_build_a2a_section(agent),
         # scitex-orochi #187 / #59 — hook-event ring buffer summary
         # from scitex-agent-container. Unpacked as top-level keys so
         # push_all()'s whitelist can forward each one verbatim.
