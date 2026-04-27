@@ -107,7 +107,7 @@ def collect(agent: str) -> dict:
     jsonls = find_jsonl_transcripts(workspace)
     tr = parse_transcript(jsonls)
     orochi_model = tr["orochi_model"]
-    last_activity = tr["last_activity"]
+    orochi_last_activity = tr["orochi_last_activity"]
     orochi_context_pct = tr["orochi_context_pct"]
     orochi_current_tool = tr["orochi_current_tool"]
     orochi_started_at = tr["orochi_started_at"]
@@ -237,7 +237,7 @@ def collect(agent: str) -> dict:
         # actually do anything?" without being fooled by inbound chatter.
         "orochi_pane_tail_block_clean": orochi_pane_tail_block_clean,
         "orochi_recent_actions": orochi_recent_actions,
-        "last_activity": last_activity,
+        "orochi_last_activity": orochi_last_activity,
         "orochi_model": resolved_model,
         "orochi_pid": orochi_pid,
         "orochi_ppid": orochi_ppid,

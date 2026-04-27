@@ -426,7 +426,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
         "parse_transcript",
         lambda jsonls: {
             "orochi_model": "",
-            "last_activity": "",
+            "orochi_last_activity": "",
             "orochi_context_pct": None,
             "orochi_current_tool": "",
             "orochi_started_at": "",

@@ -9,7 +9,7 @@
  *     "orochi_subagents": 1,
  *     "orochi_context_pct": 59.0,
  *     "orochi_current_tool": "Agent",
- *     "last_activity": "2026-04-12T05:38:04.540Z",
+ *     "orochi_last_activity": "2026-04-12T05:38:04.540Z",
  *     "orochi_model": "claude-opus-4-7"
  *   }
  *

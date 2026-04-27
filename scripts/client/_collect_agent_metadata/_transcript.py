@@ -94,12 +94,12 @@ def find_jsonl_transcripts(workspace: str) -> list[Path]:
 def parse_transcript(jsonls: list[Path]) -> dict:
     """Parse the newest JSONL for orochi_model, orochi_context_pct, orochi_current_tool, orochi_recent_actions.
 
-    Returns dict with keys: orochi_model, last_activity, orochi_context_pct,
+    Returns dict with keys: orochi_model, orochi_last_activity, orochi_context_pct,
     orochi_current_tool, orochi_started_at, orochi_recent_actions.
     """
     out = {
         "orochi_model": "",
-        "last_activity": "",
+        "orochi_last_activity": "",
         "orochi_context_pct": 0.0,
         "orochi_current_tool": "",
         "orochi_started_at": "",
@@ -134,8 +134,8 @@ def parse_transcript(jsonls: list[Path]) -> dict:
             msg = obj["message"]
             if not out["orochi_model"]:
                 out["orochi_model"] = msg.get("orochi_model", "")
-            if not out["last_activity"]:
-                out["last_activity"] = obj.get("timestamp", "")
+            if not out["orochi_last_activity"]:
+                out["orochi_last_activity"] = obj.get("timestamp", "")
             u = msg.get("usage", {})
             total = (
                 u.get("input_tokens", 0)

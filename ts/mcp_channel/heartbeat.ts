@@ -5,7 +5,7 @@
  *     ~/.scitex/orochi/scripts/collect_agent_metadata.py <agent>
  * which reads the live Claude Code session jsonl transcript and emits
  * claude-hud-style metadata (orochi_alive, orochi_subagents, orochi_context_pct, orochi_current_tool,
- * last_activity, orochi_model, ...) as a single JSON line. The resulting dict is
+ * orochi_last_activity, orochi_model, ...) as a single JSON line. The resulting dict is
  * spread into the hub heartbeat payload.
  *
  * Historical note: this used to call `scitex-agent-container status

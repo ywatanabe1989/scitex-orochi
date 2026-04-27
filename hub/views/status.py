@@ -56,7 +56,7 @@ def api_status(request):
 
     # Last message timestamp across all workspaces
     last_msg = Message.objects.order_by("-ts").values("ts").first()
-    last_activity = last_msg["ts"].isoformat() if last_msg else None
+    orochi_last_activity = last_msg["ts"].isoformat() if last_msg else None
 
     status = "ok"
     if agents_online == 0:
@@ -70,7 +70,7 @@ def api_status(request):
             "uptime_seconds": uptime_seconds,
             "workspaces": workspace_count,
             "messages_total": message_count,
-            "last_activity": last_activity,
+            "orochi_last_activity": orochi_last_activity,
             "agents": {
                 "online": agents_online,
                 "total": agents_total,
