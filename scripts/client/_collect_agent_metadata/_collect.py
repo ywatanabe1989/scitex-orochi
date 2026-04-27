@@ -32,7 +32,7 @@ def _build_a2a_section(agent: str) -> dict:
     """Run Layer A (a2a observations) + Layer B (orochi_comm_state v1).
 
     Returns a flat dict the caller spreads into the heartbeat payload.
-    Keeps `sac_a2a_active_task_count` / `sac_a2a_active_task_state` / `last_task_event_at`
+    Keeps `sac_a2a_active_task_count` / `sac_a2a_active_task_state` / `sac_a2a_last_task_event_at`
     as derived top-level fields for back-compat with existing consumers.
     """
     from ._sac_a2a_observations import collect_sac_a2a_observations
@@ -49,7 +49,7 @@ def _build_a2a_section(agent: str) -> dict:
         # observations. Consumers that already read these keep working.
         "sac_a2a_active_task_count": obs.get("sac_a2a_active_task_count", 0),
         "sac_a2a_active_task_state": obs.get("most_recent_task_state", ""),
-        "last_task_event_at": obs.get("most_recent_event_at"),
+        "sac_a2a_last_task_event_at": obs.get("most_recent_event_at"),
     }
 
 
