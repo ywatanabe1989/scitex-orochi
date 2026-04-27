@@ -149,13 +149,13 @@ def collect(agent: str) -> dict:
     # See AGENT_STATES.md for the architecture; ``_classifier.py`` retains
     # the legacy entry points (_extract_stuck_prompt, _detect_contradiction)
     # used by other call sites.
-    from ._pane_observations import collect_pane_observations
+    from ._orochi_pane_observations import collect_orochi_pane_observations
     from .states._pane_state_v3 import derive_pane_state
 
-    pane_observations = collect_pane_observations(
+    orochi_pane_observations = collect_orochi_pane_observations(
         pane_tail_block_clean, pane, agent=agent
     )
-    pane_verdict = derive_pane_state(pane_observations)
+    pane_verdict = derive_pane_state(orochi_pane_observations)
     pane_state = pane_verdict["label"]
     stuck_prompt_text = _extract_stuck_prompt(pane_tail_block_clean, pane, agent=agent)
     # Contradiction check + evidence log. `alive=True` here means
@@ -268,14 +268,14 @@ def collect(agent: str) -> dict:
         # contradiction with evidence appended to a dedicated log so
         # future pattern additions have ground-truth data.
         # Pane state pipeline:
-        #   `pane_observations`        — Layer A primitive facts (digest,
+        #   `orochi_pane_observations`        — Layer A primitive facts (digest,
         #                                 marker hits, idle chevron, etc.)
         #   `pane_state`               — Layer B v3 label (back-compat)
         #   `pane_state_evidence`      — Layer B reasoning string
         #   `pane_state_version`       — schema version for the verdict
         # Consumers can read just `pane_state` (legacy), or the full
         # observation dict to render their own classifications.
-        "pane_observations": pane_observations,
+        "orochi_pane_observations": orochi_pane_observations,
         "pane_state": pane_state,
         "pane_state_evidence": pane_verdict["evidence"],
         "pane_state_version": pane_verdict["version"],

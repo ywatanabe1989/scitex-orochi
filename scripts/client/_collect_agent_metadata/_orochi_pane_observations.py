@@ -109,7 +109,7 @@ def _read_compose(tail: str) -> tuple[str, bool]:
     return compose, chevron_seen
 
 
-def collect_pane_observations(
+def collect_orochi_pane_observations(
     tail_clean: str,
     full_pane: str,
     agent: str = "",
