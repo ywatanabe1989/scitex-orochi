@@ -24,7 +24,11 @@ def api_agents_register(request):
           "channels": ["#general"],
           "orochi_current_task": "monitoring"
         }
-    Auth: workspace token in body or query string.
+    Auth: workspace token in JSON body OR ``Authorization: Bearer <token>``
+    header. The legacy ``?token=`` query-string mode was removed
+    2026-04-28 (audit ``mgmt/REVIEWER_COMMENTS_v02.md`` §1) — query
+    strings end up in webserver access logs and the browser ``Referer``
+    header, both real exfil paths.
     """
     body = {}
     if request.body:
@@ -33,7 +37,25 @@ def api_agents_register(request):
         except (json.JSONDecodeError, ValueError):
             return JsonResponse({"error": "invalid json"}, status=400)
 
-    token = body.get("token") or request.GET.get("token")
+    token = body.get("token") or ""
+    if not token:
+        # ``Authorization: Bearer <token>`` — preferred for callers that
+        # don't want their token in the JSON body either (e.g. third-party
+        # heartbeat shippers that already have OAuth-style auth wired).
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "") or ""
+        if auth_header.lower().startswith("bearer "):
+            token = auth_header[7:].strip()
+    if request.GET.get("token"):
+        # Hard-reject query-string tokens. Returning 400 (not 401) makes
+        # the error surface as a configuration bug, not an auth retry
+        # loop, so misconfigured agents fail loudly.
+        return JsonResponse(
+            {
+                "error": "token must be in JSON body or Authorization header, "
+                "not query string (logs/Referer leak path)",
+            },
+            status=400,
+        )
     if not token:
         return JsonResponse({"error": "token required"}, status=401)
 
@@ -156,7 +178,9 @@ def api_agents_register(request):
             "orochi_quota_5h_pct": body.get("orochi_quota_5h_pct"),
             "orochi_quota_5h_remaining": body.get("orochi_quota_5h_remaining", ""),
             "orochi_quota_weekly_pct": body.get("orochi_quota_weekly_pct"),
-            "orochi_quota_weekly_remaining": body.get("orochi_quota_weekly_remaining", ""),
+            "orochi_quota_weekly_remaining": body.get(
+                "orochi_quota_weekly_remaining", ""
+            ),
             "orochi_statusline_model": body.get("orochi_statusline_model", ""),
             "orochi_account_email": body.get("orochi_account_email", ""),
             # scitex-agent-container heartbeat-push payload. Long names are
@@ -190,16 +214,23 @@ def api_agents_register(request):
             "sac_hooks_last_tool_at": body.get("sac_hooks_last_tool_at") or "",
             "sac_hooks_last_tool_name": body.get("sac_hooks_last_tool_name") or "",
             "sac_hooks_last_mcp_tool_at": body.get("sac_hooks_last_mcp_tool_at") or "",
-            "sac_hooks_last_mcp_tool_name": body.get("sac_hooks_last_mcp_tool_name") or "",
+            "sac_hooks_last_mcp_tool_name": body.get("sac_hooks_last_mcp_tool_name")
+            or "",
             # PaneAction summary from scitex-agent-container action_store.
             # Surfaces nonce-probe, compact, etc. outcomes on the
             # dashboard without orochi needing to query the per-host DB.
             "sac_hooks_last_action_at": body.get("sac_hooks_last_action_at") or "",
             "sac_hooks_last_action_name": body.get("sac_hooks_last_action_name") or "",
-            "sac_hooks_last_action_outcome": body.get("sac_hooks_last_action_outcome") or "",
-            "sac_hooks_last_action_elapsed_s": body.get("sac_hooks_last_action_elapsed_s"),
+            "sac_hooks_last_action_outcome": body.get("sac_hooks_last_action_outcome")
+            or "",
+            "sac_hooks_last_action_elapsed_s": body.get(
+                "sac_hooks_last_action_elapsed_s"
+            ),
             "action_counts": body.get("action_counts") or {},
-            "sac_hooks_p95_elapsed_s_by_action": body.get("sac_hooks_p95_elapsed_s_by_action") or {},
+            "sac_hooks_p95_elapsed_s_by_action": body.get(
+                "sac_hooks_p95_elapsed_s_by_action"
+            )
+            or {},
             # lead msg#16005: whole ``scitex-agent-container status
             # --terse --json`` dict forwarded by the orochi heartbeat
             # pusher. Passed straight through to ``register_agent`` so
