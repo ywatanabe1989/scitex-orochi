@@ -272,8 +272,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # ts (LLM-level liveness); last_mcp_tool_at is newest for
             # mcp__* tools (proves the MCP sidecar route works).
             "last_tool_at": info.get("last_tool_at") or prev.get("last_tool_at") or "",
-            "last_tool_name": info.get("last_tool_name")
-            or prev.get("last_tool_name")
+            "sac_hooks_last_tool_name": info.get("sac_hooks_last_tool_name")
+            or prev.get("sac_hooks_last_tool_name")
             or "",
             "last_mcp_tool_at": info.get("last_mcp_tool_at")
             or prev.get("last_mcp_tool_at")

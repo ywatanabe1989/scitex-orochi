@@ -188,7 +188,7 @@ def api_agents_register(request):
             # Functional-heartbeat shortcuts — last tool use (LLM-level
             # liveness) + last mcp__* tool (proves MCP sidecar route).
             "last_tool_at": body.get("last_tool_at") or "",
-            "last_tool_name": body.get("last_tool_name") or "",
+            "sac_hooks_last_tool_name": body.get("sac_hooks_last_tool_name") or "",
             "last_mcp_tool_at": body.get("last_mcp_tool_at") or "",
             "last_mcp_tool_name": body.get("last_mcp_tool_name") or "",
             # PaneAction summary from scitex-agent-container action_store.

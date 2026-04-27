@@ -9,7 +9,7 @@ _HOOK_EVENT_KEYS = (
     "sac_hooks_recent_tools",
     "sac_hooks_recent_prompts",
     "sac_hooks_tool_counts",
-    "last_tool_name",
+    "sac_hooks_last_tool_name",
     "last_tool_at",
     "last_mcp_tool_name",
     "last_mcp_tool_at",

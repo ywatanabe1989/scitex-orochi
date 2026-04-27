@@ -207,7 +207,7 @@ function _computeAgentState(a) {
   if (!connected) return "offline";
   /* Heuristic fallback for compact when pane classifier hasn't fired:
    * the last tool name contains "compact" (mcp or slash command). */
-  var lastTool = String(a.last_tool_name || "").toLowerCase();
+  var lastTool = String(a.sac_hooks_last_tool_name || "").toLowerCase();
   if (lastTool.indexOf("compact") !== -1) return "compacting";
   var lastToolSec =
     typeof _secondsSinceIso === "function"

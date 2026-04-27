@@ -74,7 +74,7 @@ async function fetchAgents() {
       )
         return "selecting";
       if (!connected(a)) return "offline";
-      var lastToolName = String(a.last_tool_name || "").toLowerCase();
+      var lastToolName = String(a.sac_hooks_last_tool_name || "").toLowerCase();
       if (lastToolName.indexOf("compact") !== -1) return "compacting";
       var lastToolSec =
         a.last_tool_at || a.last_action

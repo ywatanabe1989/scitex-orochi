@@ -63,7 +63,7 @@ Pane-text scraping alone cannot distinguish "LLM genuinely working" from "TUI fr
 
 | Field | Meaning |
 |-------|---------|
-| `last_tool_at` + `last_tool_name` | Newest `PreToolUse` event — LLM-level liveness (e.g. "Last tool: 12s ago (Edit)"). |
+| `last_tool_at` + `sac_hooks_last_tool_name` | Newest `PreToolUse` event — LLM-level liveness (e.g. "Last tool: 12s ago (Edit)"). |
 | `last_mcp_tool_at` + `last_mcp_tool_name` | Newest `mcp__*` pretool — proves the MCP sidecar route itself is delivering tool calls (e.g. "Last MCP: 45s ago (mcp__orochi__send_message)"). |
 | `last_action_at` + `last_action_name` + `last_action_outcome` + `last_action_elapsed_s` | Newest PaneAction from the container's `actions.db` (e.g. `nonce-probe`, `compact`). `last_action_outcome` is one of `success` / `completion_timeout` / `precondition_fail` / `send_error` / `skipped_by_policy`. Renders as "Last action: 12s ago (nonce-probe success, 3.2s)". |
 | `action_counts` + `sac_hooks_p95_elapsed_s_by_action` | Per-action rollups — how many times each PaneAction ran and the p95 elapsed seconds, useful for spotting slow or flapping actions. |

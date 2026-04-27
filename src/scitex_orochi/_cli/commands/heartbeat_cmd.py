@@ -120,7 +120,7 @@ def _wrap_with_orochi_fields(
         "sac_hooks_tool_counts": status.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts (derived in agent-container).
         "last_tool_at": status.get("last_tool_at") or "",
-        "last_tool_name": status.get("last_tool_name") or "",
+        "sac_hooks_last_tool_name": status.get("sac_hooks_last_tool_name") or "",
         "last_mcp_tool_at": status.get("last_mcp_tool_at") or "",
         "last_mcp_tool_name": status.get("last_mcp_tool_name") or "",
         # PaneAction summary (from scitex-agent-container action_store).
