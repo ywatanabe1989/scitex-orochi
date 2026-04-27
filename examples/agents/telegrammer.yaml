@@ -31,7 +31,7 @@ metadata:
     team: orochi
     specialty: telegram
 spec:
-  runtime: claude-code
+  orochi_runtime: claude-code
   orochi_model: opus[1m]
   workdir: ~/proj
 

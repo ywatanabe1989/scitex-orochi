@@ -115,7 +115,7 @@ Dispatcher: `src/scitex_agent_container/cli_pkg/_main.py`.
 | 12 | `list-python-apis` | verb-noun | `-v` | no | `info_cmds.py` |
 | 13 | `check` | verb | `CONFIG_PATH` | no | `build_cmds.py` |
 | 14 | `validate` | verb | `CONFIG_PATH` | no | `build_cmds.py` |
-| 15 | `build` | verb | `--runtime` | no | `build_cmds.py` |
+| 15 | `build` | verb | `--orochi_runtime` | no | `build_cmds.py` |
 | 16 | `snapshot` | verb | `--agent` | yes | `snapshot_cmds.py` |
 | 17 | `hook-event` | verb-noun | `KIND` | no | `hook_cmds.py` |
 | 18 | `render-sbatch` | verb-noun | `NAME_OR_PATH` | no | `render_cmds.py` |

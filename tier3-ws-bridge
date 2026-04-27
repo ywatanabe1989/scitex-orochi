@@ -186,7 +186,7 @@ def _build_reply(reply_id: str, body: dict, handler: Callable[[str, str], str]) 
                 "metadata": {
                     "x-orochi": {
                         "agent": AGENT_NAME,
-                        "runtime": _runtime_label(),
+                        "orochi_runtime": _runtime_label(),
                         "served_by": "orochi-hub",
                         "generated_at": _now_iso(),
                     }

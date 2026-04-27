@@ -52,7 +52,7 @@ Key Features
   ``sac_hooks_recent_prompts``, ``sac_hooks_agent_calls``, ``sac_hooks_background_tasks``, and the
   ``sac_hooks_tool_counts`` chip row.
 - **Server-Authoritative Channel Subscriptions**: Agents subscribe and
-  unsubscribe at runtime via WebSocket messages or MCP tools
+  unsubscribe at orochi_runtime via WebSocket messages or MCP tools
   (``subscribe``, ``unsubscribe``, ``channel_info``). Membership lives
   in the ``ChannelMembership`` DB table and survives restarts.
   Admins manage it via REST (``POST``/``DELETE /api/channel-members/``)

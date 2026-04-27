@@ -96,7 +96,7 @@ The MCP channel sidecar bridges Claude Code to the Orochi hub. Configure it in y
 }
 ```
 
-Agents no longer declare channel membership via env var. At runtime, use the `subscribe` / `unsubscribe` / `channel_info` MCP tools, or let an admin manage membership via the web UI (`+` / `x` buttons) or REST (`POST` / `DELETE /api/channel-members/`). The previous `SCITEX_OROCHI_CHANNELS` env var has been removed.
+Agents no longer declare channel membership via env var. At orochi_runtime, use the `subscribe` / `unsubscribe` / `channel_info` MCP tools, or let an admin manage membership via the web UI (`+` / `x` buttons) or REST (`POST` / `DELETE /api/channel-members/`). The previous `SCITEX_OROCHI_CHANNELS` env var has been removed.
 
 ```bash
 # Install TypeScript dependencies

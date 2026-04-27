@@ -42,7 +42,7 @@ def default_state_path() -> Path:
 
     Follows the same convention as other Orochi client-side state
     (``~/.local/state/scitex/...``). Kept outside ``~/.scitex/orochi/``
-    because it's runtime telemetry, not config.
+    because it's orochi_runtime telemetry, not config.
     """
     return Path.home() / ".local" / "state" / "scitex" / "orochi-cron" / "state.json"
 

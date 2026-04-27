@@ -1,6 +1,6 @@
 # A2A Protocol Support
 
-scitex-orochi participates in [Google's A2A protocol](https://a2a-protocol.org/) as the **runtime layer** behind a fleet-wide capability surface at **`a2a.scitex.ai`**.
+scitex-orochi participates in [Google's A2A protocol](https://a2a-protocol.org/) as the **orochi_runtime layer** behind a fleet-wide capability surface at **`a2a.scitex.ai`**.
 
 The capability surface itself (AgentCard projection, JSON-RPC discovery, bearer-auth gate) lives in scitex-cloud at `apps/infra/a2a_app/`. This document covers the orochi-side pieces: the dispatch bridge that takes a public A2A POST and delivers it to a live fleet agent, then routes the reply back.
 
@@ -9,7 +9,7 @@ The capability surface itself (AgentCard projection, JSON-RPC discovery, bearer-
 ```
 identity        →  https://git.scitex.ai/<agent>          (NAS, Gitea — per-agent bot user)
 capability      →  https://a2a.scitex.ai/v1/agents/<a>    (NAS, scitex-cloud Django)
-runtime         →  https://scitex-orochi.com              (mba, scitex-orochi Daphne hub)
+orochi_runtime         →  https://scitex-orochi.com              (mba, scitex-orochi Daphne hub)
 agent defs      →  ~/.scitex/orochi/shared/agents/<a>/    (dotfiles, synced fleet-wide)
 ```
 
@@ -102,11 +102,11 @@ curl -s -X POST https://a2a.scitex.ai/v1/agents/claude-echo \
   -d '{"jsonrpc":"2.0","id":"t","method":"SendMessage",
        "params":{"message":{"message_id":"m1","role":"ROLE_USER",
                             "parts":[{"text":"What is 2+2?"}]}}}' \
-  | jq '.result | {state: .status.state, runtime: .metadata."x-orochi".runtime,
+  | jq '.result | {state: .status.state, orochi_runtime: .metadata."x-orochi".orochi_runtime,
                    reply: .history[1].parts[0].text}'
 ```
 
-Expected: `state=completed`, `runtime=tier3-claude-cli`, `reply="4"`.
+Expected: `state=completed`, `orochi_runtime=tier3-claude-cli`, `reply="4"`.
 
 ## Calling peer agents from a fleet agent
 

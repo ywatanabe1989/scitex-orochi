@@ -13,7 +13,7 @@ metadata:
     orochi_machine: CHANGEME
     capabilities: docker,deployment,ci-cd,persistent-services
 spec:
-  runtime: claude-code
+  orochi_runtime: claude-code
   orochi_model: sonnet
   workdir: ~/proj
 

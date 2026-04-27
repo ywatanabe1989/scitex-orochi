@@ -87,7 +87,7 @@ probe_one() {
     fi
 }
 
-# Compare orochi-machines.yaml expected_tmux_sessions vs the runtime
+# Compare orochi-machines.yaml expected_tmux_sessions vs the orochi_runtime
 # snapshot. Logs any drift but does not escalate by itself — the
 # DRIFT lines are picked up by mamba-healer-* via the log trail.
 # Idempotent + read-only.

@@ -27,7 +27,7 @@ class HandlersMixin:
     ) -> str:
         name = msg.sender
         # Channels are server-authoritative: agents register with no channels
-        # and subscribe at runtime via MCP tools / REST API / web UI.
+        # and subscribe at orochi_runtime via MCP tools / REST API / web UI.
         # Legacy clients that still send a channels payload are respected
         # here for backward compatibility but new installs should send none.
         channels = set(msg.payload.get("channels", []))

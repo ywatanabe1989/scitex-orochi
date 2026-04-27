@@ -207,7 +207,7 @@ def test_count_zero_children(monkeypatch, tmp_path):
         monkeypatch,
         lambda pid: _FakeProcess(children=[]),
     )
-    # Redirect audit log to tmp so we don't pollute the real runtime dir.
+    # Redirect audit log to tmp so we don't pollute the real orochi_runtime dir.
     monkeypatch.setattr(Path, "home", staticmethod(lambda: tmp_path))
     assert count_orochi_subagents_via_ps("head-mba") == 0
 
@@ -572,7 +572,7 @@ def test_audit_log_written(monkeypatch, tmp_path):
         tmp_path
         / ".scitex"
         / "orochi"
-        / "runtime"
+        / "orochi_runtime"
         / "subagent-count"
         / "head-mba.ndjson"
     )

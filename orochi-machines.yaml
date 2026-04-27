@@ -8,7 +8,7 @@
 #     Machines tab) read this to render labels and to flag drift.
 #
 # This file is intentionally human-curated, not auto-generated. The drifted
-# values come from runtime probes (probe_remote.sh, scitex-agent-container
+# values come from orochi_runtime probes (probe_remote.sh, scitex-agent-container
 # snapshot --json) and are compared against the declared values here.
 #
 # Naming conventions
@@ -48,7 +48,7 @@ machines:
       ram_gb: 16
       storage_gb_total: ~
       gpu: integrated_apple_silicon
-    runtime:
+    orochi_runtime:
       multiplexer: tmux
       autostart: launchd
       autostart_path: ~/Library/LaunchAgents/com.scitex.orochi.*.plist
@@ -115,7 +115,7 @@ machines:
       storage_gb_total: 11000   # 11 TB RAID
       storage_gb_free: 3600     # 3.6 TB free at session start
       gpu: ~
-    runtime:
+    orochi_runtime:
       multiplexer: tmux
       autostart: systemd_user    # ~/.config/systemd/user/, loginctl enable-linger
       autostart_path: ~/.dotfiles/src/systemd/user/orochi-*.service
@@ -173,7 +173,7 @@ machines:
       ram_gb: 250
       storage_gb_total: ~     # quota-based, not a fixed disk
       gpu: shared_via_orochi_slurm
-    runtime:
+    orochi_runtime:
       multiplexer: tmux
       autostart: bash_profile_or_salloc_wrapper   # systemd --user not allowed on login1
       autostart_path: ~
@@ -223,7 +223,7 @@ machines:
       ram_gb: 24              # WSL allocation
       storage_gb_total: ~
       gpu: ~
-    runtime:
+    orochi_runtime:
       multiplexer: tmux
       autostart: systemd_user_via_default_target_wants
       autostart_path: ~/.config/systemd/user/scitex-agent-*.service

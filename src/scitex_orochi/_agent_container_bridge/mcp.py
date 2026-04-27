@@ -5,7 +5,7 @@ agent needs to speak to the Orochi hub through the TypeScript MCP bridge
 (``mcp_channel.ts``).
 
 Design note: this module used to live in scitex-agent-container and was
-called from its claude_code runtime. That was an SoC violation —
+called from its claude_code orochi_runtime. That was an SoC violation —
 scitex-agent-container is a generic lifecycle library and should not know
 about Orochi hosts, tokens, or channel shapes. As of the dispatch refactor,
 scitex-orochi owns this logic and passes the resulting file path to
@@ -76,7 +76,7 @@ def _resolve_token(orochi: OrochiSpec, agent_env: dict[str, str]) -> str:
 
     Returns an empty string if the token cannot be found. A missing token
     is still a launchable state — the sidecar/MCP client will fail to auth
-    at runtime and log a clear error, which is better than refusing to
+    at orochi_runtime and log a clear error, which is better than refusing to
     generate the config at all.
     """
     token = agent_env.get(orochi.token_env, "")
@@ -131,7 +131,7 @@ def build_orochi_mcp_config(
 
     host = orochi.hosts[0] if orochi.hosts else "localhost"
 
-    # Channel subscriptions are server-authoritative: assigned at runtime via
+    # Channel subscriptions are server-authoritative: assigned at orochi_runtime via
     # MCP tools, REST API, or web UI. The agent registers with no channels;
     # the server hydrates memberships from persisted state.
     token = _resolve_token(orochi, agent_env)

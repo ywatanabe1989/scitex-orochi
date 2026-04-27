@@ -4,7 +4,7 @@ push_process_info.py — per-host process info pusher.
 
 Collects the running tmux sessions, screen sessions, and scitex-agent-container
 systemd / launchd units for this host, and appends an NDJSON line to
-~/.scitex/orochi/runtime/fleet-watch/process-info/<host>.ndjson.
+~/.scitex/orochi/orochi_runtime/fleet-watch/process-info/<host>.ndjson.
 
 Lets the hub correlate "agent registry says X is alive" against "this host
 actually has X as a tmux session / systemd unit", catching registry-drift
@@ -191,7 +191,7 @@ def collect() -> dict[str, Any]:
 
 def _ndjson_path(host: str) -> Path:
     root = (
-        Path.home() / ".scitex" / "orochi" / "runtime" / "fleet-watch" / "process-info"
+        Path.home() / ".scitex" / "orochi" / "orochi_runtime" / "fleet-watch" / "process-info"
     )
     root.mkdir(parents=True, exist_ok=True)
     return root / f"{host}.ndjson"

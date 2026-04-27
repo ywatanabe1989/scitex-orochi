@@ -54,7 +54,7 @@ class JobRun:
 
 @dataclass
 class JobState:
-    """Per-job runtime state surfaced by ``cron list``."""
+    """Per-job orochi_runtime state surfaced by ``cron list``."""
 
     name: str
     interval_seconds: int

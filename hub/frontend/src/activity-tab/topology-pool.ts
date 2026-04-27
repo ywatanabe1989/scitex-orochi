@@ -23,7 +23,7 @@ export function _topoBuildPoolHtml(visible, channels) {
 }
 
 /* Legacy pool builder — kept for reference in case a future change
- * wants the in-canvas pool back. Never invoked from runtime because
+ * wants the in-canvas pool back. Never invoked from orochi_runtime because
  * _topoBuildPoolHtml above short-circuits. */
 export function _topoBuildPoolHtmlLegacy(visible, channels) {
   /* Left-side pool — all agents and all channels as chips so the user

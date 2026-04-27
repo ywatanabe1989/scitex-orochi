@@ -16,7 +16,7 @@ metadata:
     orochi_machine: CHANGEME
     capabilities: gpu,orochi_slurm,large-compute,ml-training
 spec:
-  runtime: claude-code
+  orochi_runtime: claude-code
   orochi_model: opus[1m]
   workdir: ~/proj
 

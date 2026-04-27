@@ -44,7 +44,7 @@ process-tree first, pane parser on failure, ``0`` if both fail.
 Audit log
 ---------
 Each invocation appends a structured NDJSON record to
-``~/.scitex/orochi/runtime/subagent-count/<agent>.ndjson`` with the
+``~/.scitex/orochi/orochi_runtime/subagent-count/<agent>.ndjson`` with the
 source (``process_tree``, ``pane_parser``, ``none``) and the count. The
 hub can diff sources over time to flag regressions ("pane says 3,
 process-tree says 0 — which is real?") without operators having to
@@ -336,7 +336,7 @@ def count_orochi_subagents_via_ps(agent: str) -> int:
 def _audit_log_path(agent: str) -> Path:
     """Return the NDJSON audit-log path for ``agent``.
 
-    Stored under the standard runtime root so telemetry-rotate.sh
+    Stored under the standard orochi_runtime root so telemetry-rotate.sh
     picks it up (daily gzip + 7d retention, same lifecycle as the
     connection and quota telemetry files).
     """
@@ -344,7 +344,7 @@ def _audit_log_path(agent: str) -> Path:
         Path.home()
         / ".scitex"
         / "orochi"
-        / "runtime"
+        / "orochi_runtime"
         / "subagent-count"
     )
     root.mkdir(parents=True, exist_ok=True)

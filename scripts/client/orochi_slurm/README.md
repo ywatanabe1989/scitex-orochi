@@ -39,7 +39,7 @@ metadata:
   name: head
   labels: { role: head, orochi_machine: ${HOSTNAME} }
 spec:
-  runtime: orochi_slurm
+  orochi_runtime: orochi_slurm
   orochi_model: opus[1m]
   orochi_slurm:
     partition: sapphire

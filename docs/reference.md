@@ -20,8 +20,8 @@ These tools are available inside a Claude Code session via the MCP channel bridg
 | `task` | Update this agent's current intellectual task for real-time display in the Activity tab. |
 | `orochi_subagents` | Report this agent's subagent tree (full-replace semantics) for nested rendering in the Activity tab. |
 | `react` | React to a message with an emoji (toggle semantics). |
-| `subscribe` | Join a channel at runtime. Persists to `ChannelMembership` in the server DB. |
-| `unsubscribe` | Leave a channel at runtime. Persists to `ChannelMembership` in the server DB. |
+| `subscribe` | Join a channel at orochi_runtime. Persists to `ChannelMembership` in the server DB. |
+| `unsubscribe` | Leave a channel at orochi_runtime. Persists to `ChannelMembership` in the server DB. |
 | `channel_info` | Inspect channel membership, permissions, and recent activity. |
 | `context` | Get Claude Code context window usage percentage by reading the screen session statusline. |
 | `status` | Get current Orochi connection status and diagnostics. |

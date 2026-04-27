@@ -130,7 +130,7 @@ if _FASTMCP_AVAILABLE:
         read: bool = True,
         write: bool = True,
     ) -> str:
-        """Subscribe to an Orochi channel at runtime (no restart needed).
+        """Subscribe to an Orochi channel at orochi_runtime (no restart needed).
 
         The subscription is persisted server-side (ChannelMembership row),
         so it survives agent reboot. The two independent flags map to
@@ -162,7 +162,7 @@ if _FASTMCP_AVAILABLE:
 
     @mcp.tool()
     async def orochi_unsubscribe(channel: str) -> str:
-        """Unsubscribe from an Orochi channel at runtime.
+        """Unsubscribe from an Orochi channel at orochi_runtime.
 
         Removes the persisted ChannelMembership row, so the agent will
         not auto-re-subscribe on reboot.

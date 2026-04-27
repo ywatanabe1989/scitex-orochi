@@ -378,7 +378,7 @@ export const TOOL_DEFS = [
   {
     name: "sidecar_status",
     description:
-      "Return the orochi-side sidecar PID registry as JSON (todo#287 Slice A). Surfaces (a) the running scitex-orochi MCP server (this bun process: pid, ppid, started_at, uptime_seconds, runtime, agent name) and (b) the rsync_media child-process registry (each rsync job's pid, status, paths, timestamps). Layer 3 of the 3-layer fleet PID orochi_model — Claude/tmux are owned by scitex-agent-container, container daemons by container snapshot, comms sidecars by orochi (this tool). Read-only; does not spawn or mutate anything.",
+      "Return the orochi-side sidecar PID registry as JSON (todo#287 Slice A). Surfaces (a) the running scitex-orochi MCP server (this bun process: pid, ppid, started_at, uptime_seconds, orochi_runtime, agent name) and (b) the rsync_media child-process registry (each rsync job's pid, status, paths, timestamps). Layer 3 of the 3-layer fleet PID orochi_model — Claude/tmux are owned by scitex-agent-container, container daemons by container snapshot, comms sidecars by orochi (this tool). Read-only; does not spawn or mutate anything.",
     inputSchema: {
       type: "object" as const,
       properties: {},

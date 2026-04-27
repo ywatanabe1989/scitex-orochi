@@ -8,7 +8,7 @@ export const OROCHI_HOST = process.env.SCITEX_OROCHI_HOST || "192.168.0.102";
 export const OROCHI_PORT = parseInt(process.env.SCITEX_OROCHI_PORT || "8559");
 export const OROCHI_AGENT =
   process.env.SCITEX_OROCHI_AGENT || `${orochi_hostname()}-claude`;
-// Channel subscriptions are server-authoritative: assigned at runtime via
+// Channel subscriptions are server-authoritative: assigned at orochi_runtime via
 // MCP tools, REST API, or web UI. Agents register with no channels and
 // pick up their memberships from the server. No env var.
 export const OROCHI_TOKEN = process.env.SCITEX_OROCHI_TOKEN || "";

@@ -169,7 +169,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_echo_rtt_ms": prev.get("last_echo_rtt_ms"),
             "last_echo_ok_ts": prev.get("last_echo_ok_ts"),
             "last_nonce_echo_at": prev.get("last_nonce_echo_at"),
-            # Extended process/runtime metadata pushed by agent_meta.py --push.
+            # Extended process/orochi_runtime metadata pushed by agent_meta.py --push.
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,
             "ppid": info.get("ppid") or prev.get("ppid") or 0,
@@ -193,7 +193,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             ),
             "started_at": info.get("started_at") or prev.get("started_at") or "",
             "orochi_version": info.get("orochi_version") or prev.get("orochi_version") or "",
-            "runtime": info.get("runtime") or prev.get("runtime") or "",
+            "orochi_runtime": info.get("orochi_runtime") or prev.get("orochi_runtime") or "",
             # v0.11.0 Agents-tab visibility fields. Recent action log
             # + tmux pane tail + workspace CLAUDE.md head + MCP server
             # list. The bun sidecar pushes these on every 30s

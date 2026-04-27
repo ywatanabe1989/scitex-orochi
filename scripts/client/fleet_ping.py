@@ -3,7 +3,7 @@
 fleet_ping.py — bi-directional fleet ping/pong daemon.
 
 Pings all known fleet hosts via SSH (lightweight 'echo pong') and records RTT
-to ~/.scitex/orochi/runtime/fleet-watch/ping/<source-host>.ndjson. Each line records
+to ~/.scitex/orochi/orochi_runtime/fleet-watch/ping/<source-host>.ndjson. Each line records
 one ping round for all targets from this host, so downstream cross-correlation
 can detect partition asymmetry (A reaches B but B can't reach A).
 
@@ -98,7 +98,7 @@ def collect(targets: list[str], timeout: float) -> dict[str, Any]:
 
 
 def _ndjson_path(host: str) -> Path:
-    root = Path.home() / ".scitex" / "orochi" / "runtime" / "fleet-watch" / "ping"
+    root = Path.home() / ".scitex" / "orochi" / "orochi_runtime" / "fleet-watch" / "ping"
     root.mkdir(parents=True, exist_ok=True)
     return root / f"{host}.ndjson"
 

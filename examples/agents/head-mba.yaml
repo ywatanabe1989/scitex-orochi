@@ -12,7 +12,7 @@ metadata:
     orochi_machine: CHANGEME
     capabilities: ios-simulator,xcode,swift,mobile-testing
 spec:
-  runtime: claude-code
+  orochi_runtime: claude-code
   orochi_model: sonnet
   workdir: ~/proj
 

@@ -111,7 +111,7 @@ def api_agents_register(request):
             "orochi_model": body.get("orochi_model", ""),
             "workdir": body.get("workdir", ""),
             "channels": _effective_channels,
-            # todo#213: claude-hud-style process/runtime metadata pushed by
+            # todo#213: claude-hud-style process/orochi_runtime metadata pushed by
             # mamba-healer-mba's agent_meta.py --push loop.
             "multiplexer": body.get("multiplexer", ""),
             "orochi_project": body.get("orochi_project", ""),
@@ -125,7 +125,7 @@ def api_agents_register(request):
             "orochi_skills_loaded": body.get("orochi_skills_loaded") or [],
             "started_at": body.get("started_at", ""),
             "orochi_version": body.get("orochi_version", ""),
-            "runtime": body.get("runtime", ""),
+            "orochi_runtime": body.get("orochi_runtime", ""),
             "orochi_subagent_count": body.get("orochi_subagent_count") or 0,
             # v0.11.0 Agents-tab visibility fields (todo#155). The
             # heartbeat now carries the recent action log, the live

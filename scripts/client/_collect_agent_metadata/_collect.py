@@ -70,7 +70,7 @@ def collect(agent: str) -> dict:
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
         pid, ppid, started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
-        runtime, orochi_version, orochi_subagent_count.
+        orochi_runtime, orochi_version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
     """
@@ -176,7 +176,7 @@ def collect(agent: str) -> dict:
 
     # If the most recent assistant turn carried no real orochi_model label
     # (empty or a <synthetic>-style placeholder from compacted
-    # summaries), fall back to the env var the runtime set at spawn.
+    # summaries), fall back to the env var the orochi_runtime set at spawn.
     # The env is fetched from the claude process's own /proc/<pid>/environ
     # (the push script's own environment does NOT carry per-agent orochi_model
     # — each agent has its own orochi_model in its own process env).
@@ -184,7 +184,7 @@ def collect(agent: str) -> dict:
         orochi_model
         if orochi_model and not orochi_model.startswith("<")
         # Linux-only: peek at /proc/<pid>/environ for the real
-        # orochi_model env the runtime set at spawn.
+        # orochi_model env the orochi_runtime set at spawn.
         else (
             _read_process_env(
                 pid, ("SCITEX_AGENT_CONTAINER_MODEL", "SCITEX_OROCHI_MODEL")
@@ -295,7 +295,7 @@ def collect(agent: str) -> dict:
         # from scitex-agent-container. Unpacked as top-level keys so
         # push_all()'s whitelist can forward each one verbatim.
         **_collect_hook_events(agent),
-        "runtime": "claude-code",
+        "orochi_runtime": "claude-code",
         "orochi_version": os.environ.get("SCITEX_OROCHI_AGENT_META_VERSION", "0.1"),
         # Machine resource snapshot (todo#329 — Machines tab populate).
         "metrics": collect_machine_metrics(),

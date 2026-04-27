@@ -182,7 +182,7 @@ export async function handleSidecarStatus(): Promise<{
       ppid: typeof process.ppid === "number" ? process.ppid : null,
       started_at: MCP_SERVER_STARTED_AT,
       uptime_seconds: uptimeSeconds,
-      runtime: typeof Bun !== "undefined" ? "bun" : "node",
+      orochi_runtime: typeof Bun !== "undefined" ? "bun" : "node",
     },
     sidecars: {
       rsync_jobs: rsyncJobsList,

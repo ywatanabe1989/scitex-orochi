@@ -7,7 +7,7 @@ writes on each orochi_machine with a hub-hosted, fleet-wide registry.
 
 Distinct from the in-memory WebSocket presence registry (``api_agents``):
 this endpoint tracks container/process state (yaml path, orochi_machine, status,
-restart history) — not runtime websocket presence.
+restart history) — not orochi_runtime websocket presence.
 
 Endpoints (mounted under both ``urls.py`` and ``urls_bare.py`` so the MCP
 sidecar on ``localhost`` can reach them without the subdomain middleware):

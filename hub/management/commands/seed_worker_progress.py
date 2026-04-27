@@ -15,7 +15,7 @@ The synthetic ``agent-worker-progress`` user is granted the following
   - every ``#proj-*`` channel that exists in the DB **at seed time** →
     ``can_read=True, can_write=True``  (read-write)
 
-The ``#proj-*`` set is enumerated at runtime (not hardcoded) so new
+The ``#proj-*`` set is enumerated at orochi_runtime (not hardcoded) so new
 orochi_project channels are picked up without code changes — just re-run the
 seed after creating a new ``#proj-foo``.
 

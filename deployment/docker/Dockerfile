@@ -18,7 +18,7 @@ COPY hub/frontend/ ./
 RUN npm run build
 
 
-# ─── Stage 2: Python runtime ─────────────────────────────────────────
+# ─── Stage 2: Python orochi_runtime ─────────────────────────────────────────
 FROM python:3.11-slim
 
 WORKDIR /app

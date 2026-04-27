@@ -106,7 +106,7 @@ This is a developer's personal TODO repo hardcoded into the proxy. It should be 
 - `src/scitex_orochi/__init__.py:3` declares `__version__ = "0.2.0"`
 - `pyproject.toml:7` declares `orochi_version = "0.4.0"`
 
-The runtime orochi_version and the build orochi_version are out of sync. Anyone calling `scitex_orochi.__version__` gets stale information.
+The orochi_runtime orochi_version and the build orochi_version are out of sync. Anyone calling `scitex_orochi.__version__` gets stale information.
 
 **Severity:** Important
 **Fix:** Use `importlib.metadata.orochi_version("scitex-orochi")` as the single source of truth, or keep them in sync via hatchling's orochi_version hook.
@@ -118,7 +118,7 @@ The runtime orochi_version and the build orochi_version are out of sync. Anyone 
 The codebase uses `importlib.reload()` on `_config` and `_auth` modules to pick up environment variable changes. This is a pattern that:
 - Breaks if any other module has already imported constants by value (e.g., `from _config import ADMIN_TOKEN`)
 - Is used in production code (`_main.py`), not just tests
-- Creates hidden coupling between import order and runtime behavior
+- Creates hidden coupling between import order and orochi_runtime behavior
 
 **Severity:** Important
 **Fix:** Use a function-based config accessor (e.g., `get_admin_token()`) rather than module-level constants, or use a config singleton that can be updated.

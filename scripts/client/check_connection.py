@@ -3,7 +3,7 @@
 check_connection.py — hub WebSocket / HTTPS connection health checker.
 
 Periodically probes wss://scitex-orochi.com (and its HTTPS twin) from this
-host, measures latency, records to ~/.scitex/orochi/runtime/fleet-watch/
+host, measures latency, records to ~/.scitex/orochi/orochi_runtime/fleet-watch/
 connection/<host>.ndjson. Lets the fleet detect when a given host has DNS / TLS /
 tunnel problems independent of agent health.
 
@@ -122,7 +122,7 @@ def collect(https_url: str, wss_url: str, timeout: float) -> dict[str, Any]:
 
 
 def _ndjson_path(host: str) -> Path:
-    root = Path.home() / ".scitex" / "orochi" / "runtime" / "fleet-watch" / "connection"
+    root = Path.home() / ".scitex" / "orochi" / "orochi_runtime" / "fleet-watch" / "connection"
     root.mkdir(parents=True, exist_ok=True)
     return root / f"{host}.ndjson"
 

@@ -1,4 +1,4 @@
-"""Tests for #257 — canonical heartbeat runtime metadata.
+"""Tests for #257 — canonical heartbeat orochi_runtime metadata.
 
 Verifies that ``register_agent`` accepts the new fields (`orochi_hostname`,
 `uname`, `instance_id`, `start_ts_unix`, `is_proxy`, `priority_rank`,

@@ -91,27 +91,27 @@ if [[ ! -d "$DOTFILES_ROOT" ]]; then
 fi
 mkdir -p "$DEPLOY_ROOT"
 
-# Runtime dirs live under $DEPLOY_ROOT/runtime/ (per 2026-04-17 layout). Each
+# Runtime dirs live under $DEPLOY_ROOT/orochi_runtime/ (per 2026-04-17 layout). Each
 # host regenerates these; contents are never committed. Created empty so
 # first-time bootstrap doesn't fail when an agent tries to write a log
 # before any heartbeat has landed. Agent *definitions* live in shared/agents/
 # or <host>/agents/ (tracked source); they are NOT created here.
 DEPLOY_RUNTIME_SUBDIRS=(
-    runtime
-    runtime/workspaces
-    runtime/logs
-    runtime/quota-telemetry
-    runtime/tmux-unstick-state
-    runtime/fleet-watch
-    runtime/fleet-watch/orochi_machine-info
-    runtime/fleet-watch/ping
-    runtime/fleet-watch/connection
-    runtime/fleet-watch/process-info
+    orochi_runtime
+    orochi_runtime/workspaces
+    orochi_runtime/logs
+    orochi_runtime/quota-telemetry
+    orochi_runtime/tmux-unstick-state
+    orochi_runtime/fleet-watch
+    orochi_runtime/fleet-watch/orochi_machine-info
+    orochi_runtime/fleet-watch/ping
+    orochi_runtime/fleet-watch/connection
+    orochi_runtime/fleet-watch/process-info
 )
 
-# -- 2. Deploy-side runtime dirs ---------------------------------------------
+# -- 2. Deploy-side orochi_runtime dirs ---------------------------------------------
 
-log "ensuring deployed runtime dirs under $DEPLOY_ROOT/runtime/"
+log "ensuring deployed orochi_runtime dirs under $DEPLOY_ROOT/orochi_runtime/"
 for s in "${DEPLOY_RUNTIME_SUBDIRS[@]}"; do
     if [[ ! -d "$DEPLOY_ROOT/$s" ]]; then
         mkdir -p "$DEPLOY_ROOT/$s"
@@ -119,8 +119,8 @@ for s in "${DEPLOY_RUNTIME_SUBDIRS[@]}"; do
     fi
 done
 
-# -- 2a. Legacy-path cleanup (pre-runtime/ layout) ---------------------------
-# Earlier bootstrap versions created flat top-level runtime dirs
+# -- 2a. Legacy-path cleanup (pre-orochi_runtime/ layout) ---------------------------
+# Earlier bootstrap versions created flat top-level orochi_runtime dirs
 # (~/.scitex/orochi/{logs,fleet-watch,workspaces,quota-telemetry,tmux-unstick-state}).
 # The canonical source-side symlinks pointing at these have been removed, but
 # empty top-level real dirs may still exist from prior installs. Remove them
