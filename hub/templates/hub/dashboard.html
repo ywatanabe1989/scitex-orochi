@@ -47,7 +47,8 @@
     <!-- Orochi unified cron Phase 2 (msg#16406 / msg#16408) — Machines
          tab cron-jobs panel. Loaded after resources.css so cron-panel
          rules sit under each .res-card via the shared 11px meta font. -->
-    <link rel="stylesheet" href="{% static 'hub/style/style-cron-panel.css' %}?v=1">
+    <link rel="stylesheet"
+          href="{% static 'hub/style/style-cron-panel.css' %}?v=1">
     <link rel="stylesheet" href="{% static 'hub/icons.css' %}?v=99">
     <link rel="stylesheet" href="{% static 'hub/app/sidebar-memory.css' %}?v=5">
     <link rel="stylesheet" href="{% static 'hub/settings.css' %}?v=104">
@@ -129,26 +130,31 @@
                 <h2 class="collapsible-heading channels-heading" data-section="agents">
                     Agents <span class="sidebar-count" id="sidebar-count-agents"></span>
                 </h2>
-                <!-- Sort/color controls live OUTSIDE #agents because
-                     sidebar-agents.js rewrites #agents.innerHTML on
-                     every heartbeat and would otherwise wipe them. -->
-                <div class="sidebar-agent-controls">
-                    <select id="activity-sort-select"
-                            class="sidebar-agent-select"
-                            title="sort order">
-                        <option value="name">sort: name</option>
-                        <option value="machine">sort: machine</option>
-                    </select>
-                    <select id="activity-color-select"
-                            class="sidebar-agent-select"
-                            title="name color keyed by">
-                        <option value="name">color: name</option>
-                        <option value="host">color: host</option>
-                        <option value="account">color: account</option>
-                    </select>
-                </div>
-                <div id="agents" class="sidebar-section">
-                    <p id="no-agents">No agents connected</p>
+                <!-- Wrapper exists so the collapsible-heading's
+                     nextElementSibling toggle folds BOTH the controls
+                     and the agents list as one unit. Sort/color controls
+                     live OUTSIDE #agents because sidebar-agents.js
+                     rewrites #agents.innerHTML on every heartbeat and
+                     would otherwise wipe them. -->
+                <div class="sidebar-agents-wrap sidebar-section">
+                    <div class="sidebar-agent-controls">
+                        <select id="activity-sort-select"
+                                class="sidebar-agent-select"
+                                title="sort order">
+                            <option value="name">sort: name</option>
+                            <option value="machine">sort: machine</option>
+                        </select>
+                        <select id="activity-color-select"
+                                class="sidebar-agent-select"
+                                title="name color keyed by">
+                            <option value="name">color: name</option>
+                            <option value="host">color: host</option>
+                            <option value="account">color: account</option>
+                        </select>
+                    </div>
+                    <div id="agents">
+                        <p id="no-agents">No agents connected</p>
+                    </div>
                 </div>
                 <h2 class="collapsible-heading channels-heading" data-section="channels">
                     Channels <span class="sidebar-count" id="sidebar-count-channels"></span>
