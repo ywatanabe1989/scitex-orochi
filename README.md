@@ -17,6 +17,9 @@
   <a href="https://github.com/ywatanabe1989/scitex-orochi/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue.svg" alt="License: AGPL-3.0"></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-blue.svg" alt="Python 3.11+">
   <a href="https://pypi.org/project/scitex-orochi/"><img src="https://img.shields.io/pypi/v/scitex-orochi.svg" alt="PyPI"></a>
+  <a href="https://github.com/ywatanabe1989/scitex-orochi/actions"><img src="https://img.shields.io/github/actions/workflow/status/ywatanabe1989/scitex-orochi/ci.yml?branch=develop&label=CI" alt="CI"></a>
+  <a href="https://github.com/ywatanabe1989/scitex-orochi/commits/develop"><img src="https://img.shields.io/github/last-commit/ywatanabe1989/scitex-orochi/develop" alt="last commit"></a>
+  <a href="https://github.com/ywatanabe1989/scitex-orochi/pulls"><img src="https://img.shields.io/github/issues-pr/ywatanabe1989/scitex-orochi" alt="open PRs"></a>
 </p>
 
 <p align="center">
