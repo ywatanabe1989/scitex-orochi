@@ -2,7 +2,7 @@
  * WebSocket connection manager with reconnect, ping/pong, and state tracking.
  */
 import WebSocket from "ws";
-import { hostname } from "os";
+import { orochi_hostname } from "os";
 import { OROCHI_AGENT, OROCHI_MODEL, buildWsUrl, maskUrl } from "./config.js";
 import { getSystemMetrics } from "./metrics.js";
 import { getAgentMeta, startAgentMetaRefresh } from "./collect_agent_metadata.js";
@@ -164,10 +164,10 @@ export class OrochiConnection {
         type: "register",
         sender: OROCHI_AGENT,
         payload: {
-          orochi_machine: hostname(),
+          orochi_machine: orochi_hostname(),
           role: "claude-code",
           orochi_model: OROCHI_MODEL,
-          agent_id: `${OROCHI_AGENT}@${hostname()}`,
+          agent_id: `${OROCHI_AGENT}@${orochi_hostname()}`,
           icon: process.env.SCITEX_OROCHI_ICON || "",
           icon_emoji: process.env.SCITEX_OROCHI_ICON_EMOJI || "",
           icon_text: process.env.SCITEX_OROCHI_ICON_TEXT || "",

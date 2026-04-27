@@ -7,7 +7,7 @@
                        Orochi hub's ``/api/agents/register/`` endpoint.
 
 ``heartbeat status``  — GET the hub agents registry and print this host's canonical
-                       payload (``head-<hostname>``) as JSON. Used as a lightweight
+                       payload (``head-<orochi_hostname>``) as JSON. Used as a lightweight
                        smoke test in lieu of the dashboard.
 
 ``resources show``    — Snapshot local CPU / RAM / Storage / GPU in the
@@ -155,7 +155,7 @@ def heartbeat_status(
     agent: str | None,
     pretty: bool,
 ) -> None:
-    """Print the hub registry entry for an agent (default head-<hostname>)."""
+    """Print the hub registry entry for an agent (default head-<orochi_hostname>)."""
     resolved_token = token or load_workspace_token()
     if not resolved_token:
         raise click.ClickException(
@@ -198,7 +198,7 @@ def heartbeat_status(
         envelope = {
             "agent": name,
             "found": False,
-            "hostname": socket.gethostname(),
+            "orochi_hostname": socket.gethostname(),
         }
         click.echo(json.dumps(envelope, separators=(",", ":")))
         sys.exit(1)

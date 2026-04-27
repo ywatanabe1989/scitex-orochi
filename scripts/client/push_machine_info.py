@@ -10,7 +10,7 @@ Idempotent. Designed to be run from cron / systemd timer every N minutes,
 or as `--loop 300` for a long-running daemon-style process.
 
 Host identity follows the fleet convention:
-    HOST = ${SCITEX_OROCHI_HOSTNAME:-$(hostname -s)}
+    HOST = ${SCITEX_OROCHI_HOSTNAME:-$(orochi_hostname -s)}
 
 Hub endpoint: override via --url or $SCITEX_OROCHI_HUB_URL. If neither is
 set, the script only writes NDJSON — safe no-op for initial rollout.

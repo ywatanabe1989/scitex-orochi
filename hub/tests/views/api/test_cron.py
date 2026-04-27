@@ -336,13 +336,13 @@ class ApiCronTest(TestCase):
 
     def test_host_key_falls_back_to_hostname_when_machine_absent(self):
         """If a heartbeat omits ``orochi_machine`` we still produce a row
-        (``hostname`` fallback) instead of silently dropping it.
+        (``orochi_hostname`` fallback) instead of silently dropping it.
         """
         self._post_heartbeat(
             {
                 "token": self.token.token,
                 "name": "bare-agent",
-                "hostname": "bare-host.example",
+                "orochi_hostname": "bare-host.example",
                 "cron_jobs": [],
             }
         )

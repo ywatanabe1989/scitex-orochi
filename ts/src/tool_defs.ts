@@ -297,7 +297,7 @@ export const TOOL_DEFS = [
         dst_host: {
           type: "string",
           description:
-            "Destination SSH hostname. One of: mba, nas, ywata-note-win, spartan.",
+            "Destination SSH orochi_hostname. One of: mba, nas, ywata-note-win, spartan.",
         },
         dst_path: {
           type: "string",

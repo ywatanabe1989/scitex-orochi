@@ -115,7 +115,7 @@ def listen(ctx: click.Context, channel: str | None, as_json: bool) -> None:
 @click.option(
     "--name",
     default=None,
-    help="Agent name (default: $SCITEX_OROCHI_AGENT or hostname).",
+    help="Agent name (default: $SCITEX_OROCHI_AGENT or orochi_hostname).",
 )
 @click.option(
     "--channels", default=None, help="Comma-separated channels (default: #general)."

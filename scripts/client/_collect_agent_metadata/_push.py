@@ -56,11 +56,11 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "agent_id": meta["agent"],
         "role": "agent",
         "orochi_machine": meta.get("orochi_machine", ""),
-        # Live hostname(1) — authoritative per-process identity. Client-
+        # Live orochi_hostname(1) — authoritative per-process identity. Client-
         # supplied via ``collect()`` from ``socket.gethostname()``; never
         # derived from env or server-side inference. Root fix for the
         # proj-neurovista/mba misreport (lead msg#15578).
-        "hostname": meta.get("hostname", ""),
+        "orochi_hostname": meta.get("orochi_hostname", ""),
         "orochi_hostname_canonical": meta.get("orochi_hostname_canonical", ""),
         "orochi_model": meta.get("orochi_model", ""),
         "multiplexer": meta.get("multiplexer", ""),

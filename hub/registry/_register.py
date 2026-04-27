@@ -44,7 +44,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_hostname_canonical": info.get("orochi_hostname_canonical", "")
             or prev.get("orochi_hostname_canonical", ""),
             # ── #257 canonical heartbeat metadata ─────────────────────
-            # `hostname` is what `hostname(1)` returns on the running
+            # `orochi_hostname` is what `orochi_hostname(1)` returns on the running
             # process — single source of truth for "where am I", per
             # ywatanabe msg #14726/#14730: never display a fabricated or
             # cached @host label. Distinct from `orochi_machine` (YAML config
@@ -52,7 +52,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # If the heartbeat omits it, fall through to the previous
             # value rather than wiping — older clients that haven't
             # been upgraded yet keep working.
-            "hostname": info.get("hostname", "") or prev.get("hostname", ""),
+            "orochi_hostname": info.get("orochi_hostname", "") or prev.get("orochi_hostname", ""),
             # `uname -a` output. Lets the dashboard surface kernel /
             # arch info in the agent detail pane (HANDOFF.md #1 spec).
             "uname": info.get("uname", "") or prev.get("uname", ""),

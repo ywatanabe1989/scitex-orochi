@@ -16,12 +16,12 @@ MACHINES_YAML_FIXTURE = textwrap.dedent(
     """\
     machines:
       - canonical_name: mba
-        hostname: mba-host
+        orochi_hostname: mba-host
         aliases: [head-mba]
         fleet_role: {role: head}
         expected_tmux_sessions: [head-mba, healer-mba]
       - canonical_name: nas
-        hostname: nas-host
+        orochi_hostname: nas-host
         aliases: [head-nas]
         fleet_role: {role: head}
         expected_tmux_sessions: [head-nas]

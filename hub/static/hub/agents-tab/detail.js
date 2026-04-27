@@ -125,7 +125,7 @@ function _renderAgentDetail(a) {
         ? "short label · canonical FQDN reported by the heartbeat"
         : machineCanonical
           ? "FQDN is just the short label + redundant mDNS suffix; hidden"
-          : "hostname the agent is running on (short label — no FQDN reported)",
+          : "orochi_hostname the agent is running on (short label — no FQDN reported)",
     ],
     [
       "Model",

@@ -111,7 +111,7 @@ if [[ "$MODE" == "--dry-run-once" ]]; then
 fi
 
 SELF_PANE_ID="${TMUX_PANE:-}"
-HOST="$(hostname -s)"
+HOST="$(orochi_hostname -s)"
 BOOT_EPOCH="$(date +%s)"
 
 mkdir -p "$(dirname "$LOG")" "$STATE_DIR"

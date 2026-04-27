@@ -9,19 +9,19 @@ was two-fold:
 1. Client-side: ``resolve_machine_label()`` (Python) and the
    ``connection.ts`` / ``heartbeat.ts`` (TS) heartbeat builders
    prioritised ``$SCITEX_OROCHI_HOSTNAME`` / ``$SCITEX_OROCHI_MACHINE``
-   env vars OVER the live ``hostname()`` call. A stale env var
+   env vars OVER the live ``orochi_hostname()`` call. A stale env var
    inherited into a spartan process (e.g. from a shared tmux env or
    sac launcher that originally ran on mba) would silently override
    the real host identity.
 
 2. Hub-side: ``hub/registry/_payload.py::get_agents()`` never exposed
-   the ``hostname`` field in the dashboard payload, so the frontend
+   the ``orochi_hostname`` field in the dashboard payload, so the frontend
    badge (``hostedAgentName``) always fell through to ``orochi_machine`` —
-   meaning the lead's #257 work (capturing ``hostname`` distinct from
+   meaning the lead's #257 work (capturing ``orochi_hostname`` distinct from
    ``orochi_machine``) was never reaching the UI.
 
 The fix is "agents set their ``host`` field in heartbeat from their
-own ``hostname()`` call, never from server-side auth/inference, and
+own ``orochi_hostname()`` call, never from server-side auth/inference, and
 the hub forwards that field unchanged to the dashboard."
 
 These tests guard against regression on the hub-side half: an agent
@@ -44,7 +44,7 @@ from hub.registry import (
 
 
 class ClientSuppliedHostnameTest(TestCase):
-    """``register_agent`` accepts + round-trips the ``hostname`` field."""
+    """``register_agent`` accepts + round-trips the ``orochi_hostname`` field."""
 
     def setUp(self):
         _agents.clear()
@@ -58,23 +58,23 @@ class ClientSuppliedHostnameTest(TestCase):
             workspace_id=1,
             info={
                 "orochi_machine": "spartan",
-                "hostname": "spartan",
+                "orochi_hostname": "spartan",
             },
         )
         rows = [a for a in get_agents(workspace_id=1) if a["name"] == "proj-neurovista"]
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["hostname"], "spartan")
+        self.assertEqual(rows[0]["orochi_hostname"], "spartan")
         self.assertEqual(rows[0]["orochi_machine"], "spartan")
 
     def test_hostname_distinct_from_machine_preserved(self):
-        """When ``orochi_machine`` and ``hostname`` disagree (e.g. an agent
+        """When ``orochi_machine`` and ``orochi_hostname`` disagree (e.g. an agent
         whose YAML-config host label drifted from the live process
         host), the hub preserves both verbatim so the frontend can
-        prefer the authoritative ``hostname`` signal.
+        prefer the authoritative ``orochi_hostname`` signal.
 
         This is the direct regression case for the proj-neurovista
         bug: orochi_machine label might say ``mba`` (stale env) but
-        hostname must report ``spartan`` because that's what the
+        orochi_hostname must report ``spartan`` because that's what the
         kernel said."""
         register_agent(
             "proj-neurovista",
@@ -83,8 +83,8 @@ class ClientSuppliedHostnameTest(TestCase):
                 # Simulate the buggy client that reported the wrong
                 # orochi_machine label due to env pollution.
                 "orochi_machine": "mba",
-                # And the live hostname the kernel actually returned.
-                "hostname": "spartan",
+                # And the live orochi_hostname the kernel actually returned.
+                "orochi_hostname": "spartan",
             },
         )
         rows = [a for a in get_agents(workspace_id=1) if a["name"] == "proj-neurovista"]
@@ -92,10 +92,10 @@ class ClientSuppliedHostnameTest(TestCase):
         # Both fields round-trip verbatim — the hub never rewrites
         # either one based on auth or server-side inference.
         self.assertEqual(rows[0]["orochi_machine"], "mba")
-        self.assertEqual(rows[0]["hostname"], "spartan")
+        self.assertEqual(rows[0]["orochi_hostname"], "spartan")
 
     def test_hostname_missing_defaults_to_empty_string(self):
-        """Legacy agents that never report ``hostname`` produce an
+        """Legacy agents that never report ``orochi_hostname`` produce an
         empty string in the payload, not ``None`` — the frontend
         string-concatenation paths treat the two identically but
         JSON consumers may not."""
@@ -105,12 +105,12 @@ class ClientSuppliedHostnameTest(TestCase):
             info={"orochi_machine": "mba"},
         )
         rows = [a for a in get_agents(workspace_id=1) if a["name"] == "legacy-agent"]
-        self.assertEqual(rows[0]["hostname"], "")
+        self.assertEqual(rows[0]["orochi_hostname"], "")
         self.assertEqual(rows[0]["orochi_machine"], "mba")
 
 
 class HostnameFromRestPushTest(TestCase):
-    """``POST /api/agents/register/`` honours client-supplied ``hostname``
+    """``POST /api/agents/register/`` honours client-supplied ``orochi_hostname``
     regardless of which workspace token authenticated the request.
 
     This is the *auth-independence* half of the fix: the hub must not
@@ -147,7 +147,7 @@ class HostnameFromRestPushTest(TestCase):
             {
                 "name": "proj-neurovista",
                 "orochi_machine": "spartan",
-                "hostname": "spartan",
+                "orochi_hostname": "spartan",
             },
         )
         self.assertEqual(resp.status_code, 200)
@@ -156,7 +156,7 @@ class HostnameFromRestPushTest(TestCase):
             if a["name"] == "proj-neurovista"
         ]
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["hostname"], "spartan")
+        self.assertEqual(rows[0]["orochi_hostname"], "spartan")
         self.assertEqual(rows[0]["orochi_machine"], "spartan")
 
     def test_hostname_not_inferred_from_token(self):
@@ -175,7 +175,7 @@ class HostnameFromRestPushTest(TestCase):
                 "name": "proj-neurovista",
                 # ...but report the real host from the live process.
                 "orochi_machine": "spartan",
-                "hostname": "spartan",
+                "orochi_hostname": "spartan",
             },
         )
         self.assertEqual(resp.status_code, 200)
@@ -183,7 +183,7 @@ class HostnameFromRestPushTest(TestCase):
             a for a in get_agents(workspace_id=self.ws.id)
             if a["name"] == "proj-neurovista"
         ]
-        self.assertEqual(rows[0]["hostname"], "spartan")
+        self.assertEqual(rows[0]["orochi_hostname"], "spartan")
         # And the ``orochi_machine`` YAML label the client sent is also kept
         # verbatim — the hub does not rewrite either field.
         self.assertEqual(rows[0]["orochi_machine"], "spartan")
@@ -197,7 +197,7 @@ class HostnameFromRestPushTest(TestCase):
             {
                 "name": "proj-neurovista",
                 "orochi_machine": "spartan",
-                "hostname": "spartan",
+                "orochi_hostname": "spartan",
             },
         )
         # A second heartbeat arrives — same host, different token
@@ -207,17 +207,17 @@ class HostnameFromRestPushTest(TestCase):
             {
                 "name": "proj-neurovista",
                 "orochi_machine": "spartan",
-                "hostname": "spartan",
+                "orochi_hostname": "spartan",
             },
         )
         rows = [
             a for a in get_agents(workspace_id=self.ws.id)
             if a["name"] == "proj-neurovista"
         ]
-        self.assertEqual(rows[0]["hostname"], "spartan")
+        self.assertEqual(rows[0]["orochi_hostname"], "spartan")
 
     def test_hostname_omitted_preserved_across_reregister(self):
-        """A heartbeat that omits ``hostname`` must NOT wipe a
+        """A heartbeat that omits ``orochi_hostname`` must NOT wipe a
         previously-captured value. Matches the prev-preserve pattern
         already used for the rest of the #257 metadata fields."""
         self._post(
@@ -225,10 +225,10 @@ class HostnameFromRestPushTest(TestCase):
             {
                 "name": "proj-neurovista",
                 "orochi_machine": "spartan",
-                "hostname": "spartan",
+                "orochi_hostname": "spartan",
             },
         )
-        # Legacy client that doesn't know about ``hostname``.
+        # Legacy client that doesn't know about ``orochi_hostname``.
         self._post(
             self.token_a.token,
             {
@@ -240,4 +240,4 @@ class HostnameFromRestPushTest(TestCase):
             a for a in get_agents(workspace_id=self.ws.id)
             if a["name"] == "proj-neurovista"
         ]
-        self.assertEqual(rows[0]["hostname"], "spartan")
+        self.assertEqual(rows[0]["orochi_hostname"], "spartan")

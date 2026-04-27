@@ -45,13 +45,13 @@ async def handle_register(consumer, content):
         "agent_id": payload.get("agent_id", consumer.agent_name),
         "project": payload.get("project", ""),
         "orochi_machine": payload.get("orochi_machine", ""),
-        # #257 / lead msg#15578 — live hostname(1) reported by the
+        # #257 / lead msg#15578 — live orochi_hostname(1) reported by the
         # client. Never derived from auth / source IP on the hub side;
         # always what the agent process's own ``socket.gethostname()``
-        # / ``os.hostname()`` returned. Surfaced in the dashboard
+        # / ``os.orochi_hostname()`` returned. Surfaced in the dashboard
         # payload as the authoritative "where is this agent running"
         # field (distinct from the YAML ``orochi_machine`` config label).
-        "hostname": payload.get("hostname", ""),
+        "orochi_hostname": payload.get("orochi_hostname", ""),
         # todo#55: canonical FQDN from the heartbeat (display-only).
         "orochi_hostname_canonical": payload.get("orochi_hostname_canonical", ""),
         "role": payload.get("role", ""),

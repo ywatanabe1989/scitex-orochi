@@ -19,7 +19,7 @@ DELAY_BETWEEN=10  # seconds between agent starts to avoid reconnect storm
 ts() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
 
 # Detect current host
-HOSTNAME=$(hostname -s 2>/dev/null || hostname)
+HOSTNAME=$(orochi_hostname -s 2>/dev/null || orochi_hostname)
 case "$HOSTNAME" in
   *mba*|*MacBook*) HOST="mba" ;;
   *nas*|*UGREEN*)  HOST="nas" ;;

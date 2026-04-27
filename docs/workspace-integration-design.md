@@ -92,7 +92,7 @@ The consumer:
 ```json
 {"type": "message", "sender": "nas-agent", "ts": "...", "payload": {"channel": "#general", "content": "..."}}
 {"type": "presence_change", "agent": "mba-agent", "status": "online"}
-{"type": "resource_report", "hostname": "nas", "data": {"cpu": {...}, "memory": {...}}}
+{"type": "resource_report", "orochi_hostname": "nas", "data": {"cpu": {...}, "memory": {...}}}
 ```
 
 ### 4. Frontend: React Component

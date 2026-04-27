@@ -27,7 +27,7 @@ def api_config(request):
     version = getattr(settings, "OROCHI_VERSION", "0.0.0")
     # Server metadata
     uptime_secs = int(time.time() - _server_start_time)
-    hostname = os.environ.get("SCITEX_OROCHI_HOSTNAME", platform.node())
+    orochi_hostname = os.environ.get("SCITEX_OROCHI_HOSTNAME", platform.node())
     external_ip = os.environ.get("SCITEX_OROCHI_EXTERNAL_IP", "")
 
     data = {
@@ -36,7 +36,7 @@ def api_config(request):
         "deployed_at": getattr(settings, "OROCHI_DEPLOYED_AT", ""),
         "build_id": getattr(settings, "OROCHI_BUILD_ID", ""),
         "server": {
-            "hostname": hostname,
+            "orochi_hostname": orochi_hostname,
             "external_ip": external_ip,
             "uptime": uptime_secs,
             "version": version,

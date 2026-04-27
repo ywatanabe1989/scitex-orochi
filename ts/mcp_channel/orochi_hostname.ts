@@ -2,25 +2,25 @@
  * Canonical host-identity resolution for Orochi heartbeats.
  *
  * Mirrors the Python ``_collect_agent_metadata._machine.resolve_machine_label`` and
- * ``scripts/client/resolve-hostname`` logic so TS clients produce the same
+ * ``scripts/client/resolve-orochi_hostname`` logic so TS clients produce the same
  * ``mba`` / ``nas`` / ``spartan`` / ``ywata-note-win`` label as the
  * Python-side heartbeat.
  *
  * Resolution order (first non-empty wins):
- *   1. Live ``os.hostname()`` (short form), mapped through
+ *   1. Live ``os.orochi_hostname()`` (short form), mapped through
  *      ``spec.hostname_aliases`` from ``~/.scitex/orochi/shared/config.yaml``
  *      when an entry matches — e.g. ``Yusukes-MacBook-Air`` → ``mba``.
- *   2. Raw short ``os.hostname()`` — if no alias entry matches, use the
- *      live hostname verbatim. This is the proof-of-life identity:
+ *   2. Raw short ``os.orochi_hostname()`` — if no alias entry matches, use the
+ *      live orochi_hostname verbatim. This is the proof-of-life identity:
  *      whatever the kernel says this process is running on.
  *   3. Env fallback (``SCITEX_OROCHI_HOSTNAME`` / ``SCITEX_OROCHI_MACHINE``
  *      / ``SCITEX_AGENT_CONTAINER_HOSTNAME``) — only honoured when
- *      ``hostname()`` returned an empty string. An env override that
- *      disagrees with a populated live hostname is ignored on purpose;
+ *      ``orochi_hostname()`` returned an empty string. An env override that
+ *      disagrees with a populated live orochi_hostname is ignored on purpose;
  *      that is how a stale ``mba`` env leaked into a spartan process
  *      before PR#309 (lead msg#15578).
  *
- * PR#309 flipped priority so ``hostname()`` beats env vars. That fix
+ * PR#309 flipped priority so ``orochi_hostname()`` beats env vars. That fix
  * reintroduced a different regression (ywatanabe msg#16102): raw host
  * names like ``Yusukes-MacBook-Air`` were shown on the Agents dashboard
  * instead of the canonical fleet short name ``mba``, because the TS
@@ -28,7 +28,7 @@
  * resolver had always applied. This module restores alias application
  * so the resolution order matches the shared config contract.
  */
-import { hostname as osHostname, homedir } from "os";
+import { orochi_hostname as osHostname, homedir } from "os";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
@@ -43,12 +43,12 @@ const DEFAULT_CONFIG_PATH = join(
 /**
  * Parse ``spec.hostname_aliases`` out of the shared config YAML without
  * pulling in a full YAML dependency. The aliases block is a flat
- * ``key: value`` mapping (raw-hostname → canonical-short-name) and the
+ * ``key: value`` mapping (raw-orochi_hostname → canonical-short-name) and the
  * shared/config.yaml is tiny, so a tolerant line scanner is sufficient
  * — we never round-trip, never edit, only read known-shape entries.
  *
  * Returns an empty dict on any parse problem; host-identity resolution
- * must always succeed via the raw hostname fallback even if the config
+ * must always succeed via the raw orochi_hostname fallback even if the config
  * file is missing or malformed.
  */
 export function loadHostnameAliases(
@@ -110,7 +110,7 @@ export function loadHostnameAliases(
  * Return the canonical fleet-orochi_machine label for THIS host.
  *
  * See module docstring for full resolution order. Env fallbacks are
- * honoured only when the live hostname is empty.
+ * honoured only when the live orochi_hostname is empty.
  */
 export function resolveHostLabel(opts?: {
   configPath?: string;
@@ -129,7 +129,7 @@ export function resolveHostLabel(opts?: {
     }
     return raw;
   }
-  // ``hostname()`` returned empty — only now trust the env overrides.
+  // ``orochi_hostname()`` returned empty — only now trust the env overrides.
   return (
     (env.SCITEX_OROCHI_HOSTNAME || "").trim() ||
     (env.SCITEX_OROCHI_MACHINE || "").trim() ||

@@ -58,11 +58,11 @@ if [[ -x /opt/homebrew/bin/brew ]] && ! command -v node >/dev/null 2>&1; then
     eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || true
 fi
 
-# -- 1. Canonical hostname ----------------------------------------------------
-# Resolution order (via shared/scripts/resolve-hostname helper):
+# -- 1. Canonical orochi_hostname ----------------------------------------------------
+# Resolution order (via shared/scripts/resolve-orochi_hostname helper):
 #   1. $SCITEX_OROCHI_HOSTNAME env var (manual override)
-#   2. hostname_aliases[$(hostname -s)] from shared/config.yaml
-#   3. $(hostname -s) itself (identity fallback)
+#   2. hostname_aliases[$(orochi_hostname -s)] from shared/config.yaml
+#   3. $(orochi_hostname -s) itself (identity fallback)
 
 # -- Script root discovery ---------------------------------------------------
 # Resolve this script's own dir (install/), then walk up to scripts/client.
@@ -75,12 +75,12 @@ SCRIPTS_ROOT="$(cd "${_BOOTSTRAP_DIR}/.." && pwd)"
 DOTFILES_ROOT="${HOME}/.dotfiles/src/.scitex/orochi"
 DEPLOY_ROOT="${HOME}/.scitex/orochi"
 
-HOST="$("${SCRIPTS_ROOT}/resolve-hostname" 2>/dev/null || true)"
+HOST="$("${SCRIPTS_ROOT}/resolve-orochi_hostname" 2>/dev/null || true)"
 if [[ -z "$HOST" ]]; then
-    HOST="${SCITEX_OROCHI_HOSTNAME:-$(hostname -s)}"
+    HOST="${SCITEX_OROCHI_HOSTNAME:-$(orochi_hostname -s)}"
 fi
 if [[ -z "$HOST" ]]; then
-    err "could not resolve hostname"
+    err "could not resolve orochi_hostname"
     exit 1
 fi
 log "canonical host: $HOST"

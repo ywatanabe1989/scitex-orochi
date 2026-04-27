@@ -213,7 +213,7 @@ async def _connect_loop(
         from urllib.parse import urlparse
 
         parsed = urlparse(discovered["http_url"])
-        discovered_host = parsed.hostname or ""
+        discovered_host = parsed.orochi_hostname or ""
         if discovered_host:
             # Prepend discovered host so it's tried first, keep originals as fallback
             hosts = [discovered_host] + [

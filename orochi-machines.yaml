@@ -17,7 +17,7 @@
 #   (`mba`, `nas`, `spartan`, `ywata-note-win`). This MUST match the
 #   `SCITEX_AGENT_LOCAL_HOSTS` entry seeded by host_identity.py (#294).
 # - aliases: every other string this host legitimately answers to. Must
-#   include the OS hostname so is_local_host() auto-detects via seed match.
+#   include the OS orochi_hostname so is_local_host() auto-detects via seed match.
 # - bastion_hostname: the Cloudflare tunnel public name agreed in msg#8226
 #   (`bastion-<canonical>.scitex-orochi.com`).
 # - autostart: which init system spawns the head agent at boot.
@@ -33,7 +33,7 @@ metadata:
 machines:
   # ---------------------------------------------------------------------------
   - canonical_name: mba
-    hostname: Yusukes-MacBook-Air.local
+    orochi_hostname: Yusukes-MacBook-Air.local
     aliases:
       - mba
       - head-mba
@@ -62,7 +62,7 @@ machines:
       reverse_tunnel_terminus: ~
     bastion:
       tunnel_name: scitex-orochi
-      hostname: bastion-mba.scitex-orochi.com
+      orochi_hostname: bastion-mba.scitex-orochi.com
       cloudflared_running: true
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all)
@@ -99,7 +99,7 @@ machines:
 
   # ---------------------------------------------------------------------------
   - canonical_name: nas
-    hostname: DXP480TPLUS-994
+    orochi_hostname: DXP480TPLUS-994
     aliases:
       - nas
       - ugreen
@@ -136,7 +136,7 @@ machines:
     bastion:
       tunnel_name: bastion-nas
       tunnel_id: c0c1f31d-8a0c-4dda-a3fc-0770a665ace9
-      hostname: bastion-nas.scitex-orochi.com
+      orochi_hostname: bastion-nas.scitex-orochi.com
       cloudflared_running: true
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all)
@@ -159,7 +159,7 @@ machines:
 
   # ---------------------------------------------------------------------------
   - canonical_name: spartan
-    hostname: spartan-login1
+    orochi_hostname: spartan-login1
     aliases:
       - spartan
       - spartan-login1
@@ -191,7 +191,7 @@ machines:
       reverse_tunnel_terminus: ~
     bastion:
       tunnel_name: bastion-spartan
-      hostname: bastion-spartan.scitex-orochi.com
+      orochi_hostname: bastion-spartan.scitex-orochi.com
       cloudflared_running: false   # tier-2, requires HPC admin policy verification
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all). Minimal roster on spartan
@@ -209,7 +209,7 @@ machines:
 
   # ---------------------------------------------------------------------------
   - canonical_name: ywata-note-win
-    hostname: ywata-note-win    # WSL hostname inside the distribution
+    orochi_hostname: ywata-note-win    # WSL orochi_hostname inside the distribution
     aliases:
       - ywata-note-win
       - ywata-note-win.local
@@ -244,7 +244,7 @@ machines:
           terminus: 1229
     bastion:
       tunnel_name: bastion-ywata-note-win
-      hostname: bastion-ywata-note-win.scitex-orochi.com
+      orochi_hostname: bastion-ywata-note-win.scitex-orochi.com
       cloudflared_running: false   # tier-3, future
     expected_tmux_sessions:
       # Per-host gateway + healer (hosts: all). Other fleet-wide agents may

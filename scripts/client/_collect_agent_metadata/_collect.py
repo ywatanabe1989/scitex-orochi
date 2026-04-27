@@ -132,7 +132,7 @@ def collect(agent: str) -> dict:
     # and mis-fire `stale` after 2 real cycles instead of 3). The
     # `agent` kwarg enables cross-cycle stagnation tracking; omit it
     # and the classifier degrades to its legacy stateless behavior.
-    # Live hostname(1) — the kernel's answer to "where is this process
+    # Live orochi_hostname(1) — the kernel's answer to "where is this process
     # running right now". This is the authoritative host-identity signal
     # the hub's badge renderer (hostedAgentName) prefers over ``orochi_machine``.
     # Collected here so ``_build_payload`` can forward it unconditionally,
@@ -245,11 +245,11 @@ def collect(agent: str) -> dict:
         "workdir": workspace,
         "project": project,
         "orochi_machine": orochi_machine,
-        # Live hostname(1) — see the comment above live_hostname for why
-        # we send this unconditionally. The hub stores this as ``hostname``
+        # Live orochi_hostname(1) — see the comment above live_hostname for why
+        # we send this unconditionally. The hub stores this as ``orochi_hostname``
         # distinct from ``orochi_machine`` (YAML label) and
         # ``orochi_hostname_canonical`` (FQDN).
-        "hostname": live_hostname,
+        "orochi_hostname": live_hostname,
         # todo#55: canonical FQDN for display next to the short orochi_machine
         # label in the dashboard.
         "orochi_hostname_canonical": _resolve_canonical_hostname(),

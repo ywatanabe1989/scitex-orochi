@@ -75,7 +75,7 @@ def _probe_https(url: str, timeout: float) -> dict[str, Any]:
 def _probe_tls(wss_url: str, timeout: float) -> dict[str, Any]:
     """TLS-level reachability for the WS endpoint (no actual WS handshake)."""
     parsed = urlparse(wss_url)
-    host = parsed.hostname or ""
+    host = parsed.orochi_hostname or ""
     port = parsed.port or (443 if parsed.scheme in ("wss", "https") else 80)
     t0 = time.perf_counter()
     try:

@@ -6,7 +6,7 @@
  */
 import WebSocket from "ws";
 import type { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { hostname, homedir } from "os";
+import { orochi_hostname, homedir } from "os";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
@@ -102,19 +102,19 @@ function onOpen(ws: WebSocket): void {
   // Register with the hub.
   //
   // Host identity source order (lead msg#15578 root fix):
-  //   1. Live ``hostname()`` — the kernel's answer to "where am I
+  //   1. Live ``orochi_hostname()`` — the kernel's answer to "where am I
   //      running right now". Always trusted when non-empty.
   //   2. ``SCITEX_OROCHI_*`` env vars — explicit override, only honoured
-  //      if ``hostname()`` is empty (e.g. stripped container).
+  //      if ``orochi_hostname()`` is empty (e.g. stripped container).
   //
   // Previously the env vars were primary, which caused the
   // proj-neurovista misreport: a stale ``SCITEX_OROCHI_HOSTNAME=mba``
   // inherited from the shell/tmux env of the process that spawned the
   // agent overrode the real host identity, so an agent running on
   // spartan reported itself as mba. Per the lead fix: the agent sets
-  // its ``host`` field from its own ``hostname()``, never from
+  // its ``host`` field from its own ``orochi_hostname()``, never from
   // inherited env or server-side inference.
-  const _liveHostname = hostname() || "";
+  const _liveHostname = orochi_hostname() || "";
   const _machine =
     _liveHostname ||
     process.env.SCITEX_OROCHI_MACHINE ||
@@ -127,11 +127,11 @@ function onOpen(ws: WebSocket): void {
       sender: OROCHI_AGENT,
       payload: {
         orochi_machine: _machine,
-        // Live hostname(1) surfaced separately from ``orochi_machine`` so the
+        // Live orochi_hostname(1) surfaced separately from ``orochi_machine`` so the
         // hub / frontend can render the authoritative ``<name>@<host>``
         // badge directly from the kernel's answer, bypassing any
         // env-var-driven ``orochi_machine`` override.
-        hostname: _liveHostname,
+        orochi_hostname: _liveHostname,
         role: process.env.SCITEX_OROCHI_ROLE || "claude-code",
         orochi_model: OROCHI_MODEL,
         multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",

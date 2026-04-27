@@ -311,7 +311,7 @@ emit_connectivity_row() {
 
     {
         printf '{"ts":"%s","from":"nas","from_hostname":"%s","to":{' \
-            "$ts" "$(hostname -s 2>/dev/null || hostname)"
+            "$ts" "$(orochi_hostname -s 2>/dev/null || orochi_hostname)"
         local first=1
         for h in "${HOSTS[@]}"; do
             local route="direct"

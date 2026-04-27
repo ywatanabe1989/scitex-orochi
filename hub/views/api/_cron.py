@@ -64,7 +64,7 @@ HEARTBEAT_STALE_THRESHOLD_S = 600
 
 
 def _host_key(agent_row: dict) -> str:
-    """Prefer the short ``orochi_machine`` label, fall back to ``hostname`` then agent name.
+    """Prefer the short ``orochi_machine`` label, fall back to ``orochi_hostname`` then agent name.
 
     The Machines tab keys cards by ``orochi_machine`` (e.g. "mba", "nas") so we
     do the same here — a head and its per-host workers collapse to one
@@ -72,7 +72,7 @@ def _host_key(agent_row: dict) -> str:
     """
     return (
         (agent_row.get("orochi_machine") or "").strip()
-        or (agent_row.get("hostname") or "").strip()
+        or (agent_row.get("orochi_hostname") or "").strip()
         or agent_row.get("name", "")
     )
 
@@ -113,7 +113,7 @@ def api_cron(request):
     "no hosts reporting" placeholder in that case.
 
     Collision strategy when multiple agents report from the same orochi_machine
-    (e.g. head-mba + healer-mba + the nas head sharing a hostname):
+    (e.g. head-mba + healer-mba + the nas head sharing a orochi_hostname):
     the newest non-empty ``cron_jobs`` wins. Heads are the authoritative
     cron-job source (Phase 1 installs the daemon on heads only), so this
     naturally picks the head's view without hardcoding ``role == "head"``.

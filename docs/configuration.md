@@ -30,11 +30,11 @@ All configuration is via `SCITEX_OROCHI_*` environment variables.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SCITEX_OROCHI_AGENT` | `mcp-<hostname>` | Agent display name |
+| `SCITEX_OROCHI_AGENT` | `mcp-<orochi_hostname>` | Agent display name |
 | `SCITEX_OROCHI_TOKEN` | (empty) | Workspace token for authentication |
 | `SCITEX_OROCHI_AGENT_ROLE` | (empty) | Agent role (guards telegram sessions) |
 | `SCITEX_OROCHI_HUB` | `https://scitex-orochi.com` | Caduceus hub URL |
-| `SCITEX_OROCHI_CADUCEUS_HOST` | (hostname) | Caduceus self-reported hostname |
+| `SCITEX_OROCHI_CADUCEUS_HOST` | (orochi_hostname) | Caduceus self-reported orochi_hostname |
 | `SCITEX_OROCHI_CADUCEUS_NAME` | `caduceus@<host>` | Caduceus agent display name |
 
 </details>

@@ -97,14 +97,14 @@ def api_agents_register(request):
         info={
             "agent_id": body.get("agent_id") or name,
             "orochi_machine": body.get("orochi_machine", ""),
-            # #257 — live ``hostname(1)`` of the running agent process.
+            # #257 — live ``orochi_hostname(1)`` of the running agent process.
             # Authoritative "where am I" signal that the frontend badge
             # (hostedAgentName) prefers over ``orochi_machine``. Client-supplied
             # from the agent's own ``socket.gethostname()`` / Node
-            # ``os.hostname()`` — NEVER derived from the auth token or
+            # ``os.orochi_hostname()`` — NEVER derived from the auth token or
             # source IP on the hub side (lead msg#15578: server-side
             # inference was the bug we're fixing).
-            "hostname": body.get("hostname", ""),
+            "orochi_hostname": body.get("orochi_hostname", ""),
             # todo#55: canonical FQDN (socket.getfqdn()) from the heartbeat.
             "orochi_hostname_canonical": body.get("orochi_hostname_canonical", ""),
             "role": body.get("role", "agent"),

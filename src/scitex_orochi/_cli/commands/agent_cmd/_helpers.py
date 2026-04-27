@@ -101,7 +101,7 @@ def _derive_host(name: str) -> str:
 
     orochi_machine = parts[1]
 
-    # Check if this orochi_machine name matches the local hostname
+    # Check if this orochi_machine name matches the local orochi_hostname
     local_hostname = platform.node()
     # ywata-note-win running on ywata-note-win -> localhost
     if orochi_machine == local_hostname or orochi_machine in local_hostname:
@@ -130,7 +130,7 @@ def _is_local(host: str) -> bool:
 
 
 def _is_local_machine(host: str) -> bool:
-    """Check if host matches the local orochi_machine's hostname."""
+    """Check if host matches the local orochi_machine's orochi_hostname."""
     import platform
 
     local_hostname = platform.node()

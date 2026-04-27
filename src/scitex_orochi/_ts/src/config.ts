@@ -2,12 +2,12 @@
  * Orochi push client configuration -- environment-based settings.
  * All env vars use SCITEX_OROCHI_ prefix.
  */
-import { hostname } from "os";
+import { orochi_hostname } from "os";
 
 export const OROCHI_HOST = process.env.SCITEX_OROCHI_HOST || "192.168.0.102";
 export const OROCHI_PORT = parseInt(process.env.SCITEX_OROCHI_PORT || "8559");
 export const OROCHI_AGENT =
-  process.env.SCITEX_OROCHI_AGENT || `${hostname()}-claude`;
+  process.env.SCITEX_OROCHI_AGENT || `${orochi_hostname()}-claude`;
 // Channel subscriptions are server-authoritative: assigned at runtime via
 // MCP tools, REST API, or web UI. Agents register with no channels and
 // pick up their memberships from the server. No env var.

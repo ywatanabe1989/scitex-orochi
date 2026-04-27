@@ -94,7 +94,7 @@
             return m + "m";
           })(s.uptime || 0);
           var lines = [];
-          if (s.hostname)    lines.push('<span class="server-label">Host:</span><span class="server-value">' + s.hostname + '</span>');
+          if (s.orochi_hostname)    lines.push('<span class="server-label">Host:</span><span class="server-value">' + s.orochi_hostname + '</span>');
           if (s.external_ip) lines.push('<span class="server-label">IP:</span><span class="server-value">' + s.external_ip + '</span>');
           if (s.version)     lines.push('<span class="server-label">Ver:</span><span class="server-value">v' + s.version + '</span>');
           lines.push('<span class="server-label">Up:</span><span class="server-value">' + uptimeStr + '</span>');

@@ -35,7 +35,7 @@ def show(ctx: click.Context) -> None:
     payload = {
         "path": str(HOST_IDENTITY_PATH),
         "exists": HOST_IDENTITY_PATH.exists(),
-        "hostname": socket.gethostname(),
+        "orochi_hostname": socket.gethostname(),
         "fqdn": socket.getfqdn(),
         "aliases": data["aliases"],
     }
@@ -44,7 +44,7 @@ def show(ctx: click.Context) -> None:
         return
     click.echo(f"path:     {payload['path']}")
     click.echo(f"exists:   {payload['exists']}")
-    click.echo(f"hostname: {payload['hostname']}")
+    click.echo(f"orochi_hostname: {payload['orochi_hostname']}")
     click.echo(f"fqdn:     {payload['fqdn']}")
     click.echo("aliases:")
     for a in payload["aliases"]:
@@ -68,12 +68,12 @@ def init(extra_aliases: tuple[str, ...], force: bool) -> None:
         )
         sys.exit(1)
 
-    hostname = socket.gethostname()
+    orochi_hostname = socket.gethostname()
     aliases = sorted(
         {
             "localhost",
-            hostname,
-            hostname.split(".")[0],
+            orochi_hostname,
+            orochi_hostname.split(".")[0],
             socket.getfqdn(),
             *extra_aliases,
         }

@@ -149,7 +149,7 @@ def api_agent_detail(request, name: str):
           # #257 canonical heartbeat metadata — authoritative per-process
           # truth. Empty/None for legacy clients that haven't been
           # upgraded; UI falls back to `orochi_machine` until populated.
-          "hostname": str,               # `hostname(1)` of the running process
+          "orochi_hostname": str,               # `orochi_hostname(1)` of the running process
           "orochi_hostname_canonical": str,     # FQDN via socket.getfqdn()
           "uname": str,                  # `uname -a` output
           "instance_id": str,            # UUID set once at agent boot
@@ -221,13 +221,13 @@ def api_agent_detail(request, name: str):
         # next to the short `orochi_machine` label in the detail header.
         "orochi_hostname_canonical": agent.get("orochi_hostname_canonical", ""),
         # ── #257 canonical heartbeat metadata ─────────────────────────
-        # `hostname` is the authoritative `hostname(1)` of the running
+        # `orochi_hostname` is the authoritative `orochi_hostname(1)` of the running
         # process. The dashboard's `@host` label MUST be rendered from
         # this, not from `orochi_machine` (YAML config) — fabricated/cached
         # labels were the root of the ghost-mba bug (#256). Empty for
         # legacy clients that haven't been upgraded; UI falls back to
         # `orochi_machine` until the heartbeat carries it.
-        "hostname": agent.get("hostname", ""),
+        "orochi_hostname": agent.get("orochi_hostname", ""),
         "uname": agent.get("uname", ""),
         "instance_id": agent.get("instance_id", ""),
         "start_ts_unix": agent.get("start_ts_unix"),

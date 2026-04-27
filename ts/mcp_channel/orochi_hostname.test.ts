@@ -5,30 +5,30 @@
  * Two incidents shape these tests:
  *
  *   1. Lead msg#15578 — proj-neurovista displayed as mba on spartan
- *      because env vars beat ``hostname()``. PR#309 flipped the
- *      priority so ``hostname()`` wins.
+ *      because env vars beat ``orochi_hostname()``. PR#309 flipped the
+ *      priority so ``orochi_hostname()`` wins.
  *   2. ywatanabe msg#16102 — mba host displayed as the raw
  *      ``Yusukes-MacBook-Air`` on the Agents dashboard because PR#309
  *      skipped the ``hostname_aliases`` map that used to translate
  *      ``Yusukes-MacBook-Air`` → ``mba``. The follow-up fix restores
- *      alias application before the raw-hostname fallback.
+ *      alias application before the raw-orochi_hostname fallback.
  *
  * Final resolution order (first non-empty wins):
- *   1. ``hostname_aliases[hostname()]`` from shared/config.yaml.
- *   2. Raw short ``hostname()``.
+ *   1. ``hostname_aliases[orochi_hostname()]`` from shared/config.yaml.
+ *   2. Raw short ``orochi_hostname()``.
  *   3. Env fallback (``SCITEX_OROCHI_HOSTNAME`` /
  *      ``SCITEX_OROCHI_MACHINE`` /
  *      ``SCITEX_AGENT_CONTAINER_HOSTNAME``) — only when
- *      ``hostname()`` returns empty.
+ *      ``orochi_hostname()`` returns empty.
  *
- * Run with ``bun test ts/mcp_channel/hostname.test.ts``.
+ * Run with ``bun test ts/mcp_channel/orochi_hostname.test.ts``.
  */
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { writeFileSync, mkdtempSync, rmSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-import { resolveHostLabel, loadHostnameAliases } from "./hostname";
+import { resolveHostLabel, loadHostnameAliases } from "./orochi_hostname";
 
 let tmpConfigDir: string;
 let tmpConfigPath: string;
@@ -41,7 +41,7 @@ const ENV_KEYS = [
 let _savedEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
-  tmpConfigDir = mkdtempSync(join(tmpdir(), "orochi-hostname-test-"));
+  tmpConfigDir = mkdtempSync(join(tmpdir(), "orochi-orochi_hostname-test-"));
   tmpConfigPath = join(tmpConfigDir, "config.yaml");
   _savedEnv = {};
   for (const k of ENV_KEYS) {
@@ -118,7 +118,7 @@ describe("loadHostnameAliases", () => {
 });
 
 describe("resolveHostLabel", () => {
-  test("returns raw hostname when no alias entry and no env", () => {
+  test("returns raw orochi_hostname when no alias entry and no env", () => {
     writeConfig(SAMPLE_ALIASES_YAML);
     const result = resolveHostLabel({
       configPath: tmpConfigPath,
@@ -146,7 +146,7 @@ describe("resolveHostLabel", () => {
     expect(result).toBe("mba");
   });
 
-  test("env var ignored when live hostname is populated (msg#15578 regression)", () => {
+  test("env var ignored when live orochi_hostname is populated (msg#15578 regression)", () => {
     writeConfig(SAMPLE_ALIASES_YAML);
     const result = resolveHostLabel({
       configPath: tmpConfigPath,
@@ -158,7 +158,7 @@ describe("resolveHostLabel", () => {
     expect(result).toBe("spartan");
   });
 
-  test("FQDN reduced to the short-form hostname before lookup", () => {
+  test("FQDN reduced to the short-form orochi_hostname before lookup", () => {
     writeConfig(SAMPLE_ALIASES_YAML);
     const result = resolveHostLabel({
       configPath: tmpConfigPath,
@@ -167,7 +167,7 @@ describe("resolveHostLabel", () => {
     expect(result).toBe("spartan");
   });
 
-  test("env fallback honoured only when hostname is empty", () => {
+  test("env fallback honoured only when orochi_hostname is empty", () => {
     writeConfig(SAMPLE_ALIASES_YAML);
     const result = resolveHostLabel({
       configPath: tmpConfigPath,
@@ -208,13 +208,13 @@ describe("resolveHostLabel", () => {
         env: {
           SCITEX_AGENT_CONTAINER_HOSTNAME: "container-host",
           SCITEX_OROCHI_MACHINE: "orochi_machine-env",
-          SCITEX_OROCHI_HOSTNAME: "hostname-env",
+          SCITEX_OROCHI_HOSTNAME: "orochi_hostname-env",
         } as NodeJS.ProcessEnv,
       }),
-    ).toBe("hostname-env");
+    ).toBe("orochi_hostname-env");
   });
 
-  test("returns empty string when hostname is empty and no env set", () => {
+  test("returns empty string when orochi_hostname is empty and no env set", () => {
     writeConfig(SAMPLE_ALIASES_YAML);
     expect(
       resolveHostLabel({
@@ -225,12 +225,12 @@ describe("resolveHostLabel", () => {
     ).toBe("");
   });
 
-  test("raw hostname returned verbatim when config.yaml is missing", () => {
+  test("raw orochi_hostname returned verbatim when config.yaml is missing", () => {
     const result = resolveHostLabel({
       configPath: join(tmpConfigDir, "missing.yaml"),
       rawHostname: "Yusukes-MacBook-Air",
     });
-    // No alias map available → raw hostname verbatim.
+    // No alias map available → raw orochi_hostname verbatim.
     expect(result).toBe("Yusukes-MacBook-Air");
   });
 });

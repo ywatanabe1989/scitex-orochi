@@ -19,7 +19,7 @@ bootstrap-host.sh renders these into the deployed unit files:
 |---|---|---|
 | `@SAC@` | Absolute path to the `sac` CLI | `/home/ywatanabe/.venv-3.11/bin/sac` |
 | `@AGENT_META@` | Absolute path to `collect_agent_metadata.py` | `/home/ywatanabe/.scitex/orochi/shared/scripts/collect_agent_metadata.py` |
-| `@CANONICAL_HOST@` | Fleet label from `resolve-hostname` | `mba` / `nas` / `spartan` / `ywata-note-win` |
+| `@CANONICAL_HOST@` | Fleet label from `resolve-orochi_hostname` | `mba` / `nas` / `spartan` / `ywata-note-win` |
 
 ## Environment file
 

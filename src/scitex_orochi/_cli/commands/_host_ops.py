@@ -6,7 +6,7 @@ Provides the common building blocks that the shell scripts duplicated:
   ``orochi-machines.yaml`` with PyYAML (falling back to a tiny regex
   parser so the CLI still runs in a sparse interpreter).
 * ``resolve_self_host`` -- canonical fleet label for *this* box
-  (``SCITEX_OROCHI_HOSTNAME`` env > ``scripts/client/resolve-hostname``
+  (``SCITEX_OROCHI_HOSTNAME`` env > ``scripts/client/resolve-orochi_hostname``
   script > ``socket.gethostname()`` short form).
 * ``state_log_dirs`` -- OS-aware pair of (state_dir, log_dir) paths.
 * ``load_workspace_token`` -- env first, optional dotfiles secret file
@@ -65,7 +65,7 @@ def default_machines_yaml() -> Path:
 class MachineEntry:
     canonical_name: str
     role: str = ""
-    hostname: str = ""
+    orochi_hostname: str = ""
     aliases: tuple[str, ...] = ()
     expected_tmux_sessions: tuple[str, ...] = ()
 
@@ -104,14 +104,14 @@ def _regex_fallback_parse(text: str) -> list[MachineEntry]:
         name = mname.group(1).strip()
         sessions = _collect_list(blk, "expected_tmux_sessions")
         aliases = _collect_list(blk, "aliases")
-        hostname = _collect_scalar(blk, "hostname")
+        orochi_hostname = _collect_scalar(blk, "orochi_hostname")
         # fleet_role is nested so the scalar helper matches "role: head" too.
         role = ""
         m = re.search(r"role:\s*([A-Za-z0-9_.-]+)", blk)
         if m:
             role = m.group(1).strip()
-        if hostname and hostname not in aliases:
-            aliases.append(hostname)
+        if orochi_hostname and orochi_hostname not in aliases:
+            aliases.append(orochi_hostname)
         out.append(
             MachineEntry(
                 canonical_name=name,
@@ -155,9 +155,9 @@ def parse_all_machines(path: Path | None = None) -> list[MachineEntry]:
             role = (fleet_role.get("role") or "").strip()
         aliases_raw = m.get("aliases") or []
         aliases = [str(a) for a in aliases_raw if a]
-        hostname = (m.get("hostname") or "").strip()
-        if hostname and hostname not in aliases:
-            aliases.append(hostname)
+        orochi_hostname = (m.get("orochi_hostname") or "").strip()
+        if orochi_hostname and orochi_hostname not in aliases:
+            aliases.append(orochi_hostname)
         sessions = [
             str(s) for s in (m.get("expected_tmux_sessions") or []) if s
         ]
@@ -187,13 +187,13 @@ def resolve_self_host() -> str:
 
     Order matches the shell scripts:
       1. ``$SCITEX_OROCHI_HOSTNAME`` env (healer/init seeds this)
-      2. ``scripts/client/resolve-hostname`` helper (repo-local)
+      2. ``scripts/client/resolve-orochi_hostname`` helper (repo-local)
       3. ``socket.gethostname()`` short form
     """
     env = os.environ.get("SCITEX_OROCHI_HOSTNAME")
     if env:
         return env.strip()
-    helper = _repo_root_candidate() / "scripts" / "client" / "resolve-hostname"
+    helper = _repo_root_candidate() / "scripts" / "client" / "resolve-orochi_hostname"
     if helper.is_file() and os.access(helper, os.X_OK):
         try:
             out = subprocess.run(

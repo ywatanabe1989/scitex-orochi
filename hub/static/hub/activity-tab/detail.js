@@ -97,7 +97,7 @@ function _renderActivityAgentDetail(a, grid) {
       : _rawModel || "-";
   /* #257 + #261: surface the canonical heartbeat metadata so humans
    * scanning the detail pane can verify "where am I really running"
-   * at a glance. `Hostname` is the live hostname(1); distinct from
+   * at a glance. `Hostname` is the live orochi_hostname(1); distinct from
    * `Machine` (the YAML config label). `Instance` truncates the UUID
    * to 8 chars (full UUID is in dev tools). `Launch` renders as a
    * sigil so sac vs manual is obvious. Empty fields collapse to "-"
@@ -125,9 +125,9 @@ function _renderActivityAgentDetail(a, grid) {
   var metaFields = [
     ["Role", a.role || "agent"],
     ["Machine", _machineDisplay],
-    /* Live hostname(1). When this disagrees with Machine, the agent
+    /* Live orochi_hostname(1). When this disagrees with Machine, the agent
      * yaml is misconfigured (or the agent moved hosts). */
-    ["Hostname", a.hostname || "-"],
+    ["Hostname", a.orochi_hostname || "-"],
     ["Uname", a.uname || "-"],
     ["Instance", _instanceShort],
     ["Launch", _launchDisplay],

@@ -8,7 +8,7 @@ one ping round for all targets from this host, so downstream cross-correlation
 can detect partition asymmetry (A reaches B but B can't reach A).
 
 Host identity:
-    SOURCE = ${SCITEX_OROCHI_HOSTNAME:-$(hostname -s)}
+    SOURCE = ${SCITEX_OROCHI_HOSTNAME:-$(orochi_hostname -s)}
 
 Target list (ywata-note-win, mba, nas, spartan) overridable via --targets or
 $SCITEX_OROCHI_FLEET_HOSTS. Self-ping is always skipped.

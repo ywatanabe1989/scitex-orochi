@@ -79,7 +79,7 @@ case "$STRATEGY" in
         ;;
 esac
 
-if [ "$HOST" = "localhost" ] || [ "$HOST" = "$(hostname -s 2>/dev/null)" ] || [ "$HOST" = "nas" ]; then
+if [ "$HOST" = "localhost" ] || [ "$HOST" = "$(orochi_hostname -s 2>/dev/null)" ] || [ "$HOST" = "nas" ]; then
     EXEC_PREFIX=""
     EXEC_DESC="local"
 else

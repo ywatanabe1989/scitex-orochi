@@ -251,7 +251,7 @@
     var color = opts.isHuman ? "#fbbf24" : ident.color;
 
     /* Canonical layout, todo#305 Task 7 (lead msg#15548):
-     *   icon + star + eye + 4 LEDs + name@hostname
+     *   icon + star + eye + 4 LEDs + name@orochi_hostname
      * Matches the HTML agent-badge.js canonical order 1:1. */
     var iconHalf = iconSize / 2;
     var ledsWidth = 0;

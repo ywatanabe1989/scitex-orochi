@@ -85,7 +85,7 @@ def api_auto_dispatch_fire(request):
 
         {
           "token":    "wks_...",     # workspace token (or ?token=)
-          "head":     "<hostname>",  # e.g. "mba" → head-mba
+          "head":     "<orochi_hostname>",  # e.g. "mba" → head-mba
           "todo":     123,           # optional; override pick-helper result
           "reason":   "operator-manual"   # optional audit tag
         }

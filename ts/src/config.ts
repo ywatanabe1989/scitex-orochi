@@ -2,12 +2,12 @@
  * Orochi push client configuration -- environment-based settings.
  * All env vars use SCITEX_OROCHI_ prefix.
  */
-import { hostname } from "os";
+import { orochi_hostname } from "os";
 
 export const OROCHI_HOST = process.env.SCITEX_OROCHI_HOST || "192.168.0.102";
 export const OROCHI_PORT = parseInt(process.env.SCITEX_OROCHI_PORT || "8559");
 export const OROCHI_AGENT =
-  process.env.SCITEX_OROCHI_AGENT || `${hostname()}-claude`;
+  process.env.SCITEX_OROCHI_AGENT || `${orochi_hostname()}-claude`;
 // Channel subscriptions are server-authoritative: assigned at runtime via
 // MCP tools, REST API, or web UI. Agents register with no channels and
 // pick up their memberships from the server. No env var.
@@ -59,12 +59,12 @@ export function buildHttpBase(): string {
 /**
  * Return extra headers needed when the hub is accessed by IP.
  * Django rejects requests whose Host header doesn't match ALLOWED_HOSTS.
- * When SCITEX_OROCHI_URL contains a real hostname the browser-default Host
+ * When SCITEX_OROCHI_URL contains a real orochi_hostname the browser-default Host
  * header is fine; when we connect by raw IP we must override it.
  *
  * Set SCITEX_OROCHI_HOST_HEADER to the domain that Django accepts
  * (e.g. "scitex-orochi.com").  If unset and the URL contains a real
- * hostname, that hostname is used automatically.
+ * orochi_hostname, that orochi_hostname is used automatically.
  */
 export function buildFetchHeaders(
   extra?: Record<string, string>,
@@ -79,8 +79,8 @@ export function buildFetchHeaders(
       const parsed = new URL(
         OROCHI_URL.replace(/^ws/, "http"), // URL class needs http(s)
       );
-      // Only override when the hostname is NOT a bare IP address
-      if (!/^\d+\.\d+\.\d+\.\d+$/.test(parsed.hostname)) {
+      // Only override when the orochi_hostname is NOT a bare IP address
+      if (!/^\d+\.\d+\.\d+\.\d+$/.test(parsed.orochi_hostname)) {
         headers["Host"] = parsed.host; // includes port if non-default
       }
     } catch {

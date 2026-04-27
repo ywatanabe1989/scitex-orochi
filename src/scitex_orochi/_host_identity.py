@@ -14,9 +14,9 @@ Example file::
       - localhost
 
 If the file is absent, sensible defaults are derived from ``socket``:
-``hostname``, short hostname, FQDN, and the literals ``localhost`` / ``""``.
+``orochi_hostname``, short orochi_hostname, FQDN, and the literals ``localhost`` / ``""``.
 That keeps fresh installs working; an explicit file is recommended once
-the orochi_machine acquires SSH aliases that differ from its real hostname.
+the orochi_machine acquires SSH aliases that differ from its real orochi_hostname.
 """
 
 from __future__ import annotations
@@ -33,12 +33,12 @@ HOST_IDENTITY_PATH = Path.home() / ".scitex" / "host-identity.yaml"
 
 
 def _default_aliases() -> set[str]:
-    hostname = socket.gethostname()
+    orochi_hostname = socket.gethostname()
     return {
         "localhost",
         "",
-        hostname,
-        hostname.split(".")[0],
+        orochi_hostname,
+        orochi_hostname.split(".")[0],
         socket.getfqdn(),
     }
 

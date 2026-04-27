@@ -14,7 +14,7 @@ Type=oneshot
 RemainAfterExit=yes
 EnvironmentFile=-%h/.config/systemd/user/orochi.env
 # bash -lc so bash.d PATH + belt-and-braces in .bash_profile applies.
-# .bash.d/secrets/010_scitex/01_orochi.src bridges the canonical hostname
+# .bash.d/secrets/010_scitex/01_orochi.src bridges the canonical orochi_hostname
 # + YAML search dirs into sac's own env namespace before sac runs.
 ExecStart=/bin/bash -lc 'SCITEX_AGENT_CONTAINER_HOSTNAME="@CANONICAL_HOST@" @SAC@ start --all'
 ExecStop=/bin/bash -lc 'SCITEX_AGENT_CONTAINER_HOSTNAME="@CANONICAL_HOST@" @SAC@ stop --all --force'

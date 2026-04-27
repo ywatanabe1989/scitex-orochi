@@ -99,7 +99,7 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-/* Strip hostname suffix: "head@mba@Host" → "head@mba" */
+/* Strip orochi_hostname suffix: "head@mba@Host" → "head@mba" */
 function cleanAgentName(name) {
   if (!name) return name;
   var parts = name.split("@");

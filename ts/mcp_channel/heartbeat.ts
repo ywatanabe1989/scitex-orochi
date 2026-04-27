@@ -20,7 +20,7 @@
  * collect_agent_metadata.py path bypasses the broken registry lookup entirely (todo#155).
  */
 import { spawnSync } from "child_process";
-import { hostname, homedir } from "os";
+import { orochi_hostname, homedir } from "os";
 import { existsSync } from "fs";
 import { join } from "path";
 import {
@@ -90,21 +90,21 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     name: OROCHI_AGENT,
     agent_id: OROCHI_AGENT,
     role: process.env.SCITEX_OROCHI_ROLE || "agent",
-    // Host identity: trust live ``hostname()`` first, fall back to env
+    // Host identity: trust live ``orochi_hostname()`` first, fall back to env
     // only when the kernel returns empty (stripped container). Env-
     // first was the root cause of lead msg#15578 (proj-neurovista
     // misreporting as mba) — a stale SCITEX_OROCHI_HOSTNAME env var
     // inherited into a spartan process would override the real host.
     orochi_machine:
-      hostname() ||
+      orochi_hostname() ||
       process.env.SCITEX_OROCHI_MACHINE ||
       process.env.SCITEX_OROCHI_HOSTNAME ||
       process.env.SCITEX_AGENT_CONTAINER_HOSTNAME ||
       "",
-    // Live hostname(1) — surfaced distinctly from ``orochi_machine`` so the
+    // Live orochi_hostname(1) — surfaced distinctly from ``orochi_machine`` so the
     // hub / frontend can prefer this authoritative signal when deriving
     // the ``<name>@<host>`` badge. Never sourced from env.
-    hostname: hostname() || "",
+    orochi_hostname: orochi_hostname() || "",
     multiplexer: process.env.SCITEX_OROCHI_MULTIPLEXER || "tmux",
   };
 

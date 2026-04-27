@@ -128,7 +128,7 @@ export function _renderActivityAgentDetail(a, grid) {
   var metaFields = [
     ["Role", a.role || "agent"],
     ["Machine", _machineDisplay],
-    ["Hostname", a.hostname || "-"],
+    ["Hostname", a.orochi_hostname || "-"],
     ["Uname", a.uname || "-"],
     ["Instance", _instanceShort],
     ["Launch", _launchDisplay],

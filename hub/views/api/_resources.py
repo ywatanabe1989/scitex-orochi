@@ -24,7 +24,7 @@ def api_resources(request):
 
     agents = get_agents(workspace_id=workspace.id)
 
-    # Aggregate by orochi_machine hostname (fall back to agent name)
+    # Aggregate by orochi_machine orochi_hostname (fall back to agent name)
     machines: dict[str, dict] = {}
     for a in agents:
         orochi_machine = a.get("orochi_machine") or a["name"]

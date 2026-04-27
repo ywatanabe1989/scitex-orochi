@@ -98,7 +98,7 @@ function renderResources() {
           " jobs</span>";
       }
       /* #284 Machine card order: [icon] [star] [LED] [<host-label>
-       * (<hostname-canonical>)] [metrics].
+       * (<orochi_hostname-canonical>)] [metrics].
        *
        * The single LED replaces the old leading connection dot; it
        * sits BETWEEN star and the name so the icon/star columns line
@@ -135,7 +135,7 @@ function renderResources() {
         (healthy ? "Host healthy" : "Host stale / degraded") +
         '"></span>' +
         /* Spec: orochi_machine: [icon] [star] [LED] [<host-label>
-         * (<hostname-canonical>)] — show the canonical FQDN in
+         * (<orochi_hostname-canonical>)] — show the canonical FQDN in
          * parentheses after the short label when it differs
          * meaningfully from the label. Uses the same collapse rules
          * as the agents-tab Machine detail view (.local /
@@ -153,7 +153,7 @@ function renderResources() {
             if (fqdn === k + redundant[_r]) return "";
           }
           return (
-            ' <span class="res-host-fqdn" title="canonical hostname">(' +
+            ' <span class="res-host-fqdn" title="canonical orochi_hostname">(' +
             escapeHtml(fqdn) +
             ")</span>"
           );
@@ -417,7 +417,7 @@ async function fetchResources() {
         ];
       }
       resourceData[agentName] = {
-        hostname: _friendlyMachine(entry.orochi_machine || agentName),
+        orochi_hostname: _friendlyMachine(entry.orochi_machine || agentName),
         agent: agentName,
         cpu: {
           percent: Math.round(

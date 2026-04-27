@@ -178,7 +178,7 @@ help-all:
 	@echo -e "  status                          Container + branch state"
 	@echo -e "  validate                        Sanity-check docker availability"
 	@echo -e "  info                            Project paths + versions"
-	@echo -e "  check-host                      Verify expected hostname"
+	@echo -e "  check-host                      Verify expected orochi_hostname"
 	@echo -e ""
 	@echo -e "$(CYAN)Container lifecycle (ENV=dev|stable)$(NC)"
 	@echo -e "  ENV=<env> start                 docker compose up -d"
@@ -500,7 +500,7 @@ dev-logs:  ; $(MAKE) ENV=dev logs
 # Misc
 # ============================================
 check-host:
-	@HOST=$$(hostname); \
+	@HOST=$$(orochi_hostname); \
 		if [ "$$HOST" = "ywata-note-win" ]; then \
 			echo -e "$(GREEN)host: $$HOST (WSL workstation)$(NC)"; \
 		elif [ "$$HOST" = "mba" ] || [ "$$HOST" = "mba.local" ]; then \

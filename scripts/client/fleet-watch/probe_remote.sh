@@ -7,7 +7,7 @@ set -u
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
 
 ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-host=$(hostname -s 2>/dev/null || hostname)
+host=$(orochi_hostname -s 2>/dev/null || orochi_hostname)
 os=$(uname -s)
 
 # tmux sessions: list of names, or [] if none / tmux missing

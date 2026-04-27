@@ -255,7 +255,7 @@ import { escapeHtml, getAgentColor } from "./app/utils";
     var color = opts.isHuman ? "#fbbf24" : ident.color;
 
     /* Canonical layout, todo#305 Task 7 (lead msg#15548):
-     *   icon + star + eye + 4 LEDs + name@hostname
+     *   icon + star + eye + 4 LEDs + name@orochi_hostname
      * Matches the HTML agent-badge.ts canonical order 1:1 so canvas,
      * sidebar and pool chip all read left-to-right the same way.
      * Human nodes keep their simpler icon+name layout (no LEDs, no

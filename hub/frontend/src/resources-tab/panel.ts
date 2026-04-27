@@ -292,7 +292,7 @@ export function _wireMachinesControls() {
 }
 
 export function updateResourcePanel(data) {
-  var key = data.hostname || data.agent || "unknown";
+  var key = data.orochi_hostname || data.agent || "unknown";
   resourceData[key] = data;
   renderResources();
 }

@@ -162,7 +162,7 @@ export function appendMessage(msg) {
     '<span class="sender" style="color:' +
     senderColor +
     '">' +
-    /* #238: include @hostname in chat-feed sender headers, mirroring
+    /* #238: include @orochi_hostname in chat-feed sender headers, mirroring
      * the sidebar Agents list. Look up the agent record in the live
      * cache (window.__lastAgents) and pass to hostedAgentName so
      * cleanAgentName collapses redundant role-host suffixes
