@@ -345,3 +345,52 @@ class AgentRegisterAuthMatrixTest(TestCase):
         )
         self.assertEqual(resp.status_code, 401, resp.content)
         self.assertEqual(resp.json()["error"], "invalid token")
+
+    def test_heartbeat_schema_version_accepted(self):
+        # Current schema is accepted silently.
+        from hub.views.api._agents_register import CURRENT_HEARTBEAT_SCHEMA
+
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "schema-current",
+                "orochi_heartbeat_schema_version": CURRENT_HEARTBEAT_SCHEMA,
+            }
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_heartbeat_schema_version_future_accepted(self):
+        # Future schema is accepted (forward-compatible by design).
+        from hub.views.api._agents_register import CURRENT_HEARTBEAT_SCHEMA
+
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "schema-future",
+                "orochi_heartbeat_schema_version": CURRENT_HEARTBEAT_SCHEMA + 5,
+            }
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_heartbeat_schema_version_too_old_returns_409(self):
+        # Bypass the in-process MIN_HARD by patching it for this test —
+        # the default MIN_HARD is 0 (accept everything) so a "too old"
+        # rejection only happens after the operator raises the floor.
+        from hub.views.api import _agents_register as mod
+
+        with self.settings():  # for symmetry; not strictly needed
+            original_min_hard = mod.MIN_HARD_HEARTBEAT_SCHEMA
+            mod.MIN_HARD_HEARTBEAT_SCHEMA = 1
+            try:
+                resp = self._post(
+                    {
+                        "token": self.token.token,
+                        "name": "schema-tooold",
+                        "orochi_heartbeat_schema_version": 0,
+                    }
+                )
+                self.assertEqual(resp.status_code, 409, resp.content)
+                self.assertIn("too old", resp.json()["error"])
+                self.assertIn("fleet-agents-upgrade", resp.json()["error"])
+            finally:
+                mod.MIN_HARD_HEARTBEAT_SCHEMA = original_min_hard

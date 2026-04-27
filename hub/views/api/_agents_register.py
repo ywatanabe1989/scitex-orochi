@@ -1,11 +1,33 @@
 """``POST /api/agents/register`` — REST-level heartbeat for stdlib agents."""
 
+import logging
+
 from hub.views.api._common import (
     JsonResponse,
     csrf_exempt,
     json,
     require_http_methods,
 )
+
+# Heartbeat wire-format schema version policy. Producers (the
+# collector at `scripts/client/_collect_agent_metadata/_collect.py`)
+# stamp every heartbeat with `orochi_heartbeat_schema_version: int`.
+# The hub:
+#   - silently accepts schema_version >= MIN_SUPPORTED (current behavior),
+#   - logs a warning ONCE per agent for schema_version < MIN_WARN
+#     (mixed-version fleet — operator should `make
+#     fleet-agents-upgrade`),
+#   - rejects with 409 for schema_version < MIN_HARD (so a hopelessly
+#     stale agent surfaces as a configuration error instead of
+#     silently lagging the dashboard).
+# Bumping CURRENT_HEARTBEAT_SCHEMA without raising MIN_HARD lets old
+# agents continue working until the operator chooses to enforce it.
+CURRENT_HEARTBEAT_SCHEMA = 1
+MIN_WARN_HEARTBEAT_SCHEMA = 1  # < this → log warning
+MIN_HARD_HEARTBEAT_SCHEMA = 0  # < this → 409 reject (start at 0 = none)
+
+_logger = logging.getLogger(__name__)
+_warned_agents: set[str] = set()  # in-process dedup so one log/agent
 
 
 @csrf_exempt
@@ -69,6 +91,35 @@ def api_agents_register(request):
     name = (body.get("name") or "").strip()
     if not name:
         return JsonResponse({"error": "name required"}, status=400)
+
+    # Wire-format schema-version gate (see CURRENT_HEARTBEAT_SCHEMA).
+    # Hard-reject hopelessly old agents; log once per agent for
+    # warn-level lag; accept current+future silently.
+    try:
+        client_schema = int(body.get("orochi_heartbeat_schema_version") or 0)
+    except (TypeError, ValueError):
+        client_schema = 0
+    if client_schema < MIN_HARD_HEARTBEAT_SCHEMA:
+        return JsonResponse(
+            {
+                "error": (
+                    f"heartbeat schema {client_schema} too old "
+                    f"(min {MIN_HARD_HEARTBEAT_SCHEMA}); run "
+                    "`make fleet-agents-upgrade` on this host"
+                ),
+            },
+            status=409,
+        )
+    if client_schema < MIN_WARN_HEARTBEAT_SCHEMA and name not in _warned_agents:
+        _warned_agents.add(name)
+        _logger.warning(
+            "agent %r heartbeat schema=%d < min_warn=%d (current=%d); "
+            "fleet upgrade overdue",
+            name,
+            client_schema,
+            MIN_WARN_HEARTBEAT_SCHEMA,
+            CURRENT_HEARTBEAT_SCHEMA,
+        )
 
     # Hydrate the agent's channel subscriptions from the DB (the
     # ChannelMembership table is the source of truth, matching the WS

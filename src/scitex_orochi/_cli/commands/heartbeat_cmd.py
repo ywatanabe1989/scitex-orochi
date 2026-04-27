@@ -106,6 +106,12 @@ def _wrap_with_orochi_fields(
         "orochi_pane_tail_block": status.get("pane_text") or "",
         "orochi_pane_state": status.get("orochi_pane_state") or "",
         "orochi_stuck_prompt_text": status.get("orochi_stuck_prompt_text") or "",
+        # Heartbeat wire-format schema version. Forwarded from the
+        # collector (`scripts/client/_collect_agent_metadata/_collect.py`
+        # `HEARTBEAT_SCHEMA_VERSION`). The hub uses this to detect
+        # mixed-version fleets during a wire-shape migration.
+        "orochi_heartbeat_schema_version": status.get("orochi_heartbeat_schema_version")
+        or 0,
         # Workspace files.
         "orochi_claude_md": status.get("orochi_claude_md") or "",
         "orochi_claude_md_head": (status.get("orochi_claude_md") or "").splitlines()[0][

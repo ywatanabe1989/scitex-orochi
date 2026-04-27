@@ -464,6 +464,16 @@ prod-cf-purge:
 	@echo ""
 	@echo -e "$(GREEN)purged$(NC)"
 
+# Fleet-wide ``pip install -U scitex-orochi`` across every host listed
+# in orochi-machines.yaml. Use after a producer-side dependency change
+# (e.g. detect-secrets in 0.15.6) so the new collector reaches every
+# agent. Idempotent — pip is a no-op when already current.
+#   make fleet-agents-upgrade               # all hosts
+#   make fleet-agents-upgrade ARGS=--dry-run
+#   make fleet-agents-upgrade ARGS="--hosts mba,nas"
+fleet-agents-upgrade:
+	cd $(PROJECT_ROOT) && bash scripts/server/fleet-agents-upgrade.sh $(ARGS)
+
 # Mint a fresh sessionid on the mba stable container — used by
 # prod-screenshot for self-auth without going through SSO.
 prod-session:
