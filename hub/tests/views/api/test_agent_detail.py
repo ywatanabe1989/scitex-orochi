@@ -248,7 +248,7 @@ class AgentDetailApiTest(TestCase):
         for key in (
             "sac_hooks_last_tool_at",
             "sac_hooks_last_tool_name",
-            "last_mcp_tool_at",
+            "sac_hooks_last_mcp_tool_at",
             "sac_hooks_last_mcp_tool_name",
             "last_action_at",
             "last_action_name",
@@ -265,7 +265,7 @@ class AgentDetailApiTest(TestCase):
         self._register(
             sac_hooks_last_tool_at="2026-04-18T11:00:00+00:00",
             last_tool_name="Bash",
-            last_mcp_tool_at="2026-04-18T11:00:05+00:00",
+            sac_hooks_last_mcp_tool_at="2026-04-18T11:00:05+00:00",
             last_mcp_tool_name="mcp__scitex-orochi__send_message",
             last_action_at="2026-04-18T11:00:10+00:00",
             last_action_name="nonce_probe",

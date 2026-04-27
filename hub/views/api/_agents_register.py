@@ -189,7 +189,7 @@ def api_agents_register(request):
             # liveness) + last mcp__* tool (proves MCP sidecar route).
             "sac_hooks_last_tool_at": body.get("sac_hooks_last_tool_at") or "",
             "sac_hooks_last_tool_name": body.get("sac_hooks_last_tool_name") or "",
-            "last_mcp_tool_at": body.get("last_mcp_tool_at") or "",
+            "sac_hooks_last_mcp_tool_at": body.get("sac_hooks_last_mcp_tool_at") or "",
             "sac_hooks_last_mcp_tool_name": body.get("sac_hooks_last_mcp_tool_name") or "",
             # PaneAction summary from scitex-agent-container action_store.
             # Surfaces nonce-probe, compact, etc. outcomes on the

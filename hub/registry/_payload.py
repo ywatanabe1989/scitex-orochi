@@ -231,7 +231,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # event_log.summarize() in agent-container).
                 "sac_hooks_last_tool_at": a.get("sac_hooks_last_tool_at", ""),
                 "sac_hooks_last_tool_name": a.get("sac_hooks_last_tool_name", ""),
-                "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
+                "sac_hooks_last_mcp_tool_at": a.get("sac_hooks_last_mcp_tool_at", ""),
                 "sac_hooks_last_mcp_tool_name": a.get("sac_hooks_last_mcp_tool_name", ""),
                 # PaneAction summary (scitex-agent-container action_store).
                 # NB: ``last_action_name`` (not ``last_action``) to avoid
