@@ -401,8 +401,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "quota_weekly_remaining": info.get("quota_weekly_remaining")
             or prev.get("quota_weekly_remaining")
             or "",
-            "statusline_model": info.get("statusline_model")
-            or prev.get("statusline_model")
+            "orochi_statusline_model": info.get("orochi_statusline_model")
+            or prev.get("orochi_statusline_model")
             or "",
             "account_email": info.get("account_email")
             or prev.get("account_email")

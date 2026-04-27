@@ -27,7 +27,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
       - quota_5h_remaining: str
       - quota_weekly_pct: Optional[float]
       - quota_weekly_remaining: str
-      - statusline_model: str
+      - orochi_statusline_model: str
       - account_email: str
     """
     out: dict = {
@@ -36,7 +36,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
         "quota_5h_remaining": "",
         "quota_weekly_pct": None,
         "quota_weekly_remaining": "",
-        "statusline_model": "",
+        "orochi_statusline_model": "",
         "account_email": "",
     }
     src = orochi_pane_tail_block or ""
@@ -44,7 +44,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
     # Extract model from statusline: [Model Name (context) | Mode]
     m_model = re.search(r"\[([^\]]+)\]", src)
     if m_model:
-        out["statusline_model"] = m_model.group(1).strip()
+        out["orochi_statusline_model"] = m_model.group(1).strip()
 
     # Extract account email
     m_email = re.search(r"([\w.+-]+@[\w.-]+\.\w+)", src)

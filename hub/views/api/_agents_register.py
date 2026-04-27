@@ -157,7 +157,7 @@ def api_agents_register(request):
             "quota_5h_remaining": body.get("quota_5h_remaining", ""),
             "quota_weekly_pct": body.get("quota_weekly_pct"),
             "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
-            "statusline_model": body.get("statusline_model", ""),
+            "orochi_statusline_model": body.get("orochi_statusline_model", ""),
             "account_email": body.get("account_email", ""),
             # scitex-agent-container heartbeat-push payload. Long names are
             # preferred by the dashboard; accept the short-name aliases too
