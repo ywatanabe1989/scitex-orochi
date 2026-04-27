@@ -2,7 +2,7 @@
  * Registry heartbeat — thin pump.
  *
  * The sidecar shells out to
- *     ~/.scitex/orochi/scripts/agent_meta.py <agent>
+ *     ~/.scitex/orochi/scripts/collect_agent_metadata.py <agent>
  * which reads the live Claude Code session jsonl transcript and emits
  * claude-hud-style metadata (alive, subagents, context_pct, current_tool,
  * last_activity, model, ...) as a single JSON line. The resulting dict is
@@ -17,7 +17,7 @@
  * returned without ever populating the hub's current_task / subagents /
  * context_pct fields. The Activity tab then rendered "no task / 0 subs / no
  * ctx" for everyone — exactly the symptom ywatanabe flagged at msg#6382. The
- * agent_meta.py path bypasses the broken registry lookup entirely (todo#155).
+ * collect_agent_metadata.py path bypasses the broken registry lookup entirely (todo#155).
  */
 import { spawnSync } from "child_process";
 import { hostname, homedir } from "os";
@@ -42,7 +42,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     ".scitex",
     "orochi",
     "scripts",
-    "agent_meta.py",
+    "collect_agent_metadata.py",
   );
   let meta: Record<string, unknown> = {};
   try {
@@ -55,7 +55,7 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     });
     if (result.status !== 0) {
       console.error(
-        `[orochi-heartbeat] agent_meta.py failed: ${(result.stderr || "").slice(0, 200)}`,
+        `[orochi-heartbeat] collect_agent_metadata.py failed: ${(result.stderr || "").slice(0, 200)}`,
       );
       dbg(`heartbeat: agent_meta rc=${result.status}`);
       return;
@@ -68,9 +68,9 @@ export async function pushRegistryHeartbeat(): Promise<void> {
     return;
   }
 
-  // agent_meta.py field names → hub /api/agents/register field names.
+  // collect_agent_metadata.py field names → hub /api/agents/register field names.
   // The hub renderer (activity-tab.js) reads `current_task`,
-  // `subagent_count`, `context_pct`, `model`. agent_meta.py emits
+  // `subagent_count`, `context_pct`, `model`. collect_agent_metadata.py emits
   // `current_tool`, `subagents`, `context_pct`, `model`. Translate.
   const currentTool = (meta["current_tool"] as string | undefined) || "";
   const subagentCount =

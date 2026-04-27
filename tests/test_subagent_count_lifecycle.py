@@ -11,7 +11,7 @@ batch — spawn, ramp-up, partial completion, full completion, and the
 false-positive chat text and multi-marker panes.
 
 The parser under test lives at
-``scripts/client/agent_meta_pkg/_pane.py::parse_subagent_count``.
+``scripts/client/_collect_agent_metadata/_pane.py::parse_subagent_count``.
 A mirror implementation lives in ``scitex-agent-container`` (separate
 repo); that one needs its own test suite there — see PR body for
 follow-up.
@@ -30,12 +30,12 @@ from pathlib import Path
 
 import pytest
 
-# agent_meta_pkg isn't installed into site-packages — make it importable.
+# _collect_agent_metadata isn't installed into site-packages — make it importable.
 _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from agent_meta_pkg._pane import parse_subagent_count  # noqa: E402
+from _collect_agent_metadata._pane import parse_subagent_count  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Happy-path parametric coverage — every count / grammar variant the

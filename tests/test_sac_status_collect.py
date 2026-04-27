@@ -1,4 +1,4 @@
-"""Unit tests for ``agent_meta_pkg._sac_status.collect_sac_status``.
+"""Unit tests for ``_collect_agent_metadata._sac_status.collect_sac_status``.
 
 Pins the lead msg#16005 pivot contract: the heartbeat pusher shells
 out to ``scitex-agent-container status <name> --terse --json`` and
@@ -16,14 +16,14 @@ import sys
 from pathlib import Path
 from unittest import mock
 
-# The agent_meta_pkg package lives under scripts/client/ and isn't
+# The _collect_agent_metadata package lives under scripts/client/ and isn't
 # installed into site-packages — make it importable for this test.
 _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from agent_meta_pkg import _sac_status  # noqa: E402
-from agent_meta_pkg._sac_status import collect_sac_status  # noqa: E402
+from _collect_agent_metadata import _sac_status  # noqa: E402
+from _collect_agent_metadata._sac_status import collect_sac_status  # noqa: E402
 
 
 def _fake_completed(stdout: str = "", stderr: str = "", returncode: int = 0):

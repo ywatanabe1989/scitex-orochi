@@ -1,4 +1,4 @@
-"""Regex tests for agent_meta_pkg._pane.parse_subagent_count.
+"""Regex tests for _collect_agent_metadata._pane.parse_subagent_count.
 
 Pin the "N local agent(s) running" marker so the heartbeat sidecar
 payload's ``subagent_count`` field stays reliable across Claude Code
@@ -11,13 +11,13 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# The agent_meta_pkg package lives under scripts/client/ and isn't
+# The _collect_agent_metadata package lives under scripts/client/ and isn't
 # installed into site-packages — make it importable for this test.
 _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from agent_meta_pkg._pane import parse_subagent_count  # noqa: E402
+from _collect_agent_metadata._pane import parse_subagent_count  # noqa: E402
 
 
 def test_single_agent_singular():

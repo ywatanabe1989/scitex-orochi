@@ -19,7 +19,7 @@ def test_machine_group_registered() -> None:
 
 
 def test_heartbeat_send_invokes_push_all(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Command delegates to ``agent_meta_pkg.push_all`` and prints the count."""
+    """Command delegates to ``_collect_agent_metadata.push_all`` and prints the count."""
     from scitex_orochi._cli.commands import machine_cmd
 
     called_with = {}
@@ -31,7 +31,7 @@ def test_heartbeat_send_invokes_push_all(monkeypatch: pytest.MonkeyPatch) -> Non
 
     monkeypatch.setattr(
         machine_cmd,
-        "_import_agent_meta_pkg",
+        "_import__collect_agent_metadata",
         lambda: (fake_push_all, lambda name: {}),
     )
 

@@ -17,11 +17,11 @@ from pathlib import Path
 import pytest
 
 # scripts/client isn't a proper package in the repo — add it to path so
-# the `agent_meta_pkg` module is importable under its current layout.
+# the `_collect_agent_metadata` module is importable under its current layout.
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT / "scripts" / "client"))
 
-from agent_meta_pkg import _classifier  # noqa: E402
+from _collect_agent_metadata import _classifier  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

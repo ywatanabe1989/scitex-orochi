@@ -17,7 +17,7 @@ substitutes per-host details and installs the result under
 | Token | Meaning | Example |
 |---|---|---|
 | `@SAC@` | Absolute path to the `sac` CLI | `/Users/ywatanabe/.venv/bin/scitex-agent-container` |
-| `@AGENT_META@` | Absolute path to `agent_meta.py` | `/Users/ywatanabe/.scitex/orochi/shared/scripts/agent_meta.py` |
+| `@AGENT_META@` | Absolute path to `collect_agent_metadata.py` | `/Users/ywatanabe/.scitex/orochi/shared/scripts/collect_agent_metadata.py` |
 | `@CANONICAL_HOST@` | Fleet label | `mba` |
 | `@HOME@` | Absolute `$HOME` | `/Users/ywatanabe` |
 

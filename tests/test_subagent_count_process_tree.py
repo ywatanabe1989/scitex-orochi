@@ -1,7 +1,7 @@
 """Tests for process-tree based subagent counting.
 
 The programmatic walk in
-``scripts/client/agent_meta_pkg/_process_tree.py::count_subagents_via_ps``
+``scripts/client/_collect_agent_metadata/_process_tree.py::count_subagents_via_ps``
 replaces the tmux-pane regex parse as the primary
 ``subagent_count`` signal (msg#16727). These tests pin:
 
@@ -25,14 +25,14 @@ from pathlib import Path
 
 import pytest
 
-# agent_meta_pkg lives under scripts/client/ — add to sys.path so we
+# _collect_agent_metadata lives under scripts/client/ — add to sys.path so we
 # can import without an editable install.
 _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from agent_meta_pkg import _process_tree  # noqa: E402
-from agent_meta_pkg._process_tree import (  # noqa: E402
+from _collect_agent_metadata import _process_tree  # noqa: E402
+from _collect_agent_metadata._process_tree import (  # noqa: E402
     _looks_like_claude,
     count_subagents_via_ps,
     find_head_pid,
@@ -315,7 +315,7 @@ def test_both_backends_fail_returns_minus_one(monkeypatch, tmp_path):
 def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
     """``_collect.collect`` uses the process-tree count when it's
     non-negative, even when the pane marker says something different."""
-    from agent_meta_pkg import _collect
+    from _collect_agent_metadata import _collect
 
     # Make the pane parser return 5 (lie). Process-tree returns 1.
     # _collect must surface 1, not 5.
@@ -347,7 +347,7 @@ def test_collect_prefers_process_tree_over_pane_parser(monkeypatch):
 def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
     """When the process-tree walk returns ``-1``, ``_collect.collect``
     uses the pane parser's count."""
-    from agent_meta_pkg import _collect
+    from _collect_agent_metadata import _collect
 
     monkeypatch.setattr(_collect, "detect_multiplexer", lambda a: "tmux")
     monkeypatch.setattr(_collect, "capture_pane", lambda a, m: "pane text")
@@ -374,7 +374,7 @@ def test_collect_falls_back_to_pane_parser_on_process_tree_failure(monkeypatch):
 
 def test_collect_reports_zero_when_both_backends_fail(monkeypatch):
     """Process-tree returns ``-1`` AND pane parser returns 0 → ``subagent_count == 0``."""
-    from agent_meta_pkg import _collect
+    from _collect_agent_metadata import _collect
 
     monkeypatch.setattr(_collect, "detect_multiplexer", lambda a: "tmux")
     monkeypatch.setattr(_collect, "capture_pane", lambda a, m: "")

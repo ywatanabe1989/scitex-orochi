@@ -1,4 +1,4 @@
-"""Allow ``python -m agent_meta_pkg`` invocation."""
+"""Allow ``python -m _collect_agent_metadata`` invocation."""
 
 from __future__ import annotations
 

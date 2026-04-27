@@ -19,7 +19,7 @@ _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from agent_meta_pkg._push import _build_payload  # noqa: E402
+from _collect_agent_metadata._push import _build_payload  # noqa: E402
 
 _MIN_META = {
     "agent": "worker-mba",

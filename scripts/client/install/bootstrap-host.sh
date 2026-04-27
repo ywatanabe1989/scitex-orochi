@@ -299,9 +299,9 @@ install_orchestration_systemd() {
         warn "sac not found on PATH or in canonical venvs; skipping systemd install"
         return 0
     fi
-    agent_meta="$SCRIPTS_ROOT/agent_meta.py"
+    agent_meta="$SCRIPTS_ROOT/collect_agent_metadata.py"
     if [[ ! -x "$agent_meta" ]]; then
-        warn "agent_meta.py not executable at $agent_meta; skipping systemd install"
+        warn "collect_agent_metadata.py not executable at $agent_meta; skipping systemd install"
         return 0
     fi
 
@@ -415,9 +415,9 @@ install_orchestration_launchd() {
         warn "sac not found; skipping launchd install"
         return 0
     fi
-    agent_meta="$SCRIPTS_ROOT/agent_meta.py"
+    agent_meta="$SCRIPTS_ROOT/collect_agent_metadata.py"
     if [[ ! -x "$agent_meta" ]]; then
-        warn "agent_meta.py not executable at $agent_meta; skipping launchd install"
+        warn "collect_agent_metadata.py not executable at $agent_meta; skipping launchd install"
         return 0
     fi
 

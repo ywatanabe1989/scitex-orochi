@@ -1,10 +1,10 @@
 """agent_meta — Orochi per-agent metadata collector and heartbeat pusher.
 
-Split from the original 1461-line ``scripts/client/agent_meta.py`` into
+Split from the original 1461-line ``scripts/client/collect_agent_metadata.py`` into
 focused submodules so each file stays under the 512-line guideline.
-The shim ``scripts/client/agent_meta.py`` re-exports the public API and
+The shim ``scripts/client/collect_agent_metadata.py`` re-exports the public API and
 keeps the executable entry-point path stable for callers that hard-code
-``~/.scitex/orochi/scripts/agent_meta.py`` (the bun MCP sidecar in
+``~/.scitex/orochi/scripts/collect_agent_metadata.py`` (the bun MCP sidecar in
 ``ts/mcp_channel.ts`` does this).
 
 DEPRECATED 2026-04-12: superseded by ``scitex-agent-container status

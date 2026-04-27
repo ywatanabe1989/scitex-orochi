@@ -1,8 +1,8 @@
 """Command-line argv parsing for agent_meta.
 
 Preserves the legacy flag set:
-    agent_meta.py <agent>
-    agent_meta.py --push [--url URL] [--token TOKEN]
+    collect_agent_metadata.py <agent>
+    collect_agent_metadata.py --push [--url URL] [--token TOKEN]
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def cli_main(argv: list[str] | None = None) -> int:
         return 0
     if len(args) != 1:
         print(
-            "Usage: agent_meta.py <agent>  |  agent_meta.py --push [--url URL] [--token TOKEN]",
+            "Usage: collect_agent_metadata.py <agent>  |  collect_agent_metadata.py --push [--url URL] [--token TOKEN]",
             file=sys.stderr,
         )
         return 2
