@@ -1,7 +1,13 @@
-# LaunchAgents
+# LaunchAgents and LaunchDaemons
 
-macOS LaunchAgent templates installed per-user to protect host disk /
-run client-side maintenance without interfering with the container.
+macOS launchd templates. Most are **LaunchAgents** (`gui/<uid>` scope,
+per-user, runs after login). One is a **LaunchDaemon**
+(`com.ywatanabe.colima-caffeinate`, system scope, root-owned, runs at
+boot without login).
+
+Each `*.plist` here pairs with an `install-*.sh` under
+`scripts/client/` that copies the template into the right system path
+and bootstraps it via `launchctl`.
 
 ## `com.scitex.fleet-host-liveness-probe.plist`
 
@@ -86,3 +92,50 @@ in the installed plist and re-running the install helper):
 
 See `skills/infra-hub-docker-disk-full.md` for why this cache is
 reaper-safe.
+
+## `com.ywatanabe.colima-caffeinate.plist` (LaunchDaemon)
+
+scitex-orochi 2026-04-27 incident — Cloudflare 502 bursts on the mba
+hub recurring roughly every minute. Lima HostAgent log showed
+`Time sync: guest clock adjusted (was -18668ms off)` events: macOS App
+Nap / Virtualization.framework was suspending the colima VM, which
+killed the SSH-MUX port-forward that bridges the container's :8559 to
+the mac host. Daphne stayed healthy; the host-side bridge died.
+
+This template runs `caffeinate -dimsu -w <limactl-hostagent-pid>` in a
+re-attaching loop so macOS cannot suspend the VM. Installed as a
+LaunchDaemon (root, system scope) so it survives reboot without
+needing the user to be logged in.
+
+Install:
+
+```bash
+./scripts/client/install-colima-caffeinate.sh
+```
+
+Uninstall:
+
+```bash
+./scripts/client/install-colima-caffeinate.sh --uninstall
+```
+
+Status / logs:
+
+```bash
+launchctl print system/com.ywatanabe.colima-caffeinate | head -20
+tail -n 50 ~/Library/Logs/colima-caffeinate.log
+```
+
+Verification (before fix saw 9-in-a-row 502 bursts; after fix should
+be 30/30 success):
+
+```bash
+for i in $(seq 1 30); do
+  curl -s -o /dev/null -w "%{http_code}\n" https://scitex-lab.scitex-orochi.com/
+  sleep 2
+done
+```
+
+See `~/.scitex/orochi/shared/skills/scitex-orochi-private/infra-hub-stability.md`
+§"2026-04-27 Incident Post-Mortem — Colima VM Suspension" for the
+full diagnostic chain.
