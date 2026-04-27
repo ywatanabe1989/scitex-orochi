@@ -126,7 +126,7 @@ def _wrap_with_orochi_fields(
         # PaneAction summary (from scitex-agent-container action_store).
         # Empty when actions subsystem is unused; dashboard chips it
         # as "last probe / compact / ... outcome N ago".
-        "last_action_at": status.get("last_action_at") or "",
+        "sac_hooks_last_action_at": status.get("sac_hooks_last_action_at") or "",
         "sac_hooks_last_action_name": status.get("sac_hooks_last_action_name") or "",
         "last_action_outcome": status.get("last_action_outcome") or "",
         "last_action_elapsed_s": status.get("last_action_elapsed_s"),

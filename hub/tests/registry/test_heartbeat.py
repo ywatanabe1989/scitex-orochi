@@ -225,7 +225,7 @@ class PaneActionSummaryRegistryTest(TestCase):
     Covers the end-to-end pipe from ``heartbeat-push`` payload keys
     through registry merge and into ``/api/agents/<name>/detail/``:
 
-      last_action_at / last_action / last_action_outcome /
+      sac_hooks_last_action_at / last_action / last_action_outcome /
       last_action_elapsed_s / action_counts /
       sac_hooks_p95_elapsed_s_by_action
     """
@@ -268,7 +268,7 @@ class PaneActionSummaryRegistryTest(TestCase):
 
         resp = self._post(
             self._base_payload(
-                last_action_at="2026-04-17T02:00:00+00:00",
+                sac_hooks_last_action_at="2026-04-17T02:00:00+00:00",
                 last_action_name="nonce-probe",
                 last_action_outcome="success",
                 last_action_elapsed_s=3.2,
@@ -279,7 +279,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         agents = get_agents(workspace_id=self.ws.id)
         a = next(a for a in agents if a["name"] == "act-agent")
-        self.assertEqual(a["last_action_at"], "2026-04-17T02:00:00+00:00")
+        self.assertEqual(a["sac_hooks_last_action_at"], "2026-04-17T02:00:00+00:00")
         self.assertEqual(a["sac_hooks_last_action_name"], "nonce-probe")
         self.assertEqual(a["last_action_outcome"], "success")
         self.assertEqual(a["last_action_elapsed_s"], 3.2)
@@ -289,7 +289,7 @@ class PaneActionSummaryRegistryTest(TestCase):
     def test_detail_api_surfaces_action_summary(self):
         self._post(
             self._base_payload(
-                last_action_at="2026-04-17T02:05:00+00:00",
+                sac_hooks_last_action_at="2026-04-17T02:05:00+00:00",
                 last_action_name="compact",
                 last_action_outcome="completion_timeout",
                 last_action_elapsed_s=30.0,
@@ -298,7 +298,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         resp = self._get_detail("act-agent")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["last_action_at"], "2026-04-17T02:05:00+00:00")
+        self.assertEqual(data["sac_hooks_last_action_at"], "2026-04-17T02:05:00+00:00")
         self.assertEqual(data["sac_hooks_last_action_name"], "compact")
         self.assertEqual(data["last_action_outcome"], "completion_timeout")
         self.assertEqual(data["last_action_elapsed_s"], 30.0)
@@ -310,7 +310,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         resp = self._get_detail("act-agent")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["last_action_at"], "")
+        self.assertEqual(data["sac_hooks_last_action_at"], "")
         self.assertEqual(data["sac_hooks_last_action_name"], "")
         self.assertEqual(data["last_action_outcome"], "")
         self.assertIsNone(data["last_action_elapsed_s"])

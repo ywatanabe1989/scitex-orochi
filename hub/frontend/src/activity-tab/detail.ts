@@ -177,8 +177,8 @@ export function _renderActivityAgentDetail(a, grid) {
     ],
     [
       "Last action",
-      d.last_action_at
-        ? _fmtSec(_secondsSinceIso(d.last_action_at)) +
+      d.sac_hooks_last_action_at
+        ? _fmtSec(_secondsSinceIso(d.sac_hooks_last_action_at)) +
           " ago (" +
           (d.sac_hooks_last_action_name || "?") +
           " " +

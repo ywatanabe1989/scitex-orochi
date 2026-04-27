@@ -194,7 +194,7 @@ def api_agents_register(request):
             # PaneAction summary from scitex-agent-container action_store.
             # Surfaces nonce-probe, compact, etc. outcomes on the
             # dashboard without orochi needing to query the per-host DB.
-            "last_action_at": body.get("last_action_at") or "",
+            "sac_hooks_last_action_at": body.get("sac_hooks_last_action_at") or "",
             "sac_hooks_last_action_name": body.get("sac_hooks_last_action_name") or "",
             "last_action_outcome": body.get("last_action_outcome") or "",
             "last_action_elapsed_s": body.get("last_action_elapsed_s"),

@@ -14,7 +14,7 @@ _HOOK_EVENT_KEYS = (
     "sac_hooks_last_mcp_tool_name",
     "sac_hooks_last_mcp_tool_at",
     "sac_hooks_last_action_name",
-    "last_action_at",
+    "sac_hooks_last_action_at",
     "last_action_outcome",
     "last_action_elapsed_s",
     "sac_hooks_p95_elapsed_s_by_action",

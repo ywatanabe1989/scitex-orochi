@@ -35,7 +35,7 @@ Quickstart
    buffer — ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (LLM-level liveness)
    and ``sac_hooks_last_mcp_tool_at`` / ``sac_hooks_last_mcp_tool_name`` (proves the MCP
    sidecar route works) — plus a PaneAction summary from the
-   container's per-host ``actions.db``: ``last_action_at``,
+   container's per-host ``actions.db``: ``sac_hooks_last_action_at``,
    ``sac_hooks_last_action_name`` (e.g. ``nonce-probe`` / ``compact``),
    ``last_action_outcome`` (``success`` / ``completion_timeout`` /
    ``precondition_fail`` / ``send_error`` / ``skipped_by_policy``),
