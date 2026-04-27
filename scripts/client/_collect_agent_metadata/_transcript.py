@@ -1,4 +1,4 @@
-"""Claude Code JSONL transcript parsing — model, context_pct, current tool, recent actions."""
+"""Claude Code JSONL transcript parsing — model, orochi_context_pct, current tool, recent actions."""
 
 from __future__ import annotations
 
@@ -92,15 +92,15 @@ def find_jsonl_transcripts(workspace: str) -> list[Path]:
 
 
 def parse_transcript(jsonls: list[Path]) -> dict:
-    """Parse the newest JSONL for model, context_pct, current_tool, recent_actions.
+    """Parse the newest JSONL for model, orochi_context_pct, current_tool, recent_actions.
 
-    Returns dict with keys: model, last_activity, context_pct,
+    Returns dict with keys: model, last_activity, orochi_context_pct,
     current_tool, started_at, recent_actions.
     """
     out = {
         "model": "",
         "last_activity": "",
-        "context_pct": 0.0,
+        "orochi_context_pct": 0.0,
         "current_tool": "",
         "started_at": "",
         "recent_actions": [],
@@ -124,7 +124,7 @@ def parse_transcript(jsonls: list[Path]) -> dict:
     except Exception:
         pass
 
-    # Most recent assistant turn -> model + context_pct
+    # Most recent assistant turn -> model + orochi_context_pct
     for line in reversed(tail):
         try:
             obj = json.loads(line)
@@ -142,7 +142,7 @@ def parse_transcript(jsonls: list[Path]) -> dict:
                 + u.get("cache_read_input_tokens", 0)
                 + u.get("cache_creation_input_tokens", 0)
             )
-            out["context_pct"] = round((total / 1_000_000) * 100, 1)
+            out["orochi_context_pct"] = round((total / 1_000_000) * 100, 1)
             break
 
     # Pick the most recent meaningful tool use, skipping SKIP_TOOLS.

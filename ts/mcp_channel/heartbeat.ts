@@ -4,7 +4,7 @@
  * The sidecar shells out to
  *     ~/.scitex/orochi/scripts/collect_agent_metadata.py <agent>
  * which reads the live Claude Code session jsonl transcript and emits
- * claude-hud-style metadata (alive, subagents, context_pct, current_tool,
+ * claude-hud-style metadata (alive, subagents, orochi_context_pct, current_tool,
  * last_activity, model, ...) as a single JSON line. The resulting dict is
  * spread into the hub heartbeat payload.
  *
@@ -15,7 +15,7 @@
  * returned `{"error": "Agent X not found in registry"}` with rc=1 for every
  * such agent, the spawn was treated as a hard failure, and pushRegistryHeartbeat
  * returned without ever populating the hub's current_task / subagents /
- * context_pct fields. The Activity tab then rendered "no task / 0 subs / no
+ * orochi_context_pct fields. The Activity tab then rendered "no task / 0 subs / no
  * ctx" for everyone — exactly the symptom ywatanabe flagged at msg#6382. The
  * collect_agent_metadata.py path bypasses the broken registry lookup entirely (todo#155).
  */
@@ -70,8 +70,8 @@ export async function pushRegistryHeartbeat(): Promise<void> {
 
   // collect_agent_metadata.py field names → hub /api/agents/register field names.
   // The hub renderer (activity-tab.js) reads `current_task`,
-  // `subagent_count`, `context_pct`, `model`. collect_agent_metadata.py emits
-  // `current_tool`, `subagents`, `context_pct`, `model`. Translate.
+  // `subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
+  // `current_tool`, `subagents`, `orochi_context_pct`, `model`. Translate.
   const currentTool = (meta["current_tool"] as string | undefined) || "";
   const subagentCount =
     typeof meta["subagents"] === "number"

@@ -167,7 +167,7 @@ urlpatterns = [
     # Bun MCP sidecars POST registry heartbeats here. Must exist on the
     # bare domain because SCITEX_OROCHI_URL defaults to wss://scitex-orochi.com
     # (no subdomain). Without this entry the heartbeat 404s and the
-    # Activity tab shows empty current_task / context_pct for everyone
+    # Activity tab shows empty current_task / orochi_context_pct for everyone
     # (todo#155 root cause).
     path(
         "api/agents/register/",

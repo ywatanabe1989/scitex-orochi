@@ -39,7 +39,7 @@ export function _renderActivityAgentDetail(a, grid) {
   };
   var statusColor = livenessColors[liveness] || "#888";
   var pane = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
-  var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
+  var ctxPct = a.orochi_context_pct != null ? Number(a.orochi_context_pct) : null;
   var q5 = a.quota_5h_used_pct != null ? Number(a.quota_5h_used_pct) : null;
   var q7 = a.quota_7d_used_pct != null ? Number(a.quota_7d_used_pct) : null;
   var subCnt = a.subagent_count != null ? Number(a.subagent_count) : null;

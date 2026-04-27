@@ -92,7 +92,7 @@ class AgentDetailApiTest(TestCase):
             "channel_subs",
             "mcp_servers",
             "current_task",
-            "context_pct",
+            "orochi_context_pct",
             "pid",
             "subagents",
             "health",

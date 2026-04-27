@@ -407,7 +407,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
         _collect,
         "parse_statusline",
         lambda orochi_pane_tail_block: {
-            "statusline_context_pct": None,
+            "statusline_orochi_context_pct": None,
             "quota_5h_pct": None,
             "quota_5h_remaining": None,
             "quota_weekly_pct": None,
@@ -427,7 +427,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
         lambda jsonls: {
             "model": "",
             "last_activity": "",
-            "context_pct": None,
+            "orochi_context_pct": None,
             "current_tool": "",
             "started_at": "",
             "recent_actions": [],

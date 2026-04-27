@@ -7,7 +7,7 @@
  *     "agent": "head-mba",
  *     "alive": true,
  *     "subagents": 1,
- *     "context_pct": 59.0,
+ *     "orochi_context_pct": 59.0,
  *     "current_tool": "Agent",
  *     "last_activity": "2026-04-12T05:38:04.540Z",
  *     "model": "claude-opus-4-7"
@@ -70,7 +70,7 @@ function runAgentMetaScript(agent: string): Promise<AgentMeta> {
           const obj = JSON.parse(stdout);
           resolve({
             subagent_count: Number(obj.subagents ?? 0) || 0,
-            context_usage_percent: Number(obj.context_pct ?? 0) || 0,
+            context_usage_percent: Number(obj.orochi_context_pct ?? 0) || 0,
             current_task: String(obj.current_task ?? ""),
             current_tool: String(obj.current_tool ?? ""),
           });

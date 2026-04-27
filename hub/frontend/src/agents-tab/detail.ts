@@ -56,7 +56,7 @@ export function _renderAgentDetail(a) {
     ? machine + " (" + machineCanonical + ")"
     : machine;
   var modelClean = _cleanModel(d.model || a.model || "");
-  var ctxPct = d.context_pct != null ? d.context_pct : a.context_pct;
+  var ctxPct = d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
   var currentTask = d.current_task || a.current_task || "";
   var channels = d.channel_subs || a.channels || [];
   var claudeMd = d.claude_md || a.claude_md || "";

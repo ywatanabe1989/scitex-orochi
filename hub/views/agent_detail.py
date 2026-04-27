@@ -174,7 +174,7 @@ def api_agent_detail(request, name: str):
           "channel_subs": [str, ...],
           "mcp_servers": [str | dict, ...],
           "current_task": str,
-          "context_pct": float | None,
+          "orochi_context_pct": float | None,
           "pid": int,
           "subagents": [ ... ],
           "health": { ... }
@@ -279,7 +279,7 @@ def api_agent_detail(request, name: str):
         "channel_subs": sorted({c for c in (agent.get("channels") or []) if c}),
         "mcp_servers": list(agent.get("mcp_servers") or []),
         "current_task": agent.get("current_task", ""),
-        "context_pct": agent.get("context_pct"),
+        "orochi_context_pct": agent.get("orochi_context_pct"),
         "pid": int(agent.get("pid") or 0),
         "subagents": list(agent.get("subagents") or []),
         "subagent_count": int(agent.get("subagent_count") or 0),

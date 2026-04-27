@@ -76,7 +76,7 @@ def set_sac_status(name: str, sac_status: dict) -> None:
 
     Lead msg#16005 pivot: the heartbeat pusher shells out to ``sac
     status --terse --json`` and forwards the resulting dict verbatim so
-    future additions to sac's terse projection (``context_pct``,
+    future additions to sac's terse projection (``orochi_context_pct``,
     ``pane_state``, ``current_tool``, quota fields, ...) surface on
     ``/api/agents/`` without per-field plumbing on the hub side.
 

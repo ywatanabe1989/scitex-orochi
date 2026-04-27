@@ -68,7 +68,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "workdir": meta.get("workdir", ""),
         "pid": meta.get("pid") or 0,
         "ppid": meta.get("ppid") or 0,
-        "context_pct": meta.get("context_pct"),
+        "orochi_context_pct": meta.get("orochi_context_pct"),
         "subagent_count": int(meta.get("subagent_count") or 0),
         "skills_loaded": list(meta.get("skills_loaded") or []),
         "started_at": meta.get("started_at", ""),
@@ -133,7 +133,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "slurm": meta.get("slurm"),
         # Lead msg#16005 pivot: forward the ENTIRE ``sac status --terse
         # --json`` dict as a nested field. Future additions to sac's
-        # status projection (context_pct, pane_state, current_tool,
+        # status projection (orochi_context_pct, pane_state, current_tool,
         # quota, etc.) reach the hub registry + /api/agents/ payload
         # automatically — no per-field plumbing. ``--terse`` keeps the
         # per-agent bytes bounded (see TERSE_STATUS_FIELDS in
@@ -186,7 +186,7 @@ def push_all(url=None, token=None) -> int:
                 log.info(
                     "pushed %s ctx=%s%% subs=%s pid=%s",
                     agent,
-                    meta.get("context_pct"),
+                    meta.get("orochi_context_pct"),
                     meta.get("subagent_count"),
                     meta.get("pid"),
                 )

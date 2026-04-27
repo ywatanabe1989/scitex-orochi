@@ -91,9 +91,9 @@ def collect(agent: str) -> dict:
     )
     subagents = parse_subagent_count(pane)
 
-    # Statusline (claude-hud) — context_pct, quota_5h, quota_weekly, model, email.
+    # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(orochi_pane_tail_block)
-    statusline_context_pct = sl["statusline_context_pct"]
+    statusline_orochi_context_pct = sl["statusline_orochi_context_pct"]
     quota_5h_pct = sl["quota_5h_pct"]
     quota_5h_remaining = sl["quota_5h_remaining"]
     quota_weekly_pct = sl["quota_weekly_pct"]
@@ -108,7 +108,7 @@ def collect(agent: str) -> dict:
     tr = parse_transcript(jsonls)
     model = tr["model"]
     last_activity = tr["last_activity"]
-    context_pct = tr["context_pct"]
+    orochi_context_pct = tr["orochi_context_pct"]
     current_tool = tr["current_tool"]
     started_at = tr["started_at"]
     recent_actions = tr["recent_actions"]
@@ -207,10 +207,10 @@ def collect(agent: str) -> dict:
         "multiplexer": multiplexer,
         "subagents": subagents,
         "subagent_count": subagents,
-        "context_pct": (
-            statusline_context_pct
-            if statusline_context_pct is not None
-            else context_pct
+        "orochi_context_pct": (
+            statusline_orochi_context_pct
+            if statusline_orochi_context_pct is not None
+            else orochi_context_pct
         ),
         "current_tool": current_tool,
         "current_task": current_tool,

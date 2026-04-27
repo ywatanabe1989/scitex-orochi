@@ -14,7 +14,7 @@
 #
 # Usage (in an agent's /loop body):
 #   read CTX_JSON < <(bash ~/.dotfiles/src/.scitex/orochi/scripts/auto-compact-helper.sh)
-#   # parse CTX_JSON.context_pct, decide, then if over threshold:
+#   # parse CTX_JSON.orochi_context_pct, decide, then if over threshold:
 #   #   mcp__scitex-orochi__self_command command="/compact" delay_ms=3000
 #
 # Env vars:
@@ -54,7 +54,7 @@ read_via_tmux() {
 # Parse "Context left: 36%" or "Context: XX%" or similar statusline forms.
 # Returns the integer percent of context REMAINING (Claude statusline shows
 # remaining, not consumed). Falls back to empty string on parse failure.
-extract_context_pct() {
+extract_orochi_context_pct() {
     local text="$1"
     # Try several known statusline patterns in order of specificity.
     # Pattern 1: "Context left: NN%"
@@ -81,15 +81,15 @@ main() {
 
     local pct=""
     if [[ -n "$raw" ]]; then
-        pct=$(extract_context_pct "$raw" || true)
+        pct=$(extract_orochi_context_pct "$raw" || true)
     fi
 
-    # Emit JSON: agent / context_pct_remaining (null if unknown) / source
+    # Emit JSON: agent / orochi_context_pct_remaining (null if unknown) / source
     if [[ -n "$pct" ]]; then
-        printf '{"agent":"%s","context_pct_remaining":%s,"source":"%s","ts":"%s"}\n' \
+        printf '{"agent":"%s","orochi_context_pct_remaining":%s,"source":"%s","ts":"%s"}\n' \
             "$AGENT_NAME" "$pct" "$source" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     else
-        printf '{"agent":"%s","context_pct_remaining":null,"source":"%s","ts":"%s"}\n' \
+        printf '{"agent":"%s","orochi_context_pct_remaining":null,"source":"%s","ts":"%s"}\n' \
             "$AGENT_NAME" "$source" "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     fi
 }

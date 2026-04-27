@@ -155,7 +155,7 @@ machines:
     notes:
       - "Two cloudflared tunnels run side-by-side: scitex.ai (docker stack) and bastion-nas (systemd user)."
       - "fleet_watch.sh is the canonical NAS producer; scripts live at ~/proj/scitex-orochi/scripts/fleet-watch/."
-      - "ngate hosts ~/.scitex/orochi/scripts/agent_meta.py (per-session context_pct extractor)."
+      - "ngate hosts ~/.scitex/orochi/scripts/agent_meta.py (per-session orochi_context_pct extractor)."
 
   # ---------------------------------------------------------------------------
   - canonical_name: spartan

@@ -173,10 +173,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,
             "ppid": info.get("ppid") or prev.get("ppid") or 0,
-            "context_pct": (
-                info.get("context_pct")
-                if info.get("context_pct") is not None
-                else prev.get("context_pct")
+            "orochi_context_pct": (
+                info.get("orochi_context_pct")
+                if info.get("orochi_context_pct") is not None
+                else prev.get("orochi_context_pct")
             ),
             # YAML compact policy block from sac status. Preserve across
             # heartbeats so the Agents tab keeps showing the threshold even
@@ -411,7 +411,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # --json`` dict attached to the heartbeat by the pusher
             # (``scripts/client/agent_meta_pkg/_sac_status.py``). Stored
             # verbatim so future fields added to sac's terse projection
-            # (context_pct, pane_state, current_tool, quota, ...) reach
+            # (orochi_context_pct, pane_state, current_tool, quota, ...) reach
             # the dashboard via ``/api/agents/`` without per-field
             # plumbing here.
             #

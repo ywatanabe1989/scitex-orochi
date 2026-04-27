@@ -85,10 +85,10 @@ def _wrap_with_orochi_fields(
         "project": status.get("project") or status.get("name") or "",
         "pid": int(status.get("pid") or 0),
         "ppid": int(status.get("ppid") or 0),
-        "context_pct": status.get("context_pct"),
+        "orochi_context_pct": status.get("orochi_context_pct"),
         # YAML-declared compact policy from sac status (None when noop /
         # unconfigured). Surfaced in the Agents tab next to the live
-        # context_pct so operators can see the threshold each agent uses.
+        # orochi_context_pct so operators can see the threshold each agent uses.
         "context_management": status.get("context_management"),
         "current_task": status.get("current_task") or "",
         "current_tool": status.get("current_tool") or "",
@@ -310,7 +310,7 @@ def heartbeat_push(
             click.echo(
                 f"[heartbeat-push] {agent_name} -> {hub} HTTP {code} "
                 f"pane_state={body.get('pane_state')} "
-                f"context={body.get('context_pct')} "
+                f"context={body.get('orochi_context_pct')} "
                 f"quota_5h={body.get('quota_5h_used_pct')} "
                 f"tools={sum((body.get('tool_counts') or {}).values())}",
                 err=True,

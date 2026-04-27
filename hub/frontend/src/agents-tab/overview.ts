@@ -237,7 +237,7 @@ export function buildAgentRow(a) {
     escapeHtml(a.multiplexer || "-") +
     "</td>" +
     '<td class="ctx-cell">' +
-    renderContextBadge(a.context_pct, a.context_management) +
+    renderContextBadge(a.orochi_context_pct, a.context_management) +
     "</td>" +
     '<td class="skills-cell">' +
     renderSkillsBadge(a.skills_loaded) +

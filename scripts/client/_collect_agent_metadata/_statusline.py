@@ -19,10 +19,10 @@ import re
 
 
 def parse_statusline(orochi_pane_tail_block: str) -> dict:
-    """Extract context_pct, quota_5h, quota_weekly, model, email from statusline.
+    """Extract orochi_context_pct, quota_5h, quota_weekly, model, email from statusline.
 
     Returns a dict with keys:
-      - statusline_context_pct: Optional[float]
+      - statusline_orochi_context_pct: Optional[float]
       - quota_5h_pct: Optional[float]
       - quota_5h_remaining: str
       - quota_weekly_pct: Optional[float]
@@ -31,7 +31,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
       - orochi_account_email: str
     """
     out: dict = {
-        "statusline_context_pct": None,
+        "statusline_orochi_context_pct": None,
         "quota_5h_pct": None,
         "quota_5h_remaining": "",
         "quota_weekly_pct": None,
@@ -55,7 +55,7 @@ def parse_statusline(orochi_pane_tail_block: str) -> dict:
     pct_matches = re.findall(r"[█░▓▒]{2,}\s+(\d+)%(?:\s*\(([^)]+)\))?", src)
     # First bar = context, second = 5h quota, third = weekly quota
     if len(pct_matches) >= 1:
-        out["statusline_context_pct"] = float(pct_matches[0][0])
+        out["statusline_orochi_context_pct"] = float(pct_matches[0][0])
     if len(pct_matches) >= 2:
         out["quota_5h_pct"] = float(pct_matches[1][0])
         out["quota_5h_remaining"] = pct_matches[1][1] if pct_matches[1][1] else ""

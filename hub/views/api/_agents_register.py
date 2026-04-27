@@ -117,7 +117,7 @@ def api_agents_register(request):
             "project": body.get("project", ""),
             "pid": body.get("pid") or 0,
             "ppid": body.get("ppid") or 0,
-            "context_pct": body.get("context_pct"),
+            "orochi_context_pct": body.get("orochi_context_pct"),
             # YAML-declared compact policy (strategy / trigger_at_percent /
             # live percent reading from the sac sensor). None when the agent
             # has context_management.strategy=noop or unconfigured.
