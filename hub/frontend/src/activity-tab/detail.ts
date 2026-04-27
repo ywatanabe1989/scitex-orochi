@@ -172,7 +172,7 @@ export function _renderActivityAgentDetail(a, grid) {
       d.last_mcp_tool_at
         ? _fmtSec(_secondsSinceIso(d.last_mcp_tool_at)) +
           " ago" +
-          (d.last_mcp_tool_name ? " (" + d.last_mcp_tool_name + ")" : "")
+          (d.sac_hooks_last_mcp_tool_name ? " (" + d.sac_hooks_last_mcp_tool_name + ")" : "")
         : "-",
     ],
     [

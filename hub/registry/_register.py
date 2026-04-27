@@ -278,8 +278,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "last_mcp_tool_at": info.get("last_mcp_tool_at")
             or prev.get("last_mcp_tool_at")
             or "",
-            "last_mcp_tool_name": info.get("last_mcp_tool_name")
-            or prev.get("last_mcp_tool_name")
+            "sac_hooks_last_mcp_tool_name": info.get("sac_hooks_last_mcp_tool_name")
+            or prev.get("sac_hooks_last_mcp_tool_name")
             or "",
             # PaneAction summary from scitex-agent-container action_store.
             # Per-push replace semantics (no merge) — a fresh heartbeat

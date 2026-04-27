@@ -34,7 +34,7 @@ Key Features
   hook ring buffer —
   ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (newest ``PreToolUse``, i.e.
   LLM-level liveness) and
-  ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (newest ``mcp__*``
+  ``last_mcp_tool_at`` / ``sac_hooks_last_mcp_tool_name`` (newest ``mcp__*``
   pretool, proves the MCP sidecar route works) — plus a PaneAction
   summary from the container's per-host ``actions.db``:
   ``last_action_at`` / ``last_action_name`` (e.g. ``nonce-probe``,

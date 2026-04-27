@@ -34,7 +34,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
     ``GET /api/agents/<name>/detail/`` preserves:
 
       - ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name``  — LLM liveness signal
-      - ``last_mcp_tool_at`` / ``last_mcp_tool_name`` — MCP sidecar route
+      - ``last_mcp_tool_at`` / ``sac_hooks_last_mcp_tool_name`` — MCP sidecar route
       - ``sac_hooks_recent_tools`` / ``sac_hooks_recent_prompts`` / ``sac_hooks_agent_calls`` /
         ``background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
         views rendered in the per-agent detail panels.
@@ -100,7 +100,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         agents = get_agents(workspace_id=self.ws.id)
         a = next(a for a in agents if a["name"] == "hb-agent")
         self.assertEqual(a["last_mcp_tool_at"], "2026-04-17T00:01:00+00:00")
-        self.assertEqual(a["last_mcp_tool_name"], "mcp__orochi__send_message")
+        self.assertEqual(a["sac_hooks_last_mcp_tool_name"], "mcp__orochi__send_message")
 
     def test_register_persists_hook_event_lists(self):
         """sac_hooks_recent_tools / prompts / sac_hooks_agent_calls / background_tasks /
@@ -155,7 +155,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["sac_hooks_last_tool_at"], "2026-04-17T01:00:00+00:00")
         self.assertEqual(data["sac_hooks_last_tool_name"], "Write")
         self.assertEqual(data["last_mcp_tool_at"], "2026-04-17T00:59:30+00:00")
-        self.assertEqual(data["last_mcp_tool_name"], "mcp__orochi__channel_info")
+        self.assertEqual(data["sac_hooks_last_mcp_tool_name"], "mcp__orochi__channel_info")
 
     def test_detail_api_surfaces_hook_event_lists(self):
         self._post(
@@ -192,7 +192,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["sac_hooks_last_tool_at"], "")
         self.assertEqual(data["sac_hooks_last_tool_name"], "")
         self.assertEqual(data["last_mcp_tool_at"], "")
-        self.assertEqual(data["last_mcp_tool_name"], "")
+        self.assertEqual(data["sac_hooks_last_mcp_tool_name"], "")
 
     def test_subsequent_heartbeat_replaces_hook_lists(self):
         """A fresh heartbeat must reflect the agent's current ring-buffer

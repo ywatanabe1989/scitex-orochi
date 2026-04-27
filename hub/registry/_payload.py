@@ -232,7 +232,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_last_tool_at": a.get("sac_hooks_last_tool_at", ""),
                 "sac_hooks_last_tool_name": a.get("sac_hooks_last_tool_name", ""),
                 "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
-                "last_mcp_tool_name": a.get("last_mcp_tool_name", ""),
+                "sac_hooks_last_mcp_tool_name": a.get("sac_hooks_last_mcp_tool_name", ""),
                 # PaneAction summary (scitex-agent-container action_store).
                 # NB: ``last_action_name`` (not ``last_action``) to avoid
                 # collision with the pre-existing ``last_action`` field
