@@ -60,6 +60,15 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("bearer", re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}")),
     # Anything that looks like a password-store grep result.
     ("password", re.compile(r"(?i)password[:=]\s*\S{4,}")),
+    # Plain-prose secret leakage — "the password is hunter2", "pw is x",
+    # "secret: foo". Adversarial input only (anyone deliberately writing
+    # this is past the threat model) but cheap to defend (audit v03 §F).
+    (
+        "password-prose",
+        re.compile(
+            r"(?i)\b(password|passwd|secret|api[\s_-]?key|token)\s+(?:is|=|:)\s+\S{4,}"
+        ),
+    ),
     # URL/DSN userinfo: postgres://user:pw@host, redis://:pw@host,
     # https://user:pw@host, amqp://, mongodb+srv://, etc. Mask the whole
     # `user:pw@` chunk (audit 2026-04-27 §1: the previous regex set let

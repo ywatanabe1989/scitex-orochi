@@ -107,6 +107,25 @@ def _orochi_mcp_json_candidates(ws: str) -> list[Path]:
     return uniq
 
 
+_TRUNCATE_LIMIT = 10000
+
+
+def _truncate_with_marker(text: str, limit: int = _TRUNCATE_LIMIT) -> str:
+    """Truncate to ``limit`` chars, appending an explicit marker so
+    consumers (humans + JSON.parse) can tell the value was cut.
+
+    Returning a hard ``text[:N]`` slice is silent — a long markdown
+    code-fence or JSON value gets cut mid-token with no signal.
+    Appending ``\\n…(truncated N chars)`` makes the cut self-evident
+    in any viewer that doesn't strip trailing whitespace, and the
+    leading newline keeps the marker on its own line.
+    """
+    if len(text) <= limit:
+        return text
+    omitted = len(text) - limit
+    return text[:limit] + f"\n…(truncated {omitted} chars)"
+
+
 def _redact_secrets(obj):
     if isinstance(obj, dict):
         out = {}
@@ -140,7 +159,7 @@ def collect_orochi_claude_md(workspace: str) -> tuple[str, str]:
                     if ln_stripped and not ln_stripped.startswith("```"):
                         orochi_claude_md_head = ln_stripped[:120]
                         break
-                orochi_claude_md_full = text[:10000]
+                orochi_claude_md_full = _truncate_with_marker(text)
                 break
         except Exception:
             continue
@@ -156,7 +175,7 @@ def collect_orochi_mcp_json(workspace: str) -> str:
                 continue
             doc = json.loads(mcp_path.read_text())
             redacted = _redact_secrets(doc)
-            orochi_mcp_json_full = json.dumps(redacted, indent=2)[:10000]
+            orochi_mcp_json_full = _truncate_with_marker(json.dumps(redacted, indent=2))
             break
         except Exception:
             continue
@@ -425,7 +444,7 @@ def collect_orochi_env_file(workspace: str) -> str:
             if not env_path.is_file():
                 continue
             raw = env_path.read_text(errors="replace")
-            text = _redact_env_text(raw)[:10000]
+            text = _truncate_with_marker(_redact_env_text(raw))
             break
         except Exception:
             continue

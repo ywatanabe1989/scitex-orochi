@@ -385,6 +385,14 @@ lint:
 	@command -v ruff >/dev/null 2>&1 || (echo -e "$(RED)ruff not installed$(NC)"; exit 1)
 	cd $(PROJECT_ROOT) && ruff check src/ hub/ orochi/ tests/
 
+# CSS cascade-trap audit. Catches the `.avatar-clickable`/<td> family of
+# bugs (2026-04-27 incident: a class declaring `display: inline-flex`
+# was applied to a <td>, knocking it out of `display: table-cell` and
+# silently nullifying `vertical-align: middle`). Runs in <1 s; safe to
+# wire into pre-commit. Zero deps beyond Python stdlib + ripgrep/grep.
+lint-css:
+	cd $(PROJECT_ROOT) && python3 scripts/server/lint-css-cascade-traps.py
+
 typecheck:
 	@command -v pyright >/dev/null 2>&1 || (echo -e "$(RED)pyright not installed$(NC)"; exit 1)
 	cd $(PROJECT_ROOT) && pyright
