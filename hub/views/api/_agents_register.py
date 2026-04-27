@@ -122,7 +122,7 @@ def api_agents_register(request):
             # live percent reading from the sac sensor). None when the agent
             # has context_management.strategy=noop or unconfigured.
             "context_management": body.get("context_management"),
-            "skills_loaded": body.get("skills_loaded") or [],
+            "orochi_skills_loaded": body.get("orochi_skills_loaded") or [],
             "started_at": body.get("started_at", ""),
             "version": body.get("version", ""),
             "runtime": body.get("runtime", ""),

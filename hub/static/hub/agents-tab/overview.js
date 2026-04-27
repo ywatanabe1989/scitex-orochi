@@ -232,7 +232,7 @@ function buildAgentRow(a) {
     renderContextBadge(a.orochi_context_pct, a.context_management) +
     "</td>" +
     '<td class="skills-cell">' +
-    renderSkillsBadge(a.skills_loaded) +
+    renderSkillsBadge(a.orochi_skills_loaded) +
     "</td>" +
     '<td class="pid-cell muted-cell">' +
     (a.pid ? String(a.pid) : "-") +

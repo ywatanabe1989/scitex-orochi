@@ -204,7 +204,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "ppid": a.get("ppid") or 0,
                 "orochi_context_pct": a.get("orochi_context_pct"),
                 "context_management": a.get("context_management"),
-                "skills_loaded": list(a.get("skills_loaded") or []),
+                "orochi_skills_loaded": list(a.get("orochi_skills_loaded") or []),
                 "started_at": a.get("started_at", ""),
                 "version": a.get("version", ""),
                 "runtime": a.get("runtime", ""),

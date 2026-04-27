@@ -440,7 +440,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     )
     monkeypatch.setattr(
         _collect,
-        "collect_skills_loaded",
+        "collect_orochi_skills_loaded",
         lambda ws: [],
     )
     monkeypatch.setattr(

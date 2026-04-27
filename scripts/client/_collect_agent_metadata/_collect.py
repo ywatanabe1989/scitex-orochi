@@ -15,7 +15,7 @@ from ._files import (
     collect_claude_md,
     collect_mcp_json,
     collect_mcp_servers,
-    collect_skills_loaded,
+    collect_orochi_skills_loaded,
 )
 from ._hooks import _collect_hook_events
 from ._hostname import _resolve_canonical_hostname
@@ -69,7 +69,7 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        pid, ppid, started_at, workdir, project, machine, skills_loaded,
+        pid, ppid, started_at, workdir, project, machine, orochi_skills_loaded,
         runtime, version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
@@ -117,7 +117,7 @@ def collect(agent: str) -> dict:
     pid, ppid = find_session_pids(agent, multiplexer)
 
     # Skills loaded + MCP servers from workspace files.
-    skills_loaded = collect_skills_loaded(workspace)
+    orochi_skills_loaded = collect_orochi_skills_loaded(workspace)
     mcp_servers = collect_mcp_servers(workspace)
     project = agent
     machine = resolve_machine_label()
@@ -253,7 +253,7 @@ def collect(agent: str) -> dict:
         # todo#55: canonical FQDN for display next to the short machine
         # label in the dashboard.
         "orochi_hostname_canonical": _resolve_canonical_hostname(),
-        "skills_loaded": skills_loaded,
+        "orochi_skills_loaded": orochi_skills_loaded,
         "mcp_servers": mcp_servers,
         "claude_md_head": claude_md_head,
         # todo#460 full-content fields for the Agents tab viewer.

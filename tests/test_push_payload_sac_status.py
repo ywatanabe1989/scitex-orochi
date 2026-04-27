@@ -27,7 +27,7 @@ _MIN_META = {
     "orochi_subagent_count": 2,
     # Typical collect() keys — fill enough that _build_payload
     # doesn't KeyError.
-    "skills_loaded": [],
+    "orochi_skills_loaded": [],
     "mcp_servers": [],
     "recent_actions": [],
     "recent_tools": [],

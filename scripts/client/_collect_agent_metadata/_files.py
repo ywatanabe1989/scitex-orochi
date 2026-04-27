@@ -7,9 +7,9 @@ import re
 from pathlib import Path
 
 
-def collect_skills_loaded(workspace: str) -> list[str]:
+def collect_orochi_skills_loaded(workspace: str) -> list[str]:
     """Scan the workspace CLAUDE.md for ```skills fences and return the names."""
-    skills_loaded: list[str] = []
+    orochi_skills_loaded: list[str] = []
     try:
         cmd = Path(workspace) / "CLAUDE.md"
         if cmd.is_file():
@@ -18,10 +18,10 @@ def collect_skills_loaded(workspace: str) -> list[str]:
                 for ln in block.splitlines():
                     ln = ln.strip()
                     if ln and not ln.startswith("#"):
-                        skills_loaded.append(ln)
+                        orochi_skills_loaded.append(ln)
     except Exception:
         pass
-    return skills_loaded
+    return orochi_skills_loaded
 
 
 def collect_mcp_servers(workspace: str) -> list[str]:

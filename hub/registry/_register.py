@@ -186,10 +186,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if info.get("context_management") is not None
                 else prev.get("context_management")
             ),
-            "skills_loaded": (
-                list(info.get("skills_loaded"))
-                if isinstance(info.get("skills_loaded"), (list, tuple))
-                else prev.get("skills_loaded") or []
+            "orochi_skills_loaded": (
+                list(info.get("orochi_skills_loaded"))
+                if isinstance(info.get("orochi_skills_loaded"), (list, tuple))
+                else prev.get("orochi_skills_loaded") or []
             ),
             "started_at": info.get("started_at") or prev.get("started_at") or "",
             "version": info.get("version") or prev.get("version") or "",
