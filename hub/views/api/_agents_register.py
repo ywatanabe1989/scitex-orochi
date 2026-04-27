@@ -109,7 +109,7 @@ def api_agents_register(request):
             "orochi_hostname_canonical": body.get("orochi_hostname_canonical", ""),
             "role": body.get("role", "agent"),
             "orochi_model": body.get("orochi_model", ""),
-            "workdir": body.get("workdir", ""),
+            "orochi_workdir": body.get("orochi_workdir", ""),
             "channels": _effective_channels,
             # todo#213: claude-hud-style process/orochi_runtime metadata pushed by
             # mamba-healer-mba's agent_meta.py --push loop.

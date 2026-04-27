@@ -14,7 +14,7 @@ metadata:
 spec:
   orochi_runtime: claude-code
   orochi_model: sonnet
-  workdir: ~/proj
+  orochi_workdir: ~/proj
 
   remote:
     host: CHANGEME_HOST

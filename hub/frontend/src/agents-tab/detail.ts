@@ -85,7 +85,7 @@ export function _renderAgentDetail(a) {
   var paneFull = d.pane_text_full || "";
   var paneFullAvailable = !!paneFull;
 
-  var workdir = d.workdir || a.workdir || "";
+  var orochi_workdir = d.orochi_workdir || a.orochi_workdir || "";
   var orochi_pid = d.orochi_pid || a.orochi_pid || "";
   var orochi_multiplexer = d.orochi_multiplexer || a.orochi_multiplexer || "";
   var idleSec = d.idle_seconds != null ? d.idle_seconds : a.idle_seconds;
@@ -119,7 +119,7 @@ export function _renderAgentDetail(a) {
   }
   /* [label, value, tooltip] — tooltip optional. The detail-meta-grid
    * renderer below writes the tooltip onto the <span> so hovering a
-   * cell reveals the full value (critical for workdir paths that get
+   * cell reveals the full value (critical for orochi_workdir paths that get
    * middle-truncated). */
   var metaFields = [
     ["Role", role, "declared agent role (head / healer / expert-scitex / ...)"],
@@ -180,8 +180,8 @@ export function _renderAgentDetail(a) {
     ],
     [
       "Workdir",
-      _smartTruncatePath(workdir, 40) || "-",
-      workdir || "(no workdir reported)",
+      _smartTruncatePath(orochi_workdir, 40) || "-",
+      orochi_workdir || "(no orochi_workdir reported)",
     ],
     [
       "Registered",

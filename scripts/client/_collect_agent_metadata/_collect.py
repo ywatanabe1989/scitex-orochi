@@ -69,7 +69,7 @@ def collect(agent: str) -> dict:
 
     Extends the legacy payload with fields required by the Orochi
     Agents-tab dashboard (todo#213):
-        orochi_pid, orochi_ppid, orochi_started_at, workdir, orochi_project, orochi_machine, orochi_skills_loaded,
+        orochi_pid, orochi_ppid, orochi_started_at, orochi_workdir, orochi_project, orochi_machine, orochi_skills_loaded,
         orochi_runtime, orochi_version, orochi_subagent_count.
     Any field that can't be determined is omitted or left empty so the
     receiver can degrade gracefully.
@@ -242,7 +242,7 @@ def collect(agent: str) -> dict:
         "orochi_pid": orochi_pid,
         "orochi_ppid": orochi_ppid,
         "orochi_started_at": orochi_started_at,
-        "workdir": workspace,
+        "orochi_workdir": workspace,
         "orochi_project": orochi_project,
         "orochi_machine": orochi_machine,
         # Live orochi_hostname(1) — see the comment above live_hostname for why

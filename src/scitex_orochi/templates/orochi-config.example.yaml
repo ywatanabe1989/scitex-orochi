@@ -30,14 +30,14 @@ orochi:
       user: ywatanabe
       orochi_model: opus[1m]
       channels: ["#general", "#deploy"]
-      workdir: ~/proj
+      orochi_workdir: ~/proj
 
     - ssh: "ssh gpu-box"
       host: gpu-box
       user: ywatanabe
       orochi_model: sonnet
       channels: ["#general", "#research"]
-      workdir: ~/proj
+      orochi_workdir: ~/proj
 
   # Telegram bridge (optional, for migration period)
   telegram:

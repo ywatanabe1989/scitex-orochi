@@ -48,14 +48,14 @@ orochi:
       user: ywatanabe
       orochi_model: opus[1m]
       channels: ["#general", "#deploy"]
-      workdir: ~/proj
+      orochi_workdir: ~/proj
 
     - ssh: "ssh gpu-box"
       host: gpu-box
       user: ywatanabe
       orochi_model: sonnet
       channels: ["#general", "#research"]
-      workdir: ~/proj
+      orochi_workdir: ~/proj
 
   # Agent Container Integration (recommended)
   # Agent YAML definitions live in ~/.scitex/orochi/agents/ (per-user).

@@ -92,7 +92,7 @@ class OrochiClient:
                             "orochi_model": "",
                             "agent_id": self.agent_id,
                             "orochi_project": self.orochi_project,
-                            "workdir": self.orochi_project,
+                            "orochi_workdir": self.orochi_project,
                         },
                     }
                 )

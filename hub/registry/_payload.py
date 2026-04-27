@@ -133,7 +133,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_model": a.get("orochi_model", ""),
                 "orochi_multiplexer": a.get("orochi_multiplexer", ""),
                 "orochi_project": a.get("orochi_project", ""),
-                "workdir": a.get("workdir", ""),
+                "orochi_workdir": a.get("orochi_workdir", ""),
                 "icon": icon_image,
                 "icon_emoji": icon_emoji,
                 "icon_text": icon_text,

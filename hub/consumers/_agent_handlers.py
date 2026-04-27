@@ -56,7 +56,7 @@ async def handle_register(consumer, content):
         "orochi_hostname_canonical": payload.get("orochi_hostname_canonical", ""),
         "role": payload.get("role", ""),
         "orochi_model": payload.get("orochi_model", ""),
-        "workdir": payload.get("workdir", ""),
+        "orochi_workdir": payload.get("orochi_workdir", ""),
         "icon": payload.get("icon", ""),
         "icon_emoji": payload.get("icon_emoji", ""),
         "icon_text": payload.get("icon_text", ""),

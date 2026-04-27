@@ -236,7 +236,7 @@ def build_template_vars(
                 "agent_model": head.get("orochi_model", "sonnet"),
                 "agent_channels": ", ".join(head.get("channels", ["#general"])),
                 "agent_role": "head",
-                "agent_workdir": head.get("workdir", "~/proj"),
+                "agent_workdir": head.get("orochi_workdir", "~/proj"),
                 "agent_host": head.get("host", head_name),
             }
         )

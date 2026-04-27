@@ -65,7 +65,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "orochi_model": meta.get("orochi_model", ""),
         "orochi_multiplexer": meta.get("orochi_multiplexer", ""),
         "orochi_project": meta.get("orochi_project", ""),
-        "workdir": meta.get("workdir", ""),
+        "orochi_workdir": meta.get("orochi_workdir", ""),
         "orochi_pid": meta.get("orochi_pid") or 0,
         "orochi_ppid": meta.get("orochi_ppid") or 0,
         "orochi_context_pct": meta.get("orochi_context_pct"),

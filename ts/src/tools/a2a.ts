@@ -37,7 +37,7 @@ export function readBearer(): string {
   const path = process.env.SCITEX_OROCHI_A2A_TOKEN_PATH;
   if (!path) {
     throw new Error(
-      "SCITEX_OROCHI_A2A_TOKEN_PATH is not set (expected from <workdir>/.env via sac deploy_src_env)",
+      "SCITEX_OROCHI_A2A_TOKEN_PATH is not set (expected from <orochi_workdir>/.env via sac deploy_src_env)",
     );
   }
   try {

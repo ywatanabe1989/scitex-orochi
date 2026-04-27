@@ -354,7 +354,7 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
     ssh_cmd = head["ssh"]
     orochi_model = head.get("orochi_model", "sonnet")
     channels = head.get("channels", ["#general"])
-    workdir = head.get("workdir", "~/proj")
+    orochi_workdir = head.get("orochi_workdir", "~/proj")
     server = cfg["server"]
 
     tvars = build_template_vars(cfg, role="head", head_name=name)
@@ -366,7 +366,7 @@ def legacy_launch_head(cfg: dict, name: str, dry_run: bool, as_json: bool) -> No
         f"{rendered}\n"
         f"CLAUDE_EOF\n"
         f"screen -dmS {screen_name} bash -c '"
-        f"cd {workdir}; "
+        f"cd {orochi_workdir}; "
         f"export SCITEX_OROCHI_HOST={server['host']}; "
         f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
         f"export SCITEX_OROCHI_AGENT={screen_name}; "

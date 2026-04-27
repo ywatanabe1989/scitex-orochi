@@ -33,7 +33,7 @@ metadata:
 spec:
   orochi_runtime: claude-code
   orochi_model: opus[1m]
-  workdir: ~/proj
+  orochi_workdir: ~/proj
 
   skills:
     required:

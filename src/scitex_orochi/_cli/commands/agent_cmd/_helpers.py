@@ -76,7 +76,7 @@ def _extract_config_from_ac_yaml(yaml_path: Path) -> dict:
         "role": labels.get("role", "head"),
         "screen_name": screen_cfg.get("name", meta.get("name", yaml_path.stem)),
         "orochi_model": spec.get("orochi_model", "opus[1m]"),
-        "workdir": spec.get("workdir", f"~/.scitex/orochi/workspaces/{yaml_path.stem}"),
+        "orochi_workdir": spec.get("orochi_workdir", f"~/.scitex/orochi/workspaces/{yaml_path.stem}"),
     }
 
 
@@ -120,7 +120,7 @@ def _derive_config(name: str) -> dict:
         "role": role,
         "screen_name": name,
         "orochi_model": "opus[1m]",
-        "workdir": f"~/.scitex/orochi/workspaces/{name}",
+        "orochi_workdir": f"~/.scitex/orochi/workspaces/{name}",
     }
 
 

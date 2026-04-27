@@ -252,9 +252,9 @@ export function buildAgentRow(a) {
     escapeHtml(a.orochi_project || "-") +
     "</td>" +
     '<td class="monospace-cell small-cell" title="' +
-    escapeHtml(a.workdir || "") +
+    escapeHtml(a.orochi_workdir || "") +
     '">' +
-    escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
+    escapeHtml(a.orochi_workdir ? a.orochi_workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
     "</td>" +
     '<td class="pane-state-cell">' +
     renderPaneStateBadge(a.orochi_pane_state, a.orochi_stuck_prompt_text) +

@@ -188,7 +188,7 @@ function _renderActivityAgentDetail(a, grid) {
           ")"
         : "-",
     ],
-    ["Workdir", a.workdir || "-"],
+    ["Workdir", a.orochi_workdir || "-"],
     ["Registered", a.registered_at || "-"],
     ["Last heartbeat", a.last_heartbeat || "-"],
   ];

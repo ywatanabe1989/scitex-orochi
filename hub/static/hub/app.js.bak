@@ -377,10 +377,10 @@ async function fetchAgents() {
           ? getSenderIcon(a.name, true)
           : getSnakeIcon(16, color);
         var workdirHtml = "";
-        if (a.workdir) {
-          var displayDir = a.workdir.replace(/^\/home\/[^/]+/, "~");
+        if (a.orochi_workdir) {
+          var displayDir = a.orochi_workdir.replace(/^\/home\/[^/]+/, "~");
           workdirHtml =
-            '<div class="agent-workdir">' +
+            '<div class="agent-orochi_workdir">' +
             escapeHtml(cleanAgentName(a.name)) +
             ":" +
             escapeHtml(displayDir) +
