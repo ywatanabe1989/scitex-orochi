@@ -57,6 +57,44 @@ scripts:
 | 2 | `make prod-deploy` | git push → ssh PROD\_HOST → docker compose up -d --build → CF cache purge | Routine code change |
 | 3 | `make prod-rebuild` (manual `--no-cache` extension) | Full image rebuild from scratch | Dependency / pyproject change |
 
+## Cloudflare tunnels — canonical and standby
+
+Two cloudflared connectors are registered with Cloudflare, but **only
+one routes prod traffic at a time**. The split exists for failover, not
+load-balancing — registering both for the same hostname would
+half-route traffic to a backend the second connector can't reach.
+
+| Tunnel ID | Host | Role | Service config |
+| --- | --- | --- | --- |
+| `c1fddc4d-13d9-4606-a2d9-ffeaa3e8c337` | **mba** (canonical prod) | Routes `scitex-lab.scitex-orochi.com → http://localhost:8559` (colima-bridged docker container `orochi-server-stable`). | LaunchDaemon `com.cloudflare.cloudflared` (homebrew). Lives at `/Library/LaunchDaemons/com.cloudflare.cloudflared.plist`. |
+| `bc461e9d-e4fc-4c3d-addb-1f0ac5f2acaa` | **ywata-note-win** (standby) | Currently registered but **not** routing the dashboard hostname (`total_requests=0` since boot). Available to take over by adding the dashboard ingress in the CF dashboard and disabling the mba tunnel. | systemd-style autostart on WSL2; runs from `~/.local/bin/cloudflared tunnel run --token …`. |
+
+`Makefile:100` hard-pins `PROD_HOST := mba` and assumes the canonical
+tunnel above. If you need to fail over to ywata-note-win:
+
+1. Cloudflare Zero Trust → Tunnels → `c1fddc4d` → pause / disable
+   ingress to dashboard.
+2. Same dashboard → `bc461e9d` → add public hostname
+   `scitex-lab.scitex-orochi.com → http://localhost:8559`.
+3. Update `Makefile:100` `PROD_HOST := ywata-note-win` (or pass
+   `make PROD_HOST=ywata-note-win prod-deploy`).
+4. `scripts/client/install-colima-caffeinate.sh` is a no-op on WSL2 —
+   the failover host doesn't have the colima-suspend failure mode.
+
+Probe the active connector:
+
+```bash
+curl -s http://127.0.0.1:20241/metrics | grep ^cloudflared_tunnel_total_requests
+```
+
+Non-zero = this tunnel is serving traffic; zero = standby.
+
+**Do NOT register both tunnels for the same hostname.** Cloudflare
+load-balances across all healthy connectors of a tunnel; if the
+standby's backend is unreachable from its host, half the requests
+return 502 even when the canonical container is healthy. (This was
+the 2026-04-27 incident before the prod-host invariant was clarified.)
+
 See `~/.scitex/orochi/shared/skills/scitex-orochi-private/`:
 
 - `infra-deploy-workflow.md` — when to pick which tier
