@@ -110,13 +110,24 @@ as the dead-`.js` files that had accumulated for weeks.
 **Idea.** A nightly GitHub Action (or local cron via the orochi-cron
 infra that already exists in the repo) that:
 
-1. For every PR with `updatedAt > 14 days ago` AND **not** in a
-   "needs human" label, comment "auto-stale: closing in 7 days unless
+1. For every PR with `updatedAt > 3 days ago` AND **not** the
+   `keep-open` label, comment "auto-stale: closing in 1 day unless
    you push or label `keep-open`".
-2. After 7 more days, close with the same template message we used
-   today.
-3. If the PR has a `needs-rebase` label, attempt `gh pr update --rebase`
-   automatically; if conflict, post the merge-base summary.
+2. After 1 more day with no activity, close with the same template
+   message we used today.
+3. Push or non-bot comment auto-removes the `stale` label
+   (`remove-stale-when-updated: true`) so a re-pushed PR is
+   immediately back in good standing.
+
+**Threshold rationale (2026-04-28):** the operator runs a high-cadence
+fleet — 3 days of silence on a PR strongly indicates either it's
+landed differently on develop or the author has moved on. Forcing the
+re-engagement (push, label, or accept the close) keeps the open-PR
+list a *signal* rather than a graveyard.
+
+**Implemented:** `.github/workflows/pr-stale-sweep.yml`
+(`actions/stale@v9`, cron `0 12 * * *` UTC, `workflow_dispatch:`
+manual trigger).
 
 **Effort:** half day. Provides ongoing branch hygiene without a
 manual sweep every quarter.
