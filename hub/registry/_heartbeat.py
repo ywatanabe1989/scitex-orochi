@@ -168,7 +168,28 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
             _agents[name]["last_heartbeat"] = time.time()
             _agents[name]["status"] = "online"
             if metrics:
-                _agents[name]["metrics"] = metrics
+                # MERGE, not overwrite. Multiple producers contribute to
+                # ``metrics`` (collect_machine_metrics → host CPU/mem/disk;
+                # collect_orochi_slurm_status → cluster_* aggregates;
+                # scitex-agent-container's sac_status → its own subset).
+                # A producer that only knows about a subset (e.g. a
+                # Slurm-only host producing cluster_* fields) used to wipe
+                # the host-level fields a richer producer had written, so
+                # the Machines tab card showed dashes for cores/disk even
+                # though some producer had populated them.
+                # Preserving keys absent from the new push avoids that
+                # silent wipe; the producer can still reset a key by
+                # sending it with a falsy value (the dashboard renders
+                # 0 / empty as the appropriate "n/a"). 2026-04-28.
+                prev_metrics = _agents[name].get("metrics") or {}
+                merged = dict(prev_metrics)
+                # Skip explicit ``None`` values — a producer that
+                # doesn't have a metric should OMIT it, not send
+                # ``None`` and wipe whatever a richer producer wrote.
+                # Falsy non-None values (0, "", []) DO overwrite, so a
+                # producer can still reset (e.g. set GPU list to []).
+                merged.update({k: v for k, v in metrics.items() if v is not None})
+                _agents[name]["metrics"] = merged
             has_agent = True
         else:
             has_agent = False
