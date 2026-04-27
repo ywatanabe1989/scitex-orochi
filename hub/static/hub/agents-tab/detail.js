@@ -37,7 +37,7 @@ function _renderAgentDetail(a) {
    * their mDNS names — those contribute nothing (ywatanabe msg 2026-04-18
    * "2" flagged the duplication for the 7 ywata-note-win agents whose
    * FQDN was just the short label + ".localdomain"). */
-  var machineCanonical = d.hostname_canonical || a.hostname_canonical || "";
+  var machineCanonical = d.orochi_hostname_canonical || a.orochi_hostname_canonical || "";
   function _fqdnAddsInfo(short, fqdn) {
     if (!fqdn) return false;
     if (fqdn === short) return false;

@@ -150,7 +150,7 @@ def api_agent_detail(request, name: str):
           # truth. Empty/None for legacy clients that haven't been
           # upgraded; UI falls back to `machine` until populated.
           "hostname": str,               # `hostname(1)` of the running process
-          "hostname_canonical": str,     # FQDN via socket.getfqdn()
+          "orochi_hostname_canonical": str,     # FQDN via socket.getfqdn()
           "uname": str,                  # `uname -a` output
           "instance_id": str,            # UUID set once at agent boot
           "start_ts_unix": float | None, # Process start, epoch float
@@ -219,7 +219,7 @@ def api_agent_detail(request, name: str):
         "machine": agent.get("machine", ""),
         # todo#55: canonical FQDN reported by the heartbeat, displayed
         # next to the short `machine` label in the detail header.
-        "hostname_canonical": agent.get("hostname_canonical", ""),
+        "orochi_hostname_canonical": agent.get("orochi_hostname_canonical", ""),
         # ── #257 canonical heartbeat metadata ─────────────────────────
         # `hostname` is the authoritative `hostname(1)` of the running
         # process. The dashboard's `@host` label MUST be rendered from

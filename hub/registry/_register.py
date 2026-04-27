@@ -41,14 +41,14 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # `socket.getfqdn()`. Display-only — the short `machine` field
             # remains the join key for cards/channels. Preserved across
             # heartbeats that omit the field (older clients).
-            "hostname_canonical": info.get("hostname_canonical", "")
-            or prev.get("hostname_canonical", ""),
+            "orochi_hostname_canonical": info.get("orochi_hostname_canonical", "")
+            or prev.get("orochi_hostname_canonical", ""),
             # ── #257 canonical heartbeat metadata ─────────────────────
             # `hostname` is what `hostname(1)` returns on the running
             # process — single source of truth for "where am I", per
             # ywatanabe msg #14726/#14730: never display a fabricated or
             # cached @host label. Distinct from `machine` (YAML config
-            # label) and `hostname_canonical` (FQDN via getfqdn()).
+            # label) and `orochi_hostname_canonical` (FQDN via getfqdn()).
             # If the heartbeat omits it, fall through to the previous
             # value rather than wiping — older clients that haven't
             # been upgraded yet keep working.

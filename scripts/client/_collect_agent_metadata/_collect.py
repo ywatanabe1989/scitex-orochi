@@ -248,11 +248,11 @@ def collect(agent: str) -> dict:
         # Live hostname(1) — see the comment above live_hostname for why
         # we send this unconditionally. The hub stores this as ``hostname``
         # distinct from ``machine`` (YAML label) and
-        # ``hostname_canonical`` (FQDN).
+        # ``orochi_hostname_canonical`` (FQDN).
         "hostname": live_hostname,
         # todo#55: canonical FQDN for display next to the short machine
         # label in the dashboard.
-        "hostname_canonical": _resolve_canonical_hostname(),
+        "orochi_hostname_canonical": _resolve_canonical_hostname(),
         "skills_loaded": skills_loaded,
         "mcp_servers": mcp_servers,
         "claude_md_head": claude_md_head,

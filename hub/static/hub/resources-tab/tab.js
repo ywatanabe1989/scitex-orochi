@@ -146,7 +146,7 @@ function renderResources() {
         escapeHtml(k) +
         (function () {
           var fqdn =
-            (d && (d._fqdn || d._machineFqdn || d.hostname_canonical)) || "";
+            (d && (d._fqdn || d._machineFqdn || d.orochi_hostname_canonical)) || "";
           if (!fqdn || fqdn === k) return "";
           var redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
           for (var _r = 0; _r < redundant.length; _r++) {

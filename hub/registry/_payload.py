@@ -128,7 +128,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # todo#55: FQDN / canonical hostname for display next to
                 # the short machine label. Empty string = older client
                 # that didn't push this field.
-                "hostname_canonical": a.get("hostname_canonical", ""),
+                "orochi_hostname_canonical": a.get("orochi_hostname_canonical", ""),
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
                 "multiplexer": a.get("multiplexer", ""),

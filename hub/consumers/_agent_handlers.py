@@ -53,7 +53,7 @@ async def handle_register(consumer, content):
         # field (distinct from the YAML ``machine`` config label).
         "hostname": payload.get("hostname", ""),
         # todo#55: canonical FQDN from the heartbeat (display-only).
-        "hostname_canonical": payload.get("hostname_canonical", ""),
+        "orochi_hostname_canonical": payload.get("orochi_hostname_canonical", ""),
         "role": payload.get("role", ""),
         "model": payload.get("model", ""),
         "workdir": payload.get("workdir", ""),

@@ -76,7 +76,7 @@ function _renderActivityAgentDetail(a, grid) {
    * <synthetic>-style model placeholders, mirroring the same polish on
    * the Agents tab detail card. */
   var _machine = a.machine || "?";
-  var _fqdn = a.hostname_canonical || "";
+  var _fqdn = a.orochi_hostname_canonical || "";
   var _redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
   var _fqdnUseful = _fqdn && _fqdn !== _machine;
   if (_fqdnUseful) {

@@ -106,7 +106,7 @@ def api_agents_register(request):
             # inference was the bug we're fixing).
             "hostname": body.get("hostname", ""),
             # todo#55: canonical FQDN (socket.getfqdn()) from the heartbeat.
-            "hostname_canonical": body.get("hostname_canonical", ""),
+            "orochi_hostname_canonical": body.get("orochi_hostname_canonical", ""),
             "role": body.get("role", "agent"),
             "model": body.get("model", ""),
             "workdir": body.get("workdir", ""),

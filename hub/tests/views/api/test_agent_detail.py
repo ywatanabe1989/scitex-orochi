@@ -179,21 +179,21 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("[REDACTED]", out)
         self.assertEqual(redact_secrets(""), "")
 
-    def test_hostname_canonical_exposed(self):
+    def test_orochi_hostname_canonical_exposed(self):
         """todo#55: detail endpoint must forward the canonical FQDN
         pushed by the heartbeat (PR #215/#216). Empty string when the
         client never pushed one."""
-        self._register(hostname_canonical="Yusukes-MacBook-Air.local")
+        self._register(orochi_hostname_canonical="Yusukes-MacBook-Air.local")
         data = self._get().json()
-        self.assertEqual(data["hostname_canonical"], "Yusukes-MacBook-Air.local")
+        self.assertEqual(data["orochi_hostname_canonical"], "Yusukes-MacBook-Air.local")
         # Default path: field present but empty when client didn't push.
         from hub.registry import _agents as _reg_agents
 
         _reg_agents.clear()
         self._register()
         data2 = self._get().json()
-        self.assertIn("hostname_canonical", data2)
-        self.assertEqual(data2["hostname_canonical"], "")
+        self.assertIn("orochi_hostname_canonical", data2)
+        self.assertEqual(data2["orochi_hostname_canonical"], "")
 
     def test_pane_text_full_exposed(self):
         """todo#47: detail endpoint must forward the ~500-line
