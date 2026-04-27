@@ -133,7 +133,7 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "slurm": meta.get("slurm"),
         # Lead msg#16005 pivot: forward the ENTIRE ``sac status --terse
         # --json`` dict as a nested field. Future additions to sac's
-        # status projection (orochi_context_pct, orochi_pane_state, current_tool,
+        # status projection (orochi_context_pct, orochi_pane_state, orochi_current_tool,
         # quota, etc.) reach the hub registry + /api/agents/ payload
         # automatically — no per-field plumbing. ``--terse`` keeps the
         # per-agent bytes bounded (see TERSE_STATUS_FIELDS in

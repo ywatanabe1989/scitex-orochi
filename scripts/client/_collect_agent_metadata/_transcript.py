@@ -7,7 +7,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Tools to skip in current_tool / recent_actions selection. These are
+# Tools to skip in orochi_current_tool / recent_actions selection. These are
 # how the agent talks to the chat hub, NOT what the agent is actually
 # working on. Showing them as current_task makes every idle agent look
 # frozen on "reply" forever, which is the exact UX failure ywatanabe
@@ -92,16 +92,16 @@ def find_jsonl_transcripts(workspace: str) -> list[Path]:
 
 
 def parse_transcript(jsonls: list[Path]) -> dict:
-    """Parse the newest JSONL for model, orochi_context_pct, current_tool, recent_actions.
+    """Parse the newest JSONL for model, orochi_context_pct, orochi_current_tool, recent_actions.
 
     Returns dict with keys: model, last_activity, orochi_context_pct,
-    current_tool, started_at, recent_actions.
+    orochi_current_tool, started_at, recent_actions.
     """
     out = {
         "model": "",
         "last_activity": "",
         "orochi_context_pct": 0.0,
-        "current_tool": "",
+        "orochi_current_tool": "",
         "started_at": "",
         "recent_actions": [],
     }
@@ -146,7 +146,7 @@ def parse_transcript(jsonls: list[Path]) -> dict:
             break
 
     # Pick the most recent meaningful tool use, skipping SKIP_TOOLS.
-    current_tool = ""
+    orochi_current_tool = ""
     for line in reversed(tail):
         try:
             obj = json.loads(line)
@@ -160,11 +160,11 @@ def parse_transcript(jsonls: list[Path]) -> dict:
                 name = c.get("name", "")
                 if name in SKIP_TOOLS:
                     continue
-                current_tool = _preview_for(name, c.get("input") or {})
+                orochi_current_tool = _preview_for(name, c.get("input") or {})
                 break
-            if current_tool:
+            if orochi_current_tool:
                 break
-    out["current_tool"] = current_tool
+    out["orochi_current_tool"] = orochi_current_tool
 
     # Recent 10 actions with timestamps. ywatanabe msg#6608 wants the
     # card to feel like a mini activity log per agent: a vertical list

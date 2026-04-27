@@ -4,7 +4,7 @@ Lead msg#16005 spec: instead of per-field plumbing (``orochi_subagent_count``
 only in the previous cut of this PR), forward the FULL ``sac status``
 terse-JSON payload as a nested ``sac_status`` field on the heartbeat.
 This way new fields added to ``sac status`` (``orochi_context_pct``,
-``orochi_pane_state``, ``current_tool``, quota, etc.) are automatically
+``orochi_pane_state``, ``orochi_current_tool``, quota, etc.) are automatically
 adopted hub-side without every consumer opening a PR.
 
 Design:

@@ -8,7 +8,7 @@
  *     "alive": true,
  *     "subagents": 1,
  *     "orochi_context_pct": 59.0,
- *     "current_tool": "Agent",
+ *     "orochi_current_tool": "Agent",
  *     "last_activity": "2026-04-12T05:38:04.540Z",
  *     "model": "claude-opus-4-7"
  *   }
@@ -31,14 +31,14 @@ export type AgentMeta = {
   orochi_subagent_count: number;
   context_usage_percent: number;
   current_task: string;
-  current_tool: string;
+  orochi_current_tool: string;
 };
 
 const EMPTY_META: AgentMeta = {
   orochi_subagent_count: 0,
   context_usage_percent: 0,
   current_task: "",
-  current_tool: "",
+  orochi_current_tool: "",
 };
 
 let cached: AgentMeta = { ...EMPTY_META };
@@ -72,7 +72,7 @@ function runAgentMetaScript(agent: string): Promise<AgentMeta> {
             orochi_subagent_count: Number(obj.subagents ?? 0) || 0,
             context_usage_percent: Number(obj.orochi_context_pct ?? 0) || 0,
             current_task: String(obj.current_task ?? ""),
-            current_tool: String(obj.current_tool ?? ""),
+            orochi_current_tool: String(obj.orochi_current_tool ?? ""),
           });
         } catch (parseErr) {
           console.error(

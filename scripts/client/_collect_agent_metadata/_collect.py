@@ -109,7 +109,7 @@ def collect(agent: str) -> dict:
     model = tr["model"]
     last_activity = tr["last_activity"]
     orochi_context_pct = tr["orochi_context_pct"]
-    current_tool = tr["current_tool"]
+    orochi_current_tool = tr["orochi_current_tool"]
     started_at = tr["started_at"]
     recent_actions = tr["recent_actions"]
 
@@ -212,8 +212,8 @@ def collect(agent: str) -> dict:
             if statusline_orochi_context_pct is not None
             else orochi_context_pct
         ),
-        "current_tool": current_tool,
-        "current_task": current_tool,
+        "orochi_current_tool": orochi_current_tool,
+        "current_task": orochi_current_tool,
         "quota_5h_pct": quota_5h_pct,
         "quota_5h_remaining": quota_5h_remaining,
         "quota_weekly_pct": quota_weekly_pct,

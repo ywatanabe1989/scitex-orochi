@@ -91,7 +91,7 @@ def _wrap_with_orochi_fields(
         # orochi_context_pct so operators can see the threshold each agent uses.
         "context_management": status.get("context_management"),
         "current_task": status.get("current_task") or "",
-        "current_tool": status.get("current_tool") or "",
+        "orochi_current_tool": status.get("orochi_current_tool") or "",
         "orochi_subagent_count": int(status.get("orochi_subagent_count") or 0),
         "subagents": status.get("subagents") or [],
         # Claude usage quota — surfaced under the UI-expected keys.

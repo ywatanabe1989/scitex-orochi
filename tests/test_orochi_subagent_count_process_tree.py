@@ -428,7 +428,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
             "model": "",
             "last_activity": "",
             "orochi_context_pct": None,
-            "current_tool": "",
+            "orochi_current_tool": "",
             "started_at": "",
             "recent_actions": [],
         },

@@ -164,7 +164,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
         pusher forwards reaches the dashboard payload without a
         per-field allowlist. New fields in sac's terse projection
         (``context_management.percent``, ``orochi_pane_state``,
-        ``current_tool``, ...) should therefore appear on
+        ``orochi_current_tool``, ...) should therefore appear on
         ``get_agents()[i]["sac_status"][<field>]`` the moment the
         pusher sends them.
         """

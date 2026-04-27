@@ -411,7 +411,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # --json`` dict attached to the heartbeat by the pusher
             # (``scripts/client/agent_meta_pkg/_sac_status.py``). Stored
             # verbatim so future fields added to sac's terse projection
-            # (orochi_context_pct, orochi_pane_state, current_tool, quota, ...) reach
+            # (orochi_context_pct, orochi_pane_state, orochi_current_tool, quota, ...) reach
             # the dashboard via ``/api/agents/`` without per-field
             # plumbing here.
             #

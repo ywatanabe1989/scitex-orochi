@@ -4,7 +4,7 @@
  * The sidecar shells out to
  *     ~/.scitex/orochi/scripts/collect_agent_metadata.py <agent>
  * which reads the live Claude Code session jsonl transcript and emits
- * claude-hud-style metadata (alive, subagents, orochi_context_pct, current_tool,
+ * claude-hud-style metadata (alive, subagents, orochi_context_pct, orochi_current_tool,
  * last_activity, model, ...) as a single JSON line. The resulting dict is
  * spread into the hub heartbeat payload.
  *
@@ -71,8 +71,8 @@ export async function pushRegistryHeartbeat(): Promise<void> {
   // collect_agent_metadata.py field names → hub /api/agents/register field names.
   // The hub renderer (activity-tab.js) reads `current_task`,
   // `orochi_subagent_count`, `orochi_context_pct`, `model`. collect_agent_metadata.py emits
-  // `current_tool`, `subagents`, `orochi_context_pct`, `model`. Translate.
-  const currentTool = (meta["current_tool"] as string | undefined) || "";
+  // `orochi_current_tool`, `subagents`, `orochi_context_pct`, `model`. Translate.
+  const currentTool = (meta["orochi_current_tool"] as string | undefined) || "";
   const subagentCount =
     typeof meta["subagents"] === "number"
       ? (meta["subagents"] as number)
