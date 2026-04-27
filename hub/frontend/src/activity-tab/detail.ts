@@ -418,7 +418,7 @@ export function _renderActivityAgentDetail(a, grid) {
    * (PreToolUse / PostToolUse / UserPromptSubmit). Only visible when the
    * hooks are wired up for this agent; otherwise the lists are empty. */
   var hooksHtml = _renderHookPanels(
-    d.recent_tools || [],
+    d.sac_hooks_recent_tools || [],
     d.recent_prompts || [],
     d.sac_hooks_agent_calls || [],
     d.background_tasks || [],

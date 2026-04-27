@@ -222,7 +222,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "pane_text": a.get("pane_text", ""),
                 # scitex-agent-container hook-captured events — lists
                 # populated by the PreToolUse/PostToolUse hooks.
-                "recent_tools": list(a.get("recent_tools") or []),
+                "sac_hooks_recent_tools": list(a.get("sac_hooks_recent_tools") or []),
                 "recent_prompts": list(a.get("recent_prompts") or []),
                 "sac_hooks_agent_calls": list(a.get("sac_hooks_agent_calls") or []),
                 "background_tasks": list(a.get("background_tasks") or []),

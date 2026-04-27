@@ -253,7 +253,7 @@ class AgentDetailApiTest(TestCase):
             "last_action_at",
             "last_action_name",
             "last_action_outcome",
-            "recent_tools",
+            "sac_hooks_recent_tools",
             "sac_hooks_tool_counts",
             "action_counts",
         ):

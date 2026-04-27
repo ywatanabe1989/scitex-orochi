@@ -35,7 +35,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
 
       - ``last_tool_at`` / ``last_tool_name``  — LLM liveness signal
       - ``last_mcp_tool_at`` / ``last_mcp_tool_name`` — MCP sidecar route
-      - ``recent_tools`` / ``recent_prompts`` / ``sac_hooks_agent_calls`` /
+      - ``sac_hooks_recent_tools`` / ``recent_prompts`` / ``sac_hooks_agent_calls`` /
         ``background_tasks`` / ``sac_hooks_tool_counts`` — hook ring-buffer
         views rendered in the per-agent detail panels.
     """
@@ -103,11 +103,11 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(a["last_mcp_tool_name"], "mcp__orochi__send_message")
 
     def test_register_persists_hook_event_lists(self):
-        """recent_tools / prompts / sac_hooks_agent_calls / background_tasks /
+        """sac_hooks_recent_tools / prompts / sac_hooks_agent_calls / background_tasks /
         sac_hooks_tool_counts round-trip into the registry unmodified."""
         from hub.registry import get_agents
 
-        recent_tools = [
+        sac_hooks_recent_tools = [
             {"ts": "2026-04-17T00:00:00Z", "tool": "Edit", "input_preview": "/f.py"},
             {"ts": "2026-04-17T00:00:05Z", "tool": "Bash", "input_preview": "pytest"},
         ]
@@ -123,7 +123,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         sac_hooks_tool_counts = {"Edit": 1, "Bash": 1, "Agent": 1}
         resp = self._post(
             self._base_payload(
-                recent_tools=recent_tools,
+                sac_hooks_recent_tools=sac_hooks_recent_tools,
                 recent_prompts=recent_prompts,
                 sac_hooks_agent_calls=sac_hooks_agent_calls,
                 background_tasks=background_tasks,
@@ -133,7 +133,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         agents = get_agents(workspace_id=self.ws.id)
         a = next(a for a in agents if a["name"] == "hb-agent")
-        self.assertEqual(a["recent_tools"], recent_tools)
+        self.assertEqual(a["sac_hooks_recent_tools"], sac_hooks_recent_tools)
         self.assertEqual(a["recent_prompts"], recent_prompts)
         self.assertEqual(a["sac_hooks_agent_calls"], sac_hooks_agent_calls)
         self.assertEqual(a["background_tasks"], background_tasks)
@@ -160,7 +160,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
     def test_detail_api_surfaces_hook_event_lists(self):
         self._post(
             self._base_payload(
-                recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Grep"}],
+                sac_hooks_recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Grep"}],
                 recent_prompts=[{"ts": "2026-04-17T00:00:01Z", "prompt_preview": "?"}],
                 sac_hooks_agent_calls=[{"ts": "2026-04-17T00:00:02Z", "input_preview": "x"}],
                 background_tasks=[{"ts": "2026-04-17T00:00:03Z", "input_preview": "y"}],
@@ -170,8 +170,8 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._get_detail("hb-agent")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(len(data["recent_tools"]), 1)
-        self.assertEqual(data["recent_tools"][0]["tool"], "Grep")
+        self.assertEqual(len(data["sac_hooks_recent_tools"]), 1)
+        self.assertEqual(data["sac_hooks_recent_tools"][0]["tool"], "Grep")
         self.assertEqual(len(data["recent_prompts"]), 1)
         self.assertEqual(len(data["sac_hooks_agent_calls"]), 1)
         self.assertEqual(len(data["background_tasks"]), 1)
@@ -184,7 +184,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._get_detail("hb-agent")
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
-        self.assertEqual(data["recent_tools"], [])
+        self.assertEqual(data["sac_hooks_recent_tools"], [])
         self.assertEqual(data["recent_prompts"], [])
         self.assertEqual(data["sac_hooks_agent_calls"], [])
         self.assertEqual(data["background_tasks"], [])
@@ -202,19 +202,19 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
 
         self._post(
             self._base_payload(
-                recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Edit"}],
+                sac_hooks_recent_tools=[{"ts": "2026-04-17T00:00:00Z", "tool": "Edit"}],
                 sac_hooks_tool_counts={"Edit": 1},
             )
         )
         self._post(
             self._base_payload(
-                recent_tools=[],
+                sac_hooks_recent_tools=[],
                 sac_hooks_tool_counts={},
             )
         )
         agents = get_agents(workspace_id=self.ws.id)
         a = next(a for a in agents if a["name"] == "hb-agent")
-        self.assertEqual(a["recent_tools"], [])
+        self.assertEqual(a["sac_hooks_recent_tools"], [])
         self.assertEqual(a["sac_hooks_tool_counts"], {})
 
 

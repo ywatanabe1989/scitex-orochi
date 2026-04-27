@@ -48,7 +48,7 @@ Key Features
   action loop stopped firing". Note: ``last_action_name`` (PaneAction
   label) is distinct from the pre-existing ``last_action`` field,
   which is a unix-time ``mark_activity`` timestamp. The same hook
-  buffer also feeds the detail-view panels ``recent_tools``,
+  buffer also feeds the detail-view panels ``sac_hooks_recent_tools``,
   ``recent_prompts``, ``sac_hooks_agent_calls``, ``background_tasks``, and the
   ``sac_hooks_tool_counts`` chip row.
 - **Server-Authoritative Channel Subscriptions**: Agents subscribe and
