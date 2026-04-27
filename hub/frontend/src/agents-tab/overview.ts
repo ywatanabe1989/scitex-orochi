@@ -1,9 +1,20 @@
 // @ts-nocheck
 import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
-import { _bindSubTabBar, _renderAgentContent, _renderSubTabBar } from "./controls";
+import {
+  _bindSubTabBar,
+  _renderAgentContent,
+  _renderSubTabBar,
+} from "./controls";
 import { renderPaneStateBadge } from "./lamps";
 import { formatUptime, livenessColor } from "./state";
-import { apiUrl, cleanAgentName, escapeHtml, isAgentInactive, relativeAge, timeAgo } from "../app/utils";
+import {
+  apiUrl,
+  cleanAgentName,
+  escapeHtml,
+  isAgentInactive,
+  relativeAge,
+  timeAgo,
+} from "../app/utils";
 import { activeTab } from "../tabs";
 
 /* Agents Tab — overview table, registry row builder, context/skills
@@ -161,7 +172,12 @@ export function buildAgentRow(a) {
     '">' +
     statusLabel +
     "</span>";
-  var uniqueChannels = [...new Set(a.channels || [])];
+  /* Filter out `dm:` channels — DM is always implicitly available
+   * between any two agents/users, so listing per-agent DM subscriptions
+   * adds clutter without information value (ywatanabe 2026-04-27). */
+  var uniqueChannels = [...new Set(a.channels || [])].filter(function (c) {
+    return typeof c === "string" && c.indexOf("dm:") !== 0;
+  });
   var channelsHtml = uniqueChannels
     .map(function (c) {
       return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
