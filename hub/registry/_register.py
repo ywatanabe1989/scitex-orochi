@@ -393,10 +393,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_quota_5h_remaining": info.get("orochi_quota_5h_remaining")
             or prev.get("orochi_quota_5h_remaining")
             or "",
-            "quota_weekly_pct": (
-                info.get("quota_weekly_pct")
-                if info.get("quota_weekly_pct") is not None
-                else prev.get("quota_weekly_pct")
+            "orochi_quota_weekly_pct": (
+                info.get("orochi_quota_weekly_pct")
+                if info.get("orochi_quota_weekly_pct") is not None
+                else prev.get("orochi_quota_weekly_pct")
             ),
             "quota_weekly_remaining": info.get("quota_weekly_remaining")
             or prev.get("quota_weekly_remaining")

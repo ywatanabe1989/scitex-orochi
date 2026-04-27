@@ -155,7 +155,7 @@ def api_agents_register(request):
             # Quota telemetry from statusline parsing
             "orochi_quota_5h_pct": body.get("orochi_quota_5h_pct"),
             "orochi_quota_5h_remaining": body.get("orochi_quota_5h_remaining", ""),
-            "quota_weekly_pct": body.get("quota_weekly_pct"),
+            "orochi_quota_weekly_pct": body.get("orochi_quota_weekly_pct"),
             "quota_weekly_remaining": body.get("quota_weekly_remaining", ""),
             "orochi_statusline_model": body.get("orochi_statusline_model", ""),
             "orochi_account_email": body.get("orochi_account_email", ""),
@@ -167,7 +167,7 @@ def api_agents_register(request):
             else body.get("orochi_quota_5h_pct"),
             "quota_7d_used_pct": body.get("quota_7d_used_pct")
             if body.get("quota_7d_used_pct") is not None
-            else body.get("quota_weekly_pct"),
+            else body.get("orochi_quota_weekly_pct"),
             "quota_5h_reset_at": body.get("quota_5h_reset_at")
             or body.get("orochi_quota_5h_remaining", ""),
             "quota_7d_reset_at": body.get("quota_7d_reset_at")

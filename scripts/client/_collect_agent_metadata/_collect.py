@@ -96,7 +96,7 @@ def collect(agent: str) -> dict:
     statusline_orochi_context_pct = sl["statusline_orochi_context_pct"]
     orochi_quota_5h_pct = sl["orochi_quota_5h_pct"]
     orochi_quota_5h_remaining = sl["orochi_quota_5h_remaining"]
-    quota_weekly_pct = sl["quota_weekly_pct"]
+    orochi_quota_weekly_pct = sl["orochi_quota_weekly_pct"]
     quota_weekly_remaining = sl["quota_weekly_remaining"]
     orochi_statusline_model = sl["orochi_statusline_model"]
     orochi_account_email = sl["orochi_account_email"]
@@ -216,7 +216,7 @@ def collect(agent: str) -> dict:
         "orochi_current_task": orochi_current_tool,
         "orochi_quota_5h_pct": orochi_quota_5h_pct,
         "orochi_quota_5h_remaining": orochi_quota_5h_remaining,
-        "quota_weekly_pct": quota_weekly_pct,
+        "orochi_quota_weekly_pct": orochi_quota_weekly_pct,
         "quota_weekly_remaining": quota_weekly_remaining,
         "orochi_statusline_model": orochi_statusline_model,
         "orochi_account_email": orochi_account_email,
