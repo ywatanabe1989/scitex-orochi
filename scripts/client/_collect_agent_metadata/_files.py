@@ -78,7 +78,7 @@ def _orochi_claude_md_candidates(ws: str) -> list[Path]:
     return uniq
 
 
-def _mcp_json_candidates(ws: str) -> list[Path]:
+def _orochi_mcp_json_candidates(ws: str) -> list[Path]:
     """todo#53: same fallback logic for .mcp.json so non-head agents populate the MCP viewer."""
     p = Path(ws) if ws else None
     home = Path.home()
@@ -147,17 +147,17 @@ def collect_orochi_claude_md(workspace: str) -> tuple[str, str]:
     return orochi_claude_md_head, orochi_claude_md_full
 
 
-def collect_mcp_json(workspace: str) -> str:
+def collect_orochi_mcp_json(workspace: str) -> str:
     """Return the .mcp.json full content (redacted, truncated to 10000 chars)."""
-    mcp_json_full = ""
-    for mcp_path in _mcp_json_candidates(workspace):
+    orochi_mcp_json_full = ""
+    for mcp_path in _orochi_mcp_json_candidates(workspace):
         try:
             if not mcp_path.is_file():
                 continue
             doc = json.loads(mcp_path.read_text())
             redacted = _redact_secrets(doc)
-            mcp_json_full = json.dumps(redacted, indent=2)[:10000]
+            orochi_mcp_json_full = json.dumps(redacted, indent=2)[:10000]
             break
         except Exception:
             continue
-    return mcp_json_full
+    return orochi_mcp_json_full

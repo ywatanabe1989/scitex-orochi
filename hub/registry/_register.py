@@ -223,7 +223,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # agent_meta.py --push (dotfiles PR #71) sends a size-capped,
             # token-redacted copy of the workspace `.mcp.json`. Absent for
             # legacy WS-only agents; falls through to the empty string.
-            "mcp_json": info.get("mcp_json") or prev.get("mcp_json") or "",
+            "orochi_mcp_json": info.get("orochi_mcp_json") or prev.get("orochi_mcp_json") or "",
             # todo#418: agent decision-transparency fields for the Agents tab.
             # `orochi_pane_state` is the classifier label (`running` / `waiting` /
             # `y_n_prompt` / `compose_pending_unsent` / `auth_error` / etc.)

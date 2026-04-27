@@ -216,7 +216,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # hasn't pushed the new field yet.
                 "orochi_pane_tail_full": a.get("orochi_pane_tail_full", ""),
                 "orochi_claude_md_head": a.get("orochi_claude_md_head", ""),
-                "mcp_json": a.get("mcp_json", ""),
+                "orochi_mcp_json": a.get("orochi_mcp_json", ""),
                 "orochi_pane_state": a.get("orochi_pane_state", ""),
                 "orochi_stuck_prompt_text": a.get("orochi_stuck_prompt_text", ""),
                 "pane_text": a.get("pane_text", ""),

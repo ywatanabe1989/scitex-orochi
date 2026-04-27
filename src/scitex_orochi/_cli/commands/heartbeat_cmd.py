@@ -111,7 +111,7 @@ def _wrap_with_orochi_fields(
         "orochi_claude_md_head": (status.get("orochi_claude_md") or "").splitlines()[0][:120]
         if status.get("orochi_claude_md")
         else "",
-        "mcp_json": status.get("mcp_json") or "",
+        "orochi_mcp_json": status.get("orochi_mcp_json") or "",
         # Claude Code hook-captured events (new — forwarded as-is).
         "recent_tools": status.get("recent_tools") or [],
         "recent_prompts": status.get("recent_prompts") or [],

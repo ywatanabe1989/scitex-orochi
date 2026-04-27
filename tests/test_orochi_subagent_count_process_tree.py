@@ -460,7 +460,7 @@ def _neutralise_heavy_collectors(monkeypatch, _collect):
     )
     monkeypatch.setattr(
         _collect,
-        "collect_mcp_json",
+        "collect_orochi_mcp_json",
         lambda ws: "",
     )
     monkeypatch.setattr(

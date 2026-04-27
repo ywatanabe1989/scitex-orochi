@@ -166,7 +166,7 @@ def api_agent_detail(request, name: str):
           "last_heartbeat": iso8601 | None,
           "liveness": str,
           "orochi_claude_md": str,
-          "mcp_json": str,
+          "orochi_mcp_json": str,
           "orochi_pane_state": str,
           "orochi_stuck_prompt_text": str,
           "pane_text": str,
@@ -261,7 +261,7 @@ def api_agent_detail(request, name: str):
         # agent_meta.py --push (dotfiles PR #71) already redacts SCITEX_OROCHI_TOKEN
         # and similar secrets before pushing, but we redact again defense-in-depth
         # so any future push path that forgets still stays safe.
-        "mcp_json": redact_secrets(agent.get("mcp_json") or ""),
+        "orochi_mcp_json": redact_secrets(agent.get("orochi_mcp_json") or ""),
         # todo#418: agent decision-transparency for the Agents tab.
         # `orochi_pane_state` is the classifier label agent_meta.py --push
         # computes (`running` / `compose_pending_unsent` /

@@ -178,7 +178,7 @@ def api_agents_register(request):
             "pane_text": body.get("pane_text", ""),
             # Workspace files (full CLAUDE.md, redacted .mcp.json).
             "orochi_claude_md": body.get("orochi_claude_md", ""),
-            "mcp_json": body.get("mcp_json", ""),
+            "orochi_mcp_json": body.get("orochi_mcp_json", ""),
             # Claude Code hook-captured events.
             "recent_tools": body.get("recent_tools") or [],
             "recent_prompts": body.get("recent_prompts") or [],
