@@ -196,7 +196,7 @@ def api_agents_register(request):
             # dashboard without orochi needing to query the per-host DB.
             "sac_hooks_last_action_at": body.get("sac_hooks_last_action_at") or "",
             "sac_hooks_last_action_name": body.get("sac_hooks_last_action_name") or "",
-            "last_action_outcome": body.get("last_action_outcome") or "",
+            "sac_hooks_last_action_outcome": body.get("sac_hooks_last_action_outcome") or "",
             "last_action_elapsed_s": body.get("last_action_elapsed_s"),
             "action_counts": body.get("action_counts") or {},
             "sac_hooks_p95_elapsed_s_by_action": body.get("sac_hooks_p95_elapsed_s_by_action") or {},

@@ -290,8 +290,8 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "sac_hooks_last_action_name": info.get("sac_hooks_last_action_name")
             or prev.get("sac_hooks_last_action_name")
             or "",
-            "last_action_outcome": info.get("last_action_outcome")
-            or prev.get("last_action_outcome")
+            "sac_hooks_last_action_outcome": info.get("sac_hooks_last_action_outcome")
+            or prev.get("sac_hooks_last_action_outcome")
             or "",
             "last_action_elapsed_s": (
                 info.get("last_action_elapsed_s")

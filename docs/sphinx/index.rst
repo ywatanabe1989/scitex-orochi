@@ -38,7 +38,7 @@ Key Features
   pretool, proves the MCP sidecar route works) — plus a PaneAction
   summary from the container's per-host ``actions.db``:
   ``sac_hooks_last_action_at`` / ``sac_hooks_last_action_name`` (e.g. ``nonce-probe``,
-  ``compact``) / ``last_action_outcome`` (``success`` /
+  ``compact``) / ``sac_hooks_last_action_outcome`` (``success`` /
   ``completion_timeout`` / ``precondition_fail`` / ``send_error`` /
   ``skipped_by_policy``) / ``last_action_elapsed_s``, with
   ``action_counts`` and ``sac_hooks_p95_elapsed_s_by_action`` rollups. All

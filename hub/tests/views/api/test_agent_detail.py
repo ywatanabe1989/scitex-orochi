@@ -252,7 +252,7 @@ class AgentDetailApiTest(TestCase):
             "sac_hooks_last_mcp_tool_name",
             "sac_hooks_last_action_at",
             "sac_hooks_last_action_name",
-            "last_action_outcome",
+            "sac_hooks_last_action_outcome",
             "sac_hooks_recent_tools",
             "sac_hooks_tool_counts",
             "action_counts",
@@ -269,11 +269,11 @@ class AgentDetailApiTest(TestCase):
             last_mcp_tool_name="mcp__scitex-orochi__send_message",
             sac_hooks_last_action_at="2026-04-18T11:00:10+00:00",
             last_action_name="nonce_probe",
-            last_action_outcome="SUCCESS",
+            sac_hooks_last_action_outcome="SUCCESS",
         )
         data = self._get().json()
         self.assertEqual(data["sac_hooks_last_tool_at"], "2026-04-18T11:00:00+00:00")
         self.assertEqual(data["sac_hooks_last_tool_name"], "Bash")
         self.assertEqual(data["sac_hooks_last_mcp_tool_name"], "mcp__scitex-orochi__send_message")
         self.assertEqual(data["sac_hooks_last_action_name"], "nonce_probe")
-        self.assertEqual(data["last_action_outcome"], "SUCCESS")
+        self.assertEqual(data["sac_hooks_last_action_outcome"], "SUCCESS")

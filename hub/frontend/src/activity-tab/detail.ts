@@ -182,7 +182,7 @@ export function _renderActivityAgentDetail(a, grid) {
           " ago (" +
           (d.sac_hooks_last_action_name || "?") +
           " " +
-          (d.last_action_outcome || "?") +
+          (d.sac_hooks_last_action_outcome || "?") +
           (d.last_action_elapsed_s != null
             ? ", " + Number(d.last_action_elapsed_s).toFixed(1) + "s"
             : "") +
