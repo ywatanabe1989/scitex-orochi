@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.15.26"
+version = "0.16.0"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
