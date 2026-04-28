@@ -7,9 +7,10 @@ from pathlib import Path
 
 import click
 import yaml
+from scitex_config._ecosystem import local_state
 
 # ── Constants ──────────────────────────────────────────────────────
-AGENTS_DIR = Path.home() / ".scitex" / "orochi" / "agents"
+AGENTS_DIR = local_state.user_path("orochi", "agents")
 WORKSPACES_DIR = Path.home() / ".scitex" / "orochi" / "workspaces"
 SETUP_SCRIPT = Path.home() / "proj" / "scitex-orochi" / "scripts" / "setup-workspace.sh"
 DEV_CHANNEL_CONFIRM_DELAY = 8  # seconds before pressing Enter

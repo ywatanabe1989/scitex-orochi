@@ -63,6 +63,10 @@ dependencies = [
     # Replaces the /proc-only collector that returned empty fields on
     # macOS / Windows / WSL. ``get_metrics()`` is the public flat-dict API.
     "scitex-resource>=0.2.0",
+    # Canonical local-state directory helper (project-scope override +
+    # auto runtime/ seed creation). Per scitex-python skill
+    # 01_arch_06_local-state-directories.md.
+    "scitex-config>=0.3.0",
 ]
 
 [project.optional-dependencies]

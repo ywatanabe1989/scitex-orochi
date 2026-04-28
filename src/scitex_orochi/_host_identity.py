@@ -16,14 +16,14 @@ from __future__ import annotations
 import socket
 import subprocess
 from functools import lru_cache
-from pathlib import Path
 from typing import Iterable
 
 import yaml
+from scitex_config._ecosystem import local_state
 
 # Legacy back-compat path. New deployments should use
 # ~/.scitex/resource/config.yaml (owned by scitex-resource).
-HOST_IDENTITY_PATH = Path.home() / ".scitex" / "host-identity.yaml"
+HOST_IDENTITY_PATH = local_state.user_path("orochi", "host-identity.yaml")
 
 
 def _default_aliases() -> set[str]:

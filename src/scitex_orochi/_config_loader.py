@@ -8,14 +8,13 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from scitex_config._ecosystem import local_state
 
 # Search order for config file
 CONFIG_SEARCH_PATHS = [
     Path("orochi-config.yaml"),
     Path("orochi-config.yml"),
-    Path(os.environ.get("SCITEX_DIR", str(Path.home() / ".scitex")))
-    / "orochi"
-    / "config.yaml",
+    local_state.path("orochi", "config.yaml"),
 ]
 
 
