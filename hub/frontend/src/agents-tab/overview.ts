@@ -1,9 +1,20 @@
 // @ts-nocheck
 import { getResolvedAgentColor, getSenderIcon } from "../agent-icons";
-import { _bindSubTabBar, _renderAgentContent, _renderSubTabBar } from "./controls";
+import {
+  _bindSubTabBar,
+  _renderAgentContent,
+  _renderSubTabBar,
+} from "./controls";
 import { renderPaneStateBadge } from "./lamps";
 import { formatUptime, livenessColor } from "./state";
-import { apiUrl, cleanAgentName, escapeHtml, isAgentInactive, relativeAge, timeAgo } from "../app/utils";
+import {
+  apiUrl,
+  cleanAgentName,
+  escapeHtml,
+  isAgentInactive,
+  relativeAge,
+  timeAgo,
+} from "../app/utils";
 import { activeTab } from "../tabs";
 
 /* Agents Tab — overview table, registry row builder, context/skills
@@ -161,7 +172,12 @@ export function buildAgentRow(a) {
     '">' +
     statusLabel +
     "</span>";
-  var uniqueChannels = [...new Set(a.channels || [])];
+  /* Filter out `dm:` channels — DM is always implicitly available
+   * between any two agents/users, so listing per-agent DM subscriptions
+   * adds clutter without information value (ywatanabe 2026-04-27). */
+  var uniqueChannels = [...new Set(a.channels || [])].filter(function (c) {
+    return typeof c === "string" && c.indexOf("dm:") !== 0;
+  });
   var channelsHtml = uniqueChannels
     .map(function (c) {
       return '<span class="ch-badge">' + escapeHtml(c) + "</span>";
@@ -237,16 +253,23 @@ export function buildAgentRow(a) {
     escapeHtml(a.multiplexer || "-") +
     "</td>" +
     '<td class="ctx-cell">' +
-    renderContextBadge(a.context_pct, a.context_management) +
+    renderContextBadge(a.orochi_context_pct, a.context_management) +
     "</td>" +
     '<td class="skills-cell">' +
-    renderSkillsBadge(a.skills_loaded) +
+    renderSkillsBadge(a.orochi_skills_loaded) +
     "</td>" +
     '<td class="pid-cell muted-cell">' +
     (a.pid ? String(a.pid) : "-") +
     "</td>" +
-    '<td class="small-cell">' +
+    /* Wrap channels in an inner div so the max-height/overflow-y rule
+     * actually clamps the row height. CSS max-height on a <td> element
+     * is unreliable (table cells size to content unless table-layout
+     * is fixed); putting the constraint on a regular block-level div
+     * inside works in every browser. ywatanabe 2026-04-27. */
+    '<td class="small-cell agent-channels-cell">' +
+    '<div class="agent-channels-cell-inner">' +
     channelsHtml +
+    "</div>" +
     "</td>" +
     '<td class="muted-cell">' +
     escapeHtml(a.project || "-") +
@@ -257,10 +280,10 @@ export function buildAgentRow(a) {
     escapeHtml(a.workdir ? a.workdir.replace(/^\/home\/[^/]+/, "~") : "-") +
     "</td>" +
     '<td class="pane-state-cell">' +
-    renderPaneStateBadge(a.pane_state, a.stuck_prompt_text) +
+    renderPaneStateBadge(a.orochi_pane_state, a.orochi_stuck_prompt_text) +
     "</td>" +
     '<td class="task-cell">' +
-    escapeHtml(a.current_task || "-") +
+    escapeHtml(a.orochi_current_task || "-") +
     "</td>" +
     '<td class="small-cell">' +
     (a.subagents && a.subagents.length > 0
@@ -279,16 +302,16 @@ export function buildAgentRow(a) {
             );
           })
           .join(" ")
-      : a.subagent_count && a.subagent_count > 0
+      : a.orochi_subagent_count && a.orochi_subagent_count > 0
         ? '<span class="subagent-badge subagent-running" title="' +
-          a.subagent_count +
+          a.orochi_subagent_count +
           ' subagent(s)">\uD83D\uDD27 ' +
-          a.subagent_count +
+          a.orochi_subagent_count +
           "</span>"
         : '<span class="muted-cell">-</span>') +
     "</td>" +
     "<td>" +
-    (a.claude_md
+    (a.orochi_claude_md
       ? '<button class="claude-md-btn" onclick="event.stopPropagation();toggleClaudeMd(this)" title="View CLAUDE.md">CLAUDE.md</button>'
       : '<span class="muted-cell">-</span>') +
     "</td>" +
@@ -316,23 +339,13 @@ export function buildAgentRow(a) {
       : timeAgo(a.last_heartbeat)) +
     "</td>" +
     "</tr>" +
-    (function () {
-      var raw = a.pane_tail_block || a.pane_tail || "";
-      if (!raw) return "";
-      var lines = String(raw).split(/\r?\n/);
-      var tail = lines.slice(-10).join("\n");
-      return (
-        '<tr class="agent-pane-row"><td colspan="22">' +
-        '<pre class="agent-pane-preview" title="Last 10 lines of ' +
-        escapeHtml(a.name) +
-        ' tmux pane">' +
-        escapeHtml(tail) +
-        "</pre></td></tr>"
-      );
-    })() +
-    (a.claude_md
+    /* Pane preview row removed 2026-04-27 — terminal output now lives
+     * exclusively in the per-agent detail subtab (click the agent name
+     * to open it). The overview is for at-a-glance comparison; the
+     * inline 10-line pane preview made each row tall and noisy. */
+    (a.orochi_claude_md
       ? '<tr class="claude-md-detail" style="display:none"><td colspan="22"><pre class="claude-md-content">' +
-        escapeHtml(a.claude_md) +
+        escapeHtml(a.orochi_claude_md) +
         "</pre></td></tr>"
       : "")
   );
@@ -369,10 +382,9 @@ export function renderContextBadge(pct, cm) {
   var badge =
     '<span class="ctx-badge" title="' +
     title +
-    '" style="background:' +
+    '" style="color:' +
     color +
-    ";color:#111;padding:1px 6px;" +
-    'border-radius:10px;font-size:11px;font-weight:600">ctx ' +
+    ';font-size:11px;font-weight:600">' +
     n.toFixed(1) +
     "%</span>";
   return renderCompactPolicySuffix(badge, cm);

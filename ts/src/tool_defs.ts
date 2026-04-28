@@ -417,7 +417,7 @@ export const TOOL_DEFS = [
       "Mirrors the ``GET /api/cron/`` endpoint that powers the Machines " +
       "tab cron panel, exposed via MCP so any agent can observe daemon " +
       "state without scraping the dashboard. Returns " +
-      "``{\"hosts\": {<machine>: {agent, last_heartbeat_at, stale, " +
+      '``{"hosts": {<machine>: {agent, last_heartbeat_at, stale, ' +
       "jobs}}}``. Optional ``host`` arg filters to a single host " +
       "server-side. Workspace-scoped via the MCP sidecar's token; " +
       "read-only.",
@@ -460,6 +460,133 @@ export const TOOL_DEFS = [
         },
       },
       required: ["chat_id"],
+    },
+  },
+  {
+    name: "a2a_call",
+    description:
+      "Call a peer agent via the A2A protocol SDK 1.x (POST JSON-RPC to " +
+      "https://a2a.scitex.ai/v1/agents/<agent>). Bearer token is read from " +
+      "disk by the MCP server; never enters the agent transcript. Sends " +
+      "'A2A-Version: 1.0' header. Default method is 'SendMessage' (unary). " +
+      "Other gRPC-style methods: 'GetTask', 'CancelTask'. For SSE streaming " +
+      "use the dedicated 'a2a_send_streaming' tool.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        agent: {
+          type: "string",
+          description:
+            "Target agent id (e.g. 'lead', 'mgr-scitex', 'head-mba').",
+        },
+        method: {
+          type: "string",
+          description:
+            "JSON-RPC method. Default: 'SendMessage'. Also: 'GetTask', " +
+            "'CancelTask', 'SendStreamingMessage'.",
+        },
+        text: {
+          type: "string",
+          description:
+            "Convenience for SendMessage / SendStreamingMessage: wrapped " +
+            "as params.message.parts[0].text. Ignored if 'params' is set.",
+        },
+        task_id: {
+          type: "string",
+          description:
+            "Task id for GetTask / CancelTask. Mapped to proto 'id' " +
+            "field. Ignored if 'params' is set.",
+        },
+        message_id: {
+          type: "string",
+          description:
+            "Optional proto message_id (snake_case). Auto-generated if " +
+            "omitted. Ignored if 'params' is set.",
+        },
+        params: {
+          type: "object",
+          description:
+            "Raw JSON-RPC params. Overrides text/task_id if provided. " +
+            "Use for advanced calls.",
+        },
+      },
+      required: ["agent"],
+    },
+  },
+  {
+    name: "a2a_send_streaming",
+    description:
+      "Call a peer agent via A2A 'SendStreamingMessage' (SDK 1.x SSE). " +
+      "Collects all server-sent events into a single MCP tool result " +
+      "({events:[...], count:N}). Use for long-running peer work where " +
+      "you want progress events; use 'a2a_call' for short unary calls. " +
+      "LIMITATION: the MCP SDK does not yet expose incremental tool " +
+      "output, so all events are buffered until the stream ends.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Target agent name." },
+        text: {
+          type: "string",
+          description: "Message text to stream to the peer agent.",
+        },
+        message_id: {
+          type: "string",
+          description:
+            "Optional proto message_id; auto-generated if omitted.",
+        },
+      },
+      required: ["agent", "text"],
+    },
+  },
+  {
+    name: "a2a_get_task",
+    description:
+      "Poll a long-running A2A task by id (SDK 1.x 'GetTask'). Use after " +
+      "'SendMessage' / 'SendStreamingMessage' returns a task id when you " +
+      "want to check progress without holding an SSE stream open.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        agent: {
+          type: "string",
+          description:
+            "Target agent name (must match the agent that owns the task).",
+        },
+        task_id: {
+          type: "string",
+          description:
+            "Task id returned by a previous SendMessage/SendStreamingMessage.",
+        },
+      },
+      required: ["agent", "task_id"],
+    },
+  },
+  {
+    name: "a2a_cancel_task",
+    description:
+      "Interrupt a running A2A task (SDK 1.x 'CancelTask'). Returns the " +
+      "SDK envelope so the caller can confirm the new task state " +
+      "(typically CANCELED).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        agent: { type: "string", description: "Target agent name." },
+        task_id: { type: "string", description: "Task id to cancel." },
+      },
+      required: ["agent", "task_id"],
+    },
+  },
+  {
+    name: "a2a_list_agents",
+    description:
+      "Enumerate callable agents in the orochi fleet by hitting the hub's " +
+      "registry endpoint (GET /api/agents/). Use this before 'a2a_call' " +
+      "so you do not have to guess agent names. Override the URL with " +
+      "SCITEX_OROCHI_AGENTS_LIST_URL.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
     },
   },
 ];

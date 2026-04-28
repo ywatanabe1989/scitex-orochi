@@ -8,7 +8,7 @@ Design (lead msg#16388, ywatanabe msg#16380)
 
 On every heartbeat from a ``head-<host>`` agent:
 
-1. Compare the newly written ``subagent_count`` with the prior reading
+1. Compare the newly written ``orochi_subagent_count`` with the prior reading
    held in ``hub.registry._agents[<name>]``.
 2. Maintain a per-head ``idle_streak`` counter. Zero reading increments
    the streak, any non-zero reading resets it (but the cooldown window
@@ -403,13 +403,13 @@ def _post_dispatch_message(agent_name: str, workspace_id: int, text: str, metada
 # ---------------------------------------------------------------------------
 
 
-def _update_streak_locked(agent: dict, subagent_count: int) -> int:
+def _update_streak_locked(agent: dict, orochi_subagent_count: int) -> int:
     """Increment / reset the idle streak on ``agent`` and return new value.
 
     Called while holding ``hub.registry._lock`` from :func:`check_agent_auto_dispatch`.
     """
     prev_streak = int(agent.get("idle_streak") or 0)
-    if subagent_count == 0:
+    if orochi_subagent_count == 0:
         new_streak = prev_streak + 1
     else:
         new_streak = 0
@@ -674,13 +674,13 @@ def check_agent_auto_dispatch(agent_name: str) -> Optional[dict]:
             agent = _agents.get(agent_name)
             if not agent:
                 return None
-            subagent_count = int(agent.get("subagent_count") or 0)
+            orochi_subagent_count = int(agent.get("orochi_subagent_count") or 0)
             workspace_id = agent.get("workspace_id")
             # msg#17078 lane A — hydrate the in-memory cooldown from the
             # DB on first lookup so a hub restart cannot drop the window.
             _hydrate_cooldown_from_db_locked(agent, workspace_id, agent_name)
-            streak = _update_streak_locked(agent, subagent_count)
-            if subagent_count > 0:
+            streak = _update_streak_locked(agent, orochi_subagent_count)
+            if orochi_subagent_count > 0:
                 return {"decision": "reset", "streak": 0}
             if streak < threshold:
                 return {"decision": "streak_increment", "streak": streak}

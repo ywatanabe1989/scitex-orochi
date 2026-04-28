@@ -160,7 +160,7 @@ async def test_heartbeat(orochi_server):
 
 @pytest.mark.asyncio
 async def test_status_update(orochi_server):
-    """Status update changes agent status and current_task."""
+    """Status update changes agent status and orochi_current_task."""
     uri = f"ws://{TEST_HOST}:{TEST_PORT}?token={TEST_TOKEN}"
 
     async with websockets.connect(uri) as ws_a:
@@ -169,7 +169,7 @@ async def test_status_update(orochi_server):
         su = Message(
             type="status_update",
             sender="agent-a",
-            payload={"status": "busy", "current_task": "running tests"},
+            payload={"status": "busy", "orochi_current_task": "running tests"},
         )
         await ws_a.send(su.to_json())
 
@@ -180,7 +180,7 @@ async def test_status_update(orochi_server):
 
         agent = orochi_server.agents["agent-a"]
         assert agent.status == "busy"
-        assert agent.current_task == "running tests"
+        assert agent.orochi_current_task == "running tests"
 
 
 @pytest.mark.asyncio

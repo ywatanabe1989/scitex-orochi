@@ -1,22 +1,14 @@
 """Host-identity resolver: decide local vs remote execution by name.
 
-Each machine declares the names that mean "me" in
-``~/.scitex/host-identity.yaml`` (shared format with scitex-agent-container —
-both packages read the same file independently). Code that decides whether
-to run a command locally or via SSH consults :func:`is_local`.
+Canonical name + aliases come from :mod:`scitex_resource` —
+``~/.scitex/resource/config.yaml`` ``machine.canonical_name`` /
+``machine.aliases``. See scitex-resource README and the scitex-python
+``arch-local-state-directories`` skill for the ecosystem-wide rule
+(one package owns each domain; this module consumes the API).
 
-Example file::
-
-    # ~/.scitex/host-identity.yaml
-    aliases:
-      - mba
-      - Yusukes-MacBook-Air
-      - localhost
-
-If the file is absent, sensible defaults are derived from ``socket``:
-``hostname``, short hostname, FQDN, and the literals ``localhost`` / ``""``.
-That keeps fresh installs working; an explicit file is recommended once
-the machine acquires SSH aliases that differ from its real hostname.
+Legacy ``~/.scitex/host-identity.yaml`` is still read for back-compat;
+its aliases are merged into the result. Migrate by moving the contents
+into ``~/.scitex/resource/config.yaml`` under ``machine.aliases``.
 """
 
 from __future__ import annotations
@@ -24,12 +16,14 @@ from __future__ import annotations
 import socket
 import subprocess
 from functools import lru_cache
-from pathlib import Path
 from typing import Iterable
 
 import yaml
+from scitex_config._ecosystem import local_state
 
-HOST_IDENTITY_PATH = Path.home() / ".scitex" / "host-identity.yaml"
+# Legacy back-compat path. New deployments should use
+# ~/.scitex/resource/config.yaml (owned by scitex-resource).
+HOST_IDENTITY_PATH = local_state.user_path("orochi", "host-identity.yaml")
 
 
 def _default_aliases() -> set[str]:
@@ -43,9 +37,30 @@ def _default_aliases() -> set[str]:
     }
 
 
+def _resource_aliases() -> set[str]:
+    """Aliases declared in scitex-resource's machine config."""
+    try:
+        from scitex_resource import get_machine_config, get_machine_name
+    except ImportError:
+        return set()
+    out: set[str] = set()
+    name = (get_machine_name() or "").strip()
+    if name:
+        out.add(name)
+    cfg = get_machine_config()
+    for a in cfg.get("aliases") or []:
+        if isinstance(a, str) and a:
+            out.add(a)
+    return out
+
+
 @lru_cache(maxsize=1)
 def load_host_identity() -> dict:
-    """Load identity file (cached). Returns dict with at least ``aliases``."""
+    """Load identity (cached). Aliases merged from scitex-resource +
+    legacy ``host-identity.yaml`` + socket-derived defaults.
+    """
+    aliases: set[str] = set()
+    data: dict = {}
     if HOST_IDENTITY_PATH.exists():
         try:
             data = yaml.safe_load(HOST_IDENTITY_PATH.read_text()) or {}
@@ -55,11 +70,9 @@ def load_host_identity() -> dict:
             raise RuntimeError(
                 f"{HOST_IDENTITY_PATH} must be a YAML mapping, got {type(data).__name__}"
             )
-        aliases = set(data.get("aliases") or [])
-    else:
-        data = {}
-        aliases = set()
+        aliases |= set(data.get("aliases") or [])
 
+    aliases |= _resource_aliases()
     aliases |= _default_aliases()
     data["aliases"] = sorted(a for a in aliases if a is not None)
     return data

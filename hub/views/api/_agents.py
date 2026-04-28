@@ -67,12 +67,12 @@ def api_agents(request):
                     "last_heartbeat": None,
                     "last_action": None,
                     "metrics": {},
-                    "current_task": "",
+                    "orochi_current_task": "",
                     "last_message_preview": "",
                     "subagents": [],
-                    "subagent_count": 0,
+                    "orochi_subagent_count": 0,
                     "health": {},
-                    "claude_md": "",
+                    "orochi_claude_md": "",
                     "pinned": True,
                 }
             )

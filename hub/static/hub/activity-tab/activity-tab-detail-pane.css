@@ -229,7 +229,7 @@
   color: #ef4444;
 }
 
-/* Fallback task display when no structured current_task — shows the
+/* Fallback task display when no structured orochi_current_task — shows the
  * last_message_preview in the same slot so cards never look empty. */
 .activity-task-fallback {
   color: #888;

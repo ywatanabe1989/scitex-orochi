@@ -85,14 +85,14 @@ def _wrap_with_orochi_fields(
         "project": status.get("project") or status.get("name") or "",
         "pid": int(status.get("pid") or 0),
         "ppid": int(status.get("ppid") or 0),
-        "context_pct": status.get("context_pct"),
+        "orochi_context_pct": status.get("orochi_context_pct"),
         # YAML-declared compact policy from sac status (None when noop /
         # unconfigured). Surfaced in the Agents tab next to the live
-        # context_pct so operators can see the threshold each agent uses.
+        # orochi_context_pct so operators can see the threshold each agent uses.
         "context_management": status.get("context_management"),
-        "current_task": status.get("current_task") or "",
-        "current_tool": status.get("current_tool") or "",
-        "subagent_count": int(status.get("subagent_count") or 0),
+        "orochi_current_task": status.get("orochi_current_task") or "",
+        "orochi_current_tool": status.get("orochi_current_tool") or "",
+        "orochi_subagent_count": int(status.get("orochi_subagent_count") or 0),
         "subagents": status.get("subagents") or [],
         # Claude usage quota — surfaced under the UI-expected keys.
         "quota_5h_used_pct": status.get("quota_5h_used_pct"),
@@ -103,37 +103,56 @@ def _wrap_with_orochi_fields(
         "metrics": status.get("metrics") or {},
         # Terminal pane + classified state.
         "pane_text": status.get("pane_text") or "",
-        "pane_tail_block": status.get("pane_text") or "",
-        "pane_state": status.get("pane_state") or "",
-        "stuck_prompt_text": status.get("stuck_prompt_text") or "",
+        "orochi_pane_tail_block": status.get("pane_text") or "",
+        "orochi_pane_state": status.get("orochi_pane_state") or "",
+        "orochi_stuck_prompt_text": status.get("orochi_stuck_prompt_text") or "",
+        # Heartbeat wire-format schema version. Forwarded from the
+        # collector (`scripts/client/_collect_agent_metadata/_collect.py`
+        # `HEARTBEAT_SCHEMA_VERSION`). The hub uses this to detect
+        # mixed-version fleets during a wire-shape migration.
+        "orochi_heartbeat_schema_version": status.get("orochi_heartbeat_schema_version")
+        or 0,
         # Workspace files.
-        "claude_md": status.get("claude_md") or "",
-        "claude_md_head": (status.get("claude_md") or "").splitlines()[0][:120]
-        if status.get("claude_md")
+        "orochi_claude_md": status.get("orochi_claude_md") or "",
+        "orochi_claude_md_head": (status.get("orochi_claude_md") or "").splitlines()[0][
+            :120
+        ]
+        if status.get("orochi_claude_md")
         else "",
-        "mcp_json": status.get("mcp_json") or "",
+        "orochi_mcp_json": status.get("orochi_mcp_json") or "",
+        # Workspace .env file. Producer is responsible for redacting any
+        # secret-shaped values before this hits the wire; the hub redacts
+        # again on render defense-in-depth.
+        "orochi_env_file": status.get("orochi_env_file") or "",
         # Claude Code hook-captured events (new — forwarded as-is).
-        "recent_tools": status.get("recent_tools") or [],
-        "recent_prompts": status.get("recent_prompts") or [],
-        "agent_calls": status.get("agent_calls") or [],
-        "background_tasks": status.get("background_tasks") or [],
-        "tool_counts": status.get("tool_counts") or {},
+        "sac_hooks_recent_tools": status.get("sac_hooks_recent_tools") or [],
+        "sac_hooks_recent_prompts": status.get("sac_hooks_recent_prompts") or [],
+        "sac_hooks_agent_calls": status.get("sac_hooks_agent_calls") or [],
+        "sac_hooks_background_tasks": status.get("sac_hooks_background_tasks") or [],
+        "sac_hooks_tool_counts": status.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts (derived in agent-container).
-        "last_tool_at": status.get("last_tool_at") or "",
-        "last_tool_name": status.get("last_tool_name") or "",
-        "last_mcp_tool_at": status.get("last_mcp_tool_at") or "",
-        "last_mcp_tool_name": status.get("last_mcp_tool_name") or "",
+        "sac_hooks_last_tool_at": status.get("sac_hooks_last_tool_at") or "",
+        "sac_hooks_last_tool_name": status.get("sac_hooks_last_tool_name") or "",
+        "sac_hooks_last_mcp_tool_at": status.get("sac_hooks_last_mcp_tool_at") or "",
+        "sac_hooks_last_mcp_tool_name": status.get("sac_hooks_last_mcp_tool_name")
+        or "",
         # PaneAction summary (from scitex-agent-container action_store).
         # Empty when actions subsystem is unused; dashboard chips it
         # as "last probe / compact / ... outcome N ago".
-        "last_action_at": status.get("last_action_at") or "",
-        "last_action_name": status.get("last_action_name") or "",
-        "last_action_outcome": status.get("last_action_outcome") or "",
-        "last_action_elapsed_s": status.get("last_action_elapsed_s"),
+        "sac_hooks_last_action_at": status.get("sac_hooks_last_action_at") or "",
+        "sac_hooks_last_action_name": status.get("sac_hooks_last_action_name") or "",
+        "sac_hooks_last_action_outcome": status.get("sac_hooks_last_action_outcome")
+        or "",
+        "sac_hooks_last_action_elapsed_s": status.get(
+            "sac_hooks_last_action_elapsed_s"
+        ),
         "action_counts": status.get("action_counts") or {},
-        "p95_elapsed_s_by_action": status.get("p95_elapsed_s_by_action") or {},
+        "sac_hooks_p95_elapsed_s_by_action": status.get(
+            "sac_hooks_p95_elapsed_s_by_action"
+        )
+        or {},
         # Accounting.
-        "account_email": status.get("account_email") or "",
+        "orochi_account_email": status.get("orochi_account_email") or "",
         "version": status.get("version") or "",
     }
     # Orochi unified cron state (msg#16406 / msg#16410). Surfaced in
@@ -309,10 +328,10 @@ def heartbeat_push(
         if verbose:
             click.echo(
                 f"[heartbeat-push] {agent_name} -> {hub} HTTP {code} "
-                f"pane_state={body.get('pane_state')} "
-                f"context={body.get('context_pct')} "
+                f"orochi_pane_state={body.get('orochi_pane_state')} "
+                f"context={body.get('orochi_context_pct')} "
                 f"quota_5h={body.get('quota_5h_used_pct')} "
-                f"tools={sum((body.get('tool_counts') or {}).values())}",
+                f"tools={sum((body.get('sac_hooks_tool_counts') or {}).values())}",
                 err=True,
             )
         if code >= 400:

@@ -165,7 +165,7 @@ function buildAgentRow(a) {
     "</td>" +
     '<td style="color:#ffd93d;font-size:12px;max-width:200px;' +
     'overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
-    escapeHtml(a.current_task || "-") +
+    escapeHtml(a.orochi_current_task || "-") +
     "</td>" +
     '<td style="color:#888;font-size:12px" title="Registered: ' +
     escapeHtml(a.registered_at || "") +

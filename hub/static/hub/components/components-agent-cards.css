@@ -131,6 +131,13 @@
 .agent-row {
   cursor: pointer;
 }
+/* Vertically center every cell in the agents-overview row so the icon,
+ * status, name and other short cells sit in the middle when adjacent
+ * cells (e.g. CHANNELS column with many badges) make the row tall.
+ * ywatanabe 2026-04-27. */
+.agent-row > td {
+  vertical-align: middle;
+}
 .agent-inactive {
   opacity: 0.5;
 }
@@ -274,4 +281,53 @@
   color: #555;
   font-size: 13px;
   font-style: italic;
+}
+
+/* Cap each agent-row's CHANNELS cell so the table doesn't grow past
+ * the viewport when one agent subscribes to many channels. The cell
+ * scrolls vertically inside its bounded box; rows stay uniform height
+ * and all agents fit on one screen. ywatanabe 2026-04-27. */
+.agent-channels-cell {
+  vertical-align: middle;
+}
+.agent-channels-cell-inner {
+  max-height: 3em;
+  overflow-y: auto;
+}
+
+/* Force middle vertical alignment for EVERY cell in an agent row.
+ *
+ * The earlier `.agent-row > td { vertical-align: middle }` rule
+ * doesn't take effect in tall rows (e.g. when the CHANNELS cell wraps
+ * many badges) because legacy per-cell rules in other CSS files
+ * (table-defaults, .agents-registry-table td) win the cascade. The
+ * !important on the universal `.agent-row > td` rule is the only
+ * thing that consistently centers ALL cells — star, kill/restart
+ * buttons, S-icon, status dot, agent-id, etc. — regardless of how
+ * tall the row gets. ywatanabe 2026-04-27.
+ *
+ * The second rule centers the inline content INSIDE the icon cell
+ * (the <span class="agent-custom-icon"> / <img class="agent-avatar">
+ * / inline SVG) using a flex micro-layout. vertical-align centers the
+ * cell box, but the icon itself is an inline-block whose baseline can
+ * still be top-anchored when the cell's line-box is tall — flex
+ * removes that ambiguity and centers the icon graphically.  */
+.agent-row > td {
+  vertical-align: middle !important;
+}
+/* The icon cell has class `avatar-clickable`, which in style-agents.css
+ * sets `display: inline-flex` (intended for sidebar avatar buttons).
+ * In a table that override breaks the cell's `display: table-cell`,
+ * which in turn nullifies `vertical-align: middle` (vertical-align
+ * only applies to table-cell / inline content). Force the table-cell
+ * display back so the alignment rule actually centers the icon.
+ * ywatanabe 2026-04-27. */
+.agent-row > td.avatar-clickable,
+.agent-row > td.agent-icon-cell {
+  display: table-cell !important;
+  text-align: center;
+}
+.agent-channels-cell .ch-badge {
+  display: inline-block;
+  margin: 1px 2px;
 }

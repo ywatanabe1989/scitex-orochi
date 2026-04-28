@@ -243,16 +243,16 @@ class CheckAgentAutoDispatchTest(TestCase):
         with _lock:
             _agents.pop(self.agent_name, None)
 
-    def _set_subagent_count(self, count: int) -> None:
-        """Mirror what ``set_subagent_count`` does — write directly."""
+    def _set_orochi_subagent_count(self, count: int) -> None:
+        """Mirror what ``set_orochi_subagent_count`` does — write directly."""
         with _lock:
             a = _agents.get(self.agent_name)
             if a is not None:
-                a["subagent_count"] = count
+                a["orochi_subagent_count"] = count
 
     def test_streak_not_fired_below_threshold(self):
         # Threshold default 2 — a single zero reading must NOT fire.
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=None) as pick_m:
             res = check_agent_auto_dispatch(self.agent_name)
         self.assertEqual(res["decision"], "streak_increment")
@@ -267,7 +267,7 @@ class CheckAgentAutoDispatchTest(TestCase):
 
     def test_fires_on_second_consecutive_zero(self):
         pick = {"number": 17, "title": "clean up stale fixtures"}
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
             r1 = check_agent_auto_dispatch(self.agent_name)
             self.assertEqual(r1["decision"], "streak_increment")
@@ -293,10 +293,10 @@ class CheckAgentAutoDispatchTest(TestCase):
         self.assertIn("todo#17", m.content)
 
     def test_nonzero_resets_streak(self):
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=None):
             check_agent_auto_dispatch(self.agent_name)  # streak=1
-            self._set_subagent_count(2)
+            self._set_orochi_subagent_count(2)
             r = check_agent_auto_dispatch(self.agent_name)
         self.assertEqual(r["decision"], "reset")
         with _lock:
@@ -304,7 +304,7 @@ class CheckAgentAutoDispatchTest(TestCase):
 
     def test_cooldown_suppresses_second_fire(self):
         pick = {"number": 17, "title": "X"}
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
             # Two consecutive zeros → fire.
             check_agent_auto_dispatch(self.agent_name)
@@ -324,7 +324,7 @@ class CheckAgentAutoDispatchTest(TestCase):
 
     def test_cooldown_expires_and_refires(self):
         pick = {"number": 17, "title": "X"}
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
             check_agent_auto_dispatch(self.agent_name)
             check_agent_auto_dispatch(self.agent_name)  # fires, arms cooldown
@@ -344,7 +344,7 @@ class CheckAgentAutoDispatchTest(TestCase):
         self.assertEqual(Message.objects.filter(channel=ch).count(), 2)
 
     def test_kill_switch_disables(self):
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.dict(
             "os.environ", {"SCITEX_AUTO_DISPATCH_DISABLED": "1"}
         ), mock.patch.object(ad, "_run_pick_todo", return_value=None) as pick_m:
@@ -362,7 +362,7 @@ class CheckAgentAutoDispatchTest(TestCase):
         register_agent(worker_name, self.ws.id, {"role": "worker"})
         try:
             with _lock:
-                _agents[worker_name]["subagent_count"] = 0
+                _agents[worker_name]["orochi_subagent_count"] = 0
             r = check_agent_auto_dispatch(worker_name)
             self.assertIsNone(r)
         finally:
@@ -373,7 +373,7 @@ class CheckAgentAutoDispatchTest(TestCase):
         # Picker returns None (e.g. gh unauth) — we still fire so the
         # stillness signal reaches the head. The message text mentions
         # no concrete todo.
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=None):
             check_agent_auto_dispatch(self.agent_name)
             r = check_agent_auto_dispatch(self.agent_name)
@@ -395,7 +395,7 @@ class CheckAgentAutoDispatchTest(TestCase):
 
     def test_full_dm_body_persisted_in_db(self):
         pick = {"number": 17, "title": "a concrete title"}
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
             check_agent_auto_dispatch(self.agent_name)
             check_agent_auto_dispatch(self.agent_name)
@@ -430,7 +430,7 @@ class CheckAgentAutoDispatchTest(TestCase):
         from hub.models import AgentProfile
 
         pick = {"number": 17, "title": "t"}
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
             check_agent_auto_dispatch(self.agent_name)
             r_fired = check_agent_auto_dispatch(self.agent_name)
@@ -449,7 +449,7 @@ class CheckAgentAutoDispatchTest(TestCase):
         with _lock:
             _agents.pop(self.agent_name, None)
         register_agent(self.agent_name, self.ws.id, {"role": "head"})
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         # Slot starts empty post-restart.
         with _lock:
             self.assertIsNone(
@@ -486,7 +486,7 @@ class CheckAgentAutoDispatchTest(TestCase):
         state machine by zeroing the streak).
         """
         pick = {"number": 17, "title": "t"}
-        self._set_subagent_count(0)
+        self._set_orochi_subagent_count(0)
         with mock.patch.object(ad, "_run_pick_todo", return_value=pick):
             check_agent_auto_dispatch(self.agent_name)
             check_agent_auto_dispatch(self.agent_name)  # fires, arms cooldown
@@ -528,7 +528,7 @@ class HeartbeatIntegrationTest(TestCase):
 
     def test_heartbeat_invokes_auto_dispatch(self):
         with _lock:
-            _agents[self.agent_name]["subagent_count"] = 0
+            _agents[self.agent_name]["orochi_subagent_count"] = 0
         with mock.patch.object(
             ad, "check_agent_auto_dispatch", wraps=ad.check_agent_auto_dispatch
         ) as spy:
@@ -541,12 +541,12 @@ class HeartbeatIntegrationTest(TestCase):
         with mock.patch.object(
             ad, "_run_pick_todo", return_value={"number": 9, "title": "fix foo"}
         ):
-            # Two heartbeats while subagent_count is 0 → fire.
+            # Two heartbeats while orochi_subagent_count is 0 → fire.
             with _lock:
-                _agents[self.agent_name]["subagent_count"] = 0
+                _agents[self.agent_name]["orochi_subagent_count"] = 0
             update_heartbeat(self.agent_name)
             with _lock:
-                _agents[self.agent_name]["subagent_count"] = 0
+                _agents[self.agent_name]["orochi_subagent_count"] = 0
             update_heartbeat(self.agent_name)
         dm_name = _canonical_auto_dispatch_dm_name(self.agent_name)
         msgs = list(Message.objects.filter(channel__name=dm_name))
@@ -667,7 +667,7 @@ class AsyncContextFireTest(TransactionTestCase):
         import threading
 
         with _lock:
-            _agents[self.agent_name]["subagent_count"] = 0
+            _agents[self.agent_name]["orochi_subagent_count"] = 0
 
         captured: dict = {}
 

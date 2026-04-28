@@ -56,7 +56,7 @@ def api_event_tool_use(request):
 
     Hooks (PreToolUse/PostToolUse) on each agent's machine POST here to
     record meaningful activity. Updates the in-memory registry's
-    last_action timestamp and current_task. Authenticates via workspace
+    last_action timestamp and orochi_current_task. Authenticates via workspace
     token query param so hooks don't need Django sessions.
 
     Body schema:
@@ -64,7 +64,7 @@ def api_event_tool_use(request):
           "agent": "head@mba",
           "tool": "Edit",
           "phase": "post",          # "pre" or "post"
-          "task": "implement #143", # optional, becomes current_task
+          "task": "implement #143", # optional, becomes orochi_current_task
           "summary": "edited X.py", # optional, short description
           "ts": "2026-04-09T08:00Z" # optional
         }
@@ -88,12 +88,12 @@ def api_event_tool_use(request):
     if not agent:
         return JsonResponse({"error": "agent required"}, status=400)
 
-    from hub.registry import mark_activity, set_current_task
+    from hub.registry import mark_activity, set_orochi_current_task
 
     summary = (body.get("summary") or body.get("tool") or "").strip()[:120]
     mark_activity(agent, action=summary)
     if body.get("task"):
-        set_current_task(agent, body.get("task")[:120])
+        set_orochi_current_task(agent, body.get("task")[:120])
     return JsonResponse({"status": "ok"})
 
 
@@ -104,7 +104,7 @@ def api_watchdog_alerts(request):
 
     Returns agents that need attention: those classified as "stale"
     (>10min silent) or "idle" (>2min silent) AND have an active
-    current_task. Designed to be polled by mamba (or any monitoring
+    orochi_current_task. Designed to be polled by mamba (or any monitoring
     client) to drive automated nudges and escalation.
     """
     workspace = get_workspace(request)
@@ -115,7 +115,7 @@ def api_watchdog_alerts(request):
     for a in agents:
         liveness = a.get("liveness") or a.get("status") or "online"
         idle = a.get("idle_seconds")
-        task = (a.get("current_task") or "").strip()
+        task = (a.get("orochi_current_task") or "").strip()
         if liveness in ("idle", "stale") and task:
             severity = "stale" if liveness == "stale" else "idle"
             alerts.append(
@@ -124,7 +124,7 @@ def api_watchdog_alerts(request):
                     "severity": severity,
                     "liveness": liveness,
                     "idle_seconds": idle,
-                    "current_task": task,
+                    "orochi_current_task": task,
                     "machine": a.get("machine", ""),
                     "last_action": a.get("last_action"),
                     "suggested_action": (
@@ -192,23 +192,20 @@ def api_connectivity(request):
             "type": "bastion",
             "host": "nas",
         },
-        {
-            "id": "bastion-spartan",
-            "label": "bastion-spartan",
-            "role": "CF tunnel (sbatch — in progress)",
-            "type": "bastion",
-            "host": "spartan",
-            "status": "pending",
-        },
+        # bastion-spartan REMOVED 2026-04-27 — UniMelb IT Security flagged
+        # cloudflared on the HPC login node as a high-severity detection
+        # (see scitex-orochi-private/hpc-etiquette.md Incident 2). Spartan is
+        # reached via plain `ssh spartan` (public SSH endpoint) and ProxyJump
+        # from the other hosts; no Cloudflare tunnel by design.
     ]
     # Source → list of (destination, status, method)
-    # Updated 2026-04-14: 3/4 CF bastions live; bastion-spartan in progress
+    # 2026-04-27: spartan bastion entry removed; spartan reaches the rest via
+    # plain ssh / proxyjump, never via cloudflared.
     raw = [
         # Bastion → host anchors (CF tunnel terminates at machine)
         ("bastion-mba", "mba", "ok", "cf-tunnel"),
         ("bastion-nas", "nas", "ok", "cf-tunnel"),
         ("bastion-win", "ywata-note-win", "ok", "cf-tunnel"),
-        ("bastion-spartan", "spartan", "pending", "cf-tunnel"),
         # ywata-note-win reaches all
         ("ywata-note-win", "nas", "ok", "bastion"),
         ("ywata-note-win", "spartan", "ok", "direct"),
@@ -234,7 +231,7 @@ def api_connectivity(request):
         {
             "nodes": nodes,
             "edges": edges,
-            "source": "static",  # updated 2026-04-14: bastion-win live (3/4 CF mesh)
+            "source": "static",  # 2026-04-27: 3/3 CF mesh (spartan removed; uses plain ssh)
             "ts": timezone.now().isoformat(),
         }
     )

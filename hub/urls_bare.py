@@ -167,12 +167,20 @@ urlpatterns = [
     # Bun MCP sidecars POST registry heartbeats here. Must exist on the
     # bare domain because SCITEX_OROCHI_URL defaults to wss://scitex-orochi.com
     # (no subdomain). Without this entry the heartbeat 404s and the
-    # Activity tab shows empty current_task / context_pct for everyone
+    # Activity tab shows empty orochi_current_task / orochi_context_pct for everyone
     # (todo#155 root cause).
     path(
         "api/agents/register/",
         views.api_agents_register,
         name="api-agents-register",
+    ),
+    # A2A dispatch is now served by the SDK at /v1/agents/<name>/
+    # (mounted in orochi/asgi.py — see hub.a2a.mount.build_a2a_app).
+    # Only the WS-bridge reply callback remains Django-served.
+    path(
+        "api/a2a/reply/",
+        views.api_a2a_reply,
+        name="api-a2a-reply-bare",
     ),
     # Admin subscribe/unsubscribe — issue #262 §9.1. Mirrored on the bare
     # domain so MCP sidecars (which default to the apex) can hit the

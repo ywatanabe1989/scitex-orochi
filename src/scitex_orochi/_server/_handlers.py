@@ -36,11 +36,11 @@ class HandlersMixin:
         model = msg.payload.get("model", "")
         project = msg.payload.get("project", "")
         multiplexer = msg.payload.get("multiplexer", "")
-        current_task = msg.payload.get("current_task", "") or ""
+        orochi_current_task = msg.payload.get("orochi_current_task", "") or ""
         try:
-            subagent_count = int(msg.payload.get("subagent_count", 0) or 0)
+            orochi_subagent_count = int(msg.payload.get("orochi_subagent_count", 0) or 0)
         except (TypeError, ValueError):
-            subagent_count = 0
+            orochi_subagent_count = 0
         agent_id = msg.payload.get("agent_id", "")
         if not agent_id:
             machine_name = machine or platform.node()
@@ -93,8 +93,8 @@ class HandlersMixin:
             multiplexer=multiplexer,
             workspace_id=workspace_id,
             status="online",
-            current_task=current_task,
-            subagent_count=subagent_count,
+            orochi_current_task=orochi_current_task,
+            orochi_subagent_count=orochi_subagent_count,
             last_heartbeat=now,
             registered_at=now,
         )
@@ -248,11 +248,11 @@ class HandlersMixin:
             # Optional narrative fields carried in heartbeat payload so
             # simple clients do not need to send separate status_update
             # messages. Absent fields leave existing values untouched.
-            if "current_task" in msg.payload:
-                agent.current_task = str(msg.payload.get("current_task") or "")[:200]
-            if "subagent_count" in msg.payload:
+            if "orochi_current_task" in msg.payload:
+                agent.orochi_current_task = str(msg.payload.get("orochi_current_task") or "")[:200]
+            if "orochi_subagent_count" in msg.payload:
                 try:
-                    agent.subagent_count = int(msg.payload.get("subagent_count") or 0)
+                    agent.orochi_subagent_count = int(msg.payload.get("orochi_subagent_count") or 0)
                 except (TypeError, ValueError):
                     pass
             log.debug("Heartbeat from %s", msg.sender)
@@ -263,8 +263,8 @@ class HandlersMixin:
             return
         for key in (
             "status",
-            "current_task",
-            "subagent_count",
+            "orochi_current_task",
+            "orochi_subagent_count",
             "machine",
             "role",
             "project",
@@ -272,7 +272,7 @@ class HandlersMixin:
         ):
             if key in msg.payload:
                 value = msg.payload[key]
-                if key == "subagent_count":
+                if key == "orochi_subagent_count":
                     try:
                         value = int(value or 0)
                     except (TypeError, ValueError):
@@ -289,8 +289,8 @@ class HandlersMixin:
                 payload={
                     "agent": msg.sender,
                     "status": agent.status,
-                    "current_task": agent.current_task,
-                    "subagent_count": agent.subagent_count,
+                    "orochi_current_task": agent.orochi_current_task,
+                    "orochi_subagent_count": agent.orochi_subagent_count,
                     "machine": agent.machine,
                     "role": agent.role,
                     "agent_id": agent.agent_id,

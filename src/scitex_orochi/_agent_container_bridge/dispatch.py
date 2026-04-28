@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Callable
 
 import yaml
+from scitex_config._ecosystem import local_state
 
 from .spec import OrochiSpec
 
@@ -102,7 +103,7 @@ def prepare_shim_yaml(
         spec["claude"] = claude_section
         raw["spec"] = spec
 
-    shim_dir = Path("/tmp/scitex-orochi-shim-yamls")
+    shim_dir = local_state.runtime_path("orochi", "shim-yamls")
     shim_dir.mkdir(parents=True, exist_ok=True)
     shim_path = shim_dir / config_path.name
     shim_path.write_text(yaml.safe_dump(raw, sort_keys=False))

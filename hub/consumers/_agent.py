@@ -85,6 +85,12 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         self.workspace_group = f"workspace_{self.workspace_id}"
         await self.channel_layer.group_add(self.workspace_group, self.channel_name)
 
+        # Per-agent group — addressable by api/agents/<name>/(un)subscribe and
+        # the A2A dispatch bridge (api_a2a_dispatch). Matches the naming used
+        # by hub.views.api._a2a_dispatch._agent_group.
+        self.agent_group = f"agent_{self.workspace_id}_{self.agent_name}"
+        await self.channel_layer.group_add(self.agent_group, self.channel_name)
+
         # Spec v3 §3.1 — auto-subscribe to all DM channels the agent is
         # a participant of. The canonical DM channel name is stored on
         # ``agent_meta["channels"]`` (populated/extended at register time)
@@ -301,6 +307,10 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             await self.channel_layer.group_discard(
                 self.workspace_group, self.channel_name
             )
+            if hasattr(self, "agent_group"):
+                await self.channel_layer.group_discard(
+                    self.agent_group, self.channel_name
+                )
             log.info("Agent %s disconnected", agent_name)
 
     async def receive_json(self, content, **kwargs):
@@ -422,6 +432,25 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
     async def system_message(self, event):
         pass
+
+    async def a2a_dispatch(self, event):
+        """A2A dispatch envelope from the hub bridge — forward to WS.
+
+        Triggered by ``group_send(agent_<ws>_<name>, {"type":"a2a.dispatch",
+        "reply_id":..., "body":...})`` in
+        :func:`hub.views.api._a2a_dispatch.api_a2a_dispatch`.
+
+        The agent's MCP side handles this WS frame, calls its own
+        a2a-handler logic, then POSTs the reply to ``/api/a2a/reply/``
+        with the same ``reply_id`` to unblock the bridge waiter.
+        """
+        await self.send_json(
+            {
+                "type": "a2a.dispatch",
+                "reply_id": event.get("reply_id"),
+                "body": event.get("body"),
+            }
+        )
 
     async def agent_subs_refresh(self, event):
         """Re-sync ``agent_meta["channels"]`` from DB (#282).

@@ -1,4 +1,4 @@
-"""Regression tests for ``agent_meta_pkg._machine.resolve_machine_label``.
+"""Regression tests for ``_collect_agent_metadata._machine.resolve_machine_label``.
 
 Root cause of lead msg#15578 (proj-neurovista displayed as mba while
 actually running on spartan) was client-side env-first prioritisation:
@@ -27,7 +27,7 @@ _MODULE_PATH = (
     Path(__file__).resolve().parents[1]
     / "scripts"
     / "client"
-    / "agent_meta_pkg"
+    / "_collect_agent_metadata"
     / "_machine.py"
 )
 _spec = importlib.util.spec_from_file_location("_machine_under_test", _MODULE_PATH)

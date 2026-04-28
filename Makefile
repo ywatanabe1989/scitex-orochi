@@ -385,6 +385,44 @@ lint:
 	@command -v ruff >/dev/null 2>&1 || (echo -e "$(RED)ruff not installed$(NC)"; exit 1)
 	cd $(PROJECT_ROOT) && ruff check src/ hub/ orochi/ tests/
 
+# CSS cascade-trap audit. Catches the `.avatar-clickable`/<td> family of
+# bugs (2026-04-27 incident: a class declaring `display: inline-flex`
+# was applied to a <td>, knocking it out of `display: table-cell` and
+# silently nullifying `vertical-align: middle`). Runs in <1 s; safe to
+# wire into pre-commit. Zero deps beyond Python stdlib + ripgrep/grep.
+lint-css:
+	cd $(PROJECT_ROOT) && python3 scripts/server/lint-css-cascade-traps.py
+
+# Bundle-size budget for the Vite-built JS bundle. Caps the largest
+# `hub/static/hub/dist/orochi-*.js` at 1024 KB ungzipped (current is
+# ~770 KB). Bump the limit when an intentional addition pushes it
+# over; refuse silent bloat. See EI-2026-04-28 §6.
+BUNDLE_BUDGET_KB := 1024
+# 30-second hub-flap diagnostic chain. Walks the same probe sequence
+# that took 30 minutes to derive during the 2026-04-27 incident: edge
+# vs origin vs port-binder identity vs lima clock-jump vs cloudflared
+# health vs Daphne process vs Django error rate. Read-only — prints a
+# verdict per check and an actionable summary. See EI-2026-04-28 §5.
+diagnose-hub:
+	cd $(PROJECT_ROOT) && bash scripts/server/diagnose-hub.sh $(PROD_HOST)
+
+lint-bundle-size:
+	@cd $(PROJECT_ROOT) && \
+		bundle=$$(ls hub/static/hub/dist/orochi-*.js 2>/dev/null | head -1); \
+		if [ -z "$$bundle" ]; then \
+			echo -e "$(YELLOW)no bundle found — run 'cd hub/frontend && npm run build'$(NC)"; \
+			exit 0; \
+		fi; \
+		size_kb=$$(du -k "$$bundle" | awk '{print $$1}'); \
+		if [ "$$size_kb" -gt "$(BUNDLE_BUDGET_KB)" ]; then \
+			echo -e "$(RED)✗ bundle $$bundle is $${size_kb}KB > budget $(BUNDLE_BUDGET_KB)KB$(NC)"; \
+			echo -e "    Either reduce the bundle (vite-bundle-visualizer) or"; \
+			echo -e "    bump BUNDLE_BUDGET_KB in the Makefile with a comment"; \
+			echo -e "    explaining why."; \
+			exit 1; \
+		fi; \
+		echo -e "$(GREEN)✓ bundle $${size_kb}KB ≤ budget $(BUNDLE_BUDGET_KB)KB$(NC)"
+
 typecheck:
 	@command -v pyright >/dev/null 2>&1 || (echo -e "$(RED)pyright not installed$(NC)"; exit 1)
 	cd $(PROJECT_ROOT) && pyright
@@ -417,6 +455,35 @@ prod-deploy:
 	@$(MAKE) prod-rebuild
 	@$(MAKE) prod-cf-purge
 	@echo -e "$(GREEN)deployed$(NC)"
+
+# Tier-1 fast-cp deploy: copy a single repo-relative file into the
+# running container, run collectstatic so the hashed-static layer
+# picks it up, and purge Cloudflare. ~5 s wall-clock vs. 30 s for
+# Tier-2 prod-deploy. Use for CSS / template / single-source-file
+# fixes; for code changes that affect Python imports prefer prod-deploy.
+#   make prod-hot-cp FILE=hub/static/hub/components/components-agent-cards.css
+#   make prod-hot-cp FILE=hub/templates/hub/dashboard.html
+prod-hot-cp:
+	@if [ -z "$(FILE)" ]; then \
+		echo -e "$(RED)FILE=<repo-relative path> required$(NC)"; \
+		echo -e "  example: make prod-hot-cp FILE=hub/static/hub/style/style-base.css"; \
+		exit 64; \
+	fi
+	@if [ ! -f "$(PROJECT_ROOT)/$(FILE)" ]; then \
+		echo -e "$(RED)$(FILE) not found in repo$(NC)"; \
+		exit 65; \
+	fi
+	@echo -e "$(CYAN)hot-cp $(FILE) → $(PROD_HOST):/app/$(FILE)$(NC)"
+	@cat "$(PROJECT_ROOT)/$(FILE)" | \
+		ssh $(PROD_HOST) "source ~/.zprofile 2>/dev/null; source ~/.zshrc 2>/dev/null; \
+			docker exec -i orochi-server-stable sh -c 'cat > /app/$(FILE)'"
+	@if echo "$(FILE)" | grep -q "^hub/static/"; then \
+		echo -e "$(CYAN)collectstatic (hashed-static layer)…$(NC)"; \
+		ssh $(PROD_HOST) "source ~/.zprofile 2>/dev/null; source ~/.zshrc 2>/dev/null; \
+			docker exec orochi-server-stable python manage.py collectstatic --noinput 2>&1 | tail -2"; \
+	fi
+	@$(MAKE) prod-cf-purge
+	@echo -e "$(GREEN)hot-cp deployed$(NC)"
 
 prod-rebuild:
 	@echo -e "$(CYAN)Rebuilding stable image on $(PROD_HOST)…$(NC)"
@@ -455,6 +522,16 @@ prod-cf-purge:
 		--data '{"purge_everything":true}' | head -c 200
 	@echo ""
 	@echo -e "$(GREEN)purged$(NC)"
+
+# Fleet-wide ``pip install -U scitex-orochi`` across every host listed
+# in orochi-machines.yaml. Use after a producer-side dependency change
+# (e.g. detect-secrets in 0.15.6) so the new collector reaches every
+# agent. Idempotent — pip is a no-op when already current.
+#   make fleet-agents-upgrade               # all hosts
+#   make fleet-agents-upgrade ARGS=--dry-run
+#   make fleet-agents-upgrade ARGS="--hosts mba,nas"
+fleet-agents-upgrade:
+	cd $(PROJECT_ROOT) && bash scripts/server/fleet-agents-upgrade.sh $(ARGS)
 
 # Mint a fresh sessionid on the mba stable container — used by
 # prod-screenshot for self-auth without going through SSO.

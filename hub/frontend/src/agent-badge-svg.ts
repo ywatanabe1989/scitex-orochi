@@ -416,7 +416,7 @@ import { escapeHtml, getAgentColor } from "./app/utils";
        * rows. Hidden entirely when count is 0/undefined. Uses a
        * yellow fill matching the HTML chip colour. */
       var subCount =
-        a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+        a && a.orochi_subagent_count != null ? Number(a.orochi_subagent_count) : 0;
       var subSvg = "";
       if (subCount && isFinite(subCount) && subCount >= 1) {
         var subX = nameX + textW + 4;

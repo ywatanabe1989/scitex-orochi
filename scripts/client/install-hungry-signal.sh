@@ -2,7 +2,7 @@
 # install-hungry-signal.sh
 #
 # Installer for the Layer 2 hungry-signal scheduler (lead msg#16310).
-# When a head has seen subagent_count==0 for HUNGRY_THRESHOLD consecutive
+# When a head has seen orochi_subagent_count==0 for HUNGRY_THRESHOLD consecutive
 # cycles (default 2), it DMs lead to request a coordinated dispatch pick.
 #
 # On macOS: installs a LaunchAgent that runs the probe every 10 min.

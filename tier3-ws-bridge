@@ -1,0 +1,273 @@
+#!/usr/bin/env python3
+"""tier3-ws-bridge — single WS client that dispatches A2A tasks via pluggable handler.
+
+Replaces the earlier ``tier3-mock-echo`` + ``tier3-claude-echo`` pair
+(371 lines combined) with one parameterised script (~180 lines) plus
+the same set of handlers.
+
+Connects to the orochi hub WS as a regular agent. On inbound
+``a2a.dispatch`` envelopes:
+
+    1. Extract ``user_text`` from JSON-RPC ``tasks/send`` params.
+    2. Run the configured handler (echo / claude_cli / exec) to
+       produce a reply string.
+    3. POST the reply to ``${SCITEX_OROCHI_HUB_URL}/api/a2a/reply/``
+       so the hub waiter for ``reply_id`` unblocks.
+
+Why one script: the prior pair duplicated 90% of the WS+reply
+plumbing, differing only in *how* the reply text was produced. That
+"how" is the handler. Keeping handlers separate from transport is
+the same shape sac uses (``scitex_agent_container.a2a._handlers``);
+when scitex-orochi later imports sac directly, this script becomes
+a 50-line wrapper. For now the handler logic is INLINED to keep the
+dependency direction unchanged (orochi does not yet depend on sac).
+
+Env vars:
+
+    SCITEX_OROCHI_HUB_URL    base http(s) URL, default https://scitex-orochi.com
+    SCITEX_OROCHI_WS_URL     wss URL, default wss://scitex-orochi.com/ws/agent/
+    SCITEX_OROCHI_WS_TOKEN   workspace token (required)
+    SCITEX_OROCHI_WS_NAME    agent name as it appears in v3 YAML (required)
+    SCITEX_OROCHI_WS_HANDLER one of {echo, claude_cli, exec}, default echo
+    SCITEX_OROCHI_WS_A2A_URL optional; if set, this URL is registered as
+                             this agent's a2a_url so the hub can prefer
+                             HTTP-direct dispatch for same-host calls
+                             (Tier 3 same-host optimization)
+    CLAUDE_BIN               claude CLI path, default `claude` (claude_cli only)
+    CLAUDE_MODEL             optional --model override (claude_cli only)
+    CLAUDE_TIMEOUT_S         per-call timeout, default 25 (claude_cli only)
+    BRIDGE_EXEC_COMMAND      command for `exec` handler — receives user text on stdin
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import shlex
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+from datetime import datetime, timezone
+from typing import Callable
+
+import websockets
+
+HUB_URL = os.environ.get("SCITEX_OROCHI_HUB_URL", "https://scitex-orochi.com").rstrip("/")
+WS_URL = os.environ.get("SCITEX_OROCHI_WS_URL", "wss://scitex-orochi.com/ws/agent/")
+WS_TOKEN = os.environ.get("SCITEX_OROCHI_WS_TOKEN", "")
+AGENT_NAME = os.environ.get("SCITEX_OROCHI_WS_NAME", "")
+HANDLER_NAME = os.environ.get("SCITEX_OROCHI_WS_HANDLER", "echo")
+A2A_URL = os.environ.get("SCITEX_OROCHI_WS_A2A_URL", "")
+
+REPLY_URL = f"{HUB_URL}/api/a2a/reply/"
+
+CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "")
+CLAUDE_TIMEOUT_S = float(os.environ.get("CLAUDE_TIMEOUT_S", "25"))
+EXEC_TIMEOUT_S = float(os.environ.get("BRIDGE_EXEC_TIMEOUT_S", "25"))
+
+CLAUDE_SYSTEM = (
+    "You are a brief responder. Reply to the user in one or two short "
+    "sentences. Do not run any tools, do not ask follow-up questions."
+)
+
+CHROME_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+
+def _now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _h_echo(agent: str, user_text: str) -> str:
+    return f"[{agent}] received {user_text!r} via Tier 3 dispatch bridge (NAS → hub → WS)."
+
+
+def _h_claude_cli(agent: str, user_text: str) -> str:
+    cmd = [CLAUDE_BIN, "--print", "--append-system-prompt", CLAUDE_SYSTEM]
+    if CLAUDE_MODEL:
+        cmd.extend(["--model", CLAUDE_MODEL])
+    try:
+        res = subprocess.run(
+            cmd,
+            input=user_text,
+            capture_output=True,
+            text=True,
+            timeout=CLAUDE_TIMEOUT_S,
+        )
+    except FileNotFoundError:
+        return f"claude CLI not found at {CLAUDE_BIN!r}"
+    except subprocess.TimeoutExpired:
+        return f"claude CLI timeout after {CLAUDE_TIMEOUT_S:.0f}s"
+    if res.returncode != 0:
+        return f"claude CLI rc={res.returncode}: {res.stderr.strip()[:300]}"
+    return res.stdout.strip() or "(empty response)"
+
+
+def _h_exec(agent: str, user_text: str) -> str:
+    raw = os.environ.get("BRIDGE_EXEC_COMMAND", "")
+    if not raw.strip():
+        return "BRIDGE_EXEC_COMMAND not set"
+    try:
+        argv = shlex.split(raw)
+    except ValueError as exc:
+        return f"BRIDGE_EXEC_COMMAND parse error: {exc}"
+    if not argv:
+        return "BRIDGE_EXEC_COMMAND parsed to empty argv"
+    try:
+        res = subprocess.run(
+            argv,
+            input=user_text,
+            capture_output=True,
+            text=True,
+            timeout=EXEC_TIMEOUT_S,
+            env={**os.environ, "BRIDGE_AGENT": agent},
+        )
+    except FileNotFoundError:
+        return f"exec command not found: {argv[0]!r}"
+    except subprocess.TimeoutExpired:
+        return f"exec command timeout after {EXEC_TIMEOUT_S:.0f}s"
+    if res.returncode != 0:
+        return f"exec rc={res.returncode}: {res.stderr.strip()[:300]}"
+    return res.stdout.strip() or "(empty response)"
+
+
+HANDLERS: dict[str, Callable[[str, str], str]] = {
+    "echo": _h_echo,
+    "claude_cli": _h_claude_cli,
+    "exec": _h_exec,
+}
+
+
+def _runtime_label() -> str:
+    return {"echo": "tier3-mock", "claude_cli": "tier3-claude-cli", "exec": "tier3-exec"}.get(
+        HANDLER_NAME, f"tier3-{HANDLER_NAME}"
+    )
+
+
+def _build_reply(reply_id: str, body: dict, handler: Callable[[str, str], str]) -> dict:
+    rpc_id = body.get("id")
+    method = body.get("method", "tasks/send")
+    params = body.get("params", {}) or {}
+    if method != "tasks/send":
+        return {
+            "reply_id": reply_id,
+            "result": {
+                "jsonrpc": "2.0",
+                "id": rpc_id,
+                "error": {
+                    "code": -32601,
+                    "message": f"{AGENT_NAME} only handles tasks/send (got {method})",
+                },
+            },
+        }
+    msg = params.get("message", {}) or {}
+    parts = msg.get("parts") or []
+    user_text = next((p.get("text", "") for p in parts if p.get("type") == "text"), "")
+    reply_text = handler(AGENT_NAME, user_text)
+    return {
+        "reply_id": reply_id,
+        "result": {
+            "jsonrpc": "2.0",
+            "id": rpc_id,
+            "result": {
+                "id": f"{HANDLER_NAME[:5]}-{reply_id[:12]}",
+                "sessionId": params.get("sessionId"),
+                "status": {"state": "completed", "message": None, "timestamp": _now_iso()},
+                "history": [
+                    msg,
+                    {"role": "agent", "parts": [{"type": "text", "text": reply_text}]},
+                ],
+                "artifacts": [],
+                "metadata": {
+                    "x-orochi": {
+                        "agent": AGENT_NAME,
+                        "runtime": _runtime_label(),
+                        "served_by": "orochi-hub",
+                        "generated_at": _now_iso(),
+                    }
+                },
+            },
+        },
+    }
+
+
+def _post_reply(payload: dict) -> tuple[int, str]:
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        REPLY_URL,
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/json", "User-Agent": CHROME_UA},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
+            return resp.status, resp.read().decode()
+    except urllib.error.HTTPError as exc:
+        return exc.code, exc.read().decode()
+    except (urllib.error.URLError, OSError) as exc:
+        return 0, str(exc)
+
+
+async def main() -> int:
+    if not WS_TOKEN:
+        print("error: SCITEX_OROCHI_WS_TOKEN is required", file=sys.stderr)
+        return 2
+    if not AGENT_NAME:
+        print("error: SCITEX_OROCHI_WS_NAME is required", file=sys.stderr)
+        return 2
+    if HANDLER_NAME not in HANDLERS:
+        print(
+            f"error: SCITEX_OROCHI_WS_HANDLER must be one of {sorted(HANDLERS)}",
+            file=sys.stderr,
+        )
+        return 2
+
+    handler = HANDLERS[HANDLER_NAME]
+    url = f"{WS_URL}?token={WS_TOKEN}&agent={AGENT_NAME}"
+    print(f"[ws-bridge] connecting to {url.split('?')[0]} as agent={AGENT_NAME} handler={HANDLER_NAME}")
+
+    async with websockets.connect(url, additional_headers={"User-Agent": CHROME_UA}) as ws:
+        print(f"[ws-bridge] connected as agent={AGENT_NAME}")
+        # Register frame — tells the hub our agent_meta, including
+        # the optional a2a_url for Tier 3 same-host HTTP-direct
+        # dispatch. Hub falls back to WS if the URL is empty/unreachable.
+        register_frame = {
+            "type": "register",
+            "payload": {
+                "agent_id": AGENT_NAME,
+                "role": _runtime_label().replace("tier3-", ""),
+                "model": "tier3-bridge",
+                "machine": os.environ.get("SCITEX_OROCHI_MACHINE", ""),
+                "channels": [],
+                "a2a_url": A2A_URL,
+            },
+        }
+        await ws.send(json.dumps(register_frame))
+        print(
+            f"[ws-bridge] registered (handler={HANDLER_NAME}, "
+            f"a2a_url={A2A_URL or 'none'})"
+        )
+
+        async for raw in ws:
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if msg.get("type") != "a2a.dispatch":
+                continue
+            reply_id = msg.get("reply_id") or ""
+            body = msg.get("body") or {}
+            print(f"[ws-bridge] dispatching reply_id={reply_id[:8]} ({HANDLER_NAME})", flush=True)
+            payload = _build_reply(reply_id, body, handler)
+            code, _ = _post_reply(payload)
+            print(f"[ws-bridge]   -> reply HTTP {code}", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))

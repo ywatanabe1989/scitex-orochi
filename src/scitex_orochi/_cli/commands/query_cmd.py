@@ -64,7 +64,7 @@ def show_status(ctx: click.Context, as_json: bool) -> None:
             for agent_id, info in agents.items():
                 if isinstance(info, dict):
                     s = info.get("status", "unknown")
-                    task = info.get("current_task", "")
+                    task = info.get("orochi_current_task", "")
                     line = f"  {agent_id}  [{s}]"
                     if task:
                         line += f"  task: {task}"

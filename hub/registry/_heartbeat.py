@@ -30,9 +30,9 @@ def set_subagents(name: str, subagents: list) -> None:
             ]
             _agents[name]["subagents"] = normalized
             # Keep the count in sync so callers that only read
-            # `subagent_count` (sidebar card badge) stay accurate even
+            # `orochi_subagent_count` (sidebar card badge) stay accurate even
             # when the full list is what was pushed.
-            _agents[name]["subagent_count"] = len(normalized)
+            _agents[name]["orochi_subagent_count"] = len(normalized)
 
 
 def mark_activity(name: str, action: str = "") -> None:
@@ -40,8 +40,8 @@ def mark_activity(name: str, action: str = "") -> None:
 
     The `action` argument is stored as `last_message_preview` (a truncated
     chat preview shown in the Activity tab). It does NOT overwrite
-    `current_task` — that field is reserved for STRUCTURED task IDs set
-    explicitly via `set_current_task()` (e.g. from a `task_update` WS
+    `orochi_current_task` — that field is reserved for STRUCTURED task IDs set
+    explicitly via `set_orochi_current_task()` (e.g. from a `task_update` WS
     message or `orochi report activity --task ...`). Conflating the two
     leaked chat-preview text into the structured task column.
     """
@@ -52,14 +52,14 @@ def mark_activity(name: str, action: str = "") -> None:
                 _agents[name]["last_message_preview"] = action[:120]
 
 
-def set_current_task(name: str, task: str) -> None:
+def set_orochi_current_task(name: str, task: str) -> None:
     """Explicitly set the agent's current task description."""
     with _lock:
         if name in _agents:
-            _agents[name]["current_task"] = task[:120] if task else ""
+            _agents[name]["orochi_current_task"] = task[:120] if task else ""
 
 
-def set_subagent_count(name: str, count: int) -> None:
+def set_orochi_subagent_count(name: str, count: int) -> None:
     """Explicitly set the agent's subagent count.
 
     Agents that track subagents out-of-band (without sending the full
@@ -68,7 +68,7 @@ def set_subagent_count(name: str, count: int) -> None:
     """
     with _lock:
         if name in _agents:
-            _agents[name]["subagent_count"] = max(0, int(count or 0))
+            _agents[name]["orochi_subagent_count"] = max(0, int(count or 0))
 
 
 def set_sac_status(name: str, sac_status: dict) -> None:
@@ -76,8 +76,8 @@ def set_sac_status(name: str, sac_status: dict) -> None:
 
     Lead msg#16005 pivot: the heartbeat pusher shells out to ``sac
     status --terse --json`` and forwards the resulting dict verbatim so
-    future additions to sac's terse projection (``context_pct``,
-    ``pane_state``, ``current_tool``, quota fields, ...) surface on
+    future additions to sac's terse projection (``orochi_context_pct``,
+    ``orochi_pane_state``, ``orochi_current_tool``, quota fields, ...) surface on
     ``/api/agents/`` without per-field plumbing on the hub side.
 
     Replace-on-present semantics — every heartbeat re-runs sac, so the
@@ -158,8 +158,8 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
 
     msg#16388: after quota pressure, run the auto-dispatch state machine
     for ``head-*`` agents. ``check_agent_auto_dispatch()`` reads
-    ``subagent_count`` (just written by the heartbeat handler via
-    ``set_subagent_count``) and maintains a per-head idle streak + 15min
+    ``orochi_subagent_count`` (just written by the heartbeat handler via
+    ``set_orochi_subagent_count``) and maintains a per-head idle streak + 15min
     cooldown, firing a DM when a head stalls for N consecutive zero
     readings. Also best-effort.
     """
@@ -168,7 +168,28 @@ def update_heartbeat(name: str, metrics: dict | None = None) -> None:
             _agents[name]["last_heartbeat"] = time.time()
             _agents[name]["status"] = "online"
             if metrics:
-                _agents[name]["metrics"] = metrics
+                # MERGE, not overwrite. Multiple producers contribute to
+                # ``metrics`` (collect_machine_metrics → host CPU/mem/disk;
+                # collect_orochi_slurm_status → cluster_* aggregates;
+                # scitex-agent-container's sac_status → its own subset).
+                # A producer that only knows about a subset (e.g. a
+                # Slurm-only host producing cluster_* fields) used to wipe
+                # the host-level fields a richer producer had written, so
+                # the Machines tab card showed dashes for cores/disk even
+                # though some producer had populated them.
+                # Preserving keys absent from the new push avoids that
+                # silent wipe; the producer can still reset a key by
+                # sending it with a falsy value (the dashboard renders
+                # 0 / empty as the appropriate "n/a"). 2026-04-28.
+                prev_metrics = _agents[name].get("metrics") or {}
+                merged = dict(prev_metrics)
+                # Skip explicit ``None`` values — a producer that
+                # doesn't have a metric should OMIT it, not send
+                # ``None`` and wipe whatever a richer producer wrote.
+                # Falsy non-None values (0, "", []) DO overwrite, so a
+                # producer can still reset (e.g. set GPU list to []).
+                merged.update({k: v for k, v in metrics.items() if v is not None})
+                _agents[name]["metrics"] = merged
             has_agent = True
         else:
             has_agent = False

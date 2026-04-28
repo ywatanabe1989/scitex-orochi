@@ -53,7 +53,7 @@ async def handle_register(consumer, content):
         # field (distinct from the YAML ``machine`` config label).
         "hostname": payload.get("hostname", ""),
         # todo#55: canonical FQDN from the heartbeat (display-only).
-        "hostname_canonical": payload.get("hostname_canonical", ""),
+        "orochi_hostname_canonical": payload.get("orochi_hostname_canonical", ""),
         "role": payload.get("role", ""),
         "model": payload.get("model", ""),
         "workdir": payload.get("workdir", ""),
@@ -63,7 +63,14 @@ async def handle_register(consumer, content):
         "color": payload.get("color", ""),
         "multiplexer": payload.get("multiplexer", ""),
         "channels": channels,
-        "claude_md": payload.get("claude_md", ""),
+        "orochi_claude_md": payload.get("orochi_claude_md", ""),
+        # A2A protocol surface URL for this agent (Tier 3 same-host
+        # optimization). Agents that run a sidecar A2A server (sac
+        # `spec.a2a.port` or tier3-ws-bridge with SCITEX_OROCHI_WS_A2A_URL)
+        # report it here. The hub's A2A dispatch view (api_a2a_dispatch)
+        # tries this URL first before falling back to WS group_send.
+        # Empty string → WS-only routing.
+        "a2a_url": payload.get("a2a_url", ""),
     }
 
     from hub.registry import register_agent
@@ -241,7 +248,7 @@ async def handle_heartbeat(consumer, content):
         "disk_total_mb": payload.get("disk_total_mb"),
         "disk_used_mb": payload.get("disk_used_mb"),
         "gpus": payload.get("gpus") or [],
-        # Slurm cluster aggregates (todo#87). None on non-slurm hosts.
+        # Slurm cluster aggregates (todo#87). None on non-orochi_slurm hosts.
         "resource_source": payload.get("resource_source"),
         "cluster_nodes": payload.get("cluster_nodes"),
         "cluster_cpus_allocated": payload.get("cluster_cpus_allocated"),
@@ -250,15 +257,15 @@ async def handle_heartbeat(consumer, content):
         "cluster_mem_total_mb": payload.get("cluster_mem_total_mb"),
         "cluster_gpus_total": payload.get("cluster_gpus_total"),
         "cluster_gpus_allocated": payload.get("cluster_gpus_allocated"),
-        "slurm_total_jobs": payload.get("slurm_total_jobs"),
-        "slurm_running": payload.get("slurm_running"),
-        "slurm_pending": payload.get("slurm_pending"),
+        "orochi_slurm_total_jobs": payload.get("orochi_slurm_total_jobs"),
+        "orochi_slurm_running": payload.get("orochi_slurm_running"),
+        "orochi_slurm_pending": payload.get("orochi_slurm_pending"),
     }
 
     from hub.registry import (
-        set_current_task,
+        set_orochi_current_task,
         set_sac_status,
-        set_subagent_count,
+        set_orochi_subagent_count,
         update_heartbeat,
     )
 
@@ -267,12 +274,12 @@ async def handle_heartbeat(consumer, content):
     # Allow lightweight clients to piggyback narrative fields on
     # the heartbeat rather than sending separate task_update /
     # subagents_update frames.
-    if "current_task" in payload:
-        set_current_task(consumer.agent_name, str(payload.get("current_task") or ""))
-    if "subagent_count" in payload:
+    if "orochi_current_task" in payload:
+        set_orochi_current_task(consumer.agent_name, str(payload.get("orochi_current_task") or ""))
+    if "orochi_subagent_count" in payload:
         try:
-            set_subagent_count(
-                consumer.agent_name, int(payload.get("subagent_count") or 0)
+            set_orochi_subagent_count(
+                consumer.agent_name, int(payload.get("orochi_subagent_count") or 0)
             )
         except (TypeError, ValueError):
             pass
@@ -298,9 +305,9 @@ async def handle_task_update(consumer, content):
     """Agent reports its current task — visible in the Activity tab."""
     payload = content.get("payload", {})
     task = payload.get("task", "")
-    from hub.registry import mark_activity, set_current_task
+    from hub.registry import mark_activity, set_orochi_current_task
 
-    set_current_task(consumer.agent_name, task)
+    set_orochi_current_task(consumer.agent_name, task)
     mark_activity(consumer.agent_name, action=task)
     await consumer.channel_layer.group_send(
         consumer.workspace_group,

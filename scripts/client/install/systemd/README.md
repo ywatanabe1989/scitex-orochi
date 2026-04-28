@@ -18,7 +18,7 @@ bootstrap-host.sh renders these into the deployed unit files:
 | Token | Meaning | Example |
 |---|---|---|
 | `@SAC@` | Absolute path to the `sac` CLI | `/home/ywatanabe/.venv-3.11/bin/sac` |
-| `@AGENT_META@` | Absolute path to `agent_meta.py` | `/home/ywatanabe/.scitex/orochi/shared/scripts/agent_meta.py` |
+| `@AGENT_META@` | Absolute path to `collect_agent_metadata.py` | `/home/ywatanabe/.scitex/orochi/shared/scripts/collect_agent_metadata.py` |
 | `@CANONICAL_HOST@` | Fleet label from `resolve-hostname` | `mba` / `nas` / `spartan` / `ywata-note-win` |
 
 ## Environment file

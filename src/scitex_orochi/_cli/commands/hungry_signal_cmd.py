@@ -5,7 +5,7 @@ dispatch, msg#16310).
 
 Behaviour summary
 -----------------
-* Reads this host's canonical ``head-<host>`` agent's ``subagent_count``
+* Reads this host's canonical ``head-<host>`` agent's ``orochi_subagent_count``
   from either ``scitex-agent-container status --terse --json`` (preferred,
   cheap) or the hub's ``/api/agents/`` endpoint (fallback).
 * Tracks consecutive zero-reading cycles in
@@ -60,7 +60,7 @@ def _lane_for(host: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# subagent_count readers
+# orochi_subagent_count readers
 # ---------------------------------------------------------------------------
 
 def _read_from_sac(agent: str) -> tuple[int | None, list[str]]:
@@ -101,7 +101,7 @@ def _read_from_sac(agent: str) -> tuple[int | None, list[str]]:
         if status in ("online", "running", "up", "active"):
             alive.append(name)
         if name == agent:
-            c = a.get("subagent_count")
+            c = a.get("orochi_subagent_count")
             try:
                 count = int(c) if c is not None else None
             except (TypeError, ValueError):
@@ -145,7 +145,7 @@ def _read_from_hub(agent: str, hub: str, token: str | None) -> tuple[int | None,
         if str(a.get("status") or "") == "online":
             alive.append(name)
         if name == agent:
-            c = a.get("subagent_count")
+            c = a.get("orochi_subagent_count")
             try:
                 count = int(c) if c is not None else None
             except (TypeError, ValueError):
@@ -336,7 +336,7 @@ def check(
             "agent": agent,
             "decision": decision,
             "reason": reason,
-            "subagent_count": cc,
+            "orochi_subagent_count": cc,
             "consecutive_zero_cycles": cy,
             "fired": bool(fr),
             "threshold": threshold,
@@ -346,7 +346,7 @@ def check(
         click.echo(json.dumps(obj, separators=(",", ":"), sort_keys=False))
 
     if count is None:
-        _emit("skip", "no_subagent_count_source", cc=-1, cy=0, fr=0)
+        _emit("skip", "no_orochi_subagent_count_source", cc=-1, cy=0, fr=0)
         sys.exit(2)
 
     prior_cycles, prior_fired = _state_get(state_file, self_host)
@@ -355,7 +355,7 @@ def check(
         # Reset state if there's something to reset.
         if (prior_cycles or prior_fired) and not dry_run:
             _state_update(state_file, self_host, 0, 0, now_epoch)
-        _emit("noop", f"subagent_count={count}_reset",
+        _emit("noop", f"orochi_subagent_count={count}_reset",
               cc=count, cy=0, fr=0)
         sys.exit(0)
 

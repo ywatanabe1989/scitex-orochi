@@ -1,8 +1,10 @@
-/* Files tab — media grid and previews */
+/* Files tab — media grid and previews
+ * NB: do NOT set ``overflow: hidden`` here — the element also carries
+ * the ``.todo-view`` class which sets ``overflow-y: auto`` to be the
+ * scroll container for the tab. ywatanabe 2026-04-27. */
 .files-view {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   padding: 0;
 }
 
@@ -408,4 +410,3 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-

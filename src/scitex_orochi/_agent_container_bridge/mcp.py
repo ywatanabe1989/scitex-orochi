@@ -20,6 +20,8 @@ import os
 import subprocess
 from pathlib import Path
 
+from scitex_config._ecosystem import local_state
+
 from .spec import OrochiSpec
 
 logger = logging.getLogger("scitex-orochi.bridge.mcp")
@@ -204,7 +206,7 @@ def write_mcp_config_file(
     if mcp_config is None:
         return None
 
-    config_dir = Path("/tmp/scitex-orochi/mcp-configs")
+    config_dir = local_state.runtime_path("orochi", "mcp-configs")
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / f"mcp-{agent_name}.json"
 

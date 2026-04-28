@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from scitex_config._ecosystem import local_state
 
 # ----------------------------------------------------------------------
 # Paths — the daemon, the CLI, and the heartbeat pusher all agree on
@@ -34,7 +35,7 @@ import yaml
 
 def default_config_path() -> Path:
     """Location of ``cron.yaml`` (operator-owned, per-host)."""
-    return Path.home() / ".scitex" / "orochi" / "cron.yaml"
+    return local_state.path("orochi", "cron.yaml")
 
 
 def default_state_path() -> Path:

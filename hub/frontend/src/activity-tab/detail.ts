@@ -26,8 +26,8 @@ export function _renderActivityAgentDetail(a, grid) {
    * while still rendering something immediately from the registry. */
   var d = _activityDetailCache[a.name] || {};
   a = Object.assign({}, a, {
-    claude_md: d.claude_md || a.claude_md || a.claude_md_head || "",
-    pane_tail_block: d.pane_text || a.pane_tail_block || a.pane_tail || "",
+    orochi_claude_md: d.orochi_claude_md || a.orochi_claude_md || a.orochi_claude_md_head || "",
+    orochi_pane_tail_block: d.pane_text || a.orochi_pane_tail_block || a.orochi_pane_tail || "",
     pane_text_full: d.pane_text_full || "",
   });
   var liveness = a.liveness || a.status || "online";
@@ -38,11 +38,11 @@ export function _renderActivityAgentDetail(a, grid) {
     offline: "#ef4444",
   };
   var statusColor = livenessColors[liveness] || "#888";
-  var pane = a.pane_tail_block || a.pane_tail || "";
-  var ctxPct = a.context_pct != null ? Number(a.context_pct) : null;
+  var pane = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
+  var ctxPct = a.orochi_context_pct != null ? Number(a.orochi_context_pct) : null;
   var q5 = a.quota_5h_used_pct != null ? Number(a.quota_5h_used_pct) : null;
   var q7 = a.quota_7d_used_pct != null ? Number(a.quota_7d_used_pct) : null;
-  var subCnt = a.subagent_count != null ? Number(a.subagent_count) : null;
+  var subCnt = a.orochi_subagent_count != null ? Number(a.orochi_subagent_count) : null;
   var chips = [];
   var cm = a.context_management || null;
   var cmTrig =
@@ -84,7 +84,7 @@ export function _renderActivityAgentDetail(a, grid) {
    * <synthetic>-style model placeholders, mirroring the same polish on
    * the Agents tab detail card. */
   var _machine = a.machine || "?";
-  var _fqdn = a.hostname_canonical || "";
+  var _fqdn = a.orochi_hostname_canonical || "";
   var _redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
   var _fqdnUseful = _fqdn && _fqdn !== _machine;
   if (_fqdnUseful) {
@@ -157,34 +157,34 @@ export function _renderActivityAgentDetail(a, grid) {
       "Subagents (" + (subCnt != null ? subCnt : 0) + ")",
       subCnt != null ? String(subCnt) : "-",
     ],
-    ["Pane state", a.pane_state || "-"],
+    ["Pane state", a.orochi_pane_state || "-"],
     ["Idle", _fmtSec(a.idle_seconds)],
     [
       "Last tool",
-      d.last_tool_at
-        ? _fmtSec(_secondsSinceIso(d.last_tool_at)) +
+      d.sac_hooks_last_tool_at
+        ? _fmtSec(_secondsSinceIso(d.sac_hooks_last_tool_at)) +
           " ago" +
-          (d.last_tool_name ? " (" + d.last_tool_name + ")" : "")
+          (d.sac_hooks_last_tool_name ? " (" + d.sac_hooks_last_tool_name + ")" : "")
         : "-",
     ],
     [
       "Last MCP",
-      d.last_mcp_tool_at
-        ? _fmtSec(_secondsSinceIso(d.last_mcp_tool_at)) +
+      d.sac_hooks_last_mcp_tool_at
+        ? _fmtSec(_secondsSinceIso(d.sac_hooks_last_mcp_tool_at)) +
           " ago" +
-          (d.last_mcp_tool_name ? " (" + d.last_mcp_tool_name + ")" : "")
+          (d.sac_hooks_last_mcp_tool_name ? " (" + d.sac_hooks_last_mcp_tool_name + ")" : "")
         : "-",
     ],
     [
       "Last action",
-      d.last_action_at
-        ? _fmtSec(_secondsSinceIso(d.last_action_at)) +
+      d.sac_hooks_last_action_at
+        ? _fmtSec(_secondsSinceIso(d.sac_hooks_last_action_at)) +
           " ago (" +
-          (d.last_action_name || "?") +
+          (d.sac_hooks_last_action_name || "?") +
           " " +
-          (d.last_action_outcome || "?") +
-          (d.last_action_elapsed_s != null
-            ? ", " + Number(d.last_action_elapsed_s).toFixed(1) + "s"
+          (d.sac_hooks_last_action_outcome || "?") +
+          (d.sac_hooks_last_action_elapsed_s != null
+            ? ", " + Number(d.sac_hooks_last_action_elapsed_s).toFixed(1) + "s"
             : "") +
           ")"
         : "-",
@@ -223,8 +223,8 @@ export function _renderActivityAgentDetail(a, grid) {
       typeof cleanAgentName === "function" ? cleanAgentName(a.name) : a.name,
     ) +
     "</span>" +
-    (a.current_task
-      ? '<em class="agent-detail-task">' + escapeHtml(a.current_task) + "</em>"
+    (a.orochi_current_task
+      ? '<em class="agent-detail-task">' + escapeHtml(a.orochi_current_task) + "</em>"
       : "") +
     "</div>" +
     '<div class="agent-detail-meta-grid">' +
@@ -233,9 +233,9 @@ export function _renderActivityAgentDetail(a, grid) {
     "</div>";
   /* Task */
   var taskHtml =
-    a.current_task || a.last_message_preview
+    a.orochi_current_task || a.last_message_preview
       ? '<div class="agent-detail-section"><span class="agent-detail-pane-label">Task: </span>' +
-        escapeHtml(a.current_task || a.last_message_preview) +
+        escapeHtml(a.orochi_current_task || a.last_message_preview) +
         "</div>"
       : "";
   /* Terminal pane — Refresh / Tail / Copy / Expand. Expand only renders
@@ -355,7 +355,7 @@ export function _renderActivityAgentDetail(a, grid) {
    * before /detail/ returns or when the agent hasn't pushed one. User
    * reported the section silently disappearing ("often occurs"); a
    * placeholder makes the absence explicit instead of a data gap. */
-  var claudeMd = a.claude_md || a.claude_md_head || "";
+  var claudeMd = a.orochi_claude_md || a.orochi_claude_md_head || "";
   var claudeMdHtml =
     '<div class="agent-detail-section">' +
     '<div class="agent-detail-pane-label">CLAUDE.md</div>' +
@@ -418,11 +418,11 @@ export function _renderActivityAgentDetail(a, grid) {
    * (PreToolUse / PostToolUse / UserPromptSubmit). Only visible when the
    * hooks are wired up for this agent; otherwise the lists are empty. */
   var hooksHtml = _renderHookPanels(
-    d.recent_tools || [],
-    d.recent_prompts || [],
-    d.agent_calls || [],
-    d.background_tasks || [],
-    d.tool_counts || {},
+    d.sac_hooks_recent_tools || [],
+    d.sac_hooks_recent_prompts || [],
+    d.sac_hooks_agent_calls || [],
+    d.sac_hooks_background_tasks || [],
+    d.sac_hooks_tool_counts || {},
   );
   /* Preserve scrollTop of long, user-scrolled panes across heartbeat-driven
    * re-renders. Without this the CLAUDE.md viewer (and .mcp.json viewer)

@@ -219,7 +219,7 @@ export function handleMessage(msg) {
     fetchResources();
     /* todo#47 — if the Agents tab currently has a detail view open
      * for the agent that just sent an info/pong, invalidate that
-     * view's cache so pane_tail / RTT / last_action refresh live. */
+     * view's cache so orochi_pane_tail / RTT / last_action refresh live. */
     if (
       (msg.type === "agent_info" ||
         msg.type === "agent_pong" ||

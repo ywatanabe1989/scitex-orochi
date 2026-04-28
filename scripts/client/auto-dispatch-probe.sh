@@ -24,11 +24,11 @@
 # -----------------------------------------------------------------------------
 # Problem statement (lead msg#15975, ywatanabe msg#15971)
 #   Rules-based discipline failed. The fleet keeps dropping to
-#   ``subagent_count == 0`` on individual heads (2026-04-20: head-mba hit 0
+#   ``orochi_subagent_count == 0`` on individual heads (2026-04-20: head-mba hit 0
 #   after the PR #315 revert). Replace rules with an automated probe+dispatch
 #   loop that runs every 5 minutes and, for each head:
 #     * queries the hub for this host's head-<hostname> registry payload
-#     * if subagent_count == 0 AND agent is online AND no recent dispatch
+#     * if orochi_subagent_count == 0 AND agent is online AND no recent dispatch
 #       has been injected (cooldown), picks the next high-priority TODO
 #       matching this head's lane
 #     * skips any TODO already claimed by a running subagent on any head
@@ -46,7 +46,7 @@
 #   * --yes          actually dispatch
 #   * --host <name>  constrain to one head only (debug)
 #   * cooldown       15 min per head (state file)
-#   * subagent_count upper bound 3 (lead's cap)
+#   * orochi_subagent_count upper bound 3 (lead's cap)
 #   * skip injection when pane state classifier reports "busy"
 #   * kill switch    SCITEX_AUTO_DISPATCH_DISABLED=1 — exits 0 silently
 #   * gh unauth / hub 4xx — log + exit 0 (do not crash the scheduler)
@@ -271,14 +271,14 @@ state_all_recent_issues() {
 probe_head() {
   local host="$1" agents_json="$2"
   local agent_name="head-$host"
-  local decision="noop" reason="" subagent_count=-1 is_online=0 pane_state="unknown"
+  local decision="noop" reason="" orochi_subagent_count=-1 is_online=0 orochi_pane_state="unknown"
   local cooldown_remaining=0 issue_num="" issue_title=""
 
   # Extract this head's registry payload. We pass the JSON via env var
   # (not stdin) so a heredoc on python3 -c doesn't race the pipe. The
   # python helper writes three tab-separated fields:
-  #   <found>\t<status>\t<subagent_count>\t<pane_state>
-  # found="0" → no registry entry. pane_state falls back to "unknown".
+  #   <found>\t<status>\t<orochi_subagent_count>\t<orochi_pane_state>
+  # found="0" → no registry entry. orochi_pane_state falls back to "unknown".
   local fields
   fields="$(
     AGENTS_JSON="$agents_json" AGENT_NAME="$agent_name" python3 -c '
@@ -296,9 +296,9 @@ for a in (data if isinstance(data, list) else []):
     if a.get("name") == name:
         found = "1"
         status = str(a.get("status") or "")
-        count = int(a.get("subagent_count") or 0)
+        count = int(a.get("orochi_subagent_count") or 0)
         m = a.get("metrics") or {}
-        pane = str(m.get("pane_state") or a.get("pane_state") or "unknown")
+        pane = str(m.get("orochi_pane_state") or a.get("orochi_pane_state") or "unknown")
         break
 print(f"{found}\t{status}\t{count}\t{pane}")
 ' 2>/dev/null || echo $'0\t\t0\tunknown'
@@ -306,8 +306,8 @@ print(f"{found}\t{status}\t{count}\t{pane}")
 
   local found
   IFS=$'\t' read -r found _status _count _pane <<<"$fields"
-  subagent_count="${_count:-0}"
-  pane_state="${_pane:-unknown}"
+  orochi_subagent_count="${_count:-0}"
+  orochi_pane_state="${_pane:-unknown}"
   if [ "${_status:-}" = "online" ]; then is_online=1; else is_online=0; fi
 
   if [ "$found" != "1" ]; then
@@ -315,7 +315,7 @@ print(f"{found}\t{status}\t{count}\t{pane}")
     reason="no_registry_entry"
     bump_exit 2
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
@@ -326,30 +326,30 @@ print(f"{found}\t{status}\t{count}\t{pane}")
     decision="skip"
     reason="agent_offline"
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
   # ---------------------------------------------------------------------------
   # Gate 2: upper bound — lead's cap. Already working enough, don't pile on.
   # ---------------------------------------------------------------------------
-  if [ "$subagent_count" -ge "$SUBAGENT_CAP" ]; then
+  if [ "$orochi_subagent_count" -ge "$SUBAGENT_CAP" ]; then
     decision="skip"
-    reason="at_cap(${subagent_count}/${SUBAGENT_CAP})"
+    reason="at_cap(${orochi_subagent_count}/${SUBAGENT_CAP})"
     bump_exit 1
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
   # ---------------------------------------------------------------------------
-  # Gate 3: only act when subagent_count == 0. (1 or 2 — still working.)
+  # Gate 3: only act when orochi_subagent_count == 0. (1 or 2 — still working.)
   # ---------------------------------------------------------------------------
-  if [ "$subagent_count" -ne 0 ]; then
+  if [ "$orochi_subagent_count" -ne 0 ]; then
     decision="noop"
-    reason="subagent_count=${subagent_count}_within_working_band"
+    reason="orochi_subagent_count=${orochi_subagent_count}_within_working_band"
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
@@ -371,23 +371,23 @@ print(f"{found}\t{status}\t{count}\t{pane}")
       reason="cooldown_${cooldown_remaining}s_remaining(last=#${last_issue})"
       bump_exit 1
       emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-        "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+        "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
       return
     fi
   fi
 
   # ---------------------------------------------------------------------------
   # Gate 5: if pane classifier reports "busy", treat as still-working even
-  # when subagent_count reads 0 — don't interrupt. The heartbeat publisher
+  # when orochi_subagent_count reads 0 — don't interrupt. The heartbeat publisher
   # occasionally misses a brief child window and we'd rather under-dispatch
   # than clobber an in-flight thinking step.
   # ---------------------------------------------------------------------------
-  if [ "$pane_state" = "busy" ]; then
+  if [ "$orochi_pane_state" = "busy" ]; then
     decision="skip"
     reason="pane_busy"
     bump_exit 1
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
@@ -401,7 +401,7 @@ print(f"{found}\t{status}\t{count}\t{pane}")
     reason="no_lane_mapping"
     bump_exit 1
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
@@ -412,7 +412,7 @@ print(f"{found}\t{status}\t{count}\t{pane}")
     reason="picker_failed"
     bump_exit 1
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
   if [ -z "$pick_json" ] || [ "$pick_json" = "null" ]; then
@@ -420,7 +420,7 @@ print(f"{found}\t{status}\t{count}\t{pane}")
     reason="no_open_todo_for_lane=${lane}"
     bump_exit 1
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
@@ -432,7 +432,7 @@ print(f"{found}\t{status}\t{count}\t{pane}")
     reason="pick_parse_failed"
     bump_exit 1
     emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-      "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" "" ""
+      "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" "" ""
     return
   fi
 
@@ -464,7 +464,7 @@ print(f"{found}\t{status}\t{count}\t{pane}")
   fi
 
   emit_ndjson "$host" "$agent_name" "$decision" "$reason" \
-    "$subagent_count" "$is_online" "$pane_state" "$cooldown_remaining" \
+    "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown_remaining" \
     "$issue_num" "$issue_title"
 }
 
@@ -532,10 +532,10 @@ resolve_self_host() {
 # -----------------------------------------------------------------------------
 emit_ndjson() {
   local host="$1" agent="$2" decision="$3" reason="$4"
-  local subagent_count="$5" is_online="$6" pane_state="$7" cooldown="$8"
+  local orochi_subagent_count="$5" is_online="$6" orochi_pane_state="$7" cooldown="$8"
   local issue_num="${9:-}" issue_title="${10:-}"
   python3 - "$TS_ISO" "$host" "$agent" "$decision" "$reason" \
-                     "$subagent_count" "$is_online" "$pane_state" "$cooldown" \
+                     "$orochi_subagent_count" "$is_online" "$orochi_pane_state" "$cooldown" \
                      "$issue_num" "$issue_title" "$dry_run" <<'PY'
 import json, sys
 ts, host, agent, decision, reason, sc, online, pane, cooldown, issue_num, issue_title, dry_run = sys.argv[1:]
@@ -546,9 +546,9 @@ obj = {
     "agent": agent,
     "decision": decision,
     "reason": reason,
-    "subagent_count": int(sc or 0),
+    "orochi_subagent_count": int(sc or 0),
     "online": online == "1",
-    "pane_state": pane or "unknown",
+    "orochi_pane_state": pane or "unknown",
     "cooldown_remaining_s": int(cooldown or 0),
     "issue_num": int(issue_num) if (issue_num or "").isdigit() else None,
     "issue_title": issue_title or "",

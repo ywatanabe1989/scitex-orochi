@@ -73,7 +73,7 @@ def report() -> None:
 @report.command()
 @click.option("--tool", default="", help="Tool name (e.g. Edit, Bash).")
 @click.option(
-    "--task", default="", help="Current task description (becomes current_task)."
+    "--task", default="", help="Current task description (becomes orochi_current_task)."
 )
 @click.option("--summary", default="", help="Optional one-line summary of the action.")
 @click.option("--phase", type=click.Choice(["pre", "post"]), default="post")

@@ -1,7 +1,7 @@
 /**
  * Canonical host-identity resolution for Orochi heartbeats.
  *
- * Mirrors the Python ``agent_meta_pkg._machine.resolve_machine_label`` and
+ * Mirrors the Python ``_collect_agent_metadata._machine.resolve_machine_label`` and
  * ``scripts/client/resolve-hostname`` logic so TS clients produce the same
  * ``mba`` / ``nas`` / ``spartan`` / ``ywata-note-win`` label as the
  * Python-side heartbeat.

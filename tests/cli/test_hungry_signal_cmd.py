@@ -74,7 +74,7 @@ def test_non_head_host_is_noop(
 def test_zero_reading_counts_and_emits_ndjson(
     fake_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """subagent_count=0 + threshold=2 → decision=counting, exit 0."""
+    """orochi_subagent_count=0 + threshold=2 → decision=counting, exit 0."""
     monkeypatch.setattr(hsc, "_read_from_sac", lambda a: (0, ["head-mba"]))
     runner = CliRunner()
     result = runner.invoke(
@@ -93,7 +93,7 @@ def test_zero_reading_counts_and_emits_ndjson(
     assert obj["lane"] == "infrastructure"
 
 
-def test_subagent_count_missing_exit_2(
+def test_orochi_subagent_count_missing_exit_2(
     fake_repo: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """No sac, no hub → decision=skip, exit 2."""
@@ -104,7 +104,7 @@ def test_subagent_count_missing_exit_2(
     assert result.exit_code == 2
     obj = json.loads(result.output.strip().splitlines()[-1])
     assert obj["decision"] == "skip"
-    assert obj["reason"] == "no_subagent_count_source"
+    assert obj["reason"] == "no_orochi_subagent_count_source"
 
 
 def test_yes_overrides_dry_run(

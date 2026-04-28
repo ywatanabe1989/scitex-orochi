@@ -26,7 +26,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
     """Register or update an agent.
 
     Re-registration (e.g. WS reconnect) preserves narrative state that
-    the agent populated via later calls — current_task, last_message,
+    the agent populated via later calls — orochi_current_task, last_message,
     subagents. Without this, every WS reconnect wiped the Activity tab
     fields back to empty strings so cards always read "no task reported".
     """
@@ -41,14 +41,14 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # `socket.getfqdn()`. Display-only — the short `machine` field
             # remains the join key for cards/channels. Preserved across
             # heartbeats that omit the field (older clients).
-            "hostname_canonical": info.get("hostname_canonical", "")
-            or prev.get("hostname_canonical", ""),
+            "orochi_hostname_canonical": info.get("orochi_hostname_canonical", "")
+            or prev.get("orochi_hostname_canonical", ""),
             # ── #257 canonical heartbeat metadata ─────────────────────
             # `hostname` is what `hostname(1)` returns on the running
             # process — single source of truth for "where am I", per
             # ywatanabe msg #14726/#14730: never display a fabricated or
             # cached @host label. Distinct from `machine` (YAML config
-            # label) and `hostname_canonical` (FQDN via getfqdn()).
+            # label) and `orochi_hostname_canonical` (FQDN via getfqdn()).
             # If the heartbeat omits it, fall through to the previous
             # value rather than wiping — older clients that haven't
             # been upgraded yet keep working.
@@ -72,8 +72,16 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # name (the ghost-mba bug from #256). Preserved — a new
             # instance_id from a heartbeat means a different process
             # took over (or a fast restart happened).
-            "instance_id": info.get("instance_id", "")
-            or prev.get("instance_id", ""),
+            "instance_id": info.get("instance_id", "") or prev.get("instance_id", ""),
+            # A2A protocol surface URL for this agent (Tier 3 same-host
+            # optimization). When present and reachable, the hub's A2A
+            # dispatch view (api_a2a_dispatch) HTTP-POSTs directly to
+            # this URL instead of going through WS group_send. Empty
+            # string means "WS-only routing"; agents without a sidecar
+            # A2A server omit this and the hub falls back to WS.
+            # Preserved across re-registers — same prev-preserve pattern
+            # as instance_id.
+            "a2a_url": info.get("a2a_url", "") or prev.get("a2a_url", ""),
             # Whether this instance considers itself a non-primary
             # proxy (rank > 0 in its YAML priority list). True means
             # the agent should be silent in public channels per
@@ -132,14 +140,14 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("channels"), (list, tuple))
                 else prev.get("channels") or []
             ),
-            "claude_md": info.get("claude_md", "") or prev.get("claude_md", ""),
+            "orochi_claude_md": info.get("orochi_claude_md", "") or prev.get("orochi_claude_md", ""),
             "status": "online",
             "registered_at": prev.get("registered_at") or time.time(),
             "last_heartbeat": time.time(),
             "last_action": prev.get("last_action") or time.time(),
             "last_message_preview": prev.get("last_message_preview", ""),
-            "current_task": prev.get("current_task", ""),
-            "subagent_count": prev.get("subagent_count", 0),
+            "orochi_current_task": prev.get("orochi_current_task", ""),
+            "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
             "subagents": list(prev.get("subagents") or []),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
@@ -165,10 +173,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # Optional; absent for legacy WS-only agents.
             "pid": info.get("pid") or prev.get("pid") or 0,
             "ppid": info.get("ppid") or prev.get("ppid") or 0,
-            "context_pct": (
-                info.get("context_pct")
-                if info.get("context_pct") is not None
-                else prev.get("context_pct")
+            "orochi_context_pct": (
+                info.get("orochi_context_pct")
+                if info.get("orochi_context_pct") is not None
+                else prev.get("orochi_context_pct")
             ),
             # YAML compact policy block from sac status. Preserve across
             # heartbeats so the Agents tab keeps showing the threshold even
@@ -178,10 +186,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if info.get("context_management") is not None
                 else prev.get("context_management")
             ),
-            "skills_loaded": (
-                list(info.get("skills_loaded"))
-                if isinstance(info.get("skills_loaded"), (list, tuple))
-                else prev.get("skills_loaded") or []
+            "orochi_skills_loaded": (
+                list(info.get("orochi_skills_loaded"))
+                if isinstance(info.get("orochi_skills_loaded"), (list, tuple))
+                else prev.get("orochi_skills_loaded") or []
             ),
             "started_at": info.get("started_at") or prev.get("started_at") or "",
             "version": info.get("version") or prev.get("version") or "",
@@ -197,108 +205,108 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("recent_actions"), (list, tuple))
                 else prev.get("recent_actions") or []
             ),
-            "pane_tail": info.get("pane_tail") or prev.get("pane_tail") or "",
-            "pane_tail_block": info.get("pane_tail_block")
-            or prev.get("pane_tail_block")
+            "orochi_pane_tail": info.get("orochi_pane_tail") or prev.get("orochi_pane_tail") or "",
+            "orochi_pane_tail_block": info.get("orochi_pane_tail_block")
+            or prev.get("orochi_pane_tail_block")
             or "",
             # todo#47 — full-scrollback pane for the web-terminal viewer.
             # Pushed by agent_meta.py --push when the client is new
             # enough; older clients never populate it and the UI
-            # gracefully falls back to the short pane_tail_block.
-            "pane_tail_full": info.get("pane_tail_full")
-            or prev.get("pane_tail_full")
+            # gracefully falls back to the short orochi_pane_tail_block.
+            "orochi_pane_tail_full": info.get("orochi_pane_tail_full")
+            or prev.get("orochi_pane_tail_full")
             or "",
-            "claude_md_head": info.get("claude_md_head")
-            or prev.get("claude_md_head")
+            "orochi_claude_md_head": info.get("orochi_claude_md_head")
+            or prev.get("orochi_claude_md_head")
             or "",
             # todo#460: full .mcp.json content for the Agents tab file viewer.
             # agent_meta.py --push (dotfiles PR #71) sends a size-capped,
             # token-redacted copy of the workspace `.mcp.json`. Absent for
             # legacy WS-only agents; falls through to the empty string.
-            "mcp_json": info.get("mcp_json") or prev.get("mcp_json") or "",
+            "orochi_mcp_json": info.get("orochi_mcp_json") or prev.get("orochi_mcp_json") or "",
             # todo#418: agent decision-transparency fields for the Agents tab.
-            # `pane_state` is the classifier label (`running` / `waiting` /
+            # `orochi_pane_state` is the classifier label (`running` / `waiting` /
             # `y_n_prompt` / `compose_pending_unsent` / `auth_error` / etc.)
             # computed by agent_meta.py --push using the same classifiers
             # fleet-prompt-actuator uses (scitex_agent_container.runtimes.
-            # prompts + detect_compose_pending). `stuck_prompt_text` carries
+            # prompts + detect_compose_pending). `orochi_stuck_prompt_text` carries
             # the verbatim prompt so ywatanabe / dashboard viewers can see
             # what the agent is blocked on. Both empty when agent_meta can't
             # classify or the agent is a legacy WS-only pusher.
-            "pane_state": info.get("pane_state") or prev.get("pane_state") or "",
-            "stuck_prompt_text": info.get("stuck_prompt_text")
-            or prev.get("stuck_prompt_text")
+            "orochi_pane_state": info.get("orochi_pane_state") or prev.get("orochi_pane_state") or "",
+            "orochi_stuck_prompt_text": info.get("orochi_stuck_prompt_text")
+            or prev.get("orochi_stuck_prompt_text")
             or "",
             "pane_text": info.get("pane_text") or prev.get("pane_text") or "",
             # scitex-agent-container hook-captured tool/prompt events.
             # Lists replace-on-present so a fresh heartbeat always reflects
             # the agent's latest ring-buffer state; empty-list pushes wipe
             # stale data rather than sticking around forever.
-            "recent_tools": (
-                list(info.get("recent_tools"))
-                if isinstance(info.get("recent_tools"), (list, tuple))
-                else prev.get("recent_tools") or []
+            "sac_hooks_recent_tools": (
+                list(info.get("sac_hooks_recent_tools"))
+                if isinstance(info.get("sac_hooks_recent_tools"), (list, tuple))
+                else prev.get("sac_hooks_recent_tools") or []
             ),
-            "recent_prompts": (
-                list(info.get("recent_prompts"))
-                if isinstance(info.get("recent_prompts"), (list, tuple))
-                else prev.get("recent_prompts") or []
+            "sac_hooks_recent_prompts": (
+                list(info.get("sac_hooks_recent_prompts"))
+                if isinstance(info.get("sac_hooks_recent_prompts"), (list, tuple))
+                else prev.get("sac_hooks_recent_prompts") or []
             ),
-            "agent_calls": (
-                list(info.get("agent_calls"))
-                if isinstance(info.get("agent_calls"), (list, tuple))
-                else prev.get("agent_calls") or []
+            "sac_hooks_agent_calls": (
+                list(info.get("sac_hooks_agent_calls"))
+                if isinstance(info.get("sac_hooks_agent_calls"), (list, tuple))
+                else prev.get("sac_hooks_agent_calls") or []
             ),
-            "background_tasks": (
-                list(info.get("background_tasks"))
-                if isinstance(info.get("background_tasks"), (list, tuple))
-                else prev.get("background_tasks") or []
+            "sac_hooks_background_tasks": (
+                list(info.get("sac_hooks_background_tasks"))
+                if isinstance(info.get("sac_hooks_background_tasks"), (list, tuple))
+                else prev.get("sac_hooks_background_tasks") or []
             ),
-            "tool_counts": (
-                dict(info.get("tool_counts"))
-                if isinstance(info.get("tool_counts"), dict)
-                else prev.get("tool_counts") or {}
+            "sac_hooks_tool_counts": (
+                dict(info.get("sac_hooks_tool_counts"))
+                if isinstance(info.get("sac_hooks_tool_counts"), dict)
+                else prev.get("sac_hooks_tool_counts") or {}
             ),
             # Functional-heartbeat shortcuts derived in agent-container's
-            # event_log.summarize(). last_tool_at is the newest pretool
-            # ts (LLM-level liveness); last_mcp_tool_at is newest for
+            # event_log.summarize(). sac_hooks_last_tool_at is the newest pretool
+            # ts (LLM-level liveness); sac_hooks_last_mcp_tool_at is newest for
             # mcp__* tools (proves the MCP sidecar route works).
-            "last_tool_at": info.get("last_tool_at") or prev.get("last_tool_at") or "",
-            "last_tool_name": info.get("last_tool_name")
-            or prev.get("last_tool_name")
+            "sac_hooks_last_tool_at": info.get("sac_hooks_last_tool_at") or prev.get("sac_hooks_last_tool_at") or "",
+            "sac_hooks_last_tool_name": info.get("sac_hooks_last_tool_name")
+            or prev.get("sac_hooks_last_tool_name")
             or "",
-            "last_mcp_tool_at": info.get("last_mcp_tool_at")
-            or prev.get("last_mcp_tool_at")
+            "sac_hooks_last_mcp_tool_at": info.get("sac_hooks_last_mcp_tool_at")
+            or prev.get("sac_hooks_last_mcp_tool_at")
             or "",
-            "last_mcp_tool_name": info.get("last_mcp_tool_name")
-            or prev.get("last_mcp_tool_name")
+            "sac_hooks_last_mcp_tool_name": info.get("sac_hooks_last_mcp_tool_name")
+            or prev.get("sac_hooks_last_mcp_tool_name")
             or "",
             # PaneAction summary from scitex-agent-container action_store.
             # Per-push replace semantics (no merge) — a fresh heartbeat
             # always reflects the current log state.
-            "last_action_at": info.get("last_action_at")
-            or prev.get("last_action_at")
+            "sac_hooks_last_action_at": info.get("sac_hooks_last_action_at")
+            or prev.get("sac_hooks_last_action_at")
             or "",
-            "last_action_name": info.get("last_action_name")
-            or prev.get("last_action_name")
+            "sac_hooks_last_action_name": info.get("sac_hooks_last_action_name")
+            or prev.get("sac_hooks_last_action_name")
             or "",
-            "last_action_outcome": info.get("last_action_outcome")
-            or prev.get("last_action_outcome")
+            "sac_hooks_last_action_outcome": info.get("sac_hooks_last_action_outcome")
+            or prev.get("sac_hooks_last_action_outcome")
             or "",
-            "last_action_elapsed_s": (
-                info.get("last_action_elapsed_s")
-                if info.get("last_action_elapsed_s") is not None
-                else prev.get("last_action_elapsed_s")
+            "sac_hooks_last_action_elapsed_s": (
+                info.get("sac_hooks_last_action_elapsed_s")
+                if info.get("sac_hooks_last_action_elapsed_s") is not None
+                else prev.get("sac_hooks_last_action_elapsed_s")
             ),
             "action_counts": (
                 dict(info.get("action_counts"))
                 if isinstance(info.get("action_counts"), dict)
                 else prev.get("action_counts") or {}
             ),
-            "p95_elapsed_s_by_action": (
-                dict(info.get("p95_elapsed_s_by_action"))
-                if isinstance(info.get("p95_elapsed_s_by_action"), dict)
-                else prev.get("p95_elapsed_s_by_action") or {}
+            "sac_hooks_p95_elapsed_s_by_action": (
+                dict(info.get("sac_hooks_p95_elapsed_s_by_action"))
+                if isinstance(info.get("sac_hooks_p95_elapsed_s_by_action"), dict)
+                else prev.get("sac_hooks_p95_elapsed_s_by_action") or {}
             ),
             # UI-aligned quota keys (long names).
             "quota_5h_used_pct": (
@@ -333,10 +341,10 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # condition (N consecutive zero readings) could never be met.
             "idle_streak": prev.get("idle_streak") or 0,
             "auto_dispatch_last_fire_ts": prev.get("auto_dispatch_last_fire_ts"),
-            "mcp_servers": (
-                list(info.get("mcp_servers"))
-                if isinstance(info.get("mcp_servers"), (list, tuple))
-                else prev.get("mcp_servers") or []
+            "orochi_mcp_servers": (
+                list(info.get("orochi_mcp_servers"))
+                if isinstance(info.get("orochi_mcp_servers"), (list, tuple))
+                else prev.get("orochi_mcp_servers") or []
             ),
             # todo#265: Claude Code OAuth account public metadata pushed
             # by agent_meta.py --push so the Agents/Activity tab can show
@@ -377,33 +385,33 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # ``_connections`` and counted on read.
             "active_sessions": _active_session_count(name),
             # Quota telemetry from statusline parsing
-            "quota_5h_pct": (
-                info.get("quota_5h_pct")
-                if info.get("quota_5h_pct") is not None
-                else prev.get("quota_5h_pct")
+            "orochi_quota_5h_pct": (
+                info.get("orochi_quota_5h_pct")
+                if info.get("orochi_quota_5h_pct") is not None
+                else prev.get("orochi_quota_5h_pct")
             ),
-            "quota_5h_remaining": info.get("quota_5h_remaining")
-            or prev.get("quota_5h_remaining")
+            "orochi_quota_5h_remaining": info.get("orochi_quota_5h_remaining")
+            or prev.get("orochi_quota_5h_remaining")
             or "",
-            "quota_weekly_pct": (
-                info.get("quota_weekly_pct")
-                if info.get("quota_weekly_pct") is not None
-                else prev.get("quota_weekly_pct")
+            "orochi_quota_weekly_pct": (
+                info.get("orochi_quota_weekly_pct")
+                if info.get("orochi_quota_weekly_pct") is not None
+                else prev.get("orochi_quota_weekly_pct")
             ),
-            "quota_weekly_remaining": info.get("quota_weekly_remaining")
-            or prev.get("quota_weekly_remaining")
+            "orochi_quota_weekly_remaining": info.get("orochi_quota_weekly_remaining")
+            or prev.get("orochi_quota_weekly_remaining")
             or "",
-            "statusline_model": info.get("statusline_model")
-            or prev.get("statusline_model")
+            "orochi_statusline_model": info.get("orochi_statusline_model")
+            or prev.get("orochi_statusline_model")
             or "",
-            "account_email": info.get("account_email")
-            or prev.get("account_email")
+            "orochi_account_email": info.get("orochi_account_email")
+            or prev.get("orochi_account_email")
             or "",
             # lead msg#16005: full ``scitex-agent-container status --terse
             # --json`` dict attached to the heartbeat by the pusher
             # (``scripts/client/agent_meta_pkg/_sac_status.py``). Stored
             # verbatim so future fields added to sac's terse projection
-            # (context_pct, pane_state, current_tool, quota, ...) reach
+            # (orochi_context_pct, orochi_pane_state, orochi_current_tool, quota, ...) reach
             # the dashboard via ``/api/agents/`` without per-field
             # plumbing here.
             #
@@ -414,8 +422,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             # that don't emit the field yet don't wipe it.
             "sac_status": (
                 dict(info.get("sac_status"))
-                if isinstance(info.get("sac_status"), dict)
-                and info.get("sac_status")
+                if isinstance(info.get("sac_status"), dict) and info.get("sac_status")
                 else prev.get("sac_status") or {}
             ),
             # Orochi unified cron state (msg#16406 / msg#16408 Phase 2).

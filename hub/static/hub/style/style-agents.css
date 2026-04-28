@@ -1,8 +1,10 @@
-
-/* Agent icon cells */
+/* Agent icon cells — center vertically as well as horizontally so the
+ * icon sits in the middle of multi-line rows (long channel lists,
+ * etc.) instead of at the top. ywatanabe 2026-04-27. */
 .agent-icon-cell {
   text-align: center;
   width: 36px;
+  vertical-align: middle;
 }
 .agent-letter-icon {
   line-height: 1;

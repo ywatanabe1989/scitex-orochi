@@ -1,6 +1,12 @@
 // @ts-nocheck
 import { _renderIndicatorLamps } from "./lamps";
-import { FOLLOW_INTERVAL_MS, _agentDetailCache, _fmtDuration, _paneExpanded, livenessColor } from "./state";
+import {
+  FOLLOW_INTERVAL_MS,
+  _agentDetailCache,
+  _fmtDuration,
+  _paneExpanded,
+  livenessColor,
+} from "./state";
 import { escapeHtml, isAgentInactive } from "../app/utils";
 
 /* Agents Tab — per-agent detail view + indicator lamps + pane-state badge.
@@ -42,7 +48,8 @@ export function _renderAgentDetail(a) {
    * their mDNS names — those contribute nothing (ywatanabe msg 2026-04-18
    * "2" flagged the duplication for the 7 ywata-note-win agents whose
    * FQDN was just the short label + ".localdomain"). */
-  var machineCanonical = d.hostname_canonical || a.hostname_canonical || "";
+  var machineCanonical =
+    d.orochi_hostname_canonical || a.orochi_hostname_canonical || "";
   function _fqdnAddsInfo(short, fqdn) {
     if (!fqdn) return false;
     if (fqdn === short) return false;
@@ -56,18 +63,19 @@ export function _renderAgentDetail(a) {
     ? machine + " (" + machineCanonical + ")"
     : machine;
   var modelClean = _cleanModel(d.model || a.model || "");
-  var ctxPct = d.context_pct != null ? d.context_pct : a.context_pct;
-  var currentTask = d.current_task || a.current_task || "";
+  var ctxPct =
+    d.orochi_context_pct != null ? d.orochi_context_pct : a.orochi_context_pct;
+  var currentTask = d.orochi_current_task || a.orochi_current_task || "";
   var channels = d.channel_subs || a.channels || [];
-  var claudeMd = d.claude_md || a.claude_md || "";
+  var claudeMd = d.orochi_claude_md || a.orochi_claude_md || "";
   /* todo#460: .mcp.json is served by the detail endpoint only (not in the
    * registry summary row). Empty string = agent has not yet heartbeated
    * with dotfiles PR#71 agent_meta.py --push; we render an explicit
    * empty-state so the absence is discoverable rather than invisible. */
-  var mcpJson = d.mcp_json || "";
-  var mcpServers = d.mcp_servers || a.mcp_servers || [];
+  var mcpJson = d.orochi_mcp_json || "";
+  var mcpServers = d.orochi_mcp_servers || a.orochi_mcp_servers || [];
   /* pane_text from the detail endpoint is already redacted; the
-   * registry fallback (pane_tail_block / pane_tail) is NOT, so prefer
+   * registry fallback (orochi_pane_tail_block / orochi_pane_tail) is NOT, so prefer
    * detail whenever we have it. */
   var pane = "";
   var paneSource = "unavailable";
@@ -75,7 +83,7 @@ export function _renderAgentDetail(a) {
     pane = d.pane_text;
     paneSource = d.pane_text_source || (pane ? "cached" : "unavailable");
   } else {
-    pane = a.pane_tail_block || a.pane_tail || "";
+    pane = a.orochi_pane_tail_block || a.orochi_pane_tail || "";
     paneSource = pane ? "cached" : "unavailable";
   }
   // todo#47 — longer scrollback (up to ~500 filtered lines) pushed
@@ -92,7 +100,9 @@ export function _renderAgentDetail(a) {
   var lastHeartbeat = d.last_heartbeat || a.last_heartbeat || "";
   var registeredAt = d.registered_at || a.registered_at || "";
   var subagentCount =
-    d.subagent_count != null ? d.subagent_count : a.subagent_count;
+    d.orochi_subagent_count != null
+      ? d.orochi_subagent_count
+      : a.orochi_subagent_count;
   var q5 =
     d.quota_5h_used_pct != null ? d.quota_5h_used_pct : a.quota_5h_used_pct;
   var q7 =
@@ -211,14 +221,14 @@ export function _renderAgentDetail(a) {
   /* msg#16116 Item 4: inline subagent-count chip in the detail header.
    * Visible only when the agent has >=1 active subagent; hidden by the
    * `return ""` branch inside renderAgentSubagentCount when 0. Source:
-   * d.subagent_count (detail endpoint) falling back to a.subagent_count
+   * d.orochi_subagent_count (detail endpoint) falling back to a.orochi_subagent_count
    * (registry). Separate from the Subagents meta-field row below — the
    * header chip is an at-a-glance cue so users don't need to scan the
    * meta grid. */
   var headerSubagents =
     typeof (window as any).renderAgentSubagentCount === "function"
       ? (window as any).renderAgentSubagentCount({
-          subagent_count: subagentCount,
+          orochi_subagent_count: subagentCount,
         })
       : "";
   var headerHtml =
@@ -367,8 +377,15 @@ export function _renderAgentDetail(a) {
 
   /* todo#channel-refactor — per-agent channel subscription controls.
    * Admin-only server-side gating (API returns 403 for non-admins); the
-   * UI shows the controls universally and surfaces errors inline. */
-  var uniqueSubs = channels ? [...new Set(channels)] : [];
+   * UI shows the controls universally and surfaces errors inline.
+   * `dm:` channels are filtered out — DM is always implicitly available
+   * between any two agents/users, so listing DM subscriptions per agent
+   * just clutters the channels row. (ywatanabe 2026-04-27.) */
+  var uniqueSubs = channels
+    ? [...new Set(channels)].filter(function (c) {
+        return typeof c === "string" && c.indexOf("dm:") !== 0;
+      })
+    : [];
   var badgesHtml = uniqueSubs
     .map(function (c) {
       return (
@@ -414,23 +431,202 @@ export function _renderAgentDetail(a) {
       "</div>";
   }
 
-  var splitHtml =
-    '<div class="agent-detail-split">' +
-    '<div class="agent-detail-split-col">' +
+  /* File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) instead of
+   * a side-by-side split — each pane gets the full width when active so
+   * the agent detail panel respects the viewport instead of stacking
+   * two half-width columns (ywatanabe 2026-04-27).
+   * All three tabs are ALWAYS rendered, even when the underlying file
+   * is empty — the empty state is itself information ("agent hasn't
+   * pushed CLAUDE.md yet"). */
+  var claudeMdPaneHtml = claudeMd
+    ? claudeMdHtml
+    : '<div class="agent-detail-files-empty muted-cell">No CLAUDE.md (agent has not heartbeated with collect_agent_metadata.py yet)</div>';
+  var mcpJsonPaneHtml = mcpJson
+    ? mcpJsonBodyHtml
+    : '<div class="agent-detail-files-empty muted-cell">No .mcp.json (agent has not heartbeated with collect_agent_metadata.py yet)</div>';
+  /* .env viewer — sourced from collect_agent_metadata heartbeat. Backend
+   * is responsible for redacting secret-shaped values before this
+   * reaches the wire; frontend just renders. */
+  var envText = d.orochi_env_file || a.orochi_env_file || "";
+  var envPaneHtml = envText
+    ? '<pre class="agent-detail-mcp-json">' + escapeHtml(envText) + "</pre>"
+    : '<div class="agent-detail-files-empty muted-cell">No .env (agent has not heartbeated with collect_agent_metadata.py yet, or no .env in workdir)</div>';
+  var fileTabsHtml =
+    '<div class="agent-detail-files-tabs" data-agent="' +
+    escapeHtml(a.name) +
+    '">' +
+    '<div class="agent-detail-files-tabbar" role="tablist">' +
+    '<button type="button" class="agent-detail-files-tab agent-detail-files-tab-active"' +
+    ' data-action="files-tab" data-pane-id="terminal">Terminal</button>' +
+    '<button type="button" class="agent-detail-files-tab"' +
+    ' data-action="files-tab" data-pane-id="claude-md">CLAUDE.md</button>' +
+    '<button type="button" class="agent-detail-files-tab"' +
+    ' data-action="files-tab" data-pane-id="mcp-json">.mcp.json</button>' +
+    '<button type="button" class="agent-detail-files-tab"' +
+    ' data-action="files-tab" data-pane-id="env-file">.env</button>' +
+    "</div>" +
+    '<div class="agent-detail-files-panes">' +
+    '<div class="agent-detail-files-pane agent-detail-files-pane-active" data-pane-id="terminal">' +
     paneHtml +
     "</div>" +
-    '<div class="agent-detail-split-col">' +
-    claudeMdHtml +
+    '<div class="agent-detail-files-pane" data-pane-id="claude-md" hidden>' +
+    claudeMdPaneHtml +
+    "</div>" +
+    '<div class="agent-detail-files-pane" data-pane-id="mcp-json" hidden>' +
+    mcpJsonPaneHtml +
+    "</div>" +
+    '<div class="agent-detail-files-pane" data-pane-id="env-file" hidden>' +
+    envPaneHtml +
+    "</div>" +
     "</div>" +
     "</div>";
+
+  /* Layered state sections (see AGENT_STATES.md):
+   *   1. orochi_pane_state v3 — verdict + evidence string + version
+   *   2. orochi_comm_state v1 — verdict + evidence + tasks_by_state
+   *   3. raw observations    — collapsed JSON viewer for power users
+   * Hidden when no data is available so legacy / non-A2A agents stay
+   * tidy. */
+  var stateHtml = _renderStateSections(a, d);
 
   return (
     '<div class="agent-detail-view">' +
     headerHtml +
     channelsHtml +
-    splitHtml +
+    stateHtml +
+    fileTabsHtml +
     mcpHtml +
-    mcpJsonHtml +
     "</div>"
   );
+}
+
+/* ── Pane / Comm state sections ─────────────────────────────────────── */
+function _renderStateSections(a, d) {
+  var paneState = d.orochi_pane_state || a.orochi_pane_state || "";
+  var paneEvidence = d.orochi_pane_state_evidence || "";
+  var paneVersion = d.orochi_pane_state_version || "";
+  var paneObs = d.orochi_pane_observations || a.orochi_pane_observations || {};
+
+  var commState = d.orochi_comm_state || "";
+  var commEvidence = d.orochi_comm_state_evidence || "";
+  var commVersion = d.orochi_comm_state_version || "";
+  var a2aObs = d.sac_a2a_observations || {};
+
+  var paneSection = "";
+  if (paneState || paneEvidence || (paneObs && Object.keys(paneObs).length)) {
+    var paneMarkers = (paneObs && paneObs.busy_marker_hits) || [];
+    var paneCycles = (paneObs && paneObs.unchanged_cycles) || 0;
+    paneSection =
+      '<div class="agent-detail-section agent-detail-state">' +
+      '<div class="agent-detail-pane-label">Pane state ' +
+      (paneVersion
+        ? '<span class="agent-detail-state-ver">' +
+          escapeHtml(paneVersion) +
+          "</span>"
+        : "") +
+      "</div>" +
+      '<div class="agent-detail-state-row">' +
+      '<span class="agent-detail-state-label agent-detail-state-label-' +
+      escapeHtml(paneState || "unknown") +
+      '">' +
+      escapeHtml(paneState || "(no verdict)") +
+      "</span>" +
+      (paneEvidence
+        ? '<span class="agent-detail-state-evidence">' +
+          escapeHtml(paneEvidence) +
+          "</span>"
+        : "") +
+      "</div>" +
+      (paneObs && Object.keys(paneObs).length
+        ? '<div class="agent-detail-state-meta">' +
+          (paneCycles
+            ? '<span title="cycles since digest changed">unchanged ' +
+              paneCycles +
+              " cycles</span>"
+            : "") +
+          (paneMarkers.length
+            ? '<span title="busy-animation markers seen">busy: ' +
+              escapeHtml(paneMarkers.slice(0, 3).join(", ")) +
+              (paneMarkers.length > 3
+                ? " (+" + (paneMarkers.length - 3) + ")"
+                : "") +
+              "</span>"
+            : "") +
+          "</div>"
+        : "") +
+      "</div>";
+  }
+
+  var commSection = "";
+  if (commState || commEvidence || (a2aObs && a2aObs.endpoint_configured)) {
+    var byState = (a2aObs && a2aObs.tasks_by_state) || {};
+    var byStateKeys = Object.keys(byState);
+    var secsSince = a2aObs && a2aObs.seconds_since_most_recent_event;
+    commSection =
+      '<div class="agent-detail-section agent-detail-state">' +
+      '<div class="agent-detail-pane-label">Comm state ' +
+      (commVersion
+        ? '<span class="agent-detail-state-ver">' +
+          escapeHtml(commVersion) +
+          "</span>"
+        : "") +
+      "</div>" +
+      '<div class="agent-detail-state-row">' +
+      '<span class="agent-detail-state-label agent-detail-state-label-' +
+      escapeHtml(commState || "unknown") +
+      '">' +
+      escapeHtml(commState || "(no verdict)") +
+      "</span>" +
+      (commEvidence
+        ? '<span class="agent-detail-state-evidence">' +
+          escapeHtml(commEvidence) +
+          "</span>"
+        : "") +
+      "</div>" +
+      '<div class="agent-detail-state-meta">' +
+      (byStateKeys.length
+        ? '<span title="A2A task histogram">tasks: ' +
+          escapeHtml(
+            byStateKeys
+              .map(function (k) {
+                return k.replace(/^TASK_STATE_/, "") + "=" + byState[k];
+              })
+              .join(", "),
+          ) +
+          "</span>"
+        : "") +
+      (typeof secsSince === "number"
+        ? '<span title="seconds since most recent A2A event">last event ' +
+          Math.round(secsSince) +
+          "s ago</span>"
+        : "") +
+      "</div>" +
+      "</div>";
+  }
+
+  var rawSection = "";
+  if (
+    (paneObs && Object.keys(paneObs).length) ||
+    (a2aObs && Object.keys(a2aObs).length)
+  ) {
+    var rawJson = JSON.stringify(
+      {
+        orochi_pane_observations: paneObs,
+        sac_a2a_observations: a2aObs,
+      },
+      null,
+      2,
+    );
+    rawSection =
+      '<div class="agent-detail-section">' +
+      '<details class="agent-detail-raw-obs-wrap">' +
+      '<summary class="agent-detail-pane-label">Raw observations</summary>' +
+      '<pre class="agent-detail-raw-obs">' +
+      escapeHtml(rawJson) +
+      "</pre>" +
+      "</details>" +
+      "</div>";
+  }
+
+  return paneSection + commSection + rawSection;
 }

@@ -38,8 +38,8 @@ class Agent:
     workspace_id: str = ""
     multiplexer: str = ""
     status: str = "online"
-    current_task: str = ""
-    subagent_count: int = 0
+    orochi_current_task: str = ""
+    orochi_subagent_count: int = 0
     resources: dict[str, Any] = field(default_factory=dict)
     last_heartbeat: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat()
@@ -70,7 +70,7 @@ RESOURCE_KEYS: set[str] = {
     "cluster_mem_total_mb",
     "cluster_gpus_total",
     "cluster_gpus_allocated",
-    "slurm_total_jobs",
-    "slurm_running",
-    "slurm_pending",
+    "orochi_slurm_total_jobs",
+    "orochi_slurm_running",
+    "orochi_slurm_pending",
 }

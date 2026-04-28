@@ -15,11 +15,11 @@ def test_machine_group_registered() -> None:
     machine_cmd = orochi.commands["machine"]
     assert "heartbeat" in machine_cmd.commands  # type: ignore[attr-defined]
     hb = machine_cmd.commands["heartbeat"]  # type: ignore[attr-defined]
-    assert set(hb.commands.keys()) == {"send", "status"}
+    assert set(hb.commands.keys()) == {"send", "send-host", "status"}
 
 
 def test_heartbeat_send_invokes_push_all(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Command delegates to ``agent_meta_pkg.push_all`` and prints the count."""
+    """Command delegates to ``_collect_agent_metadata.push_all`` and prints the count."""
     from scitex_orochi._cli.commands import machine_cmd
 
     called_with = {}
@@ -73,10 +73,13 @@ def test_heartbeat_status_not_found_exits_1(
 
     class _FakeResp:
         status = 200
+
         def __enter__(self):  # noqa: D401
             return self
+
         def __exit__(self, *a):
             return False
+
         def read(self):
             return b"[]"
 

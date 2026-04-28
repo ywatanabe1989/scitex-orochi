@@ -5,7 +5,6 @@ import { escapeHtml } from "../app/utils";
  * Pure functions: strip ANSI, formatters, liveness labels/order,
  * task parse, computeAgentState, health + issue linkify, isDeadAgent. */
 
-
 /* Strip ANSI escape sequences for clean terminal display */
 export function _stripAnsi(str) {
   return str
@@ -14,7 +13,6 @@ export function _stripAnsi(str) {
     .replace(/\x1B[@-_][0-?]*[ -/]*[@-~]/g, "")
     .replace(/\r/g, "");
 }
-
 
 export function _formatIdle(seconds) {
   if (seconds == null) return "";
@@ -41,7 +39,7 @@ export function _formatUptime(seconds) {
   return "up " + seconds + "s";
 }
 
-/* Split a current_task string like "Bash: docker compose build" into
+/* Split a orochi_current_task string like "Bash: docker compose build" into
  * a tool name + argument preview. Returns {tool, arg, isProse}. If no
  * colon separator is found we treat the whole string as prose (e.g. a
  * last_user_msg snippet, not a tool call). */
@@ -121,7 +119,7 @@ export function _linkifyIssues(safeHtml) {
 }
 
 /* Prominent task renderer — this is the card's hero row. `task` is the
- * rich current_task string (e.g. "Bash: docker compose build"). `age`
+ * rich orochi_current_task string (e.g. "Bash: docker compose build"). `age`
  * is a pre-formatted age label or empty. `fallback` is last_message_preview
  * used when there is no task at all. */
 export function _renderTaskField(task, fallback, age) {
@@ -193,7 +191,7 @@ export function _renderTaskField(task, fallback, age) {
  *   offline    — WS is disconnected
  */
 export function _computeAgentState(a) {
-  var pane = a.pane_state || "";
+  var pane = a.orochi_pane_state || "";
   if (pane === "compacting" || pane === "auto_compact") {
     return "compacting";
   }
@@ -210,16 +208,15 @@ export function _computeAgentState(a) {
   if (!connected) return "offline";
   /* Heuristic fallback for compact when pane classifier hasn't fired:
    * the last tool name contains "compact" (mcp or slash command). */
-  var lastTool = String(a.last_tool_name || "").toLowerCase();
+  var lastTool = String(a.sac_hooks_last_tool_name || "").toLowerCase();
   if (lastTool.indexOf("compact") !== -1) return "compacting";
   var lastToolSec =
     typeof _secondsSinceIso === "function"
-      ? _secondsSinceIso(a.last_tool_at || a.last_action)
+      ? _secondsSinceIso(a.sac_hooks_last_tool_at || a.last_action)
       : null;
   if (lastToolSec != null && lastToolSec < 30) return "running";
   return "idle";
 }
-
 
 /* Radial topology renderer. Agents sit on an outer ring, channels on
  * an inner ring, with straight-line edges between subscribed pairs.
@@ -227,19 +224,28 @@ export function _computeAgentState(a) {
  * to toggle the inline detail panel (same hook the list view uses;
  * re-uses _renderActivityAgentDetail + _fetchActivityDetail so state
  * survives heartbeat-driven re-renders). */
-/* Classify an agent's "dead" state — heartbeat fresh but no tool/
- * action reaction in ~3min (same logic inlined in the node render).
- * Exposed as a helper so the filter + the render use identical
- * criteria. User 2026-04-20: "Functionally dead and registered
- * agents must be shown in shadow; dead agents but not registered
- * should just not be rendered". */
+/* Classify an agent's "dead" state.
+ *
+ * Trusts the classifier's `orochi_pane_state` (agent_meta_pkg/_classifier.py)
+ * as the authoritative signal. Only `stale` (3+ cycles of unchanged
+ * pane content with no busy-animation markers) means "stuck and needs
+ * help". `idle` means at-prompt-waiting — a legitimate live state, not
+ * dead. Compose/permission/y_n/auth_error states are awaiting input,
+ * also not dead.
+ *
+ * Falls back to the legacy 180s tool/action heuristic only when
+ * `orochi_pane_state` is missing (e.g. the agent's heartbeat path predates
+ * agent_meta classifier output). */
 export function _isDeadAgent(a) {
   if (!a) return false;
   var connected = (a.status || "online") !== "offline";
   if (!connected) return false;
+  var pane = (a.orochi_pane_state || "").toLowerCase();
+  if (pane === "stale") return true;
+  if (pane) return false;
   var toolSec =
     typeof _secondsSinceIso === "function"
-      ? _secondsSinceIso(a.last_tool_at)
+      ? _secondsSinceIso(a.sac_hooks_last_tool_at)
       : null;
   var actSec =
     typeof _secondsSinceIso === "function"
@@ -252,4 +258,3 @@ export function _isDeadAgent(a) {
 /* Expose for app.js (sidebar ghost rule) and other modules — single
  * source of truth for "dead agent" across every render surface. */
 window._isDeadAgent = _isDeadAgent;
-

@@ -95,8 +95,8 @@ def _launch_agent(name: str, dry_run: bool = False, force: bool = False) -> bool
         subprocess.run(mkdir_cmd, shell=True, timeout=10)
 
     # Step 3: Copy CLAUDE.md to workspace if it exists in agent dir
-    claude_md = agent_dir / "CLAUDE.md"
-    if claude_md.exists():
+    orochi_claude_md = agent_dir / "CLAUDE.md"
+    if orochi_claude_md.exists():
         if ssh:
             # scp CLAUDE.md to remote workspace
             target = f"{user}@{host}" if user else host
@@ -104,7 +104,7 @@ def _launch_agent(name: str, dry_run: bool = False, force: bool = False) -> bool
                 "~", f"/home/{user}" if user else str(Path.home())
             )
             subprocess.run(
-                f"scp -o ConnectTimeout=5 {claude_md} {target}:{expanded_ws}/CLAUDE.md",
+                f"scp -o ConnectTimeout=5 {orochi_claude_md} {target}:{expanded_ws}/CLAUDE.md",
                 shell=True,
                 capture_output=True,
                 timeout=15,

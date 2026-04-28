@@ -291,8 +291,8 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
     tvars = build_template_vars(cfg, role="master")
     rendered = render_template(read_template("master-claude.md"), tvars)
 
-    claude_md = Path(f"/tmp/{screen_name}-CLAUDE.md")
-    claude_md.write_text(rendered, encoding="utf-8")
+    orochi_claude_md = Path(f"/tmp/{screen_name}-CLAUDE.md")
+    orochi_claude_md.write_text(rendered, encoding="utf-8")
 
     channel_args = " ".join(f"--channel server:scitex-orochi:{ch}" for ch in channels)
     launch_cmd = (
@@ -301,7 +301,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
         f"export SCITEX_OROCHI_PORT={server['ws_port']}; "
         f"export SCITEX_OROCHI_AGENT={screen_name}; "
         f"claude --model {model} "
-        f'--system-prompt "$(cat {claude_md})" '
+        f'--system-prompt "$(cat {orochi_claude_md})" '
         f"{channel_args}; "
         f"exec bash'"
     )
@@ -319,7 +319,7 @@ def legacy_launch_master(cfg: dict, dry_run: bool, as_json: bool) -> None:
         else:
             click.echo("Would execute:")
             click.echo(launch_cmd)
-            click.echo(f"\nRendered CLAUDE.md at: {claude_md}")
+            click.echo(f"\nRendered CLAUDE.md at: {orochi_claude_md}")
         return
 
     if screen_exists(screen_name):

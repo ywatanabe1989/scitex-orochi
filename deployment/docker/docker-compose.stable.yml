@@ -16,7 +16,7 @@ services:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
       - DJANGO_DEBUG=false
       - SCITEX_OROCHI_VERSION=${SCITEX_OROCHI_VERSION:-}
-      - DJANGO_ALLOWED_HOSTS=.scitex-orochi.com,localhost,192.168.11.22,192.168.0.102
+      - DJANGO_ALLOWED_HOSTS=.scitex-orochi.com,localhost,127.0.0.1,192.168.11.22,192.168.11.28,192.168.0.102
       - SCITEX_OROCHI_MEDIA_ROOT=/data/media
       - DJANGO_CSRF_TRUSTED_ORIGINS=https://*.scitex-orochi.com,https://scitex-orochi.com
       - SCITEX_OROCHI_BASE_DOMAIN=scitex-orochi.com
@@ -44,4 +44,17 @@ services:
       - SCITEX_OROCHI_VAPID_PUBLIC=${SCITEX_OROCHI_VAPID_PUBLIC:-BGVEsgdHfACh73KPGx0bJiJn00gszfQxmluH48TYUMNDi7QBd0CXWUL43IG91ZOMD8qpGxsMlcAWTx8NRpzrDbA}
       - SCITEX_OROCHI_VAPID_PRIVATE=${SCITEX_OROCHI_VAPID_PRIVATE:-XY8CfHkIGYUB3U5v9dlB3xbORKTZwwzjeDXIrREuA4w}
       - SCITEX_OROCHI_VAPID_SUBJECT=${SCITEX_OROCHI_VAPID_SUBJECT:-mailto:noreply@scitex-orochi.com}
+      # Channels group_send requires a cross-loop transport — InMemory
+      # silently drops between async views and consumers in daphne.
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
     restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: orochi-redis-stable
+    restart: unless-stopped
+    # Redis here only serves Channels group routing; no persistence
+    # needed (state is in Postgres-of-the-future / sqlite today).
+    command: ["redis-server", "--save", "", "--appendonly", "no"]

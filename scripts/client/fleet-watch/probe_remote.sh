@@ -98,11 +98,11 @@ else
     fork_pressure_pct="null"
 fi
 
-# Per-agent context_pct via agent_meta.py if present.
-# agent_meta.py reads the live Claude Code session jsonl and emits
-# {agent, alive, context_pct, current_tool, last_activity, model, subagents}.
+# Per-agent orochi_context_pct via collect_agent_metadata.py if present.
+# collect_agent_metadata.py reads the live Claude Code session jsonl and emits
+# {agent, alive, orochi_context_pct, orochi_current_tool, last_activity, model, subagents}.
 # We call it for each tmux session name and aggregate into agents_meta JSON.
-agent_meta_script="$HOME/.scitex/orochi/scripts/agent_meta.py"
+agent_meta_script="$HOME/.scitex/orochi/scripts/collect_agent_metadata.py"
 agents_meta="{}"
 if [ -x "$agent_meta_script" ] && [ -n "$tmux_names" ]; then
     parts=""

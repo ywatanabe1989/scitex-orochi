@@ -1,0 +1,33 @@
+name: PR Stale Sweep
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          # 3-day maximum staleness window (operator preference 2026-04-28).
+          # PR untouched for 3 days → labeled `stale` + comment.
+          # 1 more day with no activity → auto-close. Reopen any time.
+          # Push or non-bot comment removes `stale` automatically
+          # (`remove-stale-when-updated: true`).
+          # Apply `keep-open` label to exempt long-running PRs from the sweep.
+          days-before-stale: 3
+          days-before-close: 1
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          stale-pr-label: stale
+          exempt-pr-labels: keep-open
+          stale-pr-message: "auto-stale: closing in 1 day unless you push to the branch or apply the `keep-open` label. (Reason: 3-day staleness sweep \u2014 see `mgmt/ENHANCEMENT_IDEAS_2026-04-28.md` \u00a74)"
+          close-pr-message: "auto-stale-close: 4+ days since last activity, no `keep-open` label. Reopen anytime."
+          remove-stale-when-updated: true
+          operations-per-run: 30

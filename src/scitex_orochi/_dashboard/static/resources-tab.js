@@ -87,9 +87,9 @@ function renderResources() {
           escapeHtml(d._status) +
           "</div>";
       }
-      if (d.slurm && d.slurm.total_jobs > 0) {
+      if (d.orochi_slurm && d.orochi_slurm.total_jobs > 0) {
         html +=
-          '<div class="res-meta">SLURM: ' + d.slurm.total_jobs + " jobs</div>";
+          '<div class="res-meta">SLURM: ' + d.orochi_slurm.total_jobs + " jobs</div>";
       }
       html += "</div>";
       return html;
@@ -247,12 +247,12 @@ async function fetchResources() {
         _memTotalMb: r.mem_total_mb || 0,
         // Slurm cluster aggregates (todo#87) — see hub/static/hub/resources-tab.js
         _resourceSource: r.resource_source || "local",
-        slurm:
-          r.resource_source === "slurm"
+        orochi_slurm:
+          r.resource_source === "orochi_slurm"
             ? {
-                total_jobs: r.slurm_total_jobs || 0,
-                running: r.slurm_running || 0,
-                pending: r.slurm_pending || 0,
+                total_jobs: r.orochi_slurm_total_jobs || 0,
+                running: r.orochi_slurm_running || 0,
+                pending: r.orochi_slurm_pending || 0,
                 cluster_nodes: r.cluster_nodes || 0,
                 cluster_cpus_total: r.cluster_cpus_total || 0,
                 cluster_cpus_allocated: r.cluster_cpus_allocated || 0,

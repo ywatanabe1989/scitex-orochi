@@ -46,23 +46,23 @@ class AgentDetailApiTest(TestCase):
         _reg_agents.clear()
 
     def _register(self, **overrides):
-        from hub.registry import register_agent, set_current_task
+        from hub.registry import register_agent, set_orochi_current_task
 
-        current_task = overrides.pop("current_task", "todo#420")
+        orochi_current_task = overrides.pop("orochi_current_task", "todo#420")
         info = {
             "agent_id": "alpha",
             "machine": "MBA",
             "role": "head",
             "model": "claude-opus-4-7",
             "channels": ["#general", "#agent"],
-            "pane_tail_block": "line1\nline2\n",
-            "claude_md": "# CLAUDE.md\n",
-            "mcp_servers": ["scitex-orochi"],
+            "orochi_pane_tail_block": "line1\nline2\n",
+            "orochi_claude_md": "# CLAUDE.md\n",
+            "orochi_mcp_servers": ["scitex-orochi"],
         }
         info.update(overrides)
         register_agent(name="alpha", workspace_id=self.ws.id, info=info)
-        if current_task:
-            set_current_task("alpha", current_task)
+        if orochi_current_task:
+            set_orochi_current_task("alpha", orochi_current_task)
 
     def _get(self, name="alpha"):
         return self.client.get(
@@ -86,13 +86,13 @@ class AgentDetailApiTest(TestCase):
             "last_action_ts",
             "last_heartbeat",
             "liveness",
-            "claude_md",
+            "orochi_claude_md",
             "pane_text",
             "pane_text_source",
             "channel_subs",
-            "mcp_servers",
-            "current_task",
-            "context_pct",
+            "orochi_mcp_servers",
+            "orochi_current_task",
+            "orochi_context_pct",
             "pid",
             "subagents",
             "health",
@@ -101,14 +101,14 @@ class AgentDetailApiTest(TestCase):
         self.assertEqual(data["name"], "alpha")
         self.assertEqual(data["role"], "head")
         self.assertEqual(data["machine"], "MBA")
-        self.assertEqual(data["current_task"], "todo#420")
+        self.assertEqual(data["orochi_current_task"], "todo#420")
         self.assertEqual(data["pane_text_source"], "cached")
         self.assertIn("line1", data["pane_text"])
         self.assertEqual(sorted(data["channel_subs"]), ["#agent", "#general"])
-        self.assertIn("scitex-orochi", data["mcp_servers"])
+        self.assertIn("scitex-orochi", data["orochi_mcp_servers"])
 
     def test_unavailable_pane_source_when_no_capture(self):
-        self._register(pane_tail_block="", pane_tail="")
+        self._register(orochi_pane_tail_block="", orochi_pane_tail="")
         resp = self._get()
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -147,7 +147,7 @@ class AgentDetailApiTest(TestCase):
                 "normal line 2",
             ]
         )
-        self._register(pane_tail_block=leak)
+        self._register(orochi_pane_tail_block=leak)
         resp = self._get()
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
@@ -179,35 +179,78 @@ class AgentDetailApiTest(TestCase):
         self.assertIn("[REDACTED]", out)
         self.assertEqual(redact_secrets(""), "")
 
-    def test_hostname_canonical_exposed(self):
+    def test_redact_secrets_dsn_userinfo(self):
+        """v02 audit §1: DATABASE_URL / SENTRY_DSN / REDIS_URL etc. were
+        leaking the userinfo (``user:pw@``) portion through the hub-side
+        redactor because the previous regex set didn't catch DSN shapes.
+        The hub-side ``url-userinfo`` pattern (added 2026-04-28) masks
+        the userinfo and leaves the scheme/host visible so operators can
+        still see *which* service the leak would have referenced.
+
+        The producer-side equivalent lives at
+        ``tests/test_env_redaction.py`` — that test is skipped in pytest
+        without DJANGO_SETTINGS_MODULE; this case is the Django-runner
+        mirror.
+        """
+        from hub.views.agent_detail import redact_secrets
+
+        cases = [
+            # (input, secret_that_must_NOT_appear_in_output)
+            ("postgres://orochi:hunter2@db.example.com:5432/orochi", "hunter2"),
+            ("redis://:r3d1sP4ss@redis.example.com:6379/0", "r3d1sP4ss"),
+            ("https://user:pw@example.com/path", "user:pw"),
+            ("amqp://rabbit:bunny@queue.example.com//", "bunny"),
+            ("mongodb+srv://admin:l1mbo@cluster.mongodb.net/db", "l1mbo"),
+            (
+                "SENTRY_DSN=https://abcdef0123456789@o123.ingest.sentry.io/42",
+                "abcdef0123456789",
+            ),
+        ]
+        for src, secret in cases:
+            out = redact_secrets(src)
+            self.assertNotIn(
+                secret,
+                out,
+                msg=f"hub-side redact_secrets bypass: {src!r} -> {out!r} still "
+                f"contains {secret!r}",
+            )
+            # Scheme should still be visible — masking, not erasing.
+            scheme = src.split("://", 1)[0].split("=")[-1]
+            self.assertIn(
+                f"{scheme}://",
+                out,
+                msg=f"scheme {scheme!r} should be preserved in {out!r}",
+            )
+
+    def test_orochi_hostname_canonical_exposed(self):
         """todo#55: detail endpoint must forward the canonical FQDN
         pushed by the heartbeat (PR #215/#216). Empty string when the
         client never pushed one."""
-        self._register(hostname_canonical="Yusukes-MacBook-Air.local")
+        self._register(orochi_hostname_canonical="Yusukes-MacBook-Air.local")
         data = self._get().json()
-        self.assertEqual(data["hostname_canonical"], "Yusukes-MacBook-Air.local")
+        self.assertEqual(data["orochi_hostname_canonical"], "Yusukes-MacBook-Air.local")
         # Default path: field present but empty when client didn't push.
         from hub.registry import _agents as _reg_agents
 
         _reg_agents.clear()
         self._register()
         data2 = self._get().json()
-        self.assertIn("hostname_canonical", data2)
-        self.assertEqual(data2["hostname_canonical"], "")
+        self.assertIn("orochi_hostname_canonical", data2)
+        self.assertEqual(data2["orochi_hostname_canonical"], "")
 
     def test_pane_text_full_exposed(self):
         """todo#47: detail endpoint must forward the ~500-line
-        pane_tail_full scrollback when the agent pushes it; empty
+        orochi_pane_tail_full scrollback when the agent pushes it; empty
         string when the agent hasn't updated its agent_meta.py."""
-        # New agent with pane_tail_full populated.
+        # New agent with orochi_pane_tail_full populated.
         big_pane = "\n".join(f"line-{i}" for i in range(200))
-        self._register(pane_tail_full=big_pane)
+        self._register(orochi_pane_tail_full=big_pane)
         data = self._get().json()
         self.assertIn("pane_text_full", data)
         # Content flows through redact_secrets (no secrets in this fixture).
         self.assertIn("line-199", data["pane_text_full"])
 
-        # Old agent without pane_tail_full: field present, empty.
+        # Old agent without orochi_pane_tail_full: field present, empty.
         from hub.registry import _agents as _reg_agents
 
         _reg_agents.clear()
@@ -246,34 +289,40 @@ class AgentDetailApiTest(TestCase):
         self._register()
         data = self._get().json()
         for key in (
-            "last_tool_at",
-            "last_tool_name",
-            "last_mcp_tool_at",
-            "last_mcp_tool_name",
-            "last_action_at",
-            "last_action_name",
-            "last_action_outcome",
-            "recent_tools",
-            "tool_counts",
+            "sac_hooks_last_tool_at",
+            "sac_hooks_last_tool_name",
+            "sac_hooks_last_mcp_tool_at",
+            "sac_hooks_last_mcp_tool_name",
+            "sac_hooks_last_action_at",
+            "sac_hooks_last_action_name",
+            "sac_hooks_last_action_outcome",
+            "sac_hooks_recent_tools",
+            "sac_hooks_tool_counts",
             "action_counts",
         ):
             self.assertIn(key, data, f"missing key: {key}")
 
     def test_event_log_shortcuts_forwarded_when_registered(self):
-        """When the heartbeat includes last_tool_at / last_tool_name,
+        """When the heartbeat includes sac_hooks_last_tool_at / sac_hooks_last_tool_name,
         the detail endpoint forwards them verbatim."""
+        # Kwargs match the actual registered field names (renamed from
+        # `last_*` to `sac_hooks_last_*` during the prefix migration).
+        # `_register(**overrides)` passes them straight into the info
+        # dict, so a stale kwarg name silently drops the field.
         self._register(
-            last_tool_at="2026-04-18T11:00:00+00:00",
-            last_tool_name="Bash",
-            last_mcp_tool_at="2026-04-18T11:00:05+00:00",
-            last_mcp_tool_name="mcp__scitex-orochi__send_message",
-            last_action_at="2026-04-18T11:00:10+00:00",
-            last_action_name="nonce_probe",
-            last_action_outcome="SUCCESS",
+            sac_hooks_last_tool_at="2026-04-18T11:00:00+00:00",
+            sac_hooks_last_tool_name="Bash",
+            sac_hooks_last_mcp_tool_at="2026-04-18T11:00:05+00:00",
+            sac_hooks_last_mcp_tool_name="mcp__scitex-orochi__send_message",
+            sac_hooks_last_action_at="2026-04-18T11:00:10+00:00",
+            sac_hooks_last_action_name="nonce_probe",
+            sac_hooks_last_action_outcome="SUCCESS",
         )
         data = self._get().json()
-        self.assertEqual(data["last_tool_at"], "2026-04-18T11:00:00+00:00")
-        self.assertEqual(data["last_tool_name"], "Bash")
-        self.assertEqual(data["last_mcp_tool_name"], "mcp__scitex-orochi__send_message")
-        self.assertEqual(data["last_action_name"], "nonce_probe")
-        self.assertEqual(data["last_action_outcome"], "SUCCESS")
+        self.assertEqual(data["sac_hooks_last_tool_at"], "2026-04-18T11:00:00+00:00")
+        self.assertEqual(data["sac_hooks_last_tool_name"], "Bash")
+        self.assertEqual(
+            data["sac_hooks_last_mcp_tool_name"], "mcp__scitex-orochi__send_message"
+        )
+        self.assertEqual(data["sac_hooks_last_action_name"], "nonce_probe")
+        self.assertEqual(data["sac_hooks_last_action_outcome"], "SUCCESS")

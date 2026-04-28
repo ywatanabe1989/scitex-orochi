@@ -63,12 +63,30 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         hb_ts = a.get("last_heartbeat")
         action_ts = a.get("last_action")
         # Liveness classification distinct from WS connection state.
-        # An agent can be "online" (WS open) but "stale" (no activity for >2min).
+        # Prefer the orochi_pane_state classifier (agent_meta_pkg/_classifier.py)
+        # which already separates "idle at prompt" (alive, waiting) from
+        # "stale" (3+ cycles unchanged, no busy markers — actually stuck).
+        # Falls back to the last_action timer when orochi_pane_state is missing.
         liveness = a.get("status", "online")
+        pane = (a.get("orochi_pane_state") or "").lower()
         idle_seconds = None
         if action_ts:
             idle_seconds = int(now - action_ts)
-            if a.get("status") == "online":
+        if a.get("status") == "online":
+            if pane == "running":
+                liveness = "online"
+            elif pane == "stale" or pane == "auth_error":
+                liveness = "stale"
+            elif pane == "idle":
+                liveness = "idle"
+            elif pane in (
+                "compose_pending_unsent",
+                "bypass_permissions_prompt",
+                "dev_channels_prompt",
+                "y_n_prompt",
+            ):
+                liveness = "idle"  # awaiting input — not stuck
+            elif idle_seconds is not None:
                 if idle_seconds > 600:
                     liveness = "stale"  # >10min silent — probably stuck
                 elif idle_seconds > 120:
@@ -110,7 +128,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # todo#55: FQDN / canonical hostname for display next to
                 # the short machine label. Empty string = older client
                 # that didn't push this field.
-                "hostname_canonical": a.get("hostname_canonical", ""),
+                "orochi_hostname_canonical": a.get("orochi_hostname_canonical", ""),
                 "role": a.get("role", ""),
                 "model": a.get("model", ""),
                 "multiplexer": a.get("multiplexer", ""),
@@ -173,59 +191,59 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # sessions currently authenticated under this name.
                 # >1 indicates a concurrent-instance race situation.
                 "active_sessions": int(a.get("active_sessions", 0) or 0),
-                "current_task": a.get("current_task", ""),
+                "orochi_current_task": a.get("orochi_current_task", ""),
                 "last_message_preview": a.get("last_message_preview", ""),
                 "subagents": list(a.get("subagents", [])),
-                "subagent_count": int(
-                    a.get("subagent_count") or len(a.get("subagents") or [])
+                "orochi_subagent_count": int(
+                    a.get("orochi_subagent_count") or len(a.get("subagents") or [])
                 ),
                 "health": a.get("health") or {},
-                "claude_md": a.get("claude_md", ""),
+                "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)
                 "pid": a.get("pid") or 0,
                 "ppid": a.get("ppid") or 0,
-                "context_pct": a.get("context_pct"),
+                "orochi_context_pct": a.get("orochi_context_pct"),
                 "context_management": a.get("context_management"),
-                "skills_loaded": list(a.get("skills_loaded") or []),
+                "orochi_skills_loaded": list(a.get("orochi_skills_loaded") or []),
                 "started_at": a.get("started_at", ""),
                 "version": a.get("version", ""),
                 "runtime": a.get("runtime", ""),
                 # v0.11.0 Agents-tab visibility fields.
                 "recent_actions": list(a.get("recent_actions") or []),
-                "pane_tail": a.get("pane_tail", ""),
-                "pane_tail_block": a.get("pane_tail_block", ""),
+                "orochi_pane_tail": a.get("orochi_pane_tail", ""),
+                "orochi_pane_tail_block": a.get("orochi_pane_tail_block", ""),
                 # todo#47 — full scrollback; empty string if the agent
                 # hasn't pushed the new field yet.
-                "pane_tail_full": a.get("pane_tail_full", ""),
-                "claude_md_head": a.get("claude_md_head", ""),
-                "mcp_json": a.get("mcp_json", ""),
-                "pane_state": a.get("pane_state", ""),
-                "stuck_prompt_text": a.get("stuck_prompt_text", ""),
+                "orochi_pane_tail_full": a.get("orochi_pane_tail_full", ""),
+                "orochi_claude_md_head": a.get("orochi_claude_md_head", ""),
+                "orochi_mcp_json": a.get("orochi_mcp_json", ""),
+                "orochi_pane_state": a.get("orochi_pane_state", ""),
+                "orochi_stuck_prompt_text": a.get("orochi_stuck_prompt_text", ""),
                 "pane_text": a.get("pane_text", ""),
                 # scitex-agent-container hook-captured events — lists
                 # populated by the PreToolUse/PostToolUse hooks.
-                "recent_tools": list(a.get("recent_tools") or []),
-                "recent_prompts": list(a.get("recent_prompts") or []),
-                "agent_calls": list(a.get("agent_calls") or []),
-                "background_tasks": list(a.get("background_tasks") or []),
-                "tool_counts": dict(a.get("tool_counts") or {}),
+                "sac_hooks_recent_tools": list(a.get("sac_hooks_recent_tools") or []),
+                "sac_hooks_recent_prompts": list(a.get("sac_hooks_recent_prompts") or []),
+                "sac_hooks_agent_calls": list(a.get("sac_hooks_agent_calls") or []),
+                "sac_hooks_background_tasks": list(a.get("sac_hooks_background_tasks") or []),
+                "sac_hooks_tool_counts": dict(a.get("sac_hooks_tool_counts") or {}),
                 # Functional-heartbeat shortcuts (derived by
                 # event_log.summarize() in agent-container).
-                "last_tool_at": a.get("last_tool_at", ""),
-                "last_tool_name": a.get("last_tool_name", ""),
-                "last_mcp_tool_at": a.get("last_mcp_tool_at", ""),
-                "last_mcp_tool_name": a.get("last_mcp_tool_name", ""),
+                "sac_hooks_last_tool_at": a.get("sac_hooks_last_tool_at", ""),
+                "sac_hooks_last_tool_name": a.get("sac_hooks_last_tool_name", ""),
+                "sac_hooks_last_mcp_tool_at": a.get("sac_hooks_last_mcp_tool_at", ""),
+                "sac_hooks_last_mcp_tool_name": a.get("sac_hooks_last_mcp_tool_name", ""),
                 # PaneAction summary (scitex-agent-container action_store).
-                # NB: ``last_action_name`` (not ``last_action``) to avoid
+                # NB: ``sac_hooks_last_action_name`` (not ``last_action``) to avoid
                 # collision with the pre-existing ``last_action`` field
                 # which is the unix-time liveness timestamp set by
                 # ``mark_activity``.
-                "last_action_at": a.get("last_action_at", ""),
-                "last_action_name": a.get("last_action_name", ""),
-                "last_action_outcome": a.get("last_action_outcome", ""),
-                "last_action_elapsed_s": a.get("last_action_elapsed_s"),
+                "sac_hooks_last_action_at": a.get("sac_hooks_last_action_at", ""),
+                "sac_hooks_last_action_name": a.get("sac_hooks_last_action_name", ""),
+                "sac_hooks_last_action_outcome": a.get("sac_hooks_last_action_outcome", ""),
+                "sac_hooks_last_action_elapsed_s": a.get("sac_hooks_last_action_elapsed_s"),
                 "action_counts": dict(a.get("action_counts") or {}),
-                "p95_elapsed_s_by_action": dict(a.get("p95_elapsed_s_by_action") or {}),
+                "sac_hooks_p95_elapsed_s_by_action": dict(a.get("sac_hooks_p95_elapsed_s_by_action") or {}),
                 # UI-aligned quota keys — long-name variants surfaced so
                 # the Agents-tab meta grid sees them under the names it
                 # reads.
@@ -233,7 +251,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "quota_7d_used_pct": a.get("quota_7d_used_pct"),
                 "quota_5h_reset_at": a.get("quota_5h_reset_at", ""),
                 "quota_7d_reset_at": a.get("quota_7d_reset_at", ""),
-                "mcp_servers": list(a.get("mcp_servers") or []),
+                "orochi_mcp_servers": list(a.get("orochi_mcp_servers") or []),
                 # todo#265: OAuth account public metadata. Whitelist
                 # only — no tokens, credentials, or secrets are ever
                 # stored or surfaced.
@@ -247,12 +265,12 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "has_extra_usage_enabled": a.get("has_extra_usage_enabled"),
                 "subscription_created_at": a.get("subscription_created_at", ""),
                 # Quota telemetry from statusline parsing (agent_meta.py)
-                "quota_5h_pct": a.get("quota_5h_pct"),
-                "quota_5h_remaining": a.get("quota_5h_remaining", ""),
-                "quota_weekly_pct": a.get("quota_weekly_pct"),
-                "quota_weekly_remaining": a.get("quota_weekly_remaining", ""),
-                "statusline_model": a.get("statusline_model", ""),
-                "account_email": a.get("account_email", ""),
+                "orochi_quota_5h_pct": a.get("orochi_quota_5h_pct"),
+                "orochi_quota_5h_remaining": a.get("orochi_quota_5h_remaining", ""),
+                "orochi_quota_weekly_pct": a.get("orochi_quota_weekly_pct"),
+                "orochi_quota_weekly_remaining": a.get("orochi_quota_weekly_remaining", ""),
+                "orochi_statusline_model": a.get("orochi_statusline_model", ""),
+                "orochi_account_email": a.get("orochi_account_email", ""),
                 # lead msg#16005 — whole ``scitex-agent-container status
                 # --terse --json`` payload. Dashboard consumers (Agents
                 # tab, future dashboards) can key off

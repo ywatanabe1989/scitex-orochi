@@ -14,7 +14,7 @@ metadata:
     team: orochi
     specialty: research
     machine: CHANGEME
-    capabilities: gpu,slurm,large-compute,ml-training
+    capabilities: gpu,orochi_slurm,large-compute,ml-training
 spec:
   runtime: claude-code
   model: opus[1m]

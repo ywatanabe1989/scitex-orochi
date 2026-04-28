@@ -130,7 +130,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
 
   // ── 2c. Subagent count (msg#16116 Item 4 / lead msg#16116).
   //        Tiny chip showing the number of active Agent-tool subagents
-  //        spawned by this agent. Source: ``a.subagent_count`` from the
+  //        spawned by this agent. Source: ``a.orochi_subagent_count`` from the
   //        /api/agents/ payload (already present per PR #318 — fleet-wide
   //        terse whitelist). Hidden entirely when the value is undefined
   //        or 0 so idle agents keep the compact row silhouette.
@@ -138,7 +138,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   //        list, detail-pane header, agent-card composer). The SVG
   //        topology node renders its own variant via agent-badge-svg.ts.
   function renderAgentSubagentCount(a) {
-    var n = a && a.subagent_count != null ? Number(a.subagent_count) : 0;
+    var n = a && a.orochi_subagent_count != null ? Number(a.orochi_subagent_count) : 0;
     if (!n || !isFinite(n) || n < 1) return "";
     /* Class name ``agent-badge-subcount`` intentionally distinct from
      * the pre-existing ``.agent-badge-subagents`` pill in
@@ -182,7 +182,7 @@ import { cleanAgentName, escapeHtml, getAgentColor, hostedAgentName } from "./ap
   function renderAgentLeds(a, opts) {
     var extra = opts && opts.extraClass ? " " + opts.extraClass : "";
     var liveness = a.liveness || a.status || "online";
-    var paneState = a.pane_state || "unknown";
+    var paneState = a.orochi_pane_state || "unknown";
     // 1. WS
     var wsOn = _connected(a);
     var ledWs =

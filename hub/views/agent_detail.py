@@ -9,7 +9,7 @@ Scope explicitly excludes:
 
 - Pane-state classification (todo#419) — UI infers from ``liveness``.
 - Cross-host SSH capture of the live tmux pane — kept best-effort
-  against the already-cached ``pane_tail_block`` field pushed by
+  against the already-cached ``orochi_pane_tail_block`` field pushed by
   ``agent_meta.py --push``; the response advertises the source via
   ``pane_text_source`` so the frontend can show "cached" vs
   "unavailable" without inventing a new transport.
@@ -42,6 +42,10 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("sk-ant", re.compile(r"sk-ant-[A-Za-z0-9_\-]{10,}")),
     # GitHub personal access tokens / fine-grained tokens / app tokens.
     ("ghp", re.compile(r"gh[pousr]_[A-Za-z0-9]{20,}")),
+    # GitHub fine-grained personal access tokens (newer prefix).
+    ("github_pat", re.compile(r"github_pat_[A-Za-z0-9_]{20,}")),
+    # Slack tokens.
+    ("slack", re.compile(r"\bxox[abprs]-[A-Za-z0-9-]{10,}")),
     # JWTs (three base64url segments separated by dots). Used by OAuth
     # id_tokens, Django session JWTs, etc.
     (
@@ -50,12 +54,29 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ),
     # OpenAI-style keys.
     ("sk-", re.compile(r"\bsk-[A-Za-z0-9]{20,}")),
-    # AWS access-key-id prefixes.
-    ("aws", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    # AWS access-key-id prefixes (incl. session keys).
+    ("aws", re.compile(r"\b[AS]KIA[0-9A-Z]{16}\b")),
     # Generic "Bearer <token>" authorization headers in curl/log output.
     ("bearer", re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}")),
     # Anything that looks like a password-store grep result.
     ("password", re.compile(r"(?i)password[:=]\s*\S{4,}")),
+    # Plain-prose secret leakage — "the password is hunter2", "pw is x",
+    # "secret: foo". Adversarial input only (anyone deliberately writing
+    # this is past the threat model) but cheap to defend (audit v03 §F).
+    (
+        "password-prose",
+        re.compile(
+            r"(?i)\b(password|passwd|secret|api[\s_-]?key|token)\s+(?:is|=|:)\s+\S{4,}"
+        ),
+    ),
+    # URL/DSN userinfo: postgres://user:pw@host, redis://:pw@host,
+    # https://user:pw@host, amqp://, mongodb+srv://, etc. Mask the whole
+    # `user:pw@` chunk (audit 2026-04-27 §1: the previous regex set let
+    # DATABASE_URL etc. through both the producer and the hub).
+    (
+        "url-userinfo",
+        re.compile(r"([a-zA-Z][\w+.\-]*://)([^/@\s]+@)"),
+    ),
 )
 
 # Matches a full line that contains credential-file paths. The whole line
@@ -82,8 +103,14 @@ def redact_secrets(text: str) -> str:
         if any(p.search(line) for p in _CREDENTIAL_LINE_PATTERNS):
             cleaned.append("[REDACTED credential-referencing line]")
             continue
-        for _label, pat in _SECRET_PATTERNS:
-            line = pat.sub("[REDACTED]", line)
+        for label, pat in _SECRET_PATTERNS:
+            if label == "url-userinfo":
+                # Keep scheme://, mask userinfo segment so DATABASE_URL,
+                # SENTRY_DSN, REDIS_URL etc. stay readable as "what
+                # service is this" without leaking the credential.
+                line = pat.sub(r"\1[REDACTED]@", line)
+            else:
+                line = pat.sub("[REDACTED]", line)
         cleaned.append(line)
     # Preserve a trailing newline when the source had one so the
     # frontend's scroll-to-bottom heuristic still works.
@@ -150,7 +177,7 @@ def api_agent_detail(request, name: str):
           # truth. Empty/None for legacy clients that haven't been
           # upgraded; UI falls back to `machine` until populated.
           "hostname": str,               # `hostname(1)` of the running process
-          "hostname_canonical": str,     # FQDN via socket.getfqdn()
+          "orochi_hostname_canonical": str,     # FQDN via socket.getfqdn()
           "uname": str,                  # `uname -a` output
           "instance_id": str,            # UUID set once at agent boot
           "start_ts_unix": float | None, # Process start, epoch float
@@ -165,16 +192,17 @@ def api_agent_detail(request, name: str):
           "last_action_ts": iso8601 | None,
           "last_heartbeat": iso8601 | None,
           "liveness": str,
-          "claude_md": str,
-          "mcp_json": str,
-          "pane_state": str,
-          "stuck_prompt_text": str,
+          "orochi_claude_md": str,
+          "orochi_mcp_json": str,
+          "orochi_env_file": str,
+          "orochi_pane_state": str,
+          "orochi_stuck_prompt_text": str,
           "pane_text": str,
           "pane_text_source": "cached" | "unavailable",
           "channel_subs": [str, ...],
-          "mcp_servers": [str | dict, ...],
-          "current_task": str,
-          "context_pct": float | None,
+          "orochi_mcp_servers": [str | dict, ...],
+          "orochi_current_task": str,
+          "orochi_context_pct": float | None,
           "pid": int,
           "subagents": [ ... ],
           "health": { ... }
@@ -189,18 +217,20 @@ def api_agent_detail(request, name: str):
     if agent is None:
         return JsonResponse({"error": "agent not found", "name": name}, status=404)
 
-    # Prefer the richer pane_tail_block pushed by agent_meta.py --push;
-    # fall back to pane_tail, then advertise unavailable. We deliberately
+    # Prefer the richer orochi_pane_tail_block pushed by agent_meta.py --push;
+    # fall back to orochi_pane_tail, then advertise unavailable. We deliberately
     # do NOT reach out to a cross-host tmux capture-pane over SSH here —
     # that expansion is tracked in todo#420 follow-up.
-    raw_pane = agent.get("pane_tail_block") or agent.get("pane_tail") or ""
+    raw_pane = (
+        agent.get("orochi_pane_tail_block") or agent.get("orochi_pane_tail") or ""
+    )
     pane_text = redact_secrets(raw_pane) if raw_pane else ""
     pane_text_source = "cached" if raw_pane else "unavailable"
     # todo#47 — ~500-line scrollback for the "Full pane" toggle. Same
     # redaction pipeline as pane_text; empty string if the agent's
     # agent_meta.py hasn't been updated yet (graceful degrade — the UI
     # falls back to the short pane_text).
-    raw_pane_full = agent.get("pane_tail_full") or ""
+    raw_pane_full = agent.get("orochi_pane_tail_full") or ""
     pane_text_full = redact_secrets(raw_pane_full) if raw_pane_full else ""
 
     # Compute uptime from registered_at ISO string when available.
@@ -219,7 +249,7 @@ def api_agent_detail(request, name: str):
         "machine": agent.get("machine", ""),
         # todo#55: canonical FQDN reported by the heartbeat, displayed
         # next to the short `machine` label in the detail header.
-        "hostname_canonical": agent.get("hostname_canonical", ""),
+        "orochi_hostname_canonical": agent.get("orochi_hostname_canonical", ""),
         # ── #257 canonical heartbeat metadata ─────────────────────────
         # `hostname` is the authoritative `hostname(1)` of the running
         # process. The dashboard's `@host` label MUST be rendered from
@@ -256,47 +286,70 @@ def api_agent_detail(request, name: str):
         "last_echo_rtt_ms": agent.get("last_echo_rtt_ms"),
         "last_echo_ok_ts": agent.get("last_echo_ok_ts"),
         "liveness": agent.get("liveness") or agent.get("status") or "unknown",
-        "claude_md": redact_secrets(agent.get("claude_md") or ""),
+        "orochi_claude_md": redact_secrets(agent.get("orochi_claude_md") or ""),
         # todo#460: serve the workspace .mcp.json for the Agents tab viewer.
         # agent_meta.py --push (dotfiles PR #71) already redacts SCITEX_OROCHI_TOKEN
         # and similar secrets before pushing, but we redact again defense-in-depth
         # so any future push path that forgets still stays safe.
-        "mcp_json": redact_secrets(agent.get("mcp_json") or ""),
+        "orochi_mcp_json": redact_secrets(agent.get("orochi_mcp_json") or ""),
+        # .env viewer (todo: 2026-04-27). collect_agent_metadata.py --push
+        # is expected to ship a redacted dump of <workdir>/.env. We redact
+        # again here defense-in-depth so secret-shaped tokens never leave
+        # the server even if the heartbeat path changes.
+        "orochi_env_file": redact_secrets(agent.get("orochi_env_file") or ""),
         # todo#418: agent decision-transparency for the Agents tab.
-        # `pane_state` is the classifier label agent_meta.py --push
+        # `orochi_pane_state` is the classifier label agent_meta.py --push
         # computes (`running` / `compose_pending_unsent` /
-        # `y_n_prompt` / `auth_error` / etc.); `stuck_prompt_text`
+        # `y_n_prompt` / `auth_error` / etc.); `orochi_stuck_prompt_text`
         # is the verbatim prompt the agent is blocked on (empty
-        # when `pane_state == running`). Both are redacted defense-
+        # when `orochi_pane_state == running`). Both are redacted defense-
         # in-depth.
-        "pane_state": agent.get("pane_state") or "",
-        "stuck_prompt_text": redact_secrets(agent.get("stuck_prompt_text") or ""),
+        "orochi_pane_state": agent.get("orochi_pane_state") or "",
+        # 2026-04-27 layered state pipeline (see AGENT_STATES.md):
+        #   pane (Layer A observations + Layer B v3 verdict)
+        #   comm (Layer A sac_a2a observations + Layer B v1 verdict)
+        # Surfaced so the Agents-tab detail can show the verdict, the
+        # evidence, the schema version, AND the raw primitive
+        # observations the verdict was derived from.
+        "orochi_pane_state_evidence": agent.get("orochi_pane_state_evidence") or "",
+        "orochi_pane_state_version": agent.get("orochi_pane_state_version") or "",
+        "orochi_pane_observations": agent.get("orochi_pane_observations") or {},
+        "orochi_comm_state": agent.get("orochi_comm_state") or "",
+        "orochi_comm_state_evidence": agent.get("orochi_comm_state_evidence") or "",
+        "orochi_comm_state_version": agent.get("orochi_comm_state_version") or "",
+        "sac_a2a_observations": agent.get("sac_a2a_observations") or {},
+        "sac_a2a_active_task_count": int(agent.get("sac_a2a_active_task_count") or 0),
+        "sac_a2a_active_task_state": agent.get("sac_a2a_active_task_state") or "",
+        "sac_a2a_last_task_event_at": agent.get("sac_a2a_last_task_event_at") or "",
+        "orochi_stuck_prompt_text": redact_secrets(
+            agent.get("orochi_stuck_prompt_text") or ""
+        ),
         "pane_text": pane_text,
         # todo#47 — longer scrollback; empty string when the agent
         # hasn't pushed it yet.
         "pane_text_full": pane_text_full,
         "pane_text_source": pane_text_source,
         "channel_subs": sorted({c for c in (agent.get("channels") or []) if c}),
-        "mcp_servers": list(agent.get("mcp_servers") or []),
-        "current_task": agent.get("current_task", ""),
-        "context_pct": agent.get("context_pct"),
+        "orochi_mcp_servers": list(agent.get("orochi_mcp_servers") or []),
+        "orochi_current_task": agent.get("orochi_current_task", ""),
+        "orochi_context_pct": agent.get("orochi_context_pct"),
         "pid": int(agent.get("pid") or 0),
         "subagents": list(agent.get("subagents") or []),
-        "subagent_count": int(agent.get("subagent_count") or 0),
+        "orochi_subagent_count": int(agent.get("orochi_subagent_count") or 0),
         # Quota surfaced from agent_meta.py --push heartbeat. The heartbeat
-        # stores `quota_5h_pct` / `quota_5h_remaining`; the UI reads
+        # stores `orochi_quota_5h_pct` / `orochi_quota_5h_remaining`; the UI reads
         # `quota_5h_used_pct` / `quota_5h_reset_at`. Map both shapes so
         # legacy payloads and newer fields coexist. Kept here so the
         # Agents tab meta-grid and Activity header chips can display
         # "5h X%" / "7d Y%" without a second round-trip.
         "quota_5h_used_pct": agent.get("quota_5h_used_pct")
         if agent.get("quota_5h_used_pct") is not None
-        else agent.get("quota_5h_pct"),
+        else agent.get("orochi_quota_5h_pct"),
         "quota_7d_used_pct": agent.get("quota_7d_used_pct")
         if agent.get("quota_7d_used_pct") is not None
         else agent.get("quota_7d_pct"),
         "quota_5h_reset_at": agent.get("quota_5h_reset_at")
-        or agent.get("quota_5h_remaining")
+        or agent.get("orochi_quota_5h_remaining")
         or "",
         "quota_7d_reset_at": agent.get("quota_7d_reset_at")
         or agent.get("quota_7d_remaining")
@@ -305,23 +358,27 @@ def api_agent_detail(request, name: str):
         # scitex-agent-container hook-event ring-buffer (PreToolUse /
         # PostToolUse / UserPromptSubmit). Empty lists when the hook
         # wiring hasn't been configured for this agent yet.
-        "recent_tools": agent.get("recent_tools") or [],
-        "recent_prompts": agent.get("recent_prompts") or [],
-        "agent_calls": agent.get("agent_calls") or [],
-        "background_tasks": agent.get("background_tasks") or [],
-        "tool_counts": agent.get("tool_counts") or {},
+        "sac_hooks_recent_tools": agent.get("sac_hooks_recent_tools") or [],
+        "sac_hooks_recent_prompts": agent.get("sac_hooks_recent_prompts") or [],
+        "sac_hooks_agent_calls": agent.get("sac_hooks_agent_calls") or [],
+        "sac_hooks_background_tasks": agent.get("sac_hooks_background_tasks") or [],
+        "sac_hooks_tool_counts": agent.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts.
-        "last_tool_at": agent.get("last_tool_at") or "",
-        "last_tool_name": agent.get("last_tool_name") or "",
-        "last_mcp_tool_at": agent.get("last_mcp_tool_at") or "",
-        "last_mcp_tool_name": agent.get("last_mcp_tool_name") or "",
+        "sac_hooks_last_tool_at": agent.get("sac_hooks_last_tool_at") or "",
+        "sac_hooks_last_tool_name": agent.get("sac_hooks_last_tool_name") or "",
+        "sac_hooks_last_mcp_tool_at": agent.get("sac_hooks_last_mcp_tool_at") or "",
+        "sac_hooks_last_mcp_tool_name": agent.get("sac_hooks_last_mcp_tool_name") or "",
         # PaneAction summary (scitex-agent-container action_store).
-        "last_action_at": agent.get("last_action_at") or "",
-        "last_action_name": agent.get("last_action_name") or "",
-        "last_action_outcome": agent.get("last_action_outcome") or "",
-        "last_action_elapsed_s": agent.get("last_action_elapsed_s"),
+        "sac_hooks_last_action_at": agent.get("sac_hooks_last_action_at") or "",
+        "sac_hooks_last_action_name": agent.get("sac_hooks_last_action_name") or "",
+        "sac_hooks_last_action_outcome": agent.get("sac_hooks_last_action_outcome")
+        or "",
+        "sac_hooks_last_action_elapsed_s": agent.get("sac_hooks_last_action_elapsed_s"),
         "action_counts": agent.get("action_counts") or {},
-        "p95_elapsed_s_by_action": agent.get("p95_elapsed_s_by_action") or {},
+        "sac_hooks_p95_elapsed_s_by_action": agent.get(
+            "sac_hooks_p95_elapsed_s_by_action"
+        )
+        or {},
         # scitex-orochi#255: most recent singleton-cardinality conflict
         # for this agent within ``SINGLETON_EVENT_WINDOW_S``. ``None``
         # when no conflict has been recorded recently. Each event has

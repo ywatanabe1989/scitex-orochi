@@ -32,8 +32,10 @@ body {
     Arial, sans-serif;
   background: #0a0a0a;
   color: #e0e0e0;
-  overflow-x: hidden;
+  overflow: hidden;
   max-width: 100vw;
+  height: 100vh;
+  height: 100dvh;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -91,6 +93,12 @@ body {
  * + version + conn-status in one 28-px-tall strip. Replaces the
  * stacked two-line layout that ate ~110 px of sidebar height. */
 .sidebar-brand.sidebar-brand-compact {
+  /* position: relative is the anchor for the .ws-dropdown
+   * (position: absolute; top: 100%) workspace switcher menu — without
+   * it the dropdown escapes to the viewport's coords and renders ~1000px
+   * below the brand row instead of under the workspace selector.
+   * ywatanabe 2026-04-27. */
+  position: relative;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;

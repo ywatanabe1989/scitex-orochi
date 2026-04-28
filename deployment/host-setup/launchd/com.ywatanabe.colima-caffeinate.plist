@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Pin caffeinate to the colima/lima HostAgent so macOS App Nap and
+  Virtualization.framework cannot suspend the VM, which would drop the
+  SSH-MUX port-forward and surface as Cloudflare 502s on the hub.
+
+  Installed as a LaunchDaemon (system scope) so it runs at boot without
+  requiring the user to log in. See
+  ~/.scitex/orochi/shared/skills/scitex-orochi-private/infra-hub-stability.md
+  for the 2026-04-27 incident post-mortem.
+
+  Install via deployment/host-setup/install-colima-caffeinate.sh.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ywatanabe.colima-caffeinate</string>
+
+  <key>UserName</key>
+  <string>__USERNAME__</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>while true; do PID=$(/usr/bin/pgrep -f "limactl .*hostagent" | /usr/bin/head -1); if [ -n "$PID" ]; then /usr/bin/caffeinate -dimsu -w "$PID"; fi; /bin/sleep 5; done</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>__HOME__/Library/Logs/colima-caffeinate.log</string>
+  <key>StandardErrorPath</key>
+  <string>__HOME__/Library/Logs/colima-caffeinate.log</string>
+</dict>
+</plist>

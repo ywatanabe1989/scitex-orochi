@@ -79,7 +79,7 @@ class AgentState:
     status: str  # "online" | "offline"
     liveness: str  # "online" | "idle" | "stale" | "offline"
     idle_seconds: int | None
-    current_task: str
+    orochi_current_task: str
     last_heartbeat: str | None  # ISO
 
     @property
@@ -138,7 +138,7 @@ def fetch_agents(hub: str, token: str | None) -> list[AgentState]:
                 status=a.get("status", "online"),
                 liveness=a.get("liveness", a.get("status", "online")),
                 idle_seconds=a.get("idle_seconds"),
-                current_task=a.get("current_task", ""),
+                orochi_current_task=a.get("orochi_current_task", ""),
                 last_heartbeat=a.get("last_heartbeat"),
             )
         )
@@ -154,7 +154,7 @@ def classify(agent: AgentState) -> str:
         return "dead"
     if agent.liveness == "stale":
         return "stale"
-    if agent.liveness == "idle" and agent.current_task:
+    if agent.liveness == "idle" and agent.orochi_current_task:
         return "idle"
     return "ok"
 
@@ -162,7 +162,7 @@ def classify(agent: AgentState) -> str:
 def heal_idle(hub: str, token: str | None, agent: AgentState) -> None:
     msg = (
         f"@{agent.name} caduceus check: idle {agent.idle_seconds}s on "
-        f"`{agent.current_task[:80]}`. Status update?"
+        f"`{agent.orochi_current_task[:80]}`. Status update?"
     )
     _post_chat(hub, token, "#general", msg)
     log.info("nudged %s (idle %ds)", agent.name, agent.idle_seconds or 0)
@@ -171,7 +171,7 @@ def heal_idle(hub: str, token: str | None, agent: AgentState) -> None:
 def heal_stale(hub: str, token: str | None, agent: AgentState) -> None:
     msg = (
         f"⚠️ @{agent.name} stale {agent.idle_seconds}s on "
-        f"`{agent.current_task[:80]}`. caduceus escalating — please confirm "
+        f"`{agent.orochi_current_task[:80]}`. caduceus escalating — please confirm "
         f"or reassign."
     )
     _post_chat(hub, token, "#general", msg)
@@ -216,7 +216,7 @@ def register_self(hub: str, token: str | None, name: str, machine: str) -> bool:
         "role": "healer",
         "model": "stdlib-daemon",
         "channels": ["#general"],
-        "current_task": "monitoring agent liveness",
+        "orochi_current_task": "monitoring agent liveness",
     }
     req = urllib.request.Request(
         f"{hub.rstrip('/')}/api/agents/register/",
@@ -280,7 +280,7 @@ def greeting_scan(
         if a.name.startswith("caduceus"):
             continue
         if not should_ping(
-            a.name, a.current_task, a.idle_seconds, now, last_ping_ts, interval_s
+            a.name, a.orochi_current_task, a.idle_seconds, now, last_ping_ts, interval_s
         ):
             continue
         body, nonce = format_greeting(a.name)

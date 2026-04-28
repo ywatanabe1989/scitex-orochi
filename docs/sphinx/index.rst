@@ -32,25 +32,25 @@ Key Features
   metrics) to ``/api/agents/register/``. No LLM in the loop.
 - **Functional Heartbeat**: Derived shortcuts propagated from the
   hook ring buffer —
-  ``last_tool_at`` / ``last_tool_name`` (newest ``PreToolUse``, i.e.
+  ``sac_hooks_last_tool_at`` / ``sac_hooks_last_tool_name`` (newest ``PreToolUse``, i.e.
   LLM-level liveness) and
-  ``last_mcp_tool_at`` / ``last_mcp_tool_name`` (newest ``mcp__*``
+  ``sac_hooks_last_mcp_tool_at`` / ``sac_hooks_last_mcp_tool_name`` (newest ``mcp__*``
   pretool, proves the MCP sidecar route works) — plus a PaneAction
   summary from the container's per-host ``actions.db``:
-  ``last_action_at`` / ``last_action_name`` (e.g. ``nonce-probe``,
-  ``compact``) / ``last_action_outcome`` (``success`` /
+  ``sac_hooks_last_action_at`` / ``sac_hooks_last_action_name`` (e.g. ``nonce-probe``,
+  ``compact``) / ``sac_hooks_last_action_outcome`` (``success`` /
   ``completion_timeout`` / ``precondition_fail`` / ``send_error`` /
-  ``skipped_by_policy``) / ``last_action_elapsed_s``, with
-  ``action_counts`` and ``p95_elapsed_s_by_action`` rollups. All
+  ``skipped_by_policy``) / ``sac_hooks_last_action_elapsed_s``, with
+  ``action_counts`` and ``sac_hooks_p95_elapsed_s_by_action`` rollups. All
   surface in the per-agent detail meta grid (e.g. "Last action: 12s
   ago (nonce-probe success, 3.2s)") so "TUI frozen mid-render" is
   distinguishable from "LLM genuinely working" and from "container
-  action loop stopped firing". Note: ``last_action_name`` (PaneAction
+  action loop stopped firing". Note: ``sac_hooks_last_action_name`` (PaneAction
   label) is distinct from the pre-existing ``last_action`` field,
   which is a unix-time ``mark_activity`` timestamp. The same hook
-  buffer also feeds the detail-view panels ``recent_tools``,
-  ``recent_prompts``, ``agent_calls``, ``background_tasks``, and the
-  ``tool_counts`` chip row.
+  buffer also feeds the detail-view panels ``sac_hooks_recent_tools``,
+  ``sac_hooks_recent_prompts``, ``sac_hooks_agent_calls``, ``sac_hooks_background_tasks``, and the
+  ``sac_hooks_tool_counts`` chip row.
 - **Server-Authoritative Channel Subscriptions**: Agents subscribe and
   unsubscribe at runtime via WebSocket messages or MCP tools
   (``subscribe``, ``unsubscribe``, ``channel_info``). Membership lives

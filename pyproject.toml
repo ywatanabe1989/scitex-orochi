@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.14.0"
+version = "0.15.26"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -25,6 +25,7 @@ classifiers = [
 dependencies = [
     "django>=5.1",
     "channels>=4.0",
+    "channels-redis>=4.2",
     "daphne>=4.0",
     "whitenoise>=6.0",
     "django-allauth[socialaccount]>=65.0",
@@ -39,6 +40,33 @@ dependencies = [
     # so the terminal consumer can stream into fleet hosts without
     # shelling out to the openssh binary.
     "asyncssh>=2.14",
+    # A2A SDK — orochi serves the canonical A2A interface at
+    # ``/v1/agents/<name>/`` (Phase 3 of GITIGNORED/A2A_MIGRATION.md).
+    # The ``[http-server]`` extra pulls in starlette + sse-starlette,
+    # which the SDK's route factories require for JSON-RPC + streaming.
+    "a2a-sdk[http-server]>=1.0.2",
+    # protobuf 6.x removed FieldDescriptor.label, which a2a-sdk 1.0.x's
+    # validate_proto_required_fields still references — pin until
+    # upstream adopts the descriptor pool API. The previous pin <7 was
+    # misleadingly named: the bug is in 6.x, so <7 still allowed broken
+    # resolutions on fresh installs. Same fix shipped in
+    # scitex-agent-container/pyproject.toml 2026-04-27.
+    "protobuf<6",
+    # Maintained vendor-prefix detectors (GitHub, AWS, Slack, Anthropic,
+    # OpenAI, JWT, Stripe, ...) used by the .env viewer's redaction
+    # pipeline (`scripts/client/_collect_agent_metadata/_files.py`).
+    # Replaces the hand-rolled vendor-prefix list so the catalog
+    # tracks upstream when vendors change token formats. The library's
+    # high-entropy plugins are explicitly skipped — see _files.py.
+    "detect-secrets>=1.5",
+    # Cross-platform machine metrics (cpu/mem/disk/gpu) for heartbeats.
+    # Replaces the /proc-only collector that returned empty fields on
+    # macOS / Windows / WSL. ``get_metrics()`` is the public flat-dict API.
+    "scitex-resource>=0.2.0",
+    # Canonical local-state directory helper (project-scope override +
+    # auto runtime/ seed creation). Per scitex-python skill
+    # 01_arch_06_local-state-directories.md.
+    "scitex-config>=0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -51,6 +79,9 @@ dev = [
     "websockets>=12.0",
     "aiosqlite>=0.20",
     "deepeval>=1.0",
+    # Quality-audit suite + tests/test_skills_quality.py imports it.
+    # Without this dep CI fails with `ModuleNotFoundError: scitex_dev`.
+    "scitex-dev",
 ]
 docs = [
     "sphinx>=7.0",
@@ -92,6 +123,25 @@ artifacts = [
 artifacts = [
     "src/scitex_orochi/_ts/**",
     "src/scitex_orochi/_skills/**",
+]
+# Exclude developer-local virtualenvs and worktree caches so the sdist
+# tarball stays portable. Without this, a stray ``.venv`` symlink (which
+# points at an absolute path in the dev box's filesystem) makes the
+# auto-publish workflow's ``python -m build`` step fail with
+# ``tarfile.AbsoluteLinkError``.
+exclude = [
+    ".venv",
+    ".venv/**",
+    "venv",
+    "venv/**",
+    ".claude/worktrees/**",
+    ".pytest_cache/**",
+    "**/__pycache__/**",
+    "GITIGNORED/**",
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "*.egg-info/**",
 ]
 
 [tool.pytest.ini_options]

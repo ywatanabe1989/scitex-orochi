@@ -1,6 +1,15 @@
 /* ==================================================================== */
 /* TODO stats dashboard (#171) — cards / chart / label bars / tables    */
 /* ==================================================================== */
+/* Hide the entire stats panel — totals cards, sub-sections, and the
+ * "Loading TODO stats..." placeholder. The TODO list itself stays.
+ * ywatanabe 2026-04-27. */
+#todo-stats,
+.todo-stats,
+.todo-stats-section,
+.todo-stats-cards {
+  display: none !important;
+}
 .todo-stats {
   display: flex;
   flex-direction: column;

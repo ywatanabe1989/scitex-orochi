@@ -32,6 +32,11 @@ import {
   handleTask,
   handleUploadMedia,
   handleExportChannel,
+  handleA2aCall,
+  handleA2aSendStreaming,
+  handleA2aGetTask,
+  handleA2aCancelTask,
+  handleA2aListAgents,
 } from "../src/tools.js";
 import { conn } from "./connection.js";
 
@@ -54,10 +59,8 @@ export function registerMcpHandlers(mcp: Server): void {
     if (name === "unsubscribe")
       return handleUnsubscribe(conn as any, args as any);
     if (name === "channel_info") return handleChannelInfo(args as any);
-    if (name === "channel_members")
-      return handleChannelMembers(args as any);
-    if (name === "my_subscriptions")
-      return handleMySubscriptions(args as any);
+    if (name === "channel_members") return handleChannelMembers(args as any);
+    if (name === "my_subscriptions") return handleMySubscriptions(args as any);
     if (name === "download_media") return handleDownloadMedia(args as any);
     if (name === "upload_media") return handleUploadMedia(args as any);
     if (name === "rsync_media") return handleRsyncMedia(args as any);
@@ -69,6 +72,12 @@ export function registerMcpHandlers(mcp: Server): void {
     if (name === "dm_list") return handleDmList(args as any);
     if (name === "dm_open") return handleDmOpen(args as any);
     if (name === "export_channel") return handleExportChannel(args as any);
+    if (name === "a2a_call") return handleA2aCall(args as any);
+    if (name === "a2a_send_streaming")
+      return handleA2aSendStreaming(args as any);
+    if (name === "a2a_get_task") return handleA2aGetTask(args as any);
+    if (name === "a2a_cancel_task") return handleA2aCancelTask(args as any);
+    if (name === "a2a_list_agents") return handleA2aListAgents();
     throw new Error(`Unknown tool: ${name}`);
   });
 }

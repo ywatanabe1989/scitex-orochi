@@ -126,8 +126,8 @@ class AgentMetaOAuthRegisterTest(TestCase):
         self.assertEqual(a["oauth_org_name"], "")
         self.assertIsNone(a["has_available_subscription"])
 
-    def test_register_persists_subagent_count(self):
-        """Heartbeat's ``subagent_count`` field reaches hub.registry and
+    def test_register_persists_orochi_subagent_count(self):
+        """Heartbeat's ``orochi_subagent_count`` field reaches hub.registry and
         is exposed via get_agents() unchanged.
 
         Pinned here because the sidecar parses the tmux pane for
@@ -144,7 +144,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
                 {
                     "token": self.token.token,
                     "name": f"sub-count-{count}",
-                    "subagent_count": count,
+                    "orochi_subagent_count": count,
                 }
             )
             self.assertEqual(resp.status_code, 200)
@@ -153,7 +153,7 @@ class AgentMetaOAuthRegisterTest(TestCase):
                 for x in get_agents(workspace_id=self.ws.id)
                 if x["name"] == f"sub-count-{count}"
             ][0]
-            self.assertEqual(a["subagent_count"], count)
+            self.assertEqual(a["orochi_subagent_count"], count)
 
     def test_register_persists_sac_status(self):
         """lead msg#16005: the full ``scitex-agent-container status
@@ -163,8 +163,8 @@ class AgentMetaOAuthRegisterTest(TestCase):
         This pins the hub-side half of the pivot — every field the
         pusher forwards reaches the dashboard payload without a
         per-field allowlist. New fields in sac's terse projection
-        (``context_management.percent``, ``pane_state``,
-        ``current_tool``, ...) should therefore appear on
+        (``context_management.percent``, ``orochi_pane_state``,
+        ``orochi_current_tool``, ...) should therefore appear on
         ``get_agents()[i]["sac_status"][<field>]`` the moment the
         pusher sends them.
         """
@@ -189,11 +189,9 @@ class AgentMetaOAuthRegisterTest(TestCase):
             }
         )
         self.assertEqual(resp.status_code, 200)
-        a = [
-            x
-            for x in get_agents(workspace_id=self.ws.id)
-            if x["name"] == "sac-full"
-        ][0]
+        a = [x for x in get_agents(workspace_id=self.ws.id) if x["name"] == "sac-full"][
+            0
+        ]
         self.assertEqual(a["sac_status"], sac)
         # Nested-key access survives round-trip (the whole point of
         # the pivot).
@@ -275,3 +273,124 @@ class AgentMetaOAuthRegisterTest(TestCase):
             self.assertNotIn("token", kl)
             self.assertNotIn("secret", kl)
             self.assertFalse(kl.endswith("key"), f"key-like field: {k}")
+
+
+class AgentRegisterAuthMatrixTest(TestCase):
+    """v02 audit §1 follow-up: ``/api/agents/register/`` accepts the
+    workspace token via JSON body OR ``Authorization: Bearer <token>``
+    header, and rejects ``?token=`` (logs/Referer leak path).
+
+    Pins the three auth modes + the explicit-reject case so the security
+    fix can't silently regress on the next refactor of
+    ``hub/views/api/_agents_register.py``.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="auth-matrix-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="auth-matrix"
+        )
+
+    def _post(self, payload, *, headers=None, query=""):
+        return self.client.post(
+            f"/api/agents/register/{query}",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **(headers or {}),
+        )
+
+    def test_body_token_accepted(self):
+        resp = self._post({"token": self.token.token, "name": "body-agent"})
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["status"], "ok")
+
+    def test_authorization_bearer_accepted(self):
+        resp = self._post(
+            {"name": "bearer-agent"},
+            headers={"HTTP_AUTHORIZATION": f"Bearer {self.token.token}"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        self.assertEqual(resp.json()["status"], "ok")
+
+    def test_authorization_lowercase_accepted(self):
+        # The check is case-insensitive on the scheme keyword.
+        resp = self._post(
+            {"name": "bearer-lower"},
+            headers={"HTTP_AUTHORIZATION": f"bearer {self.token.token}"},
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_query_string_token_rejected_with_400(self):
+        # Even when the body has a valid token, a query-string token
+        # is a config-bug signal — fail loudly so misconfigured agents
+        # don't silently leak via webserver access logs.
+        resp = self._post(
+            {"token": self.token.token, "name": "no-query"},
+            query=f"?token={self.token.token}",
+        )
+        self.assertEqual(resp.status_code, 400, resp.content)
+        body = resp.json()
+        self.assertIn("query string", body["error"])
+
+    def test_missing_token_returns_401(self):
+        resp = self._post({"name": "no-auth"})
+        self.assertEqual(resp.status_code, 401, resp.content)
+        self.assertEqual(resp.json()["error"], "token required")
+
+    def test_invalid_bearer_returns_401(self):
+        resp = self._post(
+            {"name": "bad-bearer"},
+            headers={"HTTP_AUTHORIZATION": "Bearer not_a_real_token"},
+        )
+        self.assertEqual(resp.status_code, 401, resp.content)
+        self.assertEqual(resp.json()["error"], "invalid token")
+
+    def test_heartbeat_schema_version_accepted(self):
+        # Current schema is accepted silently.
+        from hub.views.api._agents_register import CURRENT_HEARTBEAT_SCHEMA
+
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "schema-current",
+                "orochi_heartbeat_schema_version": CURRENT_HEARTBEAT_SCHEMA,
+            }
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_heartbeat_schema_version_future_accepted(self):
+        # Future schema is accepted (forward-compatible by design).
+        from hub.views.api._agents_register import CURRENT_HEARTBEAT_SCHEMA
+
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "schema-future",
+                "orochi_heartbeat_schema_version": CURRENT_HEARTBEAT_SCHEMA + 5,
+            }
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+
+    def test_heartbeat_schema_version_too_old_returns_409(self):
+        # Bypass the in-process MIN_HARD by patching it for this test —
+        # the default MIN_HARD is 0 (accept everything) so a "too old"
+        # rejection only happens after the operator raises the floor.
+        from hub.views.api import _agents_register as mod
+
+        with self.settings():  # for symmetry; not strictly needed
+            original_min_hard = mod.MIN_HARD_HEARTBEAT_SCHEMA
+            mod.MIN_HARD_HEARTBEAT_SCHEMA = 1
+            try:
+                resp = self._post(
+                    {
+                        "token": self.token.token,
+                        "name": "schema-tooold",
+                        "orochi_heartbeat_schema_version": 0,
+                    }
+                )
+                self.assertEqual(resp.status_code, 409, resp.content)
+                self.assertIn("too old", resp.json()["error"])
+                self.assertIn("fleet-agents-upgrade", resp.json()["error"])
+            finally:
+                mod.MIN_HARD_HEARTBEAT_SCHEMA = original_min_hard

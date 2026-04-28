@@ -60,7 +60,7 @@ export function _invalidateAgentDetail(name) {
  *
  * Exported entry point called by app.js on every `agent_info` /
  * `agent_pong` WebSocket event. If the dashboard is currently showing
- * the detail tab for *this* agent, re-fetch detail so the pane_tail /
+ * the detail tab for *this* agent, re-fetch detail so the orochi_pane_tail /
  * RTT / last_action surfaces refresh within seconds instead of waiting
  * for the user to re-click. No-op when the user is on the Overview tab
  * or looking at a different agent — avoids hammering the API with
@@ -99,8 +99,8 @@ export function livenessColor(liveness) {
   }
 }
 
-/* todo#418: pane_state badge — maps classifier label to display color+icon.
- * Labels are defined in pane_state.py (scitex-orochi/hub/utils/pane_state.py).
+/* todo#418: orochi_pane_state badge — maps classifier label to display color+icon.
+ * Labels are defined in orochi_pane_state.py (scitex-orochi/hub/utils/orochi_pane_state.py).
  * Stuck states (y_n_prompt, auth_error, mcp_broken, compose_pending) use
  * amber/red so they visually pop in the Agents tab row. */
 export function paneStateColor(ps) {

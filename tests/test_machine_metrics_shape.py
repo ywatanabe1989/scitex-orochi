@@ -11,7 +11,7 @@ render:
     GPU      — ``N/M`` when present, ``n/a`` otherwise
 
 mba + nas were showing empty fields because the Python producer
-(scripts/client/agent_meta_pkg/_metrics.py) only emitted
+(scripts/client/_collect_agent_metadata/_metrics.py) only emitted
 ``disk_used_percent`` and no GPU info — the hub aggregator had no
 "total" side for the N/M display. This test pins the required keys
 so a future refactor cannot silently drop them again.
@@ -29,7 +29,7 @@ _AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 
-from agent_meta_pkg._metrics import collect_machine_metrics  # noqa: E402
+from _collect_agent_metadata._metrics import collect_machine_metrics  # noqa: E402
 
 REQUIRED_KEYS = {
     # CPU shape: count + model string

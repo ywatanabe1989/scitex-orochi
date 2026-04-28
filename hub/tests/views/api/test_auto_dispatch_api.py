@@ -65,14 +65,14 @@ class AutoDispatchStatusTest(TestCase):
             _agents["head-mba"] = {
                 "name": "head-mba",
                 "workspace_id": self.ws.id,
-                "subagent_count": 0,
+                "orochi_subagent_count": 0,
                 "idle_streak": 1,
                 "auto_dispatch_last_fire_ts": now - 100,  # 100s ago
             }
             _agents["head-nas"] = {
                 "name": "head-nas",
                 "workspace_id": self.ws.id,
-                "subagent_count": 2,
+                "orochi_subagent_count": 2,
                 "idle_streak": 0,
                 "auto_dispatch_last_fire_ts": None,
             }
@@ -98,12 +98,12 @@ class AutoDispatchStatusTest(TestCase):
             _agents["worker-foo"] = {
                 "name": "worker-foo",
                 "workspace_id": self.ws.id,
-                "subagent_count": 0,
+                "orochi_subagent_count": 0,
             }
             _agents["healer-mba"] = {
                 "name": "healer-mba",
                 "workspace_id": self.ws.id,
-                "subagent_count": 0,
+                "orochi_subagent_count": 0,
             }
         resp = self.client.get(
             f"/api/auto-dispatch/status/?token={self.tok.token}"
@@ -117,7 +117,7 @@ class AutoDispatchStatusTest(TestCase):
             _agents["head-spartan"] = {
                 "name": "head-spartan",
                 "workspace_id": other_ws.id,  # different workspace
-                "subagent_count": 0,
+                "orochi_subagent_count": 0,
             }
         resp = self.client.get(
             f"/api/auto-dispatch/status/?token={self.tok.token}"
@@ -180,7 +180,7 @@ class AutoDispatchFireTest(TestCase):
             _agents["head-mba"] = {
                 "name": "head-mba",
                 "workspace_id": self.ws.id,
-                "subagent_count": 0,
+                "orochi_subagent_count": 0,
                 "idle_streak": 3,
                 "auto_dispatch_last_fire_ts": None,
             }
@@ -211,7 +211,7 @@ class AutoDispatchFireTest(TestCase):
             _agents["head-mba"] = {
                 "name": "head-mba",
                 "workspace_id": self.ws.id,
-                "subagent_count": 0,
+                "orochi_subagent_count": 0,
             }
         captured: dict = {}
 

@@ -4,9 +4,10 @@
 # Default: --patch
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PYPROJECT="$REPO_ROOT/pyproject.toml"
 SETTINGS="$REPO_ROOT/orochi/settings.py"
+INIT_PY="$REPO_ROOT/src/scitex_orochi/__init__.py"
 
 # --- Parse flags --------------------------------------------------------
 BUMP="patch"
@@ -66,6 +67,14 @@ if [[ -f "$SETTINGS" ]]; then
     sed -i "s/OROCHI_VERSION = \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/OROCHI_VERSION = \"$NEW\"/" "$SETTINGS"
 fi
 
+# --- Update src/scitex_orochi/__init__.py -------------------------------
+# The package metadata constant must stay in lockstep with pyproject.toml
+# so consumers that `import scitex_orochi; scitex_orochi.__version__`
+# don't see a stale value. ywatanabe 2026-04-27.
+if [[ -f "$INIT_PY" ]]; then
+    sed -i "s/^__version__ = \"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\"/__version__ = \"$NEW\"/" "$INIT_PY"
+fi
+
 # --- Verify -------------------------------------------------------------
 VERIFY=$(grep -m1 '^version' "$PYPROJECT" | sed 's/.*"\(.*\)".*/\1/')
 if [[ "$VERIFY" != "$NEW" ]]; then
@@ -82,7 +91,7 @@ fi
 # --- Git commit ----------------------------------------------------------
 if $COMMIT; then
     cd "$REPO_ROOT"
-    git add "$PYPROJECT" "$SETTINGS"
+    git add "$PYPROJECT" "$SETTINGS" "$INIT_PY"
     git commit -m "chore: bump version to $NEW"
     echo "Committed: chore: bump version to $NEW"
 else
