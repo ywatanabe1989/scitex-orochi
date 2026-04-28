@@ -156,21 +156,27 @@ def heartbeat_send_host(
 ) -> None:
     """POST a single host-level heartbeat (machine metrics, no agents).
 
-    Lets hosts that don't run any local tmux/screen agents populate
-    their Machines tab card with live cpu/mem/disk/gpu numbers. Synthetic
-    agent name is ``host-<machine>``. Cross-platform metrics via
-    ``scitex_resource.get_metrics()``.
+    Lets hosts that don't run any local tmux/screen agents populate their
+    Machines tab card with live cpu/mem/disk/gpu numbers. Synthetic agent
+    name is ``host-<machine>``.
+
+    Composition:
+        - Local metrics via :func:`scitex_orochi._resources.collect_metrics`,
+          which wraps :func:`scitex_resource.get_metrics` and overlays
+          SLURM cluster aggregates (``cluster_*``, ``orochi_slurm_*``) when
+          ``sinfo`` is on PATH (HPC login-node case).
+        - Canonical machine name resolved via ``$SCITEX_OROCHI_MACHINE``
+          → ``orochi-machines.yaml`` alias lookup → short hostname.
     """
     import json as _json
     import os
-    import socket
     from urllib import request as _ur
 
     try:
-        from scitex_resource import get_metrics
+        from scitex_orochi._resources import collect_metrics
     except ImportError as exc:
         raise click.ClickException(
-            "scitex-resource not installed; pip install -U scitex-resource"
+            "scitex-orochi metrics module not importable"
         ) from exc
 
     base = url or os.environ.get("SCITEX_OROCHI_URL_HTTP", "https://scitex-orochi.com")
@@ -179,8 +185,18 @@ def heartbeat_send_host(
         raise click.ClickException(
             "no SCITEX_OROCHI_TOKEN (env, --token, or dotfiles secret)."
         )
-    machine = (machine_arg or socket.gethostname()).split(".", 1)[0]
-    metrics = get_metrics(gpu=True)
+    if machine_arg:
+        machine = machine_arg.strip()
+    else:
+        try:
+            from scitex_resource import get_machine_name
+
+            machine = get_machine_name()
+        except ImportError:
+            import socket
+
+            machine = socket.gethostname().split(".", 1)[0]
+    metrics = collect_metrics()
     payload = {
         "token": tok,
         "name": f"host-{machine}",
