@@ -1,6 +1,6 @@
 """Orochi -- Agent Communication Hub for the SciTeX ecosystem."""
 
-__version__ = "0.15.23"
+__version__ = "0.15.24"
 
 from scitex_orochi._client import OrochiClient
 from scitex_orochi._models import Message
