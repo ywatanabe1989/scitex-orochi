@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.15.22"
+version = "0.15.23"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -45,11 +45,13 @@ dependencies = [
     # The ``[http-server]`` extra pulls in starlette + sse-starlette,
     # which the SDK's route factories require for JSON-RPC + streaming.
     "a2a-sdk[http-server]>=1.0.2",
-    # a2a-sdk 1.0.2 reads FieldDescriptor.label which protobuf 7.x
-    # removed; pin to <7 until SDK catches up. Caught during prod
-    # smoke 2026-04-26: SendMessage failed with FieldDescriptor.label
-    # AttributeError on a fresh container with protobuf 7.34.1.
-    "protobuf<7",
+    # protobuf 6.x removed FieldDescriptor.label, which a2a-sdk 1.0.x's
+    # validate_proto_required_fields still references — pin until
+    # upstream adopts the descriptor pool API. The previous pin <7 was
+    # misleadingly named: the bug is in 6.x, so <7 still allowed broken
+    # resolutions on fresh installs. Same fix shipped in
+    # scitex-agent-container/pyproject.toml 2026-04-27.
+    "protobuf<6",
     # Maintained vendor-prefix detectors (GitHub, AWS, Slack, Anthropic,
     # OpenAI, JWT, Stripe, ...) used by the .env viewer's redaction
     # pipeline (`scripts/client/_collect_agent_metadata/_files.py`).
