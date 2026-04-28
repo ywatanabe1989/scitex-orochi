@@ -20,6 +20,7 @@ Orochi flags it needs and stays completely Orochi-agnostic.
 from __future__ import annotations
 
 import logging
+import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -102,7 +103,12 @@ def prepare_shim_yaml(
         spec["claude"] = claude_section
         raw["spec"] = spec
 
-    shim_dir = Path("/tmp/scitex-orochi-shim-yamls")
+    shim_dir = (
+        Path(os.environ.get("SCITEX_DIR", str(Path.home() / ".scitex")))
+        / "orochi"
+        / "runtime"
+        / "shim-yamls"
+    )
     shim_dir.mkdir(parents=True, exist_ok=True)
     shim_path = shim_dir / config_path.name
     shim_path.write_text(yaml.safe_dump(raw, sort_keys=False))

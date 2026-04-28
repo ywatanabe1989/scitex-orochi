@@ -204,7 +204,12 @@ def write_mcp_config_file(
     if mcp_config is None:
         return None
 
-    config_dir = Path("/tmp/scitex-orochi/mcp-configs")
+    config_dir = (
+        Path(os.environ.get("SCITEX_DIR", str(Path.home() / ".scitex")))
+        / "orochi"
+        / "runtime"
+        / "mcp-configs"
+    )
     config_dir.mkdir(parents=True, exist_ok=True)
     config_path = config_dir / f"mcp-{agent_name}.json"
 

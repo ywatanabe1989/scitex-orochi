@@ -13,8 +13,9 @@ import yaml
 CONFIG_SEARCH_PATHS = [
     Path("orochi-config.yaml"),
     Path("orochi-config.yml"),
-    Path.home() / ".config" / "orochi" / "config.yaml",
-    Path.home() / ".config" / "orochi" / "config.yml",
+    Path(os.environ.get("SCITEX_DIR", str(Path.home() / ".scitex")))
+    / "orochi"
+    / "config.yaml",
 ]
 
 
