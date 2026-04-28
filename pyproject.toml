@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.15.17"
+version = "0.15.18"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -57,6 +57,10 @@ dependencies = [
     # tracks upstream when vendors change token formats. The library's
     # high-entropy plugins are explicitly skipped — see _files.py.
     "detect-secrets>=1.5",
+    # Cross-platform machine metrics (cpu/mem/disk/gpu) for heartbeats.
+    # Replaces the /proc-only collector that returned empty fields on
+    # macOS / Windows / WSL. ``get_metrics()`` is the public flat-dict API.
+    "scitex-resource>=0.2.0",
 ]
 
 [project.optional-dependencies]
