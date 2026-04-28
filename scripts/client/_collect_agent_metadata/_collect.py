@@ -37,6 +37,7 @@ from ._metrics import collect_machine_metrics, collect_orochi_slurm_status
 from ._multiplexer import detect_multiplexer
 from ._pane import capture_pane, filter_orochi_pane_tail, parse_orochi_subagent_count
 from ._proc import _read_process_env
+from ._process_tree import count_subagents_via_ps
 from ._statusline import parse_statusline
 from ._transcript import find_jsonl_transcripts, parse_transcript
 
@@ -105,7 +106,12 @@ def collect(agent: str) -> dict:
         orochi_pane_tail_block_clean,
         orochi_pane_tail_full,
     ) = filter_orochi_pane_tail(pane)
-    subagents = parse_orochi_subagent_count(pane)
+    # Subagent count: prefer the process-tree walk (authoritative —
+    # actually counts running ``claude`` descendants of the agent's
+    # tmux/screen session) and fall back to parsing the pane marker if
+    # the process-tree backend can't determine a number (returns -1).
+    ps_count = count_subagents_via_ps(agent)
+    subagents = ps_count if ps_count >= 0 else parse_orochi_subagent_count(pane)
 
     # Statusline (claude-hud) — orochi_context_pct, quota_5h, quota_weekly, model, email.
     sl = parse_statusline(orochi_pane_tail_block)
