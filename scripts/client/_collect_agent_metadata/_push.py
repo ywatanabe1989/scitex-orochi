@@ -176,17 +176,14 @@ def push_host(url=None, token=None) -> int:
     except Exception as e:
         log.warning("host push skipped: get_metrics raised %s", e)
         return 0
-    machine = os.environ.get("SCITEX_OROCHI_MACHINE", "").strip()
-    if not machine:
-        try:
-            from ._hostname import _resolve_canonical_hostname  # type: ignore
+    try:
+        from scitex_resource import get_machine_name
 
-            machine = _resolve_canonical_hostname()
-        except Exception:
-            import socket
+        machine = get_machine_name()
+    except ImportError:
+        import socket
 
-            machine = socket.gethostname()
-    machine = (machine or "").split(".", 1)[0] or "host"
+        machine = socket.gethostname().split(".", 1)[0] or "host"
     name = f"host-{machine}"
     endpoint = base.rstrip("/") + "/api/agents/register/"
     payload = {
