@@ -1,8 +1,23 @@
 // @ts-nocheck
-import { apiUrl, escapeHtml, getAgentColor, HOSTNAME_ALIASES } from "../app/utils";
+import {
+  apiUrl,
+  escapeHtml,
+  getAgentColor,
+  HOSTNAME_ALIASES,
+} from "../app/utils";
 import { syncHostHover } from "../connectivity-map";
 import { addTag } from "../filter/state";
-import { _applyMachinesViewVisibility, _machineIcons, _wireMachinesControls, donutHtml, hideMachineTooltip, moveMachineTooltip, resourceData, setMachineIcon, showMachineTooltip } from "./panel";
+import {
+  _applyMachinesViewVisibility,
+  _machineIcons,
+  _wireMachinesControls,
+  donutHtml,
+  hideMachineTooltip,
+  moveMachineTooltip,
+  resourceData,
+  setMachineIcon,
+  showMachineTooltip,
+} from "./panel";
 import {
   cronByHost,
   fetchCronJobs,
@@ -63,17 +78,20 @@ export function renderResources() {
       var cpuStr = cpuCount > 0 ? cpuCount + " cores" : "—";
       var memTotalMb = d._memTotalMb || 0;
       var memUsedMb = d._memUsedMb || 0;
-      if (!memUsedMb && memTotalMb > 0) {
+      var memFreeMb = d._memFreeMb || 0;
+      var hasLiveUsage = !!memUsedMb || !!memFreeMb;
+      if (!memUsedMb && memTotalMb > 0 && memFreeMb > 0) {
         /* Pre-msg#16215 hosts only sent total+free — derive used. */
-        memUsedMb = Math.max(0, memTotalMb - (d._memFreeMb || 0));
+        memUsedMb = Math.max(0, memTotalMb - memFreeMb);
       }
       var memStr = "—";
       if (memTotalMb > 0) {
-        memStr =
-          Math.round(memUsedMb / 1024) +
-          "/" +
-          Math.round(memTotalMb / 1024) +
-          " GB";
+        memStr = hasLiveUsage
+          ? Math.round(memUsedMb / 1024) +
+            "/" +
+            Math.round(memTotalMb / 1024) +
+            " GB"
+          : "—/" + Math.round(memTotalMb / 1024) + " GB";
       }
       var diskTotalMb = d._diskTotalMb || 0;
       var diskUsedMb = d._diskUsedMb || 0;
@@ -170,7 +188,8 @@ export function renderResources() {
         escapeHtml(k) +
         (function () {
           var fqdn =
-            (d && (d._fqdn || d._machineFqdn || d.orochi_hostname_canonical)) || "";
+            (d && (d._fqdn || d._machineFqdn || d.orochi_hostname_canonical)) ||
+            "";
           if (!fqdn || fqdn === k) return "";
           var redundant = [".local", ".localdomain", ".lan", ".home.arpa"];
           for (var _r = 0; _r < redundant.length; _r++) {
@@ -311,7 +330,8 @@ export function buildResourceCard(k) {
     /* ywatanabe msg#16215 — spec shape ``N/M GB`` (integers). The
      * aggregator derives ``mem_used_mb`` from total-free for pre-fix
      * clients so the spec format renders uniformly across the fleet. */
-    var usedMb = d._memUsedMb || Math.round(d._memTotalMb - (d._memFreeMb || 0));
+    var usedMb =
+      d._memUsedMb || Math.round(d._memTotalMb - (d._memFreeMb || 0));
     memDetail =
       '<div class="res-meta">RAM: ' +
       Math.round(usedMb / 1024) +
