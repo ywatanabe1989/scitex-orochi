@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.16.0"
+version = "0.16.1"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -97,10 +97,10 @@ scitex-orochi-server = "scitex_orochi._server:main"
 scitex-orochi-mcp = "scitex_orochi.mcp_server:main"
 
 [project.entry-points."scitex_dev.skills"]
-scitex_orochi = "scitex_orochi"
+scitex-orochi = "scitex_orochi"
 
 [project.entry-points."scitex_dev.docs"]
-scitex_orochi = "scitex_orochi"
+scitex-orochi = "scitex_orochi"
 
 [project.urls]
 Homepage = "https://github.com/ywatanabe1989/scitex-orochi"
