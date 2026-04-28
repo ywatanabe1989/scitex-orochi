@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-version = "0.15.25"
+version = "0.16.0"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -123,6 +123,25 @@ artifacts = [
 artifacts = [
     "src/scitex_orochi/_ts/**",
     "src/scitex_orochi/_skills/**",
+]
+# Exclude developer-local virtualenvs and worktree caches so the sdist
+# tarball stays portable. Without this, a stray ``.venv`` symlink (which
+# points at an absolute path in the dev box's filesystem) makes the
+# auto-publish workflow's ``python -m build`` step fail with
+# ``tarfile.AbsoluteLinkError``.
+exclude = [
+    ".venv",
+    ".venv/**",
+    "venv",
+    "venv/**",
+    ".claude/worktrees/**",
+    ".pytest_cache/**",
+    "**/__pycache__/**",
+    "GITIGNORED/**",
+    "node_modules/**",
+    "dist/**",
+    "build/**",
+    "*.egg-info/**",
 ]
 
 [tool.pytest.ini_options]
