@@ -104,9 +104,13 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         "sac_hooks_last_mcp_tool_at": meta.get("sac_hooks_last_mcp_tool_at") or "",
         "sac_hooks_last_action_name": meta.get("sac_hooks_last_action_name") or "",
         "sac_hooks_last_action_at": meta.get("sac_hooks_last_action_at") or "",
-        "sac_hooks_last_action_outcome": meta.get("sac_hooks_last_action_outcome") or "",
+        "sac_hooks_last_action_outcome": meta.get("sac_hooks_last_action_outcome")
+        or "",
         "sac_hooks_last_action_elapsed_s": meta.get("sac_hooks_last_action_elapsed_s"),
-        "sac_hooks_p95_elapsed_s_by_action": meta.get("sac_hooks_p95_elapsed_s_by_action") or {},
+        "sac_hooks_p95_elapsed_s_by_action": meta.get(
+            "sac_hooks_p95_elapsed_s_by_action"
+        )
+        or {},
         # scitex-orochi #132 — subagent activity for the Agents tab
         # AGENT CALLS / BACKGROUND TASKS panels and the
         # active-subagent badge.
@@ -141,6 +145,63 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # missing / errors — the hub treats absent = unknown.
         "sac_status": sac_status or {},
     }
+
+
+def push_host(url=None, token=None) -> int:
+    """POST a single host-level heartbeat carrying machine metrics only.
+
+    Lets hosts without any local tmux/screen agents populate their
+    Machines tab card. Synthetic agent name is ``host-<canonical>`` and
+    ``machine`` is the canonical hostname so the hub's ``/api/resources``
+    rollup attributes the metrics correctly. Canonical name comes from
+    ``$SCITEX_OROCHI_MACHINE`` if set, else falls back to the short
+    hostname — configure per host via env / orochi-machines.yaml.
+
+    Returns 1 on success, 0 otherwise. Never raises.
+    """
+    if os.environ.get("SCITEX_OROCHI_REGISTRY_DISABLE") == "1":
+        return 0
+    base = url or os.environ.get("SCITEX_OROCHI_URL_HTTP", "https://scitex-orochi.com")
+    tok = token or os.environ.get("SCITEX_OROCHI_TOKEN", "")
+    if not tok:
+        log.warning("host push skipped: no SCITEX_OROCHI_TOKEN")
+        return 0
+    try:
+        from scitex_resource import get_metrics  # type: ignore
+    except ImportError:
+        log.warning("host push skipped: scitex_resource not importable")
+        return 0
+    try:
+        metrics = get_metrics(gpu=True)
+    except Exception as e:
+        log.warning("host push skipped: get_metrics raised %s", e)
+        return 0
+    machine = os.environ.get("SCITEX_OROCHI_MACHINE", "").strip()
+    if not machine:
+        try:
+            from ._hostname import _resolve_canonical_hostname  # type: ignore
+
+            machine = _resolve_canonical_hostname()
+        except Exception:
+            import socket
+
+            machine = socket.gethostname()
+    machine = (machine or "").split(".", 1)[0] or "host"
+    name = f"host-{machine}"
+    endpoint = base.rstrip("/") + "/api/agents/register/"
+    payload = {
+        "token": tok,
+        "name": name,
+        "machine": machine,
+        "status": "online",
+        "metrics": metrics,
+    }
+    status, body = _http_post_json(endpoint, payload)
+    if 200 <= status < 300:
+        log.info("host pushed %s -> %d keys", name, len(metrics))
+        return 1
+    log.warning("host push %s -> HTTP %s: %s", name, status, body)
+    return 0
 
 
 def push_all(url=None, token=None) -> int:

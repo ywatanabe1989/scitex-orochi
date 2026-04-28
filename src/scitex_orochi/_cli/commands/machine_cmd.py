@@ -36,6 +36,7 @@ from ._host_ops import load_workspace_token, resolve_self_host
 # ``agent_meta_pkg`` bootstrapping
 # ---------------------------------------------------------------------------
 
+
 def _import_agent_meta_pkg():
     """Return (push_all, collect) from ``agent_meta_pkg`` regardless of
     whether the repo's ``scripts/client/`` is on sys.path yet."""
@@ -65,6 +66,7 @@ def _import_agent_meta_pkg():
 # Groups
 # ---------------------------------------------------------------------------
 
+
 @click.group("machine")
 def machine() -> None:
     """Host-level operations (heartbeat push, registry inspection, ...)."""
@@ -78,6 +80,7 @@ def heartbeat() -> None:
 # ---------------------------------------------------------------------------
 # machine heartbeat send
 # ---------------------------------------------------------------------------
+
 
 @heartbeat.command("send")
 @click.option(
@@ -122,8 +125,90 @@ def heartbeat_send(
 
 
 # ---------------------------------------------------------------------------
+# machine heartbeat send-host — wheel-resident host-level pusher
+# ---------------------------------------------------------------------------
+
+
+@heartbeat.command("send-host")
+@click.option(
+    "--url",
+    envvar="SCITEX_OROCHI_URL_HTTP",
+    default=None,
+    help="Hub URL [$SCITEX_OROCHI_URL_HTTP, default https://scitex-orochi.com].",
+)
+@click.option(
+    "--token",
+    envvar="SCITEX_OROCHI_TOKEN",
+    default=None,
+    help="Workspace token [$SCITEX_OROCHI_TOKEN].",
+)
+@click.option(
+    "--machine",
+    "machine_arg",
+    envvar="SCITEX_OROCHI_MACHINE",
+    default=None,
+    help="Canonical machine name [$SCITEX_OROCHI_MACHINE]; defaults to short hostname.",
+)
+def heartbeat_send_host(
+    url: str | None,
+    token: str | None,
+    machine_arg: str | None,
+) -> None:
+    """POST a single host-level heartbeat (machine metrics, no agents).
+
+    Lets hosts that don't run any local tmux/screen agents populate
+    their Machines tab card with live cpu/mem/disk/gpu numbers. Synthetic
+    agent name is ``host-<machine>``. Cross-platform metrics via
+    ``scitex_resource.get_metrics()``.
+    """
+    import json as _json
+    import os
+    import socket
+    from urllib import request as _ur
+
+    try:
+        from scitex_resource import get_metrics
+    except ImportError as exc:
+        raise click.ClickException(
+            "scitex-resource not installed; pip install -U scitex-resource"
+        ) from exc
+
+    base = url or os.environ.get("SCITEX_OROCHI_URL_HTTP", "https://scitex-orochi.com")
+    tok = token or load_workspace_token()
+    if not tok:
+        raise click.ClickException(
+            "no SCITEX_OROCHI_TOKEN (env, --token, or dotfiles secret)."
+        )
+    machine = (machine_arg or socket.gethostname()).split(".", 1)[0]
+    metrics = get_metrics(gpu=True)
+    payload = {
+        "token": tok,
+        "name": f"host-{machine}",
+        "machine": machine,
+        "status": "online",
+        "metrics": metrics,
+    }
+    data = _json.dumps(payload).encode("utf-8")
+    req = _ur.Request(
+        base.rstrip("/") + "/api/agents/register/",
+        data=data,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with _ur.urlopen(req, timeout=5) as resp:
+            status = resp.status
+    except Exception as exc:  # noqa: BLE001
+        raise click.ClickException(f"host push failed: {exc}") from exc
+    click.echo(
+        _json.dumps({"machine": machine, "status": status, "metric_keys": len(metrics)})
+    )
+
+
+# ---------------------------------------------------------------------------
 # machine heartbeat status
 # ---------------------------------------------------------------------------
+
 
 @heartbeat.command("status")
 @click.option(
@@ -176,9 +261,7 @@ def heartbeat_status(
             body = resp.read().decode("utf-8", errors="replace") or "[]"
             code = resp.status
     except HTTPError as exc:
-        raise click.ClickException(
-            f"hub HTTP {exc.code}: {exc.reason}"
-        ) from exc
+        raise click.ClickException(f"hub HTTP {exc.code}: {exc.reason}") from exc
     except URLError as exc:
         raise click.ClickException(f"hub unreachable: {exc.reason}") from exc
 
@@ -211,6 +294,7 @@ def heartbeat_status(
 # ---------------------------------------------------------------------------
 # machine resources show
 # ---------------------------------------------------------------------------
+
 
 @machine.group("resources")
 def resources() -> None:

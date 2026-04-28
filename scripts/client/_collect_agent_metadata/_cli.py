@@ -11,13 +11,14 @@ import json
 import sys
 
 from ._collect import main
-from ._push import push_all
+from ._push import push_all, push_host
 
 
 def cli_main(argv: list[str] | None = None) -> int:
     """Parse argv and dispatch. Returns the desired sys.exit code."""
     args = list(sys.argv[1:] if argv is None else argv)
-    if args and args[0] == "--push":
+    if args and args[0] in ("--push", "--push-host"):
+        mode = args[0]
         url = None
         token = None
         i = 1
@@ -30,8 +31,13 @@ def cli_main(argv: list[str] | None = None) -> int:
                 i += 2
             else:
                 i += 1
-        n = push_all(url=url, token=token)
-        print(json.dumps({"pushed": n}))
+        if mode == "--push-host":
+            n = push_host(url=url, token=token)
+            print(json.dumps({"host_pushed": n}))
+        else:
+            agents = push_all(url=url, token=token)
+            host = push_host(url=url, token=token)
+            print(json.dumps({"pushed": agents, "host_pushed": host}))
         return 0
     if len(args) != 1:
         print(
