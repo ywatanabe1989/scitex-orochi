@@ -166,6 +166,31 @@ def api_watchdog_alerts(request):
     )
 
 
+def _machine_liveness(workspace_id: int | None = None) -> dict[str, str]:
+    """Return {machine_name: liveness} for all machines with live agents.
+
+    liveness is the worst liveness across that machine's agents:
+    "online" > "idle" > "stale" > "offline" (higher = worse).
+    """
+    from hub.registry import get_agents
+
+    agents = get_agents(workspace_id=workspace_id)
+    machine_liveness: dict[str, str] = {}
+    _rank = {"online": 0, "idle": 1, "stale": 2, "offline": 3}
+    for a in agents:
+        m = (a.get("machine") or "").lower().split(".")[0]
+        if not m:
+            continue
+        lv = a.get("liveness", "offline")
+        prev_rank = _rank.get(machine_liveness.get(m, "online"), 0)
+        new_rank = _rank.get(lv, 3)
+        if new_rank > prev_rank:
+            machine_liveness[m] = lv
+        elif m not in machine_liveness:
+            machine_liveness[m] = lv
+    return machine_liveness
+
+
 @login_required
 @require_GET
 def api_connectivity(request):
@@ -174,29 +199,80 @@ def api_connectivity(request):
     Returns a list of nodes (machines) and a list of directional edges
     (source → destination) annotated with reachability and method.
 
-    Currently the matrix is hardcoded from the SSH mesh investigation
-    head@ywata-note-win posted earlier in the session. Once basilisk
-    (#145 / #144) lands the live discovery, this endpoint will be
-    backed by real ping results from the bastion's connectivity probe.
+    Topology is static (SSH mesh documented 2026-04-27). Node and bastion
+    status is live — derived from the agent registry's per-machine liveness
+    (online/idle/stale/offline) so the connectivity map reflects actual
+    fleet state rather than a hardcoded "all green" snapshot.
+
+    Per-machine liveness rules:
+    - "online": ≥1 agent on that machine has liveness=online
+    - "idle": best is idle (all paused/thinking)
+    - "stale": ≥1 agent has liveness=stale (connected but stuck)
+    - "offline": no live agents on that machine
     """
-    # Machine nodes (inner ring)
+    workspace = get_workspace(request)
+    machine_lv = _machine_liveness(workspace_id=workspace.id)
+
+    def _node_status(machine_id: str) -> str:
+        lv = machine_lv.get(machine_id, "offline")
+        if lv in ("online", "idle"):
+            return "ok"
+        if lv == "stale":
+            return "stale"
+        return "off"
+
+    def _bastion_status(host_machine: str) -> str:
+        # Bastion is considered up if the host machine has any live agents.
+        return _node_status(host_machine)
+
+    def _edge_status(src: str, dst: str) -> str:
+        # Edge is "ok" if destination machine is reachable (has live agents).
+        return _node_status(dst)
+
+    # Machine nodes (inner ring) — status derived from live agent registry
     nodes = [
         {
             "id": "ywata-note-win",
             "label": "ywata-note-win",
             "role": "deployer/coordinator",
             "type": "machine",
+            "status": _node_status("ywata-note-win"),
+            "liveness": machine_lv.get("ywata-note-win", "offline"),
         },
-        {"id": "mba", "label": "mba", "role": "orochi-host", "type": "machine"},
-        {"id": "nas", "label": "nas", "role": "data/scitex-cloud", "type": "machine"},
-        {"id": "spartan", "label": "spartan", "role": "hpc", "type": "machine"},
+        {
+            "id": "mba",
+            "label": "mba",
+            "role": "orochi-host",
+            "type": "machine",
+            "status": _node_status("mba"),
+            "liveness": machine_lv.get("mba", "offline"),
+        },
+        {
+            "id": "nas",
+            "label": "nas",
+            "role": "data/scitex-cloud",
+            "type": "machine",
+            "status": _node_status("nas"),
+            "liveness": machine_lv.get("nas", "offline"),
+        },
+        {
+            "id": "spartan",
+            "label": "spartan",
+            "role": "hpc",
+            "type": "machine",
+            "status": _node_status("spartan"),
+            "liveness": machine_lv.get("spartan", "offline"),
+        },
         # Cloudflare bastion nodes (outer ring)
+        # Status: inferred from whether the host machine has live agents.
+        # If no agents are live on the host, the bastion tunnel is likely down.
         {
             "id": "bastion-win",
             "label": "bastion-win",
             "role": "CF tunnel (bastion-win)",
             "type": "bastion",
             "host": "ywata-note-win",
+            "status": _bastion_status("ywata-note-win"),
         },
         {
             "id": "bastion-mba",
@@ -204,6 +280,7 @@ def api_connectivity(request):
             "role": "CF tunnel (bastion.scitex-orochi.com)",
             "type": "bastion",
             "host": "mba",
+            "status": _bastion_status("mba"),
         },
         {
             "id": "bastion-nas",
@@ -211,6 +288,7 @@ def api_connectivity(request):
             "role": "CF tunnel (bastion.scitex.ai)",
             "type": "bastion",
             "host": "nas",
+            "status": _bastion_status("nas"),
         },
         # bastion-spartan REMOVED 2026-04-27 — UniMelb IT Security flagged
         # cloudflared on the HPC login node as a high-severity detection
@@ -218,40 +296,41 @@ def api_connectivity(request):
         # reached via plain `ssh spartan` (public SSH endpoint) and ProxyJump
         # from the other hosts; no Cloudflare tunnel by design.
     ]
-    # Source → list of (destination, status, method)
+    # Source → list of (destination, method) — status derived dynamically
     # 2026-04-27: spartan bastion entry removed; spartan reaches the rest via
     # plain ssh / proxyjump, never via cloudflared.
     raw = [
         # Bastion → host anchors (CF tunnel terminates at machine)
-        ("bastion-mba", "mba", "ok", "cf-tunnel"),
-        ("bastion-nas", "nas", "ok", "cf-tunnel"),
-        ("bastion-win", "ywata-note-win", "ok", "cf-tunnel"),
+        ("bastion-mba", "mba", "cf-tunnel"),
+        ("bastion-nas", "nas", "cf-tunnel"),
+        ("bastion-win", "ywata-note-win", "cf-tunnel"),
         # ywata-note-win reaches all
-        ("ywata-note-win", "nas", "ok", "bastion"),
-        ("ywata-note-win", "spartan", "ok", "direct"),
-        ("ywata-note-win", "mba", "ok", "bastion"),
+        ("ywata-note-win", "nas", "bastion"),
+        ("ywata-note-win", "spartan", "direct"),
+        ("ywata-note-win", "mba", "bastion"),
         # NAS reaches all (LAN + bastion)
-        ("nas", "ywata-note-win", "ok", "tunnel"),
-        ("nas", "mba", "ok", "lan"),
-        ("nas", "spartan", "ok", "proxyjump"),
+        ("nas", "ywata-note-win", "tunnel"),
+        ("nas", "mba", "lan"),
+        ("nas", "spartan", "proxyjump"),
         # MBA reaches all (LAN + bastion + ProxyJump)
-        ("mba", "nas", "ok", "lan"),
-        ("mba", "ywata-note-win", "ok", "bastion-win"),
-        ("mba", "spartan", "ok", "proxyjump"),
+        ("mba", "nas", "lan"),
+        ("mba", "ywata-note-win", "bastion-win"),
+        ("mba", "spartan", "proxyjump"),
         # Spartan reaches via CF bastions
-        ("spartan", "mba", "ok", "bastion-mba"),
-        ("spartan", "nas", "ok", "bastion-nas"),
-        ("spartan", "ywata-note-win", "ok", "bastion-win"),
+        ("spartan", "mba", "bastion-mba"),
+        ("spartan", "nas", "bastion-nas"),
+        ("spartan", "ywata-note-win", "bastion-win"),
     ]
     edges = [
-        {"source": s, "target": t, "status": status, "method": method}
-        for (s, t, status, method) in raw
+        {"source": s, "target": t, "status": _edge_status(s, t), "method": method}
+        for (s, t, method) in raw
     ]
     return JsonResponse(
         {
             "nodes": nodes,
             "edges": edges,
-            "source": "static",  # 2026-04-27: 3/3 CF mesh (spartan removed; uses plain ssh)
+            "machine_liveness": machine_lv,
+            "source": "live",  # node/edge status derived from agent registry
             "ts": timezone.now().isoformat(),
         }
     )
