@@ -30,12 +30,13 @@ export function updateChannelSelect() {
  * Each entry: { args, summary } — consumed by /help to list commands.
  * Handlers live in _handleSlashCommand() below. */
 var SLASH_COMMANDS = [
-  { cmd: "/mute",       args: "[#channel]", summary: "Mute current or named channel" },
-  { cmd: "/unmute",     args: "[#channel]", summary: "Unmute current or named channel" },
-  { cmd: "/leave",      args: "[#channel]", summary: "Unsubscribe from current or named channel" },
-  { cmd: "/topic",      args: "<text>",     summary: "Set the current channel description" },
-  { cmd: "/help",       args: "",           summary: "List slash commands and keyboard shortcuts" },
-  { cmd: "/shortcuts",  args: "",           summary: "Alias for /help" },
+  { cmd: "/mute",       args: "[#channel]",                      summary: "Mute current or named channel" },
+  { cmd: "/unmute",     args: "[#channel]",                      summary: "Unmute current or named channel" },
+  { cmd: "/leave",      args: "[#channel]",                      summary: "Unsubscribe from current or named channel" },
+  { cmd: "/topic",      args: "<text>",                          summary: "Set the current channel description" },
+  { cmd: "/remind",     args: "<me|#ch|@agent> in <N>m|h <msg>", summary: "Schedule a reminder message" },
+  { cmd: "/help",       args: "",                                summary: "List slash commands and keyboard shortcuts" },
+  { cmd: "/shortcuts",  args: "",                                summary: "Alias for /help" },
 ];
 
 /* Show a mini-toast; delegates to window._showMiniToast if available. */
@@ -135,6 +136,85 @@ function _handleSlashCommand(text: string, channel: string): boolean {
     } else {
       alert(helpText);
     }
+    return true;
+  }
+
+  /* ── /remind <target> in <N>m|h|d <message>  (#244) ──────────────── */
+  if (cmd === "/remind") {
+    /* Grammar: /remind <target> in <N><unit> <body>
+     *            target = me | #channel | @agent (default: me)
+     *            N      = positive integer
+     *            unit   = m(in) | h(our) | d(ay)
+     *            body   = remainder of the string
+     * Examples:
+     *   /remind me in 30m to check the dispatch queue
+     *   /remind #proj-foo in 2h about standup
+     *   /remind @mgr-todo in 1h about stuck thread  */
+    var remindArgs = parts.slice(1); /* everything after /remind */
+    var remindTarget = "me";
+    var timeIdx = 0; /* index in remindArgs where "in" appears */
+    /* Optional first word is target if it starts with #, @, or is "me" */
+    if (remindArgs.length > 0) {
+      var first = remindArgs[0].toLowerCase();
+      if (first === "me" || first.startsWith("#") || first.startsWith("@")) {
+        remindTarget = remindArgs[0];
+        remindArgs = remindArgs.slice(1);
+      }
+    }
+    /* Find "in" keyword */
+    var inIdx = remindArgs.map(function (w) { return w.toLowerCase(); }).indexOf("in");
+    if (inIdx === -1) {
+      _toast("/remind: use 'in <N>m|h|d' for time", "warn");
+      return true;
+    }
+    var quantStr = remindArgs[inIdx + 1] || "";
+    var quantMatch = quantStr.match(/^(\d+)(m(?:in)?|h(?:r|our)?|d(?:ay)?)$/i);
+    if (!quantMatch) {
+      _toast("/remind: expected <N>m|h|d, got '" + quantStr + "'", "warn");
+      return true;
+    }
+    var qty = parseInt(quantMatch[1], 10);
+    var unit = quantMatch[2][0].toLowerCase(); /* m | h | d */
+    var delayMs = qty * (unit === "m" ? 60 : unit === "h" ? 3600 : 86400) * 1000;
+    var fireAt = new Date(Date.now() + delayMs).toISOString();
+    var bodyWords = remindArgs.slice(inIdx + 2);
+    /* Strip leading "to" / "about" / "that" filler words */
+    if (bodyWords.length > 0 && /^(to|about|that|for)$/i.test(bodyWords[0])) {
+      bodyWords = bodyWords.slice(1);
+    }
+    var remindBody = bodyWords.join(" ").trim() || "(no message)";
+    /* Resolve destination channel */
+    var remindChannel = channel || "#general";
+    var remindAgent = userName || "ywatanabe";
+    if (remindTarget !== "me") {
+      if (remindTarget.startsWith("#")) {
+        remindChannel = remindTarget;
+      } else if (remindTarget.startsWith("@")) {
+        remindAgent = remindTarget.slice(1);
+      }
+    }
+    /* POST to /api/scheduled/ */
+    var orochiToken = (window as any).__orochiToken || "";
+    fetch(apiUrl("/api/scheduled/"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: orochiToken,
+        agent: remindAgent,
+        task: remindBody,
+        channel: remindChannel,
+        run_at: fireAt,
+        created_by: userName || "",
+      }),
+    })
+      .then(function (r) {
+        if (r.ok) {
+          _toast("Reminder set in " + qty + (unit === "m" ? "m" : unit === "h" ? "h" : "d"), "success");
+        } else {
+          r.json().then(function (e) { _toast("Reminder error: " + (e.error || r.status), "warn"); });
+        }
+      })
+      .catch(function () { _toast("Reminder request failed", "warn"); });
     return true;
   }
 
