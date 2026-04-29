@@ -259,6 +259,10 @@ def api_agents_register(request):
             "sac_hooks_recent_prompts": body.get("sac_hooks_recent_prompts") or [],
             "sac_hooks_agent_calls": body.get("sac_hooks_agent_calls") or [],
             "sac_hooks_background_tasks": body.get("sac_hooks_background_tasks") or [],
+            # orochi#133 — stuck-subagent detection (sac-side LIFO open-call tracking).
+            "sac_hooks_open_agent_calls": body.get("sac_hooks_open_agent_calls") or [],
+            "sac_hooks_open_agent_calls_count": body.get("sac_hooks_open_agent_calls_count") or 0,
+            "sac_hooks_oldest_open_agent_age_s": body.get("sac_hooks_oldest_open_agent_age_s"),
             "sac_hooks_tool_counts": body.get("sac_hooks_tool_counts") or {},
             # Functional-heartbeat shortcuts — last tool use (LLM-level
             # liveness) + last mcp__* tool (proves MCP sidecar route).

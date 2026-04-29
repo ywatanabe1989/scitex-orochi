@@ -23,7 +23,11 @@ from ._classifier import (
 )
 from ._cli import cli_main
 from ._collect import collect, main
-from ._hooks import _HOOK_EVENT_KEYS, _collect_hook_events
+from ._hooks import _SAC_TO_HUB, _collect_hook_events
+
+# Back-compat: callers that iterated _HOOK_EVENT_KEYS as a list of strings now
+# get the hub-side key names (the values of the mapping).
+_HOOK_EVENT_KEYS = tuple(_SAC_TO_HUB.values())
 from ._hostname import _resolve_canonical_hostname
 from ._metrics import collect_machine_metrics, collect_orochi_slurm_status
 from ._multiplexer import _list_local_agents, detect_multiplexer
