@@ -382,10 +382,10 @@ export function appendMessage(msg) {
       el.classList.add("chat-filter-miss");
     }
   }
-  /* Auto-scroll: skip entirely during voice recording to prevent the
-   * scrollTop write from interfering with the SpeechRecognition session.
-   * Outside of voice recording, always scroll when near the bottom. */
-  if (nearBottom && !window.isVoiceRecording) {
+  /* Auto-scroll: skip during voice recording to prevent scrollTop writes
+   * from interfering with the SpeechRecognition session — EXCEPT for the
+   * user's own just-sent message, which must always scroll into view (#239). */
+  if (nearBottom && (!window.isVoiceRecording || _isOwnPost)) {
     container.scrollTop = container.scrollHeight;
   }
   /* Restore focus + selection for the main compose textarea */
