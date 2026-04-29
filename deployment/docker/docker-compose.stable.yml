@@ -12,6 +12,7 @@ services:
       - "8559:8559"
     volumes:
       - /data/orochi-stable:/data
+      - ~/.scitex/orochi/shared:/root/.scitex/orochi/shared:ro
     environment:
       - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY:-change-me-in-production}
       - DJANGO_DEBUG=false
