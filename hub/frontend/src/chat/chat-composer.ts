@@ -46,6 +46,9 @@ export function sendMessage() {
   if (attachments.length > 0) payload.attachments = attachments;
 
   /* Prefer WebSocket send when connected (instant echo), fall back to REST */
+  /* #239: set flag so chat-render scrolls when the WS echo renders the new
+   * message, even if voice recording is active at that moment. */
+  window._scrollAfterNextMessage = true;
   if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "message", payload: payload }));
   } else {
