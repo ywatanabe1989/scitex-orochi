@@ -124,17 +124,20 @@ export function syncFilterVisuals() {
   });
 }
 
+/* Format a filter-tag chip label. DM channels have long raw keys like
+ * "dm:agent:X|human:Y" \u2014 show "DM: X" instead. */
+export function _prettyTagLabel(type: string, value: string): string {
+  if (type === "channel" && value.indexOf("dm:") === 0) {
+    var after = value.slice(3); // "agent:X|human:Y"
+    var firstPart = after.split("|")[0] || "";
+    var colonIdx = firstPart.indexOf(":");
+    var name = colonIdx >= 0 ? firstPart.slice(colonIdx + 1) : firstPart;
+    return "DM: " + name;
+  }
+  return type + ":" + value;
+
 function _prettyChannelName(chatId: string): string {
-  if (!chatId.startsWith("dm:")) return chatId;
-  var inner = chatId.slice("dm:".length);
-  var parts = inner.split("|");
-  var selfName = (globalThis as any).__orochiUserName || "";
-  var pretty =
-    parts
-      .map(function (p) { return p.replace(/^(agent|human):/, ""); })
-      .filter(function (n) { return n !== selfName; })[0] ||
-    parts[0].replace(/^(agent|human):/, "");
-  return "DM: " + pretty;
+  return _prettyTagLabel("channel", chatId);
 }
 
 export function renderTags() {
@@ -145,10 +148,6 @@ export function renderTags() {
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   filterTagsEl.innerHTML = activeTags
     .map(function (t, i) {
-      var label =
-        t.type === "channel"
-          ? escapeHtml(_prettyChannelName(t.value))
-          : escapeHtml(t.value);
       return (
         '<span class="filter-tag" data-type="' +
         t.type +
@@ -157,10 +156,8 @@ export function renderTags() {
         '" onclick="removeTag(' +
         i +
         ')">' +
-        t.type +
-        ":" +
-        label +
-        ' <span class="tag-remove">\u00D7</span></span>'
+        escapeHtml(_prettyTagLabel(t.type, t.value)) +
+        ' <span class="tag-remove">×</span></span>'
       );
     })
     .join("");

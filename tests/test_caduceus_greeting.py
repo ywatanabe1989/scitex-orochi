@@ -241,3 +241,127 @@ def test_default_timeout_matches_rule_13():
     # fleet-communication-discipline.md §13. Do not relax without
     # explicit ywatanabe sign-off.
     assert DEFAULT_TIMEOUT_S == 60
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — pong reader (_scan_pongs / _poll_channel_history) — todo#467
+# ---------------------------------------------------------------------------
+
+class TestScanPongs:
+    """Tests for the REST history → GreetingState bridge (todo#467 Phase 2)."""
+
+    def test_scan_pongs_matches_pong_in_history(self):
+        from scitex_orochi._caduceus import _scan_pongs
+
+        state = GreetingState()
+        _, nonce = format_greeting("head-mba")
+        state.register_ping("head-mba", nonce, sent_ts=0.0, timeout_s=60)
+
+        messages = [{"content": f"[pong:{nonce}]", "ts": "2026-04-30T00:00:01Z"}]
+        matched = _scan_pongs(messages, state, now=5.0)
+
+        assert matched == 1
+        assert state.conversational_status("head-mba") == "healthy"
+        # Consumed from in-flight
+        assert ("head-mba", nonce) not in state.in_flight
+
+    def test_scan_pongs_ignores_unknown_nonces(self):
+        from scitex_orochi._caduceus import _scan_pongs
+
+        state = GreetingState()
+        messages = [{"content": "[pong:deadbeef]", "ts": "2026-04-30T00:00:01Z"}]
+        matched = _scan_pongs(messages, state, now=5.0)
+        assert matched == 0
+
+    def test_scan_pongs_handles_empty_list(self):
+        from scitex_orochi._caduceus import _scan_pongs
+
+        state = GreetingState()
+        assert _scan_pongs([], state, now=0.0) == 0
+
+    def test_scan_pongs_handles_missing_content_field(self):
+        from scitex_orochi._caduceus import _scan_pongs
+
+        state = GreetingState()
+        messages = [{"ts": "2026-04-30T00:00:01Z"}]  # no 'content' key
+        assert _scan_pongs(messages, state, now=0.0) == 0
+
+    def test_scan_pongs_matches_pong_with_surrounding_text(self):
+        from scitex_orochi._caduceus import _scan_pongs
+
+        state = GreetingState()
+        _, nonce = format_greeting("fleet-lead")
+        state.register_ping("fleet-lead", nonce, sent_ts=0.0, timeout_s=60)
+
+        messages = [{"content": f"Sure, [pong:{nonce}] — working on it.", "ts": "2026-04-30T00:00:01Z"}]
+        matched = _scan_pongs(messages, state, now=2.0)
+        assert matched == 1
+        assert state.conversational_status("fleet-lead") == "healthy"
+
+
+class TestPollChannelHistoryUrl:
+    """Tests that _poll_channel_history builds the URL correctly (mocked)."""
+
+    def test_channel_name_is_url_encoded(self, monkeypatch):
+        from scitex_orochi import _caduceus
+
+        captured = {}
+
+        def fake_http_get(url, token=None, timeout=5):
+            captured["url"] = url
+            return []
+
+        monkeypatch.setattr(_caduceus, "_http_get_json", fake_http_get)
+        _caduceus._poll_channel_history(
+            hub="https://hub.example.com",
+            token=None,
+            channel="#general",
+            since_iso=None,
+            limit=20,
+        )
+        assert "/api/history/general/" in captured["url"]
+        assert "limit=20" in captured["url"]
+
+    def test_since_parameter_included(self, monkeypatch):
+        from scitex_orochi import _caduceus
+
+        captured = {}
+
+        def fake_http_get(url, token=None, timeout=5):
+            captured["url"] = url
+            return []
+
+        monkeypatch.setattr(_caduceus, "_http_get_json", fake_http_get)
+        _caduceus._poll_channel_history(
+            hub="https://hub.example.com",
+            token=None,
+            channel="#agent",
+            since_iso="2026-04-30T12:00:00.000000",
+            limit=50,
+        )
+        assert "since=" in captured["url"]
+
+    def test_returns_empty_on_non_list_response(self, monkeypatch):
+        from scitex_orochi import _caduceus
+
+        monkeypatch.setattr(_caduceus, "_http_get_json", lambda *a, **kw: {"error": "oops"})
+        result = _caduceus._poll_channel_history("https://hub.example.com", None, "#general")
+        assert result == []
+
+    def test_token_included_in_url(self, monkeypatch):
+        from scitex_orochi import _caduceus
+
+        captured = {}
+
+        def fake_http_get(url, token=None, timeout=5):
+            captured["url"] = url
+            return []
+
+        monkeypatch.setattr(_caduceus, "_http_get_json", fake_http_get)
+        _caduceus._poll_channel_history(
+            hub="https://hub.example.com",
+            token="secret",
+            channel="#ywatanabe",
+            limit=10,
+        )
+        assert "token=secret" in captured["url"]
