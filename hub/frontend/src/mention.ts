@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { apiUrl, escapeHtml, isAgentInactive } from "./app/utils";
+import { _channelPrefs } from "./app/members";
 
 /* Mention autocomplete module */
 /* globals: escapeHtml, getAgentColor, (globalThis as any).cachedAgentNames, apiUrl, isAgentInactive */
@@ -109,7 +110,8 @@ export function positionMentionDropdown(inputEl) {
   }
 }
 
-export function showMentionDropdown(specialItems, agentItems) {
+export function showMentionDropdown(specialItems, agentItems, channelItems?) {
+  channelItems = channelItems || [];
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
@@ -134,7 +136,7 @@ export function showMentionDropdown(specialItems, agentItems) {
       "</div>";
   });
 
-  if (specialItems.length > 0 && agentItems.length > 0) {
+  if (specialItems.length > 0 && (agentItems.length > 0 || channelItems.length > 0)) {
     html += '<div class="mention-divider"></div>';
   }
 
@@ -155,6 +157,24 @@ export function showMentionDropdown(specialItems, agentItems) {
       '"></span>' +
       escapeHtml(display) +
       (showFull ? '<span class="mention-desc">' + escapeHtml(name) + '</span>' : '') +
+      "</div>";
+  });
+
+  if ((agentItems.length > 0) && channelItems.length > 0) {
+    html += '<div class="mention-divider"></div>';
+  }
+
+  var chOffset = offset + agentItems.length;
+  channelItems.forEach(function (chName, i) {
+    html +=
+      '<div class="mention-item mention-channel' +
+      (chOffset + i === 0 ? " selected" : "") +
+      '" data-name="' +
+      escapeHtml(chName) +
+      '">' +
+      '<span class="mention-dot mention-dot-channel">#</span>' +
+      escapeHtml(chName) +
+      '<span class="mention-desc">channel</span>' +
       "</div>";
   });
 
@@ -242,11 +262,27 @@ export function handleMentionInput(e) {
       return item.name;
     });
 
-  if (matchedSpecial.length === 0 && matchedAgents.length === 0) {
+  /* Channel name completions — strip leading # so @general matches "general" */
+  var channelKeys = _channelPrefs ? Object.keys(_channelPrefs) : [];
+  var matchedChannels = channelKeys
+    .filter(function (ch) {
+      if (!ch || ch.startsWith("dm:")) return false;
+      /* Bare name without # for matching (e.g. "general", "proj-foo") */
+      var bare = ch.charAt(0) === "#" ? ch.slice(1) : ch;
+      return _mention__fuzzyMatch(info.query, bare) !== -1;
+    })
+    .map(function (ch) {
+      return ch.charAt(0) === "#" ? ch.slice(1) : ch;
+    })
+    /* Deduplicate and sort */
+    .filter(function (v, i, a) { return a.indexOf(v) === i; })
+    .slice(0, 6);
+
+  if (matchedSpecial.length === 0 && matchedAgents.length === 0 && matchedChannels.length === 0) {
     hideMentionDropdown();
     return;
   }
-  showMentionDropdown(matchedSpecial, matchedAgents);
+  showMentionDropdown(matchedSpecial, matchedAgents, matchedChannels);
 }
 
 export function handleMentionKeydown(e) {
