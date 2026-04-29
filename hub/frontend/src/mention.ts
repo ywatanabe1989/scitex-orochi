@@ -19,6 +19,10 @@ export var SPECIAL_MENTIONS = [
   { name: "mambas", desc: "notify all mamba-* agents" },
 ];
 
+/* Channel names for @channel autocomplete. Populated by channel-prefs.ts
+ * when channels are fetched. Strip leading # so "@general" completes. */
+export var cachedChannelNames: string[] = [];
+
 /* Fuzzy match: check if all query characters appear in order within text.
    Returns a score (lower = better) or -1 if no match. */
 export function _mention__fuzzyMatch(query, text) {
@@ -109,13 +113,14 @@ export function positionMentionDropdown(inputEl) {
   }
 }
 
-export function showMentionDropdown(specialItems, agentItems) {
+export function showMentionDropdown(specialItems, agentItems, channelItems?) {
   var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   mentionSelectedIndex = 0;
   var html = "";
+  var chItems = channelItems || [];
 
   specialItems.forEach(function (item, i) {
     html +=
@@ -155,6 +160,24 @@ export function showMentionDropdown(specialItems, agentItems) {
       '"></span>' +
       escapeHtml(display) +
       (showFull ? '<span class="mention-desc">' + escapeHtml(name) + '</span>' : '') +
+      "</div>";
+  });
+
+  /* Channel section (#168) */
+  if (chItems.length > 0 && (specialItems.length > 0 || agentItems.length > 0)) {
+    html += '<div class="mention-divider"></div>';
+  }
+  var chOffset = offset + agentItems.length;
+  chItems.forEach(function (item, i) {
+    html +=
+      '<div class="mention-item mention-channel' +
+      (chOffset + i === 0 ? " selected" : "") +
+      '" data-name="' +
+      escapeHtml(item.bare) +
+      '">' +
+      '<span class="mention-dot mention-dot-channel">#</span>' +
+      escapeHtml(item.bare) +
+      '<span class="mention-desc">channel mention</span>' +
       "</div>";
   });
 
@@ -242,11 +265,27 @@ export function handleMentionInput(e) {
       return item.name;
     });
 
-  if (matchedSpecial.length === 0 && matchedAgents.length === 0) {
+  /* Channel name mentions (#168): fuzzy-match against known channel names.
+   * @general → subscribers of #general get a DM notification (server-side). */
+  var matchedChannels = cachedChannelNames
+    .map(function (ch) {
+      var bare = ch.charAt(0) === "#" ? ch.slice(1) : ch;
+      var score = _mention__fuzzyMatch(info.query, bare);
+      return { bare: bare, full: ch, score: score };
+    })
+    .filter(function (item) {
+      return item.score !== -1;
+    })
+    .sort(function (a, b) {
+      return a.score - b.score;
+    })
+    .slice(0, 8); /* cap channel results */
+
+  if (matchedSpecial.length === 0 && matchedAgents.length === 0 && matchedChannels.length === 0) {
     hideMentionDropdown();
     return;
   }
-  showMentionDropdown(matchedSpecial, matchedAgents);
+  showMentionDropdown(matchedSpecial, matchedAgents, matchedChannels);
 }
 
 export function handleMentionKeydown(e) {
