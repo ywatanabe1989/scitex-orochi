@@ -94,6 +94,10 @@ urlpatterns = [
     ),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
+    # Agent group CRUD (todo#428)
+    path("api/agent-groups/", views.api_agent_groups_list, name="api-agent-groups-list"),
+    path("api/agent-groups/create/", views.api_agent_groups_create, name="api-agent-groups-create"),
+    path("api/agent-groups/<str:name>/", views.api_agent_group_detail, name="api-agent-group-detail"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
     path("api/agents/restart/", views.api_agents_restart, name="api-agents-restart"),
     path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
