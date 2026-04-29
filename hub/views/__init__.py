@@ -32,6 +32,8 @@ from hub.views.api import (  # noqa: F401
     api_event_tool_use,
     api_history,
     api_inbound_email,
+    api_invitation_detail,
+    api_invitations,
     api_media,
     api_members,
     api_message_detail,
