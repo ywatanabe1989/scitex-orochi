@@ -2,6 +2,7 @@
 
 from hub.views.api._common import (
     JsonResponse,
+    WorkspaceToken,
     csrf_exempt,
     get_workspace,
     json,
@@ -446,4 +447,219 @@ def api_agents_pinned(request):
         for p in pins
     ]
     return JsonResponse(data, safe=False)
+
+
+# -- lead-state-handover (ZOO#12) -----------------------------------------
+#
+# FR-A snapshot upsert/fetch + FR-B owner read + FR-E session-meta lookup.
+# All three accept the workspace token via `?token=wks_...` (or POST body)
+# so a sac runtime running outside any session can call them.
+
+_SNAPSHOT_AGENT_NAME_MAX = 200
+_SNAPSHOT_PAYLOAD_MAX_BYTES = 2 * 1024 * 1024  # 2 MiB hub-side cap
+
+
+def _resolve_workspace_from_token(request):
+    """Return ``(workspace, error_response)`` for a token-only API call.
+
+    Mirrors the pattern in ``api_agent_health`` / ``api_subagents_update``
+    but factored out for the lead-state-handover endpoints which are
+    invoked from sac runtime code with no Django session in flight.
+    """
+    body = {}
+    if request.method in ("POST", "PUT") and request.body:
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            body = {}
+    token = (
+        request.GET.get("token")
+        or (body.get("token") if isinstance(body, dict) else None)
+        or ""
+    )
+    if not token:
+        return None, body, JsonResponse({"error": "token required"}, status=401)
+    try:
+        tok = WorkspaceToken.objects.get(token=token)
+    except WorkspaceToken.DoesNotExist:
+        return None, body, JsonResponse({"error": "invalid token"}, status=401)
+    return tok.workspace, body, None
+
+
+@csrf_exempt
+@require_http_methods(["GET", "POST"])
+def api_agent_snapshot(request, name):
+    """Lead-state-handover FR-A: upsert/read agent snapshot.
+
+    POST body: ``{"token": "wks_...", "payload": {...}, "owner_host": "<h>"}``
+    GET query: ``?token=wks_...`` returns latest payload (404 if none).
+
+    The payload is a free-form JSON blob carrying the agent's memory
+    files + recent transcript window — the hub treats it as opaque
+    bytes, capped at 2 MiB to keep the table cheap.
+    """
+    workspace, body, err = _resolve_workspace_from_token(request)
+    if err is not None:
+        return err
+    name = (name or "").strip()
+    if not name or len(name) > _SNAPSHOT_AGENT_NAME_MAX:
+        return JsonResponse({"error": "invalid agent name"}, status=400)
+    from hub.models import AgentSnapshot
+
+    if request.method == "GET":
+        try:
+            snap = AgentSnapshot.objects.get(workspace=workspace, agent_name=name)
+        except AgentSnapshot.DoesNotExist:
+            return JsonResponse({"error": "no snapshot"}, status=404)
+        return JsonResponse(
+            {
+                "agent_name": snap.agent_name,
+                "owner_host": snap.owner_host,
+                "updated_at": snap.updated_at.isoformat(),
+                "payload": snap.payload,
+            }
+        )
+
+    # POST upsert.
+    payload = body.get("payload")
+    if not isinstance(payload, dict):
+        return JsonResponse({"error": "payload must be object"}, status=400)
+    # Cheap size guard — Postgres JSONB is happy with large rows but the
+    # callsite is a chatty 5-min interval, so reject anything obviously
+    # outsized rather than silently grow the table.
+    try:
+        encoded = json.dumps(payload)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "payload not JSON-serialisable"}, status=400)
+    if len(encoded) > _SNAPSHOT_PAYLOAD_MAX_BYTES:
+        return JsonResponse(
+            {"error": f"payload exceeds {_SNAPSHOT_PAYLOAD_MAX_BYTES} bytes"},
+            status=413,
+        )
+    owner_host = (body.get("owner_host") or "")[:200]
+    snap, _ = AgentSnapshot.objects.update_or_create(
+        workspace=workspace,
+        agent_name=name,
+        defaults={"payload": payload, "owner_host": owner_host},
+    )
+    return JsonResponse(
+        {
+            "status": "ok",
+            "agent_name": snap.agent_name,
+            "owner_host": snap.owner_host,
+            "updated_at": snap.updated_at.isoformat(),
+            "bytes": len(encoded),
+        }
+    )
+
+
+@require_GET
+def api_agent_snapshot_latest(request, name):
+    """Lead-state-handover FR-A: GET-only alias for the latest snapshot.
+
+    Provided so sac runtime hydration code can call a stable URL even
+    if we later add a multi-snapshot history under the POST endpoint.
+    """
+    return api_agent_snapshot(request, name)
+
+
+@require_GET
+def api_agent_owner(request, name):
+    """Lead-state-handover FR-B: priority-failback owner status.
+
+    Returns:
+        {
+          "agent": "<name>",
+          "current_host": "<host>" | "",
+          "priority_list": ["a", "b", "c"],
+          "healthy": {"a": false, "b": true, "c": true},
+        }
+
+    ``priority_list`` is the YAML ``host:`` list captured by the
+    registry on register/heartbeat (see ``hub.registry._register``).
+    ``healthy`` is built from ``hub.registry.get_agents`` — a host is
+    "healthy" iff at least one agent on that host has a fresh
+    heartbeat (idle_seconds within the configured liveness window).
+    """
+    workspace, _body, err = _resolve_workspace_from_token(request)
+    if err is not None:
+        return err
+    from hub.registry import _agents, _lock, get_agents
+
+    name = (name or "").strip()
+
+    # ``priority_list`` is only carried on the raw in-memory entry —
+    # ``get_agents`` strips it before exposing the dashboard payload.
+    # Snapshot under the lock so it can't mutate mid-read.
+    priority_list: list[str] = []
+    current_host = ""
+    with _lock:
+        raw = _agents.get(name)
+        if raw is not None:
+            priority_list = list(raw.get("priority_list") or [])
+            current_host = (raw.get("machine") or "").strip()
+
+    if not priority_list and current_host:
+        priority_list = [current_host]
+
+    # Per-host liveness — any agent on that host with a fresh heartbeat
+    # → host is healthy. Stale-heartbeat hosts are unhealthy. We use
+    # ``get_agents()`` here (with derived ``liveness``) and bucket per
+    # machine.
+    healthy = {h: False for h in priority_list}
+    if current_host and current_host not in healthy:
+        healthy[current_host] = False
+    for a in get_agents(workspace_id=workspace.id):
+        host = (a.get("machine") or "").strip()
+        if not host or host not in healthy:
+            continue
+        liveness = (a.get("liveness") or "").lower()
+        if liveness in ("online", "idle", "active"):
+            healthy[host] = True
+
+    return JsonResponse(
+        {
+            "agent": name,
+            "current_host": current_host,
+            "priority_list": priority_list,
+            "healthy": healthy,
+        }
+    )
+
+
+@require_GET
+def api_agent_session_meta(request, name, instance_uuid):
+    """Lead-state-handover FR-E: resolve ``<name>:<uuid>`` to host/PID.
+
+    Used by the dashboard / debug UI to expand a short-form
+    ``lead:8af3`` agent_id stamp into the full hostname + PID + WS
+    session id pair, which is invaluable when chasing a rogue-instance
+    incident like the one that drove this PR set (ZOO#12).
+    """
+    workspace, _body, err = _resolve_workspace_from_token(request)
+    if err is not None:
+        return err
+    from hub.models import AgentSession
+
+    try:
+        sess = AgentSession.objects.get(
+            workspace=workspace, agent_name=name, instance_uuid=instance_uuid
+        )
+    except AgentSession.DoesNotExist:
+        return JsonResponse({"error": "no session"}, status=404)
+    return JsonResponse(
+        {
+            "agent_name": sess.agent_name,
+            "instance_uuid": sess.instance_uuid,
+            "hostname": sess.hostname,
+            "pid": sess.pid,
+            "ws_session_id": sess.ws_session_id,
+            "cardinality_enforced": sess.cardinality_enforced,
+            "connected_at": sess.connected_at.isoformat(),
+            "last_heartbeat": sess.last_heartbeat.isoformat(),
+            "disconnected_at": (
+                sess.disconnected_at.isoformat() if sess.disconnected_at else None
+            ),
+        }
+    )
 
