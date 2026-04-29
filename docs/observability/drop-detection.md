@@ -109,6 +109,63 @@ When `machine-stale` appears:
 5. If the agent has been stale for >30 min with no apparent cause, file a report in
    `#heads` and DM `lead` with the agent name and last known task.
 
+## Stuck-subagent detection (orochi#133, sac-side LIFO)
+
+Since sac 0.x and orochi#133, the hub gains a second stuck-subagent signal from the
+agent-container event ring-buffer, complementing the hub-side `subagent_active_since`
+timer.
+
+### How it works
+
+scitex-agent-container records every `PreToolUse` / `PostToolUse` hook event in a
+per-agent JSONL ring-buffer (`~/.scitex/agent-container/events/<agent>.jsonl`).
+`event_log.summarize()` performs LIFO matching on `Agent` tool events:
+
+- `Agent` pretool: push to stack.
+- `Agent` posttool: pop from stack (matched = completed).
+- Remaining entries after full scan = **open (potentially stuck) Agent calls**.
+
+The three derived fields emitted by `summarize()` and forwarded to the hub:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `sac_hooks_open_agent_calls` | `list[{ts, input_preview, age_seconds}]` | Unmatched Agent pretool events |
+| `sac_hooks_open_agent_calls_count` | `int` | Number of open calls |
+| `sac_hooks_oldest_open_agent_age_s` | `float \| null` | Age of the oldest open call in seconds |
+
+### Hub integration
+
+The `subagent_stuck` alert payload (`GET /api/watchdog/alerts/`) now includes
+`open_agent_calls_count` and `oldest_open_agent_age_s` alongside the hub-side
+`subagent_active_since` timer:
+
+```json
+{
+  "agent": "head-mba",
+  "kind": "subagent_stuck",
+  "subagent_count": 2,
+  "subagent_stuck_seconds": 720,
+  "open_agent_calls_count": 1,
+  "oldest_open_agent_age_s": 680.3,
+  "suggested_action": "escalate"
+}
+```
+
+Cross-checking both signals reduces false positives: `subagent_count > 0` alone can lag
+if the count hasn't been updated yet; `open_agent_calls_count > 0` confirms the
+agent-container's own ring-buffer also sees an unresolved call.
+
+### Limitations
+
+- The ring-buffer has a 500-line cap; very busy agents that fill the buffer before
+  the posttool event arrives will appear to have open calls that have actually resolved.
+- The LIFO matching assumes Agent calls complete in LIFO order (nested subagent model).
+  Concurrent independent Agent calls will match out-of-order, potentially leaving false
+  open entries. This is a known approximation; the `age_seconds` field lets callers
+  apply an age threshold to filter stale false-positives.
+- `sac_hooks_open_agent_calls_count` is only populated for agents running
+  scitex-agent-container ≥ 0.x with hooks wired. Legacy agents show 0.
+
 ## Future improvements
 
 - **Threshold tuning**: 10-min stale threshold may need per-role adjustment (long
