@@ -9,8 +9,15 @@ from django.db import connection, migrations, models
 
 
 def _create_agentgroup_if_not_exists(apps, schema_editor):
-    if "hub_agentgroup" not in connection.introspection.table_names():
-        schema_editor.create_model(apps.get_model("hub", "AgentGroup"))
+    if "hub_agentgroup" in connection.introspection.table_names():
+        return  # mba production: table created by old 0035 migration
+    # Fresh install: RunPython's ``apps`` is the pre-migration state, so
+    # AgentGroup is not accessible via the historical registry here.
+    # Use the live apps registry instead — safe because we're creating the
+    # exact model introduced by this migration (no forward-compat concern).
+    from django.apps import apps as live_apps
+    AgentGroup = live_apps.get_model("hub", "AgentGroup")
+    schema_editor.create_model(AgentGroup)
 
 
 class Migration(migrations.Migration):

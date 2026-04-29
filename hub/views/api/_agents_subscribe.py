@@ -101,6 +101,9 @@ def _admin_subscribe(request, target, *, slug=None, subscribe: bool):
     # behaviour, so existing admin scripts keep working untouched.
     can_read = bool(body.get("can_read", True))
     can_write = bool(body.get("can_write", True))
+    # todo#406 Phase 2: callers may request mention-only delivery so
+    # mamba/worker agents wake only when @-mentioned in this channel.
+    mention_only = bool(body.get("mention_only", False))
 
     # ``_persist_agent_subscription`` is an async helper; wrap it so the
     # synchronous view can call it without spinning a loop. It returns
@@ -113,6 +116,7 @@ def _admin_subscribe(request, target, *, slug=None, subscribe: bool):
         subscribe,
         can_read=can_read,
         can_write=can_write,
+        mention_only=mention_only,
     )
     if not ok:
         return JsonResponse(
@@ -164,6 +168,7 @@ def _admin_subscribe(request, target, *, slug=None, subscribe: bool):
             "target_agent": target_name,
             "channel": ch_name,
             "action": "subscribe" if subscribe else "unsubscribe",
+            "mention_only": mention_only if subscribe else None,
         }
     )
 

@@ -146,6 +146,61 @@ class AdminSubscribeRestApiTest(TestCase):
             ).exists()
         )
 
+    def _admin_url(self, target="peer-mba", action="subscribe"):
+        return (
+            f"/api/agents/{target}/{action}/"
+            f"?token={self.token.token}&agent={self.admin_user.username}"
+        )
+
+    def _setup_token_admin(self):
+        """Pre-create the synthetic agent-alice-admin user with admin role.
+
+        The token-path actor is the synthetic ``agent-<name>`` user created by
+        ``resolve_workspace_and_actor``. Pre-create it so the view sees admin
+        role without needing the two-step promote dance from
+        ``test_admin_subscribe_token_path``.
+        """
+        synthetic = User.objects.create_user(username="agent-alice-admin", password="x")
+        WorkspaceMember.objects.create(
+            workspace=self.ws,
+            user=synthetic,
+            role=WorkspaceMember.Role.ADMIN,
+        )
+
+    def test_mention_only_flag_persisted(self):
+        """``mention_only=True`` in the POST body writes the DB flag."""
+        self._setup_token_admin()
+        resp = self.client.post(
+            self._admin_url(),
+            data=json.dumps({"channel": "#general", "mention_only": True}),
+            content_type="application/json",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        body = resp.json()
+        self.assertEqual(body.get("mention_only"), True)
+        membership = ChannelMembership.objects.get(
+            user__username="agent-peer-mba",
+        )
+        self.assertTrue(membership.mention_only)
+
+    def test_mention_only_defaults_false(self):
+        """Omitting ``mention_only`` in the body keeps default (False)."""
+        self._setup_token_admin()
+        resp = self.client.post(
+            self._admin_url(),
+            data=json.dumps({"channel": "#general"}),
+            content_type="application/json",
+            HTTP_HOST="lvh.me",
+        )
+        self.assertEqual(resp.status_code, 200, resp.content)
+        body = resp.json()
+        self.assertEqual(body.get("mention_only"), False)
+        membership = ChannelMembership.objects.get(
+            user__username="agent-peer-mba",
+        )
+        self.assertFalse(membership.mention_only)
+
     # ── permission denial ─────────────────────────────────────────────
 
     def test_non_admin_gets_structured_permission_denied(self):
