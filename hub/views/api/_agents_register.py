@@ -300,6 +300,23 @@ def api_agents_register(request):
             # in ``register_agent`` (transient read glitch on the local
             # state file doesn't wipe the UI every 30s).
             "cron_jobs": body.get("cron_jobs") or [],
+            # orochi#250/#257 — singleton proxy + canonical runtime metadata
+            # (§7 of singleton-agent-contract). Pushed by sac once PR#98 lands.
+            # All fields stored in _register.py; this accepts them from REST
+            # heartbeats (previously only WS connections could populate them).
+            "is_proxy": body.get("is_proxy"),
+            "priority_rank": body.get("priority_rank"),
+            "priority_list": body.get("priority_list") or [],
+            "heartbeat_seq": body.get("heartbeat_seq"),
+            "launch_method": body.get("launch_method", ""),
+            # instance_id: unique per-process identifier (e.g. "<name>:<uuid>").
+            # Lets the hub detect duplicate processes for the same agent name.
+            "instance_id": body.get("instance_id", ""),
+            # uname: platform.uname() output — kernel/distro sanity check.
+            "uname": body.get("uname", ""),
+            # start_ts_unix: psutil process creation time (float epoch).
+            # Combined with instance_id to pick the older-wins winner on collision.
+            "start_ts_unix": body.get("start_ts_unix"),
         },
     )
     # Persist orochi_subagent_count separately — register_agent() preserves prev

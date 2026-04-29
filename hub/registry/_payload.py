@@ -317,6 +317,25 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # list (empty list when the daemon isn't running on this host).
                 # Consumed by /api/cron/ and the Machines tab cron-jobs panel.
                 "cron_jobs": list(a.get("cron_jobs") or []),
+                # orochi#250/#257 — singleton proxy + canonical runtime metadata
+                # (§7 of singleton-agent-contract).
+                # is_proxy: False = primary (or older agent); True = proxy.
+                # priority_rank: None = unknown; 1 = primary; 2+ = fallback.
+                # priority_list: YAML host priority order.
+                # heartbeat_seq: monotonic counter since process start.
+                # launch_method: sac | sac-ssh | sbatch | manual-tmux | ...
+                # instance_id: unique per-process ID (name:uuid); used for
+                #   duplicate-detection (two processes, same name).
+                # uname: platform.uname() — kernel/distro diagnostic.
+                # start_ts_unix: psutil process creation time (epoch float).
+                "is_proxy": a.get("is_proxy"),
+                "priority_rank": a.get("priority_rank"),
+                "priority_list": list(a.get("priority_list") or []),
+                "heartbeat_seq": a.get("heartbeat_seq"),
+                "launch_method": a.get("launch_method", ""),
+                "instance_id": a.get("instance_id", ""),
+                "uname": a.get("uname", ""),
+                "start_ts_unix": a.get("start_ts_unix"),
             }
         )
     return result
