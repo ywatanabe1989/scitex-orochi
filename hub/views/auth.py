@@ -12,7 +12,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_GET
 
 from hub.models import Channel, Workspace, WorkspaceMember, WorkspaceToken
-from hub.views._helpers import bare_url, get_workspace, workspace_url
+from hub.views._helpers import bare_url, workspace_url
 
 
 @require_GET

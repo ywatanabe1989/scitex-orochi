@@ -45,6 +45,7 @@ from hub.views.api._cron import api_cron
 from hub.views.api._dms import _ensure_dm_channel, api_dms
 from hub.views.api._export import api_channel_export, api_media
 from hub.views.api._fleet import api_scheduled, fleet_report, fleet_state
+from hub.views.api._inbound_email import api_inbound_email, route_email  # noqa: F401
 from hub.views.api._messages import api_history, api_messages, api_threads
 from hub.views.api._misc import (
     api_config,
@@ -56,7 +57,6 @@ from hub.views.api._misc import (
     api_push_vapid_key,
     api_watchdog_alerts,
 )
-from hub.views.api._inbound_email import api_inbound_email, route_email  # noqa: F401
 from hub.views.api._reactions import api_message_detail, api_reactions
 from hub.views.api._releases import api_releases, api_repo_changelog
 from hub.views.api._resources import api_resources

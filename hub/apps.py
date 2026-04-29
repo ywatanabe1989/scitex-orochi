@@ -16,11 +16,16 @@ def _scheduler_loop():
     time.sleep(5)
     while True:
         try:
-            from django.utils import timezone
             from asgiref.sync import async_to_sync
             from channels.layers import get_channel_layer
-            from hub.models import ScheduledAction, Workspace, Channel, Message
-            from hub.models import normalize_channel_name
+            from django.utils import timezone
+
+            from hub.models import (
+                Channel,
+                Message,
+                ScheduledAction,
+                normalize_channel_name,
+            )
 
             now = timezone.now()
             due = ScheduledAction.objects.filter(

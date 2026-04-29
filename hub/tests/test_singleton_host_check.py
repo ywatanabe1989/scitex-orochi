@@ -9,9 +9,8 @@ Loads the script as a module and tests:
 
 import importlib.util
 import tempfile
-from pathlib import Path
-
 import unittest
+from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "server" / "singleton-host-check.py"
 

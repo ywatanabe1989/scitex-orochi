@@ -8,9 +8,9 @@ Loads the script as a module and tests:
 """
 
 import importlib.util
-import json
 import tempfile
 import time
+import unittest
 from pathlib import Path
 
 from django.test import TestCase
@@ -48,9 +48,6 @@ def _make_tsv(rows_5xx: list[float], rows_504: list[float] | None = None) -> Pat
     tf.write("\n".join(lines))
     tf.close()
     return Path(tf.name)
-
-
-import unittest
 
 
 @unittest.skipIf(_obs is None, "observer-tsv-scan.py not found")
