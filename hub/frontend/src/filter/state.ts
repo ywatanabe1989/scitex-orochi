@@ -124,6 +124,19 @@ export function syncFilterVisuals() {
   });
 }
 
+function _prettyChannelName(chatId: string): string {
+  if (!chatId.startsWith("dm:")) return chatId;
+  var inner = chatId.slice("dm:".length);
+  var parts = inner.split("|");
+  var selfName = (globalThis as any).__orochiUserName || "";
+  var pretty =
+    parts
+      .map(function (p) { return p.replace(/^(agent|human):/, ""); })
+      .filter(function (n) { return n !== selfName; })[0] ||
+    parts[0].replace(/^(agent|human):/, "");
+  return "DM: " + pretty;
+}
+
 export function renderTags() {
   if (!filterTagsEl) return;
   var msgInput = document.getElementById("msg-input");
@@ -132,15 +145,21 @@ export function renderTags() {
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   filterTagsEl.innerHTML = activeTags
     .map(function (t, i) {
+      var label =
+        t.type === "channel"
+          ? escapeHtml(_prettyChannelName(t.value))
+          : escapeHtml(t.value);
       return (
         '<span class="filter-tag" data-type="' +
         t.type +
+        '" data-chat-id="' +
+        escapeHtml(t.value) +
         '" onclick="removeTag(' +
         i +
         ')">' +
         t.type +
         ":" +
-        escapeHtml(t.value) +
+        label +
         ' <span class="tag-remove">\u00D7</span></span>'
       );
     })
