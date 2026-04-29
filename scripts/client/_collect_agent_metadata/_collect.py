@@ -6,18 +6,6 @@ import json
 import os
 from pathlib import Path
 
-# Heartbeat wire-format schema version. Bumped per release whenever the
-# shape of the heartbeat payload changes (new fields are NOT a bump —
-# additive changes are backward-compatible by design). Consumers (the
-# hub at `hub/views/api/_agents_register.py`) check this against
-# `MIN_SUPPORTED_SCHEMA` and refuse heartbeats that are too old, so a
-# mixed-version fleet during a migration is *visible* on the wire
-# instead of silently lagging the dashboard.
-#
-# History:
-#   1 — initial introduction (2026-04-28).
-HEARTBEAT_SCHEMA_VERSION = 1
-
 from ._classifier import (
     _detect_contradiction,
     _extract_stuck_prompt,
@@ -40,6 +28,18 @@ from ._proc import _read_process_env
 from ._process_tree import count_subagents_via_ps
 from ._statusline import parse_statusline
 from ._transcript import find_jsonl_transcripts, parse_transcript
+
+# Heartbeat wire-format schema version. Bumped per release whenever the
+# shape of the heartbeat payload changes (new fields are NOT a bump —
+# additive changes are backward-compatible by design). Consumers (the
+# hub at `hub/views/api/_agents_register.py`) check this against
+# `MIN_SUPPORTED_SCHEMA` and refuse heartbeats that are too old, so a
+# mixed-version fleet during a migration is *visible* on the wire
+# instead of silently lagging the dashboard.
+#
+# History:
+#   1 — initial introduction (2026-04-28).
+HEARTBEAT_SCHEMA_VERSION = 1
 
 
 def _build_a2a_section(agent: str) -> dict:

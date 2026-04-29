@@ -2,7 +2,14 @@
 
 from django.contrib import admin
 
-from hub.models import AgentGroup, Channel, Message, Workspace, WorkspaceMember, WorkspaceToken
+from hub.models import (
+    AgentGroup,
+    Channel,
+    Message,
+    Workspace,
+    WorkspaceMember,
+    WorkspaceToken,
+)
 
 
 class WorkspaceTokenInline(admin.TabularInline):
