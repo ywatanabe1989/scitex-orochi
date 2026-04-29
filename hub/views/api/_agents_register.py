@@ -331,6 +331,15 @@ def api_agents_register(request):
             # start_ts_unix: psutil process creation time (float epoch).
             # Combined with instance_id to pick the older-wins winner on collision.
             "start_ts_unix": body.get("start_ts_unix"),
+            # todo#430: per-agent Claude API token telemetry collected by
+            # scripts/client/collect_agent_quota.py from ~/.claude/projects/.
+            # Each field is a dict with keys: input_tokens, cache_tokens,
+            # output_tokens, web_searches, web_fetches, turns.
+            # None when the collector has not yet pushed for this agent.
+            "quota_15m": body.get("quota_15m"),
+            "quota_1h": body.get("quota_1h"),
+            "quota_24h": body.get("quota_24h"),
+            "quota_all": body.get("quota_all"),
         },
     )
     # Persist orochi_subagent_count separately — register_agent() preserves prev
