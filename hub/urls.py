@@ -227,6 +227,11 @@ urlpatterns = [
         views.api_message_detail,
         name="api-message-detail",
     ),
+    path(
+        "api/messages/<int:message_id>/translate/",
+        views.api_message_translate,
+        name="api-message-translate",
+    ),
     path("api/releases/", views.api_releases, name="api-releases"),
     path(
         "api/repo/<str:owner>/<str:repo>/changelog/",

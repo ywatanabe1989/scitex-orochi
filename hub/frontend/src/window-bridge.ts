@@ -10,7 +10,7 @@ import { closeChannelExport, doChannelExport, openChannelExport } from "./app/ag
 import { closeChannelTopicEdit, closeMembersPanel, openChannelTopicEdit, saveChannelTopic, toggleMembersPanel } from "./app/members";
 import { killAgent, restartAgent, togglePinAgent } from "./app/sidebar-agents";
 import { escapeHtml } from "./app/utils";
-import { deleteMessage, startEditMessage } from "./chat/chat-actions";
+import { deleteMessage, startEditMessage, translateMessage } from "./chat/chat-actions";
 import { jumpToMsg } from "./chat/chat-attachments";
 import { chatFilterApply } from "./chat/chat-state";
 import { closeImgViewer, filesSetQuery, filesSetView, filesTogglePreview, imgViewerNav, openImgViewer } from "./files-tab/files-tab-core";
@@ -59,6 +59,7 @@ Object.assign(window, {
   saveChannelTopic,
   sendThreadReply,
   startEditMessage,
+  translateMessage,
   toggleClaudeMd,
   toggleMembersPanel,
   togglePinAgent,
