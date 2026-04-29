@@ -320,3 +320,16 @@
   color: #ccc;
   border-color: #3a5a6a;
 }
+.ch-export-copy {
+  background: #1a5c3a;
+  border: none;
+  border-radius: 4px;
+  color: #f8f7f5;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 7px 16px;
+  font-weight: bold;
+}
+.ch-export-copy:hover {
+  background: #1e7048;
+}
