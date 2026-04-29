@@ -15,7 +15,11 @@ with the REST write path.
 from hub.views.api._a2a_dispatch import api_a2a_reply
 from hub.views.api._agents import (
     api_agent_health,
+    api_agent_owner,
     api_agent_profiles,
+    api_agent_session_meta,
+    api_agent_snapshot,
+    api_agent_snapshot_latest,
     api_agents,
     api_agents_pin,
     api_agents_pinned,
@@ -65,7 +69,11 @@ __all__ = [
     "_ensure_dm_channel",
     "api_a2a_reply",
     "api_agent_health",
+    "api_agent_owner",
     "api_agent_profiles",
+    "api_agent_session_meta",
+    "api_agent_snapshot",
+    "api_agent_snapshot_latest",
     "api_agents",
     "api_agents_kill",
     "api_agents_pin",
