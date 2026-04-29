@@ -245,6 +245,8 @@ def _resolve_workspace_token(token_str):
         return {
             "workspace_id": wt.workspace_id,
             "workspace_name": wt.workspace.name,
+            # scitex-orochi#182: non-empty → hub overrides URL ?agent= param
+            "agent_name": wt.agent_name or "",
         }
     except WorkspaceToken.DoesNotExist:
         return None
