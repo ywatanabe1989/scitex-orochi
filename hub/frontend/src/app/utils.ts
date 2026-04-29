@@ -143,13 +143,14 @@ export function escapeHtml(s) {
  * / `ywata-note-win`). Keys cover both the short form and any common
  * fqdn the kernel might return.
  *
- * Mirrors the server-side ``hostname_aliases`` declared in the shared
- * config at ``~/.dotfiles/src/.scitex/orochi/shared/config.yaml``. Keep
- * these two lists in sync when fleet hosts change. todo#fut — serve
- * the yaml via /api/config so the frontend doesn't need a hard-coded
- * copy (tracked as the follow-up to this PR).
+ * Seeded from ``/api/config`` (``hostname_aliases`` field, loaded
+ * synchronously by ``config.ts`` before app.js runs). Falls back to the
+ * compile-time table below when the server is unreachable or returns an
+ * empty map (e.g. early-boot, offline dev). The compile-time table covers
+ * the current 4-host fleet; add entries here only as a fallback safety net
+ * — the authoritative source is ``shared/config.yaml`` on the hub.
  */
-export var HOSTNAME_ALIASES: Record<string, string> = {
+const _COMPILE_TIME_ALIASES: Record<string, string> = {
   "Yusukes-MacBook-Air": "mba",
   "Yusukes-MacBook-Air.local": "mba",
   "DXP480TPLUS-994": "nas",
@@ -158,6 +159,12 @@ export var HOSTNAME_ALIASES: Record<string, string> = {
   "spartan-login1.hpc.unimelb.edu.au": "spartan",
   // ywata-note-win is its own canonical label — no entry needed.
 };
+const _serverAliases: Record<string, string> =
+  (typeof window !== "undefined" && (window as any).__orochiHostnameAliases) || {};
+export var HOSTNAME_ALIASES: Record<string, string> =
+  Object.keys(_serverAliases).length > 0
+    ? { ..._COMPILE_TIME_ALIASES, ..._serverAliases }
+    : _COMPILE_TIME_ALIASES;
 
 /**
  * Resolve a raw hostname to the short canonical fleet label.

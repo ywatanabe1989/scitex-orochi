@@ -19,6 +19,25 @@ from hub.views.api._common import (
 )
 
 
+def _load_hostname_aliases() -> dict:
+    """Read hostname_aliases from the shared fleet config.yaml.
+
+    Returns the map or an empty dict if the file is missing / unparseable.
+    """
+    import yaml  # noqa: PLC0415 — deferred; yaml not imported at module level
+
+    config_path = os.environ.get(
+        "SCITEX_OROCHI_SHARED_CONFIG",
+        os.path.expanduser("~/.scitex/orochi/shared/config.yaml"),
+    )
+    try:
+        with open(config_path) as f:
+            cfg = yaml.safe_load(f) or {}
+        return dict(cfg.get("spec", {}).get("hostname_aliases", {}) or {})
+    except (OSError, yaml.YAMLError):
+        return {}
+
+
 @login_required
 @require_GET
 def api_config(request):
@@ -41,6 +60,7 @@ def api_config(request):
             "uptime": uptime_secs,
             "version": version,
         },
+        "hostname_aliases": _load_hostname_aliases(),
     }
     # Expose dashboard token if set on workspace
     token = request.GET.get("token", "")
