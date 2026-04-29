@@ -263,6 +263,25 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 if isinstance(info.get("sac_hooks_background_tasks"), (list, tuple))
                 else prev.get("sac_hooks_background_tasks") or []
             ),
+            # orochi#133 — stuck-subagent detection via LIFO open-call tracking.
+            # sac_hooks_open_agent_calls: Agent pretool events with no matching
+            # posttool (potentially stuck subagent). Corroborates the hub-side
+            # subagent_active_since timer for higher-confidence alerts.
+            "sac_hooks_open_agent_calls": (
+                list(info.get("sac_hooks_open_agent_calls"))
+                if isinstance(info.get("sac_hooks_open_agent_calls"), (list, tuple))
+                else prev.get("sac_hooks_open_agent_calls") or []
+            ),
+            "sac_hooks_open_agent_calls_count": (
+                int(info["sac_hooks_open_agent_calls_count"])
+                if info.get("sac_hooks_open_agent_calls_count") is not None
+                else prev.get("sac_hooks_open_agent_calls_count") or 0
+            ),
+            "sac_hooks_oldest_open_agent_age_s": (
+                info.get("sac_hooks_oldest_open_agent_age_s")
+                if info.get("sac_hooks_oldest_open_agent_age_s") is not None
+                else prev.get("sac_hooks_oldest_open_agent_age_s")
+            ),
             "sac_hooks_tool_counts": (
                 dict(info.get("sac_hooks_tool_counts"))
                 if isinstance(info.get("sac_hooks_tool_counts"), dict)

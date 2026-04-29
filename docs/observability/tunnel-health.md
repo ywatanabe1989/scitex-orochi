@@ -105,6 +105,29 @@ to `"offline"`.
 | `stale` | `orochi_pane_state ∈ {stale, auth_error}` OR `idle_seconds ≥ 600` (>10 min) |
 | `offline` | WS session closed |
 
+## sac-side tunnel probe (`probe_cloudflared`)
+
+Since sac 0.x (orochi#133), the `scitex-agent-container` network probe module
+(`src/scitex_agent_container/network_probe.py`) includes a `probe_cloudflared()`
+function that checks whether a `cloudflared tunnel run` process is alive on the local
+host.
+
+The probe uses `pgrep -f "cloudflared tunnel run"` and returns:
+
+| Result | Meaning |
+|---|---|
+| `ok=True`, `extra.pid=<pid>` | cloudflared daemon is running |
+| `ok=False`, `err="cloudflared tunnel run process not found"` | daemon is not running |
+| `ok=False`, `err="pgrep not available on this host"` | host doesn't have pgrep (rare) |
+
+`probe_cloudflared()` runs as the 5th probe in `run_all_probes()` (after dns → gateway →
+tcp → https). Results are logged to
+`~/.scitex/agent-container/logs/network/<agent>.jsonl`.
+
+The hub heartbeat pusher forwards the full `sac status --terse --json` dict (including
+network probe results) via `sac_status`, so tunnel liveness is visible in the
+`/api/agents/` response under `sac_status`.
+
 ## Recovery runbook
 
 When a machine shows red (offline):
@@ -115,6 +138,8 @@ When a machine shows red (offline):
    systemctl status cloudflared
    # or on macOS:
    launchctl list | grep cloudflared
+   # or via sac:
+   scitex-agent-container network-probe <agent>
    ```
 3. If cloudflared is stopped: `sudo systemctl start cloudflared`
 4. If cloudflared is running but agents are offline: start the relevant agents via

@@ -116,6 +116,10 @@ def _build_payload(meta: dict, tok: str, sac_status: dict | None = None) -> dict
         # active-subagent badge.
         "sac_hooks_agent_calls": meta.get("sac_hooks_agent_calls") or [],
         "sac_hooks_background_tasks": meta.get("sac_hooks_background_tasks") or [],
+        # orochi#133 — stuck-subagent detection (sac-side LIFO open-call tracking).
+        "sac_hooks_open_agent_calls": meta.get("sac_hooks_open_agent_calls") or [],
+        "sac_hooks_open_agent_calls_count": meta.get("sac_hooks_open_agent_calls_count") or 0,
+        "sac_hooks_oldest_open_agent_age_s": meta.get("sac_hooks_oldest_open_agent_age_s"),
         "subagents": meta.get("subagents") or [],
         # scitex-orochi todo#369 — host-level machine metrics (CPU / mem
         # / disk / load) + optional SLURM cluster snapshot. Without

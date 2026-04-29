@@ -110,8 +110,46 @@ before clearing its subagents, the last-known list remains visible in the detail
 until the next heartbeat or page refresh. This is by design — stale entries signal that
 the parent agent may have wedged mid-task.
 
+## sac hook-event ring-buffer fields (orochi#133)
+
+Since orochi#133, the hub also receives subagent activity signals derived from the
+`scitex-agent-container` hook-event ring-buffer (`~/.scitex/agent-container/events/`).
+These complement the `subagents` list (which requires the agent to explicitly push via
+`POST /api/agents/subagents/`) with passive, event-log-derived signals.
+
+### `sac_hooks_agent_calls`
+
+The last ≤20 `Agent` pretool events recorded by the hook. Each entry:
+
+| Field | Type | Description |
+|---|---|---|
+| `ts` | ISO-8601 | Timestamp of the pretool event |
+| `input_preview` | `str` | Truncated `description` or first 200 chars of `prompt` |
+
+### `sac_hooks_open_agent_calls` (stuck-subagent signal)
+
+Agent pretool events with **no matching posttool** (LIFO matching). An unmatched
+pretool = an Agent call that has not yet returned. Fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `ts` | ISO-8601 | When the Agent call was started |
+| `input_preview` | `str` | Task description |
+| `age_seconds` | `float \| null` | Seconds since the call was started |
+
+Scalar shortcuts also emitted:
+
+| Field | Type | Description |
+|---|---|---|
+| `sac_hooks_open_agent_calls_count` | `int` | Number of open calls |
+| `sac_hooks_oldest_open_agent_age_s` | `float \| null` | Age of oldest open call |
+
+These fields drive the enriched `subagent_stuck` alert in `GET /api/watchdog/alerts/`.
+See [drop-detection.md](./drop-detection.md) for full semantics.
+
 ## See also
 
 - `hub/views/api/_agents.py` — `api_subagents_update` endpoint
 - `hub/frontend/src/agents-tab/detail.ts` — subagent list rendering in detail pane
 - [drop-detection.md](./drop-detection.md) — detecting stuck agents (subagent staleness as a signal)
+- `src/scitex_agent_container/event_log.py` — `_compute_open_agent_calls()` LIFO logic

@@ -252,6 +252,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_recent_prompts": list(a.get("sac_hooks_recent_prompts") or []),
                 "sac_hooks_agent_calls": list(a.get("sac_hooks_agent_calls") or []),
                 "sac_hooks_background_tasks": list(a.get("sac_hooks_background_tasks") or []),
+                # orochi#133 — stuck-subagent detection (sac-side LIFO).
+                "sac_hooks_open_agent_calls": list(a.get("sac_hooks_open_agent_calls") or []),
+                "sac_hooks_open_agent_calls_count": a.get("sac_hooks_open_agent_calls_count") or 0,
+                "sac_hooks_oldest_open_agent_age_s": a.get("sac_hooks_oldest_open_agent_age_s"),
                 "sac_hooks_tool_counts": dict(a.get("sac_hooks_tool_counts") or {}),
                 # Functional-heartbeat shortcuts (derived by
                 # event_log.summarize() in agent-container).

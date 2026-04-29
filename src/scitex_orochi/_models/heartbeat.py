@@ -164,6 +164,10 @@ HEARTBEAT_FIELDS: tuple[HeartbeatField, ...] = (
     HeartbeatField("sac_hooks_recent_prompts", [], "user-prompt events"),
     HeartbeatField("sac_hooks_agent_calls", [], "subagent-spawn events"),
     HeartbeatField("sac_hooks_background_tasks", [], "Background-task events"),
+    # orochi#133 — stuck-subagent detection (sac-side LIFO open-call tracking).
+    HeartbeatField("sac_hooks_open_agent_calls", [], "Agent pretool events with no posttool (potentially stuck)"),
+    HeartbeatField("sac_hooks_open_agent_calls_count", 0, "count of open (unmatched) Agent calls"),
+    HeartbeatField("sac_hooks_oldest_open_agent_age_s", None, "age_seconds of oldest open Agent call"),
     HeartbeatField(
         "sac_hooks_tool_counts", {}, "per-tool count map for the dashboard chip"
     ),

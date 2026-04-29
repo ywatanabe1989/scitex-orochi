@@ -171,6 +171,12 @@ def api_watchdog_alerts(request):
         # Case 2: subagent count non-zero for longer than threshold
         subagent_count = int(a.get("orochi_subagent_count") or 0)
         active_since = a.get("subagent_active_since")
+        # orochi#133: corroborate hub-side timer with sac-side LIFO detection.
+        # sac_hooks_open_agent_calls_count > 0 means the agent-container's own
+        # ring-buffer sees an unmatched Agent pretool — higher confidence the
+        # subagent is genuinely stuck (not just a count-update lag).
+        open_calls_count = int(a.get("sac_hooks_open_agent_calls_count") or 0)
+        oldest_open_age = a.get("sac_hooks_oldest_open_agent_age_s")
         if (
             name not in seen
             and subagent_count > 0
@@ -191,6 +197,9 @@ def api_watchdog_alerts(request):
                     "subagent_count": subagent_count,
                     "subagent_active_since": active_since,
                     "subagent_stuck_seconds": stuck_secs,
+                    # sac-side corroboration (0 / None when sac data absent).
+                    "open_agent_calls_count": open_calls_count,
+                    "oldest_open_agent_age_s": oldest_open_age,
                     "suggested_action": "escalate",
                 }
             )
