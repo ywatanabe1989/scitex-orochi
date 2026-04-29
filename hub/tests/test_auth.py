@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch  # noqa: F401
 from django.contrib.auth.models import User  # noqa: F401
 from django.core.exceptions import ValidationError  # noqa: F401
 from django.db import IntegrityError, transaction  # noqa: F401
-from django.test import Client, TestCase  # noqa: F401
+from django.test import Client, TestCase, override_settings  # noqa: F401
 
 from hub import push as hub_push  # noqa: F401
 from hub.models import (  # noqa: F401
@@ -22,6 +22,9 @@ from hub.models import (  # noqa: F401
 )
 
 
+@override_settings(
+    STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}}
+)
 class AuthTest(TestCase):
     def setUp(self):
         self.client = Client()
