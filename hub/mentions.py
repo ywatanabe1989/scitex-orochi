@@ -189,8 +189,26 @@ def resolve_mention_targets(
         # creating ghost DMs to non-existent principals.
         if User.objects.filter(username=agent_username).exists():
             _add(agent_username)
-        elif User.objects.filter(username=token).exists():
+            continue
+        if User.objects.filter(username=token).exists():
             _add(token)
+            continue
+        # Channel-name mention: @general → all subscribers of #general.
+        # Normalise to #token and look up ChannelMembership rows so that
+        # ``@general`` pings everyone subscribed to #general. Fail-soft:
+        # unrecognised tokens are silently skipped (same as before).
+        from hub.models import Channel, ChannelMembership
+
+        ch_name = f"#{token}" if not token.startswith("#") else token
+        try:
+            ch = Channel.objects.get(workspace_id=workspace_id, name=ch_name)
+            for uname in (
+                ChannelMembership.objects.filter(channel=ch)
+                .values_list("user__username", flat=True)
+            ):
+                _add(uname)
+        except Channel.DoesNotExist:
+            pass
 
     return result
 
