@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('hub', '0034_alter_workspacetoken_agent_name'),
+        ('hub', '0036_workspacemember_trust_level'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
