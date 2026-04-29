@@ -13,6 +13,11 @@ with the REST write path.
 """
 
 from hub.views.api._a2a_dispatch import api_a2a_reply
+from hub.views.api._agent_groups import (
+    api_agent_group_detail,
+    api_agent_groups_create,
+    api_agent_groups_list,
+)
 from hub.views.api._agents import (
     api_agent_health,
     api_agent_owner,
@@ -68,6 +73,9 @@ from hub.views.api._resources import api_resources
 __all__ = [
     "_ensure_dm_channel",
     "api_a2a_reply",
+    "api_agent_group_detail",
+    "api_agent_groups_create",
+    "api_agent_groups_list",
     "api_agent_health",
     "api_agent_owner",
     "api_agent_profiles",

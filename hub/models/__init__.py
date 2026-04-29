@@ -14,6 +14,7 @@ existing ``hub/migrations/`` history continues to resolve to the same
 """
 
 from ._agents import (
+    AgentGroup,
     AgentSession,
     AgentSnapshot,
     ContainerAgent,
@@ -62,6 +63,7 @@ __all__ = [
     "MessageReaction",
     "MessageThread",
     # _agents
+    "AgentGroup",
     "AgentSession",
     "AgentSnapshot",
     "ContainerAgent",
