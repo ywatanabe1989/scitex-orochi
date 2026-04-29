@@ -477,3 +477,36 @@ document.addEventListener("click", function (e) {
     if (typeof fetchStats === "function") fetchStats();
   }
 });
+
+/* Message card click → open thread panel (#242) */
+document.addEventListener("click", function (e) {
+  var target = e.target as Element;
+  /* Skip interactive children so buttons/links still work */
+  var node: Element | null = target;
+  while (node && node !== document.body) {
+    var tag = node.tagName;
+    if (
+      tag === "BUTTON" ||
+      tag === "A" ||
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT"
+    ) {
+      return;
+    }
+    if (node.classList && node.classList.contains("msg-edit-container")) {
+      return;
+    }
+    node = node.parentElement;
+  }
+  var msgEl = target.closest && target.closest(".msg");
+  if (!msgEl) return;
+  if (msgEl.classList.contains("msg-system")) return;
+  var idStr = msgEl.getAttribute("data-msg-id");
+  if (!idStr) return;
+  var msgId = parseInt(idStr, 10);
+  if (!msgId) return;
+  if (typeof openThreadForMessage === "function") {
+    openThreadForMessage(msgId);
+  }
+});
