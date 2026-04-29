@@ -1,7 +1,8 @@
 """Orochi -- Agent Communication Hub for the SciTeX ecosystem."""
 
 try:
-    from importlib.metadata import version as _v, PackageNotFoundError
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _v
     try:
         __version__ = _v("scitex-orochi")
     except PackageNotFoundError:
