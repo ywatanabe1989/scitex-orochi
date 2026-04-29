@@ -104,8 +104,9 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "bypass_permissions_prompt",
                 "dev_channels_prompt",
                 "y_n_prompt",
+                "limit_reached",
             ):
-                liveness = "idle"  # awaiting input — not stuck
+                liveness = "idle"  # awaiting input / rate-limited — not stuck
             elif idle_seconds is not None:
                 if idle_seconds > 600:
                     liveness = "stale"  # >10min silent — probably stuck
