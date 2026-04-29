@@ -185,6 +185,15 @@ class ChannelMembership(models.Model):
             "False = read-only."
         ),
     )
+    mention_only = models.BooleanField(
+        default=False,
+        help_text=(
+            "When True the member receives fan-out only for messages that "
+            "contain @<member-name>. Silent for all other channel traffic. "
+            "Used by mamba agents that want low-noise channel presence "
+            "(todo#406 Phase 2)."
+        ),
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
