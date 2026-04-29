@@ -234,6 +234,62 @@ def register_self(hub: str, token: str | None, name: str, machine: str) -> bool:
     return False
 
 
+def _poll_channel_history(
+    hub: str,
+    token: str | None,
+    channel: str,
+    since_iso: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Fetch recent messages from a channel via REST history endpoint.
+
+    Returns a list of message dicts with at least ``content`` and ``ts``
+    keys. Empty list on any error (best-effort; never raises).
+    """
+    import urllib.parse
+
+    ch = channel.lstrip("#")
+    url = f"{hub.rstrip('/')}/api/history/{urllib.parse.quote(ch, safe='')}/"
+    params: dict[str, str] = {"limit": str(limit)}
+    if since_iso:
+        params["since"] = since_iso
+    if token:
+        params["token"] = token
+    url += "?" + urllib.parse.urlencode(params)
+    data = _http_get_json(url)
+    if not isinstance(data, list):
+        return []
+    return data
+
+
+def _scan_pongs(
+    messages: list[dict],
+    state: GreetingState,
+    now: float,
+) -> int:
+    """Feed channel messages into greeting state to match pongs.
+
+    Each message's ``content`` field is checked for ``[pong:<hex>]`` tokens.
+    Matched pongs are consumed from the in-flight table and the agent's
+    conversational status is updated to "healthy". Returns the count of
+    pongs matched.
+    """
+    matched = 0
+    for msg in messages:
+        body = msg.get("content") or ""
+        ping = state.record_reply(body, now)
+        if ping is not None:
+            rtt = now - ping.sent_ts
+            log.info(
+                "pong received: agent=%s nonce=%s rtt=%.1fs",
+                ping.agent,
+                ping.nonce,
+                rtt,
+            )
+            matched += 1
+    return matched
+
+
 def greeting_scan(
     hub: str,
     token: str | None,
@@ -243,20 +299,39 @@ def greeting_scan(
     channel: str,
     interval_s: int,
     timeout_s: int,
+    last_poll_iso: list[str | None] | None = None,
 ) -> None:
     """One tick of the conversational round-trip health check (todo#168).
 
-    1. Sweep expired in-flight greetings → mark owners inbound-deaf.
-    2. For every agent in the roster, decide if they're due for a ping.
-    3. Post the greeting, remember ``(agent, nonce, sent_ts)``.
+    1. Pull recent channel history and feed pongs into ``state`` (Phase 2).
+    2. Sweep expired in-flight greetings → mark owners inbound-deaf.
+    3. For every agent in the roster, decide if they're due for a ping.
+    4. Post the greeting, remember ``(agent, nonce, sent_ts)``.
 
-    Matching incoming pongs happens out-of-band — a separate code path
-    watches ``#<channel>`` traffic and calls
-    ``state.record_reply(body, now)`` per inbound message. That path
-    lives in the MCP-bridge verifier (sidecar lane, Phase 2); for now
-    the caller can call ``state.record_reply`` manually in tests.
+    ``last_poll_iso`` is a one-element list used as a mutable cell so
+    the caller can pass a persistent reference across ticks. The value
+    is updated to the current timestamp after each poll so the next call
+    only fetches messages posted since the last scan.
     """
     now = time.time()
+
+    # Phase 2 — poll channel history and match pongs before sweeping.
+    # last_poll_iso is a one-element mutable cell so the caller can share
+    # state across loop iterations without an extra field on GreetingState.
+    if last_poll_iso is None:
+        last_poll_iso = [None]
+    try:
+        messages = _poll_channel_history(
+            hub, token, channel, since_iso=last_poll_iso[0], limit=100
+        )
+        if messages:
+            _scan_pongs(messages, state, now)
+    except Exception as exc:
+        log.debug("pong poll error: %s", exc)
+    from datetime import datetime
+    from datetime import timezone as _tz
+    last_poll_iso[0] = datetime.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
+
     expired = state.sweep_expired(now)
     for ping in expired:
         label = state.conversational_status(ping.agent)
@@ -306,6 +381,9 @@ def loop(
     last_action_ts: dict[str, float] = {}
     last_greeting_ts: dict[str, float] = {}
     greeting_state = GreetingState()
+    # Mutable one-element cell shared across greeting_scan() calls so each
+    # poll only fetches messages posted since the previous scan (Phase 2).
+    last_poll_iso: list[str | None] = [None]
     self_host = (
         os.environ.get("SCITEX_OROCHI_CADUCEUS_HOST")
         or os.environ.get("SCITEX_OROCHI_MACHINE")
@@ -361,6 +439,7 @@ def loop(
                     channel=greeting_channel,
                     interval_s=greeting_interval_s,
                     timeout_s=greeting_timeout_s,
+                    last_poll_iso=last_poll_iso,
                 )
             except Exception as e:  # never let greeting errors kill the loop
                 log.warning("greeting_scan error: %s", e)
