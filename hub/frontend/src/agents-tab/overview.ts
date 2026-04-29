@@ -514,12 +514,11 @@ export function renderSkillsBadge(skills) {
   );
 }
 
-/* Auto-refresh: 3s when a per-agent tab is active, 1s for overview */
 export function startAgentsTabRefresh() {
   stopAgentsTabRefresh();
   (globalThis as any)._agentsTabInterval = setInterval(function () {
     if (activeTab === "agents-tab") renderAgentsTab();
-  }, 3000);
+  }, 1000);
 }
 export function stopAgentsTabRefresh() {
   if ((globalThis as any)._agentsTabInterval) {
