@@ -350,6 +350,14 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "instance_id": a.get("instance_id", ""),
                 "uname": a.get("uname", ""),
                 "start_ts_unix": a.get("start_ts_unix"),
+                # todo#430: per-agent Claude API token telemetry windows.
+                # None when the collector has not yet pushed for this agent;
+                # dicts with input_tokens/cache_tokens/output_tokens/
+                # web_searches/web_fetches/turns once available.
+                "quota_15m": a.get("quota_15m"),
+                "quota_1h": a.get("quota_1h"),
+                "quota_24h": a.get("quota_24h"),
+                "quota_all": a.get("quota_all"),
             }
         )
     return result
