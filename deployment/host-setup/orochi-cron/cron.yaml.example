@@ -77,3 +77,13 @@ jobs:
   #   interval: 1h
   #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/observer-tsv-scan.py"
   #   timeout: 5m
+
+  # Singleton host-priority checker (#250) — Option C interim.
+  # Reads ~/.scitex/orochi/shared/agents/*/spec.yaml, queries /api/agents/,
+  # and posts a warning to #heads when a singleton agent is running on a
+  # lower-priority host while its preferred host is online.
+  # Requires: SCITEX_OROCHI_TOKEN, SCITEX_OROCHI_HUB_URL set in daemon env.
+  # - name: singleton-host-check
+  #   interval: 10m
+  #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/singleton-host-check.py --post"
+  #   timeout: 2m
