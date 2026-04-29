@@ -29,14 +29,13 @@ import json
 import os
 import re
 
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.http import JsonResponse
 
+from hub.consumers._persistence import save_message_sync
 from hub.models import WorkspaceToken
 from hub.views.api._common import get_channel_layer, normalize_channel_name
-from hub.consumers._persistence import save_message_sync
-
 
 # ── Default routing rules ─────────────────────────────────────────────────────
 

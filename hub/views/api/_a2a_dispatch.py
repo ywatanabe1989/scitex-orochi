@@ -29,9 +29,9 @@ from django.views.decorators.http import require_POST
 # during the migration. Once the in-tree consumers are updated this
 # re-export can be removed.
 from hub.a2a._dispatch_internals import (  # noqa: F401
+    _PENDING,
     DISPATCH_TIMEOUT_SECONDS,
     HTTP_DIRECT_TIMEOUT_SECONDS,
-    _PENDING,
     _agent_group,
     _resolve_workspace_id,
     _try_http_direct,

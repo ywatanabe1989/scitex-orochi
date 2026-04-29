@@ -7,10 +7,8 @@ integration is tested separately in CI with the actual target.
 
 import importlib.util
 import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
 import unittest
+from pathlib import Path
 
 _SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "server" / "scitex-smoke.py"
 
@@ -33,7 +31,7 @@ class ErrorSignalTest(unittest.TestCase):
 
     def _page_content(self, path: str) -> bool:
         """Return True if a page with csrfmiddlewaretoken would fail."""
-        content = f'<input type="hidden" name="csrfmiddlewaretoken" value="abc123">'
+        content = '<input type="hidden" name="csrfmiddlewaretoken" value="abc123">'
         for sig in _smoke.ERROR_SIGNALS:
             if sig.lower() in content.lower():
                 return True

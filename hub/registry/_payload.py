@@ -71,7 +71,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         hook_ts: float | None = None
         if hook_ts_str:
             try:
-                from datetime import datetime as _dt, timezone as _tz
+                from datetime import datetime as _dt
                 hook_ts = _dt.fromisoformat(
                     hook_ts_str.replace("Z", "+00:00")
                 ).timestamp()
@@ -224,7 +224,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     a.get("orochi_subagent_count") or len(a.get("subagents") or [])
                 ),
                 "subagent_active_since": a.get("subagent_active_since"),
-                "health": a.get("health") or {},
+                "health": health,
                 "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)
                 "pid": a.get("pid") or 0,

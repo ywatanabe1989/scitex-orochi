@@ -13,10 +13,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.http import require_POST
 
 from hub.models import WorkspaceToken
 
@@ -258,10 +257,11 @@ def api_upload_base64(request):
     # alone produce orphaned blobs that never appear in the dashboard.
     if channel_name:
         try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+
             from hub.models import Channel, Message
             from hub.views._helpers import get_workspace
-            from channels.layers import get_channel_layer
-            from asgiref.sync import async_to_sync
 
             workspace = get_workspace(request)
             ch, _ = Channel.objects.get_or_create(
@@ -388,10 +388,11 @@ def api_media_by_hash(request, content_hash: str):
         channel_name = "#" + channel_name
 
     try:
+        from asgiref.sync import async_to_sync
+        from channels.layers import get_channel_layer
+
         from hub.models import Channel, Message
         from hub.views._helpers import get_workspace
-        from channels.layers import get_channel_layer
-        from asgiref.sync import async_to_sync
 
         workspace = get_workspace(request)
         ch, _ = Channel.objects.get_or_create(

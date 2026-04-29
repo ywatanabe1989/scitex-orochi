@@ -22,8 +22,8 @@ def status_page(request):
 @cache_page(15)  # cache for 15 seconds to avoid hammering DB
 def api_status(request):
     """GET /api/status/ — public JSON status summary."""
-    from hub.models import AgentProfile, Message, Workspace, WorkspaceMember
-    from hub.registry import get_agents, get_online_count
+    from hub.models import Message, Workspace
+    from hub.registry import get_agents
 
     uptime_seconds = int(time.time() - _SERVER_START)
     h, rem = divmod(uptime_seconds, 3600)

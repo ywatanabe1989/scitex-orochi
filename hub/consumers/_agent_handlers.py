@@ -264,8 +264,8 @@ async def handle_heartbeat(consumer, content):
 
     from hub.registry import (
         set_orochi_current_task,
-        set_sac_status,
         set_orochi_subagent_count,
+        set_sac_status,
         update_heartbeat,
     )
 
