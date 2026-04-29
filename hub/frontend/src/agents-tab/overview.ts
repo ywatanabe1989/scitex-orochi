@@ -31,6 +31,9 @@ export function _buildOverviewHtml(agents) {
     if (!machineMap[m]) machineMap[m] = [];
     machineMap[m].push(a);
   });
+  var staleAgentCount = agents.filter(function (a) {
+    return a.liveness === "stale";
+  }).length;
   var onlineCount = agents.filter(function (a) {
     return !isAgentInactive(a);
   }).length;
@@ -40,6 +43,12 @@ export function _buildOverviewHtml(agents) {
       ? ' <button class="purge-btn" onclick="purgeStaleAgents()" title="Remove all offline agents">Purge offline (' +
         offlineCount +
         ")</button>"
+      : "";
+  var staleWarning =
+    staleAgentCount > 0
+      ? ' <span class="machine-badge machine-stale" title="Agents connected but not responding (stuck/wedged)">⚠ ' +
+        staleAgentCount +
+        " stuck</span>"
       : "";
   var summaryHtml =
     '<div class="agents-summary">' +
@@ -51,29 +60,50 @@ export function _buildOverviewHtml(agents) {
     Object.keys(machineMap).length +
     " machine(s)" +
     "</span>" +
+    staleWarning +
     purgeBtn +
     Object.keys(machineMap)
       .map(function (m) {
-        var online = machineMap[m].filter(function (a) {
-          return a.status === "online";
+        var machineAgents = machineMap[m];
+        var total = machineAgents.length;
+        var staleCount = machineAgents.filter(function (a) {
+          return a.liveness === "stale";
         }).length;
-        var total = machineMap[m].length;
+        var activeCount = machineAgents.filter(function (a) {
+          var lv = a.liveness || (isAgentInactive(a) ? "offline" : "online");
+          return lv === "online" || lv === "idle";
+        }).length;
+        var offlineCount2 = machineAgents.filter(function (a) {
+          return isAgentInactive(a);
+        }).length;
         var cls =
-          online === total
-            ? "machine-ok"
-            : online > 0
-              ? "machine-warn"
-              : "machine-off";
+          offlineCount2 === total
+            ? "machine-off"
+            : staleCount > 0
+              ? "machine-stale"
+              : activeCount === total
+                ? "machine-ok"
+                : "machine-warn";
+        var label =
+          escapeHtml(m) +
+          " (" +
+          activeCount +
+          "/" +
+          total +
+          (staleCount > 0 ? ", " + staleCount + " stuck" : "") +
+          ")";
         return (
           '<span class="machine-badge ' +
           cls +
-          '">' +
-          escapeHtml(m) +
-          " (" +
-          online +
-          "/" +
-          total +
-          ")</span>"
+          '" title="' +
+          activeCount +
+          " active, " +
+          staleCount +
+          " stale, " +
+          offlineCount2 +
+          ' offline">' +
+          label +
+          "</span>"
         );
       })
       .join("") +
