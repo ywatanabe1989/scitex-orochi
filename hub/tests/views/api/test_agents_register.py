@@ -442,20 +442,30 @@ class SingletonProxyMetadataTest(TestCase):
         return next((a for a in self._get_agents() if a["name"] == name), None)
 
     def test_proxy_fields_round_trip_when_pushed(self):
-        """is_proxy=True, priority_rank=2, heartbeat_seq=5 survive register→GET."""
+        """All singleton proxy metadata fields survive register→GET."""
         resp = self._post({
             "token": self.token.token,
             "name": "proxy-agent",
             "is_proxy": True,
             "priority_rank": 2,
+            "priority_list": ["spartan", "nas", "mba"],
             "heartbeat_seq": 5,
+            "launch_method": "sac",
+            "instance_id": "proxy-agent:abc123",
+            "uname": "Darwin mba 25.0.0",
+            "start_ts_unix": 1714000000.0,
         })
         self.assertEqual(resp.status_code, 200, resp.content)
         a = self._agent_by_name("proxy-agent")
         self.assertIsNotNone(a)
         self.assertIs(a["is_proxy"], True)
         self.assertEqual(a["priority_rank"], 2)
+        self.assertEqual(a["priority_list"], ["spartan", "nas", "mba"])
         self.assertEqual(a["heartbeat_seq"], 5)
+        self.assertEqual(a["launch_method"], "sac")
+        self.assertEqual(a["instance_id"], "proxy-agent:abc123")
+        self.assertEqual(a["uname"], "Darwin mba 25.0.0")
+        self.assertAlmostEqual(a["start_ts_unix"], 1714000000.0, delta=1.0)
 
     def test_primary_fields_round_trip(self):
         """is_proxy=False, priority_rank=1 round-trip correctly."""
