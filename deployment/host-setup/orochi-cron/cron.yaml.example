@@ -87,3 +87,14 @@ jobs:
   #   interval: 10m
   #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/singleton-host-check.py --post"
   #   timeout: 2m
+
+  # scitex.ai post-deploy Playwright smoke test (#237 Part 2) — NAS only.
+  # Runs headless Playwright checks against https://scitex.ai after deploys.
+  # Reports PASS/FAIL to Orochi bulletin board.
+  # Requires: playwright + chromium installed; SCITEX_OROCHI_TOKEN set.
+  # Recommended trigger: run from scitex-cloud CI after main-branch deploys
+  # rather than hourly cron — kept here for manual periodic health checks.
+  # - name: scitex-smoke
+  #   interval: 6h
+  #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/scitex-smoke.py"
+  #   timeout: 5m
