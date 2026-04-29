@@ -524,6 +524,33 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
                 and info.get("cron_jobs")
                 else prev.get("cron_jobs") or []
             ),
+            # todo#430: per-agent Claude API token telemetry windows.
+            # Collected by scripts/client/collect_agent_quota.py which
+            # reads ~/.claude/projects/ JSONL files and aggregates usage
+            # per time window. Replace-on-present semantics: a heartbeat
+            # carrying a non-None dict always wins. Falls through to the
+            # previous value so the dashboard keeps showing stale quota
+            # data rather than wiping to None between collector runs.
+            "quota_15m": (
+                dict(info["quota_15m"])
+                if isinstance(info.get("quota_15m"), dict)
+                else prev.get("quota_15m")
+            ),
+            "quota_1h": (
+                dict(info["quota_1h"])
+                if isinstance(info.get("quota_1h"), dict)
+                else prev.get("quota_1h")
+            ),
+            "quota_24h": (
+                dict(info["quota_24h"])
+                if isinstance(info.get("quota_24h"), dict)
+                else prev.get("quota_24h")
+            ),
+            "quota_all": (
+                dict(info["quota_all"])
+                if isinstance(info.get("quota_all"), dict)
+                else prev.get("quota_all")
+            ),
         }
 
 
