@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { apiUrl, escapeHtml, isAgentInactive } from "./app/utils";
+import { _channelPrefs } from "./app/members";
 
 /* Mention autocomplete module */
 /* globals: escapeHtml, getAgentColor, (globalThis as any).cachedAgentNames, apiUrl, isAgentInactive */
@@ -114,7 +115,6 @@ export function positionMentionDropdown(inputEl) {
 }
 
 export function showMentionDropdown(specialItems, agentItems, channelItems?) {
-  var msgInput = document.getElementById("msg-input");
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
@@ -139,7 +139,7 @@ export function showMentionDropdown(specialItems, agentItems, channelItems?) {
       "</div>";
   });
 
-  if (specialItems.length > 0 && agentItems.length > 0) {
+  if (specialItems.length > 0 && (agentItems.length > 0 || channelItems.length > 0)) {
     html += '<div class="mention-divider"></div>';
   }
 
@@ -169,7 +169,6 @@ export function showMentionDropdown(specialItems, agentItems, channelItems?) {
   }
   var chOffset = offset + agentItems.length;
   chItems.forEach(function (item, i) {
-    html +=
       '<div class="mention-item mention-channel' +
       (chOffset + i === 0 ? " selected" : "") +
       '" data-name="' +
@@ -178,7 +177,6 @@ export function showMentionDropdown(specialItems, agentItems, channelItems?) {
       '<span class="mention-dot mention-dot-channel">#</span>' +
       escapeHtml(item.bare) +
       '<span class="mention-desc">channel mention</span>' +
-      "</div>";
   });
 
   mentionDropdown.innerHTML = html;
@@ -280,7 +278,6 @@ export function handleMentionInput(e) {
       return a.score - b.score;
     })
     .slice(0, 8); /* cap channel results */
-
   if (matchedSpecial.length === 0 && matchedAgents.length === 0 && matchedChannels.length === 0) {
     hideMentionDropdown();
     return;

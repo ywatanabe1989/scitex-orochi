@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { escapeHtml } from "../app/utils";
 import { cachedMemberNames } from "../mention";
+import { _channelPrefs } from "../app/members";
 
 /* Chat module -- markdown / mention / link / code-block content rendering.
  * Extracted from appendMessage() so chat-render.js stays under the JS
@@ -176,6 +177,21 @@ export function _processMessageMarkdown(content) {
           "</span>"
         );
       }
+      /* Channel-name mention (#168): @general → channel-link chip so
+       * clicking it switches to that channel (same behavior as #general links). */
+      var chKey = "#" + name;
+      if (_channelPrefs && (_channelPrefs[chKey] !== undefined || _channelPrefs[name] !== undefined)) {
+        return (
+          prefix +
+          '<a href="#" class="channel-link mention-channel-chip" data-channel="' +
+          escapeHtml(chKey) +
+          '" title="Switch to ' +
+          escapeHtml(chKey) +
+          '">@' +
+          escapeHtml(name) +
+          "</a>"
+        );
+      }
       return prefix + '<span class="mention-highlight">@' + name + "</span>";
     },
   );
@@ -185,10 +201,29 @@ export function _processMessageMarkdown(content) {
     .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, "<em>$1</em>")
     .replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>')
     .replace(/\n/g, "<br>")
-    .replace(
-      /(#(?:general|todo|research|deploy|telegram|orchestrator))\b/g,
-      '<span class="channel-highlight">$1</span>',
-    )
+    /* #channel-name links — dynamic from _channelPrefs (#168).
+     * Renders as a clickable .channel-link chip for any known channel. */
+    .replace(/(^|[^&\w])(#[\w\-\/]+)\b/g, function (_m, lead, hash) {
+      var key = hash.charAt(0) === "#" ? hash : "#" + hash;
+      if (_channelPrefs && (_channelPrefs[key] !== undefined || _channelPrefs[hash.slice(1)] !== undefined)) {
+        return (
+          lead +
+          '<a href="#" class="channel-link channel-highlight" data-channel="' +
+          escapeHtml(key) +
+          '" title="Switch to ' +
+          escapeHtml(key) +
+          '">' +
+          escapeHtml(hash) +
+          "</a>"
+        );
+      }
+      /* Fallback: still highlight hardcoded well-known channel names even
+       * when _channelPrefs hasn't loaded yet. */
+      if (/^#(?:general|todo|research|deploy|telegram|orchestrator)$/.test(key)) {
+        return lead + '<span class="channel-highlight">' + escapeHtml(hash) + "</span>";
+      }
+      return _m;
+    })
     /* Cross-repo references: `owner/repo#N` → GitHub issue link.
      * Bare `#N` is intentionally NOT linked (see top-of-file note / #275). */
     .replace(
