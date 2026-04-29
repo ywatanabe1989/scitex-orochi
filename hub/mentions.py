@@ -509,6 +509,21 @@ def expand_mentions_and_notify(
             except Exception:
                 log.exception("mention-push: group_send failed for %s", dm_name)
 
+        # Fire PWA web push so ywatanabe gets an active notification even
+        # when the app tab is closed (todo#308). Best-effort — never blocks.
+        try:
+            from hub.push import send_push_to_subscribers_async
+
+            send_push_to_subscribers_async(
+                workspace_id=workspace.id,
+                channel=dm_name,
+                sender=sender_username,
+                text=text,
+                message_id=dm_msg.id,
+            )
+        except Exception:
+            log.debug("mention-push: web push skipped for %s", target_username)
+
         notifications.append(
             {
                 "recipient": target_username,
