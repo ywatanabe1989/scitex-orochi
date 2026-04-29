@@ -290,6 +290,18 @@ export function buildAgentRow(a) {
     ')">' +
     pinIcon +
     "</button>";
+  /* Account badge — shows username part of OAuth email (todo#354).
+   * Falls back through: orochi_account_email → account_email → oauth_email */
+  var _rawAcct =
+    a.orochi_account_email || a.account_email || a.oauth_email || "";
+  var _acctUser = _rawAcct ? _rawAcct.replace(/@.*$/, "") : "";
+  var acctBadgeHtml = _acctUser
+    ? ' <span class="agent-badge agent-badge-account" title="Claude credential: ' +
+      escapeHtml(_rawAcct) +
+      '">' +
+      escapeHtml(_acctUser) +
+      "</span>"
+    : "";
   var rowClass =
     "agent-row" +
     (inactive ? " agent-inactive" : "") +
@@ -325,6 +337,7 @@ export function buildAgentRow(a) {
     "</td>" +
     '<td class="agent-id-cell">' +
     escapeHtml(cleanAgentName(a.agent_id || a.name)) +
+    acctBadgeHtml +
     "</td>" +
     "<td>" +
     escapeHtml(a.role || "agent") +
