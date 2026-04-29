@@ -1,0 +1,81 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize.
+#
+# daemon-stale-pr — gitea polling daemon (FR-N, lead msg#23297 + msg#23310).
+#
+# Pattern: sac-managed tmux session running a sleep-loop wrapper that
+# tick every ``tick_interval_s``, polls gitea for stuck CI-green PRs,
+# DMs the suggested merger, and posts a one-line tick summary to
+# ``publish_channel``. Each tick is a fresh subprocess invocation of
+# ``python -m scitex_orochi._daemons._stale_pr --once`` so context is
+# naturally cleared (ZOO#04 cost).
+#
+# Pilot uses ``kind: Agent`` with ``worker_role`` label (lead msg#23310
+# decision: defer the ``daemon`` kind to a separate scitex-agent-container
+# contributor; rename when that lands).
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: daemon-stale-pr
+  labels:
+    role: daemon
+    worker_role: daemon-stale-pr
+    team: orochi
+    cardinality: "1"
+    # The host that has the gitea_token + hub_token in env. Today this
+    # is whichever host runs the cron scheduler; the daemon is
+    # location-independent so any host with creds works.
+    machine: CHANGEME
+    capabilities: gitea-poll,pr-merge-routing
+spec:
+  runtime: bash
+  workdir: ~/proj/scitex-orochi
+
+  remote:
+    host: CHANGEME_HOST
+    user: CHANGEME_USER
+
+  command:
+    # The wrapper IS the daemon — sleep-loop in-process so the tmux
+    # pane stays attached and prints each tick. ``--once`` is for
+    # smoke testing; production omits it and lets the loop run.
+    - bash
+    - -lc
+    - "exec python -m scitex_orochi._daemons._stale_pr --config ~/.scitex/orochi/daemons.yaml"
+
+  orochi:
+    enabled: true
+    hosts:
+      - CHANGEME_LAN_IP
+      - CHANGEME_DOMAIN
+    port: 8559
+    token_env: OROCHI_HUB_TOKEN
+    # Subscribe-side: the daemon doesn't read inbound messages, but
+    # registering with the hub puts it on the agents dashboard so
+    # operators can see it's alive.
+    channels:
+      - "#daemons"
+    heartbeat_interval: 60
+
+  env:
+    CLAUDE_AGENT_ROLE: daemon
+    CLAUDE_AGENT_ID: daemon-stale-pr
+    OROCHI_HUB_URL: "https://scitex-orochi.com"
+    # Set in deployment env, not here. Daemon will WARN-and-skip-post
+    # if either is empty so the loop still runs read-only.
+    OROCHI_HUB_TOKEN: ""
+    OROCHI_GITEA_TOKEN: ""
+
+  screen:
+    name: daemon-stale-pr
+
+  health:
+    enabled: true
+    interval: 60
+    # The daemon prints "[tick @ ts] ..." each tick, so multiplexer
+    # liveness + recent stdout is sufficient signal. A future v2 can
+    # check the JSONL log tail for stale ticks.
+    method: multiplexer-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 5
