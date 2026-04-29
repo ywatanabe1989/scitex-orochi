@@ -39,6 +39,12 @@ from typing import Iterable
 
 TODO_REPO = os.environ.get("SCITEX_TODO_REPO", "ywatanabe1989/todo")
 
+# Regex that matches a comment-based claim following the documented protocol:
+#   gh issue comment <N> --body "claimed by head-<host>, ..."
+_CLAIM_COMMENT_RE = re.compile(r"claimed by head-", re.IGNORECASE)
+# How far back to look for claim comments (in hours).
+_CLAIM_WINDOW_HOURS = 4
+
 
 # -----------------------------------------------------------------------------
 # Pure-function core (unit-tested)
@@ -74,6 +80,44 @@ def claimed_numbers_from_prs(open_prs: list[dict]) -> set[int]:
         body = pr.get("body") or ""
         claimed.update(_extract_issue_refs(title))
         claimed.update(_extract_issue_refs(body))
+    return claimed
+
+
+def claimed_numbers_from_comments(
+    repo: str,
+    issue_numbers: Iterable[int],
+    window_hours: int = _CLAIM_WINDOW_HOURS,
+) -> set[int]:
+    """Return issue numbers whose recent comments contain a claim marker.
+
+    Fetches up to 10 recent comments per candidate issue via ``gh api``
+    with a ``since`` filter so only the last ``window_hours`` are checked.
+    Any comment matching :data:`_CLAIM_COMMENT_RE` marks the issue as taken
+    (todo#469 Bug 2).
+    """
+    from datetime import datetime, timedelta, timezone
+
+    since_dt = datetime.now(timezone.utc) - timedelta(hours=window_hours)
+    since = since_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    claimed: set[int] = set()
+    for num in issue_numbers:
+        try:
+            out = subprocess.run(
+                [
+                    "gh", "api",
+                    f"repos/{repo}/issues/{num}/comments?since={since}&per_page=10",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            ).stdout
+            comments: list[dict] = json.loads(out or "[]")
+            if not isinstance(comments, list):
+                continue
+        except Exception:
+            continue
+        if any(_CLAIM_COMMENT_RE.search(c.get("body") or "") for c in comments):
+            claimed.add(num)
     return claimed
 
 
@@ -195,6 +239,11 @@ def main() -> int:
             "100",
         ]
     )
+
+    # Also exclude issues with recent comment-claims (todo#469 Bug 2).
+    candidate_nums = [int(i.get("number") or 0) for i in issues if i.get("number")]
+    comment_claimed = claimed_numbers_from_comments(args.repo, candidate_nums)
+    extra += list(comment_claimed)
 
     pick = pick_todo(issues, open_prs, args.lane, extra)
     sys.stdout.write(json.dumps(pick, separators=(",", ":")) + "\n")
