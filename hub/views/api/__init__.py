@@ -56,6 +56,7 @@ from hub.views.api._misc import (
     api_push_vapid_key,
     api_watchdog_alerts,
 )
+from hub.views.api._inbound_email import api_inbound_email, route_email  # noqa: F401
 from hub.views.api._reactions import api_message_detail, api_reactions
 from hub.views.api._releases import api_releases, api_repo_changelog
 from hub.views.api._resources import api_resources
@@ -84,6 +85,7 @@ __all__ = [
     "api_config",
     "api_connectivity",
     "api_cron",
+    "api_inbound_email",
     "api_dms",
     "api_event_tool_use",
     "api_history",

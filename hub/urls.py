@@ -195,6 +195,7 @@ urlpatterns = [
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
+    path("api/inbound-email/", views.api_inbound_email, name="api-inbound-email"),
     path("api/media/", views.api_media, name="api-media"),
     path("api/members/", views.api_members, name="api-members"),
     path("api/reactions/", views.api_reactions, name="api-reactions"),
