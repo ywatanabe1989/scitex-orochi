@@ -5,10 +5,8 @@ Tests the YAML-reading logic in isolation — no Django infrastructure needed.
 
 from __future__ import annotations
 
-import os
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 
 def _load_hostname_aliases_impl(config_path: str) -> dict:
