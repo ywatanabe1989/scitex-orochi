@@ -34,6 +34,7 @@ var SLASH_COMMANDS = [
   { cmd: "/unmute",     args: "[#channel]",                      summary: "Unmute current or named channel" },
   { cmd: "/leave",      args: "[#channel]",                      summary: "Unsubscribe from current or named channel" },
   { cmd: "/topic",      args: "<text>",                          summary: "Set the current channel description" },
+  { cmd: "/dm",         args: "@recipient [message]",            summary: "Open a DM with an agent or user, optionally send a message" },
   { cmd: "/remind",     args: "<me|#ch|@agent> in <N>m|h <msg>", summary: "Schedule a reminder message" },
   { cmd: "/help",       args: "",                                summary: "List slash commands and keyboard shortcuts" },
   { cmd: "/shortcuts",  args: "",                                summary: "Alias for /help" },
@@ -215,6 +216,54 @@ function _handleSlashCommand(text: string, channel: string): boolean {
         }
       })
       .catch(function () { _toast("Reminder request failed", "warn"); });
+    return true;
+  }
+
+  /* ── /dm @recipient [message]  (#243) ──────────────────────────────── */
+  if (cmd === "/dm") {
+    var dmRecipient = (parts[1] || "").replace(/^@/, "");
+    if (!dmRecipient) {
+      _toast("/dm: provide a recipient, e.g. /dm @mgr-secretary", "warn");
+      return true;
+    }
+    var dmBody = parts.slice(2).join(" ").trim();
+    /* Try agent: prefix first; server falls back to human: if not found */
+    var principalKey = "agent:" + dmRecipient;
+    var csrfToken = (window as any).__orochiCsrfToken || "";
+    var dmHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (csrfToken) dmHeaders["X-CSRFToken"] = csrfToken;
+    fetch(apiUrl("/api/dms/"), {
+      method: "POST",
+      headers: dmHeaders,
+      credentials: "same-origin",
+      body: JSON.stringify({ recipient: principalKey }),
+    })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+      .then(function (row) {
+        var dmCh = row && row.name;
+        if (!dmCh) { _toast("DM channel not returned", "warn"); return; }
+        /* Navigate to the new DM channel */
+        if (typeof (window as any).setCurrentChannel === "function") {
+          (window as any).setCurrentChannel(dmCh);
+        }
+        if (typeof (window as any).loadChannelHistory === "function") {
+          (window as any).loadChannelHistory(dmCh);
+        }
+        if (typeof (window as any).fetchDms === "function") {
+          (window as any).fetchDms();
+        }
+        /* Optionally send the initial message */
+        if (dmBody) {
+          fetch(apiUrl("/api/messages/"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ channel: dmCh, content: dmBody }),
+          }).catch(function () {});
+        }
+        _toast("DM opened with " + dmRecipient, "success");
+      })
+      .catch(function () { _toast("Could not open DM with " + dmRecipient, "warn"); });
     return true;
   }
 
