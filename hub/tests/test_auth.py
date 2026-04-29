@@ -132,14 +132,14 @@ class AuthTest(TestCase):
         self.assertContains(resp, "test-ws")
 
     def test_dashboard_no_access_without_membership(self):
-        other_ws = Workspace.objects.create(name="other-ws")
+        Workspace.objects.create(name="other-ws")
         self.client.login(username="testuser", password="testpass123")
         resp = self.client.get("/workspace/other-ws/")
         self.assertEqual(resp.status_code, 403)
 
     def test_superuser_access_all_workspaces(self):
-        admin = User.objects.create_superuser(username="admin", password="adminpass")
-        other_ws = Workspace.objects.create(name="other-ws")
+        User.objects.create_superuser(username="admin", password="adminpass")
+        Workspace.objects.create(name="other-ws")
         self.client.login(username="admin", password="adminpass")
         resp = self.client.get("/workspace/other-ws/")
         self.assertEqual(resp.status_code, 200)
