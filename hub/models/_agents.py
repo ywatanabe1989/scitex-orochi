@@ -111,3 +111,70 @@ class ScheduledAction(models.Model):
 
     def __str__(self):
         return f"ScheduledAction({self.agent}, {self.run_at}, {self.status})"
+
+
+class AgentSnapshot(models.Model):
+    """Per-agent state snapshot for cross-host handover (FR-A).
+
+    A lead-class agent POSTs its memory + recent transcript on graceful
+    stop (and periodically) to ``/api/agents/<name>/snapshot``; a fresh
+    instance booting on another host GETs ``/snapshot/latest`` and
+    hydrates its workspace before launching Claude. One row per
+    (workspace, agent_name) — newest write wins.
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_snapshots"
+    )
+    agent_name = models.CharField(max_length=200, db_index=True)
+    payload = models.JSONField(default=dict)
+    owner_host = models.CharField(max_length=200, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "hub"
+        unique_together = ("workspace", "agent_name")
+        ordering = ["agent_name"]
+
+    def __str__(self):
+        return f"snapshot:{self.agent_name}@{self.owner_host}"
+
+
+class AgentSession(models.Model):
+    """Active agent WebSocket session, keyed by instance UUID (FR-E).
+
+    Each agent generates ``instance_uuid = uuid4()`` on start and sends
+    it to the hub on WS connect. The hub persists the (agent_name,
+    instance_uuid) pair plus host/PID metadata so:
+
+      - cardinality enforcement (FR-C) can detect "same name, different
+        UUID, both active" rogue-instance situations,
+      - outgoing messages can be stamped with
+        ``agent_id = "<name>:<uuid>"`` for end-to-end provenance,
+      - operators can resolve a short ``name:uuid_prefix`` back to a
+        host/PID pair via ``/api/agents/<name>/<uuid>/meta``.
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_sessions"
+    )
+    agent_name = models.CharField(max_length=200, db_index=True)
+    instance_uuid = models.CharField(max_length=64, unique=True, db_index=True)
+    hostname = models.CharField(max_length=200, blank=True, default="")
+    pid = models.IntegerField(null=True, blank=True)
+    ws_session_id = models.CharField(max_length=200, blank=True, default="")
+    cardinality_enforced = models.BooleanField(default=False)
+    connected_at = models.DateTimeField(auto_now_add=True)
+    last_heartbeat = models.DateTimeField(auto_now=True)
+    disconnected_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        app_label = "hub"
+        ordering = ["agent_name", "-connected_at"]
+        indexes = [
+            models.Index(fields=["agent_name", "disconnected_at"]),
+        ]
+
+    def __str__(self):
+        short = self.instance_uuid[:8] if self.instance_uuid else "?"
+        return f"session:{self.agent_name}:{short}@{self.hostname}"

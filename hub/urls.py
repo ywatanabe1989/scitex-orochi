@@ -157,6 +157,29 @@ urlpatterns = [
         views.api_agent_detail,
         name="api-agent-detail",
     ),
+    # Lead-state-handover (ZOO#12) — FR-A snapshot, FR-B owner,
+    # FR-E session-meta lookup. All token-authenticated so sac-runtime
+    # callers can hit them without a session.
+    path(
+        "api/agents/<str:name>/snapshot/",
+        views.api_agent_snapshot,
+        name="api-agent-snapshot",
+    ),
+    path(
+        "api/agents/<str:name>/snapshot/latest/",
+        views.api_agent_snapshot_latest,
+        name="api-agent-snapshot-latest",
+    ),
+    path(
+        "api/agents/<str:name>/owner/",
+        views.api_agent_owner,
+        name="api-agent-owner",
+    ),
+    path(
+        "api/agents/<str:name>/<str:instance_uuid>/meta/",
+        views.api_agent_session_meta,
+        name="api-agent-session-meta",
+    ),
     # Central container-agent registry (replaces ~/.scitex/agent-container/registry/)
     path(
         "api/registry/agents/",
