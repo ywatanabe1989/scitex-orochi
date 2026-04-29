@@ -23,8 +23,32 @@ import { activeTab } from "../tabs";
  * _renderAgentContent), renderAgentsTab (the public entry point used
  * by tabs.js), and kicks off startAgentsTabRefresh(). */
 
+/* ── Machine-filter drill-down state ────────────────────────────────── */
+/* Clicking a machine badge filters the agents table to that machine.
+ * Clicking again (or the × clear button) resets the filter. */
+(globalThis as any)._machineFilter = (globalThis as any)._machineFilter || null;
+
+function _toggleMachineFilter(machine: string) {
+  (globalThis as any)._machineFilter =
+    (globalThis as any)._machineFilter === machine ? null : machine;
+  var grid = document.getElementById("agents-grid");
+  if (!grid) return;
+  /* _renderAgentContent is exposed on globalThis by controls.ts on first call */
+  var renderFn = (globalThis as any)._renderAgentContent;
+  if (renderFn) {
+    renderFn(grid);
+  } else {
+    var content = grid.querySelector("#agent-tab-content");
+    if (content)
+      content.innerHTML = _buildOverviewHtml((globalThis as any)._lastAgentsData || []);
+  }
+}
+/* Expose for inline onclick attributes */
+(globalThis as any)._toggleMachineFilter = _toggleMachineFilter;
+
 /* ── Overview HTML builder (extracted from renderAgentsTab) ─────────── */
 export function _buildOverviewHtml(agents) {
+  var machineFilter = (globalThis as any)._machineFilter || null;
   var machineMap = {};
   agents.forEach(function (a) {
     var m = a.machine || "unknown";
@@ -64,6 +88,13 @@ export function _buildOverviewHtml(agents) {
         subagentStuckCount +
         " subagent-stuck</span>"
       : "";
+  var filterBanner = machineFilter
+    ? ' <span class="machine-filter-active">Filtering: <strong>' +
+      escapeHtml(machineFilter) +
+      '</strong> <button class="filter-clear-btn" onclick="_toggleMachineFilter(\'' +
+      escapeHtml(machineFilter).replace(/'/g, "\\'") +
+      '\')" title="Clear machine filter">×</button></span>'
+    : "";
   var summaryHtml =
     '<div class="agents-summary">' +
     '<span class="agents-count">' +
@@ -99,6 +130,7 @@ export function _buildOverviewHtml(agents) {
               : activeCount === total
                 ? "machine-ok"
                 : "machine-warn";
+        var isSelected = machineFilter === m;
         var label =
           escapeHtml(m) +
           " (" +
@@ -108,21 +140,30 @@ export function _buildOverviewHtml(agents) {
           (staleCount > 0 ? ", " + staleCount + " stuck" : "") +
           ")";
         return (
-          '<span class="machine-badge ' +
+          '<button class="machine-badge machine-badge-btn ' +
           cls +
-          '" title="' +
+          (isSelected ? " machine-badge-selected" : "") +
+          '" title="Click to filter agents by this machine — ' +
           activeCount +
           " active, " +
           staleCount +
           " stale, " +
           offlineCount2 +
-          ' offline">' +
+          ' offline" onclick="_toggleMachineFilter(\'' +
+          escapeHtml(m).replace(/'/g, "\\'") +
+          '\')">' +
           label +
-          "</span>"
+          "</button>"
         );
       })
       .join("") +
+    filterBanner +
     "</div>";
+  var tableAgents = machineFilter
+    ? agents.filter(function (a) {
+        return (a.machine || "unknown") === machineFilter;
+      })
+    : agents;
   var tableHtml =
     '<table class="agents-registry-table">' +
     "<thead><tr>" +
@@ -132,7 +173,7 @@ export function _buildOverviewHtml(agents) {
     "<th>Project</th><th>Workdir</th><th>Pane</th><th>Task</th><th>Subagents</th>" +
     "<th>Config</th><th>Uptime</th><th>Last Activity</th><th>Last Seen</th>" +
     "</tr></thead><tbody>" +
-    agents.map(buildAgentRow).join("") +
+    tableAgents.map(buildAgentRow).join("") +
     "</tbody></table>";
   return summaryHtml + tableHtml;
 }

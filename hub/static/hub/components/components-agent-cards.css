@@ -113,6 +113,36 @@
   font-size: 11px;
   margin-right: 6px;
 }
+.machine-badge-btn {
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
+}
+.machine-badge-btn:hover {
+  opacity: 0.85;
+  box-shadow: 0 0 0 2px currentColor;
+}
+.machine-badge-selected {
+  box-shadow: 0 0 0 2px currentColor;
+  font-weight: 600;
+}
+.machine-filter-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  margin-left: 8px;
+}
+.filter-clear-btn {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--text-muted, #888);
+}
 .machine-ok {
   background: rgba(78, 205, 196, 0.13);
   color: #4ecdc4;
