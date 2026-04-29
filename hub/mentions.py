@@ -295,9 +295,11 @@ def expand_mentions_and_notify(
       * There are no mention tokens.
       * ``source_channel`` is already a DM (don't cross-notify within
         private threads; the source DM already pushes to participants).
-      * A resolved target already has a ``ChannelMembership`` row on
-        the source channel — the normal channel fanout already reaches
-        them, so adding a DM would be duplicate noise.
+      * A resolved target from a **group** token (``@all``, ``@agents``,
+        etc.) already has a ``ChannelMembership`` row on the source
+        channel — the normal channel fanout already reaches them.
+        Direct ``@name`` mentions bypass this check to guarantee delivery
+        regardless of subscription status (issue #186).
       * The target is the sender themselves.
 
     ``@all`` expansions above the rate-limit are dropped with a log
@@ -354,6 +356,21 @@ def expand_mentions_and_notify(
         log.warning("mention-push: workspace %s missing", workspace_id)
         return []
 
+    # Separate direct @name tokens from group tokens so we can guarantee
+    # DM delivery for direct mentions regardless of channel subscription
+    # (issue #186). Group mentions (@all, @agents, etc.) may still be
+    # skipped when the recipient is already subscribed to the source channel.
+    group_token_keys = set(_GROUP_PATTERNS.keys())
+    direct_tokens = [t for t in effective_tokens if t not in group_token_keys]
+
+    direct_target_usernames: set[str] = set(
+        resolve_mention_targets(
+            workspace_id=workspace_id,
+            tokens=direct_tokens,
+            exclude_usernames=[sender_username],
+        )
+    )
+
     targets = resolve_mention_targets(
         workspace_id=workspace_id,
         tokens=effective_tokens,
@@ -381,8 +398,10 @@ def expand_mentions_and_notify(
     layer = get_channel_layer()
     notifications: list[dict] = []
     for target_username in targets:
-        # Recipient already subscribed — existing fanout reaches them.
-        if target_username in subscriber_usernames:
+        # Skip group-mention targets already subscribed to the source channel
+        # (normal fanout already reaches them). Direct @name mentions always
+        # get the DM push — guaranteed delivery is the contract (#186).
+        if target_username in subscriber_usernames and target_username not in direct_target_usernames:
             continue
 
         dm_name = _canonical_dm_name(sender_username, target_username)
