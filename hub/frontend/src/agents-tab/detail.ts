@@ -8,6 +8,7 @@ import {
   livenessColor,
 } from "./state";
 import { escapeHtml, isAgentInactive } from "../app/utils";
+import { _renderHookPanels } from "../activity-tab/hooks-panel";
 
 /* Agents Tab — per-agent detail view + indicator lamps + pane-state badge.
  * Depends on state.js (livenessColor, _fmtDuration, _agentDetailCache,
@@ -655,12 +656,25 @@ export function _renderAgentDetail(a) {
       "</div>";
   }
 
+  /* Hook-event panels — recent tool calls, prompts, Agent calls.
+   * Populated from scitex-agent-container ring buffer (PreToolUse /
+   * PostToolUse / UserPromptSubmit). Collapses to empty string when no
+   * hook data is available so legacy agents stay tidy (todo#418). */
+  var hooksHtml = _renderHookPanels(
+    d.sac_hooks_recent_tools || a.sac_hooks_recent_tools || [],
+    d.sac_hooks_recent_prompts || a.sac_hooks_recent_prompts || [],
+    d.sac_hooks_agent_calls || a.sac_hooks_agent_calls || [],
+    d.sac_hooks_background_tasks || a.sac_hooks_background_tasks || [],
+    d.sac_hooks_tool_counts || a.sac_hooks_tool_counts || {},
+  );
+
   return (
     '<div class="agent-detail-view">' +
     headerHtml +
     subagentsHtml +
     channelsHtml +
     stateHtml +
+    hooksHtml +
     fileTabsHtml +
     setupAuditHtml +
     mcpHtml +
