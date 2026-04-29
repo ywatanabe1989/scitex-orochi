@@ -34,6 +34,7 @@ class Channel(models.Model):
     icon_text = models.CharField(max_length=16, blank=True, default="")
     color = models.CharField(max_length=16, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         app_label = "hub"

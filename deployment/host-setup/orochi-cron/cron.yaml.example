@@ -66,3 +66,14 @@ jobs:
   #   interval: 1h
   #   command: "scitex-orochi disk reaper-dry-run --yes"
   #   timeout: 10m
+
+  # scitex.ai observer-TSV error-rate scanner (#237) — NAS only.
+  # Reads ~/proj/scitex-cloud/logs/obs/YYYY-MM-DD.tsv and fires an
+  # Orochi bulletin-board post + GitHub incident issue when nginx
+  # error rates stay elevated for 3+ consecutive minutes. Uses a
+  # 1-hour cooldown to prevent notification floods.
+  # Requires: SCITEX_OROCHI_TOKEN set in the daemon environment.
+  # - name: observer-tsv-scan
+  #   interval: 1h
+  #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/observer-tsv-scan.py"
+  #   timeout: 5m

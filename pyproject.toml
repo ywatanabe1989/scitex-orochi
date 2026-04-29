@@ -26,6 +26,7 @@ dependencies = [
     "channels>=4.0",
     "channels-redis>=4.2",
     "daphne>=4.0",
+    "twisted<25.0.0",
     "whitenoise>=6.0",
     "django-allauth[socialaccount]>=65.0",
     "click>=8.0",

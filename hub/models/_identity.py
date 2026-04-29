@@ -40,6 +40,12 @@ class WorkspaceToken(models.Model):
         Workspace, on_delete=models.CASCADE, related_name="tokens"
     )
     label = models.CharField(max_length=100, blank=True, default="")
+    # scitex-orochi#182 — when set, the hub uses this name as the agent's
+    # identity at WS connect instead of the URL ?agent= query param. Prevents
+    # cross-agent attribution drift when two co-resident agents share an env
+    # var or config file that sets the wrong SCITEX_OROCHI_AGENT value after a
+    # host reboot. Empty string = legacy behaviour (URL param wins).
+    agent_name = models.CharField(max_length=150, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

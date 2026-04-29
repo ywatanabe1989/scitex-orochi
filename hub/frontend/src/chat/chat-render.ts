@@ -382,10 +382,16 @@ export function appendMessage(msg) {
       el.classList.add("chat-filter-miss");
     }
   }
-  /* Auto-scroll: skip entirely during voice recording to prevent the
-   * scrollTop write from interfering with the SpeechRecognition session.
-   * Outside of voice recording, always scroll when near the bottom. */
-  if (nearBottom && !window.isVoiceRecording) {
+  /* Auto-scroll: skip during voice recording to prevent scrollTop writes
+   * from interfering with the SpeechRecognition session — EXCEPT when the
+   * user just sent a message (window._scrollAfterNextMessage flag set by
+   * sendMessage()). Without the exception, the WS echo of the user's own
+   * voice-composed post arrives while isVoiceRecording is still true (mic
+   * stays on for continuous dictation) and the message scrolls off-screen
+   * (#239). The flag is consumed here so at most one message triggers it. */
+  var forceScroll = window._scrollAfterNextMessage;
+  if (forceScroll) window._scrollAfterNextMessage = false;
+  if (nearBottom && (!window.isVoiceRecording || forceScroll)) {
     container.scrollTop = container.scrollHeight;
   }
   /* Restore focus + selection for the main compose textarea */

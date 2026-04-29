@@ -103,6 +103,7 @@ export function _renderAgentDetail(a) {
     d.orochi_subagent_count != null
       ? d.orochi_subagent_count
       : a.orochi_subagent_count;
+  var subagentList: any[] = (d.subagents || a.subagents || []) as any[];
   var q5 =
     d.quota_5h_used_pct != null ? d.quota_5h_used_pct : a.quota_5h_used_pct;
   var q7 =
@@ -489,9 +490,63 @@ export function _renderAgentDetail(a) {
    * tidy. */
   var stateHtml = _renderStateSections(a, d);
 
+  /* Subagent list — expandable section showing in-flight subagents
+   * with name, task description, and status badge. Only rendered when
+   * the agent has at least one subagent entry so the panel stays
+   * compact for idle agents. (#132) */
+  var subagentsHtml = "";
+  if (subagentList.length > 0) {
+    var statusClass = function (s) {
+      if (s === "done") return "subagent-done";
+      if (s === "failed") return "subagent-failed";
+      return "subagent-running";
+    };
+    var statusLabel = function (s) {
+      return s || "running";
+    };
+    var subagentRows = subagentList
+      .map(function (sub) {
+        var name = String(sub.name || "?");
+        var task = String(sub.task || sub.description || "");
+        var status = String(sub.status || "running");
+        return (
+          '<div class="subagent-row">' +
+          '<span class="subagent-badge ' +
+          statusClass(status) +
+          '" title="' +
+          escapeHtml(status) +
+          '">' +
+          escapeHtml(statusLabel(status)) +
+          "</span>" +
+          '<span class="subagent-name">' +
+          escapeHtml(name) +
+          "</span>" +
+          (task
+            ? '<span class="subagent-task" title="' +
+              escapeHtml(task) +
+              '">' +
+              escapeHtml(task.length > 120 ? task.slice(0, 120) + "…" : task) +
+              "</span>"
+            : "") +
+          "</div>"
+        );
+      })
+      .join("");
+    subagentsHtml =
+      '<div class="agent-detail-section agent-detail-subagents">' +
+      '<span class="agent-detail-pane-label">Active subagents (' +
+      subagentList.length +
+      ")</span>" +
+      '<div class="subagent-list">' +
+      subagentRows +
+      "</div>" +
+      "</div>";
+  }
+
   return (
     '<div class="agent-detail-view">' +
     headerHtml +
+    subagentsHtml +
     channelsHtml +
     stateHtml +
     fileTabsHtml +

@@ -57,7 +57,23 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
         self.workspace_id = result["workspace_id"]
         self.workspace_name = result["workspace_name"]
-        self.agent_name = qs.get("agent", ["anonymous"])[0]
+        url_agent_name = qs.get("agent", ["anonymous"])[0]
+        token_agent_name = result.get("agent_name", "")
+        if token_agent_name:
+            # scitex-orochi#182: token carries a pinned agent name — use it
+            # unconditionally so mismatched URL params can't cause attribution
+            # drift (e.g. two co-resident agents sharing a wrong env var).
+            if url_agent_name and url_agent_name != token_agent_name:
+                log.warning(
+                    "Token agent_name mismatch for %s: URL says %r, token says %r "
+                    "— using token name (scitex-orochi#182).",
+                    token_agent_name,
+                    url_agent_name,
+                    token_agent_name,
+                )
+            self.agent_name = token_agent_name
+        else:
+            self.agent_name = url_agent_name
 
         # scitex-orochi#255: per-process identity captured at connect so
         # the singleton enforcer can decide who wins when two WS claim

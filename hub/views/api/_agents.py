@@ -25,7 +25,9 @@ def api_agents(request):
         from hub.models import WorkspaceToken
 
         try:
-            WorkspaceToken.objects.get(token=token)
+            wt = WorkspaceToken.objects.get(token=token)
+            if not getattr(request, "workspace", None):
+                request.workspace = wt.workspace
         except WorkspaceToken.DoesNotExist:
             return JsonResponse({"error": "Invalid token"}, status=401)
     workspace = get_workspace(request)

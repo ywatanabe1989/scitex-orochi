@@ -149,6 +149,7 @@ def register_agent(name: str, workspace_id: int, info: dict) -> None:
             "orochi_current_task": prev.get("orochi_current_task", ""),
             "orochi_subagent_count": prev.get("orochi_subagent_count", 0),
             "subagents": list(prev.get("subagents") or []),
+            "subagent_active_since": prev.get("subagent_active_since"),
             "health": prev.get("health") or {},
             "metrics": prev.get("metrics") or {},
             # todo#46 — preserve ping/pong state across re-registers

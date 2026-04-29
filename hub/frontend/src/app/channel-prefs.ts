@@ -10,6 +10,7 @@ import { setCurrentChannel } from "./state";
 import { apiUrl, channelUnread, escapeHtml, getCsrfToken } from "./utils";
 import { loadChannelHistory } from "../chat/chat-history";
 import { applyFeedFilter } from "../chat/chat-render";
+import { cachedChannelNames } from "../mention";
 
 
 /* Fetch channel descriptions + prefs once on load */
@@ -19,17 +20,27 @@ document.addEventListener("DOMContentLoaded", function () {
       return r.json();
     })
     .then(function (list) {
+      /* Repopulate the channel-names list for @mention autocomplete (#168). */
+      cachedChannelNames.length = 0;
       list.forEach(function (ch) {
         if (ch.name) {
           if (ch.description) _channelDescriptions[ch.name] = ch.description;
           _channelPrefs[ch.name] = {
             is_starred: ch.is_starred || false,
             is_muted: ch.is_muted || false,
-            is_hidden: ch.is_hidden || false,
+            // Archived channels piggyback on is_hidden so they sort to the
+            // bottom of the channel list without a separate UI path (#241).
+            is_hidden: (ch.is_hidden || ch.is_archived) || false,
+            is_archived: ch.is_archived || false,
             notification_level: ch.notification_level || "all",
           };
           if (typeof cacheChannelIdentity === "function") {
             cacheChannelIdentity(ch);
+          }
+          /* Populate channel names for @mention autocomplete.
+           * Skip DM channels (dm:...) — they're not mentionable by name. */
+          if (!ch.name.startsWith("dm:")) {
+            cachedChannelNames.push(ch.name);
           }
         }
       });

@@ -23,14 +23,49 @@ import { activeTab } from "../tabs";
  * _renderAgentContent), renderAgentsTab (the public entry point used
  * by tabs.js), and kicks off startAgentsTabRefresh(). */
 
+/* ── Machine-filter drill-down state ────────────────────────────────── */
+/* Clicking a machine badge filters the agents table to that machine.
+ * Clicking again (or the × clear button) resets the filter. */
+(globalThis as any)._machineFilter = (globalThis as any)._machineFilter || null;
+
+function _toggleMachineFilter(machine: string) {
+  (globalThis as any)._machineFilter =
+    (globalThis as any)._machineFilter === machine ? null : machine;
+  var grid = document.getElementById("agents-grid");
+  if (!grid) return;
+  /* _renderAgentContent is exposed on globalThis by controls.ts on first call */
+  var renderFn = (globalThis as any)._renderAgentContent;
+  if (renderFn) {
+    renderFn(grid);
+  } else {
+    var content = grid.querySelector("#agent-tab-content");
+    if (content)
+      content.innerHTML = _buildOverviewHtml((globalThis as any)._lastAgentsData || []);
+  }
+}
+/* Expose for inline onclick attributes */
+(globalThis as any)._toggleMachineFilter = _toggleMachineFilter;
+
 /* ── Overview HTML builder (extracted from renderAgentsTab) ─────────── */
 export function _buildOverviewHtml(agents) {
+  var machineFilter = (globalThis as any)._machineFilter || null;
   var machineMap = {};
   agents.forEach(function (a) {
     var m = a.machine || "unknown";
     if (!machineMap[m]) machineMap[m] = [];
     machineMap[m].push(a);
   });
+  var nowSec = Date.now() / 1000;
+  var staleAgentCount = agents.filter(function (a) {
+    return a.liveness === "stale";
+  }).length;
+  var subagentStuckCount = agents.filter(function (a) {
+    return (
+      (a.orochi_subagent_count || 0) > 0 &&
+      a.subagent_active_since != null &&
+      nowSec - a.subagent_active_since >= 600
+    );
+  }).length;
   var onlineCount = agents.filter(function (a) {
     return !isAgentInactive(a);
   }).length;
@@ -41,6 +76,25 @@ export function _buildOverviewHtml(agents) {
         offlineCount +
         ")</button>"
       : "";
+  var staleWarning =
+    staleAgentCount > 0
+      ? ' <span class="machine-badge machine-stale" title="Agents connected but not responding (stuck/wedged)">⚠ ' +
+        staleAgentCount +
+        " stuck</span>"
+      : "";
+  var subagentStuckWarning =
+    subagentStuckCount > 0
+      ? ' <span class="machine-badge machine-stale" title="Agents with subagents running >10 min without turnover (possible silent drop)">⚠ ' +
+        subagentStuckCount +
+        " subagent-stuck</span>"
+      : "";
+  var filterBanner = machineFilter
+    ? ' <span class="machine-filter-active">Filtering: <strong>' +
+      escapeHtml(machineFilter) +
+      '</strong> <button class="filter-clear-btn" onclick="_toggleMachineFilter(\'' +
+      escapeHtml(machineFilter).replace(/'/g, "\\'") +
+      '\')" title="Clear machine filter">×</button></span>'
+    : "";
   var summaryHtml =
     '<div class="agents-summary">' +
     '<span class="agents-count">' +
@@ -51,33 +105,65 @@ export function _buildOverviewHtml(agents) {
     Object.keys(machineMap).length +
     " machine(s)" +
     "</span>" +
+    staleWarning +
+    subagentStuckWarning +
     purgeBtn +
     Object.keys(machineMap)
       .map(function (m) {
-        var online = machineMap[m].filter(function (a) {
-          return a.status === "online";
+        var machineAgents = machineMap[m];
+        var total = machineAgents.length;
+        var staleCount = machineAgents.filter(function (a) {
+          return a.liveness === "stale";
         }).length;
-        var total = machineMap[m].length;
+        var activeCount = machineAgents.filter(function (a) {
+          var lv = a.liveness || (isAgentInactive(a) ? "offline" : "online");
+          return lv === "online" || lv === "idle";
+        }).length;
+        var offlineCount2 = machineAgents.filter(function (a) {
+          return isAgentInactive(a);
+        }).length;
         var cls =
-          online === total
-            ? "machine-ok"
-            : online > 0
-              ? "machine-warn"
-              : "machine-off";
-        return (
-          '<span class="machine-badge ' +
-          cls +
-          '">' +
+          offlineCount2 === total
+            ? "machine-off"
+            : staleCount > 0
+              ? "machine-stale"
+              : activeCount === total
+                ? "machine-ok"
+                : "machine-warn";
+        var isSelected = machineFilter === m;
+        var label =
           escapeHtml(m) +
           " (" +
-          online +
+          activeCount +
           "/" +
           total +
-          ")</span>"
+          (staleCount > 0 ? ", " + staleCount + " stuck" : "") +
+          ")";
+        return (
+          '<button class="machine-badge machine-badge-btn ' +
+          cls +
+          (isSelected ? " machine-badge-selected" : "") +
+          '" title="Click to filter agents by this machine — ' +
+          activeCount +
+          " active, " +
+          staleCount +
+          " stale, " +
+          offlineCount2 +
+          ' offline" onclick="_toggleMachineFilter(\'' +
+          escapeHtml(m).replace(/'/g, "\\'") +
+          '\')">' +
+          label +
+          "</button>"
         );
       })
       .join("") +
+    filterBanner +
     "</div>";
+  var tableAgents = machineFilter
+    ? agents.filter(function (a) {
+        return (a.machine || "unknown") === machineFilter;
+      })
+    : agents;
   var tableHtml =
     '<table class="agents-registry-table">' +
     "<thead><tr>" +
@@ -87,7 +173,7 @@ export function _buildOverviewHtml(agents) {
     "<th>Project</th><th>Workdir</th><th>Pane</th><th>Task</th><th>Subagents</th>" +
     "<th>Config</th><th>Uptime</th><th>Last Activity</th><th>Last Seen</th>" +
     "</tr></thead><tbody>" +
-    agents.map(buildAgentRow).join("") +
+    tableAgents.map(buildAgentRow).join("") +
     "</tbody></table>";
   return summaryHtml + tableHtml;
 }

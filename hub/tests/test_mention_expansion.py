@@ -243,12 +243,22 @@ class ExpandMentionsAndNotifyTest(TestCase):
         recipients = {r["recipient"] for r in res}
         self.assertIn("agent-head-mba", recipients)
 
-    def test_subscriber_recipient_skipped(self):
-        # If bob is already subscribed to the source channel, no DM
-        # mention-push should be generated.
+    def test_direct_mention_subscriber_still_gets_dm(self):
+        # Direct @name mentions always get the DM push even when the recipient
+        # is already subscribed to the source channel — guaranteed delivery
+        # contract from issue #186. Only GROUP mention targets (@all, @heads)
+        # are skipped for subscribers.
         ChannelMembership.objects.create(user=self.bob, channel=self.source)
         res = self._notify("hey @bob")
-        self.assertEqual(res, [])
+        recipients = {r["recipient"] for r in res}
+        self.assertIn("bob", recipients)
+
+    def test_group_mention_subscriber_skipped(self):
+        # @all group mention: bob is a subscriber, so should NOT get DM.
+        ChannelMembership.objects.create(user=self.bob, channel=self.source)
+        res = self._notify("@all standup!", sender="alice")
+        recipients = {r["recipient"] for r in res}
+        self.assertNotIn("bob", recipients)
 
     def test_email_like_does_not_notify(self):
         res = self._notify("contact foo@example.com for help")

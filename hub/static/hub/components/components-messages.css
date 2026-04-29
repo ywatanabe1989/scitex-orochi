@@ -132,6 +132,21 @@
   background: #333;
   margin: 4px 0;
 }
+.mention-item .mention-dot-channel {
+  background: transparent;
+  color: #9ecbff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 8px;
+  height: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0;
+}
+.mention-item.mention-channel {
+  color: #9ecbff;
+}
 .mention-item:hover,
 .mention-item.selected {
   background: #333;
