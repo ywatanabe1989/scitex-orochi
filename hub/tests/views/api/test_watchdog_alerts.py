@@ -6,6 +6,7 @@ Covers:
 3. Subagent count non-zero for >10 min → alert (kind=subagent_stuck).
 4. Stale agent already emitted should NOT also emit subagent_stuck.
 5. Thresholds block in response includes subagent_stuck_seconds.
+6. subagent_stuck alert includes sac-side open_agent_calls corroboration fields (orochi#133).
 
 Note: ``liveness`` is computed dynamically in ``get_agents()`` from
 ``last_action`` / ``orochi_pane_state``; injecting it directly into
@@ -150,6 +151,42 @@ class WatchdogAlertsTest(TestCase):
         # Only ONE alert despite matching both conditions
         self.assertEqual(data["count"], 1)
         self.assertEqual(data["alerts"][0]["kind"], "agent_stale")
+
+    def test_subagent_stuck_includes_sac_open_calls_corroboration(self):
+        """subagent_stuck alert carries sac-side open_agent_calls fields (orochi#133)."""
+        self._register("agent-sac-corr")
+        self._make_online("agent-sac-corr")
+        self._inject(
+            "agent-sac-corr",
+            orochi_subagent_count=2,
+            subagent_active_since=time.time() - 680,
+            sac_hooks_open_agent_calls_count=1,
+            sac_hooks_oldest_open_agent_age_s=670.5,
+        )
+        resp = self._get()
+        data = resp.json()
+        self.assertEqual(data["count"], 1)
+        alert = data["alerts"][0]
+        self.assertEqual(alert["kind"], "subagent_stuck")
+        self.assertEqual(alert["open_agent_calls_count"], 1)
+        self.assertAlmostEqual(alert["oldest_open_agent_age_s"], 670.5, delta=1.0)
+
+    def test_subagent_stuck_sac_fields_zero_when_absent(self):
+        """subagent_stuck alert defaults sac fields to 0/None when not pushed."""
+        self._register("agent-no-sac")
+        self._make_online("agent-no-sac")
+        self._inject(
+            "agent-no-sac",
+            orochi_subagent_count=1,
+            subagent_active_since=time.time() - 650,
+        )
+        resp = self._get()
+        data = resp.json()
+        self.assertEqual(data["count"], 1)
+        alert = data["alerts"][0]
+        self.assertEqual(alert["kind"], "subagent_stuck")
+        self.assertEqual(alert["open_agent_calls_count"], 0)
+        self.assertIsNone(alert["oldest_open_agent_age_s"])
 
     def test_thresholds_in_response(self):
         resp = self._get()
