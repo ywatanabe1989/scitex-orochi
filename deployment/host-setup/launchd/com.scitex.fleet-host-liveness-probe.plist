@@ -13,10 +13,11 @@
   Logs: ~/Library/Logs/scitex/fleet-host-liveness-probe.log (both stdout
   NDJSON and stderr advisories tee there; rotate manually when large).
 
-  Replace __HOME__ and __REPO__ with your actual paths before `launchctl
-  load`. The companion install helper
-  scripts/client/install-fleet-host-liveness-probe.sh does this rewrite
-  automatically.
+  Replace __HOME__, __REPO__, __STABLE_PROBE__, and __PROBE_MODE__ with
+  your actual values before `launchctl load`. The companion install
+  helper scripts/client/install-fleet-host-liveness-probe.sh does this
+  rewrite automatically and also places the stable probe copy at
+  __STABLE_PROBE__.
 
   Why --yes in production: the whole point of this LaunchAgent is to
   auto-revive dead agents without waiting for humans. The install helper
@@ -29,10 +30,18 @@
     <key>Label</key>
     <string>com.scitex.fleet-host-liveness-probe</string>
 
+    <!--
+      todo#466: ProgramArguments points at the STABLE copy installed under
+      ~/.scitex/orochi/bin/ rather than the shared working tree, so a
+      pre-PR#296 branch checkout no longer silently 404s the scheduler.
+      The working-tree path is retained in EnvironmentVariables below
+      (SCITEX_OROCHI_REPO_ROOT) so the probe can still locate
+      orochi-machines.yaml — reinstall to re-pin.
+    -->
     <key>ProgramArguments</key>
     <array>
       <string>/bin/bash</string>
-      <string>__REPO__/scripts/client/fleet-watch/host-liveness-probe.sh</string>
+      <string>__STABLE_PROBE__</string>
       <string>__PROBE_MODE__</string>
     </array>
 
@@ -57,6 +66,9 @@
     <dict>
       <key>PATH</key>
       <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <!-- todo#466: lets the stable-bin probe find orochi-machines.yaml -->
+      <key>SCITEX_OROCHI_REPO_ROOT</key>
+      <string>__REPO__</string>
     </dict>
   </dict>
 </plist>
