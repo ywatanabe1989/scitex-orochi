@@ -219,6 +219,12 @@ urlpatterns = [
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
     path("api/inbound-email/", views.api_inbound_email, name="api-inbound-email"),
+    path("api/invitations/", views.api_invitations, name="api-invitations"),
+    path(
+        "api/invitations/<str:token>/",
+        views.api_invitation_detail,
+        name="api-invitation-detail",
+    ),
     path("api/media/", views.api_media, name="api-media"),
     path("api/members/", views.api_members, name="api-members"),
     path("api/reactions/", views.api_reactions, name="api-reactions"),

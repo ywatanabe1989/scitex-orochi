@@ -50,6 +50,7 @@ from hub.views.api._dms import _ensure_dm_channel, api_dms
 from hub.views.api._export import api_channel_export, api_media
 from hub.views.api._fleet import api_scheduled, fleet_report, fleet_state
 from hub.views.api._inbound_email import api_inbound_email, route_email  # noqa: F401
+from hub.views.api._invitations import api_invitation_detail, api_invitations
 from hub.views.api._messages import api_history, api_messages, api_threads
 from hub.views.api._misc import (
     api_config,
@@ -94,6 +95,8 @@ __all__ = [
     "api_connectivity",
     "api_cron",
     "api_inbound_email",
+    "api_invitation_detail",
+    "api_invitations",
     "api_dms",
     "api_event_tool_use",
     "api_history",
