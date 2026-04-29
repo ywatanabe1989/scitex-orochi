@@ -131,13 +131,45 @@ def orochi(
 
 
 # ── Register subcommands ────────────────────────────────────────
-# Phase 1d Step C (plan PR #337 §2): the legacy flat verb-noun command
-# names (e.g. ``agent-launch``, ``list-agents``, ``send``) have been
-# removed entirely. Their grace period under interface-cli §5 is over;
-# users who type a removed name now get Click's standard
-# ``Error: No such command 'agent-launch'.`` and exit 2. The canonical
-# noun-verb forms (``agent launch``, ``agent list``, ``message send``,
-# …) are the only entry points.
+# Post-Phase-1d cleanup (PR #347): re-register the 28 legacy flat
+# command names as hidden stubs (hidden=True) so they don't appear in
+# ``--help`` but still give the canonical rename error when invoked
+# (ywatanabe msg#16746). The noun-verb forms remain the only
+# advertised entry points.
+from scitex_orochi._cli._deprecation import make_rename_stub
+
+_RENAMES: list[tuple[str, str]] = [
+    ("agent-launch", "agent launch"),
+    ("agent-restart", "agent restart"),
+    ("agent-status", "agent status"),
+    ("agent-stop", "agent stop"),
+    ("list-agents", "agent list"),
+    ("fleet", "agent fleet-list"),
+    ("launch", "agent launch"),
+    ("stop", "agent stop"),
+    ("send", "message send"),
+    ("listen", "message listen"),
+    ("show-history", "channel history"),
+    ("join", "channel join"),
+    ("list-channels", "channel list"),
+    ("list-members", "channel members"),
+    ("create-invite", "invite create"),
+    ("list-invites", "invite list"),
+    ("create-workspace", "workspace create"),
+    ("delete-workspace", "workspace delete"),
+    ("list-workspaces", "workspace list"),
+    ("show-status", "server status"),
+    ("serve", "server start"),
+    ("deploy", "server deploy"),
+    ("setup-push", "push setup"),
+    ("init", "config init"),
+    ("doctor", "system doctor"),
+    ("login", "auth login"),
+    ("heartbeat-push", "machine heartbeat send"),
+    ("report", "hook report"),
+]
+for _old, _new in _RENAMES:
+    orochi.add_command(make_rename_stub(_old, _new))
 from scitex_orochi._cli.commands.docs_cmd import docs
 from scitex_orochi._cli.commands.skills_cmd import skills
 
