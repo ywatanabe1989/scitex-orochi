@@ -222,6 +222,7 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_subagent_count": int(
                     a.get("orochi_subagent_count") or len(a.get("subagents") or [])
                 ),
+                "subagent_active_since": a.get("subagent_active_since"),
                 "health": a.get("health") or {},
                 "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)

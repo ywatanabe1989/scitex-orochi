@@ -31,8 +31,16 @@ export function _buildOverviewHtml(agents) {
     if (!machineMap[m]) machineMap[m] = [];
     machineMap[m].push(a);
   });
+  var nowSec = Date.now() / 1000;
   var staleAgentCount = agents.filter(function (a) {
     return a.liveness === "stale";
+  }).length;
+  var subagentStuckCount = agents.filter(function (a) {
+    return (
+      (a.orochi_subagent_count || 0) > 0 &&
+      a.subagent_active_since != null &&
+      nowSec - a.subagent_active_since >= 600
+    );
   }).length;
   var onlineCount = agents.filter(function (a) {
     return !isAgentInactive(a);
@@ -50,6 +58,12 @@ export function _buildOverviewHtml(agents) {
         staleAgentCount +
         " stuck</span>"
       : "";
+  var subagentStuckWarning =
+    subagentStuckCount > 0
+      ? ' <span class="machine-badge machine-stale" title="Agents with subagents running >10 min without turnover (possible silent drop)">⚠ ' +
+        subagentStuckCount +
+        " subagent-stuck</span>"
+      : "";
   var summaryHtml =
     '<div class="agents-summary">' +
     '<span class="agents-count">' +
@@ -61,6 +75,7 @@ export function _buildOverviewHtml(agents) {
     " machine(s)" +
     "</span>" +
     staleWarning +
+    subagentStuckWarning +
     purgeBtn +
     Object.keys(machineMap)
       .map(function (m) {
