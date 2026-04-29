@@ -486,3 +486,25 @@
   max-height: 30vh;
   overflow: auto;
 }
+
+/* ── Setup-audit table (sac PR#53) ──────────────────────────────── */
+.agent-detail-setup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.agent-detail-setup-table th {
+  text-align: left;
+  color: #9aa;
+  font-weight: 600;
+  padding: 4px 12px 4px 0;
+  white-space: nowrap;
+  vertical-align: top;
+  width: 110px;
+}
+.agent-detail-setup-table td {
+  padding: 4px 0;
+  vertical-align: top;
+  word-break: break-all;
+}

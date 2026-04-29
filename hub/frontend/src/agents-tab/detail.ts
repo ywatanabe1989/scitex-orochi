@@ -116,6 +116,32 @@ export function _renderAgentDetail(a) {
     if (reset) s += " (resets " + reset + ")";
     return s;
   }
+  /* Setup-audit data from sac PR#53. `Plan` uses the normalized
+   * human label ("Max 20x" etc.) derived from claudeAiOauth.rateLimitTier
+   * — the dashboard previously read billing_type, which only reports
+   * payment method ("stripe_subscription") and is not a plan. The raw
+   * tier is included in parens so unknown plans remain visible. */
+  var planLabel = d.account_plan_label || a.account_plan_label || "";
+  var rateLimitTier =
+    d.account_rate_limit_tier || a.account_rate_limit_tier || "";
+  var subscriptionType =
+    d.account_subscription_type || a.account_subscription_type || "";
+  var planDisplay = planLabel
+    ? planLabel +
+      (rateLimitTier && rateLimitTier !== planLabel
+        ? " (" + rateLimitTier + ")"
+        : "")
+    : rateLimitTier || subscriptionType || "-";
+  var acctEmail = d.account_email || a.account_email || d.oauth_email || a.oauth_email || "";
+  var rotCount =
+    d.oauth_rotation_count != null
+      ? d.oauth_rotation_count
+      : a.oauth_rotation_count != null
+        ? a.oauth_rotation_count
+        : 0;
+  var acctDisplay = acctEmail
+    ? acctEmail + (rotCount > 0 ? " (rotated " + rotCount + "×)" : "")
+    : "-";
   /* Smart middle-truncation for long paths (e.g. workdirs). Keep the
    * first and last segments readable and drop the middle so the cell
    * doesn't steal a full row. Full path goes into the title tooltip. */
@@ -147,6 +173,12 @@ export function _renderAgentDetail(a) {
       "Model",
       modelClean.display,
       modelClean.tooltip || "Claude model id the agent is running against",
+    ],
+    ["Plan", planDisplay, "account plan label derived from rateLimitTier (sac PR#53)"],
+    [
+      "Account",
+      acctDisplay,
+      "authenticated Claude account email; rotated N× = OAuth token rotation count",
     ],
     [
       "Multiplexer",
@@ -432,6 +464,86 @@ export function _renderAgentDetail(a) {
       "</div>";
   }
 
+  /* Setup-audit section (sac PR#53). Compact table so the operator
+   * can tell at a glance: is claude-hud wired? which MCP servers is
+   * the agent actually talking to? which plugins have been installed?
+   * Missing items are greyed out rather than hidden so host-config
+   * drift is discoverable. Shown after the file tabs so the top of
+   * the card stays focused on live state. */
+  var installedPlugins = d.installed_plugins || a.installed_plugins || [];
+  var statusLineCommand = d.status_line_command || a.status_line_command || "";
+  var hasClaudeHud = installedPlugins.some(function (p) {
+    return (p.name || "").indexOf("claude-hud") >= 0;
+  });
+  var mcpServersStructured = d.orochi_mcp_servers || a.orochi_mcp_servers || [];
+  var lastRotationAt =
+    d.oauth_last_rotation_at || a.oauth_last_rotation_at || "";
+
+  function _muted(s) {
+    return '<span class="muted-cell">' + escapeHtml(s) + "</span>";
+  }
+
+  var pluginsCell = installedPlugins.length
+    ? installedPlugins
+        .map(function (p) {
+          var name = p.name || "?";
+          var ver = p.version ? " " + p.version : "";
+          var scope = p.scope ? " [" + p.scope + "]" : "";
+          return (
+            '<span class="ch-badge">' +
+            escapeHtml(name + ver + scope) +
+            "</span>"
+          );
+        })
+        .join(" ")
+    : _muted("none");
+
+  var mcpCell = mcpServersStructured.length
+    ? mcpServersStructured
+        .map(function (s) {
+          var t =
+            s.transport || (s.url_host ? "http" : s.command ? "stdio" : "?");
+          var via = s.url_host ? s.url_host : s.command || "?";
+          return (
+            '<span class="ch-badge">' +
+            escapeHtml((s.name || "?") + " · " + t + " · " + via) +
+            "</span>"
+          );
+        })
+        .join(" ")
+    : _muted("none");
+
+  var statuslineCell = statusLineCommand
+    ? (hasClaudeHud ? "✓ claude-hud · " : "custom · ") +
+      escapeHtml(statusLineCommand)
+    : _muted("unset (no claude-hud)");
+
+  var rotationCell =
+    rotCount > 0
+      ? rotCount + "× (last " + (lastRotationAt || "?") + ")"
+      : _muted("no rotation observed");
+
+  var setupRows = [
+    ["Plugins", pluginsCell],
+    ["MCP servers", mcpCell],
+    ["Statusline", statuslineCell],
+    ["Auth rotations", rotationCell],
+  ];
+  var setupTableHtml = setupRows
+    .map(function (r) {
+      return "<tr><th>" + escapeHtml(r[0]) + "</th><td>" + r[1] + "</td></tr>";
+    })
+    .join("");
+  var setupAuditHtml =
+    '<div class="agent-detail-section">' +
+    '<details class="agent-detail-setup-audit" open>' +
+    '<summary class="agent-detail-pane-label">Setup audit</summary>' +
+    '<table class="agent-detail-setup-table">' +
+    setupTableHtml +
+    "</table>" +
+    "</details>" +
+    "</div>";
+
   /* File viewers as tabs (Terminal / CLAUDE.md / .mcp.json) instead of
    * a side-by-side split — each pane gets the full width when active so
    * the agent detail panel respects the viewport instead of stacking
@@ -550,6 +662,7 @@ export function _renderAgentDetail(a) {
     channelsHtml +
     stateHtml +
     fileTabsHtml +
+    setupAuditHtml +
     mcpHtml +
     "</div>"
   );

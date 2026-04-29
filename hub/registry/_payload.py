@@ -302,6 +302,20 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_quota_weekly_remaining": a.get("orochi_quota_weekly_remaining", ""),
                 "orochi_statusline_model": a.get("orochi_statusline_model", ""),
                 "orochi_account_email": a.get("orochi_account_email", ""),
+                # Setup-audit fields (sac PR#53). Surfaced so the
+                # Agents-tab can render plan label, plugins, MCP setup,
+                # and auth-rotation timestamp without re-querying a
+                # per-host endpoint.
+                "account_plan_label": a.get("account_plan_label", ""),
+                "account_subscription_type": a.get("account_subscription_type", ""),
+                "account_rate_limit_tier": a.get("account_rate_limit_tier", ""),
+                "account_organization_name": a.get("account_organization_name", ""),
+                "account_uuid": a.get("account_uuid", ""),
+                "oauth_expires_at": a.get("oauth_expires_at"),
+                "oauth_rotation_count": a.get("oauth_rotation_count", 0),
+                "oauth_last_rotation_at": a.get("oauth_last_rotation_at", ""),
+                "installed_plugins": list(a.get("installed_plugins") or []),
+                "status_line_command": a.get("status_line_command", ""),
                 # lead msg#16005 — whole ``scitex-agent-container status
                 # --terse --json`` payload. Dashboard consumers (Agents
                 # tab, future dashboards) can key off
