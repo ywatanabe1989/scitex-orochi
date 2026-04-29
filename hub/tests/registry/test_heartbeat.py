@@ -77,7 +77,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_last_tool_at="2026-04-17T00:00:00+00:00",
-                last_tool_name="Edit",
+                sac_hooks_last_tool_name="Edit",
             )
         )
         self.assertEqual(resp.status_code, 200)
@@ -93,7 +93,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_last_mcp_tool_at="2026-04-17T00:01:00+00:00",
-                last_mcp_tool_name="mcp__orochi__send_message",
+                sac_hooks_last_mcp_tool_name="mcp__orochi__send_message",
             )
         )
         self.assertEqual(resp.status_code, 200)
@@ -144,9 +144,9 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self._post(
             self._base_payload(
                 sac_hooks_last_tool_at="2026-04-17T01:00:00+00:00",
-                last_tool_name="Write",
+                sac_hooks_last_tool_name="Write",
                 sac_hooks_last_mcp_tool_at="2026-04-17T00:59:30+00:00",
-                last_mcp_tool_name="mcp__orochi__channel_info",
+                sac_hooks_last_mcp_tool_name="mcp__orochi__channel_info",
             )
         )
         resp = self._get_detail("hb-agent")
@@ -269,7 +269,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_last_action_at="2026-04-17T02:00:00+00:00",
-                last_action_name="nonce-probe",
+                sac_hooks_last_action_name="nonce-probe",
                 sac_hooks_last_action_outcome="success",
                 sac_hooks_last_action_elapsed_s=3.2,
                 action_counts={"nonce-probe:success": 42, "compact:success": 4},
@@ -290,7 +290,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         self._post(
             self._base_payload(
                 sac_hooks_last_action_at="2026-04-17T02:05:00+00:00",
-                last_action_name="compact",
+                sac_hooks_last_action_name="compact",
                 sac_hooks_last_action_outcome="completion_timeout",
                 sac_hooks_last_action_elapsed_s=30.0,
             )
