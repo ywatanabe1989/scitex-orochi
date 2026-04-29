@@ -122,6 +122,8 @@ async def handle_subscription(consumer, content, subscribe: bool):
     # default). unsubscribe ignores these.
     can_read = bool(payload.get("can_read", True))
     can_write = bool(payload.get("can_write", True))
+    # todo#406 Phase 2: mention_only — only receive @-mentioned messages.
+    mention_only = bool(payload.get("mention_only", False))
     ok = await _persist_agent_subscription(
         consumer.workspace_id,
         consumer.agent_name,
@@ -129,6 +131,7 @@ async def handle_subscription(consumer, content, subscribe: bool):
         subscribe,
         can_read=can_read,
         can_write=can_write,
+        mention_only=mention_only,
     )
     if not ok:
         await consumer.send_json(
@@ -158,6 +161,15 @@ async def handle_subscription(consumer, content, subscribe: bool):
         subs.remove(ch_name)
     if hasattr(consumer, "agent_meta"):
         consumer.agent_meta["channels"] = subs
+
+    # Keep in-memory mention_only set in sync (todo#406 Phase 2).
+    mo_set = getattr(consumer, "_mention_only_channels", set())
+    if subscribe and can_read and mention_only:
+        mo_set.add(ch_name)
+    else:
+        mo_set.discard(ch_name)
+    consumer._mention_only_channels = mo_set
+
     from hub.registry import register_agent
 
     register_agent(
@@ -178,6 +190,7 @@ async def handle_subscription(consumer, content, subscribe: bool):
             "type": "subscribed" if subscribe else "unsubscribed",
             "channel": ch_name,
             "channels": subs,
+            "mention_only": mention_only,
         }
     )
 
