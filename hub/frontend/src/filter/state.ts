@@ -124,6 +124,19 @@ export function syncFilterVisuals() {
   });
 }
 
+/* Format a filter-tag chip label. DM channels have long raw keys like
+ * "dm:agent:X|human:Y" \u2014 show "DM: X" instead. */
+export function _prettyTagLabel(type: string, value: string): string {
+  if (type === "channel" && value.indexOf("dm:") === 0) {
+    var after = value.slice(3); // "agent:X|human:Y"
+    var firstPart = after.split("|")[0] || "";
+    var colonIdx = firstPart.indexOf(":");
+    var name = colonIdx >= 0 ? firstPart.slice(colonIdx + 1) : firstPart;
+    return "DM: " + name;
+  }
+  return type + ":" + value;
+}
+
 export function renderTags() {
   if (!filterTagsEl) return;
   var msgInput = document.getElementById("msg-input");
@@ -138,9 +151,7 @@ export function renderTags() {
         '" onclick="removeTag(' +
         i +
         ')">' +
-        t.type +
-        ":" +
-        escapeHtml(t.value) +
+        escapeHtml(_prettyTagLabel(t.type, t.value)) +
         ' <span class="tag-remove">\u00D7</span></span>'
       );
     })
