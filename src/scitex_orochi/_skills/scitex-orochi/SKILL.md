@@ -70,6 +70,7 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 65_agent-deployment-extras.md
 - 66_hpc-spartan-startup-pattern-extras.md
 - 67_hpc-etiquette-spartan-policy-batch-lifecycle.md
+- 67_hpc-spartan-sbatch-hold-branch.md
 - 68_hpc-etiquette-spartan-batch-and-lifecycle.md
 - 69_fleet-role-taxonomy-process-roster-and-anti-patterns.md
 - 70_fleet-operating-principles-channel-deploy.md
@@ -83,6 +84,7 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 78_agent-permission-prompt-patterns-meta.md
 - 79_permission-prompt-patterns-meta.md
 - 80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md
+- 81_convention-cli-extras-b.md
 
 ### Sub-skill: agent-types
 
