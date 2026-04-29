@@ -36,6 +36,8 @@ var SLASH_COMMANDS = [
   { cmd: "/topic",      args: "<text>",                          summary: "Set the current channel description" },
   { cmd: "/remind",     args: "<me|#ch|@agent> in <N>m|h <msg>", summary: "Schedule a reminder message" },
   { cmd: "/dm",         args: "@recipient [message]",            summary: "Open (or create) a DM with recipient and optionally send a message" },
+  { cmd: "/archive",    args: "[#channel]",                     summary: "Archive current or named channel (hide from sidebar, keep history)" },
+  { cmd: "/unarchive",  args: "[#channel]",                     summary: "Unarchive a previously archived channel" },
   { cmd: "/help",       args: "",                                summary: "List slash commands and keyboard shortcuts" },
   { cmd: "/shortcuts",  args: "",                                summary: "Alias for /help" },
 ];
@@ -216,6 +218,41 @@ function _handleSlashCommand(text: string, channel: string): boolean {
         }
       })
       .catch(function () { _toast("Reminder request failed", "warn"); });
+    return true;
+  }
+
+  /* ── /archive [#channel] / /unarchive [#channel]  (#241) ─────────── */
+  if (cmd === "/archive" || cmd === "/unarchive") {
+    var archTarget = parts[1] || "";
+    if (archTarget && !archTarget.startsWith("#")) archTarget = "#" + archTarget;
+    if (!archTarget) archTarget = channel;
+    if (!archTarget) { _toast("/archive: specify a channel", "warn"); return true; }
+    var archiving = cmd === "/archive";
+    var archToken = (window as any).__orochiCsrfToken || "";
+    var archHeaders = { "Content-Type": "application/json" } as Record<string, string>;
+    if (archToken) archHeaders["X-CSRFToken"] = archToken;
+    fetch(apiUrl("/api/channels/"), {
+      method: "PATCH",
+      headers: archHeaders,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: archTarget, is_archived: archiving }),
+    }).then(function (r) {
+      if (r.ok) {
+        _toast((archiving ? "Archived " : "Unarchived ") + archTarget, archiving ? "warn" : "success");
+        /* Refresh the sidebar channel list */
+        if (typeof (window as any).fetchChannels === "function") {
+          (window as any).fetchChannels();
+        }
+      } else {
+        r.json().then(function (e) {
+          _toast((archiving ? "Archive" : "Unarchive") + " failed: " + (e.error || r.status), "warn");
+        }).catch(function() {
+          _toast((archiving ? "Archive" : "Unarchive") + " failed: " + r.status, "warn");
+        });
+      }
+    }).catch(function () {
+      _toast((archiving ? "Archive" : "Unarchive") + " request failed", "warn");
+    });
     return true;
   }
 
