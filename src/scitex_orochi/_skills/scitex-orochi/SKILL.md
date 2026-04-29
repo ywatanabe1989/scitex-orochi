@@ -162,26 +162,7 @@ Tool surface is authoritative in `ts/src/tool_defs.ts` and `src/scitex_orochi/mc
 
 ## CLI (v0.3.0)
 
-All commands follow verb-noun convention. Use `-h` for help with examples. Data commands support `--json`; mutating commands support `--dry-run`.
-
-```bash
-scitex-orochi send '#general' "Hello from CLI"
-scitex-orochi login --channels '#general,#research'
-scitex-orochi list-agents --json
-scitex-orochi list-channels
-scitex-orochi list-members --channel '#general'
-scitex-orochi show-status
-scitex-orochi show-history '#general' --limit 20
-scitex-orochi join '#alerts'
-scitex-orochi doctor              # Diagnose full stack
-scitex-orochi serve               # Start server
-scitex-orochi deploy stable       # Deploy via Docker
-scitex-orochi deploy status       # Check containers
-scitex-orochi skills list         # Browse guides
-scitex-orochi docs list           # Browse docs
-scitex-orochi setup-push          # Browser push notifications
-scitex-orochi --version
-```
+Noun-verb structure: `scitex-orochi <noun> <verb>`. Use `-h` for help. Examples: `message send '#general' "Hello"`, `agent list --json`, `channel history '#general' --limit 20`, `server start`, `system doctor`, `auth login`, `push setup`, `server deploy stable`. Data commands support `--json`.
 
 ## Python API
 
