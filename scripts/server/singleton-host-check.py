@@ -97,7 +97,7 @@ def _collect_specs(agents_dir: Path | None = None) -> list[dict]:
     for spec_file in sorted(search_dir.rglob("*.yaml")):
         try:
             data = _load_yaml(spec_file)
-        except Exception as exc:
+        except Exception as exc:  # stx-allow: fallback (reason: malformed YAML — skip and continue scanning)
             log.debug("skip %s: %s", spec_file, exc)
             continue
 
@@ -131,7 +131,7 @@ def _fetch_agents() -> list[dict]:
         url = f"{HUB_URL}/api/agents/?token={HUB_TOKEN}"
         with urllib.request.urlopen(url, timeout=10) as resp:
             return json.loads(resp.read())
-    except Exception as exc:
+    except Exception as exc:  # stx-allow: fallback (reason: hub unreachable — return empty list, no false positives)
         log.warning("Failed to fetch agents from hub: %s", exc)
         return []
 
@@ -175,7 +175,7 @@ def _ssh_reachable(host: str, timeout: int = 5) -> bool:
             timeout=timeout + 2,
         )
         return result.returncode == 0
-    except Exception:
+    except Exception:  # stx-allow: fallback (reason: SSH failure — treat host as unreachable)
         return False
 
 
@@ -274,7 +274,7 @@ def _post_to_heads(text: str) -> None:
         data = json.dumps({
             "token": HUB_TOKEN,
             "channel": HEADS_CHANNEL,
-            "message": text,
+            "text": text,
         }).encode()
         req = urllib.request.Request(
             f"{HUB_URL}/api/messages/",
@@ -284,7 +284,7 @@ def _post_to_heads(text: str) -> None:
         )
         with urllib.request.urlopen(req, timeout=10):
             pass
-    except Exception as exc:
+    except Exception as exc:  # stx-allow: fallback (reason: hub may be unreachable during check)
         log.warning("Failed to post to hub: %s", exc)
 
 
