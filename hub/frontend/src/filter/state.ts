@@ -135,6 +135,7 @@ export function _prettyTagLabel(type: string, value: string): string {
     return "DM: " + name;
   }
   return type + ":" + value;
+}
 
 function _prettyChannelName(chatId: string): string {
   return _prettyTagLabel("channel", chatId);

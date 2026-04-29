@@ -169,6 +169,7 @@ export function showMentionDropdown(specialItems, agentItems, channelItems?) {
   }
   var chOffset = offset + agentItems.length;
   chItems.forEach(function (item, i) {
+    html +=
       '<div class="mention-item mention-channel' +
       (chOffset + i === 0 ? " selected" : "") +
       '" data-name="' +
@@ -177,6 +178,7 @@ export function showMentionDropdown(specialItems, agentItems, channelItems?) {
       '<span class="mention-dot mention-dot-channel">#</span>' +
       escapeHtml(item.bare) +
       '<span class="mention-desc">channel mention</span>' +
+      "</div>";
   });
 
   mentionDropdown.innerHTML = html;
