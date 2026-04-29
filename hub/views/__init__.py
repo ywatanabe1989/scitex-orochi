@@ -35,6 +35,7 @@ from hub.views.api import (  # noqa: F401
     api_media,
     api_members,
     api_message_detail,
+    api_message_translate,
     api_messages,
     api_my_subscriptions,
     api_push_subscribe,

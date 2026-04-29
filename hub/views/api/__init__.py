@@ -62,6 +62,7 @@ from hub.views.api._misc import (
     api_watchdog_alerts,
 )
 from hub.views.api._reactions import api_message_detail, api_reactions
+from hub.views.api._translate import api_message_translate
 from hub.views.api._releases import api_releases, api_repo_changelog
 from hub.views.api._resources import api_resources
 
@@ -100,6 +101,7 @@ __all__ = [
     "api_media",
     "api_members",
     "api_message_detail",
+    "api_message_translate",
     "api_messages",
     "api_my_subscriptions",
     "api_push_subscribe",

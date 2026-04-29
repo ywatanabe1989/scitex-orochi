@@ -185,7 +185,8 @@
 }
 
 .msg-edit-btn,
-.msg-delete-btn {
+.msg-delete-btn,
+.msg-translate-btn {
   position: absolute;
   bottom: 6px;
   background: #1a1a1a;
@@ -211,8 +212,13 @@
   right: 114px;
 }
 
+.msg-translate-btn {
+  right: 150px;
+}
+
 .msg:hover .msg-edit-btn,
-.msg:hover .msg-delete-btn {
+.msg:hover .msg-delete-btn,
+.msg:hover .msg-translate-btn {
   opacity: 1;
 }
 
@@ -277,6 +283,47 @@
 .msg-edit-cancel:hover {
   background: #333;
   color: #f8f7f5;
+}
+
+.msg-translate-btn:hover {
+  background: #222;
+  color: #74b9ff;
+  border-color: #74b9ff;
+}
+
+/* Translation overlay */
+.msg-translate-overlay {
+  position: relative;
+  margin-top: 6px;
+  background: #1a1f2e;
+  border: 1px solid #2c3e6b;
+  border-radius: 6px;
+  padding: 8px 32px 8px 10px;
+  color: #b0c4ff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.msg-translate-error {
+  color: #e74c3c;
+  font-style: italic;
+}
+
+.msg-translate-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.msg-translate-close:hover {
+  color: #999;
 }
 
 /* Delete animation */
