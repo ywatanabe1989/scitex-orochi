@@ -35,6 +35,7 @@ var SLASH_COMMANDS = [
   { cmd: "/leave",      args: "[#channel]",                      summary: "Unsubscribe from current or named channel" },
   { cmd: "/topic",      args: "<text>",                          summary: "Set the current channel description" },
   { cmd: "/remind",     args: "<me|#ch|@agent> in <N>m|h <msg>", summary: "Schedule a reminder message" },
+  { cmd: "/dm",         args: "@recipient [message]",            summary: "Open (or create) a DM with recipient and optionally send a message" },
   { cmd: "/help",       args: "",                                summary: "List slash commands and keyboard shortcuts" },
   { cmd: "/shortcuts",  args: "",                                summary: "Alias for /help" },
 ];
@@ -215,6 +216,68 @@ function _handleSlashCommand(text: string, channel: string): boolean {
         }
       })
       .catch(function () { _toast("Reminder request failed", "warn"); });
+    return true;
+  }
+
+  /* ── /dm @recipient [message]  (#243) ────────────────────────────── */
+  if (cmd === "/dm") {
+    /* Grammar: /dm @recipient [optional message body]
+     *
+     *   /dm @mgr-secretary
+     *   /dm @mgr-secretary can you check today's calendar?
+     *   /dm ywatanabe urgent: deployment failed
+     *
+     * Recipient can be @agent-name, @human-username, or bare name.
+     * Canonical DM channel: dm:<typeA>:<nameA>|<typeB>:<nameB> (sorted).
+     * The current dashboard user is always treated as human:<userName>
+     * (humans log in via browser; agents connect via WS, not the chat UI).
+     * Backend lazy-creates the channel row on first message send, so
+     * navigation to the channel works even before any POST /api/dms/. */
+    var dmRecipRaw = (parts[1] || "").replace(/^@/, "");
+    if (!dmRecipRaw) {
+      _toast("/dm: usage: /dm @recipient [message]", "warn");
+      return true;
+    }
+    var dmBody = parts.slice(2).join(" ").trim();
+    /* Determine recipient principal. Prefer known agent names (prefix
+     * "agent:" in the principal key), fall back to human:<name>. */
+    var dmRecipKey: string;
+    var liveAgents = Array.isArray((window as any).__lastAgents)
+      ? (window as any).__lastAgents
+      : [];
+    var isKnownAgent = liveAgents.some(function (a) {
+      var bare = String((a && a.name) || "").split("@")[0];
+      return bare === dmRecipRaw;
+    });
+    dmRecipKey = (isKnownAgent ? "agent:" : "human:") + dmRecipRaw;
+    /* Current user's principal key — always human in the browser UI. */
+    var dmSelfUser = userName || (window as any).__orochiUserName || "user";
+    var dmSelfKey = "human:" + dmSelfUser;
+    /* Build canonical channel name (sorted). */
+    var dmPair = [dmSelfKey, dmRecipKey].sort();
+    var dmChannel = "dm:" + dmPair.join("|");
+    /* Navigate to the DM channel. */
+    if (typeof (window as any).setCurrentChannel === "function") {
+      (window as any).setCurrentChannel(dmChannel);
+    }
+    if (typeof (window as any).loadChannelHistory === "function") {
+      (window as any).loadChannelHistory(dmChannel);
+    }
+    if (typeof (window as any)._activateTab === "function") {
+      (window as any)._activateTab("chat");
+    }
+    _toast("DM opened with " + dmRecipRaw, "success");
+    /* If an inline message was provided, send it after a short tick so
+     * the channel state settles first. */
+    if (dmBody) {
+      setTimeout(function () {
+        if (typeof (window as any).sendOrochiMessage === "function") {
+          (window as any).sendOrochiMessage(dmChannel, dmBody);
+        } else if (typeof (window as any)._wsSend === "function") {
+          (window as any)._wsSend({ type: "message", channel: dmChannel, text: dmBody });
+        }
+      }, 120);
+    }
     return true;
   }
 
