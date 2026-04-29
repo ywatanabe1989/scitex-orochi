@@ -26,6 +26,7 @@ document.addEventListener("DOMContentLoaded", function () {
             is_starred: ch.is_starred || false,
             is_muted: ch.is_muted || false,
             is_hidden: ch.is_hidden || false,
+            is_archived: ch.is_archived || false,
             notification_level: ch.notification_level || "all",
           };
           if (typeof cacheChannelIdentity === "function") {

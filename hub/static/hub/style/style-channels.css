@@ -458,6 +458,32 @@
   margin: 6px 8px;
 }
 
+/* #241: archived channel rows — strikethrough + dim text; invisible
+ * until the user clicks "Show archived (N)" in the sidebar toggle. */
+.channel-item.ch-archived {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+.channel-item.ch-archived:hover {
+  opacity: 0.65;
+}
+
+/* #241: "Show archived (N)" toggle below the channel list. */
+.sidebar-archived-toggle {
+  font-size: 11px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  user-select: none;
+  transition: color 0.15s, background 0.15s;
+  margin-top: 2px;
+}
+.sidebar-archived-toggle:hover {
+  color: #94a3b8;
+  background: #1a1a1a;
+}
+
 /* Tree-structured channel hierarchy (todo#71).
  * Channels named like "proj/ripple-wm" are grouped under a collapsible
  * "proj/" folder header. The header is a regular row that clicks to

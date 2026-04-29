@@ -32,6 +32,8 @@ export function updateChannelSelect() {
 var SLASH_COMMANDS = [
   { cmd: "/mute",       args: "[#channel]",                      summary: "Mute current or named channel" },
   { cmd: "/unmute",     args: "[#channel]",                      summary: "Unmute current or named channel" },
+  { cmd: "/archive",    args: "[#channel]",                      summary: "Archive current or named channel (admin only)" },
+  { cmd: "/unarchive",  args: "[#channel]",                      summary: "Unarchive current or named channel (admin only)" },
   { cmd: "/leave",      args: "[#channel]",                      summary: "Unsubscribe from current or named channel" },
   { cmd: "/topic",      args: "<text>",                          summary: "Set the current channel description" },
   { cmd: "/remind",     args: "<me|#ch|@agent> in <N>m|h <msg>", summary: "Schedule a reminder message" },
@@ -65,6 +67,36 @@ function _handleSlashCommand(text: string, channel: string): boolean {
       (window as any)._setChannelPref(target, { is_muted: mute });
     }
     _toast((mute ? "Muted " : "Unmuted ") + target, mute ? "warn" : "success");
+    return true;
+  }
+
+  /* ── /archive [#channel] / /unarchive [#channel]  (#241) ────────── */
+  if (cmd === "/archive" || cmd === "/unarchive") {
+    var archTarget = parts[1] || "";
+    if (archTarget && !archTarget.startsWith("#")) archTarget = "#" + archTarget;
+    if (!archTarget) archTarget = channel;
+    if (!archTarget) return true;
+    var doArchive = cmd === "/archive";
+    fetch(apiUrl("/api/channels/"), {
+      method: "PATCH",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: archTarget, is_archived: doArchive }),
+    })
+      .then(function (r) {
+        if (r.status === 403) {
+          _toast("Permission denied (admin only)", "warn");
+        } else if (r.ok) {
+          _toast((doArchive ? "Archived " : "Unarchived ") + archTarget, doArchive ? "warn" : "success");
+          /* Trigger sidebar refresh so the channel appears/disappears */
+          if (typeof (window as any).fetchStats === "function") {
+            (window as any).fetchStats();
+          }
+        } else {
+          _toast("Error: could not " + (doArchive ? "archive " : "unarchive ") + archTarget, "warn");
+        }
+      })
+      .catch(function () { _toast("Request failed", "warn"); });
     return true;
   }
 

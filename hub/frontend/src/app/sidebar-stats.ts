@@ -46,10 +46,21 @@ export async function fetchStats() {
      * normalized name so legacy rows collapse into a single entry. */
     var seenNames = {};
     var displayChannels = [];
+    /* #241: archived channels are hidden from the sidebar by default.
+     * Users can reveal them by clicking "Show archived (N)" toggle
+     * (state in localStorage.orochi.showArchivedChannels). */
+    var showArchived = (function () {
+      try {
+        return localStorage.getItem("orochi.showArchivedChannels") === "1";
+      } catch (_) {
+        return false;
+      }
+    })();
     /* todo#418: hidden channels always render, but dimmed at the bottom of
      * the Channels section. Clicking a dimmed row un-hides it. No separate
      * toggle UI or per-row eye button — just a subtle visual sort-to-bottom
      * so the list stays scannable. */
+    var archivedNames: string[] = [];
     stats.channels.forEach(function (c) {
       if (typeof c !== "string") return;
       if (c.indexOf("dm:") === 0) return;
@@ -57,10 +68,16 @@ export async function fetchStats() {
       if (seenNames[norm]) return;
       seenNames[norm] = true;
       var pref = _channelPrefs[norm] || _channelPrefs[c] || {};
+      /* Skip archived channels unless the user wants to see them. */
+      if (pref.is_archived) {
+        archivedNames.push(norm);
+        if (!showArchived) return;
+      }
       displayChannels.push({
         raw: c,
         norm: norm,
         hidden: !!pref.is_hidden,
+        archived: !!pref.is_archived,
       });
     });
     /* Also include channels that only exist in _channelPrefs with is_hidden
@@ -73,7 +90,7 @@ export async function fetchStats() {
       var norm = ch.charAt(0) === "#" ? ch : "#" + ch;
       if (seenNames[norm]) return;
       seenNames[norm] = true;
-      displayChannels.push({ raw: ch, norm: norm, hidden: true });
+      displayChannels.push({ raw: ch, norm: norm, hidden: true, archived: !!pref.is_archived });
     });
     /* Sort: starred first, then visible, then hidden rows at bottom. */
     displayChannels.sort(function (a, b) {
@@ -174,6 +191,33 @@ export async function fetchStats() {
     }
     /* Add drag-and-drop to channels section */
     _addDragAndDrop(chContainer, "channels");
+    /* #241: "Show archived (N)" toggle rendered below channel list. */
+    var archiveToggleId = "sidebar-archived-toggle";
+    var existingToggle = document.getElementById(archiveToggleId);
+    if (archivedNames.length > 0) {
+      var toggleLabel = (showArchived ? "Hide archived" : "Show archived") + " (" + archivedNames.length + ")";
+      if (!existingToggle) {
+        var toggleEl = document.createElement("div");
+        toggleEl.id = archiveToggleId;
+        toggleEl.className = "sidebar-archived-toggle";
+        toggleEl.textContent = toggleLabel;
+        toggleEl.addEventListener("click", function () {
+          try {
+            var cur = localStorage.getItem("orochi.showArchivedChannels") === "1";
+            localStorage.setItem("orochi.showArchivedChannels", cur ? "0" : "1");
+          } catch (_) {}
+          chContainer._lastStatsJson = null;
+          fetchStats();
+        });
+        if (chContainer.parentNode) {
+          chContainer.parentNode.insertBefore(toggleEl, chContainer.nextSibling);
+        }
+      } else {
+        existingToggle.textContent = toggleLabel;
+      }
+    } else if (existingToggle) {
+      existingToggle.remove();
+    }
     if (typeof updateChannelUnreadBadges === "function")
       updateChannelUnreadBadges();
     if (inputHasFocus && document.activeElement !== msgInput) {

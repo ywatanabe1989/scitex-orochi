@@ -33,6 +33,7 @@ class Channel(models.Model):
     icon_image = models.CharField(max_length=500, blank=True, default="")
     icon_text = models.CharField(max_length=16, blank=True, default="")
     color = models.CharField(max_length=16, blank=True, default="")
+    is_archived = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

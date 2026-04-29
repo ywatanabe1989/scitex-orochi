@@ -93,6 +93,12 @@ def api_channels(request, slug=None):
             if field in body:
                 setattr(ch, field, body.get(field) or "")
                 changed.append(field)
+        # is_archived requires admin/superuser — regular users get 403.
+        if "is_archived" in body:
+            if not (request.user.is_superuser or request.user.is_staff):
+                return JsonResponse({"error": "permission denied"}, status=403)
+            ch.is_archived = bool(body["is_archived"])
+            changed.append("is_archived")
         if changed:
             ch.save(update_fields=changed)
         # Broadcast identity so every client updates sidebar / pool chip / canvas.
@@ -108,6 +114,7 @@ def api_channels(request, slug=None):
                 "icon_image": ch.icon_image,
                 "icon_text": ch.icon_text,
                 "color": ch.color,
+                "is_archived": ch.is_archived,
             },
         )
         return JsonResponse(
@@ -119,6 +126,7 @@ def api_channels(request, slug=None):
                 "icon_image": ch.icon_image,
                 "icon_text": ch.icon_text,
                 "color": ch.color,
+                "is_archived": ch.is_archived,
             }
         )
 
@@ -141,6 +149,7 @@ def api_channels(request, slug=None):
                 "icon_image": ch.icon_image,
                 "icon_text": ch.icon_text,
                 "color": ch.color,
+                "is_archived": ch.is_archived,
                 "is_starred": p.is_starred if p else False,
                 "is_muted": p.is_muted if p else False,
                 "is_hidden": p.is_hidden if p else False,
@@ -470,7 +479,11 @@ def api_stats(request, slug=None):
     from hub.models import Message
 
     workspace = get_workspace(request, slug=slug)
-    channels = Channel.objects.filter(workspace=workspace)
+    include_archived = request.GET.get("include_archived") == "1"
+    channels_qs = Channel.objects.filter(workspace=workspace)
+    if not include_archived:
+        channels_qs = channels_qs.filter(is_archived=False)
+    channels = channels_qs
     msg_count = Message.objects.filter(workspace=workspace).count()
     member_count = WorkspaceMember.objects.filter(workspace=workspace).count()
 

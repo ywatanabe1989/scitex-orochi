@@ -122,6 +122,7 @@ export function _renderChannelRowHtml(row, ctx) {
    * body-level delegation wired in attachChannelBadgeHandlers(). */
   var starred = pref.is_starred ? " ch-starred" : "";
   var hiddenCls = entry.hidden ? " ch-hidden" : "";
+  var archivedCls = entry.archived ? " ch-archived" : "";
   var inFolderCls = row.inFolder ? " ch-in-folder" : "";
   var divider =
     i === ctx.firstHiddenIdx
@@ -188,6 +189,7 @@ export function _renderChannelRowHtml(row, ctx) {
     muted +
     starred +
     hiddenCls +
+    archivedCls +
     inFolderCls +
     '" data-channel="' +
     escapeHtml(c) +
