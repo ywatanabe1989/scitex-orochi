@@ -488,6 +488,14 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
             if ch_name not in agent_channels:
                 return
+            # mention-only filter (todo#406 Phase 2): if this channel was
+            # subscribed with mention_only=True, only forward the message
+            # when @<agent_name> appears in the text.
+            mention_only_channels = getattr(self, "_mention_only_channels", set())
+            if ch_name in mention_only_channels:
+                text = event.get("text") or ""
+                if f"@{self.agent_name}" not in text:
+                    return
         await self.send_json(
             {
                 "type": "message",
