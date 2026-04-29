@@ -83,6 +83,7 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 78_agent-permission-prompt-patterns-meta.md
 - 79_permission-prompt-patterns-meta.md
 - 80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md
+- 81_convention-cli-extras-b.md
 
 ### Sub-skill: agent-types
 
