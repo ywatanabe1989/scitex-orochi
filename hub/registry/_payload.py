@@ -62,6 +62,26 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         reg_ts = a.get("registered_at")
         hb_ts = a.get("last_heartbeat")
         action_ts = a.get("last_action")
+        # sac_hooks_last_tool_at is an ISO-8601 string pushed by Claude Code
+        # PreToolUse/PostToolUse hooks. Include it as an activity signal so
+        # agents that use tools but don't send Orochi messages don't appear
+        # stale. Agents with orochi_pane_state (running/idle/stale) bypass
+        # this fallback entirely — the timer only matters for hook-only agents.
+        hook_ts_str = a.get("sac_hooks_last_tool_at") or ""
+        hook_ts: float | None = None
+        if hook_ts_str:
+            try:
+                from datetime import datetime as _dt, timezone as _tz
+                hook_ts = _dt.fromisoformat(
+                    hook_ts_str.replace("Z", "+00:00")
+                ).timestamp()
+            except Exception:
+                hook_ts = None
+        # Use the freshest available activity timestamp.
+        best_action_ts = max(
+            (ts for ts in (action_ts, hook_ts) if ts is not None),
+            default=None,
+        )
         # Liveness classification distinct from WS connection state.
         # Prefer the orochi_pane_state classifier (agent_meta_pkg/_classifier.py)
         # which already separates "idle at prompt" (alive, waiting) from
@@ -70,8 +90,8 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         liveness = a.get("status", "online")
         pane = (a.get("orochi_pane_state") or "").lower()
         idle_seconds = None
-        if action_ts:
-            idle_seconds = int(now - action_ts)
+        if best_action_ts:
+            idle_seconds = int(now - best_action_ts)
         if a.get("status") == "online":
             if pane == "running":
                 liveness = "online"
@@ -181,9 +201,14 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     if a.get("last_echo_ok_ts")
                     else None
                 ),
+                # last_action: the best available activity timestamp (Orochi
+                # chat message OR sac hooks tool-use event, whichever is newer).
+                # The raw `last_action` (chat only) is still the source for
+                # last_message_preview, but the activity column in the Agents tab
+                # should reflect actual work, not just chat cadence.
                 "last_action": (
-                    datetime.fromtimestamp(action_ts, tz=timezone.utc).isoformat()
-                    if action_ts
+                    datetime.fromtimestamp(best_action_ts, tz=timezone.utc).isoformat()
+                    if best_action_ts
                     else None
                 ),
                 "metrics": a.get("metrics", {}),
