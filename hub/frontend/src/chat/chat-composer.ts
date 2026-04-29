@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { lastActiveChannel } from "../app/state";
-import { sendOrochiMessage, userName } from "../app/utils";
+import { sendOrochiMessage, userName, apiUrl } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
 import { _renderMermaidIn } from "./chat-attachments";
 import {
@@ -26,35 +26,119 @@ export function updateChannelSelect() {
  * pendingAttachments — the Overview popup and Reply composer have
  * their own per-surface stores so this module is unchanged by the
  * unification). */
-/* #245: slash-command router — intercepts text beginning with "/" before
- * it reaches the WS/REST send path. Returns true if the command was
- * handled (so sendMessage() must NOT send the text as a message). */
+/* #245/#246/#247/#248: slash-command registry.
+ * Each entry: { args, summary } — consumed by /help to list commands.
+ * Handlers live in _handleSlashCommand() below. */
+var SLASH_COMMANDS = [
+  { cmd: "/mute",       args: "[#channel]", summary: "Mute current or named channel" },
+  { cmd: "/unmute",     args: "[#channel]", summary: "Unmute current or named channel" },
+  { cmd: "/leave",      args: "[#channel]", summary: "Unsubscribe from current or named channel" },
+  { cmd: "/topic",      args: "<text>",     summary: "Set the current channel description" },
+  { cmd: "/help",       args: "",           summary: "List slash commands and keyboard shortcuts" },
+  { cmd: "/shortcuts",  args: "",           summary: "Alias for /help" },
+];
+
+/* Show a mini-toast; delegates to window._showMiniToast if available. */
+function _toast(text: string, kind?: string) {
+  if (typeof (window as any)._showMiniToast === "function") {
+    (window as any)._showMiniToast(text, kind);
+  }
+}
+
+/* #245/#246/#247/#248: slash-command router — intercepts text beginning with
+ * "/" before the WS/REST send path. Returns true if a command matched
+ * (caller clears the input and returns without sending). */
 function _handleSlashCommand(text: string, channel: string): boolean {
   var parts = text.trim().split(/\s+/);
   var cmd = parts[0].toLowerCase();
-  if (cmd !== "/mute" && cmd !== "/unmute") return false;
 
-  /* Resolve target channel: optional first arg "#channel-name" or bare
-   * "channel-name"; falls back to the currently focused channel. */
-  var target = parts[1] || "";
-  if (!target.startsWith("#") && target) target = "#" + target;
-  if (!target) target = channel;
-  if (!target) return true; /* nothing to act on; swallow anyway */
+  /* ── /mute [#channel]  (#245) ─────────────────────────────────────── */
+  if (cmd === "/mute" || cmd === "/unmute") {
+    var target = parts[1] || "";
+    if (target && !target.startsWith("#")) target = "#" + target;
+    if (!target) target = channel;
+    if (!target) return true;
+    var mute = cmd === "/mute";
+    if (typeof (window as any)._setChannelPref === "function") {
+      (window as any)._setChannelPref(target, { is_muted: mute });
+    }
+    _toast((mute ? "Muted " : "Unmuted ") + target, mute ? "warn" : "success");
+    return true;
+  }
 
-  var mute = cmd === "/mute";
-  /* _setChannelPref lives in channel-prefs.ts (exported to window by
-   * app.js). Sidebar re-renders automatically on the PATCH response. */
-  if (typeof (window as any)._setChannelPref === "function") {
-    (window as any)._setChannelPref(target, { is_muted: mute });
+  /* ── /leave [#channel]  (#248) ────────────────────────────────────── */
+  if (cmd === "/leave") {
+    var leaveTarget = parts[1] || "";
+    if (leaveTarget && !leaveTarget.startsWith("#")) leaveTarget = "#" + leaveTarget;
+    if (!leaveTarget) leaveTarget = channel;
+    if (!leaveTarget) return true;
+    /* Guard: don't allow leaving DMs or #general */
+    if (leaveTarget === "#general" || leaveTarget.startsWith("dm:")) {
+      _toast("Cannot leave " + leaveTarget, "warn");
+      return true;
+    }
+    fetch(apiUrl("/api/channel-members/"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel: leaveTarget, username: userName }),
+    })
+      .then(function (r) {
+        _toast(r.ok ? "Left " + leaveTarget : "Error leaving " + leaveTarget,
+               r.ok ? "success" : "warn");
+        /* Trigger sidebar refresh so the channel disappears */
+        if (typeof (window as any).fetchStats === "function") {
+          (window as any).fetchStats();
+        }
+      })
+      .catch(function () { _toast("Error leaving " + leaveTarget, "warn"); });
+    return true;
   }
-  /* Ephemeral toast confirmation (#245) */
-  if (typeof (window as any)._showMiniToast === "function") {
-    (window as any)._showMiniToast(
-      (mute ? "Muted " : "Unmuted ") + target,
-      mute ? "warn" : "success",
-    );
+
+  /* ── /topic <text>  (#246) ────────────────────────────────────────── */
+  if (cmd === "/topic") {
+    var description = parts.slice(1).join(" ").trim();
+    fetch(apiUrl("/api/channels/"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: channel, description: description }),
+    })
+      .then(function (r) {
+        _toast(r.ok ? "Topic set" : "Error setting topic", r.ok ? "success" : "warn");
+      })
+      .catch(function () { _toast("Error setting topic", "warn"); });
+    return true;
   }
-  return true;
+
+  /* ── /help or /shortcuts  (#247) ──────────────────────────────────── */
+  if (cmd === "/help" || cmd === "/shortcuts") {
+    var lines = ["Slash commands:"];
+    SLASH_COMMANDS.forEach(function (c) {
+      lines.push("  " + c.cmd + (c.args ? " " + c.args : "") + " — " + c.summary);
+    });
+    lines.push("");
+    lines.push("Keyboard shortcuts:");
+    lines.push("  Ctrl+K — search / jump to channel");
+    lines.push("  Alt+Enter / Ctrl+M — toggle voice input");
+    lines.push("  Shift+Enter — newline in composer");
+    lines.push("  Ctrl+U — upload file");
+    var helpText = lines.join("\n");
+    /* Post as an ephemeral local message if appendMessage is available,
+     * otherwise fall back to an alert. */
+    if (typeof (window as any).appendMessage === "function") {
+      (window as any).appendMessage({
+        sender: "orochi",
+        content: helpText,
+        channel: channel,
+        ts: new Date().toISOString(),
+        local: true,
+      });
+    } else {
+      alert(helpText);
+    }
+    return true;
+  }
+
+  return false; /* unknown command — let it post as a normal message */
 }
 
 export function sendMessage() {
