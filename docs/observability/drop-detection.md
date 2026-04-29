@@ -32,8 +32,8 @@ elif pane in ("stale", "auth_error"):
     liveness = "stale"
 elif pane == "idle":
     liveness = "idle"
-elif pane in ("y_n_prompt", "compose_pending_unsent", ...):
-    liveness = "idle"          # waiting — not stuck
+elif pane in ("y_n_prompt", "compose_pending_unsent", "limit_reached", ...):
+    liveness = "idle"          # waiting / rate-limited — not stuck
 elif idle_seconds > 600:       # >10 min no action
     liveness = "stale"
 elif idle_seconds > 120:       # >2 min
