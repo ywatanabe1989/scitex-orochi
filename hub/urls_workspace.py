@@ -76,6 +76,12 @@ urlpatterns = [
         name="api-my-subscriptions",
     ),
     path("api/messages/", views.api_messages, name="api-messages"),
+    path("api/invitations/", views.api_invitations, name="api-invitations"),
+    path(
+        "api/invitations/<str:token>/",
+        views.api_invitation_detail,
+        name="api-invitation-detail",
+    ),
     path("api/dms/", views.api_dms, name="api-dms"),
     path("api/history/<str:channel_name>/", views.api_history, name="api-history"),
     path("api/stats/", views.api_stats, name="api-stats"),
