@@ -200,6 +200,13 @@ def test_collect_metrics_merges_orochi_slurm_override():
     # (skip assertion on exact value; just require key exists when available)
 
 
+import pytest
+
+
+@pytest.mark.skipif(
+    not _resources._GET_METRICS_AVAILABLE,
+    reason="scitex_resource.get_metrics not available on this install",
+)
 def test_collect_metrics_no_orochi_slurm_returns_local_only():
     """On a non-orochi_slurm host (empty orochi_slurm dict), local metrics stand alone."""
     with patch("scitex_orochi._orochi_slurm.collect_orochi_slurm_metrics", return_value={}):
@@ -212,6 +219,10 @@ def test_collect_metrics_no_orochi_slurm_returns_local_only():
     assert "cpu_count" in metrics
 
 
+@pytest.mark.skipif(
+    not _resources._GET_METRICS_AVAILABLE,
+    reason="scitex_resource.get_metrics not available on this install",
+)
 def test_collect_metrics_orochi_slurm_exception_swallowed():
     """Any unexpected exception from orochi_slurm code must not break heartbeat."""
     with patch(

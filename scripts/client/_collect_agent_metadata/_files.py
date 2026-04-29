@@ -219,6 +219,7 @@ _SENSITIVE_KEY_SUFFIXES = (
     "_TOKEN",
     "_SECRET",
     "_KEY",
+    "_KEY_ID",
     "_PASSWORD",
     "_PASS",
     "_PASSWD",
