@@ -300,6 +300,20 @@ def api_agents_register(request):
             # in ``register_agent`` (transient read glitch on the local
             # state file doesn't wipe the UI every 30s).
             "cron_jobs": body.get("cron_jobs") or [],
+            # orochi#250 — singleton proxy metadata (§7 of
+            # singleton-agent-contract). Pushed by sac once PR#98 lands:
+            #   is_proxy: bool — true when running on non-priority-1 host
+            #   priority_rank: int — 1 = primary, 2+ = fallback position
+            #   priority_list: list[str] — YAML host priority order
+            #   heartbeat_seq: int — monotonic counter per process lifetime
+            #   launch_method: str — how the process was started
+            # Hub stores and re-exposes; no server-side computation.
+            # Absent = agent on older sac without priority-check support.
+            "is_proxy": body.get("is_proxy"),
+            "priority_rank": body.get("priority_rank"),
+            "priority_list": body.get("priority_list") or [],
+            "heartbeat_seq": body.get("heartbeat_seq"),
+            "launch_method": body.get("launch_method", ""),
         },
     )
     # Persist orochi_subagent_count separately — register_agent() preserves prev

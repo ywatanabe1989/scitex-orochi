@@ -316,6 +316,19 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # list (empty list when the daemon isn't running on this host).
                 # Consumed by /api/cron/ and the Machines tab cron-jobs panel.
                 "cron_jobs": list(a.get("cron_jobs") or []),
+                # orochi#250 — singleton proxy metadata (§7 of
+                # singleton-agent-contract).
+                # is_proxy: False when agent hasn't pushed this field
+                #   (older sac); True = proxy on non-priority-1 host.
+                # priority_rank: None = unknown; 1 = primary; 2+ = fallback.
+                # priority_list: YAML host order — dashboard sorts by this.
+                # heartbeat_seq: monotonic counter since process start.
+                # launch_method: sac | sac-ssh | sbatch | manual-tmux | ...
+                "is_proxy": a.get("is_proxy"),
+                "priority_rank": a.get("priority_rank"),
+                "priority_list": list(a.get("priority_list") or []),
+                "heartbeat_seq": a.get("heartbeat_seq"),
+                "launch_method": a.get("launch_method", ""),
             }
         )
     return result

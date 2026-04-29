@@ -394,3 +394,96 @@ class AgentRegisterAuthMatrixTest(TestCase):
                 self.assertIn("fleet-agents-upgrade", resp.json()["error"])
             finally:
                 mod.MIN_HARD_HEARTBEAT_SCHEMA = original_min_hard
+
+
+class SingletonProxyMetadataTest(TestCase):
+    """orochi#250 — is_proxy / priority_rank / heartbeat_seq pass-through.
+
+    Verifies that the singleton proxy metadata fields (§7 of
+    singleton-agent-contract) are accepted by the register endpoint,
+    stored in the registry, and surfaced by GET /api/agents/.
+
+    These fields are pushed by sac once PR#98 (sac priority-check) lands.
+    Absent fields must default to None (not 0/False) so the dashboard can
+    distinguish "older agent that doesn't push" from "agent confirmed primary".
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="proxy-test-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="proxy-test"
+        )
+        from django.contrib.auth.models import User as _U
+
+        self.user = _U.objects.create_user(username="proxy-tester", password="x")
+        WorkspaceMember.objects.create(
+            workspace=self.ws, user=self.user, role="member"
+        )
+        from hub.registry import _agents as _reg
+
+        _reg.clear()
+
+    def _post(self, payload, **kwargs):
+        return self.client.post(
+            "/api/agents/register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **kwargs,
+        )
+
+    def _get_agents(self):
+        self.client.force_login(self.user)
+        return self.client.get(
+            "/api/agents/", HTTP_HOST=f"{self.ws.name}.lvh.me"
+        ).json()
+
+    def _agent_by_name(self, name):
+        return next((a for a in self._get_agents() if a["name"] == name), None)
+
+    def test_proxy_fields_round_trip_when_pushed(self):
+        """is_proxy=True, priority_rank=2, heartbeat_seq=5 survive register→GET."""
+        resp = self._post({
+            "token": self.token.token,
+            "name": "proxy-agent",
+            "is_proxy": True,
+            "priority_rank": 2,
+            "heartbeat_seq": 5,
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        a = self._agent_by_name("proxy-agent")
+        self.assertIsNotNone(a)
+        self.assertIs(a["is_proxy"], True)
+        self.assertEqual(a["priority_rank"], 2)
+        self.assertEqual(a["heartbeat_seq"], 5)
+
+    def test_primary_fields_round_trip(self):
+        """is_proxy=False, priority_rank=1 round-trip correctly."""
+        self._post({
+            "token": self.token.token,
+            "name": "primary-agent",
+            "is_proxy": False,
+            "priority_rank": 1,
+            "heartbeat_seq": 42,
+        })
+        a = self._agent_by_name("primary-agent")
+        self.assertIs(a["is_proxy"], False)
+        self.assertEqual(a["priority_rank"], 1)
+        self.assertEqual(a["heartbeat_seq"], 42)
+
+    def test_absent_proxy_fields_use_defaults(self):
+        """Agents that don't push proxy fields use registry defaults.
+
+        _register.py intentional defaults:
+          is_proxy=False — older agents keep posting in public channels
+          priority_rank=None — unknown, not sorted
+          heartbeat_seq=0 — treated as "no sequence yet"
+        """
+        self._post({
+            "token": self.token.token,
+            "name": "legacy-agent",
+        })
+        a = self._agent_by_name("legacy-agent")
+        self.assertIs(a["is_proxy"], False)
+        self.assertIsNone(a["priority_rank"])
+        self.assertEqual(a["heartbeat_seq"], 0)
