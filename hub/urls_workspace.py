@@ -159,6 +159,11 @@ urlpatterns = [
     path("api/media/", views.api_media, name="api-media"),
     path("api/members/", views.api_members, name="api-members"),
     path("api/reactions/", views.api_reactions, name="api-reactions"),
+    path(
+        "api/messages/<int:message_id>/",
+        views.api_message_detail,
+        name="api-message-detail",
+    ),
     path("api/releases/", views.api_releases, name="api-releases"),
     path(
         "api/repo/<str:owner>/<str:repo>/changelog/",
