@@ -26,6 +26,37 @@ export function updateChannelSelect() {
  * pendingAttachments — the Overview popup and Reply composer have
  * their own per-surface stores so this module is unchanged by the
  * unification). */
+/* #245: slash-command router — intercepts text beginning with "/" before
+ * it reaches the WS/REST send path. Returns true if the command was
+ * handled (so sendMessage() must NOT send the text as a message). */
+function _handleSlashCommand(text: string, channel: string): boolean {
+  var parts = text.trim().split(/\s+/);
+  var cmd = parts[0].toLowerCase();
+  if (cmd !== "/mute" && cmd !== "/unmute") return false;
+
+  /* Resolve target channel: optional first arg "#channel-name" or bare
+   * "channel-name"; falls back to the currently focused channel. */
+  var target = parts[1] || "";
+  if (!target.startsWith("#") && target) target = "#" + target;
+  if (!target) target = channel;
+  if (!target) return true; /* nothing to act on; swallow anyway */
+
+  var mute = cmd === "/mute";
+  /* _setChannelPref lives in channel-prefs.ts (exported to window by
+   * app.js). Sidebar re-renders automatically on the PATCH response. */
+  if (typeof (window as any)._setChannelPref === "function") {
+    (window as any)._setChannelPref(target, { is_muted: mute });
+  }
+  /* Ephemeral toast confirmation (#245) */
+  if (typeof (window as any)._showMiniToast === "function") {
+    (window as any)._showMiniToast(
+      (mute ? "Muted " : "Unmuted ") + target,
+      mute ? "warn" : "success",
+    );
+  }
+  return true;
+}
+
 export function sendMessage() {
   var input = document.getElementById("msg-input");
   /* In multi-select mode (globalThis as any).currentChannel is null; fall back to lastActiveChannel
@@ -35,6 +66,13 @@ export function sendMessage() {
     (typeof lastActiveChannel !== "undefined" && lastActiveChannel) ||
     "#general";
   var text = input.value.trim();
+
+  /* #245: slash commands — handle before sending. Clear input + return. */
+  if (text.startsWith("/") && _handleSlashCommand(text, channel)) {
+    input.value = "";
+    input.style.height = "auto";
+    return;
+  }
 
   /* Pull any attachments the user staged via paste/drop/picker before
    * hitting Send. Attachments alone (empty text) are a valid message. */
