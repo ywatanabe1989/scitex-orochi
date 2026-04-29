@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 from unittest.mock import patch
 
-from scitex_orochi import _resources, _orochi_slurm
+from scitex_orochi import _orochi_slurm, _resources
 
 # ---------------------------------------------------------------------------
 # Low-level parser tests
