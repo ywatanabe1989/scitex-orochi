@@ -464,6 +464,62 @@ export function _renderAgentDetail(a) {
       "</div>";
   }
 
+  /* todo#430: per-agent Claude API token telemetry (quota_24h).
+   * Shown only when the collector has pushed quota data with non-zero
+   * output_tokens — this keeps the panel invisible for agents that
+   * haven't run collect_agent_quota.py yet. */
+  var quota24h = d.quota_24h || a.quota_24h || null;
+  var quotaSectionHtml = "";
+  if (
+    quota24h &&
+    (quota24h.output_tokens || quota24h.input_tokens || quota24h.cache_tokens)
+  ) {
+    var quotaRows = [
+      [
+        "Output tokens (24h)",
+        Number(quota24h.output_tokens || 0).toLocaleString(),
+        "LLM output tokens consumed in the last 24 hours",
+      ],
+      [
+        "Input tokens (24h)",
+        Number(quota24h.input_tokens || 0).toLocaleString(),
+        "LLM input tokens (not cached) in the last 24 hours",
+      ],
+      [
+        "Cache read (24h)",
+        Number(quota24h.cache_tokens || 0).toLocaleString(),
+        "Cache creation + cache read tokens in the last 24 hours",
+      ],
+      [
+        "Web searches (24h)",
+        String(quota24h.web_searches || 0),
+        "server_tool_use web_search_requests in the last 24 hours",
+      ],
+    ];
+    var quotaTableHtml = quotaRows
+      .map(function (r) {
+        return (
+          "<tr><th>" +
+          escapeHtml(r[0]) +
+          '</th><td title="' +
+          escapeHtml(r[2]) +
+          '">' +
+          escapeHtml(r[1]) +
+          "</td></tr>"
+        );
+      })
+      .join("");
+    quotaSectionHtml =
+      '<div class="agent-detail-section">' +
+      '<details class="agent-detail-setup-audit" open>' +
+      '<summary class="agent-detail-pane-label">Quota (24h)</summary>' +
+      '<table class="agent-detail-setup-table">' +
+      quotaTableHtml +
+      "</table>" +
+      "</details>" +
+      "</div>";
+  }
+
   /* Setup-audit section (sac PR#53). Compact table so the operator
    * can tell at a glance: is claude-hud wired? which MCP servers is
    * the agent actually talking to? which plugins have been installed?
@@ -663,6 +719,7 @@ export function _renderAgentDetail(a) {
     stateHtml +
     fileTabsHtml +
     setupAuditHtml +
+    quotaSectionHtml +
     mcpHtml +
     "</div>"
   );
