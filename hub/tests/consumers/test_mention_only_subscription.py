@@ -9,7 +9,6 @@ Verifies:
 """
 
 from asgiref.sync import async_to_sync
-
 from django.contrib.auth.models import User
 from django.test import TestCase
 
@@ -45,7 +44,10 @@ class MentionOnlyPersistenceTest(TestCase):
         self.assertFalse(row.mention_only)
 
     def test_load_mention_only_channels_returns_only_flagged(self):
-        from hub.consumers import _load_agent_mention_only_channels, _persist_agent_subscription
+        from hub.consumers import (
+            _load_agent_mention_only_channels,
+            _persist_agent_subscription,
+        )
 
         async_to_sync(_persist_agent_subscription)(
             self.ws.id, "mamba-c", "#general", True, mention_only=True
@@ -60,7 +62,10 @@ class MentionOnlyPersistenceTest(TestCase):
         self.assertNotIn("#heads", result)
 
     def test_resubscribe_can_flip_mention_only(self):
-        from hub.consumers import _load_agent_mention_only_channels, _persist_agent_subscription
+        from hub.consumers import (
+            _load_agent_mention_only_channels,
+            _persist_agent_subscription,
+        )
 
         async_to_sync(_persist_agent_subscription)(
             self.ws.id, "mamba-d", "#general", True, mention_only=True
@@ -83,7 +88,7 @@ class MentionOnlyFanOutFilterTest(TestCase):
     """
 
     def _make_consumer(self, agent_name, mention_only_channels):
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
 
         from hub.consumers._agent import AgentConsumer
 

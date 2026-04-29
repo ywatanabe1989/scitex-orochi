@@ -139,7 +139,6 @@ def _collect_from_dir(
         except OSError:
             continue
         cache_key = str(jsonl_path)
-        cached_mtime = mtime_cache.get(cache_key)
         # Even if mtime matches, we must re-read because the test might
         # have touched the file. Only skip when mtime is identical.
         with jsonl_path.open("r", encoding="utf-8", errors="replace") as fh:

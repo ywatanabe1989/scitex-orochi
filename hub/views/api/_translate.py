@@ -18,7 +18,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from hub.models import Message, WorkspaceMember, WorkspaceToken
+from hub.models import Message, WorkspaceToken
 from hub.views.api._channels import get_workspace
 
 _ANTHROPIC_API = "https://api.anthropic.com/v1/messages"

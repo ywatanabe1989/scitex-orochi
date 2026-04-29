@@ -5,7 +5,7 @@ import json
 from django.contrib.auth.models import User
 from django.test import Client, TestCase
 
-from hub.models import Channel, Workspace, WorkspaceMember, WorkspaceInvitation
+from hub.models import Workspace, WorkspaceInvitation, WorkspaceMember
 
 
 def _ws_host(ws):

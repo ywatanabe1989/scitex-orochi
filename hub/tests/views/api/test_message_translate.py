@@ -39,6 +39,7 @@ class MessageTranslateTest(TestCase):
     def test_no_api_key_returns_503(self):
         with patch.dict("os.environ", {}, clear=True):
             import importlib
+
             import hub.views.api._translate as m
             importlib.reload(m)
         resp = self._post(self.msg.id)
