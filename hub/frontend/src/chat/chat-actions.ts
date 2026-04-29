@@ -456,9 +456,32 @@ export function handleMessageDelete(event) {
   }
 })();
 
+/* Message card click → open thread if it has replies (#242).
+ * Only fires when the user clicks the card itself (content area), not when
+ * clicking buttons, links, the reaction picker, or the reply badge. The reply
+ * badge already has its own onclick; this handler adds the large hit area. */
+document.addEventListener("click", function (e) {
+  /* Ignore clicks on interactive children — buttons, links, inputs,
+   * the existing msg-thread-count badge (has its own onclick), reaction
+   * pickers, edit inputs, and the long-press menu. */
+  var IGNORED = "button,a,input,textarea,.msg-thread-count,.msg-reactions,.long-press-menu,.msg-edit-container,.reaction-picker";
+  if ((e.target as HTMLElement).closest(IGNORED)) return;
+  var msgEl = (e.target as HTMLElement).closest(".msg[data-msg-id]") as HTMLElement | null;
+  if (!msgEl) return;
+  /* Only open thread when the message actually has replies (to avoid
+   * hijacking single-click on every message). */
+  var msgId = msgEl.getAttribute("data-msg-id");
+  if (!msgId) return;
+  var threadCountEl = msgEl.querySelector(".msg-thread-count");
+  if (!threadCountEl) return; /* no replies → no thread to open */
+  if (typeof openThreadForMessage === "function") {
+    openThreadForMessage(msgId);
+  }
+});
+
 /* Channel name click → switch channel (#211) */
 document.addEventListener("click", function (e) {
-  var link = e.target.closest(".channel-link");
+  var link = (e.target as HTMLElement).closest(".channel-link");
   if (!link) return;
   e.preventDefault();
   var ch = link.getAttribute("data-channel");
