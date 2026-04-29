@@ -17,6 +17,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('hub', '0036_workspacemember_trust_level'),
+        ('hub', '0035_add_agentgroup_model'),  # stub for deployed instances that already applied the old 0035
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
