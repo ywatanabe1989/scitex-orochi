@@ -127,3 +127,74 @@ def test_pick_todo_lane_miss_returns_none():
 
 def test_pick_todo_empty_input_returns_none():
     assert pick_mod.pick_todo([], [], lane="infrastructure") is None
+
+
+# -----------------------------------------------------------------------------
+# claimed_numbers_from_comments (todo#469 Bug 2)
+# -----------------------------------------------------------------------------
+
+
+def _gh_api_url(cmd):
+    """Extract the URL segment from a gh api command list."""
+    # cmd = ["gh", "api", "repos/.../comments?...", ...]
+    return cmd[2] if len(cmd) > 2 else ""
+
+
+def test_claimed_numbers_from_comments_matches_claim_marker(monkeypatch):
+    """Issues with recent 'claimed by head-' comments are excluded."""
+    import json as _json
+    import subprocess
+
+    def _fake_run(cmd, **kwargs):
+        url = _gh_api_url(cmd)
+        # URL pattern: repos/{repo}/issues/{num}/comments?...
+        parts = url.split("/")
+        num = int(parts[4]) if len(parts) > 4 else 0
+        if num == 600:
+            body = _json.dumps([{"body": "claimed by head-mba, forking subagent"}])
+        else:
+            body = _json.dumps([{"body": "just a normal comment"}])
+
+        class _R:
+            stdout = body
+            returncode = 0
+
+        return _R()
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = pick_mod.claimed_numbers_from_comments(
+        "ywatanabe1989/todo", [600, 601], window_hours=4
+    )
+    assert 600 in result
+    assert 601 not in result
+
+
+def test_claimed_numbers_from_comments_no_claims(monkeypatch):
+    import json as _json
+    import subprocess
+
+    def _fake_run(cmd, **kwargs):
+        class _R:
+            stdout = _json.dumps([{"body": "just a normal comment"}])
+            returncode = 0
+
+        return _R()
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    result = pick_mod.claimed_numbers_from_comments(
+        "ywatanabe1989/todo", [700], window_hours=4
+    )
+    assert 700 not in result
+
+
+def test_claimed_numbers_from_comments_handles_api_error(monkeypatch):
+    import subprocess
+
+    def _fail(*_a, **_kw):
+        raise subprocess.TimeoutExpired(cmd="gh", timeout=10)
+
+    monkeypatch.setattr(subprocess, "run", _fail)
+    result = pick_mod.claimed_numbers_from_comments(
+        "ywatanabe1989/todo", [800], window_hours=4
+    )
+    assert result == set()

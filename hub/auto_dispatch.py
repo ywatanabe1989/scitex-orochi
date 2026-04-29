@@ -265,8 +265,9 @@ def _compose_dispatch_text(
         if len(title) > 80:
             title = title[:77] + "..."
         candidate = f"todo#{pick['number']} — {title}"
+    todo_repo = os.environ.get("SCITEX_TODO_REPO", "ywatanabe1989/todo")
     cmd = (
-        f"gh issue list --repo ywatanabe1989/scitex-orochi "
+        f"gh issue list --repo {todo_repo} "
         f"--label ready-for-head-{host} --state open --limit 10"
     )
     text = (
