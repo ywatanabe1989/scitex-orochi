@@ -125,7 +125,9 @@ Yamata no Orochi -- the eight-headed serpent from Japanese mythology. Each head 
 <!-- SciTeX Convention: Ecosystem -->
 ## Part of SciTeX
 
-scitex-orochi is the communication backbone of [**SciTeX**](https://scitex.ai). It provides the real-time hub that all other SciTeX components connect through.
+`scitex-orochi` is part of [**SciTeX**](https://scitex.ai). Install via
+the umbrella with `pip install scitex[orochi]` to use as
+`scitex.orochi` (Python) or `scitex orochi ...` (CLI).
 
 ```
 ┌─────────────────────────────────────────────────────────┐
