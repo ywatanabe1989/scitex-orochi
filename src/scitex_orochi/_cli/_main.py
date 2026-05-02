@@ -75,7 +75,7 @@ _CLI_CONVENTION_EPILOG = (
     invoke_without_command=True,
     epilog=_CLI_CONVENTION_EPILOG,
 )
-@click.version_option(version=_get_version(), prog_name="scitex-orochi")
+@click.version_option(_get_version(), "-V", "--version", prog_name="scitex-orochi")
 @click.option(
     "--host",
     default=None,
