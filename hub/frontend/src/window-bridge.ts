@@ -6,7 +6,7 @@
 
 import { openAvatarPicker, openHumanAvatarPicker, openHumanAvatarTextEditor } from "./agent-icons";
 import { purgeStaleAgents, toggleClaudeMd } from "./agents-tab/overview";
-import { closeChannelExport, doChannelExport, openChannelExport } from "./app/agent-actions";
+import { closeChannelExport, doCopyChannelExport, doChannelExport, openChannelExport } from "./app/agent-actions";
 import { closeChannelTopicEdit, closeMembersPanel, openChannelTopicEdit, saveChannelTopic, toggleMembersPanel } from "./app/members";
 import { killAgent, restartAgent, togglePinAgent } from "./app/sidebar-agents";
 import { escapeHtml } from "./app/utils";
@@ -34,6 +34,7 @@ Object.assign(window, {
   copyThreadPermalink,
   copyToken,
   deleteMessage,
+  doCopyChannelExport,
   doChannelExport,
   escapeHtml,
   filesClearSelection,

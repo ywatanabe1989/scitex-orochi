@@ -135,6 +135,49 @@ export function doChannelExport() {
   closeChannelExport();
 }
 
+export function doCopyChannelExport(btnEl?) {
+  var modal = document.getElementById("channel-export-modal");
+  if (!modal) return;
+  var ch = modal.getAttribute("data-channel");
+  var from = (document.getElementById("ch-export-from") as HTMLInputElement)?.value;
+  var to = (document.getElementById("ch-export-to") as HTMLInputElement)?.value;
+  var fmt = (document.getElementById("ch-export-format") as HTMLSelectElement)?.value || "md";
+  if (!ch) { alert("No channel selected."); return; }
+  var chatId = ch.replace(/^#/, "");
+  var url = "/api/channels/" + encodeURIComponent(chatId) + "/export/?format=" + encodeURIComponent(fmt);
+  if (from) url += "&from=" + encodeURIComponent(from);
+  if (to) url += "&to=" + encodeURIComponent(to);
+  if (token) url += "&token=" + encodeURIComponent(token);
+  fetch(url, { credentials: "same-origin" })
+    .then(function (r) { return r.text(); })
+    .then(function (text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        return navigator.clipboard.writeText(text);
+      }
+      /* Fallback for non-secure contexts */
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    })
+    .then(function () {
+      if (btnEl) {
+        var prev = btnEl.textContent;
+        btnEl.textContent = "Copied!";
+        setTimeout(function () { btnEl.textContent = prev; }, 1500);
+      }
+      closeChannelExport();
+    })
+    .catch(function (err) {
+      console.error("Export copy failed:", err);
+      alert("Copy failed: " + String(err));
+    });
+}
+
 /* ── Drag-and-drop reordering for sidebar channel sections (msg#10370) ──
  * Works within a section (Starred ↔ Starred, Channels ↔ Channels).
  * Cross-section drops are ignored (star toggle is the way to move between sections).
