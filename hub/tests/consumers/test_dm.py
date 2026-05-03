@@ -430,7 +430,6 @@ class DMConsumerRoutingTest(TestCase):
         from asgiref.sync import async_to_sync
 
         from hub.consumers import AgentConsumer
-        from hub.models import ChannelMembership
 
         # Issue #276 — agent senders require an explicit membership row
         # on non-DM channels. This test uses bare ``alice`` as the agent

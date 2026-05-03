@@ -4,8 +4,12 @@
 # Outputs NDJSON compatible with fleet-health-daemon PR #147 §4.2 schema
 # mamba-auth-manager-mba 2026-04-15
 
-import json, os, glob, socket, time
-from datetime import datetime, timezone, timedelta
+import glob
+import json
+import os
+import socket
+import time
+from datetime import datetime, timedelta, timezone
 
 HOST = socket.gethostname().split('.')[0]
 

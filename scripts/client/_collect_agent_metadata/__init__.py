@@ -17,19 +17,19 @@ been verified yet.
 from __future__ import annotations
 
 from ._classifier import (
-    _classify_orochi_pane_state,
-    _extract_compose_text,
-    _extract_stuck_prompt,
+    _classify_orochi_pane_state,  # noqa: F401
+    _extract_compose_text,  # noqa: F401
+    _extract_stuck_prompt,  # noqa: F401
 )
 from ._cli import cli_main
 from ._collect import collect, main
-from ._hooks import _HOOK_EVENT_KEYS, _collect_hook_events
-from ._hostname import _resolve_canonical_hostname
+from ._hooks import _HOOK_EVENT_KEYS, _collect_hook_events  # noqa: F401
+from ._hostname import _resolve_canonical_hostname  # noqa: F401
 from ._metrics import collect_machine_metrics, collect_orochi_slurm_status
-from ._multiplexer import _list_local_agents, detect_multiplexer
+from ._multiplexer import _list_local_agents, detect_multiplexer  # noqa: F401
 from ._oauth import read_oauth_metadata
-from ._proc import _read_process_env
-from ._push import _http_post_json, push_all
+from ._proc import _read_process_env  # noqa: F401
+from ._push import _http_post_json, push_all  # noqa: F401
 
 __all__ = [
     "cli_main",

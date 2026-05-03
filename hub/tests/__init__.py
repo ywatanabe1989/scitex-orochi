@@ -17,8 +17,8 @@ from hub.tests.consumers.test_agent_message_echo import *  # noqa: F401,F403
 from hub.tests.consumers.test_agent_subscription import *  # noqa: F401,F403
 from hub.tests.consumers.test_dm import *  # noqa: F401,F403
 from hub.tests.consumers.test_mentions import *  # noqa: F401,F403
-from hub.tests.consumers.test_reexports import *  # noqa: F401,F403
 from hub.tests.consumers.test_orochi_subagent_count_roundtrip import *  # noqa: F401,F403
+from hub.tests.consumers.test_reexports import *  # noqa: F401,F403
 from hub.tests.models.test_dm_schema import *  # noqa: F401,F403
 from hub.tests.models.test_identity import *  # noqa: F401,F403
 from hub.tests.models.test_messaging import *  # noqa: F401,F403
