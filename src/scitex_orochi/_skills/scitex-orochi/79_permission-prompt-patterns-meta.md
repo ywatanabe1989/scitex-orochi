@@ -1,6 +1,8 @@
 ---
-name: orochi-62_permission-prompt-patterns-meta
-description: Permission-pattern meta — how new patterns get added, loading order for workers, deliberately-excluded prompts, related skills, incident log. (Split from 62_permission-prompt-patterns-extras.md.)
+description: |
+  [TOPIC] Permission Prompt Patterns Meta
+  [DETAILS] Permission-pattern meta — how new patterns get added, loading order for workers, deliberately-excluded prompts, related skills, incident log. (Split from 62_permission-prompt-patterns-extras.md.).
+tags: [scitex-orochi-permission-prompt-patterns-meta]
 ---
 
 > Sibling: [`62_permission-prompt-patterns-catalog.md`](62_permission-prompt-patterns-catalog.md) for the pattern catalog.

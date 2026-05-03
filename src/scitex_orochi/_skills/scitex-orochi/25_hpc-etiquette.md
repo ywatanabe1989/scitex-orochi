@@ -1,7 +1,8 @@
 ---
-name: orochi-hpc-etiquette
-description: How to be a good citizen on shared HPC clusters — any site, Spartan or otherwise. Orchestrator linking the general / Spartan-canonical-policy / guardrails sub-files. Response to the 2026-04-14 Sean Crosby (UniMelb HPC admin) complaint about unbounded find.
-scope: fleet-internal
+description: |
+  [TOPIC] HPC etiquette
+  [DETAILS] How to be a good citizen on shared HPC clusters — any site, Spartan or otherwise. Orchestrator linking the general / Spartan-canonical-policy / guardrails sub-files. Response to the 2026-04-14 Sean Crosby (UniMelb HPC....
+tags: [scitex-orochi-hpc-etiquette]
 ---
 
 # HPC etiquette

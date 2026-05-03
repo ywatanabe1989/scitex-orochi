@@ -1,6 +1,8 @@
 ---
-name: orochi-permission-prompt-patterns
-description: Canonical pattern catalog for Claude Code permission prompts and other interactive "agent is stuck waiting for a keystroke" states. Loaded at boot by mamba-healer-<host> workers so the fleet-health-daemon Phase 4 recovery playbook §7.1 has concrete regex → action mappings. Grows by observation per operator msg#11779 ("パターンを蓄積することが大事"). Not executed by humans — fed to automation.
+description: |
+  [TOPIC] Permission-Prompt Patterns
+  [DETAILS] Canonical pattern catalog for Claude Code permission prompts and other interactive "agent is stuck waiting for a keystroke" states. Loaded at boot by mamba-healer-<host> workers so the fleet-health-daemon Phase 4 reco....
+tags: [scitex-orochi-agent-permission-prompt-patterns]
 ---
 
 # Permission-Prompt Patterns

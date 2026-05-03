@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-general-rules
-description: General HPC rules — apply across Spartan, NCI, future sites. Filesystem, network, login-node policy basics. (Split from 60_hpc-etiquette-general-extras.md.)
+description: |
+  [TOPIC] Hpc Etiquette General Rules
+  [DETAILS] General HPC rules — apply across Spartan, NCI, future sites. Filesystem, network, login-node policy basics. (Split from 60_hpc-etiquette-general-extras.md.).
+tags: [scitex-orochi-hpc-etiquette-general-rules]
 ---
 
 > Sibling: [`77_hpc-etiquette-general-tools.md`](77_hpc-etiquette-general-tools.md) for absolute rules, binary location, scoping, SLURM etiquette, login-node policy.

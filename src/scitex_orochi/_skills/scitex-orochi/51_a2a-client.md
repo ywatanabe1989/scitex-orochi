@@ -1,3 +1,9 @@
+---
+description: |
+  [TOPIC] Calling peer agents via A2A
+  [DETAILS] Calling peer agents via A2A.
+tags: [scitex-orochi-a2a-client]
+---
 # Calling peer agents via A2A
 
 Every fleet agent has an A2A endpoint at `https://a2a.scitex.ai/v1/agents/<id>`. To **call** another agent (rather than just be called), an agent needs three things: the URL, an A2A bearer token, and a JSON-RPC client.

@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-deployment-anti-patterns
-description: §11–§14 — anti-patterns, open questions, implementation order, related skills. (Split from 53_fleet-health-daemon-design-deployment-ops.md.)
+description: |
+  [TOPIC] Fleet Health Daemon Design Deployment Anti Patterns
+  [DETAILS] §11–§14 — anti-patterns, open questions, implementation order, related skills. (Split from 53_fleet-health-daemon-design-deployment-ops.md.).
+tags: [scitex-orochi-fleet-health-daemon-design-deployment-anti-patterns]
 ---
 
 > Sibling: [`72_fleet-health-daemon-design-deployment-divergence.md`](72_fleet-health-daemon-design-deployment-divergence.md) for the probe-liveness vs agent-responsiveness divergence.

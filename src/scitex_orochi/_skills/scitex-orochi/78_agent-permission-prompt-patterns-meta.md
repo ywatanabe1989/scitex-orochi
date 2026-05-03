@@ -1,6 +1,8 @@
 ---
-name: orochi-61_agent-permission-prompt-patterns-meta
-description: Permission-pattern meta — how new patterns get added, loading order for workers, deliberately-excluded prompts, related skills, incident log. (Split from 61_agent-permission-prompt-patterns-extras.md.)
+description: |
+  [TOPIC] Agent Permission Prompt Patterns Meta
+  [DETAILS] Permission-pattern meta — how new patterns get added, loading order for workers, deliberately-excluded prompts, related skills, incident log. (Split from 61_agent-permission-prompt-patterns-extras.md.).
+tags: [scitex-orochi-agent-permission-prompt-patterns-meta]
 ---
 
 > Sibling: [`61_agent-permission-prompt-patterns-catalog.md`](61_agent-permission-prompt-patterns-catalog.md) for the pattern catalog.

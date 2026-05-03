@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-design-phase-2-3-probe-and-mesh
-description: Phase 2 (multi-signal health probe schema, threshold transitions) and Phase 3 (mamba-healer mesh + cross-host probing) of the fleet-health-daemon. (Split from 58_fleet-health-daemon-design-phases-later.md.)
+description: |
+  [TOPIC] Fleet Health Daemon Design Phase 2 3 Probe and Mesh
+  [DETAILS] Phase 2 (multi-signal health probe schema, threshold transitions) and Phase 3 (mamba-healer mesh + cross-host probing) of the fleet-health-daemon. (Split from 58_fleet-health-daemon-design-phases-later.md.).
+tags: [scitex-orochi-fleet-health-daemon-design-phase-2-3-probe-and-mesh]
 ---
 
 > Sibling: [`58_fleet-health-daemon-design-phase-1-quota.md`](58_fleet-health-daemon-design-phase-1-quota.md) for Phase 1 quota scraping.

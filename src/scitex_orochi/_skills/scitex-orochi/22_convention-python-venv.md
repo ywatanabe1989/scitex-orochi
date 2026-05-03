@@ -1,6 +1,8 @@
 ---
-name: orochi-python-venv-convention
-description: Canonical Python venv layout across the fleet — version-tagged real venv + active symlink + per-project .venv symlinks. Prevents duplicate venvs, enables atomic Python version switch, keeps disk+inode economy on every host.
+description: |
+  [TOPIC] Python venv convention
+  [DETAILS] Canonical Python venv layout across the fleet — version-tagged real venv + active symlink + per-project .venv symlinks. Prevents duplicate venvs, enables atomic Python version switch, keeps disk+inode economy on every....
+tags: [scitex-orochi-convention-python-venv]
 ---
 
 # Python venv convention

@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-design-deployment
-description: Host-specific deployment, resource discipline, cross-host coverage, probe-vs-pane liveness divergence, anti-patterns, open questions, implementation order, and related skills for the fleet-health-daemon design.
+description: |
+  [TOPIC] fleet-health-daemon — Deployment, discipline, anti-patterns
+  [DETAILS] Host-specific deployment, resource discipline, cross-host coverage, probe-vs-pane liveness divergence, anti-patterns, open questions, implementation order, and related skills for the fleet-health-daemon design..
+tags: [scitex-orochi-fleet-health-daemon-design-deployment]
 ---
 
 # fleet-health-daemon — Deployment, discipline, anti-patterns

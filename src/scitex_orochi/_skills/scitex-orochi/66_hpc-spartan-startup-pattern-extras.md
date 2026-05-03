@@ -1,6 +1,8 @@
 ---
-name: orochi-spartan-hpc-startup-pattern-part-2
-description: Canonical startup pattern for Spartan (and other Lmod/module-based HPC clusters) — module load chain, LD_LIBRARY_PATH hardening for non-interactive SSH, login-node vs compute-node divergence, and avoiding multi-second bash-startup latency. Codified from 2026-04-13 head-<host> fixes (todo#307). (Part 2 of 2 — split from 29_hpc-spartan-startup-pattern.md.)
+description: |
+  [TOPIC] Hpc Spartan Startup Pattern Extras
+  [DETAILS] Canonical startup pattern for Spartan (and other Lmod/module-based HPC clusters) — module load chain, LD_LIBRARY_PATH hardening for non-interactive SSH, login-node vs compute-node divergence, and avoiding multi-second....
+tags: [scitex-orochi-hpc-spartan-startup-pattern-extras]
 ---
 
 > Part 2 of 2. See [`29_hpc-spartan-startup-pattern.md`](29_hpc-spartan-startup-pattern.md) for the orchestrator/overview.

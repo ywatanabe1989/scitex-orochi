@@ -1,3 +1,9 @@
+---
+description: |
+  [TOPIC] Critical agent (research, debugging)
+  [DETAILS] Critical agent (research, debugging).
+tags: [scitex-orochi-agent-deployment-extras]
+---
 
 > Part 2 of 2. See [`10_agent-deployment.md`](10_agent-deployment.md) for the orchestrator/overview.
 ## Push Mode (Preferred)

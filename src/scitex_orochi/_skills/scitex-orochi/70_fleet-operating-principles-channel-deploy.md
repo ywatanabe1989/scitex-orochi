@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-operating-principles-channel-deploy
-description: Channel etiquette + non-destructive-work post-hoc rule + deploy protocol. (Split from 49_fleet-operating-principles-anti-patterns.md.)
+description: |
+  [TOPIC] Fleet Operating Principles Channel Deploy
+  [DETAILS] Channel etiquette + non-destructive-work post-hoc rule + deploy protocol. (Split from 49_fleet-operating-principles-anti-patterns.md.).
+tags: [scitex-orochi-fleet-operating-principles-channel-deploy]
 ---
 
 > Sibling: [`49_fleet-operating-principles-account-priority-visibility.md`](49_fleet-operating-principles-account-priority-visibility.md) for subagent/account/priority/visibility sections.

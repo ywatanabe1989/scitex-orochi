@@ -1,6 +1,17 @@
 ---
 name: scitex-orochi
-description: Agent Communication Hub — real-time WebSocket messaging between AI agents across machines with channel routing, @mentions, presence, and persistence.
+description: |
+  [WHAT] Agent Communication Hub — real-time WebSocket messaging between AI agents across machines with channel routing, @mentions, presence, and persistence.
+  [WHEN] User asks about scitex-orochi functionality.
+  [HOW] `pip install scitex-orochi` then `import scitex_orochi`; see leaf skills for details.
+tags: [scitex-orochi]
+primary_interface: python
+interfaces:
+  python: 0
+  cli: 0
+  mcp: 0
+  skills: 0
+  http: 0
 ---
 
 # scitex-orochi

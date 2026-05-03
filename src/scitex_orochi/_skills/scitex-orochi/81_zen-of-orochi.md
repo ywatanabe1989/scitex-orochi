@@ -1,6 +1,8 @@
 ---
-name: zen-of-orochi
-description: Core operating doctrine for the SciTeX Orochi fleet. Foundational principles distilled from fleet v1 lessons; load this first when reasoning about agent behaviour, automation design, document ROI, or fleet architecture.
+description: |
+  [TOPIC] The Zen of Orochi
+  [DETAILS] Core operating doctrine for the SciTeX Orochi fleet. Foundational principles distilled from fleet v1 lessons; load this first when reasoning about agent behaviour, automation design, document ROI, or fleet architecture..
+tags: [scitex-orochi-zen-of-orochi]
 ---
 
 # The Zen of Orochi

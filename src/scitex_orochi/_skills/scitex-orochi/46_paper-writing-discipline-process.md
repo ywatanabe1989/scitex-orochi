@@ -1,6 +1,8 @@
 ---
-name: orochi-paper-writing-discipline-part-2
-description: Discipline rules for per-paper worker agents (proj-scitex-app-nas / proj-scitex-clew-nas / proj-scitex-orochi-mba / proj-ripple-wm-spartan / neurovista-spartan pattern). Manuscript-body-protection, source-of-truth discipline, change attribution to scripts/notebooks, commit + PR style, review workflow with ywatanabe, narrow-subscription trade-offs, explicit non-goals. Cross-references scientific-figure-standards.md rather than duplicating figure rules. Rule body applies to every agent subscribed to a #proj-* channel. (Part 2 of 3 — split from 43_paper-writing-discipline.md.)
+description: |
+  [TOPIC] Paper Writing Discipline Process
+  [DETAILS] Discipline rules for per-paper worker agents (proj-scitex-app-nas / proj-scitex-clew-nas / proj-scitex-orochi-mba / proj-ripple-wm-spartan / neurovista-spartan pattern). Manuscript-body-protection, source-of-truth dis....
+tags: [scitex-orochi-paper-writing-discipline-process]
 ---
 
 > Part 2 of 3. See [`43_paper-writing-discipline.md`](43_paper-writing-discipline.md) for the orchestrator/overview.

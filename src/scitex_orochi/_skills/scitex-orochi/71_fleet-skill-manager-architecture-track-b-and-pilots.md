@@ -1,6 +1,8 @@
 ---
-name: orochi-skill-manager-architecture-track-b-and-pilots
-description: Track B (`worker-skill-manager-<host>`, agent-layer LLM-backed worker) plus parallel pilots (todo-sweep-daemon, slurm-resource-scraper) and the split rationale summary. (Split from 52_fleet-skill-manager-architecture-impl.md.)
+description: |
+  [TOPIC] Fleet Skill Manager Architecture Track B and Pilots
+  [DETAILS] Track B (`worker-skill-manager-<host>`, agent-layer LLM-backed worker) plus parallel pilots (todo-sweep-daemon, slurm-resource-scraper) and the split rationale summary. (Split from 52_fleet-skill-manager-architecture-....
+tags: [scitex-orochi-fleet-skill-manager-architecture-track-b-and-pilots]
 ---
 
 > Sibling: [`52_fleet-skill-manager-architecture-track-a-daemon.md`](52_fleet-skill-manager-architecture-track-a-daemon.md) for Track A (skill-sync-daemon).

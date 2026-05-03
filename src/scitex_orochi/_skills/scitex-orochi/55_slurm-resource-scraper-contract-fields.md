@@ -1,11 +1,8 @@
 ---
-status: DRAFT
-ratified: false
-ratification-thread: scitex-orochi#133
-owner: head-nas
-pilot-order: "#2 (after skill-sync-daemon warm-standby proof)"
-last-updated: 2026-04-14
-authors: [head-nas, head-mba]
+description: |
+  [TOPIC] Slurm Resource Scraper Contract Fields
+  [DETAILS] Slurm Resource Scraper Contract Fields.
+tags: [scitex-orochi-slurm-resource-scraper-contract-fields]
 ---
 
 > Part 2 of 2. See [`44_slurm-resource-scraper-contract.md`](44_slurm-resource-scraper-contract.md) for the orchestrator/overview.

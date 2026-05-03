@@ -1,6 +1,8 @@
 ---
-name: orochi-cli-conventions-part-2
-description: SciTeX CLI design conventions — canonical noun-verb shape for scitex-orochi, standard flags, exit codes, deprecation policy, and help-display rules. Apply to all new CLI commands across the Orochi fleet. (Part 2 of 2 — split from 20_convention-cli.md.)
+description: |
+  [TOPIC] CLI Conventions (SciTeX / Orochi Fleet)
+  [DETAILS] SciTeX CLI design conventions — canonical noun-verb shape for scitex-orochi, standard flags, exit codes, deprecation policy, and help-display rules. Apply to all new CLI commands across the Orochi fleet. (Part 2 of 2....
+tags: [scitex-orochi-convention-cli-extras]
 ---
 
 # CLI Conventions (SciTeX / Orochi Fleet)

@@ -1,6 +1,8 @@
 ---
-name: orochi-skill-manager-architecture-track-a-daemon
-description: Track A of the skill-manager hybrid split — `skill-sync-daemon` (process-layer, no LLM, idempotent dual-run on primary host launchd + standby host systemd). Cadence, file layout, miss-backfill semantics. (Split from 52_fleet-skill-manager-architecture-impl.md.)
+description: |
+  [TOPIC] Fleet Skill Manager Architecture Track a Daemon
+  [DETAILS] Track A of the skill-manager hybrid split — `skill-sync-daemon` (process-layer, no LLM, idempotent dual-run on primary host launchd + standby host systemd). Cadence, file layout, miss-backfill semantics. (Split from 5....
+tags: [scitex-orochi-fleet-skill-manager-architecture-track-a-daemon]
 ---
 
 > Sibling: [`71_fleet-skill-manager-architecture-track-b-and-pilots.md`](71_fleet-skill-manager-architecture-track-b-and-pilots.md) for Track B (worker-skill-manager) and parallel pilots.

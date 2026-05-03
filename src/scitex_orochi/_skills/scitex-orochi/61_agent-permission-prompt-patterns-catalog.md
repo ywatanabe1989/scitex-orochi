@@ -1,6 +1,8 @@
 ---
-name: orochi-61_agent-permission-prompt-patterns-catalog
-description: Permission-prompt pattern catalog (one entry per known prompt, regex + remediation). (Split from 61_agent-permission-prompt-patterns-extras.md.)
+description: |
+  [TOPIC] Agent Permission Prompt Patterns Catalog
+  [DETAILS] Permission-prompt pattern catalog (one entry per known prompt, regex + remediation). (Split from 61_agent-permission-prompt-patterns-extras.md.).
+tags: [scitex-orochi-agent-permission-prompt-patterns-catalog]
 ---
 
 > Sibling: [`78_agent-permission-prompt-patterns-meta.md`](78_agent-permission-prompt-patterns-meta.md) for how patterns get added, loading order, exclusions, incident log.
