@@ -22,6 +22,10 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 
 <!-- Compact index — bare filenames satisfy the leaf-referenced check while staying under 4 KB. Each leaf carries its own frontmatter. -->
 
+- 01_installation.md
+- 02_quick-start.md
+- 03_python-api.md
+- 04_cli-reference.md
 - 01_skills-public-vs-private.md
 - 10_agent-deployment.md
 - 11_agent-health-check.md
@@ -63,13 +67,15 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 47_paper-writing-discipline-checklists.md
 - 48_fleet-operating-principles-protocols.md
 - 49_fleet-operating-principles-account-priority-visibility.md
-- 50_env-vars.md
+- 20_env-vars.md
 - 51_a2a-client.md
 - 52_fleet-skill-manager-architecture-track-a-daemon.md
 - 53_fleet-health-daemon-design-deployment-anti-patterns.md
 - 54_skill-manager-architecture-track-a.md
 - 55_slurm-resource-scraper-contract-fields.md
-- 56_convention-cli-extras.md
+- 56_convention-cli-shape.md
+- 57_convention-cli-output.md
+- 58_convention-cli-policies.md
 - 57_agent-pane-state-patterns-consumers.md
 - 58_fleet-health-daemon-design-phase-1-quota.md
 - 59_convention-connectivity-probe-adoption.md
@@ -94,6 +100,7 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 78_agent-permission-prompt-patterns-meta.md
 - 79_permission-prompt-patterns-meta.md
 - 80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md
+- 81_zen-of-orochi.md
 
 ### Sub-skill: agent-types
 
