@@ -191,5 +191,3 @@ The TypeScript bridge exposes two MCP tools:
 |------|---------|
 | `reply` | Send message to an Orochi channel (chat_id, text, reply_to) |
 | `history` | Fetch recent messages from a channel via HTTP API |
-
-<!-- EOF -->
