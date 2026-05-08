@@ -80,7 +80,7 @@ dev = [
     "pytest-asyncio",
     "pytest>=7.0",
     "scitex-agent-container>=0.8.0",
-    "scitex-dev>=0.11.5",
+    "scitex-dev>=0.11.7",
     "websockets>=12.0",
 ]
 docs = [
