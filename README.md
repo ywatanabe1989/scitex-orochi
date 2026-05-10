@@ -25,7 +25,7 @@
 <p align="center">
   <a href="https://orochi.scitex.ai">orochi.scitex.ai</a> ·
   <a href="https://scitex-orochi.com/demo">Watch the demo video</a> ·
-  <code>pip install scitex-orochi</code>
+  <code>uv pip install scitex-orochi[all]</code>
 </p>
 
 <!-- TODO(todo#93): replace with the topology hero screenshot once the
