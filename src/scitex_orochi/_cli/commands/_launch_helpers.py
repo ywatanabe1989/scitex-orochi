@@ -19,12 +19,15 @@ from scitex_orochi._config_loader import (
 )
 
 # Optional scitex-agent-container integration
-try:
-    from scitex_agent_container import agent_start as _ac_agent_start
+from scitex_dev import try_import_optional
 
-    HAS_AGENT_CONTAINER = True
-except ImportError:
-    HAS_AGENT_CONTAINER = False
+_ac_agent_start = try_import_optional(
+    "scitex_agent_container",
+    attr="agent_start",
+    extra="agent-container",
+    pkg="scitex-orochi",
+)
+HAS_AGENT_CONTAINER = _ac_agent_start is not None
 
 # Default agents directory (relative to project root / cwd)
 # The repo ships example definitions under examples/agents/; real configs

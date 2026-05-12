@@ -79,6 +79,10 @@ dev = [
     "fastmcp>=2.0",
     "pytest-asyncio",
     "pytest>=7.0",
+    # pytest-cov pulls in coverage>=7, which the subprocess-coverage shim
+    # in tests/conftest.py imports from child interpreters. See scitex-dev
+    # skill leaf 05_development_06_subprocess-coverage.md.
+    "pytest-cov>=4.0",
     "scitex-agent-container>=0.8.0",
     "scitex-dev>=0.11.7",
     "websockets>=12.0",
@@ -150,6 +154,16 @@ asyncio_mode = "auto"
 markers = [
     "llm_eval: marks tests that use an LLM-as-judge (DeepEval) and require provider API keys (deselect with '-m \"not llm_eval\"')",
 ]
+
+[tool.coverage.run]
+# Subprocess coverage wiring — see scitex-dev skill leaf
+# 05_development_06_subprocess-coverage.md. Without parallel + the
+# multiprocessing/thread concurrency keys, coverage data from child
+# Python interpreters (subprocess.run([sys.executable, ...]),
+# nbconvert --execute, pytest-xdist workers) is silently dropped.
+parallel = true
+source = ["scitex_orochi"]
+concurrency = ["multiprocessing", "thread"]
 
 [tool.scitex-linter]
 library_dirs = ["src", "tests", "hub", "orochi"]

@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -28,6 +28,24 @@ jobs:
           pip install -e ".[dev]"
       - name: Run tests
         run: pytest tests/ -v -m "not llm_eval"
+
+  install-check:
+    # Smoke-test that a fresh install of the package's runtime deps
+    # leaves ``import scitex_orochi`` working — i.e. no optional dep
+    # leaks into a required-import path. Mirrors the playbook's
+    # workflow-merge recommendation: a single test.yml runs both unit
+    # tests and the import check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install (runtime deps only) and import-check
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install -e .
+          .venv/bin/python -c "import scitex_orochi"
 
   llm-eval:
     # LLM-as-judge tests via DeepEval. Runs only when an OPENAI_API_KEY
