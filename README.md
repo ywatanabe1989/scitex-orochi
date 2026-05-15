@@ -130,22 +130,45 @@ the umbrella with `pip install scitex[orochi]` to use as
 `scitex.orochi` (Python) or `scitex orochi ...` (CLI).
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ scitex-orochi           <-- YOU ARE HERE                │
-│   WebSocket hub, dashboard, MCP channel, health system  │
-│   (depends on scitex-agent-container via heartbeat-push)│
-└──────────────────────────┬──────────────────────────────┘
-                           v (one-way dependency)
-┌─────────────────────────────────────────────────────────┐
-│ scitex-agent-container  — lifecycle, status, health CLI │
-│   (zero knowledge of orochi — pure container tool)      │
-└──────────────────────────┬──────────────────────────────┘
-                           v
-┌─────────────────────────────────────────────────────────┐
-│ claude-code-telegrammer                                 │
-│   Telegram MCP server + TUI watchdog                    │
-└─────────────────────────────────────────────────────────┘
+            ┌────────────────────┐                       ┌──────────────────────┐
+            │   Human operator   │  chat · DM · channel  │ claude-code-         │
+            │   (web UI / CLI)   │ ◄───── alerts ─────── │ telegrammer          │
+            └─────────┬──────────┘                       │ Telegram MCP + TUI   │
+                      │                                  └──────────▲───────────┘
+                      ▼                                             │
+        ┌──────────────────────────────────┐                        │
+        │   scitex-orochi  ← YOU ARE HERE  │                        │
+        │   WebSocket hub · dashboard      │                        │
+        │   MCP channels · presence · A2A  │                        │
+        │   peer registry · cross-host     │                        │
+        └─────────────────┬────────────────┘                        │
+                          │  reads status                           │
+                          │  (one-way dep: orochi → sac)            │
+                          ▼                                         │
+        ┌──────────────────────────────────┐                        │
+        │   scitex-agent-container (sac)   │                        │
+        │   lifecycle · health · restart   │                        │
+        │   apptainer runtime · per host   │                        │
+        │   (zero knowledge of orochi)     │                        │
+        └─────────────────┬────────────────┘                        │
+                          │  starts / supervises                    │
+                          ▼                                         │
+        ┌──────────────────────────────────┐                        │
+        │   Claude agents (one per host)   │ ── heartbeat-push ──▶ ORO
+        │   session.jsonl · SDK            │ ── alerts ─────────────┘
+        └──────────────────────────────────┘
 ```
+
+| Concern                                  | Owner                                |
+|------------------------------------------|--------------------------------------|
+| WebSocket hub + dashboard UI             | **orochi**                           |
+| Channels, DMs, presence, A2A routing     | **orochi**                           |
+| MCP channel server (in-session push)     | **orochi**                           |
+| Container lifecycle (start/stop/send)    | **sac**                              |
+| Health checks, restart policies          | **sac**                              |
+| Telegram bridge + alerting               | **claude-code-telegrammer**          |
+
+Rule: **orochi knows messages + people across hosts; sac knows containers + sessions on one host.** sac never imports orochi.
 
 ## Contributing
 
