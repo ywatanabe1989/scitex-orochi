@@ -256,7 +256,15 @@ status:
 # Validation
 # ============================================
 validate-docker:
-	@docker ps >/dev/null 2>&1 || (echo -e "$(RED)docker daemon not running$(NC)"; exit 1)
+	@docker ps >/dev/null 2>&1 && exit 0; \
+	if [ "$$(uname -s)" = "Darwin" ] && command -v colima >/dev/null 2>&1; then \
+		echo -e "$(YELLOW)docker daemon not running; attempting 'colima start' (Apple Silicon production host)…$(NC)"; \
+		colima start || (echo -e "$(RED)colima start failed; check 'colima status'$(NC)"; exit 1); \
+		docker ps >/dev/null 2>&1 || (echo -e "$(RED)docker still unreachable after colima start$(NC)"; exit 1); \
+		echo -e "$(GREEN)colima up$(NC)"; \
+	else \
+		echo -e "$(RED)docker daemon not running$(NC)"; exit 1; \
+	fi
 
 validate: validate-docker
 
