@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-general
-description: General HPC cluster etiquette — login nodes, schedulers, filesystems, modules, network, and absolute rules (never find /, never compute on login nodes, etc.). Sub-file of hpc-etiquette.md.
+description: |
+  [TOPIC] HPC etiquette — general rules
+  [DETAILS] General HPC cluster etiquette — login nodes, schedulers, filesystems, modules, network, and absolute rules (never find /, never compute on login nodes, etc.). Sub-file of hpc-etiquette.md..
+tags: [scitex-orochi-hpc-etiquette-general]
 ---
 
 # HPC etiquette — general rules

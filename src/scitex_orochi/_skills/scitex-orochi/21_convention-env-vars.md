@@ -1,6 +1,8 @@
 ---
-name: orochi-convention-env-vars
-description: Environment-variable naming convention for scitex-orochi.
+description: |
+  [TOPIC] Env-var convention — `SCITEX_OROCHI_*`
+  [DETAILS] Environment-variable naming convention for scitex-orochi..
+tags: [scitex-orochi-convention-env-vars]
 ---
 
 # Env-var convention — `SCITEX_OROCHI_*`

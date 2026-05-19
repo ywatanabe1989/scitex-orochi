@@ -1,6 +1,8 @@
 ---
-name: orochi-compute-resources
-description: Hardware resource requirements and recommendations for Orochi fleet hosts — minimum specs, roles, and scaling options.
+description: |
+  [TOPIC] Compute Resources
+  [DETAILS] Hardware resource requirements and recommendations for Orochi fleet hosts — minimum specs, roles, and scaling options..
+tags: [scitex-orochi-product-compute-resources]
 ---
 
 # Compute Resources

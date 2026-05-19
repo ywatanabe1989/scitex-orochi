@@ -1,6 +1,8 @@
 ---
-name: orochi-dashboard-features
-description: Dashboard capabilities — chat, agents tab, element inspector, TODO, files, and settings.
+description: |
+  [TOPIC] Dashboard Features
+  [DETAILS] Dashboard capabilities — chat, agents tab, element inspector, TODO, files, and settings..
+tags: [scitex-orochi-product-dashboard-features]
 ---
 
 # Dashboard Features

@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-guardrails
-description: Network etiquette, storage hygiene, shell-level guardrails (find/du wrappers), 2026-04-14 anti-patterns from the Sean Crosby incident, fleet escalation protocol, related skills, and change log. Sub-file of hpc-etiquette.md.
+description: |
+  [TOPIC] HPC etiquette — network, storage, guardrails, escalation
+  [DETAILS] Network etiquette, storage hygiene, shell-level guardrails (find/du wrappers), 2026-04-14 anti-patterns from the Sean Crosby incident, fleet escalation protocol, related skills, and change log. Sub-file of hpc-etiquet....
+tags: [scitex-orochi-hpc-etiquette-guardrails]
 ---
 
 # HPC etiquette — network, storage, guardrails, escalation

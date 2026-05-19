@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-design-overview
-description: Overview of the fleet-health-daemon design — ground rules, TL;DR, origin, and 3-layer architecture. See fleet-health-daemon-design.md (orchestrator) for the full split.
+description: |
+  [TOPIC] fleet-health-daemon — Design (todo#146)
+  [DETAILS] Overview of the fleet-health-daemon design — ground rules, TL;DR, origin, and 3-layer architecture. See fleet-health-daemon-design.md (orchestrator) for the full split..
+tags: [scitex-orochi-fleet-health-daemon-design-overview]
 ---
 
 # fleet-health-daemon — Design (todo#146)

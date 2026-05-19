@@ -1,6 +1,8 @@
 ---
-name: orochi-connectivity-probe
-description: Canonical way to probe remote host liveness, tmux sessions, and process counts over SSH without the non-interactive-shell pitfalls that bite every naive implementation.
+description: |
+  [TOPIC] Connectivity Probe
+  [DETAILS] Canonical way to probe remote host liveness, tmux sessions, and process counts over SSH without the non-interactive-shell pitfalls that bite every naive implementation..
+tags: [scitex-orochi-convention-connectivity-probe]
 ---
 
 # Connectivity Probe

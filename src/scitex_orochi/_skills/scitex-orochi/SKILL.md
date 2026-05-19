@@ -1,6 +1,17 @@
 ---
 name: scitex-orochi
-description: Agent Communication Hub — real-time WebSocket messaging between AI agents across machines with channel routing, @mentions, presence, and persistence.
+description: |
+  [WHAT] Agent Communication Hub — real-time WebSocket messaging between AI agents across machines with channel routing, @mentions, presence, and persistence.
+  [WHEN] User asks about scitex-orochi functionality.
+  [HOW] `pip install scitex-orochi` then `import scitex_orochi`; see leaf skills for details.
+tags: [scitex-orochi]
+primary_interface: python
+interfaces:
+  python: 0
+  cli: 0
+  mcp: 0
+  skills: 0
+  http: 0
 ---
 
 # scitex-orochi
@@ -11,6 +22,10 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 
 <!-- Compact index — bare filenames satisfy the leaf-referenced check while staying under 4 KB. Each leaf carries its own frontmatter. -->
 
+- 01_installation.md
+- 02_quick-start.md
+- 03_python-api.md
+- 04_cli-reference.md
 - 01_skills-public-vs-private.md
 - 10_agent-deployment.md
 - 11_agent-health-check.md
@@ -52,13 +67,15 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 47_paper-writing-discipline-checklists.md
 - 48_fleet-operating-principles-protocols.md
 - 49_fleet-operating-principles-account-priority-visibility.md
-- 50_env-vars.md
+- 20_env-vars.md
 - 51_a2a-client.md
 - 52_fleet-skill-manager-architecture-track-a-daemon.md
 - 53_fleet-health-daemon-design-deployment-anti-patterns.md
 - 54_skill-manager-architecture-track-a.md
 - 55_slurm-resource-scraper-contract-fields.md
-- 56_convention-cli-extras.md
+- 56_convention-cli-shape.md
+- 57_convention-cli-output.md
+- 58_convention-cli-policies.md
 - 57_agent-pane-state-patterns-consumers.md
 - 58_fleet-health-daemon-design-phase-1-quota.md
 - 59_convention-connectivity-probe-adoption.md
@@ -83,8 +100,6 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 78_agent-permission-prompt-patterns-meta.md
 - 79_permission-prompt-patterns-meta.md
 - 80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md
-- 81_convention-cli-extras-b.md
-- 82_hpc-spartan-sbatch-hold-branch.md
-- 83_agent-launch-discipline-spartan.md
+- 81_zen-of-orochi.md
 
 For fleet-internal operational skills (specific hosts, agents, incidents, credentials), see `scitex-orochi-private`.

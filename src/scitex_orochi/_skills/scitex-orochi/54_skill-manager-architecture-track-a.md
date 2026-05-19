@@ -1,6 +1,8 @@
 ---
-name: orochi-skill-manager-architecture-track-a
-description: Track A — skill-sync-daemon (process-layer, no LLM, idempotent dual-run primary launchd + warm-standby systemd). Cadence, file layout, miss-backfill semantics. (Split from 54_skill-manager-architecture-impl.md.)
+description: |
+  [TOPIC] Skill Manager Architecture Track a
+  [DETAILS] Track A — skill-sync-daemon (process-layer, no LLM, idempotent dual-run primary launchd + warm-standby systemd). Cadence, file layout, miss-backfill semantics. (Split from 54_skill-manager-architecture-impl.md.).
+tags: [scitex-orochi-skill-manager-architecture-track-a]
 ---
 
 > Sibling: [`73_skill-manager-architecture-track-b-and-pilots.md`](73_skill-manager-architecture-track-b-and-pilots.md) for Track B and pilots.

@@ -1,6 +1,8 @@
 ---
-name: orochi-skill-manager-architecture-track-b-and-pilots-2
-description: Track B (mamba-skill-manager-mba agent-layer worker) + parallel pilots (todo-sweep-daemon, slurm-resource-scraper) + split rationale. (Split from 54_skill-manager-architecture-impl.md.)
+description: |
+  [TOPIC] Skill Manager Architecture Track B and Pilots
+  [DETAILS] Track B (mamba-skill-manager-mba agent-layer worker) + parallel pilots (todo-sweep-daemon, slurm-resource-scraper) + split rationale. (Split from 54_skill-manager-architecture-impl.md.).
+tags: [scitex-orochi-skill-manager-architecture-track-b-and-pilots]
 ---
 
 > Sibling: [`54_skill-manager-architecture-track-a.md`](54_skill-manager-architecture-track-a.md) for Track A daemon.

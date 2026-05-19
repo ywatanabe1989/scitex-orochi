@@ -1,6 +1,8 @@
 ---
-name: orochi-quality-checks
-description: Fleet-wide quality monitoring procedures — smoke tests, CLI conventions, skill drift, regression watch. Owned by worker-quality-checker.
+description: |
+  [TOPIC] Quality Checks
+  [DETAILS] Fleet-wide quality monitoring procedures — smoke tests, CLI conventions, skill drift, regression watch. Owned by worker-quality-checker..
+tags: [scitex-orochi-convention-quality-checks]
 ---
 
 # Quality Checks

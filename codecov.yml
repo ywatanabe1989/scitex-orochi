@@ -1,0 +1,22 @@
+# Codecov config — scitex-orochi.
+#
+# `target: auto` because the package is still ramping up its coverage
+# baseline (the §0 subprocess-coverage wiring just landed). Switch to a
+# fixed ``90%`` target once a coverage-push session has lifted the
+# baseline past that line. See scitex-dev skill leaf
+# 02_package_11_ci-and-codecov.md.
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default

@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-design-recovery
-description: Phase 4 recovery action playbook — permission-prompt, extra-usage wedge, context-window-full, tmux-stuck, MCP zombie, paste-buffer-unsent, and periodic resurrection sweep.
+description: |
+  [TOPIC] fleet-health-daemon — Phase 4 recovery playbook
+  [DETAILS] Phase 4 recovery action playbook — permission-prompt, extra-usage wedge, context-window-full, tmux-stuck, MCP zombie, paste-buffer-unsent, and periodic resurrection sweep..
+tags: [scitex-orochi-fleet-health-daemon-design-recovery]
 ---
 
 # fleet-health-daemon — Phase 4 recovery playbook

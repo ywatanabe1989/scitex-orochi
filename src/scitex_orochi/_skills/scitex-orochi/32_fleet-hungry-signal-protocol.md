@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-hungry-signal-protocol
-description: Layer 2 coordinated dispatch — idle heads DM lead ("ready for dispatch"), lead responds with a chosen high-priority todo + brief. Companion to the auto-dispatch-probe Layer 1 (PR #320) which handles "grab-anything-local"; this layer routes with context.
+description: |
+  [TOPIC] Fleet Hungry-Signal Protocol (Layer 2 coordinated dispatch)
+  [DETAILS] Layer 2 coordinated dispatch — idle heads DM lead ("ready for dispatch"), lead responds with a chosen high-priority todo + brief. Companion to the auto-dispatch-probe Layer 1 (PR #320) which handles "grab-anything-loc....
+tags: [scitex-orochi-fleet-hungry-signal-protocol]
 ---
 
 # Fleet Hungry-Signal Protocol (Layer 2 coordinated dispatch)

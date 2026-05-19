@@ -1,0 +1,9 @@
+# scitex-dev project-type config
+# scitex-orochi is a multi-package monorepo. `pyproject.toml`'s
+# `[tool.hatch.build.targets.wheel] packages` ships `src/scitex_orochi`,
+# `hub`, and `orochi` as separate wheel components. Plus `ts/` for
+# TypeScript source bundled into the wheel's `_ts/`.
+
+project-type:
+  - pip
+  - deferred

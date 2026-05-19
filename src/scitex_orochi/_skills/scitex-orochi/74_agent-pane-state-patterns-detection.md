@@ -1,6 +1,8 @@
 ---
-name: orochi-agent-pane-state-patterns-detection
-description: Pane-state detection — session-existence preflight + scrollback false-positive guard + classification algorithm + auto-actions. (Split from 57_agent-pane-state-patterns-extras.md.)
+description: |
+  [TOPIC] Agent Pane State Patterns Detection
+  [DETAILS] Pane-state detection — session-existence preflight + scrollback false-positive guard + classification algorithm + auto-actions. (Split from 57_agent-pane-state-patterns-extras.md.).
+tags: [scitex-orochi-agent-pane-state-patterns-detection]
 ---
 
 > Sibling: [`57_agent-pane-state-patterns-consumers.md`](57_agent-pane-state-patterns-consumers.md) for upstream single-source-of-truth + consumers + scope + related.

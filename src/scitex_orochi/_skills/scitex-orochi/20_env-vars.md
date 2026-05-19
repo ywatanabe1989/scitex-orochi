@@ -1,6 +1,8 @@
 ---
-name: scitex-orochi-env-vars
-description: Environment variables read by scitex-orochi at import / runtime. Complements 21_convention-env-vars.md with the full authoritative list.
+description: |
+  [TOPIC] scitex-orochi — Environment Variables
+  [DETAILS] Environment variables read by scitex-orochi at import / runtime. Complements 21_convention-env-vars.md with the full authoritative list..
+tags: [scitex-orochi-env-vars]
 ---
 
 # scitex-orochi — Environment Variables

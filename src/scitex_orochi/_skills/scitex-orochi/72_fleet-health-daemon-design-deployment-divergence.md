@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-deployment-divergence
-description: §10A — probe-liveness vs agent-responsiveness divergence (the critical split between daemon-side liveness and agent-layer responsiveness). (Split from 53_fleet-health-daemon-design-deployment-ops.md.)
+description: |
+  [TOPIC] Fleet Health Daemon Design Deployment Divergence
+  [DETAILS] §10A — probe-liveness vs agent-responsiveness divergence (the critical split between daemon-side liveness and agent-layer responsiveness). (Split from 53_fleet-health-daemon-design-deployment-ops.md.).
+tags: [scitex-orochi-fleet-health-daemon-design-deployment-divergence]
 ---
 
 > Sibling: [`53_fleet-health-daemon-design-deployment-anti-patterns.md`](53_fleet-health-daemon-design-deployment-anti-patterns.md) for anti-patterns, open questions, implementation order.

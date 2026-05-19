@@ -78,14 +78,18 @@ mcp = ["fastmcp>=2.0"]
 agent-container = ["scitex-agent-container>=0.8.0"]
 telegram = ["claude-code-telegrammer>=0.2.0"]
 dev = [
-    "pytest>=7.0",
-    "pytest-asyncio",
-    "websockets>=12.0",
     "aiosqlite>=0.20",
     "deepeval>=1.0",
-    # Quality-audit suite + tests/test_skills_quality.py imports it.
-    # Without this dep CI fails with `ModuleNotFoundError: scitex_dev`.
-    "scitex-dev",
+    "fastmcp>=2.0",
+    "pytest-asyncio",
+    "pytest>=7.0",
+    # pytest-cov pulls in coverage>=7, which the subprocess-coverage shim
+    # in tests/conftest.py imports from child interpreters. See scitex-dev
+    # skill leaf 05_development_06_subprocess-coverage.md.
+    "pytest-cov>=4.0",
+    "scitex-agent-container>=0.8.0",
+    "scitex-dev>=0.11.7",
+    "websockets>=12.0",
 ]
 docs = [
     "sphinx>=7.0",
@@ -154,6 +158,16 @@ asyncio_mode = "auto"
 markers = [
     "llm_eval: marks tests that use an LLM-as-judge (DeepEval) and require provider API keys (deselect with '-m \"not llm_eval\"')",
 ]
+
+[tool.coverage.run]
+# Subprocess coverage wiring — see scitex-dev skill leaf
+# 05_development_06_subprocess-coverage.md. Without parallel + the
+# multiprocessing/thread concurrency keys, coverage data from child
+# Python interpreters (subprocess.run([sys.executable, ...]),
+# nbconvert --execute, pytest-xdist workers) is silently dropped.
+parallel = true
+source = ["scitex_orochi"]
+concurrency = ["multiprocessing", "thread"]
 
 [tool.scitex-linter]
 library_dirs = ["src", "tests", "hub", "orochi"]

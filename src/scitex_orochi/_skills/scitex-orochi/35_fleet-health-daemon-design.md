@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-design
-description: DRAFT — design doc for the fleet-health-daemon (todo#146). Orchestrator that links the four sub-files (overview, phases, recovery, deployment). Cross-references to `fleet-health-daemon-design.md §N.M` resolve to the corresponding sub-file (see section-map below).
+description: |
+  [TOPIC] fleet-health-daemon — Design (todo#146)
+  [DETAILS] DRAFT — design doc for the fleet-health-daemon (todo#146). Orchestrator that links the four sub-files (overview, phases, recovery, deployment). Cross-references to `fleet-health-daemon-design.md §N.M` resolve to the c....
+tags: [scitex-orochi-fleet-health-daemon-design]
 ---
 
 # fleet-health-daemon — Design (todo#146)

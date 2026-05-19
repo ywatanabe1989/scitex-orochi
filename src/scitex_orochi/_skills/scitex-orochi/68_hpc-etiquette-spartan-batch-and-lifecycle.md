@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-spartan-batch-and-lifecycle
-description: UniMelb Spartan policy — batch-only stance + account lifecycle + project expiration + inappropriate-use / service denial. (Split from 18_hpc-etiquette-spartan-fleet-implications.md.)
+description: |
+  [TOPIC] Hpc Etiquette Spartan Batch and Lifecycle
+  [DETAILS] UniMelb Spartan policy — batch-only stance + account lifecycle + project expiration + inappropriate-use / service denial. (Split from 18_hpc-etiquette-spartan-fleet-implications.md.).
+tags: [scitex-orochi-hpc-etiquette-spartan-batch-and-lifecycle]
 ---
 
 > Sibling: [`18_hpc-etiquette-spartan-login-and-ports.md`](18_hpc-etiquette-spartan-login-and-ports.md) for login-node + TCP port policy.

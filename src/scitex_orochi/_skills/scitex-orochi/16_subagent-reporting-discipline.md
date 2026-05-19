@@ -1,6 +1,8 @@
 ---
-name: orochi-subagent-reporting-discipline
-description: When an agent uses the Agent tool (spawns a Claude subagent), it must call mcp__scitex-orochi__subagents before and after so the Orochi hub + dashboard can visualize the in-flight subagent tree. Ywatanabe's #1 priority per msg#11783: "エージェントの呼び出しを可視化することはめちゃくちゃ大事". Scoped for Phase 1 (manual discipline); Phase 2 is hook-based automation (see §4). End-to-end pipeline verified 2026-04-15 (head-mba + head-ywata-note-win, msg#11891).
+description: |
+  [TOPIC] Subagent Reporting Discipline
+  [DETAILS] When an agent uses the Agent tool (spawns a Claude subagent), it must call mcp__scitex-orochi__subagents before and after so the Orochi hub + dashboard can visualize the in-flight subagent tree. Ywatanabe's #1 priorit....
+tags: [scitex-orochi-subagent-reporting-discipline]
 ---
 
 # Subagent Reporting Discipline

@@ -1,6 +1,8 @@
 ---
-name: orochi-agent-health-check
-description: Step-by-step health checklist for verifying an Orochi agent is fully operational.
+description: |
+  [TOPIC] Agent Health Check
+  [DETAILS] Step-by-step health checklist for verifying an Orochi agent is fully operational..
+tags: [scitex-orochi-agent-health-check]
 ---
 
 # Agent Health Check

@@ -1,6 +1,8 @@
 ---
-name: orochi-agent-self-evolution
-description: How agents learn from experience, update their own knowledge, and improve fleet operations over time.
+description: |
+  [TOPIC] Agent Self-Evolution
+  [DETAILS] How agents learn from experience, update their own knowledge, and improve fleet operations over time..
+tags: [scitex-orochi-agent-self-evolution]
 ---
 
 # Agent Self-Evolution
