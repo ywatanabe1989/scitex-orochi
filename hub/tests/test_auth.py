@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch  # noqa: F401
 from django.contrib.auth.models import User  # noqa: F401
 from django.core.exceptions import ValidationError  # noqa: F401
 from django.db import IntegrityError, transaction  # noqa: F401
-from django.test import Client, TestCase  # noqa: F401
+from django.test import Client, TestCase, override_settings  # noqa: F401
 
 from hub import push as hub_push  # noqa: F401
 from hub.models import (  # noqa: F401
@@ -22,6 +22,9 @@ from hub.models import (  # noqa: F401
 )
 
 
+@override_settings(
+    STORAGES={"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}}
+)
 class AuthTest(TestCase):
     def setUp(self):
         self.client = Client()
@@ -132,14 +135,14 @@ class AuthTest(TestCase):
         self.assertContains(resp, "test-ws")
 
     def test_dashboard_no_access_without_membership(self):
-        other_ws = Workspace.objects.create(name="other-ws")
+        Workspace.objects.create(name="other-ws")
         self.client.login(username="testuser", password="testpass123")
         resp = self.client.get("/workspace/other-ws/")
         self.assertEqual(resp.status_code, 403)
 
     def test_superuser_access_all_workspaces(self):
-        admin = User.objects.create_superuser(username="admin", password="adminpass")
-        other_ws = Workspace.objects.create(name="other-ws")
+        User.objects.create_superuser(username="admin", password="adminpass")
+        Workspace.objects.create(name="other-ws")
         self.client.login(username="admin", password="adminpass")
         resp = self.client.get("/workspace/other-ws/")
         self.assertEqual(resp.status_code, 200)

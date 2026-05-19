@@ -24,7 +24,15 @@ def _get_version() -> str:
 
 
 class _HelpRecursiveGroup(click.Group):
-    """Click group that supports ``--help-recursive`` to dump every subcommand."""
+    """Click group that supports ``--help-recursive`` to dump every subcommand.
+
+    Hidden subcommands (e.g. the Phase-1d rename stubs whose presence in
+    ``--help`` would clutter the listing) are skipped entirely: they don't
+    appear in the top-level ``Commands`` block and they don't appear in
+    the recursive dump either. Invoking them by name still works — the
+    hard-error still fires — the goal here is simply to avoid advertising
+    dead paths in help output.
+    """
 
     def get_help_recursive(self, ctx: click.Context) -> str:
         lines = [
@@ -39,6 +47,8 @@ class _HelpRecursiveGroup(click.Group):
             cmd = self.get_command(ctx, name)
             if cmd is None:
                 continue
+            if getattr(cmd, "hidden", False):
+                continue
             lines.append("-" * 60)
             lines.append(f"Command: {name}")
             lines.append("-" * 60)
@@ -51,10 +61,19 @@ class _HelpRecursiveGroup(click.Group):
         return "\n".join(lines)
 
 
+# Plan §11.2: the top-level ``--help`` output ends with a one-line
+# pointer at the noun-verb convention doc so fleet agents can grep
+# ``scitex-orochi --help`` and land on the skill directly.
+_CLI_CONVENTION_EPILOG = (
+    "See docs/cli.md for the noun-verb convention (scitex-orochi/convention-cli skill)."
+)
+
+
 @click.group(
     cls=_HelpRecursiveGroup,
     context_settings={"help_option_names": ["-h", "--help"]},
     invoke_without_command=True,
+    epilog=_CLI_CONVENTION_EPILOG,
 )
 @click.version_option(version=_get_version(), prog_name="scitex-orochi")
 @click.option(
@@ -113,12 +132,12 @@ def orochi(
 
 # ── Register subcommands ────────────────────────────────────────
 # Phase 1d Step C (plan PR #337 §2): the legacy flat verb-noun command
-# names (e.g. ``agent-launch``, ``list-agents``, ``send``) have been
-# removed entirely. Their grace period under interface-cli §5 is over;
-# users who type a removed name now get Click's standard
-# ``Error: No such command 'agent-launch'.`` and exit 2. The canonical
-# noun-verb forms (``agent launch``, ``agent list``, ``message send``,
-# …) are the only entry points.
+# names are registered as hidden rename stubs. They fire a hard rename
+# error and exit 2 when invoked, but are hidden from --help output to
+# keep the top-level command listing clean. The canonical noun-verb forms
+# (``agent launch``, ``agent list``, ``message send``, …) are the entry
+# points; the hidden stubs ensure users who muscle-memory the old names
+# get a clear redirect instead of Click's generic "No such command".
 from scitex_orochi._cli.commands.docs_cmd import docs
 from scitex_orochi._cli.commands.skills_cmd import skills
 
@@ -199,6 +218,47 @@ orochi.add_command(workspace_group)
 from scitex_orochi._cli._help_availability import annotate_help_with_availability
 
 annotate_help_with_availability(orochi)
+
+# ── Phase 1d Step C cleanup: hidden rename stubs (plan §2 / post-PR #337) ─
+# Register the 28 legacy flat command names as hidden click.Commands that
+# fire hard_rename_error. Hidden from --help (so the top-level listing
+# stays clean) but still invokable — users who type an old name see the
+# canonical redirect instead of Click's generic "No such command".
+from scitex_orochi._cli._deprecation import make_rename_stub
+
+_RENAME_TABLE: list[tuple[str, str]] = [
+    ("agent-launch",    "agent launch"),
+    ("agent-restart",   "agent restart"),
+    ("agent-status",    "agent status"),
+    ("agent-stop",      "agent stop"),
+    ("list-agents",     "agent list"),
+    ("fleet",           "agent fleet-list"),
+    ("launch",          "agent launch"),
+    ("stop",            "agent stop"),
+    ("send",            "message send"),
+    ("listen",          "message listen"),
+    ("show-history",    "channel history"),
+    ("join",            "channel join"),
+    ("list-channels",   "channel list"),
+    ("list-members",    "channel members"),
+    ("create-invite",   "invite create"),
+    ("list-invites",    "invite list"),
+    ("create-workspace", "workspace create"),
+    ("delete-workspace", "workspace delete"),
+    ("list-workspaces", "workspace list"),
+    ("show-status",     "server status"),
+    ("serve",           "server start"),
+    ("deploy",          "server deploy"),
+    ("setup-push",      "push setup"),
+    ("init",            "config init"),
+    ("doctor",          "system doctor"),
+    ("login",           "auth login"),
+    ("heartbeat-push",  "machine heartbeat send"),
+    ("report",          "hook report"),
+]
+
+for _old, _new in _RENAME_TABLE:
+    orochi.add_command(make_rename_stub(_old, _new))
 
 
 def main() -> None:

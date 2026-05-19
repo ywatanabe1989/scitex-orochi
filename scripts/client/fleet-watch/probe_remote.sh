@@ -11,10 +11,35 @@ host=$(hostname -s 2>/dev/null || hostname)
 os=$(uname -s)
 
 # tmux sessions: list of names, or [] if none / tmux missing
+# Robustness (mamba-healer-nas msg#9754): the bare `tmux list-sessions`
+# call sometimes returns empty when the user's default tmux server socket
+# isn't auto-discovered (no $TMUX env, no TTY). Fall back to listing every
+# socket under /tmp/tmux-$(id -u)/ explicitly. The merge keeps both paths
+# and dedupes. Non-zero exit codes are also distinguished from "no
+# sessions" so consumers can tell "probe failed" vs "agent dead".
+tmux_names=""
+tmux_status="missing"
 if command -v tmux >/dev/null 2>&1; then
+    tmux_status="ok"
     tmux_names=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | sort -u | paste -sd, -)
-else
-    tmux_names=""
+    if [ -z "$tmux_names" ]; then
+        # Retry via every socket dir under /tmp/tmux-<uid>/
+        sock_dir="/tmp/tmux-$(id -u 2>/dev/null || echo 1000)"
+        if [ -d "$sock_dir" ]; then
+            for sock in "$sock_dir"/*; do
+                [ -S "$sock" ] || continue
+                more=$(tmux -S "$sock" list-sessions -F '#{session_name}' 2>/dev/null | sort -u | paste -sd, -)
+                if [ -n "$more" ]; then
+                    if [ -z "$tmux_names" ]; then
+                        tmux_names="$more"
+                    else
+                        tmux_names="$tmux_names,$more"
+                    fi
+                fi
+            done
+            tmux_names=$(printf '%s\n' "$tmux_names" | tr ',' '\n' | sort -u | paste -sd, -)
+        fi
+    fi
 fi
 tmux_count=0
 if [ -n "$tmux_names" ]; then

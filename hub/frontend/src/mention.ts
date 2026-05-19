@@ -20,6 +20,10 @@ export var SPECIAL_MENTIONS = [
   { name: "mambas", desc: "notify all mamba-* agents" },
 ];
 
+/* Channel names for @channel autocomplete. Populated by channel-prefs.ts
+ * when channels are fetched. Strip leading # so "@general" completes. */
+export var cachedChannelNames: string[] = [];
+
 /* Fuzzy match: check if all query characters appear in order within text.
    Returns a score (lower = better) or -1 if no match. */
 export function _mention__fuzzyMatch(query, text) {
@@ -111,13 +115,17 @@ export function positionMentionDropdown(inputEl) {
 }
 
 export function showMentionDropdown(specialItems, agentItems, channelItems?) {
+<<<<<<< HEAD
+=======
   channelItems = channelItems || [];
   var msgInput = document.getElementById("msg-input");
+>>>>>>> origin/main
   var inputHasFocus = msgInput && document.activeElement === msgInput;
   var savedStart = inputHasFocus ? msgInput.selectionStart : 0;
   var savedEnd = inputHasFocus ? msgInput.selectionEnd : 0;
   mentionSelectedIndex = 0;
   var html = "";
+  var chItems = channelItems || [];
 
   specialItems.forEach(function (item, i) {
     html +=
@@ -160,21 +168,38 @@ export function showMentionDropdown(specialItems, agentItems, channelItems?) {
       "</div>";
   });
 
+<<<<<<< HEAD
+  /* Channel section (#168) */
+  if (chItems.length > 0 && (specialItems.length > 0 || agentItems.length > 0)) {
+    html += '<div class="mention-divider"></div>';
+  }
+  var chOffset = offset + agentItems.length;
+  chItems.forEach(function (item, i) {
+=======
   if ((agentItems.length > 0) && channelItems.length > 0) {
     html += '<div class="mention-divider"></div>';
   }
 
   var chOffset = offset + agentItems.length;
   channelItems.forEach(function (chName, i) {
+>>>>>>> origin/main
     html +=
       '<div class="mention-item mention-channel' +
       (chOffset + i === 0 ? " selected" : "") +
       '" data-name="' +
+<<<<<<< HEAD
+      escapeHtml(item.bare) +
+      '">' +
+      '<span class="mention-dot mention-dot-channel">#</span>' +
+      escapeHtml(item.bare) +
+      '<span class="mention-desc">channel mention</span>' +
+=======
       escapeHtml(chName) +
       '">' +
       '<span class="mention-dot mention-dot-channel">#</span>' +
       escapeHtml(chName) +
       '<span class="mention-desc">channel</span>' +
+>>>>>>> origin/main
       "</div>";
   });
 
@@ -262,6 +287,23 @@ export function handleMentionInput(e) {
       return item.name;
     });
 
+<<<<<<< HEAD
+  /* Channel name mentions (#168): fuzzy-match against known channel names.
+   * @general → subscribers of #general get a DM notification (server-side). */
+  var matchedChannels = cachedChannelNames
+    .map(function (ch) {
+      var bare = ch.charAt(0) === "#" ? ch.slice(1) : ch;
+      var score = _mention__fuzzyMatch(info.query, bare);
+      return { bare: bare, full: ch, score: score };
+    })
+    .filter(function (item) {
+      return item.score !== -1;
+    })
+    .sort(function (a, b) {
+      return a.score - b.score;
+    })
+    .slice(0, 8); /* cap channel results */
+=======
   /* Channel name completions — strip leading # so @general matches "general" */
   var channelKeys = _channelPrefs ? Object.keys(_channelPrefs) : [];
   var matchedChannels = channelKeys
@@ -278,6 +320,7 @@ export function handleMentionInput(e) {
     .filter(function (v, i, a) { return a.indexOf(v) === i; })
     .slice(0, 6);
 
+>>>>>>> origin/main
   if (matchedSpecial.length === 0 && matchedAgents.length === 0 && matchedChannels.length === 0) {
     hideMentionDropdown();
     return;

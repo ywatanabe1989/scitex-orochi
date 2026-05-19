@@ -113,6 +113,36 @@
   font-size: 11px;
   margin-right: 6px;
 }
+.machine-badge-btn {
+  cursor: pointer;
+  transition: opacity 0.15s, box-shadow 0.15s;
+}
+.machine-badge-btn:hover {
+  opacity: 0.85;
+  box-shadow: 0 0 0 2px currentColor;
+}
+.machine-badge-selected {
+  box-shadow: 0 0 0 2px currentColor;
+  font-weight: 600;
+}
+.machine-filter-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  margin-left: 8px;
+}
+.filter-clear-btn {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--text-muted, #888);
+}
 .machine-ok {
   background: rgba(78, 205, 196, 0.13);
   color: #4ecdc4;
@@ -122,6 +152,11 @@
   background: rgba(255, 217, 61, 0.13);
   color: #ffd93d;
   border: 1px solid rgba(255, 217, 61, 0.27);
+}
+.machine-stale {
+  background: rgba(255, 140, 66, 0.13);
+  color: #ff8c42;
+  border: 1px solid rgba(255, 140, 66, 0.27);
 }
 .machine-off {
   background: rgba(239, 68, 68, 0.13);
@@ -203,6 +238,42 @@
   background: rgba(78, 205, 196, 0.1);
   color: #888;
   border: 1px solid rgba(78, 205, 196, 0.2);
+}
+.subagent-failed {
+  background: rgba(255, 80, 80, 0.15);
+  color: #f87;
+  border: 1px solid rgba(255, 80, 80, 0.3);
+}
+.agent-detail-subagents {
+  border-top: 1px solid #2a2a2a;
+  padding-top: 8px;
+  margin-top: 4px;
+}
+.subagent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 6px;
+}
+.subagent-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  flex-wrap: wrap;
+}
+.subagent-name {
+  color: #ccc;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.subagent-task {
+  color: #888;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 500px;
 }
 .ch-badge {
   background: #333;

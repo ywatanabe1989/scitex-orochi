@@ -139,10 +139,10 @@ body {
 }
 .wall-clock {
   font-size: 11px;
-  color: #888;
-  text-align: center;
+  color: #b0b0b0;
   font-family: "Consolas", "Monaco", monospace;
-  padding: 2px 0 4px;
+  padding: 0 4px;
+  white-space: nowrap;
 }
 .sidebar-brand .header-icon {
   height: 100px;

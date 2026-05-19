@@ -15,7 +15,16 @@ from __future__ import annotations
 
 import logging
 
-from scitex_resource import get_metrics as _get_metrics
+try:
+    from scitex_resource import get_metrics as _get_metrics
+    _GET_METRICS_AVAILABLE = True
+except ImportError:
+    # Older scitex_resource installs (< API with get_metrics). Return empty dict
+    # so tests and local dev imports don't crash. Production always has the
+    # published version with get_metrics.
+    def _get_metrics():  # type: ignore[misc]
+        return {}
+    _GET_METRICS_AVAILABLE = False
 
 log = logging.getLogger("orochi.resources")
 

@@ -157,6 +157,29 @@ urlpatterns = [
         views.api_agent_detail,
         name="api-agent-detail",
     ),
+    # Lead-state-handover (ZOO#12) — FR-A snapshot, FR-B owner,
+    # FR-E session-meta lookup. All token-authenticated so sac-runtime
+    # callers can hit them without a session.
+    path(
+        "api/agents/<str:name>/snapshot/",
+        views.api_agent_snapshot,
+        name="api-agent-snapshot",
+    ),
+    path(
+        "api/agents/<str:name>/snapshot/latest/",
+        views.api_agent_snapshot_latest,
+        name="api-agent-snapshot-latest",
+    ),
+    path(
+        "api/agents/<str:name>/owner/",
+        views.api_agent_owner,
+        name="api-agent-owner",
+    ),
+    path(
+        "api/agents/<str:name>/<str:instance_uuid>/meta/",
+        views.api_agent_session_meta,
+        name="api-agent-session-meta",
+    ),
     # Central container-agent registry (replaces ~/.scitex/agent-container/registry/)
     path(
         "api/registry/agents/",
@@ -195,6 +218,13 @@ urlpatterns = [
     path("api/watchdog/alerts/", views.api_watchdog_alerts, name="api-watchdog-alerts"),
     path("api/events/tool-use/", views.api_event_tool_use, name="api-event-tool-use"),
     path("api/connectivity/", views.api_connectivity, name="api-connectivity"),
+    path("api/inbound-email/", views.api_inbound_email, name="api-inbound-email"),
+    path("api/invitations/", views.api_invitations, name="api-invitations"),
+    path(
+        "api/invitations/<str:token>/",
+        views.api_invitation_detail,
+        name="api-invitation-detail",
+    ),
     path("api/media/", views.api_media, name="api-media"),
     path("api/members/", views.api_members, name="api-members"),
     path("api/reactions/", views.api_reactions, name="api-reactions"),
@@ -202,6 +232,11 @@ urlpatterns = [
         "api/messages/<int:message_id>/",
         views.api_message_detail,
         name="api-message-detail",
+    ),
+    path(
+        "api/messages/<int:message_id>/translate/",
+        views.api_message_translate,
+        name="api-message-translate",
     ),
     path("api/releases/", views.api_releases, name="api-releases"),
     path(

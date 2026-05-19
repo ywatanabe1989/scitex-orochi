@@ -21,9 +21,9 @@ Modules
 """
 
 from hub.a2a._dispatch_internals import (
+    _PENDING,
     DISPATCH_TIMEOUT_SECONDS,
     HTTP_DIRECT_TIMEOUT_SECONDS,
-    _PENDING,
     _agent_group,
     _resolve_workspace_id,
     _try_http_direct,

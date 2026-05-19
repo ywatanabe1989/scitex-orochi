@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { lastActiveChannel } from "../app/state";
-import { sendOrochiMessage, userName } from "../app/utils";
+import { sendOrochiMessage, userName, apiUrl } from "../app/utils";
 import { ws, wsConnected } from "../app/websocket";
 import { _renderMermaidIn } from "./chat-attachments";
 import {
@@ -26,6 +26,301 @@ export function updateChannelSelect() {
  * pendingAttachments — the Overview popup and Reply composer have
  * their own per-surface stores so this module is unchanged by the
  * unification). */
+/* #245/#246/#247/#248: slash-command registry.
+ * Each entry: { args, summary } — consumed by /help to list commands.
+ * Handlers live in _handleSlashCommand() below. */
+var SLASH_COMMANDS = [
+  { cmd: "/mute",       args: "[#channel]",                      summary: "Mute current or named channel" },
+  { cmd: "/unmute",     args: "[#channel]",                      summary: "Unmute current or named channel" },
+  { cmd: "/leave",      args: "[#channel]",                      summary: "Unsubscribe from current or named channel" },
+  { cmd: "/topic",      args: "<text>",                          summary: "Set the current channel description" },
+  { cmd: "/remind",     args: "<me|#ch|@agent> in <N>m|h <msg>", summary: "Schedule a reminder message" },
+  { cmd: "/dm",         args: "@recipient [message]",            summary: "Open (or create) a DM with recipient and optionally send a message" },
+  { cmd: "/archive",    args: "[#channel]",                     summary: "Archive current or named channel (hide from sidebar, keep history)" },
+  { cmd: "/unarchive",  args: "[#channel]",                     summary: "Unarchive a previously archived channel" },
+  { cmd: "/help",       args: "",                                summary: "List slash commands and keyboard shortcuts" },
+  { cmd: "/shortcuts",  args: "",                                summary: "Alias for /help" },
+];
+
+/* Show a mini-toast; delegates to window._showMiniToast if available. */
+function _toast(text: string, kind?: string) {
+  if (typeof (window as any)._showMiniToast === "function") {
+    (window as any)._showMiniToast(text, kind);
+  }
+}
+
+/* #245/#246/#247/#248: slash-command router — intercepts text beginning with
+ * "/" before the WS/REST send path. Returns true if a command matched
+ * (caller clears the input and returns without sending). */
+function _handleSlashCommand(text: string, channel: string): boolean {
+  var parts = text.trim().split(/\s+/);
+  var cmd = parts[0].toLowerCase();
+
+  /* ── /mute [#channel]  (#245) ─────────────────────────────────────── */
+  if (cmd === "/mute" || cmd === "/unmute") {
+    var target = parts[1] || "";
+    if (target && !target.startsWith("#")) target = "#" + target;
+    if (!target) target = channel;
+    if (!target) return true;
+    var mute = cmd === "/mute";
+    if (typeof (window as any)._setChannelPref === "function") {
+      (window as any)._setChannelPref(target, { is_muted: mute });
+    }
+    _toast((mute ? "Muted " : "Unmuted ") + target, mute ? "warn" : "success");
+    return true;
+  }
+
+  /* ── /leave [#channel]  (#248) ────────────────────────────────────── */
+  if (cmd === "/leave") {
+    var leaveTarget = parts[1] || "";
+    if (leaveTarget && !leaveTarget.startsWith("#")) leaveTarget = "#" + leaveTarget;
+    if (!leaveTarget) leaveTarget = channel;
+    if (!leaveTarget) return true;
+    /* Guard: don't allow leaving DMs or #general */
+    if (leaveTarget === "#general" || leaveTarget.startsWith("dm:")) {
+      _toast("Cannot leave " + leaveTarget, "warn");
+      return true;
+    }
+    fetch(apiUrl("/api/channel-members/"), {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ channel: leaveTarget, username: userName }),
+    })
+      .then(function (r) {
+        _toast(r.ok ? "Left " + leaveTarget : "Error leaving " + leaveTarget,
+               r.ok ? "success" : "warn");
+        /* Trigger sidebar refresh so the channel disappears */
+        if (typeof (window as any).fetchStats === "function") {
+          (window as any).fetchStats();
+        }
+      })
+      .catch(function () { _toast("Error leaving " + leaveTarget, "warn"); });
+    return true;
+  }
+
+  /* ── /topic <text>  (#246) ────────────────────────────────────────── */
+  if (cmd === "/topic") {
+    var description = parts.slice(1).join(" ").trim();
+    fetch(apiUrl("/api/channels/"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: channel, description: description }),
+    })
+      .then(function (r) {
+        _toast(r.ok ? "Topic set" : "Error setting topic", r.ok ? "success" : "warn");
+      })
+      .catch(function () { _toast("Error setting topic", "warn"); });
+    return true;
+  }
+
+  /* ── /help or /shortcuts  (#247) ──────────────────────────────────── */
+  if (cmd === "/help" || cmd === "/shortcuts") {
+    var lines = ["Slash commands:"];
+    SLASH_COMMANDS.forEach(function (c) {
+      lines.push("  " + c.cmd + (c.args ? " " + c.args : "") + " — " + c.summary);
+    });
+    lines.push("");
+    lines.push("Keyboard shortcuts:");
+    lines.push("  Ctrl+K — search / jump to channel");
+    lines.push("  Alt+Enter / Ctrl+M — toggle voice input");
+    lines.push("  Shift+Enter — newline in composer");
+    lines.push("  Ctrl+U — upload file");
+    var helpText = lines.join("\n");
+    /* Post as an ephemeral local message if appendMessage is available,
+     * otherwise fall back to an alert. */
+    if (typeof (window as any).appendMessage === "function") {
+      (window as any).appendMessage({
+        sender: "orochi",
+        content: helpText,
+        channel: channel,
+        ts: new Date().toISOString(),
+        local: true,
+      });
+    } else {
+      alert(helpText);
+    }
+    return true;
+  }
+
+  /* ── /remind <target> in <N>m|h|d <message>  (#244) ──────────────── */
+  if (cmd === "/remind") {
+    /* Grammar: /remind <target> in <N><unit> <body>
+     *            target = me | #channel | @agent (default: me)
+     *            N      = positive integer
+     *            unit   = m(in) | h(our) | d(ay)
+     *            body   = remainder of the string
+     * Examples:
+     *   /remind me in 30m to check the dispatch queue
+     *   /remind #proj-foo in 2h about standup
+     *   /remind @mgr-todo in 1h about stuck thread  */
+    var remindArgs = parts.slice(1); /* everything after /remind */
+    var remindTarget = "me";
+    var timeIdx = 0; /* index in remindArgs where "in" appears */
+    /* Optional first word is target if it starts with #, @, or is "me" */
+    if (remindArgs.length > 0) {
+      var first = remindArgs[0].toLowerCase();
+      if (first === "me" || first.startsWith("#") || first.startsWith("@")) {
+        remindTarget = remindArgs[0];
+        remindArgs = remindArgs.slice(1);
+      }
+    }
+    /* Find "in" keyword */
+    var inIdx = remindArgs.map(function (w) { return w.toLowerCase(); }).indexOf("in");
+    if (inIdx === -1) {
+      _toast("/remind: use 'in <N>m|h|d' for time", "warn");
+      return true;
+    }
+    var quantStr = remindArgs[inIdx + 1] || "";
+    var quantMatch = quantStr.match(/^(\d+)(m(?:in)?|h(?:r|our)?|d(?:ay)?)$/i);
+    if (!quantMatch) {
+      _toast("/remind: expected <N>m|h|d, got '" + quantStr + "'", "warn");
+      return true;
+    }
+    var qty = parseInt(quantMatch[1], 10);
+    var unit = quantMatch[2][0].toLowerCase(); /* m | h | d */
+    var delayMs = qty * (unit === "m" ? 60 : unit === "h" ? 3600 : 86400) * 1000;
+    var fireAt = new Date(Date.now() + delayMs).toISOString();
+    var bodyWords = remindArgs.slice(inIdx + 2);
+    /* Strip leading "to" / "about" / "that" filler words */
+    if (bodyWords.length > 0 && /^(to|about|that|for)$/i.test(bodyWords[0])) {
+      bodyWords = bodyWords.slice(1);
+    }
+    var remindBody = bodyWords.join(" ").trim() || "(no message)";
+    /* Resolve destination channel */
+    var remindChannel = channel || "#general";
+    var remindAgent = userName || "ywatanabe";
+    if (remindTarget !== "me") {
+      if (remindTarget.startsWith("#")) {
+        remindChannel = remindTarget;
+      } else if (remindTarget.startsWith("@")) {
+        remindAgent = remindTarget.slice(1);
+      }
+    }
+    /* POST to /api/scheduled/ */
+    var orochiToken = (window as any).__orochiToken || "";
+    fetch(apiUrl("/api/scheduled/"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: orochiToken,
+        agent: remindAgent,
+        task: remindBody,
+        channel: remindChannel,
+        run_at: fireAt,
+        created_by: userName || "",
+      }),
+    })
+      .then(function (r) {
+        if (r.ok) {
+          _toast("Reminder set in " + qty + (unit === "m" ? "m" : unit === "h" ? "h" : "d"), "success");
+        } else {
+          r.json().then(function (e) { _toast("Reminder error: " + (e.error || r.status), "warn"); });
+        }
+      })
+      .catch(function () { _toast("Reminder request failed", "warn"); });
+    return true;
+  }
+
+  /* ── /archive [#channel] / /unarchive [#channel]  (#241) ─────────── */
+  if (cmd === "/archive" || cmd === "/unarchive") {
+    var archTarget = parts[1] || "";
+    if (archTarget && !archTarget.startsWith("#")) archTarget = "#" + archTarget;
+    if (!archTarget) archTarget = channel;
+    if (!archTarget) { _toast("/archive: specify a channel", "warn"); return true; }
+    var archiving = cmd === "/archive";
+    var archToken = (window as any).__orochiCsrfToken || "";
+    var archHeaders = { "Content-Type": "application/json" } as Record<string, string>;
+    if (archToken) archHeaders["X-CSRFToken"] = archToken;
+    fetch(apiUrl("/api/channels/"), {
+      method: "PATCH",
+      headers: archHeaders,
+      credentials: "same-origin",
+      body: JSON.stringify({ name: archTarget, is_archived: archiving }),
+    }).then(function (r) {
+      if (r.ok) {
+        _toast((archiving ? "Archived " : "Unarchived ") + archTarget, archiving ? "warn" : "success");
+        /* Refresh the sidebar channel list */
+        if (typeof (window as any).fetchChannels === "function") {
+          (window as any).fetchChannels();
+        }
+      } else {
+        r.json().then(function (e) {
+          _toast((archiving ? "Archive" : "Unarchive") + " failed: " + (e.error || r.status), "warn");
+        }).catch(function() {
+          _toast((archiving ? "Archive" : "Unarchive") + " failed: " + r.status, "warn");
+        });
+      }
+    }).catch(function () {
+      _toast((archiving ? "Archive" : "Unarchive") + " request failed", "warn");
+    });
+    return true;
+  }
+
+  /* ── /dm @recipient [message]  (#243) ────────────────────────────── */
+  if (cmd === "/dm") {
+    /* Grammar: /dm @recipient [optional message body]
+     *
+     *   /dm @mgr-secretary
+     *   /dm @mgr-secretary can you check today's calendar?
+     *   /dm ywatanabe urgent: deployment failed
+     *
+     * Recipient can be @agent-name, @human-username, or bare name.
+     * Canonical DM channel: dm:<typeA>:<nameA>|<typeB>:<nameB> (sorted).
+     * The current dashboard user is always treated as human:<userName>
+     * (humans log in via browser; agents connect via WS, not the chat UI).
+     * Backend lazy-creates the channel row on first message send, so
+     * navigation to the channel works even before any POST /api/dms/. */
+    var dmRecipRaw = (parts[1] || "").replace(/^@/, "");
+    if (!dmRecipRaw) {
+      _toast("/dm: usage: /dm @recipient [message]", "warn");
+      return true;
+    }
+    var dmBody = parts.slice(2).join(" ").trim();
+    /* Determine recipient principal. Prefer known agent names (prefix
+     * "agent:" in the principal key), fall back to human:<name>. */
+    var dmRecipKey: string;
+    var liveAgents = Array.isArray((window as any).__lastAgents)
+      ? (window as any).__lastAgents
+      : [];
+    var isKnownAgent = liveAgents.some(function (a) {
+      var bare = String((a && a.name) || "").split("@")[0];
+      return bare === dmRecipRaw;
+    });
+    dmRecipKey = (isKnownAgent ? "agent:" : "human:") + dmRecipRaw;
+    /* Current user's principal key — always human in the browser UI. */
+    var dmSelfUser = userName || (window as any).__orochiUserName || "user";
+    var dmSelfKey = "human:" + dmSelfUser;
+    /* Build canonical channel name (sorted). */
+    var dmPair = [dmSelfKey, dmRecipKey].sort();
+    var dmChannel = "dm:" + dmPair.join("|");
+    /* Navigate to the DM channel. */
+    if (typeof (window as any).setCurrentChannel === "function") {
+      (window as any).setCurrentChannel(dmChannel);
+    }
+    if (typeof (window as any).loadChannelHistory === "function") {
+      (window as any).loadChannelHistory(dmChannel);
+    }
+    if (typeof (window as any)._activateTab === "function") {
+      (window as any)._activateTab("chat");
+    }
+    _toast("DM opened with " + dmRecipRaw, "success");
+    /* If an inline message was provided, send it after a short tick so
+     * the channel state settles first. */
+    if (dmBody) {
+      setTimeout(function () {
+        if (typeof (window as any).sendOrochiMessage === "function") {
+          (window as any).sendOrochiMessage(dmChannel, dmBody);
+        } else if (typeof (window as any)._wsSend === "function") {
+          (window as any)._wsSend({ type: "message", channel: dmChannel, text: dmBody });
+        }
+      }, 120);
+    }
+    return true;
+  }
+
+  return false; /* unknown command — let it post as a normal message */
+}
+
 export function sendMessage() {
   var input = document.getElementById("msg-input");
   /* In multi-select mode (globalThis as any).currentChannel is null; fall back to lastActiveChannel
@@ -35,6 +330,13 @@ export function sendMessage() {
     (typeof lastActiveChannel !== "undefined" && lastActiveChannel) ||
     "#general";
   var text = input.value.trim();
+
+  /* #245: slash commands — handle before sending. Clear input + return. */
+  if (text.startsWith("/") && _handleSlashCommand(text, channel)) {
+    input.value = "";
+    input.style.height = "auto";
+    return;
+  }
 
   /* Pull any attachments the user staged via paste/drop/picker before
    * hitting Send. Attachments alone (empty text) are a valid message. */
@@ -46,6 +348,9 @@ export function sendMessage() {
   if (attachments.length > 0) payload.attachments = attachments;
 
   /* Prefer WebSocket send when connected (instant echo), fall back to REST */
+  /* #239: set flag so chat-render scrolls when the WS echo renders the new
+   * message, even if voice recording is active at that moment. */
+  window._scrollAfterNextMessage = true;
   if (wsConnected && ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: "message", payload: payload }));
   } else {

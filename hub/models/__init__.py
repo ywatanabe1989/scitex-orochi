@@ -13,7 +13,14 @@ existing ``hub/migrations/`` history continues to resolve to the same
 ``hub.<ModelName>`` references with zero migration delta.
 """
 
-from ._agents import ContainerAgent, PinnedAgent, ScheduledAction
+from ._agents import (
+    AgentGroup,
+    AgentSession,
+    AgentSnapshot,
+    ContainerAgent,
+    PinnedAgent,
+    ScheduledAction,
+)
 from ._helpers import _generate_workspace_token, normalize_channel_name
 from ._identity import (
     AgentProfile,
@@ -56,6 +63,9 @@ __all__ = [
     "MessageReaction",
     "MessageThread",
     # _agents
+    "AgentGroup",
+    "AgentSession",
+    "AgentSnapshot",
     "ContainerAgent",
     "PinnedAgent",
     "ScheduledAction",

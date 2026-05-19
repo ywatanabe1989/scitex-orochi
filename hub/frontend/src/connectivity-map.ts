@@ -203,9 +203,11 @@ export function renderConnectivityMap() {
     var color =
       e.status === "ok"
         ? "#4ecdc4"
-        : e.status === "pending"
-          ? "#f59e0b"
-          : "#ef4444";
+        : e.status === "stale"
+          ? "#ff8c42"
+          : e.status === "pending"
+            ? "#f59e0b"
+            : "#ef4444";
     var d = "M " + p1.x + " " + p1.y + " L " + p2.x + " " + p2.y;
     svgParts.push(
       '<path d="' +
@@ -234,9 +236,13 @@ export function renderConnectivityMap() {
     if (seen[reverse]) sign = -1;
     seen[pair] = true;
     var d = _edgePath(p1, p2, sign);
-    var color = e.status === "ok" ? "#4ecdc4" : "#ef4444";
+    var color = e.status === "ok" ? "#4ecdc4"
+              : e.status === "stale" ? "#ff8c42"
+              : "#ef4444";
     var dash = e.status === "ok" ? "" : 'stroke-dasharray="4 4"';
-    var marker = e.status === "ok" ? "url(#arrow-ok)" : "url(#arrow-fail)";
+    var marker = e.status === "ok" ? "url(#arrow-ok)"
+               : e.status === "stale" ? "url(#arrow-pending)"
+               : "url(#arrow-fail)";
     svgParts.push(
       '<path d="' +
         d +
@@ -265,8 +271,14 @@ export function renderConnectivityMap() {
     var p = positions[n.id];
     if (!p) return;
     var isPending = n.status === "pending";
-    var stroke = isPending ? "#f59e0b" : "#4ecdc4";
-    var fill = isPending ? "rgba(245,158,11,0.12)" : "rgba(78,205,196,0.10)";
+    var stroke = n.status === "off" ? "#ef4444"
+               : n.status === "stale" ? "#ff8c42"
+               : isPending ? "#f59e0b"
+               : "#4ecdc4";
+    var fill = n.status === "off" ? "rgba(239,68,68,0.10)"
+             : n.status === "stale" ? "rgba(255,140,66,0.10)"
+             : isPending ? "rgba(245,158,11,0.12)"
+             : "rgba(78,205,196,0.10)";
     svgParts.push(
       '<g class="conn-node conn-node-bastion">' +
         '<rect x="' +
@@ -308,6 +320,9 @@ export function renderConnectivityMap() {
   machineNodes.forEach(function (n) {
     var p = positions[n.id];
     if (!p) return;
+    var nodeStroke = n.status === "off" ? "#ef4444"
+                   : n.status === "stale" ? "#ff8c42"
+                   : "#4ecdc4";
     /* todo#51: data-host-name lets hover-sync find the node from res-card
      * and activity-card mouseenter handlers. Use n.id (matches .res-card
      * data-host-name and .activity-card data-machine). */
@@ -322,7 +337,9 @@ export function renderConnectivityMap() {
         '" r="' +
         nodeR +
         '" ' +
-        'fill="#141414" stroke="#4ecdc4" stroke-width="2"/>' +
+        'fill="#141414" stroke="' + nodeStroke + '" stroke-width="2"' +
+        (n.status === "off" ? ' stroke-dasharray="4 2"' : "") +
+        '/>' +
         '<text x="' +
         p.x +
         '" y="' +
@@ -351,33 +368,40 @@ export function renderConnectivityMap() {
   var pendingCount = edges.filter(function (e) {
     return e.status === "pending";
   }).length;
+  var staleCount = edges.filter(function (e) {
+    return e.status === "stale";
+  }).length;
   var bastionLive = nodes.filter(function (n) {
-    return n.type === "bastion" && n.status !== "pending";
+    return n.type === "bastion" && n.status === "ok";
+  }).length;
+  var bastionStale = nodes.filter(function (n) {
+    return n.type === "bastion" && n.status === "stale";
   }).length;
   var bastionTotal = nodes.filter(function (n) {
     return n.type === "bastion";
   }).length;
   var srcLabel = connectivityCache.source === "live" ? "live" : "static";
-  var pendingPill =
-    pendingCount > 0
-      ? '<span class="conn-pill conn-pill-pending">☁ ' +
-        bastionLive +
-        "/" +
-        bastionTotal +
-        " CF tunnels</span>"
-      : '<span class="conn-pill conn-pill-ok">☁ ' +
-        bastionLive +
-        "/" +
-        bastionTotal +
-        " CF tunnels</span>";
+  var bastionPillCls = bastionStale > 0 ? "conn-pill-pending"
+                     : (bastionLive < bastionTotal) ? "conn-pill-fail"
+                     : "conn-pill-ok";
+  var bastionPill =
+    '<span class="conn-pill ' + bastionPillCls + '">☁ ' +
+    bastionLive + "/" + bastionTotal +
+    (bastionStale > 0 ? " CF tunnels (" + bastionStale + " stale)" : " CF tunnels") +
+    "</span>";
   var html =
     '<div class="connectivity-header">' +
     '<span class="connectivity-title">SSH mesh</span>' +
     '<span class="connectivity-summary">' +
-    pendingPill +
+    bastionPill +
     '<span class="conn-pill conn-pill-ok">' +
     okCount +
     " links ok</span>" +
+    (staleCount
+      ? '<span class="conn-pill conn-pill-pending">' +
+        staleCount +
+        " stale</span>"
+      : "") +
     (failCount
       ? '<span class="conn-pill conn-pill-fail">' +
         failCount +

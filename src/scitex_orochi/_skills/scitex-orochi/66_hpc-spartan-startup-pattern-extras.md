@@ -65,6 +65,10 @@ Verify before shipping any Spartan-bound code or probe:
 - [ ] `--time` is set on every `salloc`/`sbatch` so the allocation can self-release.
 - [ ] Probe commands use absolute paths for `/apps/slurm/latest/bin/squeue` etc. when latency matters.
 
+## Sbatch wrapper hold-branch discipline
+
+See [`67_hpc-spartan-sbatch-hold-branch.md`](67_hpc-spartan-sbatch-hold-branch.md) for the full canonical hardened template, anti-patterns, guard rationale table, and regression test. (Split to keep files under the 10 KB skill monolith limit.)
+
 ## Related
 
 - memory `project_spartan_login_node.md` — login1 controller-only rule
@@ -72,7 +76,9 @@ Verify before shipping any Spartan-bound code or probe:
 - `convention-connectivity-probe.md` — `bash -lc` wrap, cross-OS semantics, compound escalation
 - `resource-management.md` (scitex-resource) — the future unified SLURM acquisition API
 - scitex-python / scitex-agent-container commit `6900afdf` (2026-04-13): `fix(spartan): export LD_LIBRARY_PATH for Python 3.11 shared libs`
+- todo#425 — sbatch head-spartan wrapper: hold branch fragile; this section is the canonical fix
 
 ## Change log
 
-- **2026-04-13**: Initial capture from head-<host> bash-load incident (2.73 s interactive startup), Python 3.11 shared-lib fix (commit 6900afdf), and reconstruction of the Lmod / hostname-guard / directory-guard pattern in `999_unimelb_spartan.src`. Trigger: worker-todo-manager dispatch msg#8829 (manba-mode), todo#307. Author: worker-skill-manager.
+- **2026-04-13**: Initial capture from head-spartan bash-load incident (2.73 s interactive startup), Python 3.11 shared-lib fix (commit 6900afdf), and reconstruction of the Lmod / hostname-guard / directory-guard pattern in `999_unimelb_spartan.src`. Trigger: mamba-todo-manager dispatch msg#8829 (manba-mode), todo#307. Author: mamba-skill-manager.
+- **2026-04-14**: Added §"Sbatch wrapper hold-branch discipline" — codifies the `set -euo pipefail` + `set -x` + `while tmux has-session; sleep 60; done` + `exit 1` pattern as the canonical hardened wrapper. Trigger: todo#425 (3 out of 4 head-spartan submissions on 2026-04-14 exited COMPLETED in 16 s due to missing hold branch, jobs 23934176 / 23936232 / 23936277). Author: head-spartan (instance B). Companion script hardening landed in `~/head_spartan_{sbatch,fresh,restart}.sh` on-host; `head_spartan_restart2.sh` retired to `.deprecated.bak-20260415` with a gate stub.

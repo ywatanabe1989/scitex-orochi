@@ -227,6 +227,131 @@ class AgentMetaOAuthRegisterTest(TestCase):
         ][0]
         self.assertEqual(a["sac_status"], sac)
 
+    def test_register_accepts_setup_audit_fields(self):
+        """Setup-audit fields from sac PR#53: plan_label, plugins, MCPs.
+
+        The hub should mirror every new field the client now pushes so
+        the dashboard can render a per-host setup-audit table without
+        re-querying a per-host endpoint.
+        """
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "audit-agent-1",
+                "account_email": "audit@example.org",
+                "account_plan_label": "Max 20x",
+                "account_subscription_type": "max",
+                "account_rate_limit_tier": "default_claude_max_20x",
+                "account_organization_name": "Acme Research",
+                "account_uuid": "acct-uuid-1",
+                "oauth_expires_at": 1000000000000,
+                "installed_plugins": [
+                    {
+                        "name": "claude-hud@claude-hud",
+                        "version": "0.0.10",
+                        "scope": "user",
+                    }
+                ],
+                "status_line_command": "/usr/bin/node /path/to/claude-hud.js",
+                "mcp_servers": [
+                    {
+                        "name": "scitex-orochi",
+                        "transport": "stdio",
+                        "url_host": None,
+                        "command": "bun",
+                    }
+                ],
+            }
+        )
+        self.assertEqual(resp.status_code, 200)
+        a = [
+            x
+            for x in get_agents(workspace_id=self.ws.id)
+            if x["name"] == "audit-agent-1"
+        ][0]
+        self.assertEqual(a["account_plan_label"], "Max 20x")
+        self.assertEqual(a["account_subscription_type"], "max")
+        self.assertEqual(a["account_rate_limit_tier"], "default_claude_max_20x")
+        self.assertEqual(a["account_organization_name"], "Acme Research")
+        self.assertEqual(a["account_uuid"], "acct-uuid-1")
+        self.assertEqual(a["oauth_expires_at"], 1000000000000)
+        self.assertEqual(len(a["installed_plugins"]), 1)
+        self.assertEqual(a["installed_plugins"][0]["name"], "claude-hud@claude-hud")
+        self.assertEqual(
+            a["status_line_command"], "/usr/bin/node /path/to/claude-hud.js"
+        )
+        self.assertEqual(a["orochi_mcp_servers"][0]["name"], "scitex-orochi")
+        # First heartbeat: no previous expires_at -> rotation count stays 0.
+        self.assertEqual(a["oauth_rotation_count"], 0)
+        self.assertEqual(a["oauth_last_rotation_at"], "")
+
+    def test_register_increments_rotation_count_on_expires_change(self):
+        """Second heartbeat with a different oauth_expires_at should
+        bump oauth_rotation_count and stamp oauth_last_rotation_at.
+
+        Same expires_at twice in a row must NOT bump the counter
+        (idempotent).
+        """
+        from hub.registry import _agents as _reg_agents
+        from hub.registry import get_agents
+
+        _reg_agents.clear()
+
+        def _get():
+            return [
+                x
+                for x in get_agents(workspace_id=self.ws.id)
+                if x["name"] == "rot-agent"
+            ][0]
+
+        # First heartbeat primes the counter at 0.
+        resp = self._post(
+            {
+                "token": self.token.token,
+                "name": "rot-agent",
+                "account_email": "rotator@example.org",
+                "oauth_expires_at": 1000,
+            }
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(_get()["oauth_rotation_count"], 0)
+
+        # Second heartbeat with the same expires_at: still 0.
+        self._post(
+            {
+                "token": self.token.token,
+                "name": "rot-agent",
+                "oauth_expires_at": 1000,
+            }
+        )
+        self.assertEqual(_get()["oauth_rotation_count"], 0)
+
+        # Token rotates -> counter increments once.
+        self._post(
+            {
+                "token": self.token.token,
+                "name": "rot-agent",
+                "oauth_expires_at": 2000,
+            }
+        )
+        a = _get()
+        self.assertEqual(a["oauth_rotation_count"], 1)
+        self.assertTrue(a["oauth_last_rotation_at"])  # non-empty ISO timestamp
+
+        # One more rotation -> counter is now 2.
+        self._post(
+            {
+                "token": self.token.token,
+                "name": "rot-agent",
+                "oauth_expires_at": 3000,
+            }
+        )
+        self.assertEqual(_get()["oauth_rotation_count"], 2)
+
     def test_register_does_not_echo_tokens(self):
         """Even if a client tries to POST token-like fields under
         arbitrary keys, the registry's strict whitelist drops them.
@@ -394,3 +519,106 @@ class AgentRegisterAuthMatrixTest(TestCase):
                 self.assertIn("fleet-agents-upgrade", resp.json()["error"])
             finally:
                 mod.MIN_HARD_HEARTBEAT_SCHEMA = original_min_hard
+
+
+class SingletonProxyMetadataTest(TestCase):
+    """orochi#250 — is_proxy / priority_rank / heartbeat_seq pass-through.
+
+    Verifies that the singleton proxy metadata fields (§7 of
+    singleton-agent-contract) are accepted by the register endpoint,
+    stored in the registry, and surfaced by GET /api/agents/.
+
+    These fields are pushed by sac once PR#98 (sac priority-check) lands.
+    Absent fields must default to None (not 0/False) so the dashboard can
+    distinguish "older agent that doesn't push" from "agent confirmed primary".
+    """
+
+    def setUp(self):
+        self.client = Client()
+        self.ws = Workspace.objects.create(name="proxy-test-ws")
+        self.token = WorkspaceToken.objects.create(
+            workspace=self.ws, label="proxy-test"
+        )
+        from django.contrib.auth.models import User as _U
+
+        self.user = _U.objects.create_user(username="proxy-tester", password="x")
+        WorkspaceMember.objects.create(
+            workspace=self.ws, user=self.user, role="member"
+        )
+        from hub.registry import _agents as _reg
+
+        _reg.clear()
+
+    def _post(self, payload, **kwargs):
+        return self.client.post(
+            "/api/agents/register/",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **kwargs,
+        )
+
+    def _get_agents(self):
+        self.client.force_login(self.user)
+        return self.client.get(
+            "/api/agents/", HTTP_HOST=f"{self.ws.name}.lvh.me"
+        ).json()
+
+    def _agent_by_name(self, name):
+        return next((a for a in self._get_agents() if a["name"] == name), None)
+
+    def test_proxy_fields_round_trip_when_pushed(self):
+        """All singleton proxy metadata fields survive register→GET."""
+        resp = self._post({
+            "token": self.token.token,
+            "name": "proxy-agent",
+            "is_proxy": True,
+            "priority_rank": 2,
+            "priority_list": ["spartan", "nas", "mba"],
+            "heartbeat_seq": 5,
+            "launch_method": "sac",
+            "instance_id": "proxy-agent:abc123",
+            "uname": "Darwin mba 25.0.0",
+            "start_ts_unix": 1714000000.0,
+        })
+        self.assertEqual(resp.status_code, 200, resp.content)
+        a = self._agent_by_name("proxy-agent")
+        self.assertIsNotNone(a)
+        self.assertIs(a["is_proxy"], True)
+        self.assertEqual(a["priority_rank"], 2)
+        self.assertEqual(a["priority_list"], ["spartan", "nas", "mba"])
+        self.assertEqual(a["heartbeat_seq"], 5)
+        self.assertEqual(a["launch_method"], "sac")
+        self.assertEqual(a["instance_id"], "proxy-agent:abc123")
+        self.assertEqual(a["uname"], "Darwin mba 25.0.0")
+        self.assertAlmostEqual(a["start_ts_unix"], 1714000000.0, delta=1.0)
+
+    def test_primary_fields_round_trip(self):
+        """is_proxy=False, priority_rank=1 round-trip correctly."""
+        self._post({
+            "token": self.token.token,
+            "name": "primary-agent",
+            "is_proxy": False,
+            "priority_rank": 1,
+            "heartbeat_seq": 42,
+        })
+        a = self._agent_by_name("primary-agent")
+        self.assertIs(a["is_proxy"], False)
+        self.assertEqual(a["priority_rank"], 1)
+        self.assertEqual(a["heartbeat_seq"], 42)
+
+    def test_absent_proxy_fields_use_defaults(self):
+        """Agents that don't push proxy fields use registry defaults.
+
+        _register.py intentional defaults:
+          is_proxy=False — older agents keep posting in public channels
+          priority_rank=None — unknown, not sorted
+          heartbeat_seq=0 — treated as "no sequence yet"
+        """
+        self._post({
+            "token": self.token.token,
+            "name": "legacy-agent",
+        })
+        a = self._agent_by_name("legacy-agent")
+        self.assertIs(a["is_proxy"], False)
+        self.assertIsNone(a["priority_rank"])
+        self.assertEqual(a["heartbeat_seq"], 0)

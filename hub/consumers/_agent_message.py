@@ -148,6 +148,17 @@ async def handle_agent_message(consumer, content):
     is_dm = ch_name.startswith("dm:")
     kind = "dm" if is_dm else "group"
 
+    # ZOO#12 FR-E — stamp ``agent_id = "<name>:<uuid>"`` on every
+    # outgoing chat broadcast. The dashboard collapses to the short
+    # form ``<name>:<uuid_prefix4>`` for display and expands to the
+    # full UUID + host/PID via /api/agents/<name>/<uuid>/meta on a
+    # rogue-instance debug. Stored ALSO in metadata so a downstream
+    # consumer that only forwards ``metadata`` (some MCP bridges) still
+    # carries provenance.
+    agent_id = getattr(consumer, "_agent_id_stamp", "") or consumer.agent_name
+    metadata = dict(metadata)
+    metadata.setdefault("agent_id", agent_id)
+
     group = _sanitize_group(f"channel_{consumer.workspace_id}_{ch_name}")
     await consumer.channel_layer.group_send(
         group,
@@ -155,6 +166,7 @@ async def handle_agent_message(consumer, content):
             "type": "chat.message",
             "id": msg["id"] if msg else None,
             "sender": consumer.agent_name,
+            "agent_id": agent_id,
             "sender_type": "agent",
             "channel": ch_name,
             "kind": kind,
@@ -174,6 +186,7 @@ async def handle_agent_message(consumer, content):
                 "type": "chat.message",
                 "id": msg["id"] if msg else None,
                 "sender": consumer.agent_name,
+                "agent_id": agent_id,
                 "sender_type": "agent",
                 "channel": ch_name,
                 "kind": kind,

@@ -10,6 +10,24 @@ import time
 from ._store import _agents, _lock
 
 
+def _update_subagent_active_since(entry: dict, new_count: int) -> None:
+    """Set or clear ``subagent_active_since`` based on count transition.
+
+    Must be called inside the registry lock with the agent entry dict.
+    - 0 → >0: record the current wall-clock time as the start of a
+      "subagents have been running" window.
+    - >0 → 0: clear the field so the next activation gets a fresh timer.
+    - >0 → >0: no change — the original start time is preserved so that
+      callers can measure how long subagents have been non-zero.
+    """
+    was_nonzero = (entry.get("orochi_subagent_count") or 0) > 0
+    will_be_nonzero = new_count > 0
+    if will_be_nonzero and not was_nonzero:
+        entry["subagent_active_since"] = time.time()
+    elif not will_be_nonzero:
+        entry["subagent_active_since"] = None
+
+
 def set_subagents(name: str, subagents: list) -> None:
     """Replace the agent's subagent list.
 
@@ -28,6 +46,7 @@ def set_subagents(name: str, subagents: list) -> None:
                 for s in (subagents or [])
                 if isinstance(s, dict)
             ]
+            _update_subagent_active_since(_agents[name], len(normalized))
             _agents[name]["subagents"] = normalized
             # Keep the count in sync so callers that only read
             # `orochi_subagent_count` (sidebar card badge) stay accurate even
@@ -68,7 +87,9 @@ def set_orochi_subagent_count(name: str, count: int) -> None:
     """
     with _lock:
         if name in _agents:
-            _agents[name]["orochi_subagent_count"] = max(0, int(count or 0))
+            new_count = max(0, int(count or 0))
+            _update_subagent_active_since(_agents[name], new_count)
+            _agents[name]["orochi_subagent_count"] = new_count
 
 
 def set_sac_status(name: str, sac_status: dict) -> None:

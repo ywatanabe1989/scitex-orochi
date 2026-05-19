@@ -208,6 +208,20 @@ import { activeTab } from "./tabs";
       }
     }
     if (!input) {
+      /* Bug #380 fix: when focus is anywhere inside .thread-panel (not
+       * just the textarea), target the thread reply composer so voice
+       * goes to the right surface even when a button/link stole focus. */
+      if (focused && focused.closest && focused.closest(".thread-panel")) {
+        var threadInput = document.getElementById("thread-input");
+        if (threadInput) {
+          input = threadInput;
+          try {
+            (threadInput as HTMLElement).focus();
+          } catch (_ignored) {}
+        }
+      }
+    }
+    if (!input) {
       var canvasCompose = document.getElementById("topo-channel-compose");
       if (canvasCompose) {
         var composeTa = canvasCompose.querySelector(
@@ -326,11 +340,17 @@ import { activeTab } from "./tabs";
         return;
       }
       if (e.key === "Enter" && (e.ctrlKey || e.altKey)) {
-        /* Skip if focus is in thread panel — thread's own keydown handler manages this */
         var focused = document.activeElement;
         var inThread =
           focused && focused.closest && focused.closest(".thread-panel");
-        if (inThread) return;
+        /* Skip only when the focused element IS the thread textarea — the
+         * composer's local keydown handler (localVoiceChord:true) fires
+         * in that case and prevents double-toggle via stopPropagation.
+         * When focus is on a non-textarea inside the thread panel (e.g.
+         * a button or link), the local handler did NOT fire — fall
+         * through to _toggleVoice() so it can redirect to #thread-input.
+         * Bug #380 fix. */
+        if (inThread && focused && focused.id === "thread-input") return;
         /* Skip if focus is in canvas compose popup — its own keydown handler
          * intercepts Ctrl+Enter (for voice) / plain Enter (for send). */
         var inCanvasCompose =
@@ -341,7 +361,14 @@ import { activeTab } from "./tabs";
         var inTopoGroupCompose =
           focused && focused.closest && focused.closest(".topo-compose-modal");
         if (inTopoGroupCompose) return;
-        if (typeof activeTab !== "undefined" && activeTab === "chat") {
+        /* Allow when chat tab is active OR when thread panel is open
+         * (thread replies are accessible from any tab). _toggleVoice()
+         * bails safely when there's nothing to dictate into.
+         * Bug #380 fix: thread open → voice targets thread composer. */
+        var threadOpen = !!(globalThis as any).threadPanelParentId;
+        var chatTabActive =
+          typeof activeTab !== "undefined" && activeTab === "chat";
+        if (chatTabActive || threadOpen) {
           e.preventDefault();
           _toggleVoice();
         }

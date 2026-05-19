@@ -77,7 +77,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_last_tool_at="2026-04-17T00:00:00+00:00",
-                last_tool_name="Edit",
+                sac_hooks_last_tool_name="Edit",
             )
         )
         self.assertEqual(resp.status_code, 200)
@@ -93,7 +93,7 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_last_mcp_tool_at="2026-04-17T00:01:00+00:00",
-                last_mcp_tool_name="mcp__orochi__send_message",
+                sac_hooks_last_mcp_tool_name="mcp__orochi__send_message",
             )
         )
         self.assertEqual(resp.status_code, 200)
@@ -144,9 +144,9 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self._post(
             self._base_payload(
                 sac_hooks_last_tool_at="2026-04-17T01:00:00+00:00",
-                last_tool_name="Write",
+                sac_hooks_last_tool_name="Write",
                 sac_hooks_last_mcp_tool_at="2026-04-17T00:59:30+00:00",
-                last_mcp_tool_name="mcp__orochi__channel_info",
+                sac_hooks_last_mcp_tool_name="mcp__orochi__channel_info",
             )
         )
         resp = self._get_detail("hb-agent")
@@ -177,6 +177,26 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(len(data["sac_hooks_background_tasks"]), 1)
         self.assertEqual(data["sac_hooks_tool_counts"], {"Grep": 1})
 
+    def test_open_agent_calls_round_trip(self):
+        """orochi#133: sac_hooks_open_agent_calls / _count / _oldest_open_agent_age_s
+        round-trip through register and surface in the detail API."""
+        open_calls = [
+            {"ts": "2026-04-29T00:00:00+00:00", "input_preview": "research task", "age_seconds": 120.5},
+        ]
+        self._post(
+            self._base_payload(
+                sac_hooks_open_agent_calls=open_calls,
+                sac_hooks_open_agent_calls_count=1,
+                sac_hooks_oldest_open_agent_age_s=120.5,
+            )
+        )
+        resp = self._get_detail("hb-agent")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertEqual(data["sac_hooks_open_agent_calls"], open_calls)
+        self.assertEqual(data["sac_hooks_open_agent_calls_count"], 1)
+        self.assertAlmostEqual(data["sac_hooks_oldest_open_agent_age_s"], 120.5)
+
     def test_missing_hook_fields_default_to_empty(self):
         """Registering without any hook fields leaves empty defaults —
         legacy agents that haven't wired hooks still register cleanly."""
@@ -188,6 +208,9 @@ class FunctionalHeartbeatAndHookEventsTest(TestCase):
         self.assertEqual(data["sac_hooks_recent_prompts"], [])
         self.assertEqual(data["sac_hooks_agent_calls"], [])
         self.assertEqual(data["sac_hooks_background_tasks"], [])
+        self.assertEqual(data["sac_hooks_open_agent_calls"], [])
+        self.assertEqual(data["sac_hooks_open_agent_calls_count"], 0)
+        self.assertIsNone(data["sac_hooks_oldest_open_agent_age_s"])
         self.assertEqual(data["sac_hooks_tool_counts"], {})
         self.assertEqual(data["sac_hooks_last_tool_at"], "")
         self.assertEqual(data["sac_hooks_last_tool_name"], "")
@@ -269,7 +292,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         resp = self._post(
             self._base_payload(
                 sac_hooks_last_action_at="2026-04-17T02:00:00+00:00",
-                last_action_name="nonce-probe",
+                sac_hooks_last_action_name="nonce-probe",
                 sac_hooks_last_action_outcome="success",
                 sac_hooks_last_action_elapsed_s=3.2,
                 action_counts={"nonce-probe:success": 42, "compact:success": 4},
@@ -290,7 +313,7 @@ class PaneActionSummaryRegistryTest(TestCase):
         self._post(
             self._base_payload(
                 sac_hooks_last_action_at="2026-04-17T02:05:00+00:00",
-                last_action_name="compact",
+                sac_hooks_last_action_name="compact",
                 sac_hooks_last_action_outcome="completion_timeout",
                 sac_hooks_last_action_elapsed_s=30.0,
             )

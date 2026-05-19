@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from hub.models import Channel, Message, Workspace, WorkspaceMember, WorkspaceToken
+from hub.models import AgentGroup, Channel, Message, Workspace, WorkspaceMember, WorkspaceToken
 
 
 class WorkspaceTokenInline(admin.TabularInline):
@@ -55,3 +55,16 @@ class MessageAdmin(admin.ModelAdmin):
 class WorkspaceMemberAdmin(admin.ModelAdmin):
     list_display = ("user", "workspace", "role", "joined_at")
     list_filter = ("workspace", "role")
+
+
+@admin.register(AgentGroup)
+class AgentGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "display_name", "workspace", "is_builtin", "member_count", "owner", "created_at")
+    list_filter = ("workspace", "is_builtin")
+    filter_horizontal = ("members",)
+    readonly_fields = ("created_at", "updated_at")
+    search_fields = ("name", "display_name")
+
+    @admin.display(description="Members")
+    def member_count(self, obj):
+        return obj.members.count()

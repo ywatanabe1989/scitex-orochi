@@ -21,7 +21,25 @@ import { handleWsMessage } from "./dispatch.js";
 
 let _ws: WebSocket | null = null;
 let _heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+let _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let _mcpRef: Server | null = null;
+// FR-K: track whether the most recent disconnect resulted in a reconnect
+// loop so we can emit a single "recovered after outage" line on the next
+// successful onOpen, rather than spamming every reconnect attempt.
+let _priorOutage = false;
+
+// FR-K backoff schedule (ms) — index by reconnectAttempts, clamp at last.
+// Values: 5s, 10s, 30s, 60s, 120s, 300s; subsequent attempts stay at 300s.
+export const RECONNECT_BACKOFF_MS = [
+  5_000, 10_000, 30_000, 60_000, 120_000, 300_000,
+];
+export function reconnectBackoffMs(attempt: number): number {
+  const idx = Math.min(
+    Math.max(attempt - 1, 0),
+    RECONNECT_BACKOFF_MS.length - 1,
+  );
+  return RECONNECT_BACKOFF_MS[idx];
+}
 
 // Lightweight adapter that satisfies the OrochiConnection interface
 // expected by tools.ts (isConnected, state, send, reconnectAttempts, etc.)
@@ -49,6 +67,15 @@ export const conn = {
     }
   },
   connect(): void {
+    // Idempotent: skip if already connected or connecting (FR-K).
+    if (_ws !== null) {
+      dbg(`ws connect skipped (state=${conn.state}, readyState=${_ws.readyState})`);
+      return;
+    }
+    if (_reconnectTimer) {
+      clearTimeout(_reconnectTimer);
+      _reconnectTimer = null;
+    }
     const wsUrl = buildWsUrl();
     dbg(`ws connecting to ${maskUrl(wsUrl)}`);
     conn.state = "connecting";
@@ -76,8 +103,17 @@ export function attachMcp(mcp: Server): void {
 function onOpen(ws: WebSocket): void {
   conn.state = "connected";
   conn.lastConnectedAt = new Date();
+  const _recoveredAttempts = conn.reconnectAttempts;
   conn.reconnectAttempts = 0;
   console.error(`[orochi] ws connected as ${OROCHI_AGENT}`);
+  // FR-K: emit a single, scrape-friendly recovery line if we were in a
+  // reconnect loop. This is what lead's pane needs to see post-outage.
+  if (_priorOutage) {
+    console.error(
+      `[orochi] MCP reconnected at ${new Date().toISOString()} after ${_recoveredAttempts} attempt(s)`,
+    );
+    _priorOutage = false;
+  }
   dbg(`ws open`);
 
   startAppHeartbeat(ws);
@@ -222,8 +258,15 @@ function onClose(code: number, reason: Buffer): void {
     clearInterval(_heartbeatInterval);
     _heartbeatInterval = null;
   }
-  // Simple reconnect after 3s
+  // FR-K: exponential backoff reconnect, capped at 5min, retried indefinitely.
   conn.reconnectAttempts++;
   conn.totalReconnects++;
-  setTimeout(() => conn.connect(), 3000);
+  _priorOutage = true;
+  const _delayMs = reconnectBackoffMs(conn.reconnectAttempts);
+  dbg(`ws reconnect in ${_delayMs}ms (attempt ${conn.reconnectAttempts})`);
+  if (_reconnectTimer) clearTimeout(_reconnectTimer);
+  _reconnectTimer = setTimeout(() => {
+    _reconnectTimer = null;
+    conn.connect();
+  }, _delayMs);
 }

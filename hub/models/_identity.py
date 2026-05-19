@@ -40,6 +40,12 @@ class WorkspaceToken(models.Model):
         Workspace, on_delete=models.CASCADE, related_name="tokens"
     )
     label = models.CharField(max_length=100, blank=True, default="")
+    # scitex-orochi#182 — when set, the hub uses this name as the agent's
+    # identity at WS connect instead of the URL ?agent= query param. Prevents
+    # cross-agent attribution drift when two co-resident agents share an env
+    # var or config file that sets the wrong SCITEX_OROCHI_AGENT value after a
+    # host reboot. Empty string = legacy behaviour (URL param wins).
+    agent_name = models.CharField(max_length=150, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -56,6 +62,26 @@ class WorkspaceMember(models.Model):
         ADMIN = "admin", "Admin"
         MEMBER = "member", "Member"
 
+    class TrustLevel(models.TextChoices):
+        """Per-human trust level for agent-to-human policy enforcement (todo#410).
+
+        Controls which actions an agent will perform when instructed by this
+        human.  Orthogonal to workspace Role (admin/member) which governs
+        channel and workspace management permissions.
+
+        owner       — full authority (ywatanabe); agents comply with all ops.
+        supervisor  — review-oriented; can request info/figures, no deploys.
+        collaborator — trusted teammates; can file issues, comment, request info.
+        guest       — invited read-only users (Prof. Grayden etc.); no agent ops.
+        unknown     — unrecognised senders; agents silently ignore.
+        """
+
+        OWNER = "owner", "Owner"
+        SUPERVISOR = "supervisor", "Supervisor"
+        COLLABORATOR = "collaborator", "Collaborator"
+        GUEST = "guest", "Guest"
+        UNKNOWN = "unknown", "Unknown"
+
     workspace = models.ForeignKey(
         Workspace, on_delete=models.CASCADE, related_name="members"
     )
@@ -65,6 +91,15 @@ class WorkspaceMember(models.Model):
         related_name="workspace_memberships",
     )
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.MEMBER)
+    trust_level = models.CharField(
+        max_length=12,
+        choices=TrustLevel.choices,
+        default=TrustLevel.COLLABORATOR,
+        help_text=(
+            "Controls which agent operations this human may invoke. "
+            "Independent of workspace role (admin/member)."
+        ),
+    )
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -72,7 +107,7 @@ class WorkspaceMember(models.Model):
         unique_together = ("workspace", "user")
 
     def __str__(self):
-        return f"{self.user} in {self.workspace} ({self.role})"
+        return f"{self.user} in {self.workspace} ({self.role}/{self.trust_level})"
 
 
 class InviteRequest(models.Model):

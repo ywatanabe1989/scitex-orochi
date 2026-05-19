@@ -117,6 +117,13 @@ HEARTBEAT_FIELDS: tuple[HeartbeatField, ...] = (
     HeartbeatField("quota_7d_used_pct", None, "Claude Code weekly quota window used %"),
     HeartbeatField("quota_5h_reset_at", "", "ISO-8601 next 5-hour quota reset"),
     HeartbeatField("quota_7d_reset_at", "", "ISO-8601 next weekly quota reset"),
+    # todo#430: per-agent Claude API token telemetry windows.
+    # Each is a dict with input_tokens / cache_tokens / output_tokens /
+    # web_searches / web_fetches / turns.  None = collector not yet run.
+    HeartbeatField("quota_15m", None, "Claude API token usage — last 15 minutes"),
+    HeartbeatField("quota_1h", None, "Claude API token usage — last 1 hour"),
+    HeartbeatField("quota_24h", None, "Claude API token usage — last 24 hours"),
+    HeartbeatField("quota_all", None, "Claude API token usage — all time"),
     HeartbeatField(
         "orochi_account_email", "", "email behind the active Claude Code OAuth"
     ),
@@ -164,6 +171,10 @@ HEARTBEAT_FIELDS: tuple[HeartbeatField, ...] = (
     HeartbeatField("sac_hooks_recent_prompts", [], "user-prompt events"),
     HeartbeatField("sac_hooks_agent_calls", [], "subagent-spawn events"),
     HeartbeatField("sac_hooks_background_tasks", [], "Background-task events"),
+    # orochi#133 — stuck-subagent detection (sac-side LIFO open-call tracking).
+    HeartbeatField("sac_hooks_open_agent_calls", [], "Agent pretool events with no posttool (potentially stuck)"),
+    HeartbeatField("sac_hooks_open_agent_calls_count", 0, "count of open (unmatched) Agent calls"),
+    HeartbeatField("sac_hooks_oldest_open_agent_age_s", None, "age_seconds of oldest open Agent call"),
     HeartbeatField(
         "sac_hooks_tool_counts", {}, "per-tool count map for the dashboard chip"
     ),

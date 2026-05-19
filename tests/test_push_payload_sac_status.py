@@ -34,6 +34,10 @@ _MIN_META = {
     "sac_hooks_recent_prompts": [],
     "sac_hooks_agent_calls": [],
     "sac_hooks_background_tasks": [],
+    # orochi#133 — stuck-subagent detection.
+    "sac_hooks_open_agent_calls": [],
+    "sac_hooks_open_agent_calls_count": 0,
+    "sac_hooks_oldest_open_agent_age_s": None,
     "subagents": [],
     "sac_hooks_tool_counts": {},
     "sac_hooks_p95_elapsed_s_by_action": {},

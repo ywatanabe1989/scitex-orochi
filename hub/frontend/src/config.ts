@@ -80,6 +80,9 @@
       if (cfg.dashboard_token) {
         window.__orochiToken = cfg.dashboard_token;
       }
+      if (cfg.hostname_aliases && typeof cfg.hostname_aliases === "object") {
+        window.__orochiHostnameAliases = cfg.hostname_aliases;
+      }
       /* Server metadata panel */
       if (cfg.server) {
         window.__orochiServer = cfg.server;
@@ -164,6 +167,7 @@
 // reaching into `window`.
 export const __orochiApiUpstream = (window as any).__orochiApiUpstream;
 export const __orochiDeployedAt = (window as any).__orochiDeployedAt;
+export const __orochiHostnameAliases = (window as any).__orochiHostnameAliases;
 export const __orochiServer = (window as any).__orochiServer;
 export const __orochiToken = (window as any).__orochiToken;
 export const __orochiVersion = (window as any).__orochiVersion;

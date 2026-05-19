@@ -1,9 +1,9 @@
 """Add ChannelMembership model for per-member read-only/read-write permissions (todo#407)."""
 
-from django.conf import settings
-from django.db import migrations, models
 import django.db.models.deletion
 import django.utils.timezone
+from django.conf import settings
+from django.db import migrations, models
 
 
 class Migration(migrations.Migration):

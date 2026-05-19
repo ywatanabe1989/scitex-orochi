@@ -350,7 +350,4 @@ class DmTokenAuthTest(TestCase):
 
 # ── Web Push (todo#263) ─────────────────────────────────────────────────
 
-from unittest.mock import MagicMock, patch
 
-from hub import push as hub_push
-from hub.models import PushSubscription

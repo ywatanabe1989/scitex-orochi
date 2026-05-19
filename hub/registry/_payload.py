@@ -62,6 +62,26 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         reg_ts = a.get("registered_at")
         hb_ts = a.get("last_heartbeat")
         action_ts = a.get("last_action")
+        # sac_hooks_last_tool_at is an ISO-8601 string pushed by Claude Code
+        # PreToolUse/PostToolUse hooks. Include it as an activity signal so
+        # agents that use tools but don't send Orochi messages don't appear
+        # stale. Agents with orochi_pane_state (running/idle/stale) bypass
+        # this fallback entirely — the timer only matters for hook-only agents.
+        hook_ts_str = a.get("sac_hooks_last_tool_at") or ""
+        hook_ts: float | None = None
+        if hook_ts_str:
+            try:
+                from datetime import datetime as _dt
+                hook_ts = _dt.fromisoformat(
+                    hook_ts_str.replace("Z", "+00:00")
+                ).timestamp()
+            except Exception:
+                hook_ts = None
+        # Use the freshest available activity timestamp.
+        best_action_ts = max(
+            (ts for ts in (action_ts, hook_ts) if ts is not None),
+            default=None,
+        )
         # Liveness classification distinct from WS connection state.
         # Prefer the orochi_pane_state classifier (agent_meta_pkg/_classifier.py)
         # which already separates "idle at prompt" (alive, waiting) from
@@ -70,8 +90,8 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
         liveness = a.get("status", "online")
         pane = (a.get("orochi_pane_state") or "").lower()
         idle_seconds = None
-        if action_ts:
-            idle_seconds = int(now - action_ts)
+        if best_action_ts:
+            idle_seconds = int(now - best_action_ts)
         if a.get("status") == "online":
             if pane == "running":
                 liveness = "online"
@@ -84,8 +104,9 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "bypass_permissions_prompt",
                 "dev_channels_prompt",
                 "y_n_prompt",
+                "limit_reached",
             ):
-                liveness = "idle"  # awaiting input — not stuck
+                liveness = "idle"  # awaiting input / rate-limited — not stuck
             elif idle_seconds is not None:
                 if idle_seconds > 600:
                     liveness = "stale"  # >10min silent — probably stuck
@@ -181,9 +202,14 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                     if a.get("last_echo_ok_ts")
                     else None
                 ),
+                # last_action: the best available activity timestamp (Orochi
+                # chat message OR sac hooks tool-use event, whichever is newer).
+                # The raw `last_action` (chat only) is still the source for
+                # last_message_preview, but the activity column in the Agents tab
+                # should reflect actual work, not just chat cadence.
                 "last_action": (
-                    datetime.fromtimestamp(action_ts, tz=timezone.utc).isoformat()
-                    if action_ts
+                    datetime.fromtimestamp(best_action_ts, tz=timezone.utc).isoformat()
+                    if best_action_ts
                     else None
                 ),
                 "metrics": a.get("metrics", {}),
@@ -197,7 +223,8 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_subagent_count": int(
                     a.get("orochi_subagent_count") or len(a.get("subagents") or [])
                 ),
-                "health": a.get("health") or {},
+                "subagent_active_since": a.get("subagent_active_since"),
+                "health": health,
                 "orochi_claude_md": a.get("orochi_claude_md", ""),
                 # Extended metadata from agent_meta.py --push (todo#213)
                 "pid": a.get("pid") or 0,
@@ -226,6 +253,10 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "sac_hooks_recent_prompts": list(a.get("sac_hooks_recent_prompts") or []),
                 "sac_hooks_agent_calls": list(a.get("sac_hooks_agent_calls") or []),
                 "sac_hooks_background_tasks": list(a.get("sac_hooks_background_tasks") or []),
+                # orochi#133 — stuck-subagent detection (sac-side LIFO).
+                "sac_hooks_open_agent_calls": list(a.get("sac_hooks_open_agent_calls") or []),
+                "sac_hooks_open_agent_calls_count": a.get("sac_hooks_open_agent_calls_count") or 0,
+                "sac_hooks_oldest_open_agent_age_s": a.get("sac_hooks_oldest_open_agent_age_s"),
                 "sac_hooks_tool_counts": dict(a.get("sac_hooks_tool_counts") or {}),
                 # Functional-heartbeat shortcuts (derived by
                 # event_log.summarize() in agent-container).
@@ -271,6 +302,20 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_quota_weekly_remaining": a.get("orochi_quota_weekly_remaining", ""),
                 "orochi_statusline_model": a.get("orochi_statusline_model", ""),
                 "orochi_account_email": a.get("orochi_account_email", ""),
+                # Setup-audit fields (sac PR#53). Surfaced so the
+                # Agents-tab can render plan label, plugins, MCP setup,
+                # and auth-rotation timestamp without re-querying a
+                # per-host endpoint.
+                "account_plan_label": a.get("account_plan_label", ""),
+                "account_subscription_type": a.get("account_subscription_type", ""),
+                "account_rate_limit_tier": a.get("account_rate_limit_tier", ""),
+                "account_organization_name": a.get("account_organization_name", ""),
+                "account_uuid": a.get("account_uuid", ""),
+                "oauth_expires_at": a.get("oauth_expires_at"),
+                "oauth_rotation_count": a.get("oauth_rotation_count", 0),
+                "oauth_last_rotation_at": a.get("oauth_last_rotation_at", ""),
+                "installed_plugins": list(a.get("installed_plugins") or []),
+                "status_line_command": a.get("status_line_command", ""),
                 # lead msg#16005 — whole ``scitex-agent-container status
                 # --terse --json`` payload. Dashboard consumers (Agents
                 # tab, future dashboards) can key off
@@ -286,6 +331,33 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 # list (empty list when the daemon isn't running on this host).
                 # Consumed by /api/cron/ and the Machines tab cron-jobs panel.
                 "cron_jobs": list(a.get("cron_jobs") or []),
+                # orochi#250/#257 — singleton proxy + canonical runtime metadata
+                # (§7 of singleton-agent-contract).
+                # is_proxy: False = primary (or older agent); True = proxy.
+                # priority_rank: None = unknown; 1 = primary; 2+ = fallback.
+                # priority_list: YAML host priority order.
+                # heartbeat_seq: monotonic counter since process start.
+                # launch_method: sac | sac-ssh | sbatch | manual-tmux | ...
+                # instance_id: unique per-process ID (name:uuid); used for
+                #   duplicate-detection (two processes, same name).
+                # uname: platform.uname() — kernel/distro diagnostic.
+                # start_ts_unix: psutil process creation time (epoch float).
+                "is_proxy": a.get("is_proxy"),
+                "priority_rank": a.get("priority_rank"),
+                "priority_list": list(a.get("priority_list") or []),
+                "heartbeat_seq": a.get("heartbeat_seq"),
+                "launch_method": a.get("launch_method", ""),
+                "instance_id": a.get("instance_id", ""),
+                "uname": a.get("uname", ""),
+                "start_ts_unix": a.get("start_ts_unix"),
+                # todo#430: per-agent Claude API token telemetry windows.
+                # None when the collector has not yet pushed for this agent;
+                # dicts with input_tokens/cache_tokens/output_tokens/
+                # web_searches/web_fetches/turns once available.
+                "quota_15m": a.get("quota_15m"),
+                "quota_1h": a.get("quota_1h"),
+                "quota_24h": a.get("quota_24h"),
+                "quota_all": a.get("quota_all"),
             }
         )
     return result

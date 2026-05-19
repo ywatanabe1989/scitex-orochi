@@ -1,6 +1,7 @@
 """Agent presence / scheduling models — pinned agents, container registry,
-scheduled actions."""
+scheduled actions, and user-defined agent groups."""
 
+from django.contrib.auth.models import User
 from django.db import models
 
 from ._identity import Workspace
@@ -26,6 +27,60 @@ class PinnedAgent(models.Model):
 
     def __str__(self):
         return f"pin:{self.name}@{self.workspace.name}"
+
+
+class AgentGroup(models.Model):
+    """User-defined named group of agents for @mention expansion (todo#428).
+
+    Hardcoded built-in groups (``heads``, ``mambas``, ``all``, …) are
+    seeded as rows here on workspace creation so all expansion logic
+    can go through a single DB query path instead of the legacy
+    ``_GROUP_PATTERNS`` dict.
+
+    ``name`` is the mention key — e.g. ``@paper-team`` uses ``name="paper-team"``.
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_groups"
+    )
+    name = models.CharField(
+        max_length=64,
+        help_text="Mention key used in @<name> tokens.",
+    )
+    display_name = models.CharField(max_length=128, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    # For built-in groups (heads, mambas, …) members is not used —
+    # expansion falls back to the predicate in mentions.py. For custom
+    # groups, members is the authoritative membership list.
+    members = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="agent_groups",
+    )
+    is_builtin = models.BooleanField(
+        default=False,
+        help_text="True for system-seeded groups (heads, mambas, …). "
+        "Builtin groups cannot be deleted via the API.",
+    )
+    owner = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="owned_agent_groups",
+        help_text="Creator; null for system-seeded groups.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "hub"
+        unique_together = ("workspace", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        tag = "builtin" if self.is_builtin else "custom"
+        return f"group:{self.name}@{self.workspace.name} ({tag})"
 
 
 class ContainerAgent(models.Model):
@@ -111,3 +166,70 @@ class ScheduledAction(models.Model):
 
     def __str__(self):
         return f"ScheduledAction({self.agent}, {self.run_at}, {self.status})"
+
+
+class AgentSnapshot(models.Model):
+    """Per-agent state snapshot for cross-host handover (FR-A).
+
+    A lead-class agent POSTs its memory + recent transcript on graceful
+    stop (and periodically) to ``/api/agents/<name>/snapshot``; a fresh
+    instance booting on another host GETs ``/snapshot/latest`` and
+    hydrates its workspace before launching Claude. One row per
+    (workspace, agent_name) — newest write wins.
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_snapshots"
+    )
+    agent_name = models.CharField(max_length=200, db_index=True)
+    payload = models.JSONField(default=dict)
+    owner_host = models.CharField(max_length=200, blank=True, default="")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "hub"
+        unique_together = ("workspace", "agent_name")
+        ordering = ["agent_name"]
+
+    def __str__(self):
+        return f"snapshot:{self.agent_name}@{self.owner_host}"
+
+
+class AgentSession(models.Model):
+    """Active agent WebSocket session, keyed by instance UUID (FR-E).
+
+    Each agent generates ``instance_uuid = uuid4()`` on start and sends
+    it to the hub on WS connect. The hub persists the (agent_name,
+    instance_uuid) pair plus host/PID metadata so:
+
+      - cardinality enforcement (FR-C) can detect "same name, different
+        UUID, both active" rogue-instance situations,
+      - outgoing messages can be stamped with
+        ``agent_id = "<name>:<uuid>"`` for end-to-end provenance,
+      - operators can resolve a short ``name:uuid_prefix`` back to a
+        host/PID pair via ``/api/agents/<name>/<uuid>/meta``.
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_sessions"
+    )
+    agent_name = models.CharField(max_length=200, db_index=True)
+    instance_uuid = models.CharField(max_length=64, unique=True, db_index=True)
+    hostname = models.CharField(max_length=200, blank=True, default="")
+    pid = models.IntegerField(null=True, blank=True)
+    ws_session_id = models.CharField(max_length=200, blank=True, default="")
+    cardinality_enforced = models.BooleanField(default=False)
+    connected_at = models.DateTimeField(auto_now_add=True)
+    last_heartbeat = models.DateTimeField(auto_now=True)
+    disconnected_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        app_label = "hub"
+        ordering = ["agent_name", "-connected_at"]
+        indexes = [
+            models.Index(fields=["agent_name", "disconnected_at"]),
+        ]
+
+    def __str__(self):
+        short = self.instance_uuid[:8] if self.instance_uuid else "?"
+        return f"session:{self.agent_name}:{short}@{self.hostname}"

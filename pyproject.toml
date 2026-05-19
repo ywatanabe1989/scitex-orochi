@@ -4,7 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
+<<<<<<< HEAD
+version = "0.16.3"
+=======
 version = "0.16.0"
+>>>>>>> origin/main
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -16,7 +20,6 @@ keywords = ["agent", "communication", "websocket", "hub", "scitex"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -27,6 +30,7 @@ dependencies = [
     "channels>=4.0",
     "channels-redis>=4.2",
     "daphne>=4.0",
+    "twisted<25.0.0",
     "whitenoise>=6.0",
     "django-allauth[socialaccount]>=65.0",
     "click>=8.0",
@@ -97,10 +101,10 @@ scitex-orochi-server = "scitex_orochi._server:main"
 scitex-orochi-mcp = "scitex_orochi.mcp_server:main"
 
 [project.entry-points."scitex_dev.skills"]
-scitex_orochi = "scitex_orochi"
+scitex-orochi = "scitex_orochi"
 
 [project.entry-points."scitex_dev.docs"]
-scitex_orochi = "scitex_orochi"
+scitex-orochi = "scitex_orochi"
 
 [project.urls]
 Homepage = "https://github.com/ywatanabe1989/scitex-orochi"

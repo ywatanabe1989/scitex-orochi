@@ -221,6 +221,14 @@ class ChannelMembershipMigrationDataTest(TransactionTestCase):
 
     reset_sequences = True
 
+    def tearDown(self):
+        # Migrate to the full latest schema so subsequent TransactionTestCase
+        # tests see every column (e.g. hub_channel.is_archived added in 0031).
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
     def test_forward_backfills_bits_from_permission(self):
         executor = MigrationExecutor(connection)
         # Roll back to the pre-bit-split schema.

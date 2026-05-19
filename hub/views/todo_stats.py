@@ -194,8 +194,8 @@ def _aggregate(repos: tuple[str, ...]) -> dict:
                             "age_days": age_days,
                             "url": issue.get("url"),
                             "labels": [
-                                (l.get("name") if isinstance(l, dict) else str(l))
-                                for l in (issue.get("labels") or [])
+                                (lbl.get("name") if isinstance(lbl, dict) else str(lbl))
+                                for lbl in (issue.get("labels") or [])
                             ],
                         }
                     )

@@ -108,6 +108,11 @@ SESSION_COOKIE_DOMAIN = os.environ.get("SESSION_COOKIE_DOMAIN", None) or None
 CSRF_COOKIE_DOMAIN = os.environ.get("CSRF_COOKIE_DOMAIN", None) or None
 SESSION_COOKIE_SECURE = not DEBUG  # HTTPS via Cloudflare — required for WS auth
 CSRF_COOKIE_SECURE = not DEBUG
+# scitex-orochi#26 — explicit SameSite policy so browser defaults don't vary
+# across versions. "Lax" allows same-site navigations + WS upgrade requests
+# to carry the session cookie; "None" would require Secure=True for cross-site.
+SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+SESSION_COOKIE_HTTPONLY = True  # JS cannot read session cookie — defence-in-depth
 
 INSTALLED_APPS = [
     "daphne",

@@ -48,8 +48,7 @@ def test_hard_rename_error_prints_canonical_one_liner() -> None:
     )
     out = buf.getvalue().strip()
     assert out == (
-        "error: `scitex-orochi list-agents` was renamed to "
-        "`scitex-orochi agent list`."
+        "error: `scitex-orochi list-agents` was renamed to `scitex-orochi agent list`."
     )
     assert exits == [2]
 
@@ -80,7 +79,9 @@ def test_soft_notice_first_call_prints() -> None:
 def test_soft_notice_second_call_in_same_session_is_silent() -> None:
     buf1 = io.StringIO()
     buf2 = io.StringIO()
-    assert dep.soft_notice("list-agents", "use `agent list` instead", stream=buf1) is True
+    assert (
+        dep.soft_notice("list-agents", "use `agent list` instead", stream=buf1) is True
+    )
     assert (
         dep.soft_notice("list-agents", "use `agent list` instead", stream=buf2) is False
     )
@@ -128,3 +129,122 @@ def test_reset_soft_notice_state_allows_reemit() -> None:
     assert dep.soft_notice("cmd", "x", stream=buf2) is True
 
 
+# ---------------------------------------------------------------------------
+# make_rename_stub — Phase 1d Step C factory (plan PR #337 §2)
+# ---------------------------------------------------------------------------
+
+
+def test_make_rename_stub_returns_click_command() -> None:
+    """``make_rename_stub`` produces a click.Command usable with add_command."""
+    import click
+
+    stub = dep.make_rename_stub("list-agents", "agent list")
+    assert isinstance(stub, click.Command)
+    assert stub.name == "list-agents"
+
+
+def test_make_rename_stub_emits_hard_error_when_invoked() -> None:
+    """Invoking the stub via CliRunner exits non-zero with the canonical
+    rename message."""
+    import click
+    from click.testing import CliRunner
+
+    stub = dep.make_rename_stub("list-agents", "agent list")
+
+    @click.group()
+    def root() -> None:
+        pass
+
+    root.add_command(stub)
+
+    runner = CliRunner()
+    result = runner.invoke(root, ["list-agents"])
+    assert result.exit_code == 2, (
+        f"stub must exit 2; got {result.exit_code}\n{result.output!r}"
+    )
+    assert (
+        "error: `scitex-orochi list-agents` was renamed to `scitex-orochi agent list`."
+    ) in result.output
+
+
+def test_make_rename_stub_swallows_trailing_args() -> None:
+    """The stub accepts trailing args so users running the *old* form with
+    its *old* flags get the rename error, not a click parse failure."""
+    import click
+    from click.testing import CliRunner
+
+    stub = dep.make_rename_stub("send", "message send")
+
+    @click.group()
+    def root() -> None:
+        pass
+
+    root.add_command(stub)
+
+    runner = CliRunner()
+    result = runner.invoke(root, ["send", "--json", "#general", "hello"])
+    assert result.exit_code == 2
+    assert "was renamed" in result.output
+
+
+def test_make_rename_stub_short_help_mentions_new_form_when_visible() -> None:
+    """When a rename stub is explicitly registered with ``hidden=False``,
+    ``--help`` on the parent group surfaces the rename target so users
+    browsing help still see the forward pointer.
+
+    Post-Phase-1d cleanup (ywatanabe msg#16746): the default for
+    ``make_rename_stub`` is now ``hidden=True`` so the 28 legacy flat
+    names don't clutter the top-level ``scitex-orochi --help`` listing.
+    This test asks for a visible stub explicitly to keep covering the
+    short-help text itself."""
+    import click
+    from click.testing import CliRunner
+
+    stub = dep.make_rename_stub("doctor", "system doctor", hidden=False)
+
+    @click.group()
+    def root() -> None:
+        pass
+
+    root.add_command(stub)
+
+    runner = CliRunner()
+    result = runner.invoke(root, ["--help"])
+    assert result.exit_code == 0
+    # Either the short-help or the command listing should carry the
+    # new form. We accept either placement to avoid coupling too tightly
+    # to click's formatter output.
+    assert "system doctor" in result.output
+
+
+def test_make_rename_stub_is_hidden_by_default() -> None:
+    """Default ``hidden=True`` keeps the stub out of ``--help`` listings
+    but still accepts invocation (hard-error behaviour unchanged)."""
+    import click
+    from click.testing import CliRunner
+
+    stub = dep.make_rename_stub("doctor", "system doctor")
+    assert stub.hidden is True
+
+    @click.group()
+    def root() -> None:
+        pass
+
+    root.add_command(stub)
+
+    runner = CliRunner()
+    # --help on the parent group omits the stub.
+    result = runner.invoke(root, ["--help"])
+    assert result.exit_code == 0
+    assert (
+        "doctor" not in result.output.split("Commands:", 1)[-1]
+        if "Commands:" in result.output
+        else True
+    )
+
+    # Direct invocation still hard-errors.
+    result = runner.invoke(root, ["doctor"])
+    assert result.exit_code == 2
+    assert (
+        "error: `scitex-orochi doctor` was renamed to `scitex-orochi system doctor`."
+    ) in result.output

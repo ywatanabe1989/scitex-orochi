@@ -64,13 +64,24 @@ class GroupMentionExpansionTest(TestCase):
         """chat.js MENTION_GROUP_TOKENS agrees with backend GROUP_PATTERNS."""
         from pathlib import Path
 
-        src = (
+        # Source lives in frontend/src; look for .ts first, fall back to .js
+        # for legacy builds that pre-date the Vite/TypeScript migration.
+        ts_path = (
+            Path(__file__).resolve().parents[2]
+            / "frontend"
+            / "src"
+            / "chat"
+            / "chat-markdown.ts"
+        )
+        js_path = (
             Path(__file__).resolve().parents[2]
             / "static"
             / "hub"
             / "chat"
             / "chat-markdown.js"
-        ).read_text(encoding="utf-8")
+        )
+        src_path = ts_path if ts_path.exists() else js_path
+        src = src_path.read_text(encoding="utf-8")
         self.assertIn(
             "MENTION_GROUP_TOKENS",
             src,

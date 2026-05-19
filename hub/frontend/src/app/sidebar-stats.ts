@@ -15,7 +15,17 @@ export async function fetchStats() {
     var res = await fetch(apiUrl("/api/stats"));
     var stats = await res.json();
     var chContainer = document.getElementById("channels");
-    var newStatsJson = JSON.stringify(stats.channels);
+    /* todo#245 / restored from legacy ae67e31: include currentChannel in
+     * the throttle guard key so a sidebar selection change forces a
+     * re-render even when the channel list is byte-identical. Without
+     * this, setCurrentChannel() updates the in-memory pointer + persists
+     * to localStorage, but the next fetchStats() short-circuits and the
+     * DOM keeps the .active class on the previously-highlighted row —
+     * user perceives the highlight "bumping back" to #general on poll
+     * / WS reconnect / page update. The TS migration (37284d6/bf5d1ee)
+     * dropped this suffix; this restores parity with the legacy app.js. */
+    var _curCh = (globalThis as any).currentChannel || "__all__";
+    var newStatsJson = JSON.stringify(stats.channels) + "|" + _curCh;
     if (chContainer._lastStatsJson === newStatsJson) return;
     chContainer._lastStatsJson = newStatsJson;
     var msgInput = document.getElementById("msg-input");

@@ -31,6 +31,14 @@ from ._agent_handlers import (
     handle_subscription,
     handle_task_update,
 )
+from ._agent_identity import (
+    active_session_with_different_uuid,
+    any_active_session_enforces_cardinality,
+    format_agent_id,
+    parse_identity_query,
+    record_session_close,
+    record_session_open,
+)
 from ._agent_refresh import prehydrate_channels as _prehydrate_channels
 from ._echo import _hub_echo_loop
 from ._groups import _hub_ping_loop, _sanitize_group, log
@@ -57,7 +65,23 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
 
         self.workspace_id = result["workspace_id"]
         self.workspace_name = result["workspace_name"]
-        self.agent_name = qs.get("agent", ["anonymous"])[0]
+        url_agent_name = qs.get("agent", ["anonymous"])[0]
+        token_agent_name = result.get("agent_name", "")
+        if token_agent_name:
+            # scitex-orochi#182: token carries a pinned agent name — use it
+            # unconditionally so mismatched URL params can't cause attribution
+            # drift (e.g. two co-resident agents sharing a wrong env var).
+            if url_agent_name and url_agent_name != token_agent_name:
+                log.warning(
+                    "Token agent_name mismatch for %s: URL says %r, token says %r "
+                    "— using token name (scitex-orochi#182).",
+                    token_agent_name,
+                    url_agent_name,
+                    token_agent_name,
+                )
+            self.agent_name = token_agent_name
+        else:
+            self.agent_name = url_agent_name
 
         # scitex-orochi#255: per-process identity captured at connect so
         # the singleton enforcer can decide who wins when two WS claim
@@ -70,6 +94,22 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             self._start_ts_unix = float(_start_raw) if _start_raw else None
         except (TypeError, ValueError):
             self._start_ts_unix = None
+
+        # ZOO#12 lead-state-handover (FR-C / FR-E) — UUID-based identity
+        # is layered alongside the legacy (instance_id, start_ts_unix)
+        # tuple so existing #255 enforcement keeps working for clients
+        # that haven't been upgraded yet. Empty / malformed UUIDs are
+        # tolerated here and only the FR-E stamping path degrades; the
+        # FR-C cardinality guard further down still works because it
+        # treats "no UUID" as "different UUID" for the purpose of
+        # detecting rogue siblings.
+        ident = parse_identity_query(qs)
+        self._instance_uuid = ident.get("instance_uuid", "") or ""
+        self._cardinality_enforce_self = ident.get("cardinality_enforce", False)
+        self._failback_grace = ident.get("failback_grace", False)
+        self._client_hostname = ident.get("hostname", "") or ""
+        self._client_pid = ident.get("pid")
+        self._agent_id_stamp = format_agent_id(self.agent_name, self._instance_uuid)
 
         # Spec v3 §2.3 — idempotently ensure a WorkspaceMember row exists
         # for this agent so DMParticipant FKs have a stable target.
@@ -110,6 +150,49 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         await _prehydrate_channels(self)
 
         await self.accept()
+
+        # ZOO#12 FR-C — cardinality_enforced_at_hub guard.
+        #
+        # Strict reject path keyed on the agent's spec flag, applied
+        # generically to any agent whose ``cardinality_enforced_at_hub:
+        # true`` was passed via ``?cardinality_enforce=true`` on
+        # connect, AND made sticky once the hub has seen any prior
+        # session under the same agent name with the flag set (so a
+        # buggy / hostile second instance can't silently downgrade
+        # itself by omitting the flag).
+        #
+        # Bypass: ``?failback_grace=true`` lets a deliberate failback
+        # spawn coexist with the outgoing instance for the few seconds
+        # it takes the old one to drain — without this, FR-B would be
+        # unable to do a hot handoff because the new lead would 4001
+        # itself out before the old lead's snapshot push completes.
+        #
+        # 4001 supersedes the legacy #255 4409 path; we only fall
+        # through to ``decide_singleton_winner`` when this guard
+        # decides not to fire.
+        cardinality_enforce = self._cardinality_enforce_self or (
+            await database_sync_to_async(any_active_session_enforces_cardinality)(
+                self.workspace_id, self.agent_name
+            )
+        )
+        if cardinality_enforce and not self._failback_grace:
+            sibling_alive = await database_sync_to_async(
+                active_session_with_different_uuid
+            )(
+                self.workspace_id,
+                self.agent_name,
+                self._instance_uuid,
+            )
+            if sibling_alive:
+                log.warning(
+                    "Cardinality violation on %s: live sibling under different "
+                    "UUID and ?failback_grace not set — closing newcomer with "
+                    "4001 (ZOO#12 FR-C). uuid=%s",
+                    self.agent_name,
+                    self._instance_uuid or "<none>",
+                )
+                await self.close(code=4001, reason="cardinality_violation")
+                return
 
         # scitex-orochi#255: singleton cardinality enforcement.
         #
@@ -224,11 +307,29 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
         )
         active_sessions = register_connection(self.agent_name, self.channel_name)
 
+        # ZOO#12 FR-E — persist (agent_name, instance_uuid) tuple so the
+        # cardinality guard above survives hub restarts AND so the
+        # outgoing-message stamping path can resolve the UUID back to a
+        # hostname/PID via /api/agents/<name>/<uuid>/meta on debug.
+        # Skipped silently for legacy clients with no UUID — they
+        # remain in the permissive #255 path.
+        if self._instance_uuid:
+            await database_sync_to_async(record_session_open)(
+                self.workspace_id,
+                self.agent_name,
+                self._instance_uuid,
+                self._client_hostname,
+                self._client_pid,
+                self.channel_name,
+                self._cardinality_enforce_self,
+            )
+
         log.info(
-            "Agent %s connected to workspace %s (active_sessions=%d)",
+            "Agent %s connected to workspace %s (active_sessions=%d, uuid=%s)",
             self.agent_name,
             self.workspace_name,
             active_sessions,
+            self._instance_uuid or "<legacy>",
         )
         if active_sessions > 1:
             log.warning(
@@ -283,6 +384,11 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             # scitex-orochi#255: drop the per-channel identity row so a
             # later challenger doesn't compare against a dead socket.
             clear_connection_identity(self.channel_name)
+            # ZOO#12 FR-E — mark the persistent AgentSession as closed so
+            # the cardinality guard above stops counting this row as live.
+            uuid_for_close = getattr(self, "_instance_uuid", "")
+            if uuid_for_close:
+                await database_sync_to_async(record_session_close)(uuid_for_close)
             remaining = unregister_connection(agent_name, self.channel_name)
             if remaining > 0:
                 log.info(
@@ -382,6 +488,14 @@ class AgentConsumer(AsyncJsonWebsocketConsumer):
             agent_channels = getattr(self, "agent_meta", {}).get("channels", [])
             if ch_name not in agent_channels:
                 return
+            # mention-only filter (todo#406 Phase 2): if this channel was
+            # subscribed with mention_only=True, only forward the message
+            # when @<agent_name> appears in the text.
+            mention_only_channels = getattr(self, "_mention_only_channels", set())
+            if ch_name in mention_only_channels:
+                text = event.get("text") or ""
+                if f"@{self.agent_name}" not in text:
+                    return
         await self.send_json(
             {
                 "type": "message",

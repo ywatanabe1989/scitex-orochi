@@ -93,6 +93,9 @@ def api_channels(request, slug=None):
             if field in body:
                 setattr(ch, field, body.get(field) or "")
                 changed.append(field)
+        if "is_archived" in body:
+            ch.is_archived = bool(body["is_archived"])
+            changed.append("is_archived")
         if changed:
             ch.save(update_fields=changed)
         # Broadcast identity so every client updates sidebar / pool chip / canvas.
@@ -119,6 +122,7 @@ def api_channels(request, slug=None):
                 "icon_image": ch.icon_image,
                 "icon_text": ch.icon_text,
                 "color": ch.color,
+                "is_archived": ch.is_archived,
             }
         )
 
@@ -145,6 +149,7 @@ def api_channels(request, slug=None):
                 "is_muted": p.is_muted if p else False,
                 "is_hidden": p.is_hidden if p else False,
                 "notification_level": p.notification_level if p else "all",
+                "is_archived": ch.is_archived,
             }
         )
     return JsonResponse(data, safe=False)

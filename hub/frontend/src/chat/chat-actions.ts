@@ -170,6 +170,73 @@ export function handleMessageDelete(event) {
   }
 }
 
+/* --- On-demand translation (todo#409 Phase 1) --- */
+
+export function translateMessage(msgId, targetLang?) {
+  var lang = targetLang || "en";
+  fetch(apiUrl("/api/messages/" + msgId + "/translate/"), {
+    method: "POST",
+    headers: orochiHeaders(),
+    credentials: "same-origin",
+    body: JSON.stringify({ target_lang: lang }),
+  })
+    .then(function (res) {
+      return res.json().then(function (d) {
+        return { ok: res.ok, data: d };
+      });
+    })
+    .then(function ({ ok, data }) {
+      if (!ok) {
+        _showTranslateOverlay(msgId, null, data.error || "Translation failed");
+        return;
+      }
+      _showTranslateOverlay(msgId, data.translated_text, null);
+    })
+    .catch(function (e) {
+      _showTranslateOverlay(msgId, null, "Translation error: " + e);
+    });
+  /* Optimistic spinner while waiting */
+  _showTranslateOverlay(msgId, null, "Translating…");
+}
+
+function _showTranslateOverlay(msgId, text, error) {
+  var existing = document.querySelector('.msg-translate-overlay[data-msg-id="' + msgId + '"]');
+  if (existing) existing.remove();
+
+  var el = document.querySelector('.msg[data-msg-id="' + msgId + '"]');
+  if (!el) return;
+
+  var overlay = document.createElement("div");
+  overlay.className = "msg-translate-overlay";
+  overlay.setAttribute("data-msg-id", String(msgId));
+
+  if (error) {
+    overlay.innerHTML =
+      '<div class="msg-translate-error">' + escapeHtml(error) + "</div>" +
+      '<button class="msg-translate-close" type="button" onclick="this.parentNode.remove()">×</button>';
+  } else {
+    overlay.innerHTML =
+      '<div class="msg-translate-text">' +
+      escapeHtml(text || "").replace(/\n/g, "<br>") +
+      "</div>" +
+      '<button class="msg-translate-close" type="button" onclick="this.parentNode.remove()">×</button>';
+  }
+  el.appendChild(overlay);
+  /* Dismiss on outside click */
+  setTimeout(function () {
+    document.addEventListener(
+      "click",
+      function onOutside(ev) {
+        if (!overlay.contains(ev.target as Node)) {
+          overlay.remove();
+          document.removeEventListener("click", onOutside, true);
+        }
+      },
+      true,
+    );
+  }, 50);
+}
+
 /* Timestamps are now absolute (YYYY-MM-DD HH:mm:ss), no periodic refresh needed */
 
 /* --- Long-press context menu (mobile) ---
@@ -456,9 +523,32 @@ export function handleMessageDelete(event) {
   }
 })();
 
+/* Message card click → open thread if it has replies (#242).
+ * Only fires when the user clicks the card itself (content area), not when
+ * clicking buttons, links, the reaction picker, or the reply badge. The reply
+ * badge already has its own onclick; this handler adds the large hit area. */
+document.addEventListener("click", function (e) {
+  /* Ignore clicks on interactive children — buttons, links, inputs,
+   * the existing msg-thread-count badge (has its own onclick), reaction
+   * pickers, edit inputs, and the long-press menu. */
+  var IGNORED = "button,a,input,textarea,.msg-thread-count,.msg-reactions,.long-press-menu,.msg-edit-container,.reaction-picker";
+  if ((e.target as HTMLElement).closest(IGNORED)) return;
+  var msgEl = (e.target as HTMLElement).closest(".msg[data-msg-id]") as HTMLElement | null;
+  if (!msgEl) return;
+  /* Only open thread when the message actually has replies (to avoid
+   * hijacking single-click on every message). */
+  var msgId = msgEl.getAttribute("data-msg-id");
+  if (!msgId) return;
+  var threadCountEl = msgEl.querySelector(".msg-thread-count");
+  if (!threadCountEl) return; /* no replies → no thread to open */
+  if (typeof openThreadForMessage === "function") {
+    openThreadForMessage(msgId);
+  }
+});
+
 /* Channel name click → switch channel (#211) */
 document.addEventListener("click", function (e) {
-  var link = e.target.closest(".channel-link");
+  var link = (e.target as HTMLElement).closest(".channel-link");
   if (!link) return;
   e.preventDefault();
   var ch = link.getAttribute("data-channel");

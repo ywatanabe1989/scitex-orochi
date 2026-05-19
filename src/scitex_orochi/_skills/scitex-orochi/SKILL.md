@@ -83,15 +83,8 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 78_agent-permission-prompt-patterns-meta.md
 - 79_permission-prompt-patterns-meta.md
 - 80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md
+- 81_convention-cli-extras-b.md
+- 82_hpc-spartan-sbatch-hold-branch.md
+- 83_agent-launch-discipline-spartan.md
 
-### Sub-skill: agent-types
-
-- 00-agent-types/00_fleet-lead.md
-- 00-agent-types/01_head.md
-- 00-agent-types/02_proj.md
-- 00-agent-types/03_expert.md
-- 00-agent-types/04_worker.md
-- 00-agent-types/05_daemon.md
-- 00-agent-types/90_policies.md
-- 00-agent-types/99_template.md
-- 00-agent-types/SKILL.md
+For fleet-internal operational skills (specific hosts, agents, incidents, credentials), see `scitex-orochi-private`.

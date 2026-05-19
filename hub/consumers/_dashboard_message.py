@@ -192,7 +192,7 @@ async def _maybe_mention_reply(consumer, text: str, ch_name: str) -> None:
         lines = list(recent)[-5:]  # last 5 actions
         last_seen = info.get("last_seen", "")
         if lines:
-            activity = "\n".join(f"  {l}" for l in lines)
+            activity = "\n".join(f"  {line}" for line in lines)
         else:
             activity = "  (no recent activity)"
         reply_text = (

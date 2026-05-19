@@ -79,6 +79,8 @@ export function _bindSubTabBar(grid) {
 
 /* Render only the content area (below tab bar) */
 export function _renderAgentContent(grid) {
+  /* Expose on globalThis so overview.ts can call it without circular import */
+  (globalThis as any)._renderAgentContent = _renderAgentContent;
   var content = grid.querySelector("#agent-tab-content");
   if (!content) return;
 

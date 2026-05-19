@@ -13,7 +13,7 @@ make group-channel delivery robust to missing ``register`` frames.
 from __future__ import annotations
 
 from ._groups import _sanitize_group, log
-from ._helpers import _load_agent_channel_subs
+from ._helpers import _load_agent_channel_subs, _load_agent_mention_only_channels
 
 
 async def prehydrate_channels(consumer) -> None:
@@ -62,6 +62,13 @@ async def prehydrate_channels(consumer) -> None:
         )
         persisted = []
 
+    try:
+        consumer._mention_only_channels = await _load_agent_mention_only_channels(
+            consumer.workspace_id, consumer.agent_name
+        )
+    except Exception:  # noqa: BLE001
+        consumer._mention_only_channels = set()
+
     dm_names = list(getattr(consumer, "_dm_channel_names", []) or [])
     channels = list(dm_names) + [c for c in persisted if c not in dm_names]
 
@@ -91,6 +98,9 @@ async def handle_agent_subs_refresh(consumer, event):
         return
 
     persisted = await _load_agent_channel_subs(
+        consumer.workspace_id, consumer.agent_name
+    )
+    consumer._mention_only_channels = await _load_agent_mention_only_channels(
         consumer.workspace_id, consumer.agent_name
     )
     dm_names = list(getattr(consumer, "_dm_channel_names", []) or [])

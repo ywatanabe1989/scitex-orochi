@@ -362,6 +362,10 @@ def api_agent_detail(request, name: str):
         "sac_hooks_recent_prompts": agent.get("sac_hooks_recent_prompts") or [],
         "sac_hooks_agent_calls": agent.get("sac_hooks_agent_calls") or [],
         "sac_hooks_background_tasks": agent.get("sac_hooks_background_tasks") or [],
+        # orochi#133 — stuck-subagent detection.
+        "sac_hooks_open_agent_calls": agent.get("sac_hooks_open_agent_calls") or [],
+        "sac_hooks_open_agent_calls_count": agent.get("sac_hooks_open_agent_calls_count") or 0,
+        "sac_hooks_oldest_open_agent_age_s": agent.get("sac_hooks_oldest_open_agent_age_s"),
         "sac_hooks_tool_counts": agent.get("sac_hooks_tool_counts") or {},
         # Functional-heartbeat shortcuts.
         "sac_hooks_last_tool_at": agent.get("sac_hooks_last_tool_at") or "",

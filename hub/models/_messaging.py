@@ -34,6 +34,7 @@ class Channel(models.Model):
     icon_text = models.CharField(max_length=16, blank=True, default="")
     color = models.CharField(max_length=16, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         app_label = "hub"
@@ -182,6 +183,15 @@ class ChannelMembership(models.Model):
         help_text=(
             "Whether the member is allowed to post to this channel. "
             "False = read-only."
+        ),
+    )
+    mention_only = models.BooleanField(
+        default=False,
+        help_text=(
+            "When True the member receives fan-out only for messages that "
+            "contain @<member-name>. Silent for all other channel traffic. "
+            "Used by mamba agents that want low-noise channel presence "
+            "(todo#406 Phase 2)."
         ),
     )
     joined_at = models.DateTimeField(auto_now_add=True)
