@@ -13,6 +13,11 @@ with the REST write path.
 """
 
 from hub.views.api._a2a_dispatch import api_a2a_reply
+from hub.views.api._agent_groups import (
+    api_agent_group_detail,
+    api_agent_groups_create,
+    api_agent_groups_list,
+)
 from hub.views.api._agents import (
     api_agent_health,
     api_agent_owner,
@@ -50,6 +55,7 @@ from hub.views.api._dms import _ensure_dm_channel, api_dms
 from hub.views.api._export import api_channel_export, api_media
 from hub.views.api._fleet import api_scheduled, fleet_report, fleet_state
 from hub.views.api._inbound_email import api_inbound_email, route_email  # noqa: F401
+from hub.views.api._invitations import api_invitation_detail, api_invitations
 from hub.views.api._messages import api_history, api_messages, api_threads
 from hub.views.api._misc import (
     api_config,
@@ -62,12 +68,16 @@ from hub.views.api._misc import (
     api_watchdog_alerts,
 )
 from hub.views.api._reactions import api_message_detail, api_reactions
+from hub.views.api._translate import api_message_translate
 from hub.views.api._releases import api_releases, api_repo_changelog
 from hub.views.api._resources import api_resources
 
 __all__ = [
     "_ensure_dm_channel",
     "api_a2a_reply",
+    "api_agent_group_detail",
+    "api_agent_groups_create",
+    "api_agent_groups_list",
     "api_agent_health",
     "api_agent_owner",
     "api_agent_profiles",
@@ -94,12 +104,15 @@ __all__ = [
     "api_connectivity",
     "api_cron",
     "api_inbound_email",
+    "api_invitation_detail",
+    "api_invitations",
     "api_dms",
     "api_event_tool_use",
     "api_history",
     "api_media",
     "api_members",
     "api_message_detail",
+    "api_message_translate",
     "api_messages",
     "api_my_subscriptions",
     "api_push_subscribe",

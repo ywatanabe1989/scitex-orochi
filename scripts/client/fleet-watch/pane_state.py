@@ -50,7 +50,7 @@ from __future__ import annotations
 import json
 import re
 import sys
-from dataclasses import dataclass, asdict, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 # Mirror of --ecc-state-detection-buffer-size (elisp). The canonical

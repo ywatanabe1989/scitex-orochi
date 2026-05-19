@@ -141,7 +141,7 @@ def resolve_mention_targets(
     # hit the parser shouldn't need the ORM).
     from django.contrib.auth.models import User
 
-    from hub.models import WorkspaceMember
+    from hub.models import AgentGroup, WorkspaceMember
 
     tokens = list(tokens)
     if not tokens:
@@ -158,6 +158,19 @@ def resolve_mention_targets(
         .values_list("user__username", flat=True)
     )
 
+    # Custom AgentGroup lookup: maps name → member username list (single
+    # query for all group names in one pass). Builtin groups with no
+    # members fall through to the _GROUP_PATTERNS predicate path below.
+    token_keys = {t.lower() for t in tokens}
+    custom_groups: dict[str, list[str]] = {}
+    for grp in AgentGroup.objects.filter(
+        workspace_id=workspace_id, name__in=token_keys
+    ).prefetch_related("members"):
+        if not grp.is_builtin or grp.members.exists():
+            custom_groups[grp.name] = list(
+                grp.members.values_list("username", flat=True)
+            )
+
     def _add(username: str) -> None:
         if not username or username in excluded or username in seen:
             return
@@ -166,6 +179,15 @@ def resolve_mention_targets(
 
     for token in tokens:
         key = token.lower()
+
+        # Custom group (DB-backed, includes user-defined and seeded builtin
+        # groups whose members were explicitly set).
+        if key in custom_groups:
+            for uname in custom_groups[key]:
+                _add(uname)
+            continue
+
+        # Hardcoded predicate groups (heads, mambas, all, …).
         if key in _GROUP_PATTERNS:
             predicate = _GROUP_PATTERNS[key]
             for uname in member_usernames:
@@ -189,8 +211,26 @@ def resolve_mention_targets(
         # creating ghost DMs to non-existent principals.
         if User.objects.filter(username=agent_username).exists():
             _add(agent_username)
-        elif User.objects.filter(username=token).exists():
+            continue
+        if User.objects.filter(username=token).exists():
             _add(token)
+            continue
+        # Channel-name mention: @general → all subscribers of #general.
+        # Normalise to #token and look up ChannelMembership rows so that
+        # ``@general`` pings everyone subscribed to #general. Fail-soft:
+        # unrecognised tokens are silently skipped (same as before).
+        from hub.models import Channel, ChannelMembership
+
+        ch_name = f"#{token}" if not token.startswith("#") else token
+        try:
+            ch = Channel.objects.get(workspace_id=workspace_id, name=ch_name)
+            for uname in (
+                ChannelMembership.objects.filter(channel=ch)
+                .values_list("user__username", flat=True)
+            ):
+                _add(uname)
+        except Channel.DoesNotExist:
+            pass
 
     return result
 

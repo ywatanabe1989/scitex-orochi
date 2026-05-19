@@ -221,6 +221,36 @@ export async function handleWsMessage(
       }
     }
 
+    // PING sidecar: auto-respond to 1-min liveness pings without waking
+    // Claude. Pattern: ^PING-[a-f0-9]{8}$. Responds "pong PING-<nonce>"
+    // with reply_to=<original msg_id>. Latency <1s. See todo#424.
+    if (/^PING-[a-f0-9]{8}$/.test(content.trim())) {
+      const nonce = content.trim();
+      const pongPayload: Record<string, unknown> = {
+        channel: channel || "#general",
+        text: `pong ${nonce}`,
+        metadata: msgId != null ? { reply_to: String(msgId) } : {},
+      };
+      let sent = false;
+      try {
+        ws.send(
+          JSON.stringify({
+            type: "message",
+            sender: OROCHI_AGENT,
+            payload: pongPayload,
+          }),
+        );
+        sent = true;
+      } catch {}
+      dbg(
+        `ping-sidecar: ${nonce} from ${sender}@${channel} msg_id=${msgId ?? "?"} sent=${sent}`,
+      );
+      console.error(
+        `[orochi] ping-sidecar auto-pong ${nonce} (from=${sender} channel=${channel} sent=${sent})`,
+      );
+      return;
+    }
+
     // @mention filtering: only deliver messages addressed to this agent
     const mentions = content.match(/@(\w[\w-]*)/g);
     if (mentions && mentions.length > 0) {

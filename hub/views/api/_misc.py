@@ -390,15 +390,50 @@ def api_connectivity(request):
 
 
 @login_required
-@require_GET
+@require_http_methods(["GET", "PATCH"])
 def api_members(request):
-    """GET /api/members/ — list human members of the current workspace."""
+    """GET /api/members/ — list human members of the current workspace.
+    PATCH /api/members/ — update trust_level for a member (admin only).
+
+    PATCH body: {"username": str, "trust_level": "owner"|"supervisor"|"collaborator"|"guest"|"unknown"}
+    """
     workspace = get_workspace(request)
+
+    if request.method == "PATCH":
+        caller = WorkspaceMember.objects.filter(
+            workspace=workspace, user=request.user
+        ).first()
+        if not (caller and caller.role == WorkspaceMember.Role.ADMIN):
+            return JsonResponse({"error": "admin required"}, status=403)
+        try:
+            body = json.loads(request.body or "{}")
+        except (ValueError, KeyError):
+            return JsonResponse({"error": "invalid JSON"}, status=400)
+        username = body.get("username")
+        new_level = body.get("trust_level")
+        valid_levels = {c.value for c in WorkspaceMember.TrustLevel}
+        if not username or new_level not in valid_levels:
+            return JsonResponse(
+                {"error": f"username and trust_level ({', '.join(sorted(valid_levels))}) required"},
+                status=400,
+            )
+        target = WorkspaceMember.objects.filter(
+            workspace=workspace, user__username=username
+        ).first()
+        if not target:
+            return JsonResponse({"error": "member not found"}, status=404)
+        target.trust_level = new_level
+        target.save(update_fields=["trust_level"])
+        return JsonResponse(
+            {"username": username, "trust_level": target.trust_level, "status": "updated"}
+        )
+
     members = WorkspaceMember.objects.filter(workspace=workspace).select_related("user")
     data = [
         {
             "username": m.user.username,
             "role": m.role,
+            "trust_level": m.trust_level,
         }
         for m in members
     ]

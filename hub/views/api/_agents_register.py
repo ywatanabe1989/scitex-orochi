@@ -212,7 +212,7 @@ def api_agents_register(request):
             # agent-detail "Full pane" toggle. Capped at 32 KB client-side.
             "orochi_pane_tail_full": body.get("orochi_pane_tail_full", ""),
             "orochi_claude_md_head": body.get("orochi_claude_md_head", ""),
-            "orochi_mcp_servers": body.get("orochi_mcp_servers") or [],
+            "orochi_mcp_servers": body.get("orochi_mcp_servers") or body.get("mcp_servers") or [],
             # todo#265: Claude Code OAuth account public metadata
             # (email, org, subscription state). Strict whitelist —
             # never accept access/refresh tokens or credentials.
@@ -234,6 +234,20 @@ def api_agents_register(request):
             ),
             "orochi_statusline_model": body.get("orochi_statusline_model", ""),
             "orochi_account_email": body.get("orochi_account_email", ""),
+            # Setup-audit fields from scitex-agent-container PR#53.
+            # plan_label is the authoritative plan name ("Max 20x" etc.)
+            # derived from rateLimitTier; billing_type only reports payment
+            # method. oauth_expires_at is the unix-ms token expiry — the
+            # hub can diff across heartbeats to count rotations per email.
+            # installed_plugins + mcp_servers power the setup-audit grid.
+            "account_plan_label": body.get("account_plan_label", ""),
+            "account_subscription_type": body.get("account_subscription_type", ""),
+            "account_rate_limit_tier": body.get("account_rate_limit_tier", ""),
+            "account_organization_name": body.get("account_organization_name", ""),
+            "account_uuid": body.get("account_uuid", ""),
+            "oauth_expires_at": body.get("oauth_expires_at"),
+            "installed_plugins": body.get("installed_plugins") or [],
+            "status_line_command": body.get("status_line_command", ""),
             # scitex-agent-container heartbeat-push payload. Long names are
             # preferred by the dashboard; accept the short-name aliases too
             # for backward compat with older pushers.
@@ -317,6 +331,15 @@ def api_agents_register(request):
             # start_ts_unix: psutil process creation time (float epoch).
             # Combined with instance_id to pick the older-wins winner on collision.
             "start_ts_unix": body.get("start_ts_unix"),
+            # todo#430: per-agent Claude API token telemetry collected by
+            # scripts/client/collect_agent_quota.py from ~/.claude/projects/.
+            # Each field is a dict with keys: input_tokens, cache_tokens,
+            # output_tokens, web_searches, web_fetches, turns.
+            # None when the collector has not yet pushed for this agent.
+            "quota_15m": body.get("quota_15m"),
+            "quota_1h": body.get("quota_1h"),
+            "quota_24h": body.get("quota_24h"),
+            "quota_all": body.get("quota_all"),
         },
     )
     # Persist orochi_subagent_count separately — register_agent() preserves prev

@@ -1,6 +1,7 @@
 """Agent presence / scheduling models — pinned agents, container registry,
-scheduled actions."""
+scheduled actions, and user-defined agent groups."""
 
+from django.contrib.auth.models import User
 from django.db import models
 
 from ._identity import Workspace
@@ -26,6 +27,60 @@ class PinnedAgent(models.Model):
 
     def __str__(self):
         return f"pin:{self.name}@{self.workspace.name}"
+
+
+class AgentGroup(models.Model):
+    """User-defined named group of agents for @mention expansion (todo#428).
+
+    Hardcoded built-in groups (``heads``, ``mambas``, ``all``, …) are
+    seeded as rows here on workspace creation so all expansion logic
+    can go through a single DB query path instead of the legacy
+    ``_GROUP_PATTERNS`` dict.
+
+    ``name`` is the mention key — e.g. ``@paper-team`` uses ``name="paper-team"``.
+    """
+
+    workspace = models.ForeignKey(
+        Workspace, on_delete=models.CASCADE, related_name="agent_groups"
+    )
+    name = models.CharField(
+        max_length=64,
+        help_text="Mention key used in @<name> tokens.",
+    )
+    display_name = models.CharField(max_length=128, blank=True, default="")
+    description = models.TextField(blank=True, default="")
+    # For built-in groups (heads, mambas, …) members is not used —
+    # expansion falls back to the predicate in mentions.py. For custom
+    # groups, members is the authoritative membership list.
+    members = models.ManyToManyField(
+        User,
+        blank=True,
+        related_name="agent_groups",
+    )
+    is_builtin = models.BooleanField(
+        default=False,
+        help_text="True for system-seeded groups (heads, mambas, …). "
+        "Builtin groups cannot be deleted via the API.",
+    )
+    owner = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="owned_agent_groups",
+        help_text="Creator; null for system-seeded groups.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = "hub"
+        unique_together = ("workspace", "name")
+        ordering = ["name"]
+
+    def __str__(self):
+        tag = "builtin" if self.is_builtin else "custom"
+        return f"group:{self.name}@{self.workspace.name} ({tag})"
 
 
 class ContainerAgent(models.Model):

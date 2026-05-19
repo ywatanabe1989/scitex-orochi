@@ -239,6 +239,11 @@ export function appendMessage(msg) {
         msg.id +
         ')">&#10005;</button>'
       : "") +
+    (msg.id
+      ? '<button class="msg-translate-btn" type="button" title="Translate message" onclick="translateMessage(' +
+        msg.id +
+        ')">&#127760;</button>'
+      : "") +
     (function () {
       var tc = msg.thread_count || 0;
       if (!msg.id || tc === 0) return "";

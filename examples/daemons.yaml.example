@@ -1,0 +1,52 @@
+# ~/.scitex/orochi/daemons.yaml — config for sac-managed daemon-agents.
+#
+# Template: copy to ``~/.scitex/orochi/daemons.yaml`` and edit. Secrets
+# (tokens) live in env, never here:
+#   OROCHI_GITEA_TOKEN   — gitea API token, read-only suffices
+#   OROCHI_HUB_TOKEN     — orochi hub token used for /api/messages POSTs
+#   OROCHI_HUB_URL       — overridden by ``hub_url`` below if set
+
+# ---------------------------------------------------------------------------
+# daemon-stale-pr (FR-N) — gitea polling daemon for stuck CI-green PRs
+# ---------------------------------------------------------------------------
+daemon-stale-pr:
+  # Gitea endpoint. The daemon caches no responses, so a temporary
+  # 5xx is recoverable on the next tick.
+  gitea_base_url: https://gitea.scitex.ai
+  gitea_owner: scitex
+
+  # Watched repos. Add/remove freely — nothing else needs updating.
+  repos:
+    - scitex-orochi
+    - scitex-agent-container
+    - scitex
+    - scitex-app
+
+  # Per-repo merger DM target. Use the orochi agent name (e.g.
+  # ``head-mba``) or a human name — the hub will route either way.
+  # Repos missing from this map produce a warning, never a crash.
+  repo_to_merger:
+    scitex-orochi: head-mba
+    scitex-agent-container: head-mba
+    scitex: mgr-scitex
+    scitex-app: head-nas
+
+  # Sender identity used in the canonical DM channel id. Must match
+  # ``CLAUDE_AGENT_ID`` in the agent yaml so cross-host attribution
+  # is consistent.
+  sender: daemon-stale-pr
+
+  # Hub for /api/messages POSTs. Falls back to env ``OROCHI_HUB_URL``
+  # if empty.
+  hub_url: https://scitex-orochi.com
+
+  # Where the per-tick summary lands. Until mgr-auth provisions
+  # ``#daemons``, leave this on ``#general`` so the loop is visible.
+  publish_channel: "#general"
+
+  # Stale-PR rule:
+  threshold_s: 3600.0     # min PR age before considered stale
+  redm_after_s: 3600.0    # debounce: re-DM no sooner than this
+
+  # Loop cadence.
+  tick_interval_s: 600.0

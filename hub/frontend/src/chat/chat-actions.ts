@@ -170,6 +170,73 @@ export function handleMessageDelete(event) {
   }
 }
 
+/* --- On-demand translation (todo#409 Phase 1) --- */
+
+export function translateMessage(msgId, targetLang?) {
+  var lang = targetLang || "en";
+  fetch(apiUrl("/api/messages/" + msgId + "/translate/"), {
+    method: "POST",
+    headers: orochiHeaders(),
+    credentials: "same-origin",
+    body: JSON.stringify({ target_lang: lang }),
+  })
+    .then(function (res) {
+      return res.json().then(function (d) {
+        return { ok: res.ok, data: d };
+      });
+    })
+    .then(function ({ ok, data }) {
+      if (!ok) {
+        _showTranslateOverlay(msgId, null, data.error || "Translation failed");
+        return;
+      }
+      _showTranslateOverlay(msgId, data.translated_text, null);
+    })
+    .catch(function (e) {
+      _showTranslateOverlay(msgId, null, "Translation error: " + e);
+    });
+  /* Optimistic spinner while waiting */
+  _showTranslateOverlay(msgId, null, "Translating…");
+}
+
+function _showTranslateOverlay(msgId, text, error) {
+  var existing = document.querySelector('.msg-translate-overlay[data-msg-id="' + msgId + '"]');
+  if (existing) existing.remove();
+
+  var el = document.querySelector('.msg[data-msg-id="' + msgId + '"]');
+  if (!el) return;
+
+  var overlay = document.createElement("div");
+  overlay.className = "msg-translate-overlay";
+  overlay.setAttribute("data-msg-id", String(msgId));
+
+  if (error) {
+    overlay.innerHTML =
+      '<div class="msg-translate-error">' + escapeHtml(error) + "</div>" +
+      '<button class="msg-translate-close" type="button" onclick="this.parentNode.remove()">×</button>';
+  } else {
+    overlay.innerHTML =
+      '<div class="msg-translate-text">' +
+      escapeHtml(text || "").replace(/\n/g, "<br>") +
+      "</div>" +
+      '<button class="msg-translate-close" type="button" onclick="this.parentNode.remove()">×</button>';
+  }
+  el.appendChild(overlay);
+  /* Dismiss on outside click */
+  setTimeout(function () {
+    document.addEventListener(
+      "click",
+      function onOutside(ev) {
+        if (!overlay.contains(ev.target as Node)) {
+          overlay.remove();
+          document.removeEventListener("click", onOutside, true);
+        }
+      },
+      true,
+    );
+  }, 50);
+}
+
 /* Timestamps are now absolute (YYYY-MM-DD HH:mm:ss), no periodic refresh needed */
 
 /* --- Long-press context menu (mobile) ---
@@ -498,5 +565,38 @@ document.addEventListener("click", function (e) {
     }
     if (typeof addTag === "function") addTag("channel", ch);
     if (typeof fetchStats === "function") fetchStats();
+  }
+});
+
+/* Message card click → open thread panel (#242) */
+document.addEventListener("click", function (e) {
+  var target = e.target as Element;
+  /* Skip interactive children so buttons/links still work */
+  var node: Element | null = target;
+  while (node && node !== document.body) {
+    var tag = node.tagName;
+    if (
+      tag === "BUTTON" ||
+      tag === "A" ||
+      tag === "INPUT" ||
+      tag === "TEXTAREA" ||
+      tag === "SELECT"
+    ) {
+      return;
+    }
+    if (node.classList && node.classList.contains("msg-edit-container")) {
+      return;
+    }
+    node = node.parentElement;
+  }
+  var msgEl = target.closest && target.closest(".msg");
+  if (!msgEl) return;
+  if (msgEl.classList.contains("msg-system")) return;
+  var idStr = msgEl.getAttribute("data-msg-id");
+  if (!idStr) return;
+  var msgId = parseInt(idStr, 10);
+  if (!msgId) return;
+  if (typeof openThreadForMessage === "function") {
+    openThreadForMessage(msgId);
   }
 });

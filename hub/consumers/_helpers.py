@@ -73,6 +73,34 @@ def _load_agent_channel_subs(workspace_id, agent_name):
 
 
 @database_sync_to_async
+def _load_agent_mention_only_channels(workspace_id, agent_name):
+    """Return the set of channel names where this agent has ``mention_only=True``.
+
+    Used by the fan-out filter in :meth:`AgentConsumer.chat_message` to
+    suppress messages that don't @-mention the agent (todo#406 Phase 2).
+    """
+    from django.contrib.auth.models import User
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_.\-]", "-", agent_name or "anonymous-agent")
+    username = f"agent-{safe_name}"
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return set()
+    memberships = ChannelMembership.objects.filter(
+        user=user,
+        channel__workspace_id=workspace_id,
+        can_read=True,
+        mention_only=True,
+    ).select_related("channel")
+    return {
+        m.channel.name
+        for m in memberships
+        if m.channel.name not in ABOLISHED_AGENT_CHANNELS
+    }
+
+
+@database_sync_to_async
 def _persist_agent_subscription(
     workspace_id,
     agent_name,
@@ -81,6 +109,7 @@ def _persist_agent_subscription(
     *,
     can_read: bool = True,
     can_write: bool = True,
+    mention_only: bool = False,
 ):
     """Add or remove a persistent ``ChannelMembership`` row for an agent.
 
@@ -129,6 +158,7 @@ def _persist_agent_subscription(
             defaults={
                 "can_read": bool(can_read),
                 "can_write": bool(can_write),
+                "mention_only": bool(mention_only),
             },
         )
     else:

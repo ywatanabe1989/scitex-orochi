@@ -76,6 +76,12 @@ urlpatterns = [
         name="api-my-subscriptions",
     ),
     path("api/messages/", views.api_messages, name="api-messages"),
+    path("api/invitations/", views.api_invitations, name="api-invitations"),
+    path(
+        "api/invitations/<str:token>/",
+        views.api_invitation_detail,
+        name="api-invitation-detail",
+    ),
     path("api/dms/", views.api_dms, name="api-dms"),
     path("api/history/<str:channel_name>/", views.api_history, name="api-history"),
     path("api/stats/", views.api_stats, name="api-stats"),
@@ -88,6 +94,10 @@ urlpatterns = [
     ),
     # Agent API
     path("api/agents/", views.api_agents, name="api-agents"),
+    # Agent group CRUD (todo#428)
+    path("api/agent-groups/", views.api_agent_groups_list, name="api-agent-groups-list"),
+    path("api/agent-groups/create/", views.api_agent_groups_create, name="api-agent-groups-create"),
+    path("api/agent-groups/<str:name>/", views.api_agent_group_detail, name="api-agent-group-detail"),
     path("api/agents/purge/", views.api_agents_purge, name="api-agents-purge"),
     path("api/agents/restart/", views.api_agents_restart, name="api-agents-restart"),
     path("api/agents/kill/", views.api_agents_kill, name="api-agents-kill"),
@@ -159,6 +169,16 @@ urlpatterns = [
     path("api/media/", views.api_media, name="api-media"),
     path("api/members/", views.api_members, name="api-members"),
     path("api/reactions/", views.api_reactions, name="api-reactions"),
+    path(
+        "api/messages/<int:message_id>/",
+        views.api_message_detail,
+        name="api-message-detail",
+    ),
+    path(
+        "api/messages/<int:message_id>/translate/",
+        views.api_message_translate,
+        name="api-message-translate",
+    ),
     path("api/releases/", views.api_releases, name="api-releases"),
     path(
         "api/repo/<str:owner>/<str:repo>/changelog/",

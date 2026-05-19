@@ -70,23 +70,24 @@ def test_new_form_help_is_reachable(new_path: list[str]) -> None:
     assert "Usage:" in result.output
 
 
-def test_legacy_flat_alias_is_unknown_command() -> None:
+def test_legacy_flat_alias_gives_rename_error() -> None:
     """Representative regression check: a former rename shim
-    (``agent-launch``) is now an unknown command, so Click prints its
-    standard ``No such command`` error and exits non-zero. This locks
-    the post-grace-period contract — no shim, no forward-pointer
-    redirect — without parametrizing across all 28 deleted aliases.
+    (``agent-launch``) is registered as a hidden stub that fires the
+    canonical rename error and exits non-zero. Hidden from --help but
+    still invokable — gives a clear redirect instead of Click's generic
+    "No such command" (post-Phase-1d cleanup, plan §2).
     """
     runner = CliRunner()
     result = runner.invoke(
         orochi, ["agent-launch"], obj={"host": "127.0.0.1", "port": 9559}
     )
     assert result.exit_code != 0, (
-        "legacy flat alias `agent-launch` should be an unknown command "
-        f"after shim removal; got exit {result.exit_code}\n"
-        f"output: {result.output}"
+        "legacy flat alias `agent-launch` should hard-error; "
+        f"got exit {result.exit_code}\noutput: {result.output}"
     )
-    assert "No such command 'agent-launch'" in result.output, (
-        "expected Click's standard 'No such command' error; got:\n"
+    assert (
+        "error: `scitex-orochi agent-launch` was renamed to `scitex-orochi agent launch`."
+    ) in result.output, (
+        "expected rename error; got:\n"
         f"{result.output}"
     )

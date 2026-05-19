@@ -17,7 +17,7 @@ export var _agentDetailInflight = {}; /* name -> bool (in-flight guard) */
 export var _paneExpanded = {}; /* name -> bool */
 var _followAgent = null; /* name currently in follow mode (only one) */
 var _followTimer = null; /* setInterval handle */
-export var FOLLOW_INTERVAL_MS = 3000;
+export var FOLLOW_INTERVAL_MS = 1000;
 
 /* Fetch the full per-agent detail payload (todo#420).
  *

@@ -5,6 +5,8 @@ from __future__ import annotations
 import subprocess
 from unittest.mock import patch
 
+import pytest
+
 from scitex_orochi import _orochi_slurm, _resources
 
 # ---------------------------------------------------------------------------
@@ -198,9 +200,6 @@ def test_collect_metrics_merges_orochi_slurm_override():
     assert metrics["orochi_slurm_total_jobs"] == 3
     # Disk is NOT touched by orochi_slurm — local /proc value still present
     # (skip assertion on exact value; just require key exists when available)
-
-
-import pytest
 
 
 @pytest.mark.skipif(

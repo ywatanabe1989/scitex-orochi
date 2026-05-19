@@ -302,6 +302,20 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "orochi_quota_weekly_remaining": a.get("orochi_quota_weekly_remaining", ""),
                 "orochi_statusline_model": a.get("orochi_statusline_model", ""),
                 "orochi_account_email": a.get("orochi_account_email", ""),
+                # Setup-audit fields (sac PR#53). Surfaced so the
+                # Agents-tab can render plan label, plugins, MCP setup,
+                # and auth-rotation timestamp without re-querying a
+                # per-host endpoint.
+                "account_plan_label": a.get("account_plan_label", ""),
+                "account_subscription_type": a.get("account_subscription_type", ""),
+                "account_rate_limit_tier": a.get("account_rate_limit_tier", ""),
+                "account_organization_name": a.get("account_organization_name", ""),
+                "account_uuid": a.get("account_uuid", ""),
+                "oauth_expires_at": a.get("oauth_expires_at"),
+                "oauth_rotation_count": a.get("oauth_rotation_count", 0),
+                "oauth_last_rotation_at": a.get("oauth_last_rotation_at", ""),
+                "installed_plugins": list(a.get("installed_plugins") or []),
+                "status_line_command": a.get("status_line_command", ""),
                 # lead msg#16005 — whole ``scitex-agent-container status
                 # --terse --json`` payload. Dashboard consumers (Agents
                 # tab, future dashboards) can key off
@@ -336,6 +350,14 @@ def get_agents(workspace_id: int | None = None) -> list[dict]:
                 "instance_id": a.get("instance_id", ""),
                 "uname": a.get("uname", ""),
                 "start_ts_unix": a.get("start_ts_unix"),
+                # todo#430: per-agent Claude API token telemetry windows.
+                # None when the collector has not yet pushed for this agent;
+                # dicts with input_tokens/cache_tokens/output_tokens/
+                # web_searches/web_fetches/turns once available.
+                "quota_15m": a.get("quota_15m"),
+                "quota_1h": a.get("quota_1h"),
+                "quota_24h": a.get("quota_24h"),
+                "quota_all": a.get("quota_all"),
             }
         )
     return result

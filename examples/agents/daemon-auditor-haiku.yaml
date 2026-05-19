@@ -1,0 +1,87 @@
+# Template: copy to ~/.scitex/orochi/agents/ and customize.
+#
+# daemon-auditor-haiku — fleet-wide ZOO/banned-phrase auditor (FR-M).
+#
+# Stage 1 ships **regex-only**, posting verdicts to ``#audit-shadow``
+# (or ``#general`` until head-nas provisions ``#audit-shadow``). 24h
+# soak; lead + ywatanabe review false-positives before promoting to
+# Stage 2 (origin react) / Stage 3 (origin react+reply).
+#
+# Pilot uses ``kind: Agent`` with ``worker_role`` label per lead
+# msg#23310 (defer the ``daemon`` kind to a separate
+# scitex-agent-container contributor; rename when that lands).
+apiVersion: cld-agent/v1
+kind: Agent
+metadata:
+  name: daemon-auditor-haiku
+  labels:
+    role: daemon
+    worker_role: daemon-auditor-haiku
+    team: orochi
+    cardinality: "1"
+    machine: CHANGEME
+    capabilities: zoo-audit,banned-phrase-detect,communication-discipline
+spec:
+  runtime: bash
+  workdir: ~/proj/scitex-orochi
+
+  remote:
+    host: CHANGEME_HOST
+    user: CHANGEME_USER
+
+  command:
+    # Long-lived subscriber; the audit loop is event-driven (each
+    # inbound message), not tick-driven, so there's no sleep here.
+    # Container/sac restarts on crash via the ``restart`` block.
+    - bash
+    - -lc
+    - "exec python -m scitex_orochi._daemons._auditor_haiku"
+
+  orochi:
+    enabled: true
+    hosts:
+      - CHANGEME_LAN_IP
+      - CHANGEME_DOMAIN
+    port: 8559
+    token_env: OROCHI_HUB_TOKEN
+    channels:
+      - "#general"
+      - "#heads"
+      - "#ywatanabe"
+    heartbeat_interval: 60
+
+  env:
+    CLAUDE_AGENT_ROLE: daemon
+    CLAUDE_AGENT_ID: daemon-auditor-haiku
+    OROCHI_HUB_HOST: scitex-orochi.com
+    OROCHI_HUB_PORT: "8559"
+    OROCHI_HUB_WS_PATH: /ws/agent/
+    OROCHI_HUB_TOKEN: ""
+
+    # Where verdict lines land. Flip to '#audit-shadow' once head-nas
+    # provisions it (lead msg#23336). Until then, '#general' so the
+    # loop is visible.
+    AUDITOR_PUBLISH_CHANNEL: "#general"
+
+    # Subscribed channels. Keep this in sync with ``orochi.channels``
+    # above — the env list is the operational source of truth, the
+    # ``orochi.channels`` list is for sac registration.
+    AUDITOR_SUBSCRIBE_CHANNELS: "#general,#heads,#ywatanabe"
+
+    # Stage 1: emit PASS lines so soak review has full coverage.
+    # Operator can flip to ``AUDITOR_FAIL_ONLY=1`` if shadow noise
+    # becomes a problem during soak.
+    AUDITOR_EMIT_PASS: "1"
+    AUDITOR_FAIL_ONLY: "0"
+
+  screen:
+    name: daemon-auditor-haiku
+
+  health:
+    enabled: true
+    interval: 60
+    method: multiplexer-alive
+
+  restart:
+    policy: on-failure
+    max_retries: 5
