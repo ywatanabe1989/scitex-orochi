@@ -1,10 +1,10 @@
-# Codecov config — scitex-orochi.
-#
-# `target: auto` because the package is still ramping up its coverage
-# baseline (the §0 subprocess-coverage wiring just landed). Switch to a
-# fixed ``90%`` target once a coverage-push session has lifted the
-# baseline past that line. See scitex-dev skill leaf
-# 02_package_11_ci-and-codecov.md.
+codecov:
+  require_ci_to_pass: false
+  # Treat develop as the de-facto default branch — main is a stable
+  # release mirror that only fast-forwards from develop, so develop
+  # is where coverage uploads land. This makes the unbranched badge
+  # endpoint (/graph/badge.svg) follow develop's value.
+  branch: develop
 
 coverage:
   status:
@@ -14,7 +14,16 @@ coverage:
         threshold: 1%
     patch:
       default:
-        target: auto
-        threshold: 1%
+        target: 80%
 
-comment: false
+ignore:
+  - "src/scitex_orochi/_sphinx_html/**"
+  - "src/scitex_orochi/_skills/**"
+  - "src/scitex_orochi/_completion.py"
+  - "src/scitex_orochi/_cli/_completion.py"
+  - "tests/**"
+  - "examples/**"
+
+comment:
+  layout: "diff, files"
+  require_changes: true
