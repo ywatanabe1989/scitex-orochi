@@ -17,6 +17,4 @@ coverage:
         target: auto
         threshold: 1%
 
-comment:
-  layout: "reach, diff, flags, files"
-  behavior: default
+comment: false
