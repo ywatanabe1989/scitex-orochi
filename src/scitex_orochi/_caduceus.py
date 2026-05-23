@@ -52,8 +52,6 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from ._caduceus_greeting import (
     DEFAULT_TIMEOUT_S as GREETING_TIMEOUT_S,
@@ -63,34 +61,41 @@ from ._caduceus_greeting import (
     format_greeting,
     should_ping,
 )
+from ._health import (
+    DEAD_THRESHOLD,
+    ESCALATE_THRESHOLD,
+    NUDGE_THRESHOLD,
+    HealthState,
+)
+from ._health import (
+    AgentSnapshot as AgentState,
+)
+from ._health import classify as _classify_state
 
 log = logging.getLogger("orochi.caduceus")
 
-# Severity thresholds (seconds)
-NUDGE_THRESHOLD = 120  # 2 min — soft nudge
-ESCALATE_THRESHOLD = 600  # 10 min — escalation
-DEAD_THRESHOLD = 300  # 5 min — heartbeat silence ⇒ probably dead
+# Re-exported from scitex_orochi._health so existing imports
+# (`from scitex_orochi._caduceus import classify, AgentState, ...`) keep
+# working. New code should import from ``._health`` directly.
+__all__ = [
+    "NUDGE_THRESHOLD",
+    "ESCALATE_THRESHOLD",
+    "DEAD_THRESHOLD",
+    "AgentState",
+    "HealthState",
+    "classify",
+]
 
 
-@dataclass
-class AgentState:
-    name: str
-    machine: str
-    status: str  # "online" | "offline"
-    liveness: str  # "online" | "idle" | "stale" | "offline"
-    idle_seconds: int | None
-    orochi_current_task: str
-    last_heartbeat: str | None  # ISO
+def classify(agent: AgentState) -> str:
+    """Return one of: ``ok``, ``idle``, ``stale``, ``dead``.
 
-    @property
-    def heartbeat_age_seconds(self) -> int | None:
-        if not self.last_heartbeat:
-            return None
-        try:
-            ts = datetime.fromisoformat(self.last_heartbeat.replace("Z", "+00:00"))
-        except ValueError:
-            return None
-        return int((datetime.now(timezone.utc) - ts).total_seconds())
+    Thin shim around :func:`scitex_orochi._health.classify` that
+    preserves the historical string return type. The HealthState enum
+    subclasses ``str`` so callers comparing against string literals
+    keep working.
+    """
+    return _classify_state(agent).value
 
 
 def _http_get_json(url: str, token: str | None = None, timeout: int = 5):
@@ -143,20 +148,6 @@ def fetch_agents(hub: str, token: str | None) -> list[AgentState]:
             )
         )
     return out
-
-
-def classify(agent: AgentState) -> str:
-    """Return one of: ok, idle, stale, dead, zombie."""
-    if agent.status == "offline":
-        return "dead"
-    hb_age = agent.heartbeat_age_seconds
-    if hb_age is not None and hb_age > DEAD_THRESHOLD:
-        return "dead"
-    if agent.liveness == "stale":
-        return "stale"
-    if agent.liveness == "idle" and agent.orochi_current_task:
-        return "idle"
-    return "ok"
 
 
 def heal_idle(hub: str, token: str | None, agent: AgentState) -> None:
@@ -330,6 +321,7 @@ def greeting_scan(
         log.debug("pong poll error: %s", exc)
     from datetime import datetime
     from datetime import timezone as _tz
+
     last_poll_iso[0] = datetime.now(_tz.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")
 
     expired = state.sweep_expired(now)
