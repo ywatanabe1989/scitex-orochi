@@ -3,7 +3,14 @@
 # `[tool.hatch.build.targets.wheel] packages` ships `src/scitex_orochi`,
 # `hub`, and `orochi` as separate wheel components. Plus `ts/` for
 # TypeScript source bundled into the wheel's `_ts/`.
+#
+# It is ALSO a Django app (`manage.py`, `orochi/` settings, websockets,
+# daemons, cron, dashboard) — hence `django`. The `config/`+`apps/`
+# "apps and config" migration (ADR 0002) is tracked separately; until it
+# lands, `deferred` opts out of the not-yet-canonical PS-103 reminders
+# while `audit-django` reports the DJ-* gaps.
 
 project-type:
   - pip
+  - django
   - deferred
