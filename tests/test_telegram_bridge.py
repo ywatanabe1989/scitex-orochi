@@ -1,4 +1,4 @@
-"""Auto-generated smoke test for scitex_orochi.telegram_bridge.
+"""Auto-generated smoke test for scitex_orochi._telegram_bridge.
 
 Replaces the prior placeholder-only stub (audit-project PS206). The
 test imports the target module — if the import fails, the test
@@ -14,4 +14,4 @@ import importlib
 
 def test_module_imports():
     """Smoke: target module imports without error."""
-    importlib.import_module('scitex_orochi.telegram_bridge')
+    importlib.import_module('scitex_orochi._telegram_bridge')
