@@ -163,7 +163,7 @@ def test_hub_redact_secrets_masks_dsn_userinfo() -> None:
             "hub/tests/views/api/test_agent_detail.py instead"
         )
     pytest.importorskip("django")
-    from hub.views.agent_detail import redact_secrets  # noqa: WPS433
+    from apps.hub.views.agent_detail import redact_secrets  # noqa: WPS433
 
     cases = [
         ("postgres://user:hunter2@db/orochi", "hunter2"),

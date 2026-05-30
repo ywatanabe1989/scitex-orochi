@@ -26,7 +26,7 @@ import pytest
 # The ``skipif`` marker degrades the test to a skip (not a failure) on
 # environments without Django installed (e.g. a minimal sdist
 # install), so this test never blocks a non-hub contributor's CI run.
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "orochi.settings")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 try:
     import django as _django
@@ -44,7 +44,7 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture
 def fresh_registry():
     """Reset the in-memory registry between tests (global state)."""
-    from hub.registry import _agents, _connections
+    from apps.hub.registry import _agents, _connections
 
     _agents.clear()
     _connections.clear()
@@ -94,8 +94,8 @@ def _legacy_metrics_payload() -> dict:
 
 def test_resources_aggregation_includes_new_fields(fresh_registry):
     """mba payload projects all fields the frontend needs for N/M display."""
-    from hub.registry import register_agent, update_heartbeat
-    from hub.views.api._resources import api_resources  # noqa: F401
+    from apps.hub.registry import register_agent, update_heartbeat
+    from apps.hub.views.api._resources import api_resources  # noqa: F401
 
     register_agent(
         "worker-mba", workspace_id=1, info={"machine": "mba", "agent_id": "worker-mba"}
@@ -103,7 +103,7 @@ def test_resources_aggregation_includes_new_fields(fresh_registry):
     update_heartbeat("worker-mba", _mba_metrics_payload())
 
     # Call the aggregation logic directly on the registry state.
-    from hub.registry import get_agents
+    from apps.hub.registry import get_agents
 
     agents = get_agents(workspace_id=1)
     assert agents, "agent should be present in registry"
@@ -139,7 +139,7 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     Uses the actual aggregation function to verify the rolling-deploy
     fallback (see the derive-on-aggregate block in _resources.py).
     """
-    from hub.registry import register_agent, update_heartbeat
+    from apps.hub.registry import register_agent, update_heartbeat
 
     register_agent(
         "legacy-worker",
@@ -149,7 +149,7 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     update_heartbeat("legacy-worker", _legacy_metrics_payload())
 
     # Simulate the aggregator's initial branch + online-update branch.
-    from hub.registry import get_agents
+    from apps.hub.registry import get_agents
 
     agents = get_agents(workspace_id=1)
     assert agents
@@ -157,7 +157,7 @@ def test_resources_aggregation_derives_mem_used_from_total_minus_free(
     # Force-online so the aggregator's online-update branch applies.
     a["status"] = "online"
 
-    from hub.views.api._resources import api_resources  # noqa: F401
+    from apps.hub.views.api._resources import api_resources  # noqa: F401
     # Manually replay the machine projection to avoid Django's login_required:
     metrics = a.get("metrics") or {}
 
