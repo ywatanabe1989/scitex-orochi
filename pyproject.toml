@@ -137,18 +137,19 @@ Repository = "https://github.com/ywatanabe1989/scitex-orochi"
 packages = ["src/scitex_orochi"]
 # Explicit data-file inclusion. Hatch ships `.py` by default; everything
 # else needs to be listed, or `pip install scitex-orochi` from PyPI ends
-# up without the `_skills/` .md files and without the bundled TypeScript
-# sidecar. todo#450 surfaced the _skills drift (8 files vs 44 in source)
-# — listing `_skills/**` explicitly makes the wheel a faithful copy of
-# the package tree for non-editable installs.
+# up without the `_skills/` .md files. todo#450 surfaced the _skills drift
+# (8 files vs 44 in source) — listing `_skills/**` explicitly makes the
+# wheel a faithful copy of the package tree for non-editable installs.
+# The TypeScript MCP channel sidecar lives at the repo-root `ts/` dir and
+# is run directly by Bun from the checkout (see
+# src/scitex_orochi/_agent_container_bridge/mcp.py::find_mcp_channel_ts);
+# it is intentionally NOT bundled into the wheel.
 artifacts = [
-    "_ts/**",
     "src/scitex_orochi/_skills/**",
 ]
 
 [tool.hatch.build.targets.sdist]
 artifacts = [
-    "src/scitex_orochi/_ts/**",
     "src/scitex_orochi/_skills/**",
 ]
 # Exclude developer-local virtualenvs and worktree caches so the sdist
