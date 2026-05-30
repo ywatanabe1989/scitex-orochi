@@ -62,17 +62,35 @@ dependencies = [
     # Cross-platform machine metrics (cpu/mem/disk/gpu) for heartbeats.
     # Replaces the /proc-only collector that returned empty fields on
     # macOS / Windows / WSL. ``get_metrics()`` is the public flat-dict API.
-    "scitex-resource>=0.2.0",
+    # SciTeX umbrella peer — ADR 0002 §5 uses ``>=`` floors (not ``==``
+    # exact pins) for co-released ecosystem members to avoid pip
+    # ResolutionImpossible. Floor = current published release.
+    "scitex-resource>=0.4.2",
     # Canonical local-state directory helper (project-scope override +
     # auto runtime/ seed creation). Per scitex-python skill
-    # 01_arch_06_local-state-directories.md.
-    "scitex-config>=0.3.0",
+    # 01_arch_06_local-state-directories.md. Umbrella peer — see above.
+    "scitex-config>=0.3.6",
 ]
 
 [project.optional-dependencies]
 mcp = ["fastmcp>=2.0"]
-agent-container = ["scitex-agent-container>=0.8.0"]
+# Optional graceful edge — the agent-container bridge degrades cleanly
+# when scitex-agent-container is absent (see
+# ``scitex_orochi._agent_container_bridge``). NOT folded into the web
+# stack: this extra carries no Django, so DJ-502 (no Django-bearing
+# sub-extras) does not apply.
+agent-container = ["scitex-agent-container>=0.21.3"]
 telegram = ["claude-code-telegrammer>=0.2.0"]
+# Canonical aggregate install target (ADR 0002 §5). ``[all]`` pulls the
+# whole runtime surface + optional integrations so a single
+# ``pip install scitex-orochi[all]`` gives a working hub. Listed flat
+# (not recursive ``scitex-orochi[mcp]`` references) to avoid the pip
+# resolver deadlock DJ-502 warns about.
+all = [
+    "fastmcp>=2.0",
+    "scitex-agent-container>=0.21.3",
+    "claude-code-telegrammer>=0.2.0",
+]
 dev = [
     "aiosqlite>=0.20",
     "deepeval>=1.0",
@@ -83,8 +101,8 @@ dev = [
     # in tests/conftest.py imports from child interpreters. See scitex-dev
     # skill leaf 05_development_06_subprocess-coverage.md.
     "pytest-cov>=4.0",
-    "scitex-agent-container>=0.8.0",
-    "scitex-dev>=0.11.7",
+    "scitex-agent-container>=0.21.3",
+    "scitex-dev>=0.15.0",
     "websockets>=12.0",
 ]
 docs = [
@@ -111,7 +129,12 @@ Homepage = "https://github.com/ywatanabe1989/scitex-orochi"
 Repository = "https://github.com/ywatanabe1989/scitex-orochi"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/scitex_orochi", "hub", "orochi"]
+# ADR 0002 §4 / DJ-402: the wheel ships ONLY the src-layout pip package.
+# The Django runtime (config/, apps/, templates/, static/) is deployed
+# from the repo checkout (docker COPY config/ apps/), never bundled into
+# the wheel — keeping the deployable project cleanly separate from the
+# shippable package.
+packages = ["src/scitex_orochi"]
 # Explicit data-file inclusion. Hatch ships `.py` by default; everything
 # else needs to be listed, or `pip install scitex-orochi` from PyPI ends
 # up without the `_skills/` .md files and without the bundled TypeScript
@@ -166,7 +189,7 @@ source = ["scitex_orochi"]
 concurrency = ["multiprocessing", "thread"]
 
 [tool.scitex-linter]
-library_dirs = ["src", "tests", "hub", "orochi"]
+library_dirs = ["src", "tests", "apps", "config"]
 
 [tool.ruff]
 line-length = 88
