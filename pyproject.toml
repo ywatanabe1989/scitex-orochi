@@ -127,6 +127,7 @@ scitex-orochi = "scitex_orochi"
 [project.urls]
 Homepage = "https://github.com/ywatanabe1989/scitex-orochi"
 Repository = "https://github.com/ywatanabe1989/scitex-orochi"
+Documentation = "https://scitex-orochi.readthedocs.io"
 
 [tool.hatch.build.targets.wheel]
 # ADR 0002 §4 / DJ-402: the wheel ships ONLY the src-layout pip package.

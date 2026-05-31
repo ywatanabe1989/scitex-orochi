@@ -1,6 +1,8 @@
 ---
-name: agent-launch-discipline-spartan
-description: Spartan-specific preconditions for scitex-agent-container launch — module load chain, libpython availability, and fresh-host registry bypass. Codified from 2026-04-16 recovery incidents (todo#461).
+description: |
+  [TOPIC] Spartan agent-launch discipline
+  [DETAILS] Spartan-specific preconditions for scitex-agent-container launch — module load chain, libpython availability, and fresh-host registry bypass. Codified from 2026-04-16 recovery incidents (todo#461).
+tags: [scitex-orochi-agent-launch-discipline-spartan]
 ---
 
 # Agent Launch Discipline — Spartan (and Module-Based HPC)

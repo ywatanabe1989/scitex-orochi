@@ -14,3 +14,23 @@ project-type:
   - pip
   - django
   - deferred
+
+# ADR 0002 config/+apps/ migration HAS landed on develop (config/ and apps/
+# exist at repo root; audit-django passes). The following `audit.skip` entries
+# are deferrals of PS rules that cannot be safely fixed in-tree right now:
+audit:
+  skip:
+    # PS-108 / PS-108b — src/ flat-layout clustering. Fixing requires a large
+    # src/ reorganization (moving 20+ top-level modules + the web_* cluster)
+    # immediately after the Django apps/+config/ restructure; deferred to avoid
+    # stacking a risky reshuffle on the just-migrated tree.
+    - PS-108
+    - PS-108b
+    # PS-121 — RTD compiled-docs bundling (src/<pkg>/_sphinx_html/index.html).
+    # Infra/CI concern: the RTD HTML is built in CI, not committed to src/.
+    - PS-121
+    # PS-168 — per-package secret-name prefixing (SCITEX_OROCHI_*). Renaming the
+    # workflow YAML alone breaks CI because repo secrets are write-only; the
+    # operator must first create the prefixed secrets in repo settings. Deferred
+    # with that hand-off note.
+    - PS-168
