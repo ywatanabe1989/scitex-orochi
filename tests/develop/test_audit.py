@@ -48,7 +48,7 @@ def test_audit_all_clean():
             # dictionary, read-/mutating-verb flags (--json / --dry-run /
             # --yes), help examples, required skills tools, and Python-API
             # <-> MCP-tool parity. orochi's CLI predates these rules; the
-            # noun-verb migration is a large, separate campaign (skill
+            # noun-verb migration is a large, separate campaign (skills
             # 56_/81_convention-cli-*). Masked the same way scitex-hub
             # masks §2/§4/§5/§6/§6b so the gate stays green while the CLI
             # migration lands incrementally. The CLI itself works and is
@@ -62,5 +62,11 @@ def test_audit_all_clean():
             "§6",
             "§6b",
             "§10",
+            # The `deferred` project-type emits an informational
+            # `[defer] … PS-103 finding(s) suppressed` notice on stdout.
+            # It is not a violation, but the gate's line-scanner treats
+            # any unmatched `[`-prefixed line as blocking, so it must be
+            # acknowledged here.
+            "defer",
         ),
     )
