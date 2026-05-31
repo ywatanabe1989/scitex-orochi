@@ -88,6 +88,30 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in ("true", "1", "yes")
 
+# ``TESTING`` is True whenever the process is running the Django/pytest test
+# suite. The Django test runner injects ``test`` into ``sys.argv``; pytest sets
+# ``PYTEST_CURRENT_TEST`` once a test starts but, more reliably for app-ready
+# time, runs under a ``pytest``-named entrypoint. We detect both so background
+# workers (e.g. the scheduled-action thread started in ``HubConfig.ready``)
+# never race the ephemeral, per-run test database.
+import sys as _sys  # noqa: E402
+
+TESTING = (
+    "test" in _sys.argv
+    or "PYTEST_CURRENT_TEST" in os.environ
+    or os.path.basename(_sys.argv[0] if _sys.argv else "").startswith("pytest")
+)
+
+# Whether ``HubConfig.ready`` should spin up the scheduled-action background
+# thread. Off under tests by default (the per-run test DB is created/destroyed
+# out from under a long-lived thread, which surfaces as transient
+# ``no such table: hub_scheduledaction`` / ``database is locked`` errors).
+# Operators can force-enable/disable via the env var.
+RUN_BACKGROUND_SCHEDULER = os.environ.get(
+    "SCITEX_OROCHI_RUN_SCHEDULER",
+    "false" if TESTING else "true",
+).lower() in ("true", "1", "yes")
+
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "*").split(",")
 
 CSRF_TRUSTED_ORIGINS = [

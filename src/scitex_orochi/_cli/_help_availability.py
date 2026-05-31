@@ -384,6 +384,7 @@ class AvailabilityAnnotatedGroup(click.Group):
                 host=host,
                 port=port,
                 probe_map=self._availability_probe_map,
+                total_budget_s=mod.TOTAL_BUDGET_S,
                 hub_prober=mod.probe_hub,
                 daemon_prober=mod.probe_local_daemon,
             )

@@ -42,6 +42,38 @@ def _clear_cache() -> None:
     reset_probe_cache()
 
 
+@pytest.fixture(autouse=True)
+def _generous_probe_budget() -> None:
+    """Pin a generous total probe budget for the deterministic suffix tests.
+
+    The suffix-presence/absence tests below drive the real ``format_commands``
+    rendering path with hand-substituted, effectively-instant probe functions,
+    so the ``(Available Now)`` suffix must depend *only* on the reachability
+    those probes report — never on wall-clock timing.
+
+    With the production default of 100 ms, however, the parallel probe pool in
+    ``format_commands`` is still gated by a wall-clock deadline. On a
+    heavily-loaded CI runner, thread-scheduling jitter can let that deadline
+    elapse before every (instant) probe future is collected, so an arbitrary
+    noun (observed in CI: ``push``) is force-marked unreachable and silently
+    loses its suffix — a genuine nondeterministic CI flake unrelated to the
+    code under test.
+
+    Raising the module-level budget for the duration of each test removes that
+    timing race without weakening any assertion: the reachability values are
+    still whatever the test's probe functions return. The dedicated
+    ``test_run_probes_*`` timing tests call ``run_probes`` directly with an
+    explicit budget and are unaffected. This is a real attribute swap with a
+    save/restore teardown — no mock object is involved.
+    """
+    original = ha.TOTAL_BUDGET_S
+    ha.TOTAL_BUDGET_S = 30.0
+    try:
+        yield
+    finally:
+        ha.TOTAL_BUDGET_S = original
+
+
 # ---------------------------------------------------------------------------
 # Builder: a minimal click group that mirrors the real registration shape
 # ---------------------------------------------------------------------------
@@ -84,8 +116,9 @@ def test_suffix_appears_when_hub_reachable() -> None:
     root = _build_group()
     runner = CliRunner()
 
-    with patch.object(ha, "probe_hub", return_value=True), patch.object(
-        ha, "probe_local_daemon", return_value=True
+    with (
+        patch.object(ha, "probe_hub", return_value=True),
+        patch.object(ha, "probe_local_daemon", return_value=True),
     ):
         result = runner.invoke(root, ["--help"], obj={"host": "h", "port": 9559})
 
@@ -107,8 +140,9 @@ def test_suffix_absent_when_hub_unreachable() -> None:
     root = _build_group()
     runner = CliRunner()
 
-    with patch.object(ha, "probe_hub", return_value=False), patch.object(
-        ha, "probe_local_daemon", return_value=False
+    with (
+        patch.object(ha, "probe_hub", return_value=False),
+        patch.object(ha, "probe_local_daemon", return_value=False),
     ):
         result = runner.invoke(root, ["--help"], obj={"host": "h", "port": 9559})
 
@@ -125,8 +159,9 @@ def test_pure_local_never_gets_suffix() -> None:
     root = _build_group()
     runner = CliRunner()
 
-    with patch.object(ha, "probe_hub", return_value=True), patch.object(
-        ha, "probe_local_daemon", return_value=True
+    with (
+        patch.object(ha, "probe_hub", return_value=True),
+        patch.object(ha, "probe_local_daemon", return_value=True),
     ):
         result = runner.invoke(root, ["--help"], obj={"host": "h", "port": 9559})
 
@@ -146,8 +181,9 @@ def test_daemon_probe_independent_of_hub() -> None:
     runner = CliRunner()
 
     # Hub down but daemon up -> cron should be annotated; agent should not.
-    with patch.object(ha, "probe_hub", return_value=False), patch.object(
-        ha, "probe_local_daemon", return_value=True
+    with (
+        patch.object(ha, "probe_hub", return_value=False),
+        patch.object(ha, "probe_local_daemon", return_value=True),
     ):
         result = runner.invoke(root, ["--help"], obj={"host": "h", "port": 9559})
 
@@ -296,18 +332,15 @@ def test_step_b_noun_suffix_present_when_hub_reachable(noun: str) -> None:
     from scitex_orochi._cli._main import orochi
 
     runner = CliRunner()
-    with patch.object(ha, "probe_hub", return_value=True), patch.object(
-        ha, "probe_local_daemon", return_value=True
+    with (
+        patch.object(ha, "probe_hub", return_value=True),
+        patch.object(ha, "probe_local_daemon", return_value=True),
     ):
         result = runner.invoke(orochi, ["--help"], obj={"host": "h", "port": 9559})
 
     assert result.exit_code == 0, result.output
     line = next(
-        (
-            ln
-            for ln in result.output.splitlines()
-            if ln.lstrip().startswith(noun + " ")
-        ),
+        (ln for ln in result.output.splitlines() if ln.lstrip().startswith(noun + " ")),
         "",
     )
     assert AVAILABLE_SUFFIX in line, (
@@ -323,23 +356,19 @@ def test_step_b_noun_suffix_absent_when_hub_unreachable(noun: str) -> None:
     from scitex_orochi._cli._main import orochi
 
     runner = CliRunner()
-    with patch.object(ha, "probe_hub", return_value=False), patch.object(
-        ha, "probe_local_daemon", return_value=False
+    with (
+        patch.object(ha, "probe_hub", return_value=False),
+        patch.object(ha, "probe_local_daemon", return_value=False),
     ):
         result = runner.invoke(orochi, ["--help"], obj={"host": "h", "port": 9559})
 
     assert result.exit_code == 0, result.output
     line = next(
-        (
-            ln
-            for ln in result.output.splitlines()
-            if ln.lstrip().startswith(noun + " ")
-        ),
+        (ln for ln in result.output.splitlines() if ln.lstrip().startswith(noun + " ")),
         "",
     )
     assert AVAILABLE_SUFFIX not in line, (
-        f"{noun!r} must NOT show the suffix when hub is unreachable; "
-        f"got line {line!r}"
+        f"{noun!r} must NOT show the suffix when hub is unreachable; got line {line!r}"
     )
 
 
@@ -350,18 +379,15 @@ def test_step_b_pure_local_noun_never_annotated(noun: str) -> None:
     from scitex_orochi._cli._main import orochi
 
     runner = CliRunner()
-    with patch.object(ha, "probe_hub", return_value=True), patch.object(
-        ha, "probe_local_daemon", return_value=True
+    with (
+        patch.object(ha, "probe_hub", return_value=True),
+        patch.object(ha, "probe_local_daemon", return_value=True),
     ):
         result = runner.invoke(orochi, ["--help"], obj={"host": "h", "port": 9559})
 
     assert result.exit_code == 0, result.output
     line = next(
-        (
-            ln
-            for ln in result.output.splitlines()
-            if ln.lstrip().startswith(noun + " ")
-        ),
+        (ln for ln in result.output.splitlines() if ln.lstrip().startswith(noun + " ")),
         "",
     )
     assert AVAILABLE_SUFFIX not in line, (
