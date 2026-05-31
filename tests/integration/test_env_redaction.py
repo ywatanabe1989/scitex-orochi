@@ -23,7 +23,7 @@ import pytest
 # without importing the whole scitex_orochi package — the test should
 # exercise the redaction unit in isolation.
 _FILES_PATH = (
-    Path(__file__).resolve().parent.parent
+    Path(__file__).resolve().parent.parent.parent
     / "scripts"
     / "client"
     / "_collect_agent_metadata"

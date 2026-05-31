@@ -22,7 +22,7 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 PROBE = REPO_ROOT / "scripts" / "client" / "hungry-signal.sh"
 MACHINES_YAML_FIXTURE = textwrap.dedent(
     """\

@@ -18,7 +18,7 @@ import pytest
 
 # scripts/client isn't a proper package in the repo — add it to path so
 # the `_collect_agent_metadata` module is importable under its current layout.
-_REPO_ROOT = Path(__file__).resolve().parents[1]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_REPO_ROOT / "scripts" / "client"))
 
 from _collect_agent_metadata import _classifier  # noqa: E402

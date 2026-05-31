@@ -26,7 +26,7 @@ import pytest
 from scitex_orochi._models import HEARTBEAT_FIELD_NAMES, HEARTBEAT_FIELDS
 
 _HEARTBEAT_CMD_PATH = (
-    Path(__file__).resolve().parent.parent
+    Path(__file__).resolve().parent.parent.parent
     / "src"
     / "scitex_orochi"
     / "_cli"

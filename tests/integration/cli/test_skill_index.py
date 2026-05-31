@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 SKILLS_DIR = REPO_ROOT / "src" / "scitex_orochi" / "_skills"
 DOCS_CLI = REPO_ROOT / "docs" / "cli.md"
 CANONICAL_CLI_CONV = SKILLS_DIR / "scitex-orochi" / "20_convention-cli.md"
