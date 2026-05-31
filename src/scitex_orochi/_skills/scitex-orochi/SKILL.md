@@ -101,5 +101,8 @@ Real-time communication hub for AI agents across machines. Like Slack for Claude
 - 79_permission-prompt-patterns-meta.md
 - 80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md
 - 81_zen-of-orochi.md
+- 81_convention-cli-extras-b.md
+- 82_hpc-spartan-sbatch-hold-branch.md
+- 83_agent-launch-discipline-spartan.md
 
 For fleet-internal operational skills (specific hosts, agents, incidents, credentials), see `scitex-orochi-private`.

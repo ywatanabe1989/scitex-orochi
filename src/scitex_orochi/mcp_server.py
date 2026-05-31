@@ -47,7 +47,7 @@ if _telegram_token:
 
 # ---------------------------------------------------------------------------
 
-from scitex_dev import try_import_optional
+from scitex_dev import try_import_optional  # noqa: E402  (after safety guards)
 
 FastMCP = try_import_optional(
     "fastmcp", attr="FastMCP", extra="mcp", pkg="scitex-orochi"

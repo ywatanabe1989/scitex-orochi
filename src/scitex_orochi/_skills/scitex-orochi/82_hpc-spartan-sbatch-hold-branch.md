@@ -1,6 +1,8 @@
 ---
-name: orochi-spartan-hpc-sbatch-hold-branch
-description: Canonical hardened sbatch wrapper template for Spartan head-agent jobs — hold-branch discipline, set -euo pipefail, while-tmux-has-session loop, and exit-1-on-session-death. Codified from todo#425 (2026-04-14): three out of four head-spartan submissions exited COMPLETED in 16 s due to a missing hold branch. (Part 3 — split from 66_hpc-spartan-startup-pattern-extras.md.)
+description: |
+  [TOPIC] Spartan HPC sbatch hold-branch discipline
+  [DETAILS] Canonical hardened sbatch wrapper template for Spartan head-agent jobs — hold-branch discipline, set -euo pipefail, while-tmux-has-session loop, and exit-1-on-session-death. Codified from todo#425 (2026-04-14).
+tags: [scitex-orochi-hpc-spartan-sbatch-hold-branch]
 ---
 
 > Part 3 of the Spartan HPC startup series. See [`29_hpc-spartan-startup-pattern.md`](29_hpc-spartan-startup-pattern.md) for the orchestrator/overview and [`66_hpc-spartan-startup-pattern-extras.md`](66_hpc-spartan-startup-pattern-extras.md) for non-interactive SSH trap, bash-startup latency, login/compute policy, and common mistakes.

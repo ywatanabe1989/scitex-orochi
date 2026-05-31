@@ -31,7 +31,7 @@ from pathlib import Path
 import pytest
 
 # _collect_agent_metadata isn't installed into site-packages — make it importable.
-_AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
+_AGENT_META_DIR = Path(__file__).resolve().parents[2] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 

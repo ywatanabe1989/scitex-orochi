@@ -10,6 +10,9 @@ from pathlib import Path
 
 import click
 
+# Optional scitex-agent-container integration
+from scitex_dev import try_import_optional
+
 from scitex_orochi._config_loader import (
     ConfigError,
     _find_head,
@@ -17,9 +20,6 @@ from scitex_orochi._config_loader import (
     load_config,
     render_template,
 )
-
-# Optional scitex-agent-container integration
-from scitex_dev import try_import_optional
 
 _ac_agent_start = try_import_optional(
     "scitex_agent_container",

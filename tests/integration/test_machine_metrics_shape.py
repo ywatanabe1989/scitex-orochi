@@ -25,7 +25,7 @@ from pathlib import Path
 # Agent package lives under scripts/client/ — add to sys.path so
 # the test can import without pip-installing (same pattern as
 # test_push_payload_sac_status.py).
-_AGENT_META_DIR = Path(__file__).resolve().parents[1] / "scripts" / "client"
+_AGENT_META_DIR = Path(__file__).resolve().parents[2] / "scripts" / "client"
 if str(_AGENT_META_DIR) not in sys.path:
     sys.path.insert(0, str(_AGENT_META_DIR))
 

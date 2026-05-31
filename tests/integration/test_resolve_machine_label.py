@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 _MODULE_PATH = (
-    Path(__file__).resolve().parents[1]
+    Path(__file__).resolve().parents[2]
     / "scripts"
     / "client"
     / "_collect_agent_metadata"

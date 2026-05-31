@@ -1,6 +1,8 @@
 ---
-name: orochi-cli-conventions-part-3
-description: SciTeX CLI conventions §§5-13 — standard flags, exit codes, output streams, help text, env vars, MCP parity, non-interactive rule, audit checklist, cross-references. Continuation of 56_convention-cli-extras.md.
+description: |
+  [TOPIC] CLI Conventions (Orochi Fleet) part 3
+  [DETAILS] SciTeX CLI conventions sections 5-13 — standard flags, exit codes, output streams, help text, env vars, MCP parity, non-interactive rule, audit checklist, cross-references. Continuation of 56_convention-cli-extras.md.
+tags: [scitex-orochi-convention-cli-extras-b]
 ---
 
 # CLI Conventions (SciTeX / Orochi Fleet) — §§ 5–13
