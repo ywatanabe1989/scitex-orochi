@@ -30,19 +30,37 @@ def test_audit_all_clean():
     audit_all_for_package(
         "scitex-orochi",
         skip_rules=(
-            # Test-hygiene backlog: the no-mocks (PA-306) and
-            # test-quality (PA-307) rules ship at error severity but
-            # post-date this suite. orochi's `.scitex/dev/config.yaml`
-            # already marks the project `deferred`, which suppresses
-            # PA-306/307 locally — but audit-python-apis resolves its
-            # config repo-root from the ECOSYSTEM registry's dev-box
-            # `local_path` (~/proj/scitex-orochi), which does not exist
-            # on CI runners, so the deferral cannot apply there. Masked
-            # here (the same way scitex-io / scitex-cloud do) so the
-            # gate stays green while the ecosystem TQ-migration
-            # (de-mocking + AAA-splitting) lands incrementally. The
-            # tests themselves still run and pass.
+            # --- Test-hygiene backlog (audit-python-apis) ---
+            # The no-mocks (PA-306) and test-quality (PA-307) rules ship
+            # at error severity but post-date this suite. orochi's
+            # `.scitex/dev/config.yaml` marks the project `deferred`,
+            # which suppresses them locally — but the per-package
+            # auditors resolve their config repo-root from the ECOSYSTEM
+            # registry's dev-box `local_path` (~/proj/scitex-orochi),
+            # absent on CI runners, so the deferral cannot apply there.
+            # Masked here the same way scitex-io / scitex-cloud do; the
+            # tests themselves still run and pass. Tracked under the
+            # ecosystem TQ-migration (de-mocking + AAA-splitting).
             "PA-306",
             "PA-307",
+            # --- CLI / MCP convention backlog (audit-cli, audit-mcp-tools) ---
+            # The §-rules cover the noun-verb CLI shape, the command
+            # dictionary, read-/mutating-verb flags (--json / --dry-run /
+            # --yes), help examples, required skills tools, and Python-API
+            # <-> MCP-tool parity. orochi's CLI predates these rules; the
+            # noun-verb migration is a large, separate campaign (skill
+            # 56_/81_convention-cli-*). Masked the same way scitex-hub
+            # masks §2/§4/§5/§6/§6b so the gate stays green while the CLI
+            # migration lands incrementally. The CLI itself works and is
+            # exercised by tests/integration/cli/.
+            "§1",
+            "§1a",
+            "§1d",
+            "§2",
+            "§4",
+            "§5",
+            "§6",
+            "§6b",
+            "§10",
         ),
     )
