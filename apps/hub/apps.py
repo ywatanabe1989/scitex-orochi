@@ -95,9 +95,23 @@ class HubConfig(AppConfig):
 
     def ready(self):
         # Importing the module registers the post_save handlers.
+        from django.conf import settings
+
         from apps.hub import signals  # noqa: F401
 
         # Start scheduled-action background thread (issue #95).
+        #
+        # Skipped under the test suite: the long-lived loop queries
+        # ``ScheduledAction`` on its own connection, but the Django/pytest test
+        # runner creates and tears down an ephemeral per-run database around it.
+        # The thread then races that lifecycle and intermittently raises
+        # ``no such table: hub_scheduledaction`` / ``database is locked``. The
+        # ``RUN_BACKGROUND_SCHEDULER`` setting (False under tests by default,
+        # see ``settings_shared``) gates it; operators can still force it via
+        # ``SCITEX_OROCHI_RUN_SCHEDULER``.
+        if not getattr(settings, "RUN_BACKGROUND_SCHEDULER", True):
+            return
+
         # Guard against double-start during Django auto-reload.
         if os.environ.get("RUN_MAIN") != "true" and not os.environ.get(
             "SCHEDULER_STARTED"
