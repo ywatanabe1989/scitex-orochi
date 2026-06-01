@@ -22,7 +22,13 @@ see ``/work/manage.py``), call ``django.setup()``, and degrade to a
 We do NOT depend on ``pytest-django``. Instead each test runs inside a
 Django transaction that is rolled back at teardown — the same isolation
 ``TestCase`` gives you, but composable with pytest fixtures (``tmp_path``,
-``monkeypatch``, ``caplog``).
+``caplog``).
+
+Mock-policy note (PA-306): the project's audit forbids the ``monkeypatch``
+fixture in tests. We do all env-var manipulation by direct
+``os.environ[...] = ...`` writes inside a fixture that records the prior
+value and restores it on teardown — no mocking, no fixture-magic
+patching, just plain dict semantics.
 """
 
 from __future__ import annotations
@@ -137,18 +143,31 @@ def db_transaction():
 
 
 @pytest.fixture
-def agents_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, db_transaction) -> Path:
+def agents_dir(tmp_path: Path, db_transaction) -> Path:
     """Fresh empty sac agents inventory rooted in tmp_path, exposed
     to the daemon via the documented env var. Each test gets its own
     isolated workspace so name-collision can't leak across runs.
+
+    Env-var lifecycle is managed by direct ``os.environ`` writes with
+    a try/yield/finally restore pass — no ``monkeypatch`` fixture
+    (PA-306 forbids it under this project's audit).
     """
     d = tmp_path / "sac-agents"
     d.mkdir()
-    monkeypatch.setenv("SCITEX_AGENT_CONTAINER_AGENTS_DIR", str(d))
-    monkeypatch.setenv(
-        "SCITEX_OROCHI_SAC_SYNC_WORKSPACE", f"reconciler-test-{tmp_path.name}"
-    )
-    return d
+    overrides = {
+        "SCITEX_AGENT_CONTAINER_AGENTS_DIR": str(d),
+        "SCITEX_OROCHI_SAC_SYNC_WORKSPACE": f"reconciler-test-{tmp_path.name}",
+    }
+    saved = {k: os.environ.get(k) for k in overrides}
+    os.environ.update(overrides)
+    try:
+        yield d
+    finally:
+        for k, prior in saved.items():
+            if prior is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = prior
 
 
 def _ws():
