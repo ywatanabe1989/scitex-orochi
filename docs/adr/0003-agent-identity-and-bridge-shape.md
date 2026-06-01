@@ -256,38 +256,107 @@ A separate smell: `dispatches` is **not** in `KNOWN_TABLES` (the
 invisible to operators via the CLI. The outbound ledger exists but
 the user surface to inspect it is closed.
 
-### Proposal — orochi `Message` is canonical; sac demoted to local buffer
+### Proposal — sac is canonical; orochi `Message` is demoted to ephemeral cache
+
+**Revised 2026-06-01 after operator msg #82** ("シングルソースオブトゥルース
+ということで、SA Cが持っているものを使う。もしSA C側に拡張するためのポートが
+ないならそれを作ってもらうように依頼するっていうのもそうですし、まぁきれいに
+大蛇と分けてくれればと思います。"):
+
+The earlier draft of this section made orochi `Message` canonical for
+the wrong reason ("it's convenient — has Django joins, a UI, a
+ChannelMembership shape"). That violates the north star. The
+operator's correction restores SoC consistency with Decision 2 (sac
+filesystem inventory = canonical for identity): **sac is canonical for
+data; orochi is canonical only for its OWN concept of channels +
+membership.** Conversation bodies belong to sac. orochi must read
+sac, not duplicate sac.
 
 | Store | After this decision |
 |---|---|
-| **orochi `Message`** | **Canonical** source of truth for "agent A said X to agent B at T". Single-fleet, queryable, already shaped for `ChannelMembership` joins. |
-| sac `channel_events` | Demote to **host-local SSE-replay buffer**. Its docstring (`_state/state_db_channel.py:1-34`) already claims this role; the demote is making it formal. Add TTL sweep: delete rows older than 7 days with `delivered_at IS NOT NULL`, gated on an orochi-push-acked watermark (to be added in a Phase-2B PR). Until that watermark mechanism exists, retention stays unbounded — an explicit known cost. |
-| sac `turns` | **Local diagnostic projection.** Not synced to orochi. Document that "full conversation reconstruction" goes through orochi, not by joining sac state.db files. Add a 7-day uniform retention sweep. |
-| sac `dispatches` | **Local diagnostic projection.** Same retention story. Sac-side cleanup ticket: add `"dispatches"` to `KNOWN_TABLES` in `_state/state_db.py:330` so `sac db query --table=dispatches` works. |
-| sac `session.jsonl` | **Unchanged.** Claude-SDK-native per-agent transcript; orochi has no equivalent. |
+| **sac `channel_events`** | **Canonical** source of truth for "agent A said X to agent B at T". Already exists on every sac host. orochi reads from it via new sac extension ports (see below). |
+| sac `turns` + `dispatches` | Local diagnostic projections (unchanged shape; cross-host SSH for forensics is fine). Sac-side ticket: add `"dispatches"` to `KNOWN_TABLES`. Retention policy is a sac concern, not orochi's. |
+| sac `session.jsonl` | Unchanged. Claude-SDK-native per-agent transcript. |
+| **orochi `Message`** | **Demote to ephemeral render cache** (or eliminate). orochi stops persisting message bodies in its own DB. The WS push from sac stays as an ephemeral signal for live-render; history queries from the dashboard route through new sac extension ports. |
+| **orochi `ChannelMembership`** | **Canonical (unchanged).** Channels are an orochi concept (a comms-layer routing/grouping artifact); sac has no native equivalent. orochi keeps owning channel definitions + memberships, plus their ACLs. |
+
+### Sac-side extension ports orochi will need (request for proj-scitex-agent-container)
+
+Without these, orochi cannot replace its own `Message` reads with sac
+reads. Routing these to the sac project via the appendix:
+
+1. **`GET /v1/fleet/messages`** — fleet-wide aggregation across hosts.
+   Query: `?agents=a,b,c&since_ts=T&limit=N&kind=message`. Returns the
+   `channel_events` rows for those agents from every host in the
+   fleet, merged by `ts`, with the full envelope. Used by orochi's
+   dashboard to render channel history.
+2. **`GET /v1/agent/<name>/messages?since_id=N&limit=N`** — single-host
+   pull cursor. Returns `channel_events` for one agent past the last
+   id orochi has seen. Used by the orochi-side ephemeral cache to
+   replay missed messages on WS reconnect (replaces the orochi-DB
+   write).
+3. **`GET /v1/fleet/messages/search?q=...&channel=...&since_ts=...`** —
+   server-side search over `channel_events.content` + `meta_json`.
+   Used by the dashboard search box. Without this, orochi would need
+   to either pull everything (linear) or keep its own search index
+   (back to the duplicate-storage problem).
+4. **`HEAD /v1/fleet/messages?since_ts=T`** — cheap "has anything
+   changed since T" probe for the dashboard's polling fallback when WS
+   is unavailable.
+
+These four ports together give orochi everything it needs to be a
+true projection of sac's storage. Until they exist, orochi keeps its
+`Message` writes as an interim measure; the migration sequencing is in
+the Phases table.
+
+### What orochi keeps doing
+
+- WS push from sac arrives -> emit to subscribed dashboards/clients
+  immediately (live render). DO NOT persist on orochi.
+- ChannelMembership and channel ACLs: orochi-only.
+- Aggregation across hosts on behalf of the dashboard: route to
+  `GET /v1/fleet/messages` (above).
+- Search: route to `GET /v1/fleet/messages/search` (above).
+
+### What orochi stops doing
+
+- `apps/hub/models/_messaging.py:Message` writes on every WS-push
+  arrival. The model becomes either (a) a thin in-memory cache, or
+  (b) deleted entirely. Choice depends on dashboard latency budget;
+  default lean is (b).
+- Owning conversation retention. sac sets retention on
+  `channel_events`. orochi stops having a retention policy because it
+  no longer stores the data.
 
 ### Out of scope (this decision, this ADR)
 
-- Cross-host sync of `dispatches` / `turns` — operator can still
-  `ssh + sac db query` per host for forensics.
-- Migrating sac `session.jsonl` into orochi — Claude SDK owns that file
-  format, orochi has no equivalent.
+- Cross-host replication of `dispatches`/`turns` — operator can still
+  `ssh + sac db query` per host for forensics. Aggregation is only
+  promised for `channel_events`.
+- Migrating sac `session.jsonl` into orochi — Claude SDK owns that
+  file format and orochi has no equivalent.
+- Internal sac retention policy for `channel_events` — that is a sac
+  concern, not orochi's. We do NOT depend on a specific TTL from sac;
+  orochi tolerates whatever sac configures (queries become 404 / empty
+  past the TTL boundary). The orochi push-ack watermark idea in the
+  earlier draft is dropped: orochi has no authority to gate sac's GC.
 
 ### Phases (added to the table below)
 
-- Phase 2B (new): orochi-side push-ack watermark API
-  (`/api/registry/agents/<name>/message-ack?max_orochi_id=N`) so sac
-  knows what it can safely GC. Sac-side TTL sweep lands as a parallel
-  PR routed to proj-scitex-agent-container.
+- Phase 2B-prereq (sac side, routed to proj-scitex-agent-container):
+  implement the 4 extension ports listed above. Without these,
+  Phase 2B-orochi cannot proceed.
+- Phase 2B-orochi: stop persisting `Message` rows; route history /
+  search queries through the new sac ports; make `Message` an in-memory
+  cache (or remove). Migration includes orochi sqlite cleanup + Django
+  model deprecation.
 
-### Sac-side cleanup tickets (handed off via appendix)
+### Sac-side tickets (handed off via appendix)
 
-- `_state/state_db.py:330` — add `"dispatches"` to `KNOWN_TABLES`.
-- `_state/state_db_gc.py` — add `channel_events` / `turns` / `dispatches`
-  retention sweep (7-day default, env-overridable).
-- `_state/state_db_channel.py:1-34` — promote the "durability buffer
-  for SSE replay" line into the docstring's first paragraph; remove
-  any implication that this is the authoritative log.
+Three of these (KNOWN_TABLES, gc sweep, docstring) are retained from
+the earlier draft for sac's own hygiene. Four new ones are the
+extension ports orochi needs to actually replace its own `Message`
+storage.
 
 ---
 
@@ -384,9 +453,13 @@ scope. Routing to proj-scitex-agent-container per lead's a2a:
 | `scitex-agent-container/src/scitex_agent_container/runtimes/settings_json.py:25` | docstring says `~/.scitex/orochi/templates/...`; code at L160-162 uses `~/.scitex/agent-container/templates/...`. | Docstring typo fix. |
 | `scitex-agent-container/src/scitex_agent_container/cli_pkg/listen_cmds.py:11,200-201` | CLI error points operators to `SAC_OROCHI_SCOPES.md §4.4` — file lives only at `GITIGNORED/.old/`. | Remove pointer or restore doc. |
 | `scitex-agent-container/src/scitex_agent_container/runtimes/settings_json.py:153` | Hardcoded `mcp__scitex-orochi__*` permission glob in sac's claude-seed. sac is meant to be orochi-agnostic. | Either move the glob into orochi's bridge (where it would belong) or accept that the seed is a documented per-installation customisation point. |
-| `scitex-agent-container/src/scitex_agent_container/_state/state_db.py:330` | `dispatches` table is not in `KNOWN_TABLES`. Operators cannot query the sender-side outbound ledger via `sac db query --table=dispatches`. | Add `"dispatches"` to the allow-list. (Decision 2-B prerequisite.) |
-| `scitex-agent-container/src/scitex_agent_container/_state/state_db_gc.py` | No retention sweep for `channel_events` / `turns` / `dispatches`; unbounded growth in long-running fleets. | Add 7-day default sweep (env-overridable). Channel-events sweep gated on the orochi-push-ack watermark from Phase 2B. (Decision 2-B amendment.) |
-| `scitex-agent-container/src/scitex_agent_container/_state/state_db_channel.py:1-34` | Docstring describes `channel_events` as durable conversation log; under Decision 2-B it is demoted to "host-local SSE-replay buffer". | Update docstring's first paragraph to match Decision 2-B framing; remove any implication of authoritative log. |
+| `scitex-agent-container/src/scitex_agent_container/_state/state_db.py:330` | `dispatches` table is not in `KNOWN_TABLES`. Operators cannot query the sender-side outbound ledger via `sac db query --table=dispatches`. | Add `"dispatches"` to the allow-list. (Decision 2-B hygiene; not blocking.) |
+| `scitex-agent-container/src/scitex_agent_container/_state/state_db_gc.py` | No retention sweep for `channel_events` / `turns` / `dispatches`; unbounded growth in long-running fleets. | Decision: sac sets its own retention. orochi tolerates whatever sac configures (no orochi-side gating). The sweep is a sac-internal concern; flag for sac-side scoping, no specific number prescribed here. |
+| `scitex-agent-container/src/scitex_agent_container/_state/state_db_channel.py:1-34` | Docstring describes `channel_events` as durable conversation log; under Decision 2-B it is **the canonical store** for cross-agent message bodies. | Promote the canonical role into the docstring's first paragraph; orochi reads from here via the new extension ports. |
+| **New: `GET /v1/fleet/messages`** | Sac has no fleet-wide aggregation port over `channel_events`; orochi cannot replace its own `Message` reads without this. | **Request to proj-scitex-agent-container**: implement aggregation port (`?agents=...&since_ts=...&limit=...&kind=...`). Returns merged `channel_events` rows from every host. Decision 2-B prereq. |
+| **New: `GET /v1/agent/<name>/messages`** | No single-host pull cursor on sac side; orochi has no way to replay missed messages on WS reconnect without persisting them itself. | **Request to proj-scitex-agent-container**: implement single-host pull (`?since_id=N&limit=N`). Decision 2-B prereq. |
+| **New: `GET /v1/fleet/messages/search`** | No server-side search over `channel_events.content` / `meta_json`; dashboard search box would require orochi to index everything (back to the duplicate-storage problem). | **Request to proj-scitex-agent-container**: implement search port (`?q=...&channel=...&since_ts=...`). Decision 2-B prereq. |
+| **New: `HEAD /v1/fleet/messages?since_ts=T`** | No cheap "anything changed since T" probe for orochi's dashboard polling fallback when WS is unavailable. | **Request to proj-scitex-agent-container**: implement probe port. Decision 2-B nice-to-have (not blocking for first migration). |
 
 ---
 
@@ -399,7 +472,8 @@ this ADR** — each requires its own PR with operator sign-off.
 |---|---|---|---|
 | 1 | Decision 2 step 1 — sac inventory reconciler daemon | Low (additive) | S |
 | 2 | Decision 1 — remove `spec.orochi.channels` | Low–Med (touches yamls; deletes a public-looking field) | S |
-| 2B | Decision 2-B — orochi push-ack watermark API + sac retention sweep | Med (cross-repo, needs proj-scitex-agent-container handoff for the sac half) | M |
+| 2B-prereq | Decision 2-B — sac implements `GET /v1/fleet/messages`, `GET /v1/agent/<n>/messages`, `GET /v1/fleet/messages/search`, `HEAD /v1/fleet/messages` (routed to proj-scitex-agent-container) | Med (sac side; orochi blocked until done) | M |
+| 2B-orochi | Decision 2-B — stop persisting orochi `Message`; route dashboard history/search through new sac ports; deprecate the model | High (touches Django model + UI data flow + cross-repo wire) | L |
 | 3 | Decision 4 — `docs/contracts/` + WS register schema + contract test | Med | M |
 | 4 | Decision 2 step 2-3 — ContainerAgent → AgentProfile collapse, in-mem map rename | Med–High (model + migrations) | L |
 | 5 | Decision 3 — architecture docs | Low | S |
