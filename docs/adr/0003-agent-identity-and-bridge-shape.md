@@ -158,8 +158,16 @@ Per the north star, **sac is canonical**. The data flow becomes:
   ~/.scitex/agent-container/agents/<name>/spec.yaml
               │
               │ daemon (orochi side) periodically:
-              │   - list dir, read each spec.orochi section
-              │   - for each name: upsert AgentProfile
+              │   - list dirs under agents/; agent name = directory
+              │     name (SAC v3 dir-as-SSoT — no top-level `name:`
+              │     field in the spec.yaml itself)
+              │   - validate apiVersion == "scitex-agent-container/v3"
+              │     and kind ∈ {Agent, AgentProxy}; warn+skip otherwise
+              │   - for each valid name: upsert AgentProfile
+              │     (create on first sight; never clobber operator-set
+              │     icon_emoji/icon_text/color on existing rows — the
+              │     only mutation on an existing row is the is_hidden
+              │     flag)
               │   - any AgentProfile NOT in inventory -> is_hidden=True
               │     (do NOT delete — preserve history of messages)
               ▼
@@ -172,13 +180,58 @@ Per the north star, **sac is canonical**. The data flow becomes:
                   rebuild on hub restart from AgentProfile + live WS map
 ```
 
+### AgentProfile keying
+
+The live `AgentProfile` model is composite-keyed —
+`unique_together = ("workspace", "name")` (see
+`apps/hub/models/_identity.py:234`). The original sketch above framed
+this as a flat per-name row; the live schema is more conservative, so
+Phase 1 ships under a configurable single-workspace assumption: every
+SAC-discovered agent is upserted into one workspace, selected by
+`SCITEX_OROCHI_SAC_SYNC_WORKSPACE` (default `"default"`,
+get-or-create on first run).
+
+The multi-workspace routing question — "how does a fleet operator
+decide which workspace a SAC-discovered agent belongs to?" — is
+explicitly out of scope for Phase 1 and tracked as a follow-up ADR.
+Two candidate routing strategies for that future ADR:
+
+1. **One workspace per SAC host** (host == workspace). Simple, matches
+   operator intuition for multi-host fleets, but conflates the "where
+   it runs" and "who can see it" axes.
+2. **Workspace selected from `metadata.labels.team`** (SAC v3 field).
+   Decouples the two axes; relies on operators populating `team`
+   consistently, which today they don't.
+
+Phase 1's single-workspace default neither commits to nor precludes
+either strategy.
+
 Concrete changes (sketch; each its own PR):
 
 1. **New reconciler daemon** under `src/scitex_orochi/_daemons/_sac_inventory_sync.py`:
-   - Reads `~/.scitex/agent-container/agents/*/spec.yaml`
-   - For each name: upsert `AgentProfile` (create or refresh metadata)
-   - For each `AgentProfile.name` NOT in inventory: set `is_hidden=True`
-   - Cron: every 5 min (configurable via `SCITEX_OROCHI_SAC_SYNC_INTERVAL`)
+   - Reads `~/.scitex/agent-container/agents/*/spec.yaml` (overridable
+     via `SCITEX_AGENT_CONTAINER_AGENTS_DIR`).
+   - Agent name is derived from the **directory name** (SAC v3
+     dir-as-SSoT: there is no top-level `name:` field in the YAML
+     itself; see `scitex-agent-container/examples/agents/full-agent/spec.yaml`
+     lines 3-7 for the canonical statement, and
+     `_listen/_inline_spec.py:34` for SAC's own validator that
+     rejects non-v3 specs).
+   - Validates `apiVersion: scitex-agent-container/v3` and
+     `kind ∈ {Agent, AgentProxy}`. Non-v3 specs are logged and
+     skipped (no AgentProfile row created) — the reconciler echoes
+     SAC's own validator contract.
+   - For each valid name: upsert `AgentProfile`
+     (create-on-first-sight; never clobber operator-set fields like
+     `icon_emoji`/`icon_text`/`color` on existing rows — the only
+     mutation on an existing row is the `is_hidden` flag).
+   - For each `AgentProfile.name` NOT in inventory: set
+     `is_hidden=True` (do NOT delete — message history is preserved
+     per Decision 2 §1).
+   - Tick interval: every 5 min (configurable via
+     `SCITEX_OROCHI_SAC_SYNC_INTERVAL`).
+   - Workspace selection: single-workspace Phase-1 simplification
+     (see **AgentProfile keying** above).
    - Single-host first (the dispatcher); ADR follow-up for multi-host
      fleet inventory.
 2. **Deprecate ContainerAgent**: phase migration —
