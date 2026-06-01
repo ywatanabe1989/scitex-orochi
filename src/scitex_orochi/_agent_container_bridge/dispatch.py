@@ -110,28 +110,39 @@ def prepare_shim_yaml(
     return shim_path
 
 
-def _remote_home_dir(target: str, ssh_opts: list[str]) -> str | None:
-    """Return the remote user's $HOME or None if detection fails."""
-    try:
-        proc = subprocess.run(
-            ["ssh", *ssh_opts, target, "echo $HOME"],
-            capture_output=True,
-            text=True,
-            timeout=15,
-            check=False,
+def _remote_home_dir(target: str, ssh_opts: list[str]) -> str:
+    """Return the remote user's ``$HOME``.
+
+    Raises ``RuntimeError`` if ssh fails, returns non-zero, or no
+    path-like line is parsable from stdout. We do NOT swallow failures
+    here: the caller uses the result to rewrite path prefixes inside the
+    mcp-config file, and a silent "remote home unknown" path leads to
+    claude starting on the remote and 404-ing on ``--mcp-config`` with
+    an opaque error that's hard to trace back to this step.
+    """
+    proc = subprocess.run(
+        ["ssh", *ssh_opts, target, "echo $HOME"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"ssh {target} 'echo $HOME' returned rc={proc.returncode}; "
+            f"stderr: {proc.stderr.strip() or '(empty)'}"
         )
-        if proc.returncode != 0:
-            return None
-        # Remote bashrc may print noise to stdout (scitex-resource-monitor
-        # "Dashboard started in background" etc). Our $HOME line is
-        # usually the last non-empty line.
-        for line in reversed(proc.stdout.splitlines()):
-            line = line.strip()
-            if line.startswith("/"):
-                return line
-    except Exception:
-        pass
-    return None
+    # Remote bashrc may print noise to stdout (scitex-resource-monitor
+    # "Dashboard started in background" etc). Our $HOME line is
+    # usually the last non-empty line that looks like an absolute path.
+    for line in reversed(proc.stdout.splitlines()):
+        line = line.strip()
+        if line.startswith("/"):
+            return line
+    raise RuntimeError(
+        f"ssh {target} 'echo $HOME' returned rc=0 but no path-like line "
+        f"in stdout (got {proc.stdout!r})"
+    )
 
 
 def scp_mcp_config_to_remote(
@@ -147,10 +158,13 @@ def scp_mcp_config_to_remote(
     before transferring we detect the remote's home dir and rewrite any
     occurrences of the dispatcher's home prefix to the remote's.
 
-    Creates the parent directory on the remote first. Failures are
-    logged as warnings (not raised) so the launch can still proceed —
-    a missing file will surface as a clearer error from the agent's
-    own claude process.
+    Creates the parent directory on the remote first. Raises
+    ``RuntimeError`` on any failure (remote home detection, mkdir,
+    transfer) — we do NOT silently fall back, because the caller's
+    contract is "after this returns, the file is at ``target:local_path``
+    with the correct path-prefix rewriting". A partial / wrong-prefix
+    file on the remote causes the agent's claude to 404 on
+    ``--mcp-config`` later with an opaque error.
     """
     user = remote_section.get("user", "") or "ywatanabe"
     target = f"{user}@{remote_host}"
@@ -159,23 +173,20 @@ def scp_mcp_config_to_remote(
     ssh_opts = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 
     # Rewrite ts_path in the JSON for cross-platform portability.
+    # _remote_home_dir() raises if the remote $HOME can't be determined;
+    # we let that propagate so the operator sees the real ssh error.
     local_home = str(Path.home())
     remote_home = _remote_home_dir(target, ssh_opts)
-    rewritten_bytes: bytes
-    if remote_home and remote_home != local_home:
-        try:
-            raw = Path(local_path).read_text()
-            rewritten = raw.replace(local_home, remote_home)
-            rewritten_bytes = rewritten.encode("utf-8")
-            logger.info(
-                "Rewrote ts_path home prefix %s -> %s for %s",
-                local_home,
-                remote_home,
-                target,
-            )
-        except Exception as exc:
-            logger.warning("ts_path rewrite failed, falling back to raw file: %s", exc)
-            rewritten_bytes = Path(local_path).read_bytes()
+    if remote_home != local_home:
+        raw = Path(local_path).read_text()
+        rewritten = raw.replace(local_home, remote_home)
+        rewritten_bytes = rewritten.encode("utf-8")
+        logger.info(
+            "Rewrote ts_path home prefix %s -> %s for %s",
+            local_home,
+            remote_home,
+            target,
+        )
     else:
         rewritten_bytes = Path(local_path).read_bytes()
 
@@ -186,44 +197,38 @@ def scp_mcp_config_to_remote(
     # banner on the NAS). The cat-pipe approach is robust against shell
     # init noise because the noise lands on a different file descriptor
     # than the data stream.
-    try:
-        mkdir_proc = subprocess.run(
-            ["ssh", *ssh_opts, target, f"mkdir -p {shlex.quote(remote_dir)}"],
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
+    mkdir_proc = subprocess.run(
+        ["ssh", *ssh_opts, target, f"mkdir -p {shlex.quote(remote_dir)}"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    if mkdir_proc.returncode != 0:
+        raise RuntimeError(
+            f"Remote mkdir {remote_dir} on {target} failed "
+            f"(rc={mkdir_proc.returncode}); "
+            f"stderr: {mkdir_proc.stderr.strip() or '(empty)'}"
         )
-        if mkdir_proc.returncode != 0:
-            logger.warning(
-                "Remote mkdir failed for %s: %s",
-                target,
-                mkdir_proc.stderr.strip() or "(no stderr)",
-            )
-            return
 
-        transfer_proc = subprocess.run(
-            [
-                "ssh",
-                *ssh_opts,
-                target,
-                f"cat > {shlex.quote(local_path)}",
-            ],
-            input=rewritten_bytes,
-            capture_output=True,
-            timeout=60,
-            check=False,
+    transfer_proc = subprocess.run(
+        [
+            "ssh",
+            *ssh_opts,
+            target,
+            f"cat > {shlex.quote(local_path)}",
+        ],
+        input=rewritten_bytes,
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    if transfer_proc.returncode != 0:
+        raise RuntimeError(
+            f"Remote write to {target}:{local_path} failed "
+            f"(rc={transfer_proc.returncode}); "
+            f"stderr: "
+            f"{transfer_proc.stderr.decode('utf-8', 'replace').strip() or '(empty)'}"
         )
-        if transfer_proc.returncode != 0:
-            logger.warning(
-                "Remote write failed for %s:%s: %s",
-                target,
-                local_path,
-                transfer_proc.stderr.decode("utf-8", "replace").strip()
-                or "(no stderr)",
-            )
-            return
 
-        logger.info("Distributed mcp-config to %s:%s", target, local_path)
-    except Exception as exc:
-        logger.warning("Failed to push mcp-config to %s: %s", target, exc)
+    logger.info("Distributed mcp-config to %s:%s", target, local_path)
