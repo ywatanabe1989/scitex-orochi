@@ -37,15 +37,25 @@ def prepare_shim_yaml(
     config_path: Path,
     orochi_spec: OrochiSpec,
     write_mcp_config_file: Callable,
+    scp_fn: Callable[[str, str, dict], None] | None = None,
 ) -> Path:
     """Write a shim yaml with Orochi-specific claude flags injected.
 
     For remote agents, the generated MCP config file is also scp'd to
     the remote at the same path so claude finds it there.
 
+    ``scp_fn`` is an injection point so tests can supply a real
+    hand-rolled fake that records its invocations. Production callers
+    omit it and the default resolves to the real
+    ``scp_mcp_config_to_remote`` at call time. The default is wired
+    inside the function (not as a parameter default) because
+    ``scp_mcp_config_to_remote`` is defined later in this module.
+
     Returns the shim path. If Orochi is not enabled, returns the
     original ``config_path`` unchanged (no shim needed).
     """
+    if scp_fn is None:
+        scp_fn = scp_mcp_config_to_remote
     if not orochi_spec.is_enabled:
         return config_path
 
@@ -73,7 +83,7 @@ def prepare_shim_yaml(
         remote_section = spec.get("remote", {}) or {}
         remote_host = remote_section.get("host", "")
         if remote_host:
-            scp_mcp_config_to_remote(mcp_path, remote_host, remote_section)
+            scp_fn(mcp_path, remote_host, remote_section)
 
         # Inject the MCP flags. ORDER MATTERS: --mcp-config MUST come
         # BEFORE --dangerously-load-development-channels because the
