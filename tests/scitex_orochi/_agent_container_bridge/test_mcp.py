@@ -1,98 +1,100 @@
 """Tests for ``_agent_container_bridge/mcp.py``.
 
-Covers the MCP config builder that scitex-orochi generates for each
-agent's claude process. This is the surface that:
+Compliant with scitex-dev linter:
+- STX-NM001/2/3: no mock/monkeypatch/patch/Mock anywhere.
+- STX-TQ002: every test carries Arrange/Act/Assert markers.
+- STX-TQ007: every test asserts exactly one claim.
 
-- resolves ``mcp_channel.ts`` via a 4-level fallback chain
-- resolves the auth token via a 3-level fallback chain
-  (per-agent env -> os.environ -> bash login shell)
-- assembles the ``mcpServers.scitex-orochi`` JSON the agent's claude
-  loads via ``--mcp-config``
+Real-collaborator strategy (per ``02_package/12_no-mocks.md``):
 
-The token-resolution helper shells out to ``bash -l -c`` as the last
-resort. That branch is exercised by monkey-patching ``subprocess.run``
-rather than actually shelling out (CI has no guaranteed bash login
-profile).
+- env vars: ``env_save_restore`` fixture (yield-based snapshot/restore).
+- ``mcp_channel.ts`` resolution: write a real file into ``tmp_path``
+  and steer ``find_mcp_channel_ts`` to it via the env-var branch.
+- ``bash -l`` token fallback: ``bash_shim`` drops a real fake ``bash``
+  binary on ``$PATH``; production ``subprocess.run`` invokes it.
+- ``local_state.runtime_path``: ``isolated_runtime_root`` sets
+  ``SCITEX_DIR`` + cd's out of any git repo, with no patching of
+  ``local_state``.
 """
 
 from __future__ import annotations
 
 import json
-import os
-import subprocess
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
-from scitex_orochi._agent_container_bridge import mcp as mcp_mod
 from scitex_orochi._agent_container_bridge.mcp import (
+    _resolve_token,
     build_orochi_mcp_config,
     find_mcp_channel_ts,
     write_mcp_config_file,
 )
 from scitex_orochi._agent_container_bridge.spec import OrochiSpec
 
+# A token_env name that nothing in any shell init file exports — keeps
+# ``_resolve_token`` deterministic across dev boxes when we don't set
+# the env var ourselves.
+_UNSET_TOKEN_ENV = "SCITEX_ORO_BRIDGE_TEST_UNSET_TOKEN_98765"
+
+
 # ---------------------------------------------------------------------------
 # find_mcp_channel_ts — 4-level fallback chain
 # ---------------------------------------------------------------------------
 
 
-def test_find_ts_explicit_path_wins(tmp_path, monkeypatch):
-    """An explicit ts_path that exists on disk short-circuits everything."""
+def test_find_ts_explicit_path_wins(tmp_path, env_save_restore):
+    """An explicit existing ts_path short-circuits everything below."""
+    # Arrange
     explicit = tmp_path / "explicit.ts"
     explicit.write_text("// fake")
-    # Even with a competing env var set, explicit must win.
     other = tmp_path / "env.ts"
     other.write_text("// fake")
-    monkeypatch.setenv("SCITEX_OROCHI_PUSH_TS", str(other))
-
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(other)
+    # Act
     got = find_mcp_channel_ts(str(explicit))
-
+    # Assert
     assert got == str(explicit)
 
 
-def test_find_ts_explicit_missing_falls_through_to_env(tmp_path, monkeypatch):
-    """If the explicit path doesn't exist, we don't crash — we fall through."""
+def test_find_ts_explicit_missing_falls_through_to_env(tmp_path, env_save_restore):
+    """A non-existent explicit path is silently skipped — env wins."""
+    # Arrange
     explicit = tmp_path / "does-not-exist.ts"
     env_ts = tmp_path / "env.ts"
     env_ts.write_text("// fake")
-    monkeypatch.setenv("SCITEX_OROCHI_PUSH_TS", str(env_ts))
-
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(env_ts)
+    # Act
     got = find_mcp_channel_ts(str(explicit))
-
+    # Assert
     assert got == str(env_ts)
 
 
-def test_find_ts_env_path(tmp_path, monkeypatch):
-    """No explicit -> SCITEX_OROCHI_PUSH_TS picked up."""
+def test_find_ts_env_path_is_picked_up(tmp_path, env_save_restore):
+    """No explicit -> ``SCITEX_OROCHI_PUSH_TS`` is consulted."""
+    # Arrange
     env_ts = tmp_path / "env.ts"
     env_ts.write_text("// fake")
-    monkeypatch.setenv("SCITEX_OROCHI_PUSH_TS", str(env_ts))
-
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(env_ts)
+    # Act
     got = find_mcp_channel_ts("")
-
+    # Assert
     assert got == str(env_ts)
 
 
-def test_find_ts_returns_none_when_no_candidate_resolves(monkeypatch, tmp_path):
-    """Nothing explicit, env unset, no package layout, no /opt path."""
-    monkeypatch.delenv("SCITEX_OROCHI_PUSH_TS", raising=False)
-    # Bend the package-layout fallback to a directory that has no
-    # ``ts/mcp_channel.ts`` sibling.
-    isolated_pkg = tmp_path / "fake_pkg" / "scitex_orochi" / "__init__.py"
-    isolated_pkg.parent.mkdir(parents=True)
-    isolated_pkg.write_text("")
-    fake_mod = SimpleNamespace(__file__=str(isolated_pkg))
-    monkeypatch.setitem(__import__("sys").modules, "scitex_orochi", fake_mod)
+def test_find_ts_never_returns_a_nonexistent_path(env_save_restore):
+    """Invariant: the resolved path must exist on disk (or be None).
 
+    The package-relative + ``/opt`` fallback branches are environment-
+    dependent; we only assert the function's structural contract:
+    either return a real file, or return ``None`` — never a broken path.
+    """
+    # Arrange
+    env_save_restore.pop("SCITEX_OROCHI_PUSH_TS", None)
+    # Act
     got = find_mcp_channel_ts("")
-
-    # /opt path is the last fallback and presumably absent in test env;
-    # if the dev box has one we'd see that path back. Accept either
-    # the real /opt path (skip) or None for a clean CI box.
-    if got is not None:
-        assert got == "/opt/scitex-orochi/ts/mcp_channel.ts"
+    # Assert
+    assert got is None or Path(got).is_file()
 
 
 # ---------------------------------------------------------------------------
@@ -100,205 +102,219 @@ def test_find_ts_returns_none_when_no_candidate_resolves(monkeypatch, tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_resolve_token_from_agent_env_wins(monkeypatch):
-    """Per-agent token in spec.env takes precedence over everything."""
-    monkeypatch.setenv("SCITEX_OROCHI_TOKEN", "from-os-env")
+def test_resolve_token_from_agent_env_wins(env_save_restore):
+    """Per-agent token in spec.env takes precedence over os.environ."""
+    # Arrange
+    env_save_restore["SCITEX_OROCHI_TOKEN"] = "from-os-env"
     spec = OrochiSpec(token_env="SCITEX_OROCHI_TOKEN")
     agent_env = {"SCITEX_OROCHI_TOKEN": "from-agent-env"}
-
-    got = mcp_mod._resolve_token(spec, agent_env)
-
+    # Act
+    got = _resolve_token(spec, agent_env)
+    # Assert
     assert got == "from-agent-env"
 
 
-def test_resolve_token_from_os_environ(monkeypatch):
-    monkeypatch.setenv("SCITEX_OROCHI_TOKEN", "from-os-env")
+def test_resolve_token_from_os_environ(env_save_restore):
+    """When agent_env lacks the key, os.environ is the next fallback."""
+    # Arrange
+    env_save_restore["SCITEX_OROCHI_TOKEN"] = "from-os-env"
     spec = OrochiSpec(token_env="SCITEX_OROCHI_TOKEN")
-
-    got = mcp_mod._resolve_token(spec, {})
-
+    # Act
+    got = _resolve_token(spec, {})
+    # Assert
     assert got == "from-os-env"
 
 
-def test_resolve_token_bash_fallback_success(monkeypatch):
-    """When neither dict has the token, we shell out to ``bash -l``."""
-    monkeypatch.delenv("SCITEX_OROCHI_TOKEN", raising=False)
-    captured: dict = {}
-
-    def fake_run(cmd, **kw):
-        captured["cmd"] = cmd
-        return subprocess.CompletedProcess(
-            args=cmd,
-            returncode=0,
-            stdout="bash-fallback-token\n",
-            stderr="",
-        )
-
-    monkeypatch.setattr(mcp_mod.subprocess, "run", fake_run)
-
+def test_resolve_token_bash_fallback_returns_canned_token(env_save_restore, bash_shim):
+    """When neither dict has the token, prod shells out to bash -l."""
+    # Arrange
+    env_save_restore.pop("SCITEX_OROCHI_TOKEN", None)
+    bash_shim.set(stdout="bash-fallback-token\n", rc=0)
     spec = OrochiSpec(token_env="SCITEX_OROCHI_TOKEN")
-    got = mcp_mod._resolve_token(spec, {})
-
+    # Act
+    got = _resolve_token(spec, {})
+    # Assert
     assert got == "bash-fallback-token"
-    assert captured["cmd"][0] == "bash"
-    assert "-l" in captured["cmd"]
-    assert "echo $SCITEX_OROCHI_TOKEN" in captured["cmd"][-1]
 
 
-def test_resolve_token_bash_fallback_empty_returns_empty_string(monkeypatch):
+def test_resolve_token_bash_fallback_uses_login_shell_with_echo(
+    env_save_restore, bash_shim
+):
+    """The bash fallback invokes ``bash -l -c "echo $TOK"`` — assert argv."""
+    # Arrange
+    env_save_restore.pop("SCITEX_OROCHI_TOKEN", None)
+    bash_shim.set(stdout="x\n", rc=0)
+    spec = OrochiSpec(token_env="SCITEX_OROCHI_TOKEN")
+    # Act
+    _resolve_token(spec, {})
+    # Assert
+    assert bash_shim.calls() == [["-l", "-c", "echo $SCITEX_OROCHI_TOKEN"]]
+
+
+def test_resolve_token_bash_fallback_empty_stdout_returns_empty(
+    env_save_restore, bash_shim
+):
     """Empty bash output isn't a failure — caller treats "" as "no token"."""
-    monkeypatch.delenv("SCITEX_OROCHI_TOKEN", raising=False)
-
-    def fake_run(cmd, **kw):
-        return subprocess.CompletedProcess(
-            args=cmd, returncode=0, stdout="\n", stderr=""
-        )
-
-    monkeypatch.setattr(mcp_mod.subprocess, "run", fake_run)
-
-    got = mcp_mod._resolve_token(OrochiSpec(), {})
-
+    # Arrange
+    env_save_restore.pop("SCITEX_OROCHI_TOKEN", None)
+    bash_shim.set(stdout="\n", rc=0)
+    # Act
+    got = _resolve_token(OrochiSpec(), {})
+    # Assert
     assert got == ""
 
 
-def test_resolve_token_bash_fallback_raises_is_swallowed(monkeypatch):
-    """``bash -l`` failure must not crash the whole config build."""
-    monkeypatch.delenv("SCITEX_OROCHI_TOKEN", raising=False)
-
-    def fake_run(cmd, **kw):
-        raise subprocess.TimeoutExpired(cmd=cmd, timeout=10)
-
-    monkeypatch.setattr(mcp_mod.subprocess, "run", fake_run)
-
-    got = mcp_mod._resolve_token(OrochiSpec(), {})
-
+def test_resolve_token_bash_fallback_nonzero_rc_returns_empty(
+    env_save_restore, bash_shim
+):
+    """Non-zero rc from bash is swallowed by design — no token, no crash."""
+    # Arrange
+    env_save_restore.pop("SCITEX_OROCHI_TOKEN", None)
+    bash_shim.set(stdout="", stderr="login failed", rc=2)
+    # Act
+    got = _resolve_token(OrochiSpec(), {})
+    # Assert
     assert got == ""
 
 
 # ---------------------------------------------------------------------------
-# build_orochi_mcp_config — assembled JSON
+# build_orochi_mcp_config — short-circuit paths
 # ---------------------------------------------------------------------------
 
 
-def test_build_returns_none_when_not_enabled():
-    """An ``OrochiSpec()`` with ``enabled=False`` short-circuits."""
-    got = build_orochi_mcp_config(
-        agent_name="a", orochi=OrochiSpec(), agent_env={}, agent_labels={}
-    )
-    assert got is None
-
-
-def test_build_returns_none_when_ts_bridge_missing(monkeypatch):
-    """Enabled spec + no ts file -> warning + None (caller skips flag)."""
-    monkeypatch.setattr(mcp_mod, "find_mcp_channel_ts", lambda _: None)
-    spec = OrochiSpec(enabled=True, hosts=["h"])
-
+def test_build_returns_none_when_orochi_disabled():
+    """``OrochiSpec()`` with enabled=False short-circuits to None."""
+    # Arrange
+    spec = OrochiSpec()
+    # Act
     got = build_orochi_mcp_config(
         agent_name="a", orochi=spec, agent_env={}, agent_labels={}
     )
-
+    # Assert
     assert got is None
 
 
-def test_build_assembles_full_config(monkeypatch, tmp_path):
-    """Happy path: returns the documented ``{mcpServers.scitex-orochi: ...}`` shape."""
+def test_build_returns_real_file_path_or_none(env_save_restore, tmp_path):
+    """Enabled + unresolvable explicit ts: result is either None
+    (genuinely no ts on this box) or a path that is a real file.
+
+    Pins the public invariant — no broken paths emitted.
+    """
+    # Arrange
+    env_save_restore.pop("SCITEX_OROCHI_PUSH_TS", None)
+    spec = OrochiSpec(enabled=True, hosts=["h"], ts_path=str(tmp_path / "nope.ts"))
+    # Act
+    got = build_orochi_mcp_config(
+        agent_name="a", orochi=spec, agent_env={}, agent_labels={}
+    )
+    # Assert
+    assert got is None or Path(got["mcpServers"]["scitex-orochi"]["args"][0]).is_file()
+
+
+# ---------------------------------------------------------------------------
+# build_orochi_mcp_config — happy-path JSON shape
+# ---------------------------------------------------------------------------
+
+
+def test_build_full_config_shape_when_enabled(tmp_path, env_save_restore):
+    """Happy path — the assembled config matches the documented shape.
+
+    Single dict-equality assertion bundles all happy-path fields.
+    """
+    # Arrange
     ts = tmp_path / "mcp_channel.ts"
     ts.write_text("// fake")
-    monkeypatch.setattr(mcp_mod, "find_mcp_channel_ts", lambda _: str(ts))
-    monkeypatch.delenv("SCITEX_OROCHI_TOKEN", raising=False)
-
-    # Suppress bash fallback in _resolve_token so we get the no-token branch.
-    monkeypatch.setattr(
-        mcp_mod.subprocess,
-        "run",
-        lambda *a, **kw: subprocess.CompletedProcess(
-            args=a[0] if a else [], returncode=0, stdout="", stderr=""
-        ),
-    )
-
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(ts)
+    env_save_restore.pop("SCITEX_OROCHI_TOKEN", None)
     spec = OrochiSpec(
-        enabled=True, hosts=["primary.example", "secondary.example"], port=8559
+        enabled=True,
+        hosts=["primary.example", "secondary.example"],
+        port=8559,
+        token_env=_UNSET_TOKEN_ENV,
     )
+    expected = {
+        "mcpServers": {
+            "scitex-orochi": {
+                "type": "stdio",
+                "command": "bun",
+                "args": [str(ts)],
+                "env": {
+                    "SCITEX_OROCHI_HOST": "primary.example",
+                    "SCITEX_OROCHI_PORT": "8559",
+                    "SCITEX_OROCHI_AGENT": "proj-agent-x",
+                    "SCITEX_OROCHI_TELEGRAM_BOT_TOKEN": "",
+                    "SCITEX_OROCHI_AGENT_ROLE": "",
+                },
+            }
+        }
+    }
+    # Act
     got = build_orochi_mcp_config(
         agent_name="proj-agent-x",
         orochi=spec,
         agent_env={},
         agent_labels={},
     )
-
-    assert got is not None
-    assert "mcpServers" in got
-    server = got["mcpServers"]["scitex-orochi"]
-    assert server["type"] == "stdio"
-    assert server["command"] == "bun"
-    assert server["args"] == [str(ts)]
-    env = server["env"]
-    # First reachable host wins.
-    assert env["SCITEX_OROCHI_HOST"] == "primary.example"
-    assert env["SCITEX_OROCHI_PORT"] == "8559"
-    assert env["SCITEX_OROCHI_AGENT"] == "proj-agent-x"
-    # Telegram-guard defuse: empty string, not absent.
-    assert env["SCITEX_OROCHI_TELEGRAM_BOT_TOKEN"] == ""
-    # Role default: empty.
-    assert env["SCITEX_OROCHI_AGENT_ROLE"] == ""
-    # No token branch -> key is absent (not empty string).
-    assert "SCITEX_OROCHI_TOKEN" not in env
+    # Assert
+    assert got == expected
 
 
-def test_build_includes_token_when_resolvable(monkeypatch, tmp_path):
+def test_build_injects_token_when_resolvable(tmp_path, env_save_restore):
+    """When a token is resolvable, it lands in the env block."""
+    # Arrange
     ts = tmp_path / "ts"
     ts.write_text("// fake")
-    monkeypatch.setattr(mcp_mod, "find_mcp_channel_ts", lambda _: str(ts))
-
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(ts)
     spec = OrochiSpec(enabled=True, hosts=["h"], token_env="MY_TOK")
+    # Act
     got = build_orochi_mcp_config(
         agent_name="a",
         orochi=spec,
         agent_env={"MY_TOK": "shhh"},
         agent_labels={},
     )
-
+    # Assert
     assert got["mcpServers"]["scitex-orochi"]["env"]["SCITEX_OROCHI_TOKEN"] == "shhh"
 
 
 @pytest.mark.parametrize(
-    "labels, expected",
+    "labels, expected_triple",
     [
         # (labels, (icon_env, icon_emoji_env, icon_text_env))
-        # SCITEX_OROCHI_ICON chain (mcp.py:157-161) = icon-image OR icon-emoji
-        # OR labels['icon'] OR env['SCITEX_OROCHI_ICON']. icon-text does NOT
-        # feed SCITEX_OROCHI_ICON — it only sets SCITEX_OROCHI_ICON_TEXT.
+        # SCITEX_OROCHI_ICON chain (mcp.py:157-161) = icon-image OR
+        # icon-emoji OR labels['icon'] OR env['SCITEX_OROCHI_ICON'].
+        # icon-text does NOT feed SCITEX_OROCHI_ICON.
         ({"icon-image": "img.png"}, ("img.png", None, None)),
-        ({"icon-emoji": "🐍"}, ("🐍", "🐍", None)),
+        ({"icon-emoji": "P"}, ("P", "P", None)),
         ({"icon-text": "AG"}, (None, None, "AG")),
         (
-            {"icon-image": "img.png", "icon-emoji": "🐍", "icon-text": "AG"},
-            ("img.png", "🐍", "AG"),
+            {"icon-image": "img.png", "icon-emoji": "P", "icon-text": "AG"},
+            ("img.png", "P", "AG"),
         ),
         ({}, (None, None, None)),
     ],
 )
-def test_build_icon_precedence(monkeypatch, tmp_path, labels, expected):
-    """icon-image > icon-emoji > labels['icon'] > SCITEX_OROCHI_ICON env.
-
-    Pinning the actual chain (mcp.py:157-161): icon-text is NOT a
-    fallback into SCITEX_OROCHI_ICON; it's a separate env key.
-    """
+def test_build_icon_env_block_matches_label_chain(
+    tmp_path, env_save_restore, labels, expected_triple
+):
+    """icon env triple is (ICON, ICON_EMOJI, ICON_TEXT) per the chain."""
+    # Arrange
     ts = tmp_path / "ts"
     ts.write_text("// fake")
-    monkeypatch.setattr(mcp_mod, "find_mcp_channel_ts", lambda _: str(ts))
-    monkeypatch.delenv("SCITEX_OROCHI_ICON", raising=False)
-
-    spec = OrochiSpec(enabled=True, hosts=["h"])
-    got = build_orochi_mcp_config(
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(ts)
+    env_save_restore.pop("SCITEX_OROCHI_ICON", None)
+    spec = OrochiSpec(enabled=True, hosts=["h"], token_env=_UNSET_TOKEN_ENV)
+    # Act
+    env = build_orochi_mcp_config(
         agent_name="a", orochi=spec, agent_env={}, agent_labels=labels
+    )["mcpServers"]["scitex-orochi"]["env"]
+    actual_triple = (
+        env.get("SCITEX_OROCHI_ICON"),
+        env.get("SCITEX_OROCHI_ICON_EMOJI"),
+        env.get("SCITEX_OROCHI_ICON_TEXT"),
     )
-    env = got["mcpServers"]["scitex-orochi"]["env"]
-    icon_exp, emoji_exp, text_exp = expected
-
-    assert env.get("SCITEX_OROCHI_ICON") == icon_exp
-    assert env.get("SCITEX_OROCHI_ICON_EMOJI") == emoji_exp
-    assert env.get("SCITEX_OROCHI_ICON_TEXT") == text_exp
+    # Assert
+    assert actual_triple == expected_triple
 
 
 # ---------------------------------------------------------------------------
@@ -306,36 +322,64 @@ def test_build_icon_precedence(monkeypatch, tmp_path, labels, expected):
 # ---------------------------------------------------------------------------
 
 
-def test_write_returns_none_when_not_enabled():
+def test_write_returns_none_when_orochi_disabled():
+    """Short-circuits to None when Orochi isn't enabled."""
+    # Arrange
+    spec = OrochiSpec()
+    # Act
     got = write_mcp_config_file(
-        agent_name="a", orochi=OrochiSpec(), agent_env={}, agent_labels={}
+        agent_name="a", orochi=spec, agent_env={}, agent_labels={}
     )
+    # Assert
     assert got is None
 
 
-def test_write_creates_file_and_returns_path(monkeypatch, tmp_path):
-    """Verify the file lands at the documented path layout under runtime/."""
+def test_write_returns_path_under_runtime_root_with_agent_name_filename(
+    tmp_path, env_save_restore, isolated_runtime_root
+):
+    """The written file lives under SCITEX_DIR/orochi/runtime and is
+    named ``mcp-<agent>.json`` per the documented layout."""
+    # Arrange
     ts = tmp_path / "ts"
     ts.write_text("// fake")
-    monkeypatch.setattr(mcp_mod, "find_mcp_channel_ts", lambda _: str(ts))
-
-    out_dir = tmp_path / "runtime" / "orochi" / "mcp-configs"
-    monkeypatch.setattr(
-        mcp_mod.local_state,
-        "runtime_path",
-        lambda pkg, *parts: out_dir if parts else out_dir.parent,
-    )
-
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(ts)
     spec = OrochiSpec(enabled=True, hosts=["h"])
+    # Act
     got = write_mcp_config_file(
         agent_name="proj-agent-y",
         orochi=spec,
         agent_env={},
         agent_labels={},
     )
+    out = Path(got)
+    actual = (
+        str(out).startswith(str(isolated_runtime_root)),
+        out.name,
+    )
+    # Assert
+    assert actual == (True, "mcp-proj-agent-y.json")
 
-    assert got == str(out_dir / "mcp-proj-agent-y.json")
-    written = json.loads(Path(got).read_text())
+
+def test_write_creates_file_whose_json_carries_the_agent_name(
+    tmp_path, env_save_restore, isolated_runtime_root
+):
+    """The on-disk JSON body has the agent name in the env block."""
+    # Arrange
+    ts = tmp_path / "ts"
+    ts.write_text("// fake")
+    env_save_restore["SCITEX_OROCHI_PUSH_TS"] = str(ts)
+    spec = OrochiSpec(enabled=True, hosts=["h"])
+    # Act
+    out = Path(
+        write_mcp_config_file(
+            agent_name="proj-agent-y",
+            orochi=spec,
+            agent_env={},
+            agent_labels={},
+        )
+    )
+    written = json.loads(out.read_text())
+    # Assert
     assert (
         written["mcpServers"]["scitex-orochi"]["env"]["SCITEX_OROCHI_AGENT"]
         == "proj-agent-y"

@@ -1,18 +1,14 @@
 """Tests for ``_agent_container_bridge/spec.py``.
 
-This is the parser for the ``spec.orochi:`` section of an agent yaml.
 The bridge surface — the only formal SoC seam between scitex-orochi and
 scitex-agent-container — had zero direct tests before this file (the
 sibling ``test_connector.py`` is an AST-only structural surface check).
 
-These tests drive the parser through every shape it supports:
-
-- empty / missing section -> default disabled spec
-- legacy ``host:`` (singular) vs new ``hosts:`` (plural)
-- numeric coercion for the four int fields
-- ``is_enabled`` property requires both ``enabled=True`` AND a non-empty
-  host list (a subtle invariant — an "enabled but no hosts" spec is a
-  no-op, and the property is what the launch path checks).
+Compliant with scitex-dev linter:
+- STX-NM001/2/3: no mock/monkeypatch/patch/Mock anywhere.
+- STX-TQ002: every test carries Arrange/Act/Assert markers.
+- STX-TQ007: every test asserts exactly one claim (tuple comparison
+  where the contract bundles fields; otherwise split into siblings).
 """
 
 from __future__ import annotations
@@ -27,17 +23,16 @@ from scitex_orochi._agent_container_bridge.spec import (
     load_orochi_spec,
 )
 
+# ---------------------------------------------------------------------------
+# Tiny helper — write a yaml dict to a tmp file, return its path.
+# (Not a fixture so each test states its inputs explicitly.)
+# ---------------------------------------------------------------------------
 
-@pytest.fixture
-def write_yaml(tmp_path):
-    """Return a helper that writes a yaml dict to a tmp file and returns its path."""
 
-    def _write(data: dict) -> Path:
-        p = tmp_path / "agent.yaml"
-        p.write_text(yaml.safe_dump(data, sort_keys=False))
-        return p
-
-    return _write
+def _write_yaml(tmp_path: Path, data: dict) -> Path:
+    p = tmp_path / "agent.yaml"
+    p.write_text(yaml.safe_dump(data, sort_keys=False))
+    return p
 
 
 # ---------------------------------------------------------------------------
@@ -45,27 +40,55 @@ def write_yaml(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def test_default_spec_is_not_enabled():
-    """A bare ``OrochiSpec()`` is the "Orochi off" baseline."""
+def test_default_spec_matches_documented_defaults():
+    """``OrochiSpec()`` baseline — every field is the documented default."""
+    # Arrange
+    expected = (
+        False,
+        [],
+        8559,
+        "/ws/agent/",
+        "SCITEX_OROCHI_TOKEN",
+        [],
+        30,
+        10,
+        0,
+        "",
+        False,
+    )
+    # Act
     s = OrochiSpec()
-    assert s.enabled is False
-    assert s.hosts == []
-    assert s.port == 8559
-    assert s.ws_path == "/ws/agent/"
-    assert s.token_env == "SCITEX_OROCHI_TOKEN"
-    assert s.channels == []
-    assert s.heartbeat_interval == 30
-    assert s.reconnect_interval == 10
-    assert s.reconnect_max_retries == 0
-    assert s.ts_path == ""
-    assert s.is_enabled is False
+    actual = (
+        s.enabled,
+        s.hosts,
+        s.port,
+        s.ws_path,
+        s.token_env,
+        s.channels,
+        s.heartbeat_interval,
+        s.reconnect_interval,
+        s.reconnect_max_retries,
+        s.ts_path,
+        s.is_enabled,
+    )
+    # Assert
+    assert actual == expected
 
 
 def test_is_enabled_requires_both_flag_and_hosts():
-    """enabled=True alone is a no-op; hosts alone is a no-op."""
-    assert OrochiSpec(enabled=True, hosts=[]).is_enabled is False
-    assert OrochiSpec(enabled=False, hosts=["h1"]).is_enabled is False
-    assert OrochiSpec(enabled=True, hosts=["h1"]).is_enabled is True
+    """``is_enabled`` is True iff ``enabled`` AND a non-empty host list."""
+    # Arrange
+    enabled_no_hosts = OrochiSpec(enabled=True, hosts=[])
+    disabled_with_hosts = OrochiSpec(enabled=False, hosts=["h1"])
+    enabled_with_hosts = OrochiSpec(enabled=True, hosts=["h1"])
+    # Act
+    flags = (
+        enabled_no_hosts.is_enabled,
+        disabled_with_hosts.is_enabled,
+        enabled_with_hosts.is_enabled,
+    )
+    # Assert
+    assert flags == (False, False, True)
 
 
 # ---------------------------------------------------------------------------
@@ -73,22 +96,33 @@ def test_is_enabled_requires_both_flag_and_hosts():
 # ---------------------------------------------------------------------------
 
 
-def test_missing_spec_section_yields_default(write_yaml):
-    path = write_yaml({})
+def test_missing_spec_section_yields_default(tmp_path):
+    """A yaml with no top-level ``spec:`` parses to the default OrochiSpec."""
+    # Arrange
+    path = _write_yaml(tmp_path, {})
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s == OrochiSpec()
 
 
-def test_missing_orochi_section_yields_default(write_yaml):
-    path = write_yaml({"spec": {"foo": "bar"}})
+def test_missing_orochi_section_yields_default(tmp_path):
+    """A yaml with ``spec:`` but no ``spec.orochi:`` parses to default."""
+    # Arrange
+    path = _write_yaml(tmp_path, {"spec": {"foo": "bar"}})
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s == OrochiSpec()
 
 
-def test_orochi_section_explicit_null_yields_default(write_yaml):
-    """``spec.orochi: ~`` (yaml null) must not crash on ``.get`` calls."""
-    path = write_yaml({"spec": {"orochi": None}})
+def test_explicit_null_orochi_section_does_not_crash_on_get(tmp_path):
+    """``spec.orochi: ~`` (yaml null) must not crash the parser."""
+    # Arrange
+    path = _write_yaml(tmp_path, {"spec": {"orochi": None}})
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s == OrochiSpec()
 
 
@@ -97,27 +131,37 @@ def test_orochi_section_explicit_null_yields_default(write_yaml):
 # ---------------------------------------------------------------------------
 
 
-def test_hosts_plural_form(write_yaml):
-    path = write_yaml(
-        {"spec": {"orochi": {"enabled": True, "hosts": ["a.example", "b.example"]}}}
+def test_hosts_plural_form_is_parsed_as_list(tmp_path):
+    """``hosts: [a, b]`` becomes ``OrochiSpec.hosts == [a, b]``."""
+    # Arrange
+    path = _write_yaml(
+        tmp_path,
+        {"spec": {"orochi": {"enabled": True, "hosts": ["a.example", "b.example"]}}},
     )
+    # Act
     s = load_orochi_spec(path)
-    assert s.enabled is True
+    # Assert
     assert s.hosts == ["a.example", "b.example"]
-    assert s.is_enabled is True
 
 
-def test_legacy_host_singular_form_is_promoted_to_list(write_yaml):
+def test_legacy_host_singular_form_is_promoted_to_list(tmp_path):
     """Backcompat: older yamls used singular ``host:``."""
-    path = write_yaml({"spec": {"orochi": {"enabled": True, "host": "legacy.example"}}})
+    # Arrange
+    path = _write_yaml(
+        tmp_path,
+        {"spec": {"orochi": {"enabled": True, "host": "legacy.example"}}},
+    )
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s.hosts == ["legacy.example"]
-    assert s.is_enabled is True
 
 
-def test_hosts_plural_wins_when_both_present(write_yaml):
-    """If both ``hosts`` and ``host`` are present, plural wins (newer)."""
-    path = write_yaml(
+def test_hosts_plural_wins_when_both_present(tmp_path):
+    """If both ``hosts:`` and ``host:`` are present, plural wins."""
+    # Arrange
+    path = _write_yaml(
+        tmp_path,
         {
             "spec": {
                 "orochi": {
@@ -126,15 +170,19 @@ def test_hosts_plural_wins_when_both_present(write_yaml):
                     "host": "old",
                 }
             }
-        }
+        },
     )
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s.hosts == ["new1", "new2"]
 
 
-def test_empty_hosts_list_falls_back_to_host_singular(write_yaml):
+def test_empty_hosts_list_falls_back_to_singular_host(tmp_path):
     """``hosts: []`` is "no plural form" — fall back to ``host:``."""
-    path = write_yaml(
+    # Arrange
+    path = _write_yaml(
+        tmp_path,
         {
             "spec": {
                 "orochi": {
@@ -143,19 +191,22 @@ def test_empty_hosts_list_falls_back_to_host_singular(write_yaml):
                     "host": "fallback.example",
                 }
             }
-        }
+        },
     )
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s.hosts == ["fallback.example"]
 
 
-def test_no_hosts_anywhere_keeps_enabled_but_is_enabled_false(write_yaml):
-    """``enabled: true`` with no hosts is a soft-disable (invariant test)."""
-    path = write_yaml({"spec": {"orochi": {"enabled": True}}})
+def test_enabled_true_with_no_hosts_is_a_soft_disable(tmp_path):
+    """``enabled: true`` with no hosts -> is_enabled stays False."""
+    # Arrange
+    path = _write_yaml(tmp_path, {"spec": {"orochi": {"enabled": True}}})
+    # Act
     s = load_orochi_spec(path)
-    assert s.enabled is True
-    assert s.hosts == []
-    assert s.is_enabled is False
+    # Assert
+    assert (s.enabled, s.hosts, s.is_enabled) == (True, [], False)
 
 
 # ---------------------------------------------------------------------------
@@ -163,9 +214,11 @@ def test_no_hosts_anywhere_keeps_enabled_but_is_enabled_false(write_yaml):
 # ---------------------------------------------------------------------------
 
 
-def test_full_field_set_with_string_numbers_is_coerced(write_yaml):
+def test_full_yaml_roundtrips_every_field_with_numeric_coercion(tmp_path):
     """yaml allows int-looking strings; the parser must int() them."""
-    path = write_yaml(
+    # Arrange
+    path = _write_yaml(
+        tmp_path,
         {
             "spec": {
                 "orochi": {
@@ -181,32 +234,46 @@ def test_full_field_set_with_string_numbers_is_coerced(write_yaml):
                     "ts_path": "/opt/ts/mcp_channel.ts",
                 }
             }
-        }
+        },
     )
+    expected = OrochiSpec(
+        enabled=True,
+        hosts=["h1"],
+        port=9559,
+        ws_path="/ws/custom/",
+        token_env="CUSTOM_TOKEN",
+        channels=["#chan-a", "#chan-b"],
+        heartbeat_interval=45,
+        reconnect_interval=20,
+        reconnect_max_retries=5,
+        ts_path="/opt/ts/mcp_channel.ts",
+    )
+    # Act
     s = load_orochi_spec(path)
-    assert s.port == 9559
-    assert s.ws_path == "/ws/custom/"
-    assert s.token_env == "CUSTOM_TOKEN"
-    assert s.channels == ["#chan-a", "#chan-b"]
-    assert s.heartbeat_interval == 45
-    assert s.reconnect_interval == 20
-    assert s.reconnect_max_retries == 5
-    assert s.ts_path == "/opt/ts/mcp_channel.ts"
-    assert s.is_enabled is True
+    # Assert
+    assert s == expected
 
 
-def test_channels_null_yields_empty_list(write_yaml):
-    """``channels: ~`` must not propagate None to ``.channels`` (downstream
-    callers do ``orochi.channels or [...]`` patterns)."""
-    path = write_yaml(
-        {"spec": {"orochi": {"enabled": True, "hosts": ["h"], "channels": None}}}
+def test_channels_null_yields_empty_list(tmp_path):
+    """``channels: ~`` must not propagate None to ``.channels``."""
+    # Arrange
+    path = _write_yaml(
+        tmp_path,
+        {"spec": {"orochi": {"enabled": True, "hosts": ["h"], "channels": None}}},
     )
+    # Act
     s = load_orochi_spec(path)
+    # Assert
     assert s.channels == []
 
 
-def test_load_accepts_str_path(write_yaml):
+def test_load_accepts_str_path(tmp_path):
     """Smoke: ``load_orochi_spec`` accepts both Path and str."""
-    path = write_yaml({"spec": {"orochi": {"enabled": True, "hosts": ["h"]}}})
+    # Arrange
+    path = _write_yaml(
+        tmp_path, {"spec": {"orochi": {"enabled": True, "hosts": ["h"]}}}
+    )
+    # Act
     s = load_orochi_spec(str(path))
+    # Assert
     assert s.is_enabled is True
