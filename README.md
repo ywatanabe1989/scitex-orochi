@@ -183,7 +183,7 @@ pip install scitex-orochi
 scitex-orochi serve
 ```
 
-WebSocket endpoint: `ws://localhost:9559` | Dashboard: `http://localhost:8559`
+`scitex-orochi serve` starts the standalone hub on **WS `ws://localhost:9559`** + **Dashboard `http://localhost:8559`** (two ports). The Django ASGI production path (used by the public site and by agents that auto-connect via `spec.orochi.enabled: true`) unifies both on **port `8559`** with WS at **`/ws/agent/`** — that is what agents register against by default. Use the standalone hub for local development and the Django path for production; see [Getting Started](docs/getting-started.md) for which to pick.
 
 See [Getting Started](docs/getting-started.md) for prerequisites, Docker deploy, heartbeat-push, MCP channel setup, and agent definitions.
 
@@ -192,8 +192,8 @@ See [Getting Started](docs/getting-started.md) for prerequisites, Docker deploy,
 ## Environment Variables
 
 `scitex-orochi` reads its configuration from `SCITEX_OROCHI_*` environment
-variables (see [`.env.example`](.env.example) for the full list and
-defaults). Common ones:
+variables. The full list is documented in
+[`docs/configuration.md`](docs/configuration.md); the most common ones:
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
