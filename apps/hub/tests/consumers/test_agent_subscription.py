@@ -1,0 +1,197 @@
+"""Tests for the Orochi hub Django app."""
+
+import json  # noqa: F401
+from unittest.mock import MagicMock, patch  # noqa: F401
+
+from django.contrib.auth.models import User  # noqa: F401
+from django.core.exceptions import ValidationError  # noqa: F401
+from django.db import IntegrityError, transaction  # noqa: F401
+from django.test import Client, TestCase  # noqa: F401
+
+from apps.hub import push as hub_push  # noqa: F401
+from apps.hub.models import (  # noqa: F401
+    Channel,
+    ChannelMembership,
+    DMParticipant,
+    Message,
+    PushSubscription,
+    Workspace,
+    WorkspaceMember,
+    WorkspaceToken,
+    normalize_channel_name,
+)
+
+
+class AgentChannelSubscriptionPersistenceTest(TestCase):
+    """Server-authoritative channel subscription — persist to ChannelMembership
+    and hydrate on register.
+    """
+
+    def setUp(self):
+
+        self.ChannelMembership = ChannelMembership
+        self.Channel = Channel
+        self.ws = Workspace.objects.create(name="sub-ws")
+
+    def test_persist_subscribe_creates_membership(self):
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _persist_agent_subscription
+
+        ok = async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-a", "#alpha", True
+        )
+        self.assertTrue(ok)
+        user = User.objects.get(username="agent-worker-a")
+        ch = self.Channel.objects.get(workspace=self.ws, name="#alpha")
+        self.assertTrue(
+            self.ChannelMembership.objects.filter(user=user, channel=ch).exists()
+        )
+
+    def test_persist_unsubscribe_removes_membership(self):
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _persist_agent_subscription
+
+        async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-b", "#beta", True
+        )
+        async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-b", "#beta", False
+        )
+        ch = self.Channel.objects.get(workspace=self.ws, name="#beta")
+        self.assertEqual(self.ChannelMembership.objects.filter(channel=ch).count(), 0)
+
+    def test_hydrate_loads_persisted_subs(self):
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import (
+            _load_agent_channel_subs,
+            _persist_agent_subscription,
+        )
+
+        async_to_sync(_persist_agent_subscription)(self.ws.id, "worker-c", "#x", True)
+        async_to_sync(_persist_agent_subscription)(self.ws.id, "worker-c", "#y", True)
+        subs = async_to_sync(_load_agent_channel_subs)(self.ws.id, "worker-c")
+        self.assertEqual(set(subs), {"#x", "#y"})
+
+    def test_hydrate_returns_empty_for_unknown_agent(self):
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _load_agent_channel_subs
+
+        subs = async_to_sync(_load_agent_channel_subs)(self.ws.id, "never-registered")
+        self.assertEqual(subs, [])
+
+    def test_hydrate_scoped_per_workspace(self):
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import (
+            _load_agent_channel_subs,
+            _persist_agent_subscription,
+        )
+
+        ws2 = Workspace.objects.create(name="other-ws")
+        async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-d", "#self", True
+        )
+        async_to_sync(_persist_agent_subscription)(ws2.id, "worker-d", "#other", True)
+        subs_self = async_to_sync(_load_agent_channel_subs)(self.ws.id, "worker-d")
+        subs_other = async_to_sync(_load_agent_channel_subs)(ws2.id, "worker-d")
+        self.assertEqual(subs_self, ["#self"])
+        self.assertEqual(subs_other, ["#other"])
+
+    def test_persist_subscribe_rejects_abolished_agent_channel(self):
+        """``#agent`` was abolished 2026-04-21 — no agent may (re)subscribe.
+
+        The helper must short-circuit with ``False`` and NOT create any
+        ``ChannelMembership`` / ``Channel`` rows, so a stray WebSocket
+        subscribe op can't resurrect the channel.
+        """
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _persist_agent_subscription
+
+        ok = async_to_sync(_persist_agent_subscription)(
+            self.ws.id, "worker-e", "#agent", True
+        )
+        self.assertFalse(ok)
+        # No Channel row created for #agent in this workspace:
+        self.assertFalse(
+            self.Channel.objects.filter(workspace=self.ws, name="#agent").exists()
+        )
+        # No synthetic agent user created as a side-effect either:
+        self.assertFalse(User.objects.filter(username="agent-worker-e").exists())
+
+    def test_persist_subscribe_accepts_bits(self):
+        """lead msg#16884 bit-split — ``_persist_agent_subscription``
+        accepts ``can_read`` / ``can_write`` and writes them to the row.
+        """
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _persist_agent_subscription
+
+        ok = async_to_sync(_persist_agent_subscription)(
+            self.ws.id,
+            "worker-wo",
+            "#digest",
+            True,
+            can_read=False,
+            can_write=True,
+        )
+        self.assertTrue(ok)
+        user = User.objects.get(username="agent-worker-wo")
+        ch = self.Channel.objects.get(workspace=self.ws, name="#digest")
+        row = self.ChannelMembership.objects.get(user=user, channel=ch)
+        self.assertFalse(row.can_read)
+        self.assertTrue(row.can_write)
+        self.assertEqual(row.permission, self.ChannelMembership.PERM_WRITE_ONLY)
+
+    def test_load_excludes_write_only_rows(self):
+        """``_load_agent_channel_subs`` hides rows where ``can_read=False``
+        — the consumer must not group_add those channels, so the agent
+        never receives fan-out for them (msg#16884 bit-split)."""
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _load_agent_channel_subs
+
+        user = User.objects.create_user(username="agent-worker-readfilter")
+        readable = self.Channel.objects.create(
+            workspace=self.ws, name="#reads-this"
+        )
+        hidden = self.Channel.objects.create(
+            workspace=self.ws, name="#posts-only"
+        )
+        self.ChannelMembership.objects.create(
+            user=user, channel=readable, can_read=True, can_write=True
+        )
+        self.ChannelMembership.objects.create(
+            user=user, channel=hidden, can_read=False, can_write=True
+        )
+
+        subs = async_to_sync(_load_agent_channel_subs)(
+            self.ws.id, "worker-readfilter"
+        )
+        self.assertIn("#reads-this", subs)
+        self.assertNotIn("#posts-only", subs)
+
+    def test_load_filters_abolished_agent_channel(self):
+        """Stale ``#agent`` ``ChannelMembership`` rows from before the
+        2026-04-21 abolition must NOT surface in ``_load_agent_channel_subs``
+        — otherwise the WS consumer would re-join the group on connect.
+        """
+        from asgiref.sync import async_to_sync
+
+        from apps.hub.consumers import _load_agent_channel_subs
+
+        # Simulate a pre-abolition DB row: create the channel + membership
+        # directly, bypassing _persist_agent_subscription's guard.
+        user = User.objects.create_user(username="agent-worker-f")
+        stale_ch = self.Channel.objects.create(workspace=self.ws, name="#agent")
+        alive_ch = self.Channel.objects.create(workspace=self.ws, name="#heads")
+        self.ChannelMembership.objects.create(user=user, channel=stale_ch)
+        self.ChannelMembership.objects.create(user=user, channel=alive_ch)
+
+        subs = async_to_sync(_load_agent_channel_subs)(self.ws.id, "worker-f")
+        self.assertNotIn("#agent", subs)
+        self.assertIn("#heads", subs)

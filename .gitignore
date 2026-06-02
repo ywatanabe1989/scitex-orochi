@@ -7,7 +7,9 @@ build/
 .eggs/
 *.db
 .env
+.venv
 .venv/
+venv
 venv/
 node_modules/
 ts/node_modules/
@@ -16,6 +18,14 @@ GITIGNORED/
 
 .pytest_cache/
 .ruff_cache/
+
+# Coverage — including the per-process subprocess-coverage shards the
+# conftest emits (.coverage.<host>.pid<N>.<rand>). These are build
+# artifacts; a stray shard was committed before this rule existed.
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
 
 # Django
 db.sqlite3

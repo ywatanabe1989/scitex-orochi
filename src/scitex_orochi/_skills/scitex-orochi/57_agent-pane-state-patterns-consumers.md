@@ -1,6 +1,8 @@
 ---
-name: orochi-agent-pane-state-patterns-consumers
-description: Upstream single-source-of-truth memory + fleet consumers + scope/exclusions + change log. (Split from 57_agent-pane-state-patterns-extras.md.)
+description: |
+  [TOPIC] Agent Pane State Patterns Consumers
+  [DETAILS] Upstream single-source-of-truth memory + fleet consumers + scope/exclusions + change log. (Split from 57_agent-pane-state-patterns-extras.md.).
+tags: [scitex-orochi-agent-pane-state-patterns-consumers]
 ---
 
 > Sibling: [`74_agent-pane-state-patterns-detection.md`](74_agent-pane-state-patterns-detection.md) for detection algorithm + auto-actions.

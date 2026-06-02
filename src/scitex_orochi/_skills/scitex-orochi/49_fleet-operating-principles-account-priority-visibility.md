@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-operating-principles-account-priority-visibility
-description: Subagent/resource limits + account-switching + Eisenhower priority model + visibility guarantees + rules of engagement summary. (Split from 49_fleet-operating-principles-anti-patterns.md.)
+description: |
+  [TOPIC] Fleet Operating Principles Account Priority Visibility
+  [DETAILS] Subagent/resource limits + account-switching + Eisenhower priority model + visibility guarantees + rules of engagement summary. (Split from 49_fleet-operating-principles-anti-patterns.md.).
+tags: [scitex-orochi-fleet-operating-principles-account-priority-visibility]
 ---
 
 > Sibling: [`70_fleet-operating-principles-channel-deploy.md`](70_fleet-operating-principles-channel-deploy.md) for channel/deploy sections.

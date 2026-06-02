@@ -1,3 +1,9 @@
+---
+description: |
+  [TOPIC] Agent Deployment
+  [DETAILS] Agent Deployment.
+tags: [scitex-orochi-agent-deployment]
+---
 <!-- ---
 !-- Timestamp: 2026-04-17 00:10:37
 !-- Author: ywatanabe

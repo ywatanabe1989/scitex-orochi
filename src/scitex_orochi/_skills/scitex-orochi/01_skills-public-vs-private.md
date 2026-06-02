@@ -1,6 +1,8 @@
 ---
-name: skills-public-vs-private
-description: Where an Orochi skill belongs — shipped with the package (public) or ~/.scitex/orochi/shared/skills/scitex-orochi-private/ (private).
+description: |
+  [TOPIC] Public vs Private Skills — Orochi
+  [DETAILS] Where an Orochi skill belongs — shipped with the package (public) or ~/.scitex/orochi/shared/skills/scitex-orochi-private/ (private)..
+tags: [scitex-orochi-skills-public-vs-private]
 ---
 
 # Public vs Private Skills — Orochi

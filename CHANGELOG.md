@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.4] - 2026-05-31
+
+### 🧹 Maintenance
+- chore(audit): make `scitex-dev ecosystem audit-all scitex-orochi` exit 0
+  so the release gate (`tests/develop/test_audit.py::test_audit_all_clean`)
+  passes. Relocated loose top-level tests into `tests/integration/` and
+  `tests/scitex_orochi/` per the §2 layout rules, added structural mirror
+  tests, brought the README and pyproject docs to the canonical SciTeX
+  template, normalized three skill-doc frontmatters, fixed PA-501/PA-201 in
+  the package `__init__`, and deferred the PS-108/108b/121/168 PS rules and
+  the PA-306/307 + CLI/MCP §-rule convention backlog with documented reasons.
+- fix(lint): resolve pre-existing ruff I001/E402 findings.
+
 ## [0.11.0] - 2026-04-13
 
 ### 🚀 Features

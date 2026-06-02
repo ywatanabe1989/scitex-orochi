@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-general-tools
-description: Absolute rules + binary-location guidance + scoping filesystem queries + inode-aware ops + SLURM etiquette + login-node policy. (Split from 60_hpc-etiquette-general-extras.md.)
+description: |
+  [TOPIC] 1. POSIX shell built-in — zero filesystem cost beyond the PATH cache
+  [DETAILS] Absolute rules + binary-location guidance + scoping filesystem queries + inode-aware ops + SLURM etiquette + login-node policy. (Split from 60_hpc-etiquette-general-extras.md.).
+tags: [scitex-orochi-hpc-etiquette-general-tools]
 ---
 
 > Sibling: [`60_hpc-etiquette-general-rules.md`](60_hpc-etiquette-general-rules.md) for the general HPC rules.

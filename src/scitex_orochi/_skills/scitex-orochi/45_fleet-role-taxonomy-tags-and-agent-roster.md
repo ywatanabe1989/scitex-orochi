@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-role-taxonomy-tags-and-agent-roster
-description: Function tags (orthogonal, multi-assign) + agent-layer self-tagging examples. (Split from 45_fleet-role-taxonomy-tags-and-roster.md.)
+description: |
+  [TOPIC] Fleet Role Taxonomy Tags and Agent Roster
+  [DETAILS] Function tags (orthogonal, multi-assign) + agent-layer self-tagging examples. (Split from 45_fleet-role-taxonomy-tags-and-roster.md.).
+tags: [scitex-orochi-fleet-role-taxonomy-tags-and-agent-roster]
 ---
 
 > Sibling: [`69_fleet-role-taxonomy-process-roster-and-anti-patterns.md`](69_fleet-role-taxonomy-process-roster-and-anti-patterns.md) for process-layer roster, anti-patterns, related skills.

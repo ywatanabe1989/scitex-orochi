@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-recovery-permission-extra-context
-description: Phase 4 recovery playbook — motivating incident + permission-prompt + extra-usage-wedge + context-window-full recovery. (Split from 64_fleet-health-daemon-design-recovery-extras.md.)
+description: |
+  [TOPIC] Fleet Health Daemon Design Recovery Permission Extra Context
+  [DETAILS] Phase 4 recovery playbook — motivating incident + permission-prompt + extra-usage-wedge + context-window-full recovery. (Split from 64_fleet-health-daemon-design-recovery-extras.md.).
+tags: [scitex-orochi-fleet-health-daemon-design-recovery-permission-extra-context]
 ---
 
 > Sibling: [`80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md`](80_fleet-health-daemon-design-recovery-tmux-mcp-resurrection.md) for tmux-stuck, MCP zombie, paste-buffer, periodic resurrection.

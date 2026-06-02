@@ -1,6 +1,8 @@
 ---
-name: orochi-62_permission-prompt-patterns-catalog
-description: Permission-prompt pattern catalog (one entry per known prompt, regex + remediation). (Split from 62_permission-prompt-patterns-extras.md.)
+description: |
+  [TOPIC] Permission Prompt Patterns Catalog
+  [DETAILS] Permission-prompt pattern catalog (one entry per known prompt, regex + remediation). (Split from 62_permission-prompt-patterns-extras.md.).
+tags: [scitex-orochi-permission-prompt-patterns-catalog]
 ---
 
 > Sibling: [`79_permission-prompt-patterns-meta.md`](79_permission-prompt-patterns-meta.md) for how patterns get added, loading order, exclusions, incident log.

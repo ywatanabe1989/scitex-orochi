@@ -1,0 +1,4 @@
+# Project-level templates root (ADR 0002 §3 / DJ-301).
+# Global templates (base.html, 404.html, 500.html) belong here and are
+# picked up via TEMPLATES[0]["DIRS"]. App-specific templates remain under
+# apps/<app>/templates/<app>/ and are found by APP_DIRS=True.

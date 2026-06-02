@@ -1,3 +1,9 @@
+---
+description: |
+  [TOPIC] Critical agent (research, debugging)
+  [DETAILS] Critical agent (research, debugging).
+tags: [scitex-orochi-agent-deployment-extras]
+---
 
 > Part 2 of 2. See [`10_agent-deployment.md`](10_agent-deployment.md) for the orchestrator/overview.
 ## Push Mode (Preferred)
@@ -185,5 +191,3 @@ The TypeScript bridge exposes two MCP tools:
 |------|---------|
 | `reply` | Send message to an Orochi channel (chat_id, text, reply_to) |
 | `history` | Fetch recent messages from a channel via HTTP API |
-
-<!-- EOF -->

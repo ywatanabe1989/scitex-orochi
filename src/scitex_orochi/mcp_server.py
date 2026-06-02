@@ -47,12 +47,12 @@ if _telegram_token:
 
 # ---------------------------------------------------------------------------
 
-try:
-    from fastmcp import FastMCP
+from scitex_dev import try_import_optional  # noqa: E402  (after safety guards)
 
-    _FASTMCP_AVAILABLE = True
-except ImportError:
-    _FASTMCP_AVAILABLE = False
+FastMCP = try_import_optional(
+    "fastmcp", attr="FastMCP", extra="mcp", pkg="scitex-orochi"
+)
+_FASTMCP_AVAILABLE = FastMCP is not None
 
 
 def _get_agent_name() -> str:

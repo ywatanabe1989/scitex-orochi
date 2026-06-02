@@ -1,0 +1,4 @@
+# Project-level static sources root (ADR 0002 §3 / DJ-302).
+# Wired into STATICFILES_DIRS. App-specific static remains under
+# apps/<app>/static/<app>/ and is found by the AppDirectoriesFinder.
+# collectstatic targets staticfiles/.

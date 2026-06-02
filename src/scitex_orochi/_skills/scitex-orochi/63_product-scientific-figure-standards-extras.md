@@ -1,6 +1,8 @@
 ---
-name: orochi-scientific-figure-standards-part-2
-description: Fleet-wide standards for scientific figures and statistics — sample size disclosure, H₀ mandatory, mean±SD shading, null controls, event annotations, per-subject summary lines, and per-patient PDF layout. Consolidates ywatanabe guidance from 2026-04-13 neurovista review. (Part 2 of 2 — split from 42_product-scientific-figure-standards.md.)
+description: |
+  [TOPIC] Product Scientific Figure Standards Extras
+  [DETAILS] Fleet-wide standards for scientific figures and statistics — sample size disclosure, H₀ mandatory, mean±SD shading, null controls, event annotations, per-subject summary lines, and per-patient PDF layout. Consolidates....
+tags: [scitex-orochi-product-scientific-figure-standards-extras]
 ---
 
 > Part 2 of 2. See [`42_product-scientific-figure-standards.md`](42_product-scientific-figure-standards.md) for the orchestrator/overview.

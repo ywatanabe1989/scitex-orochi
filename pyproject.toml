@@ -4,11 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scitex-orochi"
-<<<<<<< HEAD
-version = "0.16.3"
-=======
-version = "0.16.0"
->>>>>>> origin/main
+version = "0.16.4"
 description = "Agent Communication Hub for the SciTeX ecosystem"
 readme = "README.md"
 license = "AGPL-3.0-only"
@@ -66,26 +62,48 @@ dependencies = [
     # Cross-platform machine metrics (cpu/mem/disk/gpu) for heartbeats.
     # Replaces the /proc-only collector that returned empty fields on
     # macOS / Windows / WSL. ``get_metrics()`` is the public flat-dict API.
-    "scitex-resource>=0.2.0",
+    # SciTeX umbrella peer — ADR 0002 §5 uses ``>=`` floors (not ``==``
+    # exact pins) for co-released ecosystem members to avoid pip
+    # ResolutionImpossible. Floor = current published release.
+    "scitex-resource>=0.4.2",
     # Canonical local-state directory helper (project-scope override +
     # auto runtime/ seed creation). Per scitex-python skill
-    # 01_arch_06_local-state-directories.md.
-    "scitex-config>=0.3.0",
+    # 01_arch_06_local-state-directories.md. Umbrella peer — see above.
+    "scitex-config>=0.3.6",
 ]
 
 [project.optional-dependencies]
 mcp = ["fastmcp>=2.0"]
-agent-container = ["scitex-agent-container>=0.8.0"]
+# Optional graceful edge — the agent-container bridge degrades cleanly
+# when scitex-agent-container is absent (see
+# ``scitex_orochi._agent_container_bridge``). NOT folded into the web
+# stack: this extra carries no Django, so DJ-502 (no Django-bearing
+# sub-extras) does not apply.
+agent-container = ["scitex-agent-container>=0.21.3"]
 telegram = ["claude-code-telegrammer>=0.2.0"]
+# Canonical aggregate install target (ADR 0002 §5). ``[all]`` pulls the
+# whole runtime surface + optional integrations so a single
+# ``pip install scitex-orochi[all]`` gives a working hub. Listed flat
+# (not recursive ``scitex-orochi[mcp]`` references) to avoid the pip
+# resolver deadlock DJ-502 warns about.
+all = [
+    "fastmcp>=2.0",
+    "scitex-agent-container>=0.21.3",
+    "claude-code-telegrammer>=0.2.0",
+]
 dev = [
-    "pytest>=7.0",
-    "pytest-asyncio",
-    "websockets>=12.0",
     "aiosqlite>=0.20",
     "deepeval>=1.0",
-    # Quality-audit suite + tests/test_skills_quality.py imports it.
-    # Without this dep CI fails with `ModuleNotFoundError: scitex_dev`.
-    "scitex-dev",
+    "fastmcp>=2.0",
+    "pytest-asyncio",
+    "pytest>=7.0",
+    # pytest-cov pulls in coverage>=7, which the subprocess-coverage shim
+    # in tests/conftest.py imports from child interpreters. See scitex-dev
+    # skill leaf 05_development_06_subprocess-coverage.md.
+    "pytest-cov>=4.0",
+    "scitex-agent-container>=0.21.3",
+    "scitex-dev>=0.15.0",
+    "websockets>=12.0",
 ]
 docs = [
     "sphinx>=7.0",
@@ -109,23 +127,30 @@ scitex-orochi = "scitex_orochi"
 [project.urls]
 Homepage = "https://github.com/ywatanabe1989/scitex-orochi"
 Repository = "https://github.com/ywatanabe1989/scitex-orochi"
+Documentation = "https://scitex-orochi.readthedocs.io"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/scitex_orochi", "hub", "orochi"]
+# ADR 0002 §4 / DJ-402: the wheel ships ONLY the src-layout pip package.
+# The Django runtime (config/, apps/, templates/, static/) is deployed
+# from the repo checkout (docker COPY config/ apps/), never bundled into
+# the wheel — keeping the deployable project cleanly separate from the
+# shippable package.
+packages = ["src/scitex_orochi"]
 # Explicit data-file inclusion. Hatch ships `.py` by default; everything
 # else needs to be listed, or `pip install scitex-orochi` from PyPI ends
-# up without the `_skills/` .md files and without the bundled TypeScript
-# sidecar. todo#450 surfaced the _skills drift (8 files vs 44 in source)
-# — listing `_skills/**` explicitly makes the wheel a faithful copy of
-# the package tree for non-editable installs.
+# up without the `_skills/` .md files. todo#450 surfaced the _skills drift
+# (8 files vs 44 in source) — listing `_skills/**` explicitly makes the
+# wheel a faithful copy of the package tree for non-editable installs.
+# The TypeScript MCP channel sidecar lives at the repo-root `ts/` dir and
+# is run directly by Bun from the checkout (see
+# src/scitex_orochi/_agent_container_bridge/mcp.py::find_mcp_channel_ts);
+# it is intentionally NOT bundled into the wheel.
 artifacts = [
-    "_ts/**",
     "src/scitex_orochi/_skills/**",
 ]
 
 [tool.hatch.build.targets.sdist]
 artifacts = [
-    "src/scitex_orochi/_ts/**",
     "src/scitex_orochi/_skills/**",
 ]
 # Exclude developer-local virtualenvs and worktree caches so the sdist
@@ -155,8 +180,18 @@ markers = [
     "llm_eval: marks tests that use an LLM-as-judge (DeepEval) and require provider API keys (deselect with '-m \"not llm_eval\"')",
 ]
 
+[tool.coverage.run]
+# Subprocess coverage wiring — see scitex-dev skill leaf
+# 05_development_06_subprocess-coverage.md. Without parallel + the
+# multiprocessing/thread concurrency keys, coverage data from child
+# Python interpreters (subprocess.run([sys.executable, ...]),
+# nbconvert --execute, pytest-xdist workers) is silently dropped.
+parallel = true
+source = ["scitex_orochi"]
+concurrency = ["multiprocessing", "thread"]
+
 [tool.scitex-linter]
-library_dirs = ["src", "tests", "hub", "orochi"]
+library_dirs = ["src", "tests", "apps", "config"]
 
 [tool.ruff]
 line-length = 88

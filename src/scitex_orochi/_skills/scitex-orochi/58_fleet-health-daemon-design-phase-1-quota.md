@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-design-phase-1-quota
-description: Phase 1 of the fleet-health-daemon — Claude Code quota-state scraping. Per-tick NDJSON schema v3, threshold breadcrumbs, hub aggregation. (Split from 58_fleet-health-daemon-design-phases-later.md.)
+description: |
+  [TOPIC] Fleet Health Daemon Design Phase 1 Quota
+  [DETAILS] Phase 1 of the fleet-health-daemon — Claude Code quota-state scraping. Per-tick NDJSON schema v3, threshold breadcrumbs, hub aggregation. (Split from 58_fleet-health-daemon-design-phases-later.md.).
+tags: [scitex-orochi-fleet-health-daemon-design-phase-1-quota]
 ---
 
 > Sibling: [`75_fleet-health-daemon-design-phase-2-3-probe-and-mesh.md`](75_fleet-health-daemon-design-phase-2-3-probe-and-mesh.md) for Phase 2 multi-signal probe and Phase 3 healer mesh.

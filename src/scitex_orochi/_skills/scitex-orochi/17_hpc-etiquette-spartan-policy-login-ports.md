@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-spartan-policy-login-ports
-description: Spartan canonical policy — login-node compute allowlist + TCP port policy (verbatim). (Split from 17_hpc-etiquette-spartan-account-lifecycle.md.)
+description: |
+  [TOPIC] Hpc Etiquette Spartan Policy Login Ports
+  [DETAILS] Spartan canonical policy — login-node compute allowlist + TCP port policy (verbatim). (Split from 17_hpc-etiquette-spartan-account-lifecycle.md.).
+tags: [scitex-orochi-hpc-etiquette-spartan-policy-login-ports]
 ---
 
 > Sibling: [`67_hpc-etiquette-spartan-policy-batch-lifecycle.md`](67_hpc-etiquette-spartan-policy-batch-lifecycle.md) for batch / lifecycle / inappropriate-use.

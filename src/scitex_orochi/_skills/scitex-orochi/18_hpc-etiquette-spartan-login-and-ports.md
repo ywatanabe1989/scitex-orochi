@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-spartan-login-and-ports
-description: UniMelb Spartan policy — login-node compute allowlist + TCP port policy. Reproduced verbatim with fleet implications. (Split from 18_hpc-etiquette-spartan-fleet-implications.md.)
+description: |
+  [TOPIC] Hpc Etiquette Spartan Login and Ports
+  [DETAILS] UniMelb Spartan policy — login-node compute allowlist + TCP port policy. Reproduced verbatim with fleet implications. (Split from 18_hpc-etiquette-spartan-fleet-implications.md.).
+tags: [scitex-orochi-hpc-etiquette-spartan-login-and-ports]
 ---
 
 > Sibling: [`68_hpc-etiquette-spartan-batch-and-lifecycle.md`](68_hpc-etiquette-spartan-batch-and-lifecycle.md) for batch/web-apps stance, account lifecycle, project expiration, inappropriate-use clauses.

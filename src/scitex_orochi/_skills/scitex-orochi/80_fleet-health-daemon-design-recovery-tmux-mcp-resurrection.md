@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-health-daemon-recovery-tmux-mcp-resurrection
-description: Phase 4 recovery playbook — tmux-stuck + MCP zombie + paste-buffer-unsent + periodic resurrection sweep. (Split from 64_fleet-health-daemon-design-recovery-extras.md.)
+description: |
+  [TOPIC] Fleet Health Daemon Design Recovery Tmux Mcp Resurrection
+  [DETAILS] Phase 4 recovery playbook — tmux-stuck + MCP zombie + paste-buffer-unsent + periodic resurrection sweep. (Split from 64_fleet-health-daemon-design-recovery-extras.md.).
+tags: [scitex-orochi-fleet-health-daemon-design-recovery-tmux-mcp-resurrection]
 ---
 
 > Sibling: [`64_fleet-health-daemon-design-recovery-permission-extra-context.md`](64_fleet-health-daemon-design-recovery-permission-extra-context.md) for permission/extra-usage/context recovery.

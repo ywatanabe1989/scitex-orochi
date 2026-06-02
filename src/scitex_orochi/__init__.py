@@ -1,5 +1,7 @@
 """Orochi -- Agent Communication Hub for the SciTeX ecosystem."""
 
+from __future__ import annotations
+
 try:
     from importlib.metadata import PackageNotFoundError
     from importlib.metadata import version as _v
@@ -16,6 +18,7 @@ from scitex_orochi._resources import collect_metrics
 from scitex_orochi._server import OrochiServer
 
 __all__ = [
+    "__version__",
     "OrochiClient",
     "OrochiServer",
     "Message",

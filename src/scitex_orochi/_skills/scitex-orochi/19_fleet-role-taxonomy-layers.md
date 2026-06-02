@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-role-taxonomy-part-2
-description: Orochi fleet taxonomy — 2-layer (process/agent) + 4 exclusive roles (lead / head / worker / daemon) + orthogonal function tags. Defining axis is "LLM-in-loop?". Daemons are quota-zero programmatic processes, not agents. Host-diverse daemon policy (not NAS-exclusive) because NAS is production-loaded with scitex-cloud visitor SLURM. Ratified 2026-04-14 msg#11475. (Part 2 of 3 — split from 31_fleet-role-taxonomy.md.)
+description: |
+  [TOPIC] Fleet Role Taxonomy Layers
+  [DETAILS] Orochi fleet taxonomy — 2-layer (process/agent) + 4 exclusive roles (lead / head / worker / daemon) + orthogonal function tags. Defining axis is "LLM-in-loop?". Daemons are quota-zero programmatic processes, not agent....
+tags: [scitex-orochi-fleet-role-taxonomy-layers]
 ---
 
 > Part 2 of 3. See [`31_fleet-role-taxonomy.md`](31_fleet-role-taxonomy.md) for the orchestrator/overview.

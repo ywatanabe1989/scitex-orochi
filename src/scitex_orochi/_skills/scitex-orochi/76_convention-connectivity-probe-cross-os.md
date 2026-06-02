@@ -1,6 +1,8 @@
 ---
-name: orochi-convention-connectivity-probe-cross-os
-description: Cross-OS semantics for connectivity probes — Darwin is not Linux; common mistakes checklist. (Split from 59_convention-connectivity-probe-extras.md.)
+description: |
+  [TOPIC] Darwin "Pages free" is always tiny (~100 MB) by design — macOS uses
+  [DETAILS] Cross-OS semantics for connectivity probes — Darwin is not Linux; common mistakes checklist. (Split from 59_convention-connectivity-probe-extras.md.).
+tags: [scitex-orochi-convention-connectivity-probe-cross-os]
 ---
 
 > Sibling: [`59_convention-connectivity-probe-adoption.md`](59_convention-connectivity-probe-adoption.md) for adoption checklist + per-host status + per-lane issue templates.

@@ -1,6 +1,8 @@
 ---
-name: orochi-hpc-etiquette-spartan-policy-batch-lifecycle
-description: Spartan canonical policy — batch-only stance + account lifecycle + project expiration + inappropriate-use. (Split from 17_hpc-etiquette-spartan-account-lifecycle.md.)
+description: |
+  [TOPIC] Hpc Etiquette Spartan Policy Batch Lifecycle
+  [DETAILS] Spartan canonical policy — batch-only stance + account lifecycle + project expiration + inappropriate-use. (Split from 17_hpc-etiquette-spartan-account-lifecycle.md.).
+tags: [scitex-orochi-hpc-etiquette-spartan-policy-batch-lifecycle]
 ---
 
 > Sibling: [`17_hpc-etiquette-spartan-policy-login-ports.md`](17_hpc-etiquette-spartan-policy-login-ports.md) for login + TCP port.

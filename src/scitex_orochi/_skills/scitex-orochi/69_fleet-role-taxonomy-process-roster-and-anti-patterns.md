@@ -1,6 +1,8 @@
 ---
-name: orochi-fleet-role-taxonomy-process-roster-and-anti-patterns
-description: Process-layer self-tagging examples + anti-patterns (mistakes that re-merge layers) + related skills. (Split from 45_fleet-role-taxonomy-tags-and-roster.md.)
+description: |
+  [TOPIC] Fleet Role Taxonomy Process Roster and Anti Patterns
+  [DETAILS] Process-layer self-tagging examples + anti-patterns (mistakes that re-merge layers) + related skills. (Split from 45_fleet-role-taxonomy-tags-and-roster.md.).
+tags: [scitex-orochi-fleet-role-taxonomy-process-roster-and-anti-patterns]
 ---
 
 > Sibling: [`45_fleet-role-taxonomy-tags-and-agent-roster.md`](45_fleet-role-taxonomy-tags-and-agent-roster.md) for tags and agent roster.

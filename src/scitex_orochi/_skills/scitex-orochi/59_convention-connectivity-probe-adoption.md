@@ -1,6 +1,8 @@
 ---
-name: orochi-convention-connectivity-probe-adoption
-description: Adoption checklist + per-host status + per-lane issue templates + related skills. (Split from 59_convention-connectivity-probe-extras.md.)
+description: |
+  [TOPIC] Convention Connectivity Probe Adoption
+  [DETAILS] Adoption checklist + per-host status + per-lane issue templates + related skills. (Split from 59_convention-connectivity-probe-extras.md.).
+tags: [scitex-orochi-convention-connectivity-probe-adoption]
 ---
 
 > Sibling: [`76_convention-connectivity-probe-cross-os.md`](76_convention-connectivity-probe-cross-os.md) for cross-OS semantics + common mistakes.

@@ -1,6 +1,8 @@
 ---
-name: orochi-operating-principles
-description: Fleet-wide operating principles — mutual aid, ship-next, time-over-money, channel etiquette, deploy protocol, account switching, subagent limits, post-type prefixes. Consolidates rules agreed on 2026-04-12.
+description: |
+  [TOPIC] Orochi Operating Principles
+  [DETAILS] Fleet-wide operating principles — mutual aid, ship-next, time-over-money, channel etiquette, deploy protocol, account switching, subagent limits, post-type prefixes. Consolidates rules agreed on 2026-04-12..
+tags: [scitex-orochi-fleet-operating-principles]
 ---
 
 # Orochi Operating Principles

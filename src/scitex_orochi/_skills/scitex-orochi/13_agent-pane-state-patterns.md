@@ -1,6 +1,8 @@
 ---
-name: orochi-pane-state-patterns
-description: Canonical regex catalog for classifying tmux pane state of an Orochi Claude Code agent. Feeds into auto-unblock + credential rotation + "working side" triage. Upstream truth at ~/.emacs.d/lisp/emacs-claude-code.
+description: |
+  [TOPIC] Pane State Patterns
+  [DETAILS] Canonical regex catalog for classifying tmux pane state of an Orochi Claude Code agent. Feeds into auto-unblock + credential rotation + "working side" triage. Upstream truth at ~/.emacs.d/lisp/emacs-claude-code..
+tags: [scitex-orochi-agent-pane-state-patterns]
 ---
 
 # Pane State Patterns
