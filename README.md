@@ -152,9 +152,10 @@ reads agent status, sac never imports orochi.
 | MCP channel server (in-session push)     | **orochi**                           |
 | Container lifecycle (start/stop/send)    | **sac**                              |
 | Health checks, restart policies          | **sac**                              |
+| Fleet/peer orchestration (cross-host launch, peer registry, singleton reconcile) | **sac** |
 | Telegram bridge + alerting               | **claude-code-telegrammer**          |
 
-Rule: **orochi knows messages + people across hosts; sac knows containers + sessions on one host.** sac never imports orochi.
+Rule: **orochi owns the cross-host messaging + visibility layer (people + messages); sac owns the cross-host execution + lifecycle layer (agents + containers, local and peer hosts).** Both span hosts — the boundary is *comms vs execution*, not *fleet vs single-host*. sac never imports orochi.
 
 See [Architecture](docs/architecture.md) for the server topology,
 status-collection flow, and snake fleet roles.
