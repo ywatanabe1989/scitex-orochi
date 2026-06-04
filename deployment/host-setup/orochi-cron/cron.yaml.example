@@ -80,12 +80,26 @@ jobs:
 
   # Singleton host-priority checker (#250) — Option C interim.
   # Reads ~/.scitex/orochi/shared/agents/*/spec.yaml, queries /api/agents/,
-  # and posts a warning to #heads when a singleton agent is running on a
+  # and emits a warning when a singleton agent is running on a
   # lower-priority host while its preferred host is online.
-  # Requires: SCITEX_OROCHI_TOKEN, SCITEX_OROCHI_HUB_URL set in daemon env.
+  #
+  # Flags:
+  #   --post         broadcast warning to #heads (legacy fan-out).
+  #   --dm-healer    DM the resolved healer on each preferred host
+  #                  (template: SCITEX_OROCHI_HEALER_TEMPLATE, default
+  #                  'head-{host}') with a per-warning, action-oriented
+  #                  yield request — the healer can then call
+  #                  ``sac singleton-reconcile --execute``.
+  # Run both together for fleet-wide visibility AND targeted action;
+  # --dm-healer alone if you'd rather skip the #heads noise.
+  #
+  # Requires: SCITEX_OROCHI_TOKEN, SCITEX_OROCHI_HUB_URL set in daemon
+  # env. For --dm-healer also: SCITEX_OROCHI_WORKSPACE (default
+  # 'fleet') and optionally SCITEX_OROCHI_HEALER_TEMPLATE +
+  # SCITEX_OROCHI_SINGLETON_CHECK_AGENT.
   # - name: singleton-host-check
   #   interval: 10m
-  #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/singleton-host-check.py --post"
+  #   command: "python3 ${SCITEX_OROCHI_REPO_ROOT}/scripts/server/singleton-host-check.py --post --dm-healer"
   #   timeout: 2m
 
   # scitex.ai post-deploy Playwright smoke test (#237 Part 2) — NAS only.
