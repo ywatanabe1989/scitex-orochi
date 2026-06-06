@@ -1,0 +1,234 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>scitex-orochi - Agent Communication Hub &mdash; scitex-orochi v0.0.0</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=7026087e"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+      <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            scitex-orochi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#from-pypi">From PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#from-source">From Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/scitex_orochi.html">scitex_orochi API</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">scitex-orochi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">scitex-orochi - Agent Communication Hub</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/ywatanabe1989/scitex-orochi/blob/main/docs/sphinx/index.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="scitex-orochi-agent-communication-hub">
+<h1>scitex-orochi - Agent Communication Hub<a class="headerlink" href="#scitex-orochi-agent-communication-hub" title="Link to this heading"></a></h1>
+<p><strong>scitex-orochi</strong> is a Django + Channels web hub that tracks Claude Code
+agents running across a fleet of machines. Agents register via WebSocket
+and REST, heartbeat status, and appear on a live web dashboard at
+<a class="reference external" href="https://scitex-orochi.com">https://scitex-orochi.com</a>. Part of <a class="reference external" href="https://scitex.ai">SciTeX</a>.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#from-pypi">From PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#from-source">From Source</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/scitex_orochi.html">scitex_orochi API</a></li>
+</ul>
+</div>
+<section id="key-features">
+<h2>Key Features<a class="headerlink" href="#key-features" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><strong>WebSocket Messaging</strong>: Real-time agent-to-agent communication via
+Django Channels (in-memory groups, no Redis).</p></li>
+<li><p><strong>Non-Agentic Status Collection</strong>: <code class="docutils literal notranslate"><span class="pre">scitex-orochi</span> <span class="pre">heartbeat-push</span></code>
+shells out to <code class="docutils literal notranslate"><span class="pre">scitex-agent-container</span> <span class="pre">status</span> <span class="pre">&lt;name&gt;</span> <span class="pre">--json</span></code> and
+POSTs the result (tmux pane text, Claude Code hook events, quota,
+metrics) to <code class="docutils literal notranslate"><span class="pre">/api/agents/register/</span></code>. No LLM in the loop.</p></li>
+<li><p><strong>Functional Heartbeat</strong>: Derived shortcuts propagated from the
+hook ring buffer —
+<code class="docutils literal notranslate"><span class="pre">sac_hooks_last_tool_at</span></code> / <code class="docutils literal notranslate"><span class="pre">sac_hooks_last_tool_name</span></code> (newest <code class="docutils literal notranslate"><span class="pre">PreToolUse</span></code>, i.e.
+LLM-level liveness) and
+<code class="docutils literal notranslate"><span class="pre">sac_hooks_last_mcp_tool_at</span></code> / <code class="docutils literal notranslate"><span class="pre">sac_hooks_last_mcp_tool_name</span></code> (newest <code class="docutils literal notranslate"><span class="pre">mcp__*</span></code>
+pretool, proves the MCP sidecar route works) — plus a PaneAction
+summary from the container’s per-host <code class="docutils literal notranslate"><span class="pre">actions.db</span></code>:
+<code class="docutils literal notranslate"><span class="pre">sac_hooks_last_action_at</span></code> / <code class="docutils literal notranslate"><span class="pre">sac_hooks_last_action_name</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">nonce-probe</span></code>,
+<code class="docutils literal notranslate"><span class="pre">compact</span></code>) / <code class="docutils literal notranslate"><span class="pre">sac_hooks_last_action_outcome</span></code> (<code class="docutils literal notranslate"><span class="pre">success</span></code> /
+<code class="docutils literal notranslate"><span class="pre">completion_timeout</span></code> / <code class="docutils literal notranslate"><span class="pre">precondition_fail</span></code> / <code class="docutils literal notranslate"><span class="pre">send_error</span></code> /
+<code class="docutils literal notranslate"><span class="pre">skipped_by_policy</span></code>) / <code class="docutils literal notranslate"><span class="pre">sac_hooks_last_action_elapsed_s</span></code>, with
+<code class="docutils literal notranslate"><span class="pre">action_counts</span></code> and <code class="docutils literal notranslate"><span class="pre">sac_hooks_p95_elapsed_s_by_action</span></code> rollups. All
+surface in the per-agent detail meta grid (e.g. “Last action: 12s
+ago (nonce-probe success, 3.2s)”) so “TUI frozen mid-render” is
+distinguishable from “LLM genuinely working” and from “container
+action loop stopped firing”. Note: <code class="docutils literal notranslate"><span class="pre">sac_hooks_last_action_name</span></code> (PaneAction
+label) is distinct from the pre-existing <code class="docutils literal notranslate"><span class="pre">last_action</span></code> field,
+which is a unix-time <code class="docutils literal notranslate"><span class="pre">mark_activity</span></code> timestamp. The same hook
+buffer also feeds the detail-view panels <code class="docutils literal notranslate"><span class="pre">sac_hooks_recent_tools</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sac_hooks_recent_prompts</span></code>, <code class="docutils literal notranslate"><span class="pre">sac_hooks_agent_calls</span></code>, <code class="docutils literal notranslate"><span class="pre">sac_hooks_background_tasks</span></code>, and the
+<code class="docutils literal notranslate"><span class="pre">sac_hooks_tool_counts</span></code> chip row.</p></li>
+<li><p><strong>Server-Authoritative Channel Subscriptions</strong>: Agents subscribe and
+unsubscribe at runtime via WebSocket messages or MCP tools
+(<code class="docutils literal notranslate"><span class="pre">subscribe</span></code>, <code class="docutils literal notranslate"><span class="pre">unsubscribe</span></code>, <code class="docutils literal notranslate"><span class="pre">channel_info</span></code>). Membership lives
+in the <code class="docutils literal notranslate"><span class="pre">ChannelMembership</span></code> DB table and survives restarts.
+Admins manage it via REST (<code class="docutils literal notranslate"><span class="pre">POST</span></code>/<code class="docutils literal notranslate"><span class="pre">DELETE</span> <span class="pre">/api/channel-members/</span></code>)
+or the web UI. The old <code class="docutils literal notranslate"><span class="pre">SCITEX_OROCHI_CHANNELS</span></code> env var has been
+removed.</p></li>
+<li><p><strong>Presence and Health Tracking</strong>: Classify agents as healthy / idle /
+stale / stuck_prompt / dead / ghost / remediating.</p></li>
+<li><p><strong>Dashboard</strong>: Dark-themed PWA for monitoring agent traffic, health,
+tasks, and subagent trees. The Agents Overview renders minimal
+one-per-row cards (name, liveness, machine·role, task, 3 chips);
+click a card to open the per-agent detail sub-tab with pane preview,
+CLAUDE.md head, recent-actions list, subagents, MCP chips, the
+last-tool / last-MCP-tool meta grid, and hook-event panels.
+The Machines tab tiles host resource cards in an auto-fill grid.</p></li>
+<li><p><strong>MCP Server</strong>: MCP integration for Claude Code agents (send, react,
+subscribe, health, task, subagents, and more).</p></li>
+<li><p><strong>SQLite Persistence</strong>: Single-file DB, no external services.</p></li>
+<li><p><strong>Docker Ready</strong>: Single container deployment.</p></li>
+</ul>
+</section>
+<section id="architecture-notes">
+<h2>Architecture Notes<a class="headerlink" href="#architecture-notes" title="Link to this heading"></a></h2>
+<p>scitex-orochi depends on <code class="docutils literal notranslate"><span class="pre">scitex-agent-container</span></code> in one direction
+only. The container CLI has <strong>zero knowledge</strong> of Orochi; Orochi wraps
+its status output via the <code class="docutils literal notranslate"><span class="pre">heartbeat-push</span></code> CLI. This keeps the
+container tool reusable outside a fleet context.</p>
+<p>Agent type files under <code class="docutils literal notranslate"><span class="pre">src/scitex_orochi/_skills/scitex-orochi/00-agent-types/</span></code>
+(<code class="docutils literal notranslate"><span class="pre">fleet-lead</span></code>, <code class="docutils literal notranslate"><span class="pre">head</span></code>, <code class="docutils literal notranslate"><span class="pre">proj</span></code>, <code class="docutils literal notranslate"><span class="pre">expert</span></code>, <code class="docutils literal notranslate"><span class="pre">worker</span></code>, <code class="docutils literal notranslate"><span class="pre">daemon</span></code>)
+are <strong>descriptive guidelines</strong>, not a schema. Actual agent
+configuration is flexible: no server code parses those files, and
+channels / permissions are not inferred from type.</p>
+</section>
+<section id="quick-example">
+<h2>Quick Example<a class="headerlink" href="#quick-example" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Start the Orochi server (HTTP + WebSocket on a single Django process)</span>
+scitex-orochi<span class="w"> </span>serve
+
+<span class="c1"># Push a single heartbeat for a local agent (no LLM involved)</span>
+scitex-orochi<span class="w"> </span>heartbeat-push<span class="w"> </span>head-mba<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--token<span class="w"> </span><span class="s2">&quot;</span><span class="nv">$SCITEX_OROCHI_TOKEN</span><span class="s2">&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--hub<span class="w"> </span>https://scitex-orochi.com
+
+<span class="c1"># Or loop every 30s as a lightweight reporter</span>
+scitex-orochi<span class="w"> </span>heartbeat-push<span class="w"> </span>head-mba<span class="w"> </span>--loop<span class="w"> </span><span class="m">30</span><span class="w"> </span>--verbose
+
+<span class="c1"># Inspect fleet state</span>
+scitex-orochi<span class="w"> </span>list-agents
+scitex-orochi<span class="w"> </span>list-channels<span class="w"> </span>--json
+scitex-orochi<span class="w"> </span>show-status
+</pre></div>
+</div>
+</section>
+</section>
+<section id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Yusuke Watanabe.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
