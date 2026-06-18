@@ -43,18 +43,31 @@ jobs:
           cache-dependency-glob: pyproject.toml
       - name: Set up Python 3.12 (uv-managed)
         run: uv python install 3.12
-      - name: Install (no extras) in uv venv
+      # The bare-install import contract (`import scitex_orochi` with NO
+      # extras) is covered by the dep-hygiene-smoke job below. Here we
+      # install `[all]` so the MCP entrypoint's optional dep (fastmcp) is
+      # importable for the presence check.
+      - name: Install with extras in uv venv
         run: |
           uv venv --python 3.12 .venv
-          uv pip install --python .venv/bin/python -e .
+          uv pip install --python .venv/bin/python -e ".[all]" \
+            || uv pip install --python .venv/bin/python -e .
       - name: Import smoke
         run: .venv/bin/python -c "import scitex_orochi; print(getattr(scitex_orochi, '__version__', 'unversioned'))"
+      # Only `scitex-orochi` is a Click CLI with a `--help` short-circuit.
       - name: smoke scitex-orochi --help
         run: .venv/bin/scitex-orochi --help
-      - name: smoke scitex-orochi-mcp --help
-        run: .venv/bin/scitex-orochi-mcp --help
-      - name: smoke scitex-orochi-server --help
-        run: .venv/bin/scitex-orochi-server --help
+      # `scitex-orochi-mcp` and `scitex-orochi-server` are daemon launchers:
+      # their `main()` boots the server (stdio MCP loop / DB open + socket
+      # bind) on ANY invocation — neither has a `--help` short-circuit, so
+      # `--help` would start (and in CI hang or crash on the unwritable DB
+      # path) rather than print help. Smoke that the console scripts are
+      # installed and their entrypoints importable, not that they boot.
+      - name: smoke daemon entrypoints present
+        run: |
+          test -x .venv/bin/scitex-orochi-mcp
+          test -x .venv/bin/scitex-orochi-server
+          .venv/bin/python -c "from scitex_orochi.mcp_server import main as m; from scitex_orochi._server import main as s; assert callable(m) and callable(s)"
   dep-hygiene-smoke:
     name: dep-hygiene-smoke
     runs-on: ubuntu-latest
