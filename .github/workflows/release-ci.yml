@@ -94,7 +94,24 @@ jobs:
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python -e ".[dev]"
           uv pip install --python .venv/bin/python "scitex-dev[cli-audit]"
-      - name: Run scitex-dev ecosystem audit-all
+      # Run the package's canonical audit gate, NOT raw `audit-all`.
+      #
+      # `tests/develop/test_audit.py::test_audit_all_clean` calls
+      # `scitex_dev.testing.audit_all_for_package("scitex-orochi",
+      # skip_rules=(...))` — the single source of truth for which audit
+      # rules this package has formally deferred (the CLI/MCP noun-verb
+      # migration §1/§1a/§1d/§2/§4/§5/§6/§6b/§10 and the PA-306/307
+      # test-hygiene backlog, each masked with a documented rationale,
+      # exactly as scitex-hub / scitex-io / scitex-cloud do).
+      #
+      # Raw `scitex-dev ecosystem audit-all scitex-orochi` bypasses that
+      # mask AND cannot load `.scitex/dev/config.yaml`'s `deferred`
+      # opt-out on the runner (the per-package auditors resolve their
+      # config repo-root from the ECOSYSTEM registry's dev-box
+      # `local_path`, which is absent in CI), so it re-fires ~828
+      # already-deferred findings. Running the gate test keeps the audit
+      # signal honest without the false reds. See PR #436.
+      - name: Run audit conformance gate
         run: |
           export PATH="$PWD/.venv/bin:$PATH"
-          scitex-dev ecosystem audit-all scitex-orochi --no-version-check
+          .venv/bin/pytest tests/develop/test_audit.py -v
