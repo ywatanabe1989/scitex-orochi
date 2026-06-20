@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-06-20
+
+### 🚀 Features
+- feat(daemons): SAC inventory reconciler daemon (ADR-0003 Phase 1) —
+  reconciles the agent-container inventory into the hub.
+
+### 🐛 Bug Fixes
+- fix(bridge/dispatch): crash loud on remote-home / mkdir / scp failure
+  (no silent fallback).
+- fix(ops/#250): DM-healer dispatch for singleton-host-check + un-skip the
+  previously-skipped test path.
+
+### 🧹 Maintenance
+- ci: apply L1–L5 CI-speedup — canonical workflows replace the legacy
+  non-canonical CI; the audit job runs the canonical conformance gate
+  (`tests/develop/test_audit.py`) rather than raw `audit-all` (#449, #450).
+- ci: bundle `src/scitex_orochi/_sphinx_html/` into the wheel (PS-121) (#448).
+- ci(cla): owner-bypass for direct pushes; `cla.yml` uses the
+  `GH_PERSONAL_ACCESS_TOKEN` secret (PS-168) (#445).
+- docs(adr): ADR-0003 — agent identity, bridge shape, and ghost-channels;
+  clarify the sac/orochi cross-host boundary in the README.
+- test(bridge): cover the SoC seam (spec, mcp, dispatch); de-flake the
+  scheduler-thread teardown.
+
 ## [0.16.4] - 2026-05-31
 
 ### 🧹 Maintenance
